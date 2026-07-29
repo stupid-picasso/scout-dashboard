@@ -1531,8 +1531,10 @@ class Component extends DCLogic {
     video.src = url;
     document.body.appendChild(video);
     await new Promise((resolve, reject) => {
-      video.onloadeddata = resolve;
-      video.onerror = () => reject(new Error('Could not read that video file.'));
+      const timer = setTimeout(() => reject(new Error('Video never loaded \u2014 this browser likely can\u2019t decode this file (common with HEVC .mov screen recordings from iPhone). Re-export/share it as MP4 (H.264) and try again.')), 10000);
+      video.onloadeddata = () => { clearTimeout(timer); resolve(); };
+      video.onloadedmetadata = () => { clearTimeout(timer); resolve(); };
+      video.onerror = () => { clearTimeout(timer); reject(new Error('Could not read that video file.')); };
     });
     try { await video.play(); video.pause(); } catch (e) {}
     for (let i = 0; i < 15 && !video.videoWidth; i++) {
@@ -1553,8 +1555,9 @@ class Component extends DCLogic {
     let blackCount = 0;
     for (let i = 0; i < count; i++) {
       const t = Math.min(duration - 0.05, (duration * (i + 0.5)) / count);
-      await new Promise((resolve) => {
-        const onSeeked = () => { video.removeEventListener('seeked', onSeeked); resolve(); };
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { video.removeEventListener('seeked', onSeeked); reject(new Error('Video seek timed out \u2014 this file may not be fully decodable in-browser. Re-export as MP4 (H.264) and try again.')); }, 8000);
+        const onSeeked = () => { clearTimeout(timer); video.removeEventListener('seeked', onSeeked); resolve(); };
         video.addEventListener('seeked', onSeeked);
         video.currentTime = Math.max(0, t);
       });
