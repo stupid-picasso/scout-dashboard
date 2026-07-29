@@ -1,4 +1,4 @@
-const CACHE = 'scout-v1';
+const CACHE = 'scout-v2';
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html'])).catch(() => {}));
@@ -11,6 +11,10 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => cached))
+    fetch(e.request).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
