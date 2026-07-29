@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0;background:#0b0e13;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402,874" width="{{ 402 }}" height="{{ 874 }}" dark="{{ true }}">
+  <div style="width:402px">
+    <dc-import name="Scout Dashboard" hint-size="402px,1400px" style="display:block;width:402px"></dc-import>
+  </div>
+</x-import>
+
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  @font-face{font-family:'Sys';src:local('Helvetica Neue');}
+  body{margin:0;background:oklch(96% 0.012 85);}
+  ::selection{background:oklch(80% 0.1 220);}
+  a{color:oklch(45% 0.14 220);}
+  a:hover{color:oklch(35% 0.14 220);}
+</style>
+</helmet>
+<div style="width:1200px;margin:0 auto;font-family:-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;color:oklch(22% 0.02 260);padding:48px 56px 64px;box-sizing:border-box;background:oklch(96% 0.012 85)">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid oklch(22% 0.02 260);padding-bottom:18px;margin-bottom:28px">
+    <div>
+      <div style="font:700 12px/1 ui-monospace,monospace;letter-spacing:.12em;color:oklch(50% 0.15 220);text-transform:uppercase;margin-bottom:8px">Pokemon GO &middot; Beginner Cheat Sheet</div>
+      <h1 style="font:800 42px/1.05 -apple-system,sans-serif;margin:0;letter-spacing:-.01em">CP, HP &amp; IV, explained</h1>
+    </div>
+    <div style="text-align:right;font:600 13px/1.4 ui-monospace,monospace;color:oklch(45% 0.02 260)">one page &middot; read in 4 min</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:28px">
+
+    <div style="background:white;border-radius:4px;padding:22px;border:1px solid oklch(88% 0.01 85)">
+      <div style="font:800 13px ui-monospace,monospace;color:oklch(50% 0.15 220);letter-spacing:.08em;margin-bottom:6px">CP</div>
+      <div style="font:700 20px/1.2;margin-bottom:8px">Combat Power</div>
+      <p style="font:15px/1.55 sans-serif;color:oklch(35% 0.02 260);margin:0">A single number summarizing overall strength. Goes up as you <strong>level up</strong> a Pokemon and with better <strong>IVs</strong>. Higher isn't always better &mdash; PvP leagues cap it.</p>
+    </div>
+
+    <div style="background:white;border-radius:4px;padding:22px;border:1px solid oklch(88% 0.01 85)">
+      <div style="font:800 13px ui-monospace,monospace;color:oklch(65% 0.16 70);letter-spacing:.08em;margin-bottom:6px">HP</div>
+      <div style="font:700 20px/1.2;margin-bottom:8px">Hit Points</div>
+      <p style="font:15px/1.55 sans-serif;color:oklch(35% 0.02 260);margin:0">How much damage a Pokemon can take before fainting. Driven by the species' base Stamina, its level, and its Stamina IV.</p>
+    </div>
+
+    <div style="background:white;border-radius:4px;padding:22px;border:1px solid oklch(88% 0.01 85)">
+      <div style="font:800 13px ui-monospace,monospace;color:oklch(50% 0.14 150);letter-spacing:.08em;margin-bottom:6px">IV</div>
+      <div style="font:700 20px/1.2;margin-bottom:8px">Individual Values</div>
+      <p style="font:15px/1.55 sans-serif;color:oklch(35% 0.02 260);margin:0">Hidden per-catch bonus, 0&ndash;15 each for Attack, Defense, Stamina. Randomized every catch &mdash; genetics, basically.</p>
+    </div>
+  </div>
+
+  <div style="background:oklch(22% 0.02 260);border-radius:6px;padding:26px 30px;margin-bottom:28px;color:oklch(96% 0.01 85)">
+    <div style="font:700 15px sans-serif;margin-bottom:14px;color:oklch(75% 0.14 70)">Reading an IV spread</div>
+    <div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:10px">
+        <div style="text-align:center"><div style="font:800 26px ui-monospace,monospace;color:oklch(78% 0.13 220)">14</div><div style="font:11px ui-monospace,monospace;opacity:.6">ATK</div></div>
+        <div style="text-align:center"><div style="font:800 26px ui-monospace,monospace;color:oklch(78% 0.13 220)">13</div><div style="font:11px ui-monospace,monospace;opacity:.6">DEF</div></div>
+        <div style="text-align:center"><div style="font:800 26px ui-monospace,monospace;color:oklch(78% 0.13 220)">15</div><div style="font:11px ui-monospace,monospace;opacity:.6">STA</div></div>
+      </div>
+      <div style="font:15px/1.6 sans-serif;flex:1;min-width:320px">Each stat maxes at <strong>15</strong>. Add the three, divide by 45 &rarr; that's your <strong>IV%</strong> (here: 42/45 = <span style="color:oklch(75% 0.14 70);font-weight:700">93.3%</span>). Your Poke Genie / scanner export already calculates this for every Pokemon &mdash; it's the <code style="background:rgba(255,255,255,.1);padding:2px 6px;border-radius:3px">IV Avg</code> column.</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px">
+    <div style="border:1px solid oklch(88% 0.01 85);border-radius:6px;padding:22px;background:white">
+      <div style="font:800 14px sans-serif;margin-bottom:10px;color:oklch(50% 0.14 150)">For Raids &amp; PvE</div>
+      <p style="font:14.5px/1.6 sans-serif;margin:0 0 10px;color:oklch(35% 0.02 260)">IV barely matters. What matters: <strong>highest CP</strong> you can field, and the right <strong>moveset</strong> (type advantage beats stats). Anything 80%+ IV is fine to invest in.</p>
+      <p style="font:14.5px/1.6 sans-serif;margin:0;color:oklch(45% 0.02 260)">Rule of thumb: build a roster of high-CP attackers per type, don't obsess over their exact IVs.</p>
+    </div>
+    <div style="border:1px solid oklch(88% 0.01 85);border-radius:6px;padding:22px;background:white">
+      <div style="font:800 14px sans-serif;margin-bottom:10px;color:oklch(50% 0.15 220)">For PvP Battles</div>
+      <p style="font:14.5px/1.6 sans-serif;margin:0 0 10px;color:oklch(35% 0.02 260)">Each league caps CP: <strong>Great ≤1500</strong>, <strong>Ultra ≤2500</strong>, <strong>Master</strong> uncapped. Under a cap, low Attack IV is often <em>good</em> &mdash; it keeps CP down while Defense/HP stay high, so you hit the cap at a higher level with more bulk.</p>
+      <p style="font:14.5px/1.6 sans-serif;margin:0;color:oklch(45% 0.02 260)">This is why your export has a separate <strong>Rank %</strong> per league &mdash; not just one IV number. Trust that column over raw IV% for PvP picks.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:28px">
+    <div style="padding:18px 20px;background:white;border-radius:6px;border:1px solid oklch(88% 0.01 85)">
+      <div style="font:700 13px sans-serif;margin-bottom:6px">Leveling up</div>
+      <p style="font:13.5px/1.5 sans-serif;margin:0;color:oklch(40% 0.02 260)">Costs Stardust + Candy per half-level. Level cap is 40 normally, 50/51 with rare XL Candy from very high-level catches or Best Buddy rewards.</p>
+    </div>
+    <div style="padding:18px 20px;background:white;border-radius:6px;border:1px solid oklch(88% 0.01 85)">
+      <div style="font:700 13px sans-serif;margin-bottom:6px">Lucky Pokemon</div>
+      <p style="font:13.5px/1.5 sans-serif;margin:0;color:oklch(40% 0.02 260)">Earned by trading. Cost half Stardust to power up, and every stat IV is guaranteed 12+ &mdash; a built-in floor on quality.</p>
+    </div>
+    <div style="padding:18px 20px;background:white;border-radius:6px;border:1px solid oklch(88% 0.01 85)">
+      <div style="font:700 13px sans-serif;margin-bottom:6px">Shadow / Purified</div>
+      <p style="font:13.5px/1.5 sans-serif;margin:0;color:oklch(40% 0.02 260)">Shadow: +20% Attack, -20% Defense &mdash; strong for raids, riskier in PvP. Purifying removes the boost/penalty and raises IVs slightly.</p>
+    </div>
+  </div>
+
+  <div style="background:oklch(94% 0.03 70);border:1px solid oklch(80% 0.08 70);border-radius:6px;padding:24px 28px">
+    <div style="font:800 14px sans-serif;letter-spacing:.04em;margin-bottom:12px;color:oklch(35% 0.1 60)">BEGINNER CHECKLIST</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;font:14.5px/1.5 sans-serif;color:oklch(28% 0.03 60)">
+      <div>1. Don't power up everything &mdash; wait until you know a Pokemon's role.</div>
+      <div>2. For raids: chase high CP + correct type moveset.</div>
+      <div>3. For PvP: check the league Rank % column, not raw IV%.</div>
+      <div>4. Trade duplicates for a shot at Lucky (cheaper, better floor).</div>
+      <div>5. Low IV + no PvP rank + no raid role &rarr; safe to transfer.</div>
+      <div>6. Re-scan after big updates; rankings shift with new Pokemon.</div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+</body>
+</html>

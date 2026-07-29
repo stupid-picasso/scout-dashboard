@@ -1,0 +1,2452 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#171b26"/><circle cx="100" cy="70" r="34" fill="#54c8ff"/><rect x="60" y="120" width="80" height="46" rx="10" fill="#3a4258"/><text x="100" y="150" font-family="monospace" font-size="20" font-weight="800" fill="#e8ecf5" text-anchor="middle">S</text></svg>
+</template>
+<helmet>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#171b26">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Professor">
+<meta name="theme-color" content="#12181f">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  body{margin:0;background:oklch(18% 0.025 260);}
+  ::selection{background:oklch(45% 0.1 220);}
+  a{color:oklch(78% 0.13 220);}
+  a:hover{color:oklch(85% 0.13 220);}
+  input::placeholder{color:oklch(55% 0.02 260)}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:oklch(35% 0.03 260);border-radius:5px}
+  @keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes flipIn{from{opacity:0;transform:rotateY(90deg) scale(.9)}to{opacity:1;transform:rotateY(0deg) scale(1)}}
+  @keyframes cardPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 oklch(70% 0.15 220 / 0.5)}50%{box-shadow:0 0 0 8px oklch(70% 0.15 220 / 0)}}
+</style>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
+<script type="module" src="./pokemon-data.js"></script>
+<script type="module" src="./pokemon-mechanics.js"></script>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100%;width:100%;box-sizing:border-box;background:oklch(18% 0.025 260);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.01 260);padding:{{ rootPadding }}">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:{{ headerWrap }};gap:12px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:14px;height:14px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 14px oklch(78% 0.16 150)"></div>
+      <div>
+        <div style="font:800 22px ui-monospace,Menlo,monospace;letter-spacing:.04em">PROFESSOR</div>
+        <div style="font:12px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">TRAINER INTELLIGENCE FEED &middot; ONLINE</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-basis:{{ headerActionsBasis }}">
+      <div style="font:12px ui-monospace,monospace;color:oklch(60% 0.02 260);width:{{ syncLabelWidth }}">{{ syncLabel }}</div>
+      <label style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;box-sizing:border-box">
+        SYNC CSV
+        <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
+      </label>
+      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid oklch(45% 0.1 220);color:oklch(96% 0.01 220);font:700 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px;animation:{{ micAnim }};flex:1 1 0;min-width:0;box-sizing:border-box;white-space:nowrap">
+        <span>&#127908;</span>{{ micLabel }}
+      </div>
+    </div>
+  </div>
+
+  <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:16px 22px;margin-bottom:24px;display:flex;gap:10px;align-items:center">
+    <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.06em;flex-shrink:0">PROFESSOR SAYS</div>
+    <div style="font:14.5px/1.4 sans-serif;color:oklch(88% 0.01 260)">{{ calloutLine }}</div>
+  </div>
+
+  <sc-if value="{{ hasVoiceExchange }}" hint-placeholder-val="{{ false }}">
+  <div style="background:oklch(24% 0.04 220);border:1px solid oklch(40% 0.08 220);border-radius:8px;padding:14px 22px;margin-bottom:24px;animation:fadeSlideIn .35s ease">
+    <div style="font:12px ui-monospace,monospace;color:oklch(70% 0.13 220);margin-bottom:4px">YOU ASKED: {{ lastQuestion }}</div>
+    <div style="font:14.5px/1.4 sans-serif;color:oklch(92% 0.01 220)">{{ lastAnswer }}</div>
+  </div>
+  </sc-if>
+
+  <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:14px;margin-bottom:26px">
+    <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.03 260)">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">ROSTER</div>
+      <div style="font:800 26px ui-monospace,monospace;margin-top:4px">{{ stats.total }}</div>
+    </div>
+    <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.03 260)">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">AVG IV%</div>
+      <div style="font:800 26px ui-monospace,monospace;margin-top:4px">{{ stats.avgIV }}</div>
+    </div>
+    <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.03 260)">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">LUCKY</div>
+      <div style="font:800 26px ui-monospace,monospace;margin-top:4px;color:oklch(78% 0.15 70)">{{ stats.lucky }}</div>
+    </div>
+    <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.03 260)">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">SHADOW</div>
+      <div style="font:800 26px ui-monospace,monospace;margin-top:4px;color:oklch(70% 0.15 320)">{{ stats.shadow }}</div>
+    </div>
+    <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.03 260)">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">PVP READY</div>
+      <div style="font:800 26px ui-monospace,monospace;margin-top:4px;color:oklch(78% 0.14 150)">{{ stats.pvpReady }}</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid oklch(32% 0.03 260);overflow-x:auto">
+    <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="4">
+      <div onClick="{{ t.onClick }}" style="cursor:pointer;padding:10px 14px;font:700 12.5px ui-monospace,monospace;letter-spacing:.03em;color:{{ t.color }};border-bottom:2px solid {{ t.border }};white-space:nowrap;flex-shrink:0">{{ t.label }}</div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+  <div style="animation:fadeSlideIn .35s ease;display:flex;flex-direction:column;gap:20px">
+    <div style="font:800 20px sans-serif">{{ digest.greeting }}</div>
+
+    <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:14px">
+      <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:14px 16px;border:1px solid oklch(32% 0.03 260)">
+        <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260)">POWER UP</div>
+        <div style="font:800 22px ui-monospace,monospace;color:oklch(80% 0.15 150)">{{ digest.powerUpCount }}</div>
+      </div>
+      <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:14px 16px;border:1px solid oklch(32% 0.03 260)">
+        <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260)">EVOLVE SOON</div>
+        <div style="font:800 22px ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ digest.evolveCount }}</div>
+      </div>
+      <div style="background:oklch(23% 0.03 260);border-radius:8px;padding:14px 16px;border:1px solid oklch(32% 0.03 260)">
+        <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260)">GREAT LEAGUE PROJECTS</div>
+        <div style="font:800 22px ui-monospace,monospace;color:oklch(78% 0.13 220)">{{ digest.greatProjects }}</div>
+      </div>
+    </div>
+
+    <div style="background:oklch(23% 0.04 200);border:1px solid oklch(38% 0.06 200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 200);letter-spacing:.05em">CLOUD SYNC (across your devices)</div>
+      <sc-if value="{{ needsFirebaseConfig }}" hint-placeholder-val="{{ true }}">
+        <div style="font:12px sans-serif;color:oklch(75% 0.02 260);line-height:1.5">
+          One-time setup: create a free project at <a href="https://console.firebase.google.com" target="_blank" style="color:oklch(78% 0.13 220)">console.firebase.google.com</a>, add a Web App, enable <strong>Email/Password</strong> under Authentication, create a <strong>Firestore</strong> database, then paste the config object it gives you below (the whole <span style="font:ui-monospace,monospace">{ apiKey: ..., ... }</span> block).
+        </div>
+        <textarea placeholder="{ apiKey: &quot;...&quot;, authDomain: &quot;...&quot;, projectId: &quot;...&quot;, ... }" value="{{ firebaseConfigDraft }}" onChange="{{ onFirebaseConfigChange }}" style="width:100%;box-sizing:border-box;min-height:70px;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:8px;border-radius:6px;font:11.5px ui-monospace,monospace"></textarea>
+        <div onClick="{{ saveFirebaseConfig }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE CONFIG</div>
+        <sc-if value="{{ firebaseConfigError }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ firebaseConfigError }}</div>
+        </sc-if>
+        <div style="font:11px ui-monospace,monospace;color:oklch(55% 0.02 260);white-space:pre-wrap;line-height:1.6">Firestore rules to paste (Rules tab):
+match /scoutUsers/$(uid) { allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid; }
+match /gameData/$(doc) { allow read: if request.auth != null; allow write: if request.auth != null &amp;&amp; request.auth.token.email in ['abhi.patel@gmail.com','admin@scout.app']; }
+match /sprites/$(doc) { allow read: if request.auth != null; allow write: if request.auth != null &amp;&amp; request.auth.token.email in ['abhi.patel@gmail.com','admin@scout.app']; }
+Admin account: sign up with email admin@scout.app (any password) to get write access.</div>
+      </sc-if>
+      <sc-if value="{{ hasFirebaseNoUser }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" placeholder="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:8px 10px;border-radius:6px;font:12.5px sans-serif;width:180px" />
+          <input type="password" placeholder="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:8px 10px;border-radius:6px;font:12.5px sans-serif;width:150px" />
+          <div onClick="{{ signIn }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SIGN IN</div>
+          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace">CREATE ACCOUNT</div>
+        </div>
+        <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260)">Use the same email/password on every device to sync the same data.</div>
+        <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ authError }}</div>
+        </sc-if>
+      </sc-if>
+      <sc-if value="{{ hasCloudUser }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div style="font:12.5px sans-serif;color:oklch(85% 0.02 260)">Synced as <strong>{{ cloudUserEmail }}</strong> &middot; {{ syncStatusLabel }}</div>
+          <div style="display:flex;gap:8px">
+            <div onClick="{{ syncNow }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11px ui-monospace,monospace">SYNC NOW</div>
+            <div onClick="{{ signOutCloud }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(80% 0.01 260);font:700 11px ui-monospace,monospace">SIGN OUT</div>
+          </div>
+        </div>
+        <sc-if value="{{ isAdminUser }}" hint-placeholder-val="{{ false }}">
+          <div style="border-top:1px solid oklch(35% 0.05 200);padding-top:10px;display:flex;flex-direction:column;gap:8px">
+            <sc-if value="{{ showMigrateButton }}" hint-placeholder-val="{{ false }}">
+              <div style="font:12px sans-serif;color:oklch(65% 0.02 260)">Move the base-stats table and all 1025 sprites into this Firebase project too &mdash; everything as Firestore documents (sprites stored as base64, one doc per dex), so no paid Storage/Blaze plan needed. Admin-only. One-time, ~1025 writes.</div>
+              <div onClick="{{ migrateStatsAndSprites }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace">MIGRATE STATS + SPRITES TO CLOUD</div>
+            </sc-if>
+            <sc-if value="{{ migrationDisplay }}" hint-placeholder-val="{{ false }}">
+              <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.02 260)">{{ migrationDisplay.label }}</div>
+              <div style="height:7px;background:oklch(30% 0.02 260);border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:{{ migrationDisplay.pct }}%;background:oklch(65% 0.13 220);transition:width .3s ease"></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </sc-if>
+    </div>
+
+    <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:8px">STARDUST BALANCE (enter manually)</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="text" placeholder="e.g. 1480000" value="{{ stardustDraft }}" onChange="{{ onStardustDraftChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid oklch(40% 0.03 260);color:oklch(80% 0.15 220);font:800 20px ui-monospace,monospace;padding:4px 0;width:180px" />
+            <div onClick="{{ onStardustSave }}" style="cursor:pointer;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace;padding:8px 14px;border-radius:5px;white-space:nowrap">SAVE</div>
+            <sc-if value="{{ stardustJustSaved }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11px ui-monospace,monospace;color:oklch(78% 0.15 150)">&#10003; Saved</div>
+            </sc-if>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
+            IMPORT SCREENSHOT
+            <input type="file" accept="image/*" onChange="{{ onScreenshotUpload }}" style="display:none" />
+          </label>
+          <label style="cursor:pointer;background:oklch(28% 0.05 280);border:1px solid oklch(42% 0.08 280);color:oklch(88% 0.03 280);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
+            IMPORT SCREEN RECORDING
+            <input type="file" accept="video/*" onChange="{{ onVideoUpload }}" style="display:none" />
+          </label>
+        </div>
+      </div>
+      <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
+      <sc-if value="{{ hasVideoImport }}" hint-placeholder-val="{{ false }}">
+        <div style="background:oklch(19% 0.03 280);border:1px solid oklch(38% 0.06 280);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font:700 12px ui-monospace,monospace;color:oklch(85% 0.08 280)">SCREEN RECORDING IMPORT</div>
+            <sc-if value="{{ videoImportDismissable }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ dismissVideoImport }}" style="cursor:pointer;font:11px ui-monospace,monospace;color:oklch(60% 0.02 260)">&times; close</div>
+            </sc-if>
+          </div>
+          <sc-for list="{{ videoImportSteps }}" as="step" hint-placeholder-count="5">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font:12px ui-monospace,monospace;color:{{ step.labelColor }}">{{ step.label }}</div>
+              <div style="height:8px;border-radius:4px;background:oklch(28% 0.02 260);overflow:hidden">
+                <div style="height:100%;width:{{ step.pct }}%;background:{{ step.barColor }};transition:width .3s ease"></div>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ videoImportError }}" hint-placeholder-val="{{ false }}">
+            <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ videoImportError }}</div>
+            <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">RETRY</div>
+          </sc-if>
+          <sc-if value="{{ videoImportSummary }}" hint-placeholder-val="{{ false }}">
+            <div style="font:13px sans-serif;color:oklch(90% 0.02 280)">Done! Updated {{ videoImportSummary.updated }}, added {{ videoImportSummary.inserted }} new, from {{ videoImportSummary.total }} Pokemon read off the recording.</div>
+          </sc-if>
+          <sc-if value="{{ videoFrameThumbs }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">FRAMES SENT TO CLAUDE (check these actually show your Pokemon)</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ videoFrameThumbs }}" as="thumb" hint-placeholder-count="0">
+                  <img ref="{{ thumb.ref }}" style="width:76px;height:56px;object-fit:cover;border-radius:4px;border:1px solid oklch(35% 0.04 280);background:oklch(15% 0.01 260)" />
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ videoRawReply }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">CLAUDE'S RAW REPLY</div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(70% 0.02 260);background:oklch(15% 0.01 260);padding:8px;border-radius:5px;white-space:pre-wrap;max-height:140px;overflow-y:auto">{{ videoRawReply }}</div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ ocrBusy }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12px ui-monospace,monospace;color:oklch(70% 0.13 220)">Reading screenshot&hellip;</div>
+      </sc-if>
+      <sc-if value="{{ ocrError }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ ocrError }}</div>
+      </sc-if>
+      <sc-if value="{{ hasOcrParsed }}" hint-placeholder-val="{{ false }}">
+        <div style="background:oklch(19% 0.025 220);border:1px solid oklch(35% 0.05 220);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px">
+          <div style="font:11px ui-monospace,monospace;color:oklch(70% 0.13 220)">{{ ocrParsedDisplay.matchLine }}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">NAME</div><input type="text" value="{{ ocrParsedDisplay.name }}" onChange="{{ onOcrName }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">CP</div><input type="number" value="{{ ocrParsedDisplay.cp }}" onChange="{{ onOcrCp }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">HP</div><input type="number" value="{{ ocrParsedDisplay.hp }}" onChange="{{ onOcrHp }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">TYPE</div><input type="text" value="{{ ocrParsedDisplay.type }}" onChange="{{ onOcrType }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">CANDY</div><input type="number" value="{{ ocrParsedDisplay.candy }}" onChange="{{ onOcrCandy }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">XL CANDY</div><input type="number" value="{{ ocrParsedDisplay.xlCandy }}" onChange="{{ onOcrXl }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.1 220);color:white;font:700 12px ui-monospace,monospace">SAVE CANDY/TYPE</div>
+            <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1;text-align:center;padding:9px;border-radius:6px;background:oklch(30% 0.03 260);color:oklch(80% 0.01 260);font:700 12px ui-monospace,monospace">CANCEL</div>
+          </div>
+
+          <div style="border-top:1px solid oklch(32% 0.04 220);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
+            <div onClick="{{ solveIv }}" style="cursor:pointer;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.13 150);color:white;font:700 12px ui-monospace,monospace">SOLVE IV &amp; PVP RANK</div>
+            <sc-if value="{{ hasSolvedIv }}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{ solvedIvResult.error }}" hint-placeholder-val="{{ false }}">
+                <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ solvedIvResult.error }}</div>
+              </sc-if>
+              <sc-if value="{{ solvedIvResult.spread }}" hint-placeholder-val="{{ false }}">
+                <div style="background:oklch(19% 0.03 150);border:1px solid oklch(35% 0.05 150);border-radius:6px;padding:10px 12px;font:12.5px sans-serif;color:oklch(90% 0.02 150);display:flex;flex-direction:column;gap:4px">
+                  <div>Level {{ solvedIvResult.level }} &middot; IV {{ solvedIvResult.spread }} ({{ solvedIvResult.ivAvg }})</div>
+                  <div style="font:ui-monospace,monospace;font-size:11.5px">Great {{ solvedIvResult.great }} &middot; Ultra {{ solvedIvResult.ultra }} &middot; Little {{ solvedIvResult.little }}</div>
+                  <sc-if value="{{ solvedIvResult.ambiguous }}" hint-placeholder-val="{{ false }}">
+                    <div style="font:11px sans-serif;color:oklch(70% 0.02 260)">{{ solvedIvResult.ambiguous }}</div>
+                  </sc-if>
+                  <div onClick="{{ applySolvedIv }}" style="cursor:pointer;margin-top:4px;text-align:center;padding:8px;border-radius:5px;background:oklch(50% 0.13 150);color:white;font:700 11.5px ui-monospace,monospace">ADD/UPDATE IN ROSTER</div>
+                </div>
+              </sc-if>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ candyEntries }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ candyEntries }}" as="c" hint-placeholder-count="0">
+            <div style="display:flex;justify-content:space-between;font:12.5px sans-serif;color:oklch(80% 0.01 260)">
+              <div>{{ c.name }}</div>
+              <div style="font:ui-monospace,monospace;color:oklch(70% 0.02 260)">Candy {{ c.candy }} &middot; XL {{ c.xlCandy }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">RESOURCES (enter manually)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">
+        <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);margin-bottom:4px">RARE CANDY</div><input type="text" value="{{ resourcesDraft.rareCandy }}" onChange="{{ onResourceRareCandy }}" style="width:100%;box-sizing:border-box;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:7px 9px;border-radius:5px;font:13px ui-monospace,monospace" /></div>
+        <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);margin-bottom:4px">RARE CANDY XL</div><input type="text" value="{{ resourcesDraft.rareCandyXL }}" onChange="{{ onResourceRareCandyXL }}" style="width:100%;box-sizing:border-box;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:7px 9px;border-radius:5px;font:13px ui-monospace,monospace" /></div>
+        <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);margin-bottom:4px">ELITE FAST TM</div><input type="text" value="{{ resourcesDraft.eliteFastTM }}" onChange="{{ onResourceEliteFast }}" style="width:100%;box-sizing:border-box;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:7px 9px;border-radius:5px;font:13px ui-monospace,monospace" /></div>
+        <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);margin-bottom:4px">ELITE CHARGED TM</div><input type="text" value="{{ resourcesDraft.eliteChargedTM }}" onChange="{{ onResourceEliteCharged }}" style="width:100%;box-sizing:border-box;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:7px 9px;border-radius:5px;font:13px ui-monospace,monospace" /></div>
+      </div>
+      <div onClick="{{ saveResources }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE RESOURCES</div>
+
+      <div style="border-top:1px solid oklch(30% 0.03 260);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+        <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">MEGA ENERGY (per species)</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" placeholder="species" value="{{ megaNameDraft }}" onChange="{{ onMegaNameChange }}" style="flex:1;min-width:0;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:7px 9px;border-radius:5px;font:12.5px sans-serif" />
+          <input type="text" placeholder="amount" value="{{ megaAmountDraft }}" onChange="{{ onMegaAmountChange }}" style="width:80px;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:7px 9px;border-radius:5px;font:12.5px ui-monospace,monospace" />
+          <div onClick="{{ addMegaEnergy }}" style="cursor:pointer;padding:7px 14px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace;white-space:nowrap">ADD</div>
+        </div>
+        <sc-if value="{{ megaEnergyEntries }}" hint-placeholder-val="{{ false }}">
+          <sc-for list="{{ megaEnergyEntries }}" as="m" hint-placeholder-count="0">
+            <div style="display:flex;justify-content:space-between;align-items:center;font:12.5px sans-serif;color:oklch(80% 0.01 260)">
+              <span>{{ m.name }}</span>
+              <span style="display:flex;align-items:center;gap:8px"><strong style="font:ui-monospace,monospace">{{ m.amount }}</strong><span onClick="{{ m.remove }}" style="cursor:pointer;color:oklch(60% 0.02 260)">&times;</span></span>
+            </div>
+          </sc-for>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ eliteTmCandidates }}" hint-placeholder-val="{{ false }}">
+        <div style="border-top:1px solid oklch(30% 0.03 260);padding-top:12px">
+          <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);margin-bottom:6px">ELITE CHARGED TM CANDIDATES (high rank, missing 2nd move)</div>
+          <sc-for list="{{ eliteTmCandidates }}" as="e" hint-placeholder-count="0">
+            <div style="display:flex;justify-content:space-between;font:12.5px sans-serif;color:oklch(80% 0.01 260);padding:3px 0">
+              <span>{{ e.name }}</span><span style="font:ui-monospace,monospace;color:oklch(78% 0.14 150)">{{ e.rankDisplay }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="background:oklch(21% 0.03 150);border:1px solid oklch(35% 0.05 150);border-radius:8px;padding:16px">
+        <div style="font:700 11px ui-monospace,monospace;color:oklch(80% 0.15 150);letter-spacing:.05em;margin-bottom:8px">STARDUST PRIORITY</div>
+        <sc-for list="{{ digest.dustPriority }}" as="name" hint-placeholder-count="3">
+          <div style="font:13px sans-serif;padding:4px 0">{{ name }}</div>
+        </sc-for>
+      </div>
+      <div style="background:oklch(23% 0.04 30);border:1px solid oklch(40% 0.06 30);border-radius:8px;padding:16px">
+        <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 40);letter-spacing:.05em;margin-bottom:8px">DON'T SPEND DUST ON</div>
+        <sc-for list="{{ digest.avoidList }}" as="name" hint-placeholder-count="3">
+          <div style="font:13px sans-serif;padding:4px 0">{{ name }}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div onClick="{{ toggleOptimizePlan }}" style="cursor:pointer;background:oklch(45% 0.1 220);color:oklch(96% 0.01 220);text-align:center;padding:14px;border-radius:8px;font:800 13px ui-monospace,monospace;letter-spacing:.04em">
+      {{ showOptimizePlan }} OPTIMIZE MY ACCOUNT
+    </div>
+
+    <sc-if value="{{ showOptimizePlan }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div>
+        <div style="font:700 11px ui-monospace,monospace;color:oklch(80% 0.15 150);letter-spacing:.05em;margin-bottom:8px">1. POWER UP THESE</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+          <sc-for list="{{ optimizePlanDisplay.powerUp }}" as="p" hint-placeholder-count="3">
+            <div style="background:oklch(19% 0.025 150);border:1px solid oklch(30% 0.04 150);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+              </div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(80% 0.15 150)">{{ p.sub }} &middot; {{ p.cp }} CP</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.05em;margin-bottom:8px">2. EVOLVE THESE NEXT EVENT</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+          <sc-for list="{{ optimizePlanDisplay.evolveSoon }}" as="p" hint-placeholder-count="3">
+            <div style="background:oklch(22% 0.03 70);border:1px solid oklch(35% 0.05 70);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+              </div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ p.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 40);letter-spacing:.05em;margin-bottom:8px">3. TRANSFER THESE SAFELY</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+          <sc-for list="{{ optimizePlanDisplay.transferSafe }}" as="p" hint-placeholder-count="3">
+            <div style="background:oklch(21% 0.035 30);border:1px solid oklch(38% 0.05 30);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+              </div>
+              <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:4px;border-radius:4px;background:oklch(38% 0.05 30);color:oklch(90% 0.02 30);font:700 10px ui-monospace,monospace">TRANSFERRED &mdash; REMOVE</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 220);letter-spacing:.05em;margin-bottom:8px">4. LUCKY TRADE CANDIDATES (duplicate species)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+          <sc-for list="{{ optimizePlanDisplay.luckyTrade }}" as="p" hint-placeholder-count="3">
+            <div style="background:oklch(21% 0.03 220);border:1px solid oklch(38% 0.05 220);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ optimizePlanDisplay.buddySuggestion }}" hint-placeholder-val="{{ false }}">
+        <div style="background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.04 260);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260)">5. SET AS BUDDY NEXT</div>
+          <div style="width:26px;height:26px;border-radius:50%;background:{{ optimizePlanDisplay.buddySuggestion.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ optimizePlanDisplay.buddySuggestion.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+          <div style="font:600 13px sans-serif">{{ optimizePlanDisplay.buddySuggestion.displayName }}</div>
+        </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <div style="background:oklch(21% 0.028 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:16px">
+      <div style="font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:10px">DAILY CHECKLIST</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <sc-for list="{{ checklistItems }}" as="c" hint-placeholder-count="6">
+          <div onClick="{{ c.toggle }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;font:13px sans-serif;color:{{ c.textColor }}">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid oklch(50% 0.02 260);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{{ c.checkBg }};font-size:12px">{{ c.checkMark }}</div>
+            {{ c.label }}
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="background:oklch(21% 0.028 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em">ASK THE PROFESSOR ANYTHING</div>
+      <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ chatMessagesDisplay }}" as="m" hint-placeholder-count="0">
+          <div style="align-self:{{ m.alignSelf }};max-width:85%;background:{{ m.bg }};color:oklch(92% 0.01 260);padding:9px 13px;border-radius:10px;font:13px/1.4 sans-serif">{{ m.content }}</div>
+        </sc-for>
+        <sc-if value="{{ chatBusy }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12px ui-monospace,monospace;color:oklch(55% 0.02 260)">Professor is thinking&hellip;</div>
+        </sc-if>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" placeholder="e.g. Should I power up my Gible?" value="{{ chatInput }}" onChange="{{ onChatInputChange }}" onKeyDown="{{ onChatKeyDown }}" style="flex:1;min-width:0;background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.03 260);color:oklch(92% 0.01 260);font:13px sans-serif;padding:10px 12px;border-radius:6px" />
+        <div onClick="{{ sendChat }}" style="cursor:pointer;background:oklch(45% 0.1 220);color:white;padding:10px 16px;border-radius:6px;font:700 12px ui-monospace,monospace;white-space:nowrap">SEND</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ true }}">
+  <div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
+      <input type="text" placeholder="Search name or move..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.03 260);color:oklch(92% 0.01 260);font:14px ui-monospace,monospace;padding:9px 14px;border-radius:6px;width:280px" />
+      <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.03 260);color:oklch(92% 0.01 260);font:13px ui-monospace,monospace;padding:9px 12px;border-radius:6px">
+        <option value="cp">Sort: CP</option>
+        <option value="ivAvg">Sort: IV%</option>
+        <option value="name">Sort: Name</option>
+        <option value="dex">Sort: Dex #</option>
+      </select>
+      <div style="font:12px ui-monospace,monospace;color:oklch(55% 0.02 260)">{{ rosterCountLabel }}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
+      <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
+        <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:{{ cardPadding }};animation:cardPop .4s ease backwards;animation-delay:{{ p.delay }}ms" style-hover="transform:translateY(-4px);border-color:oklch(50% 0.1 220);box-shadow:0 8px 20px rgba(0,0,0,.35)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:38px;height:38px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 16px ui-monospace,monospace;color:oklch(15% 0.02 260);flex-shrink:0;overflow:hidden;position:relative">
+                <span style="position:absolute">{{ p.initial }}</span>
+                <img ref="{{ p.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div>
+                <div style="font-weight:700;font:14px sans-serif">{{ p.displayName }}</div>
+                <div style="font:11px ui-monospace,monospace;color:oklch(55% 0.02 260)">#{{ p.dex }}</div>
+              </div>
+            </div>
+            <div style="font:14px">{{ p.flags }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:60px;height:60px;position:relative;flex-shrink:0">
+              <svg width="60" height="60" viewBox="0 0 60 60" style="position:absolute;inset:0">
+                <circle cx="30" cy="30" r="26" fill="none" stroke="oklch(32% 0.03 260)" stroke-width="6"></circle>
+                <circle cx="30" cy="30" r="26" fill="none" stroke="{{ p.ivColor }}" stroke-width="6" stroke-linecap="round" stroke-dasharray="{{ p.ringDasharray }}" stroke-dashoffset="{{ p.ringDashoffset }}" transform="rotate(-90 30 30)" style="transition:stroke-dashoffset 1s ease"></circle>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px ui-monospace,monospace;color:{{ p.ivColor }}">{{ p.ivDisplay }}</div>
+            </div>
+            <div style="flex:1">
+              <div style="font:800 20px ui-monospace,monospace">{{ p.cp }}<span style="font:11px ui-monospace,monospace;color:oklch(55% 0.02 260);font-weight:400"> CP</span></div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260)">{{ p.spread }}</div>
+              <div style="font:700 11.5px ui-monospace,monospace;color:{{ p.bestLeagueColor }};margin-top:2px">{{ p.bestLeagueLabel }}</div>
+              <sc-if value="{{ p.stardustLine }}" hint-placeholder-val="{{ true }}">
+                <div style="font:11px ui-monospace,monospace;color:oklch(65% 0.13 220);margin-top:3px">{{ p.stardustLine }}</div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ hasMore }}" hint-placeholder-val="{{ true }}">
+      <div onClick="{{ loadMore }}" style="cursor:pointer;text-align:center;margin-top:20px;padding:12px;background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.03 260);border-radius:8px;font:700 12.5px ui-monospace,monospace;color:oklch(78% 0.13 220)">LOAD 30 MORE</div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeDetail }}" style="position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:center;justify-content:center;z-index:50;animation:fadeSlideIn .25s cubic-bezier(.22,1,.36,1);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif">
+    <div onClick="{{ stopProp }}" style="background:oklch(21% 0.022 260);border-radius:28px;width:400px;max-width:92vw;max-height:90vh;overflow-y:auto;animation:flipIn .45s cubic-bezier(.22,1,.36,1);box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
+
+      <div style="position:relative;height:248px;background:{{ detail.headerGradient }};border-radius:28px 28px 0 0;overflow:hidden">
+        <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14), transparent 60%)"></div>
+        <div style="position:absolute;top:14px;left:0;right:0;display:flex;justify-content:center">
+          <div style="width:36px;height:5px;border-radius:3px;background:rgba(255,255,255,.35)"></div>
+        </div>
+        <div onClick="{{ closeDetail }}" style="position:absolute;top:26px;right:18px;cursor:pointer;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.28);backdrop-filter:blur(6px);color:white;display:flex;align-items:center;justify-content:center;font:600 15px sans-serif;transition:background .15s ease;z-index:2" style-hover="background:rgba(0,0,0,.42)">&times;</div>
+        <div style="position:absolute;top:30px;left:22px;color:white;font:800 26px ui-monospace,monospace;letter-spacing:-.5px;text-shadow:0 1px 6px rgba(0,0,0,.35);z-index:2;max-width:180px">{{ detail.cp }}<span style="font-size:12px;font-weight:600;opacity:.75;letter-spacing:.03em"> CP</span></div>
+        <div style="position:absolute;top:78px;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:1">
+          <svg width="148" height="148" viewBox="0 0 148 148" style="position:absolute;filter:drop-shadow(0 4px 14px rgba(0,0,0,.25))">
+            <circle cx="74" cy="74" r="64" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"></circle>
+            <circle cx="74" cy="74" r="64" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" transform="rotate(-90 74 74)" style="transition:stroke-dashoffset 1s ease"></circle>
+          </svg>
+          <div style="width:94px;height:94px;position:relative;display:flex;align-items:center;justify-content:center">
+            <span style="position:absolute;font:800 34px ui-monospace,monospace;color:rgba(255,255,255,.45)">{{ detail.initial }}</span>
+            <img ref="{{ detail.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.35))" />
+          </div>
+        </div>
+      </div>
+
+      <div style="background:oklch(21% 0.022 260);border-radius:24px 24px 0 0;margin-top:-14px;position:relative;padding:24px 22px 26px">
+        <div style="text-align:center;margin-bottom:22px">
+          <div style="font:750 21px sans-serif;letter-spacing:-.3px;color:oklch(96% 0.005 260)">{{ detail.displayName }}</div>
+          <div style="font:600 11.5px ui-monospace,monospace;color:oklch(52% 0.02 260);letter-spacing:.04em;margin-top:2px">#{{ detail.dex }}</div>
+        </div>
+
+        <div style="background:oklch(25% 0.025 260);border-radius:16px;padding:16px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <span style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em">HP</span>
+            <span style="font:600 12.5px ui-monospace,monospace;color:oklch(80% 0.01 260)">{{ detail.hp }} / {{ detail.hp }}</span>
+          </div>
+          <div style="height:9px;background:oklch(32% 0.025 260);border-radius:5px;overflow:hidden">
+            <div style="height:100%;width:100%;border-radius:5px;background:linear-gradient(90deg, oklch(72% 0.16 150), oklch(82% 0.17 150))"></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-around;margin-top:18px">
+            <sc-for list="{{ detail.statRings }}" as="r" hint-placeholder-count="3">
+              <div style="text-align:center">
+                <div style="width:56px;height:56px;position:relative">
+                  <svg width="56" height="56" viewBox="0 0 56 56" style="position:absolute;inset:0">
+                    <circle cx="28" cy="28" r="23" fill="none" stroke="oklch(33% 0.025 260)" stroke-width="5"></circle>
+                    <circle cx="28" cy="28" r="23" fill="none" stroke="{{ r.color }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ r.dasharray }}" stroke-dashoffset="{{ r.dashoffset }}" transform="rotate(-90 28 28)" style="transition:stroke-dashoffset 1s ease"></circle>
+                  </svg>
+                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px ui-monospace,monospace;color:{{ r.color }}">{{ r.value }}</div>
+                </div>
+                <div style="font:650 10px ui-monospace,monospace;color:oklch(56% 0.02 260);letter-spacing:.06em;margin-top:6px">{{ r.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="background:oklch(27% 0.03 260);border-radius:10px;padding:8px 12px;font:12px ui-monospace,monospace;color:oklch(75% 0.02 260);flex:1;text-align:center">Dust <strong style="color:oklch(90% 0.01 260);font-weight:700">{{ detail.dust }}</strong></div>
+          <sc-if value="{{ detail.flagChips }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ detail.flagChips }}" as="fl" hint-placeholder-count="0">
+              <div style="background:oklch(30% 0.06 85);border-radius:10px;padding:8px 12px;font:600 12px sans-serif;color:oklch(85% 0.1 85)">{{ fl }}</div>
+            </sc-for>
+          </sc-if>
+        </div>
+
+        <div style="background:oklch(25% 0.025 260);border-radius:16px;padding:16px;margin-bottom:14px">
+          <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:12px">LEAGUE RANKINGS</div>
+          <sc-for list="{{ detail.leagues }}" as="l" hint-placeholder-count="3">
+            <div style="margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;font:12.5px ui-monospace,monospace;margin-bottom:5px">
+                <span style="color:{{ l.color }};font-weight:750">{{ l.label }}</span>
+                <span style="color:oklch(72% 0.02 260)">{{ l.pctDisplay }} &middot; rank {{ l.rankDisplay }}</span>
+              </div>
+              <div style="height:7px;background:oklch(32% 0.025 260);border-radius:4px;overflow:hidden">
+                <div style="height:100%;border-radius:4px;background:{{ l.color }};width:{{ l.barWidth }};transition:width 1s ease"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:9px">MOVES</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ detail.moveChips }}" as="mv" hint-placeholder-count="0">
+              <div style="background:oklch(27% 0.03 260);border-radius:10px;padding:8px 13px;font:600 12.5px sans-serif;color:oklch(88% 0.01 260)">{{ mv }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:oklch(27% 0.05 220);border:1px solid oklch(42% 0.09 220);border-radius:16px;padding:14px 16px">
+          <div style="font:700 10.5px ui-monospace,monospace;color:oklch(75% 0.13 220);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
+          <div style="font:13.5px/1.45 sans-serif;color:oklch(93% 0.01 260)">{{ detail.recommendation }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isPvp }}" hint-placeholder-val="{{ false }}">
+  <div style="animation:fadeSlideIn .35s ease">
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      <sc-for list="{{ leagueList }}" as="lg" hint-placeholder-count="3">
+        <div onClick="{{ lg.onClick }}" style="cursor:pointer;padding:8px 16px;border-radius:6px;font:700 12px ui-monospace,monospace;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
+      </sc-for>
+    </div>
+    <div style="background:oklch(21% 0.028 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.04em;border-bottom:1px solid oklch(32% 0.03 260)">
+        <div>#</div><div>NAME</div><div>CP</div><div>RANK %</div><div>STAT PROD</div><div>EVOLVES TO</div>
+      </div>
+      <sc-for list="{{ pvpList }}" as="p" hint-placeholder-count="8">
+        <div style="display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:13px sans-serif;border-bottom:1px solid oklch(27% 0.02 260);align-items:center">
+          <div style="font:ui-monospace,monospace;color:oklch(55% 0.02 260)">{{ p.rankNum }}</div>
+          <div style="font-weight:600">{{ p.displayName }}</div>
+          <div style="font:ui-monospace,monospace">{{ p.cp }}</div>
+          <div style="font:700 ui-monospace,monospace;color:oklch(78% 0.14 150)">{{ p.rankPctDisplay }}</div>
+          <div style="font:ui-monospace,monospace;color:oklch(65% 0.02 260)">{{ p.statProdDisplay }}</div>
+          <div style="font:12.5px sans-serif;color:oklch(65% 0.02 260)">{{ p.evolvesTo }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ suggestedTeamDisplay }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:20px;background:oklch(21% 0.03 220);border:1px solid oklch(35% 0.05 220);border-radius:8px;padding:18px">
+        <div style="font:800 12.5px ui-monospace,monospace;color:oklch(80% 0.13 220);letter-spacing:.05em;margin-bottom:4px">SUGGESTED TEAM (type-diverse top ranks)</div>
+        <div style="font:12px sans-serif;color:oklch(65% 0.02 260);margin-bottom:14px">Highest-ranked pick per distinct primary type from your top 30 &mdash; not a full matchup engine, just diversity.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
+          <sc-for list="{{ suggestedTeamDisplay }}" as="t" hint-placeholder-count="6">
+            <div style="background:oklch(19% 0.025 220);border:1px solid oklch(32% 0.04 220);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+              <div style="width:36px;height:36px;border-radius:50%;background:{{ t.badgeColor }};position:relative;overflow:hidden">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 14px ui-monospace,monospace;color:oklch(15% 0.02 260)">{{ t.initial }}</span>
+                <img ref="{{ t.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="font:600 12px sans-serif">{{ t.displayName }}</div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(70% 0.02 260)">{{ t.typeLabel }} &middot; {{ t.rankDisplay }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isRecommend }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;animation:fadeSlideIn .35s ease">
+    <div style="background:oklch(21% 0.03 150);border:1px solid oklch(35% 0.05 150);border-radius:8px;padding:20px">
+      <div style="font:800 13px ui-monospace,monospace;color:oklch(80% 0.15 150);letter-spacing:.05em;margin-bottom:4px">POWER UP CANDIDATES</div>
+      <div style="font:12.5px sans-serif;color:oklch(70% 0.02 260);margin-bottom:14px">High league rank, not yet favorited &mdash; invest stardust here first. Mark done once handled.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+        <sc-for list="{{ powerUpList }}" as="p" hint-placeholder-count="4">
+          <div style="background:oklch(19% 0.025 150);border:1px solid oklch(30% 0.04 150);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px ui-monospace,monospace;color:oklch(15% 0.02 260);position:relative;overflow:hidden;flex-shrink:0">
+                <span style="position:absolute">{{ p.initial }}</span>
+                <img ref="{{ p.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="font:600 12.5px sans-serif;line-height:1.2">{{ p.displayName }}</div>
+            </div>
+            <div style="font:ui-monospace,monospace;font-size:11.5px;color:oklch(80% 0.15 150)">{{ p.bestLeagueLabel }} &middot; {{ p.bestRankDisplay }} &middot; {{ p.cp }} CP</div>
+            <div onClick="{{ p.markDone }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:5px;background:oklch(30% 0.04 150);color:oklch(88% 0.02 150);font:700 11px ui-monospace,monospace">MARK DONE</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:oklch(23% 0.04 30);border:1px solid oklch(40% 0.06 30);border-radius:8px;padding:20px">
+      <div style="font:800 13px ui-monospace,monospace;color:oklch(78% 0.15 40);letter-spacing:.05em;margin-bottom:4px">TRANSFER CANDIDATES</div>
+      <div style="font:12.5px sans-serif;color:oklch(70% 0.02 260);margin-bottom:14px">Low IV, no PvP rank, no raid role, not Lucky/Shadow/Favorite. Mark done once transferred.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+        <sc-for list="{{ transferList }}" as="p" hint-placeholder-count="4">
+          <div style="background:oklch(21% 0.035 30);border:1px solid oklch(38% 0.05 30);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px ui-monospace,monospace;color:oklch(15% 0.02 260);position:relative;overflow:hidden;flex-shrink:0">
+                <span style="position:absolute">{{ p.initial }}</span>
+                <img ref="{{ p.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="font:600 12.5px sans-serif;line-height:1.2">{{ p.displayName }}</div>
+            </div>
+            <div style="font:ui-monospace,monospace;font-size:11.5px;color:oklch(78% 0.15 40)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
+            <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:5px;background:oklch(38% 0.05 30);color:oklch(90% 0.02 30);font:700 11px ui-monospace,monospace">TRANSFERRED &mdash; REMOVE</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isIntel }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;animation:fadeSlideIn .35s ease">
+    <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:18px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:6px">LIVING DEX</div>
+      <div style="font:800 30px ui-monospace,monospace;color:oklch(85% 0.13 220)">{{ intelDisplay.livingDexPct }}</div>
+      <div style="font:12.5px sans-serif;color:oklch(65% 0.02 260);margin-top:4px">{{ intelDisplay.ownedCount }} / {{ intelDisplay.totalSpecies }} species owned</div>
+    </div>
+    <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:18px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:6px">KANTO DEX (#1&ndash;151)</div>
+      <div style="font:800 30px ui-monospace,monospace;color:oklch(80% 0.15 150)">{{ intelDisplay.kantoPct }}</div>
+      <div style="font:12.5px sans-serif;color:oklch(65% 0.02 260);margin-top:4px">{{ intelDisplay.kantoOwned }} / {{ intelDisplay.kantoTotal }} owned</div>
+    </div>
+    <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:18px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:6px">HUNDO / NUNDO</div>
+      <div style="font:800 26px ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ intelDisplay.hundoCount }} <span style="font-size:13px;color:oklch(55% 0.02 260)">hundo</span> &middot; {{ intelDisplay.nundoCount }} <span style="font-size:13px;color:oklch(55% 0.02 260)">nundo</span></div>
+      <div style="font:12.5px sans-serif;color:oklch(65% 0.02 260);margin-top:4px">15/15/15 and 0/0/0 IV Pokemon in your roster</div>
+    </div>
+    <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:18px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:6px">PVP READY (90%+ rank, any league)</div>
+      <div style="font:800 30px ui-monospace,monospace;color:oklch(78% 0.14 150)">{{ intelDisplay.pvpReadyCount }}</div>
+    </div>
+    <div style="background:oklch(21% 0.028 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:18px;grid-column:1/-1">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:8px">MISSING FROM YOUR DEX ({{ intelDisplay.missingCount }})</div>
+      <div style="font:12.5px sans-serif;color:oklch(70% 0.02 260);line-height:1.6">{{ intelDisplay.missingPreview }}</div>
+    </div>
+    <sc-if value="{{ intelDisplay.duplicateGroups }}" hint-placeholder-val="{{ false }}">
+      <div style="background:oklch(23% 0.04 30);border:1px solid oklch(40% 0.06 30);border-radius:8px;padding:18px;grid-column:1/-1">
+        <div style="font:800 12.5px ui-monospace,monospace;color:oklch(78% 0.15 40);letter-spacing:.05em;margin-bottom:4px">DUPLICATE SPECIES (no Lucky in the group &mdash; trade candidates)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px">
+          <sc-for list="{{ intelDisplay.duplicateGroups }}" as="d" hint-placeholder-count="6">
+            <div style="background:oklch(21% 0.035 30);border:1px solid oklch(38% 0.05 30);border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px">
+              <div style="width:30px;height:30px;border-radius:50%;background:{{ d.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px ui-monospace,monospace;color:oklch(15% 0.02 260)">{{ d.initial }}</span>
+                <img ref="{{ d.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div><div style="font:600 12.5px sans-serif">{{ d.name }}</div><div style="font:11px ui-monospace,monospace;color:oklch(70% 0.02 260)">&times;{{ d.count }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
+  <div style="animation:fadeSlideIn .35s ease">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font:13.5px/1.5 sans-serif;color:oklch(70% 0.02 260);max-width:560px">Log a snapshot of your current roster to track growth over time. Re-sync a fresh CSV export whenever you want to update the numbers above.</div>
+      <div onClick="{{ logSnapshot }}" style="cursor:pointer;background:oklch(45% 0.1 220);color:oklch(96% 0.01 220);font:700 13px ui-monospace,monospace;padding:11px 20px;border-radius:6px;white-space:nowrap">+ LOG SNAPSHOT</div>
+    </div>
+    <div style="background:oklch(21% 0.028 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:1.2fr 0.8fr 1fr 0.8fr 1fr 1fr;padding:10px 16px;font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.04em;border-bottom:1px solid oklch(32% 0.03 260)">
+        <div>DATE</div><div>ROSTER</div><div>AVG IV%</div><div>LUCKY</div><div>STARDUST</div><div>&Delta; VS PREV</div>
+      </div>
+      <sc-for list="{{ historyDisplay }}" as="h" hint-placeholder-count="1">
+        <div style="display:grid;grid-template-columns:1.2fr 0.8fr 1fr 0.8fr 1fr 1fr;padding:10px 16px;font:13px sans-serif;border-bottom:1px solid oklch(27% 0.02 260);align-items:center">
+          <div style="font:ui-monospace,monospace;color:oklch(80% 0.01 260)">{{ h.date }}</div>
+          <div style="font:ui-monospace,monospace">{{ h.count }}</div>
+          <div style="font:ui-monospace,monospace">{{ h.avgIV }}</div>
+          <div style="font:ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ h.lucky }}</div>
+          <div style="font:ui-monospace,monospace;color:oklch(75% 0.02 260)">{{ h.stardustDisplay }} <span style="font-size:10.5px">({{ h.dustDelta }})</span></div>
+          <div style="font:700 ui-monospace,monospace;color:{{ h.deltaColor }}">{{ h.delta }}</div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ historyEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:24px;text-align:center;font:13px ui-monospace,monospace;color:oklch(55% 0.02 260)">No snapshots yet &mdash; log one to start tracking.</div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;personality&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;clinical&quot;, &quot;options&quot;: [&quot;clinical&quot;, &quot;hype&quot;, &quot;deadpan&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Professor voice&quot;},
+  &quot;accentColor&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#54c8ff&quot;, &quot;options&quot;: [&quot;#54c8ff&quot;, &quot;#ffb454&quot;, &quot;#c589ff&quot;, &quot;#7cf29a&quot;, &quot;#ff7a9c&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look &amp; feel&quot;},
+  &quot;density&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;comfortable&quot;, &quot;options&quot;: [&quot;comfortable&quot;, &quot;compact&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look &amp; feel&quot;}
+}">
+class Component extends DCLogic {
+  state = {
+    roster: [],
+    loaded: false,
+    tab: 'roster',
+    search: '',
+    sortField: 'cp',
+    league: 'great',
+    history: [],
+    syncedFrom: 'bundled export',
+    detailPoke: null,
+    visibleCount: 30,
+    completedIds: [],
+    removedIds: [],
+    stardustBalance: null,
+    candyInventory: {},
+    typeTable: {},
+    ocrBusy: false,
+    ocrError: '',
+    ocrPreview: null,
+    ocrParsed: null,
+    ivOverrides: {},
+    addedPokemon: [],
+    solvedIvResult: null,
+    ocrHp: '',
+    viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    showOptimizePlan: false,
+    checklistDate: '',
+    checklistDone: {},
+    chatMessages: [],
+    chatInput: '',
+    chatBusy: false,
+    listening: false,
+    lastQuestion: '',
+    lastAnswer: '',
+    videoImport: null,
+    resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+    resourcesDraft: { rareCandy: '', rareCandyXL: '', eliteFastTM: '', eliteChargedTM: '' },
+    megaEnergyInventory: {},
+    megaNameDraft: '',
+    megaAmountDraft: '',
+    migration: null,
+    migrationAlreadyDone: false,
+    firebaseConfigured: false,
+    firebaseConfigDraft: '',
+    firebaseConfigError: '',
+    authEmail: '',
+    authPassword: '',
+    authError: '',
+    cloudUser: null,
+    syncStatus: ''
+  };
+
+  waitForGlobal(prop, evt) {
+    return new Promise((resolve) => {
+      if (window[prop]) { resolve(window[prop]); return; }
+      const handler = () => { window.removeEventListener(evt, handler); resolve(window[prop]); };
+      window.addEventListener(evt, handler);
+      let tries = 0;
+      const poll = setInterval(() => {
+        if (window[prop] || tries++ > 100) { clearInterval(poll); window.removeEventListener(evt, handler); resolve(window[prop]); }
+      }, 50);
+    });
+  }
+
+  async componentDidMount() {
+    try {
+      const data = await this.waitForGlobal('POKEMON_DATA', 'scout-data-ready');
+      const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
+      this.mechanics = mechanics;
+      this.loadMechanicsFromCloud();
+      this.setState({ roster: data || [], loaded: true });
+    } catch (e) {
+      this.setState({ roster: [], loaded: true });
+    }
+    try {
+      const raw = localStorage.getItem('scout_history_v1');
+      if (raw) this.setState({ history: JSON.parse(raw) });
+    } catch (e) {}
+    try {
+      const rawDone = localStorage.getItem('scout_recommend_done_v1');
+      if (rawDone) this.setState({ completedIds: JSON.parse(rawDone) });
+    } catch (e) {}
+    try {
+      const rawRemoved = localStorage.getItem('scout_removed_v1');
+      if (rawRemoved) this.setState({ removedIds: JSON.parse(rawRemoved) });
+    } catch (e) {}
+    try {
+      const rawDust = localStorage.getItem('scout_stardust_v1');
+      if (rawDust) this.setState({ stardustBalance: JSON.parse(rawDust) });
+      const rawCandy = localStorage.getItem('scout_candy_v1');
+      if (rawCandy) this.setState({ candyInventory: JSON.parse(rawCandy) });
+      const rawTypes = localStorage.getItem('scout_types_v1');
+      if (rawTypes) this.setState({ typeTable: JSON.parse(rawTypes) });
+      const rawOverrides = localStorage.getItem('scout_iv_overrides_v1');
+      if (rawOverrides) this.setState({ ivOverrides: JSON.parse(rawOverrides) });
+      const rawAdded = localStorage.getItem('scout_added_v1');
+      if (rawAdded) this.setState({ addedPokemon: JSON.parse(rawAdded) });
+      const rawRes = localStorage.getItem('scout_resources_v1');
+      if (rawRes) this.setState({ resources: JSON.parse(rawRes) });
+      const rawMega = localStorage.getItem('scout_megaenergy_v1');
+      if (rawMega) this.setState({ megaEnergyInventory: JSON.parse(rawMega) });
+    } catch (e) {}
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const rawChecklist = localStorage.getItem('scout_checklist_v1');
+      const saved = rawChecklist ? JSON.parse(rawChecklist) : null;
+      if (saved && saved.date === today) {
+        this.setState({ checklistDate: today, checklistDone: saved.done || {} });
+      } else {
+        this.setState({ checklistDate: today, checklistDone: {} });
+      }
+    } catch (e) {}
+    this.updateWidth = () => this.setState({ viewportWidth: window.innerWidth });
+    this.updateWidth();
+    window.addEventListener('resize', this.updateWidth);
+    this.initFirebase();
+  }
+
+  componentWillUnmount() {
+    if (this.updateWidth) window.removeEventListener('resize', this.updateWidth);
+    if (this.resizeObserver) this.resizeObserver.disconnect();
+  }
+
+  rootRef(el) {
+    if (!el || this.resizeObserver) return;
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const w = entries[0].contentRect.width;
+      if (Math.abs(w - (this.state.viewportWidth || 0)) > 4) this.setState({ viewportWidth: w });
+    });
+    this.resizeObserver.observe(el);
+  }
+
+  SYNC_KEYS() {
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory'];
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (this._applyingRemote || !this.state.cloudUser) return;
+    const changed = this.SYNC_KEYS().some(k => JSON.stringify(prevState[k]) !== JSON.stringify(this.state[k]));
+    if (changed) this.queueCloudPush();
+  }
+
+  loadFirebaseSdk() {
+    if (window.__scoutFirebaseSdkPromise) return window.__scoutFirebaseSdkPromise;
+    const urls = [
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'
+    ];
+    const loadOne = (url) => new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = url;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load ' + url));
+      document.head.appendChild(s);
+    });
+    window.__scoutFirebaseSdkPromise = urls.reduce((p, url) => p.then(() => loadOne(url)), Promise.resolve());
+    return window.__scoutFirebaseSdkPromise;
+  }
+
+  initFirebase() {
+    try {
+      const raw = localStorage.getItem('scout_firebase_config_v1');
+      if (!raw) return;
+      const config = JSON.parse(raw);
+      this.loadFirebaseSdk().then(() => this.setupFirebaseApp(config))
+        .catch(e => this.setState({ firebaseConfigError: e.message }));
+    } catch (e) {}
+  }
+
+  setupFirebaseApp(config) {
+    try {
+      if (typeof firebase === 'undefined') { this.setState({ firebaseConfigError: 'Firebase SDK did not load \u2014 check your connection and retry.' }); return; }
+      const app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(config);
+      this.auth = firebase.auth(app);
+      this.db = firebase.firestore(app);
+      this.setState({ firebaseConfigured: true, firebaseConfigError: '' });
+      this.loadMechanicsFromCloud();
+      this.auth.onAuthStateChanged(
+        user => this.onAuthChange(user),
+        err => this.setState({ authError: (err && err.message) || 'Auth error \u2014 check your Firebase config/rules.' })
+      );
+    } catch (e) {
+      this.setState({ firebaseConfigError: 'Could not initialize Firebase with that config: ' + (e && e.message) });
+    }
+  }
+
+  onFirebaseConfigChange(e) {
+    this.setState({ firebaseConfigDraft: e.target.value });
+  }
+
+  saveFirebaseConfig() {
+    const text = (this.state.firebaseConfigDraft || '').trim().replace(/;\s*$/, '');
+    if (!text) return;
+    try {
+      const config = new Function('return (' + text + ')')();
+      if (!config || !config.apiKey || !config.projectId) throw new Error('missing apiKey/projectId');
+      localStorage.setItem('scout_firebase_config_v1', JSON.stringify(config));
+      this.setState({ firebaseConfigError: '' });
+      this.loadFirebaseSdk().then(() => this.setupFirebaseApp(config))
+        .catch(e => this.setState({ firebaseConfigError: e.message }));
+    } catch (e) {
+      this.setState({ firebaseConfigError: 'Could not read that config \u2014 paste the whole { apiKey: ..., ... } object from Firebase.' });
+    }
+  }
+
+  onAuthEmailChange(e) { this.setState({ authEmail: e.target.value, authError: '' }); }
+  onAuthPasswordChange(e) { this.setState({ authPassword: e.target.value, authError: '' }); }
+
+  signIn() {
+    if (!this.auth) return;
+    this.auth.signInWithEmailAndPassword(this.state.authEmail.trim(), this.state.authPassword)
+      .catch(err => this.setState({ authError: err.message }));
+  }
+
+  signUp() {
+    if (!this.auth) return;
+    this.auth.createUserWithEmailAndPassword(this.state.authEmail.trim(), this.state.authPassword)
+      .catch(err => this.setState({ authError: err.message }));
+  }
+
+  signOutCloud() {
+    if (this._unsubDoc) { this._unsubDoc(); this._unsubDoc = null; }
+    if (this.auth) this.auth.signOut();
+  }
+
+  onAuthChange(user) {
+    if (user) {
+      this.setState({ cloudUser: { uid: user.uid, email: user.email }, authError: '', authPassword: '' });
+      this.subscribeCloudDoc(user.uid);
+      this.checkMigrationStatus();
+    } else {
+      this.setState({ cloudUser: null, syncStatus: '' });
+    }
+  }
+
+  subscribeCloudDoc(uid) {
+    if (!this.db) return;
+    if (this._unsubDoc) this._unsubDoc();
+    this._unsubDoc = this.db.collection('scoutUsers').doc(uid).onSnapshot(snap => {
+      if (!snap.exists) { this.queueCloudPush(); return; }
+      this.applyRemote(snap.data());
+    }, err => this.setState({ syncStatus: 'error: ' + err.message, authError: 'Sync read failed: ' + err.message + ' \u2014 check your Firestore rules allow this user.' }));
+  }
+
+  applyRemote(remote) {
+    this._applyingRemote = true;
+    const needsRosterBackfill = !remote.roster || !remote.roster.length;
+    const patch = {
+      roster: needsRosterBackfill ? this.state.roster : remote.roster,
+      ivOverrides: remote.ivOverrides || {},
+      addedPokemon: remote.addedPokemon || [],
+      candyInventory: remote.candyInventory || {},
+      typeTable: remote.typeTable || {},
+      stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
+      history: remote.history || [],
+      completedIds: remote.completedIds || [],
+      removedIds: remote.removedIds || [],
+      checklistDate: remote.checklistDate || this.state.checklistDate,
+      checklistDone: remote.checklistDone || {},
+      resources: remote.resources || { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+      megaEnergyInventory: remote.megaEnergyInventory || {}
+    };
+    this.setState(patch, () => { this._applyingRemote = false; });
+    try {
+      localStorage.setItem('scout_roster_v1', JSON.stringify(patch.roster));
+      localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(patch.ivOverrides));
+      localStorage.setItem('scout_added_v1', JSON.stringify(patch.addedPokemon));
+      localStorage.setItem('scout_candy_v1', JSON.stringify(patch.candyInventory));
+      localStorage.setItem('scout_types_v1', JSON.stringify(patch.typeTable));
+      localStorage.setItem('scout_stardust_v1', JSON.stringify(patch.stardustBalance));
+      localStorage.setItem('scout_history_v1', JSON.stringify(patch.history));
+      localStorage.setItem('scout_recommend_done_v1', JSON.stringify(patch.completedIds));
+      localStorage.setItem('scout_removed_v1', JSON.stringify(patch.removedIds));
+      localStorage.setItem('scout_checklist_v1', JSON.stringify({ date: patch.checklistDate, done: patch.checklistDone }));
+      localStorage.setItem('scout_resources_v1', JSON.stringify(patch.resources));
+      localStorage.setItem('scout_megaenergy_v1', JSON.stringify(patch.megaEnergyInventory));
+    } catch (e) {}
+    this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() });
+    if (needsRosterBackfill && patch.roster && patch.roster.length) this.queueCloudPush();
+  }
+
+  queueCloudPush() {
+    if (!this.state.cloudUser) return;
+    this.setState({ syncStatus: 'syncing\u2026' });
+    clearTimeout(this._pushTimer);
+    this._pushTimer = setTimeout(() => this.pushCloud(), 1200);
+  }
+
+  pushCloud() {
+    if (!this.db || !this.state.cloudUser) return;
+    const s = this.state;
+    const blob = {
+      roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
+      typeTable: s.typeTable, stardustBalance: s.stardustBalance, history: s.history,
+      completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
+      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory, updatedAt: Date.now()
+    };
+    this.db.collection('scoutUsers').doc(s.cloudUser.uid).set(blob, { merge: true })
+      .then(() => this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() }))
+      .catch(err => this.setState({ syncStatus: 'error: ' + err.message }));
+  }
+
+  syncNow() {
+    this.pushCloud();
+  }
+
+  ADMIN_EMAILS() {
+    return ['abhi.patel@gmail.com', 'admin@scout.app'];
+  }
+
+  async checkMigrationStatus() {
+    if (!this.db) return;
+    try {
+      const snap = await this.db.collection('gameData').doc('meta').get();
+      this.setState({ migrationAlreadyDone: !!(snap.exists && snap.data().statsUploaded && snap.data().spritesUploaded) });
+    } catch (e) {}
+  }
+
+  async migrateStatsAndSprites() {
+    if (!this.db || !this.state.cloudUser) return;
+    if (!this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())) return;
+    this.setState({ migration: { stage: 'stats', done: 0, total: 0, error: null } });
+    try {
+      const metaSnap = await this.db.collection('gameData').doc('meta').get();
+      if (metaSnap.exists && metaSnap.data().statsUploaded && metaSnap.data().spritesUploaded) {
+        this.setState({ migration: { stage: 'done', done: 0, total: 0, error: null, alreadyDone: true } });
+        return;
+      }
+      const m = this.mechanics;
+      await this.db.collection('gameData').doc('baseStats').set({
+        BASE_STATS: m.BASE_STATS, BASE_STATS_BY_FORM: m.BASE_STATS_BY_FORM, DEX_NAMES: m.DEX_NAMES, updatedAt: Date.now()
+      });
+      const dexList = Object.keys(m.DEX_NAMES).map(Number);
+      this.setState({ migration: { stage: 'sprites', done: 0, total: dexList.length, error: null } });
+      let done = 0;
+      const CONCURRENCY = 6;
+      let i = 0;
+      const worker = async () => {
+        while (i < dexList.length) {
+          const dex = dexList[i++];
+          try {
+            const resp = await fetch('sprites/' + dex + '.png');
+            if (resp.ok) {
+              const blob = await resp.blob();
+              const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              const base64 = dataUrl.split(',')[1];
+              await this.db.collection('sprites').doc(String(dex)).set({ data: base64, contentType: blob.type || 'image/png' });
+            }
+          } catch (e) {}
+          done++;
+          this.setState(s => ({ migration: { ...s.migration, done } }));
+        }
+      };
+      await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+      await this.db.collection('gameData').doc('meta').set({ spritesUploaded: true, statsUploaded: true, updatedAt: Date.now() }, { merge: true });
+      this.setState(s => ({ migration: { ...s.migration, stage: 'done' } }));
+    } catch (err) {
+      this.setState(s => ({ migration: { ...s.migration, stage: 'error', error: err.message } }));
+    }
+  }
+
+  parseCSV(text) {
+    const lines = text.split('\n').filter(l => l.trim().length > 0);
+    const rows = lines.slice(1).map(l => l.split(','));
+    const pct = v => (v && v.trim() !== '') ? parseFloat(v.replace('%', '')) : null;
+    const num = v => (v === '' || v === undefined) ? null : parseFloat(v);
+    return rows.map(cols => {
+      const g = i => (cols[i] !== undefined && cols[i] !== '') ? cols[i] : null;
+      return {
+        idx: num(g(0)), name: g(1), form: g(2), dex: num(g(3)), gender: g(4),
+        cp: num(g(5)), hp: num(g(6)), atkIV: num(g(7)), defIV: num(g(8)), staIV: num(g(9)),
+        ivAvg: num(g(10)), lvlMin: num(g(11)), lvlMax: num(g(12)),
+        quickMove: g(13), chargeMove: g(14), chargeMove2: g(15),
+        scanDate: g(16), catchDate: g(18), weight: g(19), height: g(20),
+        lucky: g(21) === '1', shadowPurified: g(22), favorite: g(23) === '1', dust: num(g(24)),
+        great: { rankPct: pct(g(25)), rankNum: num(g(26)), statProd: pct(g(27)), dustCost: num(g(28)), candyCost: num(g(29)), evolvesTo: g(30) },
+        ultra: { rankPct: pct(g(33)), rankNum: num(g(34)), statProd: pct(g(35)), dustCost: num(g(36)), candyCost: num(g(37)), evolvesTo: g(38) },
+        little: { rankPct: pct(g(41)), rankNum: num(g(42)), statProd: pct(g(43)), dustCost: num(g(44)), candyCost: num(g(45)), evolvesTo: g(46) },
+      };
+    });
+  }
+
+  onFileChange(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = this.parseCSV(ev.target.result);
+        this.setState({ roster: parsed, syncedFrom: file.name });
+      } catch (err) {}
+    };
+    reader.readAsText(file);
+  }
+
+  bestRank(p) {
+    return Math.max(p.great.rankPct || 0, p.ultra.rankPct || 0, p.little.rankPct || 0);
+  }
+
+  masterRankFor(p) {
+    if (!this.mechanics || p.atkIV == null || p.defIV == null || p.staIV == null || p.dex == null) return null;
+    let base = null;
+    if (p.form) base = this.mechanics.BASE_STATS_BY_FORM[p.dex + '_' + String(p.form).toLowerCase()];
+    if (!base) base = this.mechanics.BASE_STATS[p.dex];
+    if (!base) return null;
+    const ivs = [p.atkIV, p.defIV, p.staIV];
+    const rankPct = this.mechanics.rankPctForLeague(base, ivs, 'master');
+    const ownProd = this.mechanics.ownBestStatProductUnderCap(base, ivs, Infinity);
+    const maxProd = this.mechanics.bestStatProductUnderCap(base, Infinity);
+    const statProd = maxProd > 0 ? (ownProd / maxProd) * 100 : null;
+    return { rankPct, rankNum: null, statProd, evolvesTo: (p.great && p.great.evolvesTo) || p.name };
+  }
+
+  onResourceChange(field, value) {
+    const draft = { ...this.state.resourcesDraft, [field]: value };
+    this.setState({ resourcesDraft: draft });
+  }
+
+  saveResources() {
+    const d = this.state.resourcesDraft;
+    const n = v => { const x = v === '' ? null : parseInt(String(v).replace(/,/g, ''), 10); return Number.isNaN(x) ? null : x; };
+    const resources = { rareCandy: n(d.rareCandy), rareCandyXL: n(d.rareCandyXL), eliteFastTM: n(d.eliteFastTM), eliteChargedTM: n(d.eliteChargedTM) };
+    this.setState({ resources });
+    try { localStorage.setItem('scout_resources_v1', JSON.stringify(resources)); } catch (e) {}
+  }
+
+  onMegaNameChange(e) { this.setState({ megaNameDraft: e.target.value }); }
+  onMegaAmountChange(e) { this.setState({ megaAmountDraft: e.target.value }); }
+
+  addMegaEnergy() {
+    const name = (this.state.megaNameDraft || '').trim();
+    const amount = parseInt(this.state.megaAmountDraft, 10);
+    if (!name || Number.isNaN(amount)) return;
+    const inv = { ...this.state.megaEnergyInventory, [name.toLowerCase()]: { name, amount } };
+    this.setState({ megaEnergyInventory: inv, megaNameDraft: '', megaAmountDraft: '' });
+    try { localStorage.setItem('scout_megaenergy_v1', JSON.stringify(inv)); } catch (e) {}
+  }
+
+  removeMegaEnergy(key) {
+    const inv = { ...this.state.megaEnergyInventory };
+    delete inv[key];
+    this.setState({ megaEnergyInventory: inv });
+    try { localStorage.setItem('scout_megaenergy_v1', JSON.stringify(inv)); } catch (e) {}
+  }
+
+  hueFor(dex) { return (dex * 37) % 360; }
+
+  hideImg(e) { e.target.style.display = 'none'; }
+
+  makeSpriteRef(url) {
+    return (el) => {
+      if (!el || el.dataset.spriteSet === url) return;
+      el.dataset.spriteSet = url;
+      el.onerror = () => { el.style.display = 'none'; };
+      el.src = url;
+    };
+  }
+
+  resolveSpriteSrc(dex) {
+    this._spriteCache = this._spriteCache || {};
+    if (this._spriteCache[dex]) return this._spriteCache[dex];
+    const p = (async () => {
+      if (this.db) {
+        try {
+          const snap = await this.db.collection('sprites').doc(String(dex)).get();
+          if (snap.exists) {
+            const d = snap.data();
+            return 'data:' + (d.contentType || 'image/png') + ';base64,' + d.data;
+          }
+        } catch (e) {}
+      }
+      return 'sprites/' + dex + '.png';
+    })();
+    this._spriteCache[dex] = p;
+    return p;
+  }
+
+  makeSpriteRefByDex(dex) {
+    return (el) => {
+      if (!el || el.dataset.spriteDex === String(dex)) return;
+      el.dataset.spriteDex = String(dex);
+      el.onerror = () => { el.style.display = 'none'; };
+      this.resolveSpriteSrc(dex).then(src => { if (src && el.isConnected) el.src = src; });
+    };
+  }
+
+  async loadMechanicsFromCloud() {
+    if (!this.db || !this.mechanics) return;
+    try {
+      const snap = await this.db.collection('gameData').doc('baseStats').get();
+      if (snap.exists) {
+        const d = snap.data();
+        if (d.BASE_STATS) Object.assign(this.mechanics.BASE_STATS, d.BASE_STATS);
+        if (d.BASE_STATS_BY_FORM) Object.assign(this.mechanics.BASE_STATS_BY_FORM, d.BASE_STATS_BY_FORM);
+        if (d.DEX_NAMES) Object.assign(this.mechanics.DEX_NAMES, d.DEX_NAMES);
+        this.forceUpdate();
+      }
+    } catch (e) {}
+  }
+
+  ringGeom(pct, r) {
+    const c = 2 * Math.PI * r;
+    const ratio = Math.max(0, Math.min(1, (pct || 0) / 100));
+    return { dasharray: c.toFixed(1) + ' ' + c.toFixed(1), dashoffset: (c * (1 - ratio)).toFixed(1) };
+  }
+
+  loadMore() { this.setState({ visibleCount: this.state.visibleCount + 30 }); }
+
+  toggleDone(idx) {
+    const set = new Set(this.state.completedIds);
+    if (set.has(idx)) set.delete(idx); else set.add(idx);
+    const arr = [...set];
+    this.setState({ completedIds: arr });
+    try { localStorage.setItem('scout_recommend_done_v1', JSON.stringify(arr)); } catch (e) {}
+  }
+
+  async preprocessImage(dataUrl) {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = dataUrl;
+    });
+    const scale = img.width < 900 ? 2 : 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.6 + 128));
+      d[i] = d[i + 1] = d[i + 2] = contrasted;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+
+  async cropTopRegion(dataUrl) {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = dataUrl;
+    });
+    const canvas = document.createElement('canvas');
+    const cropH = Math.round(img.height * 0.16);
+    canvas.width = img.width * 2;
+    canvas.height = cropH * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, img.width, cropH, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      const bw = gray > 150 ? 255 : 0;
+      d[i] = d[i + 1] = d[i + 2] = bw;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+
+  async handleScreenshotUpload(file) {
+    if (!file) return;
+    const dataUrl = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: dataUrl, ocrParsed: null });
+    try {
+      const processed = await this.preprocessImage(dataUrl);
+      const cropTop = await this.cropTopRegion(dataUrl);
+      const [resultProcessed, resultRaw, resultTop] = await Promise.all([
+        Tesseract.recognize(processed, 'eng'),
+        Tesseract.recognize(dataUrl, 'eng'),
+        Tesseract.recognize(cropTop, 'eng', { tessedit_char_whitelist: 'CP0123456789' })
+      ]);
+      const text = (resultProcessed.data.text || '') + '\n' + (resultRaw.data.text || '') + '\n' + (resultTop.data.text || '');
+      const cpMatch = text.match(/CP\D{0,4}(\d{2,5})/i) || text.match(/\b(\d{3,5})\b/);
+      const xlMatch = text.match(/(\d{1,4})\D{0,15}CANDY\D{0,3}XL/i) || text.match(/(\d{1,4})\D{0,15}XL/i);
+      const candyMatch = text.match(/(\d{1,4})\D{0,20}?CANDY(?!\D{0,3}XL)/i);
+      const typeMatch = text.match(/\b([A-Z][A-Za-z]{3,10})\s*\/\s*([A-Z][A-Za-z]{3,10})\b/);
+      const singleTypeMatch = !typeMatch ? text.match(/\b(NORMAL|FIRE|WATER|GRASS|ELECTRIC|ICE|FIGHTING|POISON|GROUND|FLYING|PSYCHIC|BUG|ROCK|GHOST|DRAGON|DARK|STEEL|FAIRY)\b/i) : null;
+      const nameLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const nameGuess = nameLines.find(l => /^[A-Za-z][a-z]{2,}([ '.-][A-Za-z][a-z]+)*$/.test(l) && l.length > 2 && l.length < 20
+        && !/^(CP|HP|STARDUST|CANDY|WEIGHT|HEIGHT|POWER|CHANGE|FORM|GYMS|RAIDS|TRAINER|BATTLES|XL)$/i.test(l)) || '';
+      const hpMatch = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i);
+      const cp = cpMatch ? parseInt(cpMatch[1], 10) : null;
+      const hpVal = hpMatch ? parseInt(hpMatch[1], 10) : null;
+      const roster = this.state.roster || [];
+      const matched = roster.find(p => p.cp === cp && (!nameGuess || p.name.toLowerCase() === nameGuess.toLowerCase()))
+        || roster.find(p => p.cp === cp);
+      this.setState({
+        ocrBusy: false,
+        ocrParsed: {
+          name: nameGuess || (matched ? matched.name : ''),
+          cp: cp,
+          dex: matched ? matched.dex : null,
+          matchedIdx: matched ? matched.idx : null,
+          matchedName: matched ? matched.name : null,
+          matchedForm: matched ? matched.form : null,
+          candy: candyMatch ? parseInt(candyMatch[1], 10) : null,
+          xlCandy: xlMatch ? parseInt(xlMatch[1], 10) : null,
+          hp: hpVal,
+          type: typeMatch ? `${typeMatch[1]} / ${typeMatch[2]}` : (singleTypeMatch ? singleTypeMatch[1] : '')
+        }
+      });
+    } catch (e) {
+      this.setState({ ocrBusy: false, ocrError: 'Could not read that screenshot. Try a clearer, uncropped capture.' });
+    }
+  }
+
+  updateOcrField(field, value) {
+    this.setState({ ocrParsed: { ...this.state.ocrParsed, [field]: value }, solvedIvResult: null });
+  }
+
+  solveIv() {
+    const p = this.state.ocrParsed;
+    if (!p || !this.mechanics) return;
+    const dex = p.dex;
+    let base = null;
+    if (dex != null) {
+      if (p.matchedForm) {
+        base = this.mechanics.BASE_STATS_BY_FORM[dex + '_' + p.matchedForm.toLowerCase()] || null;
+      }
+      if (!base) base = this.mechanics.BASE_STATS[dex] || null;
+    }
+    if (!base) {
+      this.setState({ solvedIvResult: { error: dex != null ? 'No base-stat data for this species yet — Scout can\'t solve its IVs until that\'s added.' : 'Need a roster match (or known dex) to look up base stats first.' } });
+      return;
+    }
+    if (!p.cp || !p.hp) {
+      this.setState({ solvedIvResult: { error: 'Need both CP and HP to solve — fill in HP below.' } });
+      return;
+    }
+    const candidates = this.mechanics.solveIVs(base, p.cp, p.hp);
+    if (!candidates.length) {
+      this.setState({ solvedIvResult: { error: 'No IV combo matches that CP/HP exactly — double-check the numbers.' } });
+      return;
+    }
+    const c = candidates[0];
+    const ivs = [c.atkIV, c.defIV, c.staIV];
+    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+    const great = this.mechanics.rankPctForLeague(base, ivs, 'great');
+    const ultra = this.mechanics.rankPctForLeague(base, ivs, 'ultra');
+    const little = this.mechanics.rankPctForLeague(base, ivs, 'little');
+    this.setState({
+      solvedIvResult: {
+        level: c.level, atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV,
+        ivAvg, great, ultra, little, candidateCount: candidates.length
+      }
+    });
+  }
+
+  applySolvedIv() {
+    const p = this.state.ocrParsed;
+    const r = this.state.solvedIvResult;
+    if (!p || !r || r.error) return;
+    const overrides = { ...this.state.ivOverrides };
+    const patch = {
+      atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
+      great: { rankPct: r.great, evolvesTo: p.matchedName || p.name },
+      ultra: { rankPct: r.ultra, evolvesTo: p.matchedName || p.name },
+      little: { rankPct: r.little, evolvesTo: p.matchedName || p.name }
+    };
+    if (p.matchedIdx != null) {
+      overrides[p.matchedIdx] = patch;
+      this.setState({ ivOverrides: overrides });
+      try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
+    } else {
+      const newIdx = 'new-' + Date.now();
+      const added = [...this.state.addedPokemon, {
+        idx: newIdx, name: p.name, form: null, dex: p.dex, gender: null,
+        cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
+        lvlMin: r.level, lvlMax: r.level, quickMove: null, chargeMove: null, chargeMove2: null,
+        catchDate: null, lucky: false, shadowPurified: '0', favorite: false, dust: null,
+        great: patch.great, ultra: patch.ultra, little: patch.little
+      }];
+      this.setState({ addedPokemon: added });
+      try { localStorage.setItem('scout_added_v1', JSON.stringify(added)); } catch (e) {}
+    }
+  }
+
+  applyOcrResult() {
+    const p = this.state.ocrParsed;
+    if (!p) return;
+    const key = (p.matchedName || p.name || '').trim().toLowerCase();
+    const candyInv = { ...this.state.candyInventory };
+    const types = { ...this.state.typeTable };
+    if (key) {
+      if (p.candy != null || p.xlCandy != null) {
+        candyInv[key] = { name: p.matchedName || p.name, candy: p.candy, xlCandy: p.xlCandy };
+      }
+      if (p.type) types[key] = p.type;
+    }
+    this.setState({ candyInventory: candyInv, typeTable: types, ocrParsed: null, ocrPreview: null });
+    try {
+      localStorage.setItem('scout_candy_v1', JSON.stringify(candyInv));
+      localStorage.setItem('scout_types_v1', JSON.stringify(types));
+    } catch (e) {}
+  }
+
+  setStardust(value) {
+    const n = value === '' ? null : parseInt(String(value).replace(/,/g, ''), 10);
+    this.setState({ stardustBalance: Number.isNaN(n) ? null : n });
+    try { localStorage.setItem('scout_stardust_v1', JSON.stringify(Number.isNaN(n) ? null : n)); } catch (e) {}
+  }
+
+  saveStardustDraft() {
+    this.setStardust(this.state.stardustDraft ?? '');
+    this.setState({ stardustJustSaved: true });
+    clearTimeout(this._stardustSavedTimer);
+    this._stardustSavedTimer = setTimeout(() => this.setState({ stardustJustSaved: false }), 1800);
+  }
+
+  cancelOcr() {
+    this.setState({ ocrParsed: null, ocrPreview: null, ocrError: '' });
+  }
+
+  dismissVideoImport() {
+    this.setState({ videoImport: null });
+    this._lastVideoFrames = null;
+  }
+
+  async completeWithRetry(body, attempts) {
+    attempts = attempts || 4;
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await window.claude.complete(body);
+      } catch (err) {
+        lastErr = err;
+        const msg = (err && err.message) || String(err);
+        if (!/overload|rate.?limit|529|503/i.test(msg) || i === attempts - 1) throw err;
+        await new Promise(r => setTimeout(r, 1200 * Math.pow(2, i)));
+      }
+    }
+    throw lastErr;
+  }
+
+  retryVideoImport() {
+    if (!this._lastVideoFrames) return;
+    this.runVideoPipeline(this._lastVideoFrames);
+  }
+
+  setVideoStage(stage, progress) {
+    this.setState(s => ({ videoImport: { ...s.videoImport, stage, progress } }));
+  }
+
+  async extractFrames(file, count) {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0.01';
+    video.src = url;
+    document.body.appendChild(video);
+    await new Promise((resolve, reject) => {
+      video.onloadeddata = resolve;
+      video.onerror = () => reject(new Error('Could not read that video file.'));
+    });
+    try { await video.play(); video.pause(); } catch (e) {}
+    for (let i = 0; i < 15 && !video.videoWidth; i++) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (!video.videoWidth || !video.videoHeight) {
+      URL.revokeObjectURL(url);
+      video.remove();
+      throw new Error('Could not decode this video in-browser \u2014 iPhone screen recordings are often HEVC, which this browser can\'t play. Re-export/share it as MP4 (H.264) and upload that instead.');
+    }
+    const duration = video.duration || 1;
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 360 / video.videoWidth);
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    const ctx = canvas.getContext('2d');
+    const frames = [];
+    let blackCount = 0;
+    for (let i = 0; i < count; i++) {
+      const t = Math.min(duration - 0.05, (duration * (i + 0.5)) / count);
+      await new Promise((resolve) => {
+        const onSeeked = () => { video.removeEventListener('seeked', onSeeked); resolve(); };
+        video.addEventListener('seeked', onSeeked);
+        video.currentTime = Math.max(0, t);
+      });
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let sum = 0;
+      for (let p = 0; p < sample.length; p += 400) sum += sample[p];
+      if (sum === 0) blackCount++;
+      frames.push(canvas.toDataURL('image/jpeg', 0.5).split(',')[1]);
+      this.setVideoStage('extracting', Math.round(((i + 1) / count) * 100));
+    }
+    URL.revokeObjectURL(url);
+    video.remove();
+    if (blackCount === count) {
+      throw new Error('Every extracted frame came back black \u2014 this browser could not actually decode the video (common with HEVC .mov from iPhone). Re-export as MP4 (H.264) and try again.');
+    }
+    return frames;
+  }
+
+  async onVideoUpload(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    this.setState({ videoImport: { stage: 'uploading', progress: 0, error: null, summary: null } });
+    try {
+      this.setVideoStage('uploading', 100);
+      const frames = await this.extractFrames(file, 6);
+      this._lastVideoFrames = frames;
+      this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: frames } }));
+      await this.runVideoPipeline(frames);
+    } catch (err) {
+      clearInterval(this._videoReadingTimer);
+      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: (err && err.message) || 'Something went wrong reading that recording.' } }));
+    }
+  }
+
+  async runVideoPipeline(frames) {
+    this.setState(s => ({ videoImport: { stage: 'reading', progress: 10, error: null, summary: null, frameThumbs: frames } }));
+    try {
+      this._videoReadingTimer = setInterval(() => {
+        this.setState(s => {
+          if (!s.videoImport || s.videoImport.stage !== 'reading') return null;
+          return { videoImport: { ...s.videoImport, progress: Math.min(92, s.videoImport.progress + 6) } };
+        });
+      }, 500);
+      const prompt = 'These are frames sampled from a Pokemon GO screen recording (collection list and/or Pokemon detail/appraise screens). '
+        + 'Identify every distinct Pokemon shown. Merge repeat sightings of the same Pokemon across frames into one entry, using the most complete data seen. '
+        + 'Respond with ONLY a JSON array, no markdown fences, no commentary. Each item: '
+        + '{"name": string, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, "type": string|null, '
+        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
+        + 'Only fill atkIV/defIV/staIV if exact numeric IV values (0-15) are visible on screen \u2014 never estimate from appraisal bars/stars. Use null for anything not clearly visible.';
+      let useFrames = frames;
+      while (useFrames.reduce((a, f) => a + f.length, 0) > 190000 && useFrames.length > 2) {
+        useFrames = useFrames.filter((f, i) => i % 2 === 0);
+      }
+      const content = [
+        { type: 'text', text: prompt },
+        ...useFrames.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
+      ];
+      const reply = await this.completeWithRetry({ messages: [{ role: 'user', content }], max_tokens: 4000 });
+      clearInterval(this._videoReadingTimer);
+      this.setVideoStage('reading', 100);
+      let parsed;
+      try {
+        const jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+        parsed = JSON.parse(jsonText);
+      } catch (err) {
+        this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: String(reply).slice(0, 800) } }));
+        throw new Error('Could not parse what was read off that recording \u2014 try a slower pan across each screen.');
+      }
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: String(reply).slice(0, 800) } }));
+      }
+      this.setVideoStage('validating', 40);
+      const mechanics = this.mechanics;
+      const validated = (Array.isArray(parsed) ? parsed : []).map(item => {
+        const name = (item && item.name || '').trim();
+        if (!name || !item.cp) return null;
+        const dex = mechanics && mechanics.resolveDexByName ? mechanics.resolveDexByName(name) : null;
+        return { ...item, name, dex };
+      }).filter(Boolean);
+      this.setVideoStage('validating', 100);
+      this.setVideoStage('updating', 30);
+      const summary = this.mergeVideoImport(validated);
+      this.setVideoStage('updating', 100);
+      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary } }));
+    } catch (err) {
+      clearInterval(this._videoReadingTimer);
+      const msg = (err && err.message) || String(err);
+      const friendly = /overload|rate.?limit|529|503/i.test(msg) ? 'Claude is overloaded right now \u2014 wait a moment and hit Retry.' : msg;
+      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: friendly } }));
+    }
+  }
+
+  mergeVideoImport(items) {
+    const overrides = { ...this.state.ivOverrides };
+    const candyInv = { ...this.state.candyInventory };
+    const types = { ...this.state.typeTable };
+    const added = [...this.state.addedPokemon];
+    const roster = this.state.roster || [];
+    const mechanics = this.mechanics;
+    let updated = 0, inserted = 0;
+    items.forEach((item, i) => {
+      const nameLower = item.name.toLowerCase();
+      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
+        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
+        || roster.find(p => p.name.toLowerCase() === nameLower)
+        || added.find(p => p.name.toLowerCase() === nameLower);
+      let ivPatch = {};
+      if (item.atkIV != null && item.defIV != null && item.staIV != null && item.dex && mechanics) {
+        const base = mechanics.BASE_STATS[item.dex];
+        if (base) {
+          const ivs = [item.atkIV, item.defIV, item.staIV];
+          const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+          ivPatch = {
+            atkIV: item.atkIV, defIV: item.defIV, staIV: item.staIV, ivAvg,
+            great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: item.name },
+            ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: item.name },
+            little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: item.name }
+          };
+        }
+      }
+      if (match) {
+        overrides[match.idx] = {
+          ...overrides[match.idx], cp: item.cp,
+          hp: item.hp != null ? item.hp : match.hp,
+          lucky: item.lucky != null ? !!item.lucky : match.lucky,
+          favorite: item.favorite != null ? !!item.favorite : match.favorite,
+          ...ivPatch
+        };
+        updated++;
+      } else {
+        added.push({
+          idx: 'video-' + Date.now() + '-' + i, name: item.name, form: null, dex: item.dex, gender: null,
+          cp: item.cp, hp: item.hp != null ? item.hp : null,
+          atkIV: ivPatch.atkIV != null ? ivPatch.atkIV : null, defIV: ivPatch.defIV != null ? ivPatch.defIV : null,
+          staIV: ivPatch.staIV != null ? ivPatch.staIV : null, ivAvg: ivPatch.ivAvg != null ? ivPatch.ivAvg : null,
+          lvlMin: null, lvlMax: null, quickMove: null, chargeMove: null, chargeMove2: null,
+          catchDate: null, lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, dust: null,
+          great: ivPatch.great || null, ultra: ivPatch.ultra || null, little: ivPatch.little || null
+        });
+        inserted++;
+      }
+      if (item.candy != null || item.xlCandy != null) {
+        candyInv[nameLower] = {
+          name: item.name,
+          candy: item.candy != null ? item.candy : (candyInv[nameLower] && candyInv[nameLower].candy),
+          xlCandy: item.xlCandy != null ? item.xlCandy : (candyInv[nameLower] && candyInv[nameLower].xlCandy)
+        };
+      }
+      if (item.type) types[nameLower] = item.type;
+    });
+    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types });
+    try {
+      localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides));
+      localStorage.setItem('scout_added_v1', JSON.stringify(added));
+      localStorage.setItem('scout_candy_v1', JSON.stringify(candyInv));
+      localStorage.setItem('scout_types_v1', JSON.stringify(types));
+    } catch (e) {}
+    return { updated, inserted, total: items.length };
+  }
+
+  removePokemon(idx) {
+    const set = new Set(this.state.removedIds);
+    set.add(idx);
+    const arr = [...set];
+    this.setState({ removedIds: arr });
+    try { localStorage.setItem('scout_removed_v1', JSON.stringify(arr)); } catch (e) {}
+  }
+
+  toggleChecklist(id) {
+    const done = { ...this.state.checklistDone, [id]: !this.state.checklistDone[id] };
+    this.setState({ checklistDone: done });
+    try { localStorage.setItem('scout_checklist_v1', JSON.stringify({ date: this.state.checklistDate, done })); } catch (e) {}
+  }
+
+  computeRecommendation(p) {
+    const bestRank = this.bestRank(p);
+    const notFullyEvolved = p.great && p.great.evolvesTo && p.great.evolvesTo !== p.name;
+    const isShadow = p.shadowPurified === '1' || p.shadowPurified === 1;
+    if (p.lucky && bestRank >= 90) return 'Lucky and elite-rank — power up now, cheap dust cost.';
+    if (bestRank >= 95) return 'Top-tier league pick. Power up immediately.';
+    if (bestRank >= 85) return 'Strong league contender. Worth the investment.';
+    if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
+    if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
+    if ((p.ivAvg == null || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
+    return 'No urgent action. Keep as roster depth.';
+  }
+
+  buildOptimizePlan(roster) {
+    const completedSet = new Set(this.state.completedIds || []);
+    const notDone = (p) => !completedSet.has(p.idx);
+    const withRank = roster.map(p => ({ p, rank: this.bestRank(p) }));
+    const powerUp = withRank.filter(x => x.rank >= 90 && !x.p.favorite && notDone(x.p)).sort((a, b) => b.rank - a.rank).slice(0, 5).map(x => x.p);
+    const evolveSoon = roster.filter(p => p.great && p.great.evolvesTo && p.great.evolvesTo !== p.name && (p.ivAvg || 0) >= 60 && notDone(p))
+      .sort((a, b) => (b.ivAvg || 0) - (a.ivAvg || 0)).slice(0, 5);
+    const transferSafe = roster.filter(p => (p.ivAvg == null || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
+      .slice(0, 10);
+    const dexCounts = {};
+    roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
+    const luckyTrade = roster.filter(p => !p.lucky && dexCounts[p.dex] > 1 && (p.ivAvg || 0) < 90 && notDone(p)).slice(0, 8);
+    const buddySuggestion = withRank.filter(x => !x.p.favorite).sort((a, b) => b.rank - a.rank)[0]?.p || null;
+    return { powerUp, evolveSoon, transferSafe, luckyTrade, buddySuggestion };
+  }
+
+  async sendChat() {
+    const text = this.state.chatInput.trim();
+    if (!text || this.state.chatBusy) return;
+    const roster = this.state.roster;
+    const withIV = roster.filter(p => p.ivAvg != null);
+    const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length).toFixed(1) : 'n/a';
+    const plan = this.buildOptimizePlan(roster);
+    const contextLines = [
+      `Roster size: ${roster.length}. Average IV: ${avgIV}%. Lucky: ${roster.filter(p => p.lucky).length}. Shadow: ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length}.`,
+      `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
+      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${p.great.evolvesTo}`).join(', ') || 'none'}.`,
+      `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
+      (() => {
+        const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
+        const total = Object.keys(dexNames).length;
+        const owned = new Set(roster.map(p => p.dex).filter(d => d != null));
+        const kanto = Object.keys(dexNames).map(Number).filter(d => d >= 1 && d <= 151);
+        const kantoOwned = kanto.filter(d => owned.has(d)).length;
+        const hundo = roster.filter(p => p.atkIV === 15 && p.defIV === 15 && p.staIV === 15).length;
+        const nundo = roster.filter(p => p.atkIV === 0 && p.defIV === 0 && p.staIV === 0).length;
+        const r = this.state.resources || {};
+        return `Living Dex: ${owned.size}/${total} species (${(owned.size / (total || 1) * 100).toFixed(1)}%). Kanto Dex: ${kantoOwned}/${kanto.length}. Hundo: ${hundo}. Nundo: ${nundo}. `
+          + `Resources on hand: Rare Candy ${r.rareCandy ?? 'unknown'}, Rare Candy XL ${r.rareCandyXL ?? 'unknown'}, Elite Fast TM ${r.eliteFastTM ?? 'unknown'}, Elite Charged TM ${r.eliteChargedTM ?? 'unknown'}, Stardust ${this.state.stardustBalance ?? 'unknown'}.`;
+      })(),
+      `Full roster (name, dex, form, cp, hp, ivAvg, atkIV/defIV/staIV, lucky, shadow, greatRank%, ultraRank%, littleRank%): ` +
+        roster.slice(0, 200).map(p => `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${(p.shadowPurified === '1' || p.shadowPurified === 1) ? 'S' : ''} G${p.great.rankPct ?? '-'} U${p.ultra.rankPct ?? '-'} LC${p.little.rankPct ?? '-'}`).join('; ')
+    ].join('\n');
+    const messages = [...this.state.chatMessages, { role: 'user', content: text }];
+    this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
+    try {
+      const reply = await window.claude.complete({
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\n${contextLines}`,
+        messages: messages.map(m => ({ role: m.role, content: m.content }))
+      });
+      this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false });
+    } catch (e) {
+      this.setState({ chatMessages: [...messages, { role: 'assistant', content: 'Chat failed to reach the model. Try again.' }], chatBusy: false });
+    }
+  }
+  openDetail(p) { this.setState({ detailPoke: p }); }
+  closeDetail() { this.setState({ detailPoke: null }); }
+
+  topForLeague(key) {
+    const pool = this.state.roster.filter(p => p[key] && p[key].rankPct != null);
+    pool.sort((a, b) => b[key].rankPct - a[key].rankPct);
+    return pool[0] || null;
+  }
+
+  startListening() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      this.setState({ lastQuestion: '', lastAnswer: "Voice input isn't supported in this browser — try Chrome on desktop or Android." });
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.onresult = (e) => {
+      const t = e.results[0][0].transcript;
+      this.setState({ chatInput: t, tab: 'home' }, () => this.sendChat());
+    };
+    rec.onend = () => this.setState({ listening: false });
+    rec.onerror = (e) => {
+      const msg = e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? 'Microphone access was blocked. Allow mic access for this page and try again.'
+        : `Voice recognition error: ${e.error}. Try Chrome on desktop or Android.`;
+      this.setState({ listening: false, lastAnswer: msg });
+    };
+    this.setState({ listening: true, lastAnswer: '' });
+    try { rec.start(); } catch (e) { this.setState({ listening: false, lastAnswer: 'Could not start voice recognition in this browser.' }); }
+  }
+
+  answerQuery(text) {
+    const q = text.toLowerCase();
+    const roster = this.state.roster;
+    let answer = '';
+    if (!roster.length) {
+      answer = "I don't have roster data loaded yet.";
+    } else if (q.includes('lucky')) {
+      answer = `You have ${roster.filter(p => p.lucky).length} Lucky Pokemon.`;
+    } else if (q.includes('shadow')) {
+      answer = `You have ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length} Shadow Pokemon.`;
+    } else if (q.includes('average') || q.includes('avg')) {
+      const withIV = roster.filter(p => p.ivAvg != null);
+      const avg = withIV.length ? withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length : 0;
+      answer = `Your average IV is ${avg.toFixed(1)} percent.`;
+    } else if (q.includes('great')) {
+      const best = this.topForLeague('great');
+      answer = best ? `Your best Great League pick is ${best.name} at ${best.great.rankPct.toFixed(1)} percent rank.` : 'No Great League data found.';
+    } else if (q.includes('ultra')) {
+      const best = this.topForLeague('ultra');
+      answer = best ? `Your best Ultra League pick is ${best.name} at ${best.ultra.rankPct.toFixed(1)} percent rank.` : 'No Ultra League data found.';
+    } else if (q.includes('little')) {
+      const best = this.topForLeague('little');
+      answer = best ? `Your best Little Cup pick is ${best.name} at ${best.little.rankPct.toFixed(1)} percent rank.` : 'No Little Cup data found.';
+    } else if (q.includes('raid') || q.includes('cp')) {
+      const top = roster.slice().sort((a, b) => (b.cp || 0) - (a.cp || 0))[0];
+      answer = top ? `Your highest CP Pokemon is ${top.name} at ${top.cp} CP.` : 'No CP data.';
+    } else if (q.includes('transfer')) {
+      const count = roster.filter(p => (p.ivAvg == null || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
+      answer = `I count ${count} transfer candidates on the Recommendations tab.`;
+    } else if (q.includes('how many') || q.includes('total')) {
+      answer = `You have ${roster.length} Pokemon logged.`;
+    } else {
+      answer = "I didn't catch a stat for that. Try asking about lucky, shadow, average IV, or your best Great League pick.";
+    }
+    this.setState({ lastAnswer: answer });
+    try { const u = new SpeechSynthesisUtterance(answer); window.speechSynthesis.speak(u); } catch (e) {}
+  }
+
+  bestLeagueInfo(p) {
+    const opts = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]];
+    let best = null;
+    for (const [label, obj] of opts) {
+      if (obj.rankPct != null && (!best || obj.rankPct > best.rankPct)) best = { label, rankPct: obj.rankPct };
+    }
+    return best;
+  }
+
+  logSnapshot() {
+    const roster = this.state.roster;
+    if (!roster.length) return;
+    const withIV = roster.filter(p => p.ivAvg != null);
+    const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length) : 0;
+    const entry = {
+      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      stardust: this.state.stardustBalance,
+      count: roster.length,
+      avgIV: avgIV.toFixed(1),
+      lucky: roster.filter(p => p.lucky).length
+    };
+    const history = [entry, ...this.state.history];
+    this.setState({ history });
+    try { localStorage.setItem('scout_history_v1', JSON.stringify(history)); } catch (e) {}
+  }
+
+  renderVals() {
+    const removedSet = new Set(this.state.removedIds || []);
+    const overrides = this.state.ivOverrides || {};
+    const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const roster = [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !removedSet.has(p.idx));
+    const tab = this.state.tab;
+    const search = this.state.search;
+    const sortField = this.state.sortField;
+    const league = this.state.league;
+
+    const ivColor = iv => iv == null ? 'oklch(55% 0.02 260)' : iv >= 90 ? 'oklch(80% 0.15 150)' : iv >= 70 ? 'oklch(80% 0.15 70)' : 'oklch(70% 0.05 260)';
+    const HUE_BY_ACCENT = { '#54c8ff': 220, '#ffb454': 70, '#c589ff': 290, '#7cf29a': 150, '#ff7a9c': 20 };
+    const accentHue = HUE_BY_ACCENT[this.props.accentColor] ?? 220;
+    const accent = (l, c) => `oklch(${l}% ${c} ${accentHue})`;
+    const leagueColor = label => label === 'GREAT' ? 'oklch(80% 0.14 150)' : label === 'ULTRA' ? accent(78, 0.13) : label === 'LITTLE' ? 'oklch(78% 0.14 40)' : 'oklch(55% 0.02 260)';
+    const personality = this.props.personality || 'clinical';
+    const density = this.props.density || 'comfortable';
+    const isCompact = density === 'compact';
+
+    let filtered = roster.filter(p => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return (p.name || '').toLowerCase().includes(s) || (p.quickMove || '').toLowerCase().includes(s) || (p.chargeMove || '').toLowerCase().includes(s);
+    });
+    filtered = filtered.slice().sort((a, b) => {
+      if (sortField === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortField === 'ivAvg') return (b.ivAvg || 0) - (a.ivAvg || 0);
+      if (sortField === 'dex') return (a.dex || 0) - (b.dex || 0);
+      return (b.cp || 0) - (a.cp || 0);
+    });
+
+    const totalFiltered = filtered.length;
+    const visibleCount = this.state.visibleCount;
+    const pagedFiltered = filtered.slice(0, visibleCount);
+    const filteredRoster = pagedFiltered.map((p, i) => {
+      const best = this.bestLeagueInfo(p);
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.favorite ? '♥' : ''].filter(Boolean).join(' ');
+      const ring = this.ringGeom(p.ivAvg, 26);
+      return {
+        raw: p,
+        onClick: () => this.openDetail(p),
+        displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        initial: (p.name || '?').charAt(0),
+        dex: p.dex,
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        spriteRef: this.makeSpriteRefByDex(p.dex),
+        delay: Math.min(i, 24) * 15,
+        cp: p.cp,
+        hp: p.hp,
+        ivDisplay: p.ivAvg != null ? p.ivAvg.toFixed(0) + '%' : '—',
+        ivColor: ivColor(p.ivAvg),
+        ringDasharray: ring.dasharray,
+        ringDashoffset: ring.dashoffset,
+        spread: (p.atkIV != null ? p.atkIV + '/' + p.defIV + '/' + p.staIV : '—'),
+        moves: [p.quickMove, p.chargeMove].filter(Boolean).join(' / ') || '—',
+        bestLeagueLabel: best ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
+        bestLeagueColor: best ? leagueColor(best.label) : 'oklch(55% 0.02 260)',
+        flags: flags || '—',
+        stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : ''
+      };
+    });
+
+    const withIV = roster.filter(p => p.ivAvg != null);
+    const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length) : 0;
+    const pvpReady = roster.filter(p => this.bestRank(p) >= 90).length;
+
+    const stats = {
+      total: roster.length,
+      avgIV: avgIV.toFixed(1) + '%',
+      lucky: roster.filter(p => p.lucky).length,
+      shadow: roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length,
+      pvpReady
+    };
+
+    const callouts = [];
+    if (pvpReady > 0) callouts.push(`${pvpReady} Pokemon are sitting at 90%+ rank in at least one league — check PVP RANKINGS.`);
+    if (stats.lucky > 0) callouts.push(`You're holding ${stats.lucky} Lucky Pokemon — cheap power-ups, guaranteed 12+ IV floor.`);
+    callouts.push(`Roster synced from ${this.state.syncedFrom}. Drop a new CSV anytime via SYNC CSV.`);
+    const rawCallout = callouts[0] || 'Standing by. Sync a roster export to get started.';
+    const calloutLine = personality === 'hype' ? rawCallout.replace(/\.$/, '!').toUpperCase()
+      : personality === 'deadpan' ? rawCallout.replace(/[!.]+$/, '.').replace(/^You're/, 'You are')
+      : rawCallout;
+
+    const leagueKey = league;
+    const rosterForLeague = leagueKey === 'master' ? roster.map(p => ({ ...p, master: this.masterRankFor(p) })) : roster;
+    const leaguePool = rosterForLeague.filter(p => p[leagueKey] && p[leagueKey].rankPct != null);
+    leaguePool.sort((a, b) => b[leagueKey].rankPct - a[leagueKey].rankPct);
+    const pvpList = leaguePool.slice(0, 20).map(p => ({
+      displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+      cp: p.cp,
+      rankNum: p[leagueKey].rankNum != null ? '#' + p[leagueKey].rankNum : '—',
+      rankPctDisplay: p[leagueKey].rankPct.toFixed(1) + '%',
+      statProdDisplay: p[leagueKey].statProd != null ? p[leagueKey].statProd.toFixed(1) + '%' : '—',
+      evolvesTo: p[leagueKey].evolvesTo || '—'
+    }));
+
+    const leagueDefs = [
+      { key: 'great', label: 'GREAT ≤1500' },
+      { key: 'ultra', label: 'ULTRA ≤2500' },
+      { key: 'little', label: 'LITTLE CUP' },
+      { key: 'master', label: 'MASTER' }
+    ];
+
+    const teamTypes = {};
+    const suggestedTeamPool = leaguePool.slice(0, 30);
+    const typeTableRef = this.state.typeTable || {};
+    const suggestedTeam = [];
+    suggestedTeamPool.forEach(p => {
+      if (suggestedTeam.length >= 6) return;
+      const t = (typeTableRef[p.name.toLowerCase()] || '').split('/')[0].trim();
+      const key = t || 'unknown-' + p.dex;
+      if (teamTypes[key]) return;
+      teamTypes[key] = true;
+      suggestedTeam.push({
+        idx: p.idx, displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        initial: (p.name || '?').charAt(0),
+        typeLabel: t || 'Unknown', rankDisplay: p[leagueKey].rankPct.toFixed(0) + '%'
+      });
+    });
+    const suggestedTeamDisplay = suggestedTeam.length ? suggestedTeam : null;
+    const leagueList = leagueDefs.map(l => {
+      const active = l.key === league;
+      return {
+        key: l.key,
+        label: l.label,
+        bg: active ? 'oklch(45% 0.1 220)' : 'oklch(23% 0.03 260)',
+        fg: active ? 'oklch(96% 0.01 220)' : 'oklch(65% 0.02 260)',
+        onClick: () => this.setState({ league: l.key })
+      };
+    });
+
+    const completedSet = new Set(this.state.completedIds || []);
+    const notDone = (p) => !completedSet.has(p.idx);
+
+    const powerUpPool = roster.filter(p => this.bestRank(p) >= 90 && !p.favorite && notDone(p));
+    powerUpPool.sort((a, b) => this.bestRank(b) - this.bestRank(a));
+    const powerUpList = powerUpPool.slice(0, 12).map(p => {
+      const best = this.bestLeagueInfo(p);
+      return {
+        idx: p.idx,
+        displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        initial: (p.name || '?').charAt(0),
+        cp: p.cp,
+        bestLeagueLabel: best ? best.label : '',
+        bestRankDisplay: best ? best.rankPct.toFixed(0) + '%' : '',
+        markDone: () => this.toggleDone(p.idx)
+      };
+    });
+
+    const transferPool = roster.filter(p => (p.ivAvg == null || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
+    transferPool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
+    const transferList = transferPool.slice(0, 12).map(p => ({
+      idx: p.idx,
+      displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+      spriteRef: this.makeSpriteRefByDex(p.dex),
+      badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+      initial: (p.name || '?').charAt(0),
+      ivDisplay: p.ivAvg != null ? p.ivAvg.toFixed(1) + '%' : '—',
+      cp: p.cp,
+      markTransferred: () => this.removePokemon(p.idx)
+    }));
+
+    const doneCount = completedSet.size;
+
+    const plan = this.buildOptimizePlan(roster);
+    const hour = new Date().getHours();
+    const baseGreeting = hour < 12 ? 'Good morning, Trainer.' : hour < 18 ? 'Good afternoon, Trainer.' : 'Good evening, Trainer.';
+    const greeting = personality === 'hype' ? baseGreeting.replace('.', '!') + ' Let\'s cook.'
+      : personality === 'deadpan' ? baseGreeting.replace('Trainer.', 'Trainer. Data follows.')
+      : baseGreeting;
+    const greatProjects = roster.filter(p => p.great && p.great.rankPct != null && p.great.rankPct >= 80 && notDone(p)).length;
+    const mapMini = (arr) => arr.map(p => ({
+      idx: p.idx,
+      displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+      spriteRef: this.makeSpriteRefByDex(p.dex),
+      badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+      initial: (p.name || '?').charAt(0),
+      sub: this.bestRank(p) ? this.bestRank(p).toFixed(0) + '% rank' : '',
+      cp: p.cp,
+      markDone: () => this.toggleDone(p.idx)
+    }));
+    const optimizePlanDisplay = {
+      powerUp: mapMini(plan.powerUp),
+      evolveSoon: plan.evolveSoon.map(p => ({
+        idx: p.idx,
+        displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        initial: (p.name || '?').charAt(0),
+        sub: 'evolves to ' + p.great.evolvesTo,
+        cp: p.cp,
+        markDone: () => this.toggleDone(p.idx)
+      })),
+      transferSafe: plan.transferSafe.map(p => ({
+        idx: p.idx,
+        displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        initial: (p.name || '?').charAt(0),
+        sub: '',
+        cp: p.cp,
+        markTransferred: () => this.removePokemon(p.idx)
+      })),
+      luckyTrade: mapMini(plan.luckyTrade),
+      buddySuggestion: plan.buddySuggestion ? {
+        displayName: plan.buddySuggestion.name,
+        spriteRef: this.makeSpriteRefByDex(plan.buddySuggestion.dex),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(plan.buddySuggestion.dex || 0)})`,
+        initial: (plan.buddySuggestion.name || '?').charAt(0)
+      } : null
+    };
+    const digest = {
+      greeting,
+      powerUpCount: plan.powerUp.length,
+      evolveCount: plan.evolveSoon.length,
+      greatProjects,
+      dustPriority: plan.powerUp.slice(0, 3).map(p => p.name),
+      avoidList: plan.transferSafe.slice(0, 3).map(p => p.name)
+    };
+    const VIDEO_STAGES = [
+      { key: 'uploading', label: 'Uploading\u2026' },
+      { key: 'extracting', label: 'Extracting Frames\u2026' },
+      { key: 'reading', label: 'Reading Pokemon\u2026' },
+      { key: 'validating', label: 'Validating\u2026' },
+      { key: 'updating', label: 'Updating Collection\u2026' }
+    ];
+    const vi = this.state.videoImport;
+    const viOrder = ['uploading', 'extracting', 'reading', 'validating', 'updating', 'done', 'error'];
+    const viIndex = vi ? viOrder.indexOf(vi.stage) : -1;
+    const videoImportSteps = vi ? VIDEO_STAGES.map((s, i) => {
+      const stageIdx = viOrder.indexOf(s.key);
+      const pct = vi.stage === 'error' ? 0 : (stageIdx < viIndex ? 100 : (stageIdx === viIndex ? (vi.progress || 0) : 0));
+      const active = stageIdx <= viIndex && vi.stage !== 'error';
+      return {
+        label: s.label,
+        pct,
+        labelColor: active ? 'oklch(88% 0.06 280)' : 'oklch(50% 0.02 260)',
+        barColor: pct >= 100 ? 'oklch(70% 0.15 150)' : 'oklch(65% 0.13 280)'
+      };
+    }) : [];
+    const stardustDisplay = this.state.stardustBalance != null ? String(this.state.stardustBalance) : '';
+    const stardustDraft = this.state.stardustDraft != null ? this.state.stardustDraft : stardustDisplay;
+    const candyEntries = Object.keys(this.state.candyInventory || {}).map(dex => {
+      const c = this.state.candyInventory[dex];
+      return { name: c.name, candy: c.candy != null ? c.candy : '—', xlCandy: c.xlCandy != null ? c.xlCandy : '—' };
+    });
+    const ocrParsedDisplay = this.state.ocrParsed ? {
+      name: this.state.ocrParsed.name || '',
+      cp: this.state.ocrParsed.cp ?? '',
+      hp: this.state.ocrParsed.hp ?? '',
+      matchedName: this.state.ocrParsed.matchedName,
+      stardust: this.state.ocrParsed.stardust ?? '',
+      candy: this.state.ocrParsed.candy ?? '',
+      xlCandy: this.state.ocrParsed.xlCandy ?? '',
+      type: this.state.ocrParsed.type || '',
+      matchLine: this.state.ocrParsed.dex != null ? `Matched to ${this.state.ocrParsed.matchedName} in your roster.` : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.'
+    } : null;
+    const solvedIvResult = this.state.solvedIvResult ? (this.state.solvedIvResult.error ? { error: this.state.solvedIvResult.error } : {
+      level: this.state.solvedIvResult.level,
+      spread: `${this.state.solvedIvResult.atkIV}/${this.state.solvedIvResult.defIV}/${this.state.solvedIvResult.staIV}`,
+      ivAvg: this.state.solvedIvResult.ivAvg.toFixed(1) + '%',
+      great: this.state.solvedIvResult.great != null ? this.state.solvedIvResult.great.toFixed(1) + '%' : '—',
+      ultra: this.state.solvedIvResult.ultra != null ? this.state.solvedIvResult.ultra.toFixed(1) + '%' : '—',
+      little: this.state.solvedIvResult.little != null ? this.state.solvedIvResult.little.toFixed(1) + '%' : '—',
+      ambiguous: this.state.solvedIvResult.candidateCount > 1 ? `${this.state.solvedIvResult.candidateCount} possible spreads matched \u2014 showing the first. Add an appraisal hint later to narrow further.` : ''
+    }) : null;
+    const checklistDefs = [
+      { id: 'spin', label: 'Spin a PokeStop' },
+      { id: 'raid', label: 'Free Raid Pass' },
+      { id: 'gifts', label: 'Open Gifts' },
+      { id: 'incense', label: 'Daily Adventure Incense' },
+      { id: 'buddy', label: 'Buddy Hearts / Snack' },
+      { id: 'route', label: 'Walk a Route' }
+    ];
+    const checklistItems = checklistDefs.map(c => {
+      const done = !!this.state.checklistDone[c.id];
+      return {
+        id: c.id,
+        label: c.label,
+        textColor: done ? 'oklch(60% 0.02 260)' : 'oklch(92% 0.01 260)',
+        checkBg: done ? 'oklch(60% 0.15 150)' : 'transparent',
+        checkMark: done ? '✓' : '',
+        toggle: () => this.toggleChecklist(c.id)
+      };
+    });
+    const chatMessagesDisplay = this.state.chatMessages.map(m => ({
+      content: m.content,
+      alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+      bg: m.role === 'user' ? 'oklch(45% 0.1 220)' : 'oklch(28% 0.03 260)'
+    }));
+
+    const history = this.state.history || [];
+    const historyDisplay = history.map((h, i) => {
+      const prev = history[i + 1];
+      let delta = '—', deltaColor = 'oklch(60% 0.02 260)';
+      if (prev) {
+        const d = h.count - prev.count;
+        delta = (d > 0 ? '+' : '') + d;
+        deltaColor = d > 0 ? 'oklch(78% 0.14 150)' : d < 0 ? 'oklch(75% 0.15 30)' : 'oklch(60% 0.02 260)';
+      }
+      let dustDelta = '—';
+      if (prev && h.stardust != null && prev.stardust != null) {
+        const dd = h.stardust - prev.stardust;
+        dustDelta = (dd > 0 ? '+' : '') + dd.toLocaleString();
+      }
+      return { date: h.date, count: h.count, avgIV: h.avgIV + '%', lucky: h.lucky, delta, deltaColor, stardustDisplay: h.stardust != null ? h.stardust.toLocaleString() : '—', dustDelta };
+    });
+
+    const detailPoke = this.state.detailPoke;
+    let detail = null;
+    if (detailPoke) {
+      const p = detailPoke;
+      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : ''].filter(Boolean).join('  ');
+      const statRings = [
+        { label: 'ATK', value: p.atkIV != null ? p.atkIV : '—', color: 'oklch(75% 0.15 30)', ...this.ringGeom((p.atkIV || 0) / 15 * 100, 27) },
+        { label: 'DEF', value: p.defIV != null ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((p.defIV || 0) / 15 * 100, 27) },
+        { label: 'STA', value: p.staIV != null ? p.staIV : '—', color: 'oklch(75% 0.15 150)', ...this.ringGeom((p.staIV || 0) / 15 * 100, 27) }
+      ];
+      const leagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].map(([label, o]) => ({
+        label,
+        color: leagueColor(label),
+        pctDisplay: o.rankPct != null ? o.rankPct.toFixed(1) + '%' : '—',
+        rankDisplay: o.rankNum != null ? '#' + o.rankNum : '—',
+        barWidth: (o.rankPct != null ? o.rankPct : 0) + '%'
+      }));
+      const hue = this.hueFor(p.dex || 0);
+      detail = {
+        initial: (p.name || '?').charAt(0),
+        badgeColor: `oklch(70% 0.15 ${hue})`,
+        headerGradient: `linear-gradient(160deg, oklch(48% 0.1 ${hue}), oklch(38% 0.09 ${(hue + 40) % 360}))`,
+        overallRing: this.ringGeom(p.ivAvg, 66),
+        spriteRef: this.makeSpriteRefByDex(p.dex),
+        displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        dex: p.dex, cp: p.cp, hp: p.hp,
+        moves: [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).join(' / ') || '—',
+        moveChips: [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean),
+        statRings, leagues,
+        flags: flags || 'No special flags',
+        flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
+        dust: p.dust != null ? p.dust : '—',
+        recommendation: this.computeRecommendation(p)
+      };
+    }
+
+    const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
+    const totalSpecies = Object.keys(dexNames).length;
+    const ownedDex = new Set(roster.map(p => p.dex).filter(d => d != null));
+    const livingDexPct = totalSpecies ? (ownedDex.size / totalSpecies * 100) : 0;
+    const kantoDex = Object.keys(dexNames).map(Number).filter(d => d >= 1 && d <= 151);
+    const kantoOwned = kantoDex.filter(d => ownedDex.has(d));
+    const missingDex = Object.keys(dexNames).map(Number).filter(d => !ownedDex.has(d)).sort((a, b) => a - b);
+    const missingPreview = missingDex.slice(0, 24).map(d => dexNames[d]).join(', ') + (missingDex.length > 24 ? `, +${missingDex.length - 24} more` : '');
+    const hundoList = roster.filter(p => p.atkIV === 15 && p.defIV === 15 && p.staIV === 15);
+    const nundoList = roster.filter(p => p.atkIV === 0 && p.defIV === 0 && p.staIV === 0);
+    const dexGroups = {};
+    roster.forEach(p => { if (p.dex != null) { (dexGroups[p.dex] = dexGroups[p.dex] || []).push(p); } });
+    const duplicateGroups = Object.values(dexGroups).filter(g => g.length > 1 && !g.some(p => p.lucky))
+      .sort((a, b) => b.length - a.length).slice(0, 12)
+      .map(g => ({ name: g[0].name, count: g.length, spriteRef: this.makeSpriteRefByDex(g[0].dex), badgeColor: `oklch(70% 0.15 ${this.hueFor(g[0].dex || 0)})`, initial: (g[0].name || '?').charAt(0) }));
+    const intelDisplay = {
+      livingDexPct: livingDexPct.toFixed(1) + '%', ownedCount: ownedDex.size, totalSpecies,
+      kantoPct: kantoDex.length ? (kantoOwned.length / kantoDex.length * 100).toFixed(1) + '%' : '—',
+      kantoOwned: kantoOwned.length, kantoTotal: kantoDex.length,
+      missingCount: missingDex.length, missingPreview: missingPreview || 'None \u2014 full dex!',
+      hundoCount: hundoList.length, nundoCount: nundoList.length,
+      pvpReadyCount: roster.filter(p => this.bestRank(p) >= 90).length,
+      duplicateGroups: duplicateGroups.length ? duplicateGroups : null
+    };
+
+    const isMobile = (this.state.viewportWidth || 1200) < 640;
+
+    const tabDefs = [
+      { key: 'home', label: 'HOME' },
+      { key: 'roster', label: 'ROSTER' },
+      { key: 'pvp', label: 'PVP RANKINGS' },
+      { key: 'recommend', label: 'RECOMMENDATIONS' },
+      { key: 'intel', label: 'COLLECTION INTEL' },
+      { key: 'progress', label: 'PROGRESS LOG' }
+    ];
+    const tabList = tabDefs.map(t => ({
+      key: t.key,
+      label: t.label,
+      color: t.key === tab ? 'oklch(92% 0.01 260)' : 'oklch(55% 0.02 260)',
+      border: t.key === tab ? accent(78, 0.13) : 'transparent',
+      onClick: () => this.setState({ tab: t.key })
+    }));
+
+    return {
+      rootRef: (el) => this.rootRef(el),
+      isMobile,
+      rootPadding: isMobile ? 'max(54px, env(safe-area-inset-top)) 14px 40px' : '28px 40px 60px',
+      statGridCols: isMobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)',
+      rosterGridCols: isMobile ? `repeat(auto-fill,minmax(${isCompact ? 128 : 150}px,1fr))` : `repeat(auto-fill,minmax(${isCompact ? 168 : 220}px,1fr))`,
+      cardPadding: isCompact ? '10px' : '16px',
+      cardGap: isCompact ? '10px' : '16px',
+      headerWrap: isMobile ? 'wrap' : 'nowrap',
+      headerActionsBasis: isMobile ? '100%' : 'auto',
+      syncLabelWidth: isMobile ? '100%' : 'auto',
+      syncLabel: this.state.loaded ? `${roster.length} Pokemon loaded` : 'Loading roster…',
+      calloutLine,
+      stats,
+      tab,
+      isHome: tab === 'home',
+      isRoster: tab === 'roster',
+      isPvp: tab === 'pvp',
+      isRecommend: tab === 'recommend',
+      isIntel: tab === 'intel',
+      isProgress: tab === 'progress',
+      tabList,
+      setTab: (t) => this.setState({ tab: t }),
+      search,
+      onSearchChange: (e) => this.setState({ search: e.target.value, visibleCount: 30 }),
+      sortField,
+      onSortChange: (e) => this.setState({ sortField: e.target.value, visibleCount: 30 }),
+      rosterCountLabel: `${filteredRoster.length} of ${totalFiltered} shown`,
+      filteredRoster,
+      hasMore: visibleCount < totalFiltered,
+      loadMore: () => this.loadMore(),
+      league,
+      leagueList,
+      pvpList,
+      suggestedTeamDisplay,
+      intelDisplay,
+      resourcesDraft: {
+        rareCandy: this.state.resourcesDraft.rareCandy || (this.state.resources.rareCandy != null ? String(this.state.resources.rareCandy) : ''),
+        rareCandyXL: this.state.resourcesDraft.rareCandyXL || (this.state.resources.rareCandyXL != null ? String(this.state.resources.rareCandyXL) : ''),
+        eliteFastTM: this.state.resourcesDraft.eliteFastTM || (this.state.resources.eliteFastTM != null ? String(this.state.resources.eliteFastTM) : ''),
+        eliteChargedTM: this.state.resourcesDraft.eliteChargedTM || (this.state.resources.eliteChargedTM != null ? String(this.state.resources.eliteChargedTM) : '')
+      },
+      onResourceRareCandy: (e) => this.onResourceChange('rareCandy', e.target.value),
+      onResourceRareCandyXL: (e) => this.onResourceChange('rareCandyXL', e.target.value),
+      onResourceEliteFast: (e) => this.onResourceChange('eliteFastTM', e.target.value),
+      onResourceEliteCharged: (e) => this.onResourceChange('eliteChargedTM', e.target.value),
+      saveResources: () => this.saveResources(),
+      eliteTmCandidates: (() => {
+        const list = roster.filter(p => !p.chargeMove2 && this.bestRank(p) >= 85).sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 5)
+          .map(p => ({ idx: p.idx, name: p.name + (p.form ? ' (' + p.form + ')' : ''), rankDisplay: this.bestRank(p).toFixed(0) + '%' }));
+        return list.length ? list : null;
+      })(),
+      megaEnergyEntries: Object.keys(this.state.megaEnergyInventory).length ? Object.keys(this.state.megaEnergyInventory).map(k => ({
+        key: k, name: this.state.megaEnergyInventory[k].name, amount: this.state.megaEnergyInventory[k].amount, remove: () => this.removeMegaEnergy(k)
+      })) : null,
+      megaNameDraft: this.state.megaNameDraft,
+      megaAmountDraft: this.state.megaAmountDraft,
+      onMegaNameChange: (e) => this.onMegaNameChange(e),
+      onMegaAmountChange: (e) => this.onMegaAmountChange(e),
+      addMegaEnergy: () => this.addMegaEnergy(),
+      powerUpList,
+      transferList,
+      doneCount,
+      digest,
+      stardustDisplay,
+      candyEntries,
+      ocrBusy: this.state.ocrBusy,
+      ocrError: this.state.ocrError,
+      ocrPreview: this.state.ocrPreview,
+      ocrParsedDisplay,
+      hasOcrPreview: !!this.state.ocrPreview,
+      hasOcrParsed: !!ocrParsedDisplay,
+      onScreenshotUpload: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.handleScreenshotUpload(f); },
+      onOcrName: (e) => this.updateOcrField('name', e.target.value),
+      onOcrCp: (e) => this.updateOcrField('cp', parseInt(e.target.value, 10) || null),
+      onOcrCandy: (e) => this.updateOcrField('candy', parseInt(e.target.value, 10) || null),
+      onOcrXl: (e) => this.updateOcrField('xlCandy', parseInt(e.target.value, 10) || null),
+      onOcrType: (e) => this.updateOcrField('type', e.target.value),
+      onOcrHp: (e) => this.updateOcrField('hp', parseInt(e.target.value, 10) || null),
+      onVideoUpload: (e) => this.onVideoUpload(e),
+      hasVideoImport: !!this.state.videoImport,
+      videoImportSteps: videoImportSteps,
+      videoImportError: this.state.videoImport && this.state.videoImport.stage === 'error' ? this.state.videoImport.error : '',
+      videoImportSummary: this.state.videoImport && this.state.videoImport.summary,
+      videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error')),
+      videoFrameThumbs: (this.state.videoImport && this.state.videoImport.frameThumbs && this.state.videoImport.frameThumbs.length)
+        ? this.state.videoImport.frameThumbs.map(f => ({ ref: this.makeSpriteRef('data:image/jpeg;base64,' + f) })) : null,
+      videoRawReply: this.state.videoImport && this.state.videoImport.rawReply,
+      dismissVideoImport: () => this.dismissVideoImport(),
+      retryVideoImport: () => this.retryVideoImport(),
+      needsFirebaseConfig: !this.state.firebaseConfigured,
+      firebaseConfigDraft: this.state.firebaseConfigDraft,
+      onFirebaseConfigChange: (e) => this.onFirebaseConfigChange(e),
+      saveFirebaseConfig: () => this.saveFirebaseConfig(),
+      firebaseConfigError: this.state.firebaseConfigError,
+      hasFirebaseNoUser: this.state.firebaseConfigured && !this.state.cloudUser,
+      authEmail: this.state.authEmail,
+      authPassword: this.state.authPassword,
+      onAuthEmailChange: (e) => this.onAuthEmailChange(e),
+      onAuthPasswordChange: (e) => this.onAuthPasswordChange(e),
+      signIn: () => this.signIn(),
+      signUp: () => this.signUp(),
+      authError: this.state.authError,
+      hasCloudUser: !!this.state.cloudUser,
+      cloudUserEmail: this.state.cloudUser && this.state.cloudUser.email,
+      syncStatusLabel: this.state.syncStatus || 'idle',
+      syncNow: () => this.syncNow(),
+      signOutCloud: () => this.signOutCloud(),
+      migrateStatsAndSprites: () => this.migrateStatsAndSprites(),
+      isAdminUser: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())),
+      showMigrateButton: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())) && !this.state.migrationAlreadyDone && !this.state.migration,
+      migrationDisplay: this.state.migration ? {
+        stage: this.state.migration.stage,
+        label: this.state.migration.stage === 'stats' ? 'Uploading base stats\u2026'
+          : this.state.migration.stage === 'sprites' ? `Uploading sprites\u2026 ${this.state.migration.done}/${this.state.migration.total}`
+          : this.state.migration.stage === 'done' ? (this.state.migration.alreadyDone ? 'Already migrated \u2014 nothing to do.' : 'Done \u2014 sprites and stats now live in Firebase.')
+          : 'Error: ' + this.state.migration.error,
+        pct: this.state.migration.stage === 'sprites' && this.state.migration.total ? Math.round(this.state.migration.done / this.state.migration.total * 100) : (this.state.migration.stage === 'done' ? 100 : 30)
+      } : null,
+      onStardustChange: (e) => this.setStardust(e.target.value),
+      stardustDraft,
+      onStardustDraftChange: (e) => this.setState({ stardustDraft: e.target.value }),
+      onStardustSave: () => this.saveStardustDraft(),
+      stardustJustSaved: !!this.state.stardustJustSaved,
+      solvedIvResult,
+      hasSolvedIv: !!solvedIvResult,
+      solveIv: () => this.solveIv(),
+      applySolvedIv: () => this.applySolvedIv(),
+      applyOcrResult: () => this.applyOcrResult(),
+      cancelOcr: () => this.cancelOcr(),
+      optimizePlanDisplay,
+      showOptimizePlan: this.state.showOptimizePlan,
+      toggleOptimizePlan: () => this.setState({ showOptimizePlan: !this.state.showOptimizePlan }),
+      checklistItems,
+      chatMessagesDisplay,
+      chatInput: this.state.chatInput,
+      onChatInputChange: (e) => this.setState({ chatInput: e.target.value }),
+      chatBusy: this.state.chatBusy,
+      sendChat: () => this.sendChat(),
+      onChatKeyDown: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChat(); } },
+      historyDisplay,
+      historyEmpty: historyDisplay.length === 0,
+      logSnapshot: () => this.logSnapshot(),
+      onFileChange: (e) => this.onFileChange(e),
+      openDetail: (p) => this.openDetail(p),
+      closeDetail: () => this.closeDetail(),
+      stopProp: (e) => e.stopPropagation(),
+      hasDetail: !!detail,
+      detail: detail || {},
+      micLabel: this.state.listening ? 'LISTENING…' : (isMobile ? 'TALK' : 'TALK TO PROFESSOR'),
+      micBg: this.state.listening ? 'oklch(55% 0.15 30)' : 'oklch(28% 0.03 260)',
+      micAnim: this.state.listening ? 'micPulse 1.2s ease-in-out infinite' : 'none',
+      startListening: () => this.startListening(),
+      lastQuestion: this.state.lastQuestion,
+      lastAnswer: this.state.lastAnswer,
+      hasVoiceExchange: !!this.state.lastAnswer
+    };
+  }
+}
+
+</script>
+</body>
+</html>
