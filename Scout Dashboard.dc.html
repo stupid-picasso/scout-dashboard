@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
+<base target="_blank">
 </head>
 <body>
 <x-dc>
@@ -836,6 +837,9 @@ class Component extends DCLogic {
       this.mechanics = mechanics;
       this.loadMechanicsFromCloud();
     } catch (e) {}
+    if (!this.mechanics && window.PokemonMechanics) {
+      try { this.mechanics = new window.PokemonMechanics(); } catch (e) {}
+    }
     try {
       const savedRoster = this.loadRoster();
       if (savedRoster && savedRoster.length > 0) {
@@ -1743,7 +1747,7 @@ class Component extends DCLogic {
     let lastErr;
     for (let i = 0; i < attempts; i++) {
       try {
-        if (window.claude && window.claude.complete) return await window.claude.complete(body);
+        if (window.claude && typeof window.claude.complete === 'function') { try { return await window.claude.complete(body); } catch (e) { console.warn('window.claude.complete failed:', e); } }
         if (!(window.puter && window.puter.ai)) { try { await this.loadPuter(); } catch (e) {} }
         if (window.puter && window.puter.ai && window.puter.ai.chat) {
           const msgs = (body.messages || []).map(m => ({ ...m }));
@@ -1783,7 +1787,7 @@ class Component extends DCLogic {
   }
 
   setVideoStage(stage, progress) {
-    this.setState(s => ({ videoImport: { ...s.videoImport, stage, progress } }));
+    this.setState(s => ({ videoImport: { ...(s.videoImport || {}), stage, progress } }));
   }
 
   async extractFrames(file, count) {
@@ -1856,7 +1860,7 @@ class Component extends DCLogic {
       await this.runVideoPipeline(frames);
     } catch (err) {
       clearInterval(this._videoReadingTimer);
-      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: (err && err.message) || 'Something went wrong reading that recording.' } }));
+      console.error('Video import error:', err); this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: (err && err.message) || 'Something went wrong reading that recording.' } }));
     }
   }
 
@@ -1912,6 +1916,7 @@ class Component extends DCLogic {
       this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary } }));
     } catch (err) {
       clearInterval(this._videoReadingTimer);
+      console.error('runVideoPipeline error:', err);
       const msg = (err && err.message) || String(err);
       const friendly = /overload|rate.?limit|529|503/i.test(msg) ? 'Claude is overloaded right now \u2014 wait a moment and hit Retry.' : msg;
       this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: friendly } }));
@@ -1919,10 +1924,10 @@ class Component extends DCLogic {
   }
 
   mergeVideoImport(items) {
-    const overrides = { ...this.state.ivOverrides };
-    const candyInv = { ...this.state.candyInventory };
-    const types = { ...this.state.typeTable };
-    const added = [...this.state.addedPokemon];
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    const candyInv = { ...(this.state.candyInventory || {}) };
+    const types = { ...(this.state.typeTable || {}) };
+    const added = this.state.addedPokemon ? [...this.state.addedPokemon] : [];
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
     let updated = 0, inserted = 0;
