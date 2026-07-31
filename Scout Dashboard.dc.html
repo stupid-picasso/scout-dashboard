@@ -122,19 +122,17 @@
     <div style="background:oklch(23% 0.04 200);border:1px solid oklch(38% 0.06 200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
       <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 200);letter-spacing:.05em">CLOUD SYNC (across your devices)</div>
       <sc-if value="{{ needsFirebaseConfig }}" hint-placeholder-val="{{ true }}">
-        <div style="font:12px sans-serif;color:oklch(75% 0.02 260);line-height:1.5">
-          One-time setup: create a free project at <a href="https://console.firebase.google.com" target="_blank" style="color:oklch(78% 0.13 220)">console.firebase.google.com</a>, add a Web App, enable <strong>Email/Password</strong> under Authentication, create a <strong>Firestore</strong> database, then paste the config object it gives you below (the whole <span style="font:ui-monospace,monospace">{ apiKey: ..., ... }</span> block).
+        <div style="background:oklch(24% 0.04 150);border:1px solid oklch(38% 0.06 150);border-radius:6px;padding:12px;margin:8px 0;font:12.5px sans-serif;color:oklch(80% 0.02 260);line-height:1.5">✓ Firebase project <strong>pokemon-professor</strong> detected. Ready to sync. Sign in below.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" placeholder="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:8px 10px;border-radius:6px;font:12.5px sans-serif;width:180px" />
+          <input type="password" placeholder="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:8px 10px;border-radius:6px;font:12.5px sans-serif;width:150px" />
+          <div onClick="{{ signIn }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SIGN IN</div>
+          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace">CREATE ACCOUNT</div>
         </div>
-        <textarea placeholder="{ apiKey: &quot;...&quot;, authDomain: &quot;...&quot;, projectId: &quot;...&quot;, ... }" value="{{ firebaseConfigDraft }}" onChange="{{ onFirebaseConfigChange }}" style="width:100%;box-sizing:border-box;min-height:70px;background:oklch(19% 0.02 260);border:1px solid oklch(38% 0.03 260);color:oklch(88% 0.01 260);padding:8px;border-radius:6px;font:11.5px ui-monospace,monospace"></textarea>
-        <div onClick="{{ saveFirebaseConfig }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE CONFIG</div>
-        <sc-if value="{{ firebaseConfigError }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ firebaseConfigError }}</div>
+        <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260);margin-top:8px">Use same email/password on every device to sync.</div>
+        <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30);margin-top:6px">{{ authError }}</div>
         </sc-if>
-        <div style="font:11px ui-monospace,monospace;color:oklch(55% 0.02 260);white-space:pre-wrap;line-height:1.6">Firestore rules to paste (Rules tab):
-match /scoutUsers/$(uid) { allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid; }
-match /gameData/$(doc) { allow read: if request.auth != null; allow write: if request.auth != null &amp;&amp; request.auth.token.email in ['abhi.patel@gmail.com','admin@scout.app']; }
-match /sprites/$(doc) { allow read: if request.auth != null; allow write: if request.auth != null &amp;&amp; request.auth.token.email in ['abhi.patel@gmail.com','admin@scout.app']; }
-Admin account: sign up with email admin@scout.app (any password) to get write access.</div>
       </sc-if>
       <sc-if value="{{ hasFirebaseNoUser }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -259,7 +257,10 @@ Admin account: sign up with email admin@scout.app (any password) to get write ac
             <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.1 220);color:white;font:700 12px ui-monospace,monospace">SAVE CANDY/TYPE</div>
             <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1;text-align:center;padding:9px;border-radius:6px;background:oklch(30% 0.03 260);color:oklch(80% 0.01 260);font:700 12px ui-monospace,monospace">CANCEL</div>
           </div>
-
+          <details style="margin-top:2px">
+            <summary style="cursor:pointer;font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">Raw OCR text (debug)</summary>
+            <pre style="white-space:pre-wrap;font:10.5px ui-monospace,monospace;color:oklch(60% 0.02 260);background:oklch(16% 0.02 260);padding:8px;border-radius:6px;max-height:160px;overflow:auto">{{ ocrParsedDisplay.rawText }}</pre>
+          </details>
           <div style="border-top:1px solid oklch(32% 0.04 220);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
             <div onClick="{{ solveIv }}" style="cursor:pointer;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.13 150);color:white;font:700 12px ui-monospace,monospace">SOLVE IV &amp; PVP RANK</div>
             <sc-if value="{{ hasSolvedIv }}" hint-placeholder-val="{{ false }}">
@@ -787,6 +788,8 @@ class Component extends DCLogic {
     addedPokemon: [],
     solvedIvResult: null,
     ocrHp: '',
+    apiEndpoint: '',
+    apiEndpointDraft: '',
     viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1200,
     showOptimizePlan: false,
     checklistDate: '',
@@ -837,6 +840,10 @@ class Component extends DCLogic {
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
+    try {
+      const rawEndpoint = localStorage.getItem('scout_api_endpoint_v1');
+      if (rawEndpoint) this.setState({ apiEndpoint: rawEndpoint, apiEndpointDraft: rawEndpoint });
+    } catch (e) {}
     try {
       const raw = localStorage.getItem('scout_history_v1');
       if (raw) this.setState({ history: JSON.parse(raw) });
@@ -926,10 +933,24 @@ class Component extends DCLogic {
   initFirebase() {
     try {
       const raw = localStorage.getItem('scout_firebase_config_v1');
-      if (!raw) return;
-      const config = JSON.parse(raw);
-      this.loadFirebaseSdk().then(() => this.setupFirebaseApp(config))
-        .catch(e => this.setState({ firebaseConfigError: e.message }));
+      if (raw) {
+        const config = JSON.parse(raw);
+        this.loadFirebaseSdk().then(() => this.setupFirebaseApp(config))
+          .catch(e => this.setState({ firebaseConfigError: e.message }));
+      } else {
+        const defaultConfig = {
+          apiKey: "AIzaSyAQcYNQtMwA4_0G6tII7K396mtvrA4hQY0",
+          authDomain: "pokemon-professor.firebaseapp.com",
+          projectId: "pokemon-professor",
+          storageBucket: "pokemon-professor.firebasestorage.app",
+          messagingSenderId: "1032287709425",
+          appId: "1:1032287709425:web:eed51d4675e24c8f8ba150",
+          measurementId: "G-257CDK9NJE"
+        };
+        localStorage.setItem('scout_firebase_config_v1', JSON.stringify(defaultConfig));
+        this.loadFirebaseSdk().then(() => this.setupFirebaseApp(defaultConfig))
+          .catch(e => this.setState({ firebaseConfigError: e.message }));
+      }
     } catch (e) {}
   }
 
@@ -1350,8 +1371,8 @@ class Component extends DCLogic {
         Tesseract.recognize(cropTop, 'eng', { tessedit_char_whitelist: 'CP0123456789' })
       ]);
       const text = (resultProcessed.data.text || '') + '\n' + (resultRaw.data.text || '') + '\n' + (resultTop.data.text || '');
-      const cpMatch = text.match(/CP\D{0,4}(\d{2,5})/i) || text.match(/\b(\d{3,5})\b/);
-      const xlMatch = text.match(/(\d{1,4})\D{0,15}CANDY\D{0,3}XL/i) || text.match(/(\d{1,4})\D{0,15}XL/i);
+      const xlMatch = text.match(/(\d{1,4})\D{0,15}CANDY\D{0,3}XL/i) || text.match(/(\d{1,4})\D{0,15}XL/i)
+        || text.match(/XL\D{0,15}CANDY\D{0,3}(\d{1,4})/i) || text.match(/CANDY\D{0,3}XL\D{0,5}(\d{1,4})/i);
       const candyMatch = text.match(/(\d{1,4})\D{0,20}?CANDY(?!\D{0,3}XL)/i);
       const typeMatch = text.match(/\b([A-Z][A-Za-z]{3,10})\s*\/\s*([A-Z][A-Za-z]{3,10})\b/);
       const singleTypeMatch = !typeMatch ? text.match(/\b(NORMAL|FIRE|WATER|GRASS|ELECTRIC|ICE|FIGHTING|POISON|GROUND|FLYING|PSYCHIC|BUG|ROCK|GHOST|DRAGON|DARK|STEEL|FAIRY)\b/i) : null;
@@ -1359,8 +1380,18 @@ class Component extends DCLogic {
       const nameGuess = nameLines.find(l => /^[A-Za-z][a-z]{2,}([ '.-][A-Za-z][a-z]+)*$/.test(l) && l.length > 2 && l.length < 20
         && !/^(CP|HP|STARDUST|CANDY|WEIGHT|HEIGHT|POWER|CHANGE|FORM|GYMS|RAIDS|TRAINER|BATTLES|XL)$/i.test(l)) || '';
       const hpMatch = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i);
-      const cp = cpMatch ? parseInt(cpMatch[1], 10) : null;
       const hpVal = hpMatch ? parseInt(hpMatch[1], 10) : null;
+      // Prefer the dedicated CP-crop scan (isolated to the CP badge) so the HP line's own
+      // digits never get mistaken for CP. Only fall back to whole-text scanning if that's empty,
+      // and when falling back, skip any number matching the HP value already found.
+      const topDigits = (resultTop.data.text || '').match(/(\d{2,5})/);
+      const labeledCpMatch = text.match(/CP\D{0,4}(\d{2,5})/i);
+      let cp = topDigits ? parseInt(topDigits[1], 10) : (labeledCpMatch ? parseInt(labeledCpMatch[1], 10) : null);
+      if (cp == null) {
+        const genericMatches = text.match(/\b\d{3,5}\b/g) || [];
+        const candidate = genericMatches.map(n => parseInt(n, 10)).find(n => n !== hpVal);
+        cp = candidate != null ? candidate : null;
+      }
       const roster = this.state.roster || [];
       const matched = roster.find(p => p.cp === cp && (!nameGuess || p.name.toLowerCase() === nameGuess.toLowerCase()))
         || roster.find(p => p.cp === cp);
@@ -1376,7 +1407,8 @@ class Component extends DCLogic {
           candy: candyMatch ? parseInt(candyMatch[1], 10) : null,
           xlCandy: xlMatch ? parseInt(xlMatch[1], 10) : null,
           hp: hpVal,
-          type: typeMatch ? `${typeMatch[1]} / ${typeMatch[2]}` : (singleTypeMatch ? singleTypeMatch[1] : '')
+          type: typeMatch ? `${typeMatch[1]} / ${typeMatch[2]}` : (singleTypeMatch ? singleTypeMatch[1] : ''),
+          rawText: text.slice(0, 1200)
         }
       });
     } catch (e) {
@@ -1496,12 +1528,54 @@ class Component extends DCLogic {
     this._lastVideoFrames = null;
   }
 
+  saveApiEndpoint() {
+    const url = (this.state.apiEndpointDraft || '').trim();
+    this.setState({ apiEndpoint: url });
+    try { localStorage.setItem('scout_api_endpoint_v1', url); } catch (e) {}
+  }
+
+  loadPuter() {
+    if (window.puter && window.puter.ai) return Promise.resolve();
+    if (this._puterLoad) return this._puterLoad;
+    this._puterLoad = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://js.puter.com/v2/';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Could not load Puter.js'));
+      document.head.appendChild(s);
+    }).catch(err => { this._puterLoad = null; throw err; });
+    return this._puterLoad;
+  }
+
   async completeWithRetry(body, attempts) {
     attempts = attempts || 4;
     let lastErr;
     for (let i = 0; i < attempts; i++) {
       try {
-        return await window.claude.complete(body);
+        if (window.claude && window.claude.complete) return await window.claude.complete(body);
+        if (!(window.puter && window.puter.ai)) { try { await this.loadPuter(); } catch (e) {} }
+        if (window.puter && window.puter.ai && window.puter.ai.chat) {
+          const msgs = (body.messages || []).map(m => ({ ...m }));
+          if (body.system && msgs[0]) {
+            if (Array.isArray(msgs[0].content)) {
+              msgs[0] = { ...msgs[0], content: [{ type: 'text', text: body.system }, ...msgs[0].content] };
+            } else {
+              msgs[0] = { ...msgs[0], content: body.system + '\n\n' + msgs[0].content };
+            }
+          }
+          const res = await window.puter.ai.chat(msgs, { model: 'claude-sonnet-5' });
+          if (res && res.message && res.message.content && res.message.content[0]) return res.message.content[0].text;
+          return String(res && res.text != null ? res.text : res);
+        }
+        if (!this.state.apiEndpoint) throw new Error('No Claude proxy endpoint set — add one under AI IMPORT SETUP (only needed if Puter.js is unavailable).');
+        const res = await fetch(this.state.apiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error('Proxy error ' + res.status + ': ' + (await res.text().catch(() => '')));
+        const data = await res.json();
+        return data.text != null ? data.text : data;
       } catch (err) {
         lastErr = err;
         const msg = (err && err.message) || String(err);
@@ -1774,7 +1848,7 @@ class Component extends DCLogic {
     const contextLines = [
       `Roster size: ${roster.length}. Average IV: ${avgIV}%. Lucky: ${roster.filter(p => p.lucky).length}. Shadow: ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length}.`,
       `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
-      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${p.great.evolvesTo}`).join(', ') || 'none'}.`,
+      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${p.great && p.great.evolvesTo ? p.great.evolvesTo : '?'}`).join(', ') || 'none'}.`,
       `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
       (() => {
         const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
@@ -1794,7 +1868,7 @@ class Component extends DCLogic {
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
-      const reply = await window.claude.complete({
+      const reply = await this.completeWithRetry({
         system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
@@ -2158,7 +2232,8 @@ class Component extends DCLogic {
       candy: this.state.ocrParsed.candy ?? '',
       xlCandy: this.state.ocrParsed.xlCandy ?? '',
       type: this.state.ocrParsed.type || '',
-      matchLine: this.state.ocrParsed.dex != null ? `Matched to ${this.state.ocrParsed.matchedName} in your roster.` : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.'
+      matchLine: this.state.ocrParsed.dex != null ? `Matched to ${this.state.ocrParsed.matchedName} in your roster.` : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.',
+      rawText: this.state.ocrParsed.rawText || ''
     } : null;
     const solvedIvResult = this.state.solvedIvResult ? (this.state.solvedIvResult.error ? { error: this.state.solvedIvResult.error } : {
       level: this.state.solvedIvResult.level,
@@ -2370,6 +2445,10 @@ class Component extends DCLogic {
       onOcrType: (e) => this.updateOcrField('type', e.target.value),
       onOcrHp: (e) => this.updateOcrField('hp', parseInt(e.target.value, 10) || null),
       onVideoUpload: (e) => this.onVideoUpload(e),
+      onApiEndpointDraftChange: (e) => this.setState({ apiEndpointDraft: e.target.value }),
+      saveApiEndpoint: () => this.saveApiEndpoint(),
+      apiEndpoint: this.state.apiEndpoint,
+      apiEndpointDraft: this.state.apiEndpointDraft,
       hasVideoImport: !!this.state.videoImport,
       videoImportSteps: videoImportSteps,
       videoImportError: this.state.videoImport && this.state.videoImport.stage === 'error' ? this.state.videoImport.error : '',
