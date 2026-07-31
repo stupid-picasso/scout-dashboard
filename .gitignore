@@ -1,0 +1,39 @@
+# Build artifacts
+index.html
+
+# User data / generated (NEVER commit real scans)
+data/*.csv
+data/*.json
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Frame extraction temp
+frames_tmp/
+*.png
+*.jpg
+
+# Videos (use Git LFS if you must commit them)
+videos/*.mp4
+videos/*.mov
+!videos/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Old repo artifacts
+.github/workflows/main.yml
+pokemon-data.js
+.thumbnail

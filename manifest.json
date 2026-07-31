@@ -1,16 +1,30 @@
 {
-  "name": "Scout \u2014 Pokemon GO Progress Tracker",
+  "name": "Scout — Pokémon GO Dashboard",
   "short_name": "Scout",
-  "description": "Your Pokemon GO roster, IV/PvP engine, and AI assistant.",
-  "start_url": ".",
-  "scope": ".",
+  "description": "Track your Pokémon GO collection, IVs, PvP ranks, and import from screenshots.",
+  "start_url": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#171b26",
   "theme_color": "#171b26",
+  "orientation": "portrait",
   "icons": [
-    { "src": "icons/apple-touch-icon.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/apple-touch-icon.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/apple-touch-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["games", "utilities"],
+  "lang": "en"
 }
