@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 <x-dc>
@@ -1343,9 +1344,9 @@ class Component extends DCLogic {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      const boosted = gray < 100 ? 0 : (gray > 180 ? 255 : Math.min(255, gray * 1.4));
-      d[i] = d[i + 1] = d[i + 2] = boosted;
+      d[i] = Math.min(255, d[i] * 1.15);
+      d[i+1] = Math.min(255, d[i+1] * 1.15);
+      d[i+2] = Math.min(255, d[i+2] * 1.15);
     }
     ctx.putImageData(imgData, 0, 0);
     return canvas;
@@ -1376,30 +1377,55 @@ class Component extends DCLogic {
 
   async handleScreenshotUpload(file) {
     if (!file) return;
-    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null, importProgress: 10 });
+    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, importProgress: 10 });
     try {
       const canvas = await this.preprocessImage(file);
       const dataUrl = canvas.toDataURL('image/png');
-      this.setState({ ocrPreview: dataUrl, importProgress: 25 });
-      
-      const fullText = await this.runOCR(canvas, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.,% CPHPAtkDefStaLevelkgm');
-      this.setState({ importProgress: 50 });
-      
+      this.setState({ ocrPreview: dataUrl, importProgress: 30 });
+
+      // Run OCR on FULL image twice: once permissive, once digits-only
+      const [fullText, digitText] = await Promise.all([
+        this.runOCR(canvas, null),  // no whitelist = read everything
+        this.runOCR(canvas, '0123456789,.')  // digits only for numbers
+      ]);
+
+      console.log('[OCR] Full text:', fullText.slice(0, 500));
+      console.log('[OCR] Digits:', digitText.slice(0, 300));
+
+      this.setState({ importProgress: 60 });
+
+      // Parse everything from full text
       let rec = this.parsePokemonText(fullText);
+
+      // Fallback: if HP/candy not found, try digit-only text
+      if (!rec.hp) {
+        const hpM = digitText.match(/(\d+)\s*\/\s*\d+/) || digitText.match(/\b(\d{2,4})\b/);
+        if (hpM) rec.hp = parseInt(hpM[1], 10);
+      }
+      if (!rec.candy) {
+        const lines = digitText.split('\n').map(l => l.trim()).filter(Boolean);
+        for (const line of lines) {
+          const m = line.match(/^(\d+)$/);
+          if (m) {
+            const n = parseInt(m[1], 10);
+            if (n > 0 && n < 10000 && !rec.candy) rec.candy = n;
+            else if (n >= 0 && n < 100 && !rec.xl_candy) rec.xl_candy = n;
+          }
+        }
+      }
+
+      // Dex lookup for type
       if (rec.pokemon_name) {
         const dexInfo = this.lookupDexInfo(rec.pokemon_name);
         rec = { ...dexInfo, ...rec };
       }
-      
-      if (!rec.hp || !rec.candy || !rec.xl_candy) {
-        this.setState({ importProgress: 70 });
-        const detailRec = await this.extractDetailFields(canvas);
-        rec = { ...rec, ...detailRec };
-      }
-      
+
+      this.setState({ importProgress: 80 });
+
+      // Merge into roster
       const roster = this.state.roster || [];
       const existing = roster.find(p => p.name === rec.pokemon_name && Math.abs((p.cp || 0) - (rec.cp || 0)) < 10);
-      
+
       let newRoster;
       if (existing) {
         newRoster = roster.map(p => (p.name === rec.pokemon_name && Math.abs((p.cp || 0) - (rec.cp || 0)) < 10)
@@ -1411,7 +1437,7 @@ class Component extends DCLogic {
       } else {
         newRoster = roster;
       }
-      
+
       this.saveRoster(newRoster);
       this.setState({
         roster: newRoster,
@@ -1428,9 +1454,9 @@ class Component extends DCLogic {
           rawText: fullText.slice(0, 1200)
         }
       });
-    } catch (e) {
-      console.error('Screenshot import failed:', e);
-      this.setState({ ocrBusy: false, ocrError: 'Could not read that screenshot. Try a clearer, uncropped capture.', importProgress: 0 });
+    } catch (err) {
+      console.error('Screenshot import failed:', err);
+      this.setState({ ocrBusy: false, ocrError: 'Import failed: ' + err.message, importProgress: 0 });
     }
   }
     async runOCR(canvas, whitelist = null) {
@@ -1444,60 +1470,120 @@ class Component extends DCLogic {
   }
 
   async extractDetailFields(canvas) {
-    const result = {};
-    const w = canvas.width;
-    const h = canvas.height;
-    const hpCanvas = document.createElement('canvas');
-    const hpCtx = hpCanvas.getContext('2d');
-    hpCanvas.width = w * 0.3;
-    hpCanvas.height = h * 0.15;
-    hpCtx.drawImage(canvas, w * 0.1, h * 0.25, w * 0.3, h * 0.15, 0, 0, hpCanvas.width, hpCanvas.height);
-    const candyCanvas = document.createElement('canvas');
-    const candyCtx = candyCanvas.getContext('2d');
-    candyCanvas.width = w * 0.5;
-    candyCanvas.height = h * 0.2;
-    candyCtx.drawImage(canvas, w * 0.25, h * 0.6, w * 0.5, h * 0.2, 0, 0, candyCanvas.width, candyCanvas.height);
-    const [hpText, candyText] = await Promise.all([
-      this.runOCR(hpCanvas, '0123456789HP/'),
-      this.runOCR(candyCanvas, '0123456789CandyXL ')
-    ]);
-    const hpMatch = hpText.match(/HP\s*(\d+)/i) || hpText.match(/(\d+)\s*\/\s*\d+/);
-    if (hpMatch) result.hp = parseInt(hpMatch[1], 10);
-    const candyMatch = candyText.match(/(\d+)\s+Candy\b(?!.*XL)/i);
-    if (candyMatch) result.candy = parseInt(candyMatch[1], 10);
-    const xlMatch = candyText.match(/(\d+)\s*XL/i);
-    if (xlMatch) result.xl_candy = parseInt(xlMatch[1], 10);
-    return result;
+    // Fallback: full-image OCR with permissive whitelist
+    const text = await this.runOCR(canvas, null);
+    const rec = {};
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+    // HP from any line with HP
+    const hpLine = lines.find(l => /\d+\s*\/\s*\d+.*HP/i.test(l));
+    if (hpLine) {
+      const m = hpLine.match(/(\d+)\s*\//);
+      if (m) rec.hp = parseInt(m[1], 10);
+    }
+
+    // Candy from line containing CANDY (not XL)
+    const candyLine = lines.find(l => /CANDY(?!.*XL)/i.test(l) && /\d/.test(l));
+    if (candyLine) {
+      const m = candyLine.match(/(\d+)/);
+      if (m) rec.candy = parseInt(m[1], 10);
+    }
+
+    // XL from line containing XL
+    const xlLine = lines.find(l => /XL/i.test(l) && /\d/.test(l));
+    if (xlLine) {
+      const m = xlLine.match(/(\d+)/);
+      if (m) rec.xl_candy = parseInt(m[1], 10);
+    }
+
+    return rec;
   }
 
   parsePokemonText(text) {
     const rec = {};
     const t = text.replace(/,/g, '');
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    console.log('[OCR] Lines:', lines.slice(0, 20));
+
+    // Name: first known Pokemon name in first 15 lines
     const nameMatch = this.findPokemonName(text);
     if (nameMatch) rec.pokemon_name = nameMatch;
-    const cp = t.match(/\bCP\s*(\d+)/i);
-    if (cp) rec.cp = parseInt(cp[1], 10);
-    const hp = t.match(/\bHP\s*(\d+)/i);
-    if (hp) rec.hp = parseInt(hp[1], 10);
-    const atk = t.match(/Atk\s*(\d+)/i);
-    const def = t.match(/Def\s*(\d+)/i);
-    const sta = t.match(/Sta\s*(\d+)/i);
+
+    // CP: look for CP followed by number (multi-line ok)
+    const cp = text.match(/CP\s*[:]*\s*(\d{2,5})/i) ||
+               text.match(/CP\s*\n\s*(\d{2,5})/im) ||
+               lines.find(l => /^CP\s*\d+$/i.test(l))?.match(/(\d+)/);
+    if (cp) rec.cp = parseInt(cp[1] || cp, 10);
+
+    // HP: "108/108 HP" or "HP 65" or "65 / 65 HP"
+    const hp = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i) ||
+               text.match(/HP\s*[:]*\s*(\d{1,4})/i) ||
+               text.match(/(\d{1,4})\s*HP\b/i) ||
+               lines.find(l => /\d+\s*\/\s*\d+\s*HP/i.test(l))?.match(/(\d+)/);
+    if (hp) rec.hp = parseInt(hp[1] || hp, 10);
+
+    // Candy: "79 EEVEE CANDY" or "CANDY 79" or just "79" near CANDY
+    const candyLine = lines.find(l => /CANDY(?!.*XL)/i.test(l) && /\d/.test(l));
+    if (candyLine) {
+      const cm = candyLine.match(/(\d+)/);
+      if (cm) rec.candy = parseInt(cm[1], 10);
+    }
+    // XL Candy: "4 EEVEE CANDY XL" or "XL 4"
+    const xlLine = lines.find(l => /XL/i.test(l) && /\d/.test(l));
+    if (xlLine) {
+      const xm = xlLine.match(/(\d+)/);
+      if (xm) rec.xl_candy = parseInt(xm[1], 10);
+    }
+
+    // Type: scan all lines for known types
+    const typePattern = /\b(Normal|Fire|Water|Grass|Electric|Ice|Fighting|Poison|Ground|Flying|Psychic|Bug|Rock|Ghost|Dragon|Dark|Steel|Fairy)\b/gi;
+    const types = [];
+    let tm;
+    while ((tm = typePattern.exec(text)) !== null) {
+      const type = tm[1].charAt(0).toUpperCase() + tm[1].slice(1).toLowerCase();
+      if (!types.includes(type)) types.push(type);
+    }
+    if (types.length > 0) rec.type_1 = types[0];
+    if (types.length > 1) rec.type_2 = types[1];
+
+    // Weight: "4.17kg"
+    const wt = text.match(/(\d+\.\d+)\s*kg/i) || text.match(/(\d+)\s*kg/i);
+    if (wt) rec.weight = wt[1];
+
+    // Height: "0.24m"
+    const ht = text.match(/(\d+\.\d+)\s*m\b/i) || text.match(/(\d+)\s*m\b/i);
+    if (ht) rec.height = ht[1];
+
+    // Stardust: "81,839 STARDUST"
+    const dust = text.match(/([\d,]+)\s*STARDUST/i);
+    if (dust) rec.stardust = parseInt(dust[1].replace(/,/g, ''), 10);
+
+    // IVs
+    const atk = text.match(/Atk\s*[:]*\s*(\d+)/i);
+    const def = text.match(/Def\s*[:]*\s*(\d+)/i);
+    const sta = text.match(/Sta\s*[:]*\s*(\d+)/i);
     if (atk) rec.attack_iv = parseInt(atk[1], 10);
     if (def) rec.defense_iv = parseInt(def[1], 10);
     if (sta) rec.stamina_iv = parseInt(sta[1], 10);
-    const lvl = t.match(/Level\s*(\d+\.?\d*)/i);
+
+    // Level
+    const lvl = text.match(/Level\s*[:]*\s*(\d+\.?\d*)/i);
     if (lvl) rec.level = parseFloat(lvl[1]);
-    const wt = t.match(/(\d+\.?\d*)\s*kg/i);
-    const ht = t.match(/(\d+\.?\d*)\s*m\b/i);
-    if (wt) rec.weight = wt[1];
-    if (ht) rec.height = ht[1];
-    const dust = t.match(/(\d+)\s*Stardust/i);
-    if (dust) rec.stardust = parseInt(dust[1], 10);
+
+    // Booleans
     if (/\bShadow\b/i.test(t)) rec.shadow = true;
     if (/\bPurified\b/i.test(t)) rec.purified = true;
     if (/\bLucky\b/i.test(t)) rec.lucky = true;
     if (/\bShiny\b/i.test(t)) rec.shiny = true;
     if (/\bFavorite\b/i.test(t)) rec.favorite = true;
+
+    // Moves
+    const moves = this.extractMoves(text);
+    if (moves.fast) rec.fast_move = moves.fast;
+    if (moves.charged1) rec.charged_move_1 = moves.charged1;
+    if (moves.charged2) rec.charged_move_2 = moves.charged2;
+
+    console.log('[OCR] Parsed:', JSON.stringify(rec));
     return rec;
   }
 
