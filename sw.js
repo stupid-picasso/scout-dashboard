@@ -1,18 +1,18 @@
-const CACHE_NAME = 'scout-v1';
+const CACHE_NAME = 'scout-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './src/support.js',
-  './src/pokemon-mechanics.js',
+  './support.js',
+  './pokemon-mechanics.js',
   './src/sample-data.js',
-  './src/Scout Dashboard.dc.html',
-  './src/IV CP HP Guide.dc.html',
+  './Scout%20Dashboard.dc.html',
+  './IV%20CP%20HP%20Guide.dc.html',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/apple-touch-icon.png'
 ];
 
-// Install: cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -21,7 +21,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -34,39 +33,29 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: cache-first for assets, network-first for data
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
   if (request.method !== 'GET') return;
-
-  // Skip Firebase / external APIs
-  if (url.hostname.includes('firebase') || url.hostname.includes('gstatic')) {
+  if (url.hostname.includes('firebase') || url.hostname.includes('gstatic') || url.hostname.includes('googleapis')) {
     return;
   }
 
-  // Cache-first for static assets
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) {
-        // Refresh cache in background
         fetch(request).then((response) => {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, response);
-          });
+          if (response.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, response));
+          }
         }).catch(() => {});
         return cached;
       }
-
       return fetch(request).then((response) => {
-        // Cache successful responses
         if (response.ok && response.type === 'basic') {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, clone);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return response;
       });
