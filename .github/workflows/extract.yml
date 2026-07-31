@@ -1,4 +1,4 @@
-name: Extract Pokémon Data
+name: Extract Pokemon Data
 
 on:
   push:
@@ -6,50 +6,79 @@ on:
       - 'videos/*.mp4'
       - 'videos/*.mov'
   workflow_dispatch:
+    inputs:
+      fps:
+        description: 'Frames per second for extraction'
+        required: false
+        default: '6'
+      scene_detect:
+        description: 'Use scene detection instead of fixed FPS'
+        required: false
+        default: 'true'
+      scene_threshold:
+        description: 'Scene change threshold (0.0-1.0)'
+        required: false
+        default: '0.3'
 
 jobs:
   extract:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install pytesseract pillow numpy
           sudo apt-get update
-          sudo apt-get install -y tesseract-ocr ffmpeg
+          sudo apt-get install -y ffmpeg tesseract-ocr tesseract-ocr-eng
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Check for videos
+        id: check_videos
+        run: |
+          video_count=$(find videos/ -type f \( -name '*.mp4' -o -name '*.mov' \) | wc -l)
+          echo "count=$video_count" >> $GITHUB_OUTPUT
+          echo "Found $video_count video(s)"
+          if [ "$video_count" -eq 0 ]; then
+            echo "No videos found. Skipping extraction."
+          fi
 
       - name: Extract video data
+        if: steps.check_videos.outputs.count > 0
         run: |
+          FPS="${{ github.event.inputs.fps || '6' }}"
+          SCENE="${{ github.event.inputs.scene_detect || 'true' }}"
+          THRESH="${{ github.event.inputs.scene_threshold || '0.3' }}"
           mkdir -p data
           for video in videos/*.mp4 videos/*.mov; do
-            [ -e "$video" ] || continue
-            echo "Processing $video ..."
-            base=$(basename "$video" | sed 's/[^a-zA-Z0-9]/_/g')
-            python pogo_extract.py \
-              --video "$video" \
-              --out "data/pokemon_${base}.csv" \
-              --fps 6 \
-              --scene-detect \
-              --format csv
+            [ -f "$video" ] || continue
+            echo "Processing: $video"
+            if [ "$SCENE" = "true" ]; then
+              python pogo_extract.py --video "$video" --out data/pokemon.csv --scene-detect --scene-threshold "$THRESH"
+            else
+              python pogo_extract.py --video "$video" --out data/pokemon.csv --fps "$FPS"
+            fi
           done
-          # Merge all outputs into single pokemon.csv
-          cat data/pokemon_*.csv > data/pokemon.csv 2>/dev/null || true
-          rows=$(wc -l < data/pokemon.csv 2>/dev/null || echo 0)
-          echo "Total rows in data/pokemon.csv: $rows"
 
-      - name: Commit results
+      - name: Commit extracted data
+        if: steps.check_videos.outputs.count > 0
         run: |
-          git config user.email "action@github.com"
-          git config user.name "GitHub Action"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "Extract Pokémon data from video [skip ci]"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-extract Pokemon data from video [skip ci]"
+            git push
+          fi
