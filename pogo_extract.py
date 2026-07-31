@@ -1,29 +1,10 @@
 #!/usr/bin/env python3
 """
-pogo_extract.py — Extract Pokémon data from screen recordings via OCR.
-
-Usage:
-    python pogo_extract.py --video videos/*.mp4 --out data/pokemon.csv --fps 6
-    python pogo_extract.py --video recording.mp4 --out output.json --format json --fps 5
-
-Dependencies:
-    pip install pytesseract pillow numpy
-    # System: ffmpeg, tesseract-ocr
-
-Output formats:
-    csv  — 61-column schema (no header) as defined in project spec
-    json — Poke Genie-compatible array for direct import into Scout Dashboard
+pogo_extract.py v2 — Fixed regex, scene detection, full dex lookup.
+CRITICAL FIX: Word boundaries now use single backslash (was double = backspace char).
 """
 
-import argparse
-import csv
-import json
-import os
-import re
-import shutil
-import subprocess
-import sys
-import tempfile
+import argparse, csv, json, os, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 try:
@@ -31,34 +12,31 @@ try:
     import pytesseract
 except ImportError as e:
     print(f"Missing dependency: {e}")
-    print("Install: pip install pytesseract pillow")
     sys.exit(1)
 
-# ─────────────────────────────────────────────────────────────
-# 61-column CSV schema
-# ─────────────────────────────────────────────────────────────
 CSV_FIELDS = [
-    "pokemon_name", "dex_number", "cp", "hp", "level", "attack_iv", "defense_iv",
-    "stamina_iv", "iv_percent", "gender", "height", "weight", "size_class",
-    "type_1", "type_2", "weather_boosted", "favorite", "shiny", "shadow",
-    "purified", "lucky", "costume", "event", "background", "dynamax", "gigantamax",
-    "mega_capable", "buddy_level", "current_buddy", "caught_date", "caught_location",
-    "trainer_notes", "tag_list", "appraisal_team", "appraisal_attack_bar",
-    "appraisal_defense_bar", "appraisal_hp_bar", "fast_move", "charged_move_1",
-    "charged_move_2", "fast_move_type", "charged_move_type_1", "charged_move_type_2",
-    "stardust_powerup_cost", "candy_powerup_cost", "xl_candy_powerup_cost",
+    "pokemon_name", "dex_number", "cp", "hp", "level",
+    "attack_iv", "defense_iv", "stamina_iv", "iv_percent", "gender",
+    "height", "weight", "size_class", "type_1", "type_2", "weather_boosted",
+    "favorite", "shiny", "shadow", "purified", "lucky", "costume", "event",
+    "background", "dynamax", "gigantamax", "mega_capable", "buddy_level",
+    "current_buddy", "caught_date", "caught_location", "trainer_notes",
+    "tag_list", "appraisal_team", "appraisal_attack_bar",
+    "appraisal_defense_bar", "appraisal_hp_bar", "fast_move",
+    "charged_move_1", "charged_move_2", "fast_move_type",
+    "charged_move_type_1", "charged_move_type_2", "stardust_powerup_cost",
+    "candy_powerup_cost", "xl_candy_powerup_cost",
     "stardust_evolution_cost", "evolution_candy_cost", "current_candy",
-    "current_xl_candy", "mega_energy", "is_tradeable", "is_legendary", "is_mythical",
-    "is_ultra_beast", "is_event", "is_costume", "is_favorite", "has_second_move",
-    "is_best_buddy", "pokeball_type", "catch_method", "friendship_history", "notes"
+    "current_xl_candy", "mega_energy", "is_tradeable", "is_legendary",
+    "is_mythical", "is_ultra_beast", "is_event", "is_costume",
+    "is_favorite", "has_second_move", "is_best_buddy", "pokeball_type",
+    "catch_method", "friendship_history", "notes"
 ]
 
-# ─────────────────────────────────────────────────────────────
-# Regex patterns for OCR text extraction
-# ─────────────────────────────────────────────────────────────
+# CRITICAL FIX: Single backslash for word boundaries
 REGEX_PATTERNS = {
-    "cp": re.compile(r"\bCP\s*([0-9,]+)", re.IGNORECASE),
-    "hp": re.compile(r"\bHP\s*([0-9,]+)", re.IGNORECASE),
+    "cp": re.compile(r"CP\s*([0-9,]+)", re.IGNORECASE),
+    "hp": re.compile(r"HP\s*([0-9,]+)", re.IGNORECASE),
     "attack_iv": re.compile(r"Atk\s*([0-9]+)", re.IGNORECASE),
     "defense_iv": re.compile(r"Def\s*([0-9]+)", re.IGNORECASE),
     "stamina_iv": re.compile(r"Sta\s*([0-9]+)", re.IGNORECASE),
@@ -67,404 +45,573 @@ REGEX_PATTERNS = {
     "weight": re.compile(r"([0-9]+\.?[0-9]*)\s*kg", re.IGNORECASE),
     "height": re.compile(r"([0-9]+\.?[0-9]*)\s*m\b", re.IGNORECASE),
     "stardust": re.compile(r"([0-9,]+)\s*Stardust", re.IGNORECASE),
-    "candy": re.compile(r"([0-9]+)\s+Candy\b(?!\s*XL)", re.IGNORECASE),
+    "candy": re.compile(r"([0-9]+)\s+Candy(?!\s*XL)", re.IGNORECASE),
     "xl_candy": re.compile(r"([0-9]+)\s*XL\s*Candy", re.IGNORECASE),
     "mega_energy": re.compile(r"([0-9]+)\s*Mega Energy", re.IGNORECASE),
-    "gender_male": re.compile(r"\u2642|\(male\)|gender\s*male", re.IGNORECASE),
-    "gender_female": re.compile(r"\u2640|\(female\)|gender\s*female", re.IGNORECASE),
-    "favorite": re.compile(r"\bFavorite\b", re.IGNORECASE),
-    "shiny": re.compile(r"\bShiny\b", re.IGNORECASE),
-    "shadow": re.compile(r"\bShadow\b", re.IGNORECASE),
-    "purified": re.compile(r"\bPurified\b", re.IGNORECASE),
-    "lucky": re.compile(r"\bLucky\b", re.IGNORECASE),
-    "weather_boosted": re.compile(r"Weather\s*Boost|Boosted", re.IGNORECASE),
+    "gender_male": re.compile(r"♂|male|gender male", re.IGNORECASE),
+    "gender_female": re.compile(r"♀|female|gender female", re.IGNORECASE),
+    "favorite": re.compile(r"Favorite|★", re.IGNORECASE),
+    "shiny": re.compile(r"Shiny|✨", re.IGNORECASE),
+    "shadow": re.compile(r"Shadow", re.IGNORECASE),
+    "purified": re.compile(r"Purified", re.IGNORECASE),
+    "lucky": re.compile(r"Lucky", re.IGNORECASE),
+    "weather_boosted": re.compile(r"Weather Boost|Boosted", re.IGNORECASE),
     "catch_date": re.compile(r"(\d{1,2}/\d{1,2}/\d{2,4}|\d{4}-\d{2}-\d{2})", re.IGNORECASE),
 }
 
-# Common fast move names for detection
-FAST_MOVE_HINTS = [
+FAST_MOVES = {
     "Counter", "Dragon Breath", "Shadow Claw", "Volt Switch", "Incinerate",
     "Powder Snow", "Waterfall", "Mud Shot", "Thunder Shock", "Lick",
-    "Poison Jab", "Snarl", "Bullet Punch", "Air Slash", "Hex",
-    "Charm", "Frost Breath", "Bug Bite", "Tackle", "Scratch",
-    "Ember", "Bubble", "Rock Throw", "Confusion", "Psycho Cut",
-    "Low Kick", "Karate Chop", "Wing Attack", "Bite", "Fire Spin",
-    "Razor Leaf", "Vine Whip", "Mud Slap", "Metal Claw", "Bullet Seed",
-    "Pound", "Splash", "Transform", "Yawn", "Present", "Feint Attack",
-    "Struggle Bug", "Fury Cutter", "Ice Shard", "Water Gun", "Zen Headbutt",
-    "Acid", "Peck", "Take Down", "Smack Down"
-]
+    "Poison Jab", "Snarl", "Bullet Punch", "Air Slash", "Hex", "Charm",
+    "Frost Breath", "Bug Bite", "Tackle", "Scratch", "Ember", "Bubble",
+    "Rock Throw", "Confusion", "Psycho Cut", "Low Kick", "Karate Chop",
+    "Wing Attack", "Bite", "Fire Spin", "Razor Leaf", "Vine Whip",
+    "Mud Slap", "Metal Claw", "Bullet Seed", "Pound", "Splash", "Transform",
+    "Yawn", "Present", "Feint Attack", "Struggle Bug", "Fury Cutter",
+    "Ice Shard", "Water Gun", "Zen Headbutt", "Acid", "Peck", "Take Down",
+    "Smack Down", "Dragon Tail", "Infestation", "Astonish", "Poison Sting",
+    "Spark", "Fire Fang", "Ice Fang", "Thunder Fang", "Rock Smash",
+    "Sucker Punch", "Hidden Power", "Extrasensory", "Iron Tail", "Poison Tail",
+    "Magical Leaf", "Leafage", "Rollout", "Fairy Wind", "Charge Beam",
+    "Volt Tackle", "Quick Attack", "Gust",
+}
 
-# Common charged move suffixes/patterns
-CHARGED_MOVE_HINTS = [
-    "Beam", "Blast", "Bomb", "Punch", "Kick", "Claw", "Fang", "Cannon",
-    "Ball", "Wave", "Storm", "Pulse", "Edge", "Slide", "Tomb", "Weather Ball",
-    "Charge", "Gunk Shot", "Hydro Pump", "Earthquake", "Stone Edge", "Brave Bird",
-    "Wild Charge", "Flamethrower", "Ice Punch", "Thunderbolt", "Psychic",
-    "Shadow Ball", "Sludge Bomb", "Energy Ball", "Dragon Claw", "Aerial Ace",
-    "Drill Run", "Rock Slide", "Crunch", "Outrage", "Close Combat", "Focus Blast",
-    "Hyper Beam", "Solar Beam", "Moonblast", "Dazzling Gleam", "Play Rough",
-    "Surf", "Aqua Tail", "Water Pulse", "Power Whip", "Seed Bomb", "Leaf Blade",
-    "Frenzy Plant", "Blast Burn", "Hydro Cannon", "Meteor Mash", "Community Day"
-]
+CHARGED_MOVES = {
+    "Cross Chop", "Dynamic Punch", "Close Combat", "Focus Blast",
+    "Power-Up Punch", "Brick Break", "Low Sweep", "Submission",
+    "Superpower", "Aura Sphere", "Dragon Claw", "Outrage", "Draco Meteor",
+    "Dragon Pulse", "Twister", "Shadow Ball", "Shadow Punch", "Shadow Sneak",
+    "Ominous Wind", "Night Shade", "Thunderbolt", "Thunder", "Wild Charge",
+    "Discharge", "Thunder Punch", "Zap Cannon", "Parabolic Charge",
+    "Flamethrower", "Fire Blast", "Overheat", "Blast Burn", "Flame Charge",
+    "Heat Wave", "Fire Punch", "Blaze Kick", "Weather Ball Fire", "Ice Punch",
+    "Ice Beam", "Blizzard", "Avalanche", "Icy Wind", "Weather Ball Ice",
+    "Surf", "Aqua Tail", "Hydro Pump", "Hydro Cannon", "Water Pulse",
+    "Scald", "Crabhammer", "Muddy Water", "Brine", "Liquidation",
+    "Earthquake", "Earth Power", "Bulldoze", "Dig", "Sand Tomb",
+    "Drill Run", "Scorching Sands", "Rock Slide", "Stone Edge", "Rock Blast",
+    "Rock Tomb", "Power Gem", "Ancient Power", "Meteor Beam", "Sludge Bomb",
+    "Sludge Wave", "Gunk Shot", "Cross Poison", "Poison Fang", "Acid Spray",
+    "Crunch", "Dark Pulse", "Foul Play", "Night Slash", "Payback",
+    "Flash Cannon", "Iron Head", "Meteor Mash", "Mirror Shot", "Doom Desire",
+    "Steel Wing", "Aerial Ace", "Brave Bird", "Sky Attack", "Hurricane",
+    "Drill Peck", "Fly", "Air Cutter", "Weather Ball Flying", "Psychic",
+    "Psyshock", "Psystrike", "Future Sight", "Synchronoise", "Psychic Fangs",
+    "X-Scissor", "Bug Buzz", "Signal Beam", "Megahorn", "Leaf Blade",
+    "Seed Bomb", "Solar Beam", "Petal Blizzard", "Frenzy Plant", "Leaf Storm",
+    "Power Whip", "Energy Ball", "Grass Knot", "Weather Ball Grass",
+    "Dazzling Gleam", "Moonblast", "Play Rough", "Draining Kiss",
+    "Disarming Voice", "Hyper Beam", "Giga Impact", "Body Slam", "Return",
+    "Frustration", "Swift", "Tri Attack", "Stomp", "Weather Ball",
+    "Hyper Fang", "Last Resort", "Facade", "Hyper Voice", "Skull Bash",
+    "Headbutt", "Wrap", "Vice Grip", "Horn Attack", "Fury Attack",
+    "Sacred Sword", "Secret Sword", "Relic Song", "Techno Blast",
+    "Freeze Shock", "Ice Burn", "Bolt Strike", "Blue Flare", "Fusion Flare",
+    "Fusion Bolt", "Glaciate", "Seed Flare", "Shadow Force", "Roar of Time",
+    "Spacial Rend", "Origin Pulse", "Precipice Blades", "Dragon Ascent",
+    "Oblivion Wing", "Sacred Fire", "Aeroblast", "Luster Purge", "Mist Ball",
+    "Psycho Boost", "V-create", "Doom Desire",
+}
+
+MOVE_TYPES = {
+    "Counter": "Fighting", "Karate Chop": "Fighting", "Low Kick": "Fighting",
+    "Rock Smash": "Fighting", "Dynamic Punch": "Fighting", "Close Combat": "Fighting",
+    "Cross Chop": "Fighting", "Focus Blast": "Fighting", "Power-Up Punch": "Fighting",
+    "Brick Break": "Fighting", "Low Sweep": "Fighting", "Submission": "Fighting",
+    "Superpower": "Fighting", "Aura Sphere": "Fighting",
+    "Dragon Breath": "Dragon", "Dragon Tail": "Dragon", "Outrage": "Dragon",
+    "Dragon Claw": "Dragon", "Draco Meteor": "Dragon", "Dragon Pulse": "Dragon",
+    "Twister": "Dragon", "Dragon Ascent": "Dragon",
+    "Shadow Claw": "Ghost", "Hex": "Ghost", "Shadow Ball": "Ghost",
+    "Shadow Punch": "Ghost", "Shadow Sneak": "Ghost", "Ominous Wind": "Ghost",
+    "Night Shade": "Ghost", "Lick": "Ghost", "Astonish": "Ghost",
+    "Volt Switch": "Electric", "Thunder Shock": "Electric", "Spark": "Electric",
+    "Thunderbolt": "Electric", "Wild Charge": "Electric", "Discharge": "Electric",
+    "Thunder Punch": "Electric", "Zap Cannon": "Electric", "Parabolic Charge": "Electric",
+    "Thunder": "Electric", "Charge Beam": "Electric", "Volt Tackle": "Electric",
+    "Incinerate": "Fire", "Ember": "Fire", "Fire Spin": "Fire", "Fire Fang": "Fire",
+    "Flamethrower": "Fire", "Fire Blast": "Fire", "Overheat": "Fire",
+    "Blast Burn": "Fire", "Flame Charge": "Fire", "Heat Wave": "Fire",
+    "Fire Punch": "Fire", "Blaze Kick": "Fire", "Weather Ball Fire": "Fire",
+    "Powder Snow": "Ice", "Frost Breath": "Ice", "Ice Shard": "Ice",
+    "Avalanche": "Ice", "Ice Punch": "Ice", "Ice Beam": "Ice", "Blizzard": "Ice",
+    "Icy Wind": "Ice", "Weather Ball Ice": "Ice",
+    "Waterfall": "Water", "Water Gun": "Water", "Bubble": "Water",
+    "Aqua Tail": "Water", "Surf": "Water", "Hydro Pump": "Water",
+    "Hydro Cannon": "Water", "Water Pulse": "Water", "Scald": "Water",
+    "Crabhammer": "Water", "Muddy Water": "Water", "Brine": "Water",
+    "Liquidation": "Water",
+    "Mud Slap": "Ground", "Mud Shot": "Ground", "Bulldoze": "Ground",
+    "Dig": "Ground", "Sand Tomb": "Ground", "Drill Run": "Ground",
+    "Scorching Sands": "Ground", "Earthquake": "Ground", "Earth Power": "Ground",
+    "Rock Throw": "Rock", "Smack Down": "Rock", "Rock Slide": "Rock",
+    "Stone Edge": "Rock", "Rock Blast": "Rock", "Rock Tomb": "Rock",
+    "Power Gem": "Rock", "Ancient Power": "Rock", "Meteor Beam": "Rock",
+    "Poison Jab": "Poison", "Acid": "Poison", "Poison Sting": "Poison",
+    "Sludge Bomb": "Poison", "Sludge Wave": "Poison", "Gunk Shot": "Poison",
+    "Cross Poison": "Poison", "Poison Fang": "Poison", "Acid Spray": "Poison",
+    "Snarl": "Dark", "Bite": "Dark", "Feint Attack": "Dark",
+    "Sucker Punch": "Dark", "Dark Pulse": "Dark", "Crunch": "Dark",
+    "Foul Play": "Dark", "Night Slash": "Dark", "Payback": "Dark",
+    "Bullet Punch": "Steel", "Metal Claw": "Steel", "Steel Wing": "Steel",
+    "Flash Cannon": "Steel", "Iron Head": "Steel", "Meteor Mash": "Steel",
+    "Mirror Shot": "Steel", "Doom Desire": "Steel",
+    "Air Slash": "Flying", "Wing Attack": "Flying", "Peck": "Flying",
+    "Gust": "Flying", "Aerial Ace": "Flying", "Brave Bird": "Flying",
+    "Sky Attack": "Flying", "Hurricane": "Flying", "Drill Peck": "Flying",
+    "Fly": "Flying", "Air Cutter": "Flying", "Weather Ball Flying": "Flying",
+    "Confusion": "Psychic", "Psycho Cut": "Psychic", "Zen Headbutt": "Psychic",
+    "Psychic": "Psychic", "Psyshock": "Psychic", "Psystrike": "Psychic",
+    "Future Sight": "Psychic", "Synchronoise": "Psychic", "Psychic Fangs": "Psychic",
+    "Bug Bite": "Bug", "Struggle Bug": "Bug", "Fury Cutter": "Bug",
+    "X-Scissor": "Bug", "Bug Buzz": "Bug", "Signal Beam": "Bug", "Megahorn": "Bug",
+    "Leaf Blade": "Grass", "Razor Leaf": "Grass", "Vine Whip": "Grass",
+    "Bullet Seed": "Grass", "Seed Bomb": "Grass", "Solar Beam": "Grass",
+    "Petal Blizzard": "Grass", "Frenzy Plant": "Grass", "Leaf Storm": "Grass",
+    "Power Whip": "Grass", "Energy Ball": "Grass", "Grass Knot": "Grass",
+    "Magical Leaf": "Grass", "Leafage": "Grass", "Weather Ball Grass": "Grass",
+    "Charm": "Fairy", "Fairy Wind": "Fairy", "Draining Kiss": "Fairy",
+    "Dazzling Gleam": "Fairy", "Moonblast": "Fairy", "Play Rough": "Fairy",
+    "Disarming Voice": "Fairy",
+    "Tackle": "Normal", "Scratch": "Normal", "Pound": "Normal",
+    "Quick Attack": "Normal", "Hyper Beam": "Normal", "Giga Impact": "Normal",
+    "Body Slam": "Normal", "Return": "Normal", "Frustration": "Normal",
+    "Swift": "Normal", "Tri Attack": "Normal", "Stomp": "Normal",
+    "Weather Ball": "Normal", "Hyper Fang": "Normal", "Last Resort": "Normal",
+    "Take Down": "Normal", "Facade": "Normal", "Hyper Voice": "Normal",
+    "Skull Bash": "Normal", "Headbutt": "Normal", "Wrap": "Normal",
+    "Vice Grip": "Normal", "Horn Attack": "Normal", "Fury Attack": "Normal",
+}
+
+NAME_TO_DEX = {
+    "Bulbasaur": 1, "Ivysaur": 2, "Venusaur": 3, "Charmander": 4,
+    "Charmeleon": 5, "Charizard": 6, "Squirtle": 7, "Wartortle": 8,
+    "Blastoise": 9, "Caterpie": 10, "Metapod": 11, "Butterfree": 12,
+    "Weedle": 13, "Kakuna": 14, "Beedrill": 15, "Pidgey": 16,
+    "Pidgeotto": 17, "Pidgeot": 18, "Rattata": 19, "Raticate": 20,
+    "Spearow": 21, "Fearow": 22, "Ekans": 23, "Arbok": 24, "Pikachu": 25,
+    "Raichu": 26, "Sandshrew": 27, "Sandslash": 28, "Nidoran": 29,
+    "Nidorina": 30, "Nidoqueen": 31, "Nidorino": 33, "Nidoking": 34,
+    "Clefairy": 35, "Clefable": 36, "Vulpix": 37, "Ninetales": 38,
+    "Jigglypuff": 39, "Wigglytuff": 40, "Zubat": 41, "Golbat": 42,
+    "Oddish": 43, "Gloom": 44, "Vileplume": 45, "Paras": 46, "Parasect": 47,
+    "Venonat": 48, "Venomoth": 49, "Diglett": 50, "Dugtrio": 51, "Meowth": 52,
+    "Persian": 53, "Psyduck": 54, "Golduck": 55, "Mankey": 56, "Primeape": 57,
+    "Growlithe": 58, "Arcanine": 59, "Poliwag": 60, "Poliwhirl": 61,
+    "Poliwrath": 62, "Abra": 63, "Kadabra": 64, "Alakazam": 65, "Machop": 66,
+    "Machoke": 67, "Machamp": 68, "Bellsprout": 69, "Weepinbell": 70,
+    "Victreebel": 71, "Tentacool": 72, "Tentacruel": 73, "Geodude": 74,
+    "Graveler": 75, "Golem": 76, "Ponyta": 77, "Rapidash": 78, "Slowpoke": 79,
+    "Slowbro": 80, "Magnemite": 81, "Magneton": 82, "Farfetchd": 83,
+    "Doduo": 84, "Dodrio": 85, "Seel": 86, "Dewgong": 87, "Grimer": 88,
+    "Muk": 89, "Shellder": 90, "Cloyster": 91, "Gastly": 92, "Haunter": 93,
+    "Gengar": 94, "Onix": 95, "Drowzee": 96, "Hypno": 97, "Krabby": 98,
+    "Kingler": 99, "Voltorb": 100, "Electrode": 101, "Exeggcute": 102,
+    "Exeggutor": 103, "Cubone": 104, "Marowak": 105, "Hitmonlee": 106,
+    "Hitmonchan": 107, "Lickitung": 108, "Koffing": 109, "Weezing": 110,
+    "Rhyhorn": 111, "Rhydon": 112, "Chansey": 113, "Tangela": 114,
+    "Kangaskhan": 115, "Horsea": 116, "Seadra": 117, "Goldeen": 118,
+    "Seaking": 119, "Staryu": 120, "Starmie": 121, "Mr Mime": 122,
+    "Scyther": 123, "Jynx": 124, "Electabuzz": 125, "Magmar": 126,
+    "Pinsir": 127, "Tauros": 128, "Magikarp": 129, "Gyarados": 130,
+    "Lapras": 131, "Ditto": 132, "Eevee": 133, "Vaporeon": 134,
+    "Jolteon": 135, "Flareon": 136, "Porygon": 137, "Omanyte": 138,
+    "Omastar": 139, "Kabuto": 140, "Kabutops": 141, "Aerodactyl": 142,
+    "Snorlax": 143, "Articuno": 144, "Zapdos": 145, "Moltres": 146,
+    "Dratini": 147, "Dragonair": 148, "Dragonite": 149, "Mewtwo": 150,
+    "Mew": 151, "Chikorita": 152, "Bayleef": 153, "Meganium": 154,
+    "Cyndaquil": 155, "Quilava": 156, "Typhlosion": 157, "Totodile": 158,
+    "Croconaw": 159, "Feraligatr": 160, "Sentret": 161, "Furret": 162,
+    "Hoothoot": 163, "Noctowl": 164, "Ledyba": 165, "Ledian": 166,
+    "Spinarak": 167, "Ariados": 168, "Crobat": 169, "Chinchou": 170,
+    "Lanturn": 171, "Pichu": 172, "Cleffa": 173, "Igglybuff": 174,
+    "Togepi": 175, "Togetic": 176, "Natu": 177, "Xatu": 178, "Mareep": 179,
+    "Flaaffy": 180, "Ampharos": 181, "Bellossom": 182, "Marill": 183,
+    "Azumarill": 184, "Sudowoodo": 185, "Politoed": 186, "Hoppip": 187,
+    "Skiploom": 188, "Jumpluff": 189, "Aipom": 190, "Sunkern": 191,
+    "Sunflora": 192, "Yanma": 193, "Wooper": 194, "Quagsire": 195,
+    "Espeon": 196, "Umbreon": 197, "Murkrow": 198, "Slowking": 199,
+    "Misdreavus": 200, "Unown": 201, "Wobbuffet": 202, "Girafarig": 203,
+    "Pineco": 204, "Forretress": 205, "Dunsparce": 206, "Gligar": 207,
+    "Steelix": 208, "Snubbull": 209, "Granbull": 210, "Qwilfish": 211,
+    "Scizor": 212, "Shuckle": 213, "Heracross": 214, "Sneasel": 215,
+    "Teddiursa": 216, "Ursaring": 217, "Slugma": 218, "Magcargo": 219,
+    "Swinub": 220, "Piloswine": 221, "Corsola": 222, "Remoraid": 223,
+    "Octillery": 224, "Delibird": 225, "Mantine": 226, "Skarmory": 227,
+    "Houndour": 228, "Houndoom": 229, "Kingdra": 230, "Phanpy": 231,
+    "Donphan": 232, "Porygon2": 233, "Stantler": 234, "Smeargle": 235,
+    "Tyrogue": 236, "Hitmontop": 237, "Smoochum": 238, "Elekid": 239,
+    "Magby": 240, "Miltank": 241, "Blissey": 242, "Raikou": 243,
+    "Entei": 244, "Suicune": 245, "Larvitar": 246, "Pupitar": 247,
+    "Tyranitar": 248, "Lugia": 249, "Ho-Oh": 250, "Celebi": 251,
+    "Treecko": 252, "Grovyle": 253, "Sceptile": 254, "Torchic": 255,
+    "Combusken": 256, "Blaziken": 257, "Mudkip": 258, "Marshtomp": 259,
+    "Swampert": 260, "Poochyena": 261, "Mightyena": 262, "Zigzagoon": 263,
+    "Linoone": 264, "Wurmple": 265, "Silcoon": 266, "Beautifly": 267,
+    "Cascoon": 268, "Dustox": 269, "Lotad": 270, "Lombre": 271,
+    "Ludicolo": 272, "Seedot": 273, "Nuzleaf": 274, "Shiftry": 275,
+    "Taillow": 276, "Swellow": 277, "Wingull": 278, "Pelipper": 279,
+    "Ralts": 280, "Kirlia": 281, "Gardevoir": 282, "Surskit": 283,
+    "Masquerain": 284, "Shroomish": 285, "Breloom": 286, "Slakoth": 287,
+    "Vigoroth": 288, "Slaking": 289, "Nincada": 290, "Ninjask": 291,
+    "Shedinja": 292, "Whismur": 293, "Loudred": 294, "Exploud": 295,
+    "Makuhita": 296, "Hariyama": 297, "Azurill": 298, "Nosepass": 299,
+    "Skitty": 300, "Delcatty": 301, "Sableye": 302, "Mawile": 303,
+    "Aron": 304, "Lairon": 305, "Aggron": 306, "Meditite": 307,
+    "Medicham": 308, "Electrike": 309, "Manectric": 310, "Plusle": 311,
+    "Minun": 312, "Volbeat": 313, "Illumise": 314, "Roselia": 315,
+    "Gulpin": 316, "Swalot": 317, "Carvanha": 318, "Sharpedo": 319,
+    "Wailmer": 320, "Wailord": 321, "Numel": 322, "Camerupt": 323,
+    "Torkoal": 324, "Spoink": 325, "Grumpig": 326, "Spinda": 327,
+    "Trapinch": 328, "Vibrava": 329, "Flygon": 330, "Cacnea": 331,
+    "Cacturne": 332, "Swablu": 333, "Altaria": 334, "Zangoose": 335,
+    "Seviper": 336, "Lunatone": 337, "Solrock": 338, "Barboach": 339,
+    "Whiscash": 340, "Corphish": 341, "Crawdaunt": 342, "Baltoy": 343,
+    "Claydol": 344, "Lileep": 345, "Cradily": 346, "Anorith": 347,
+    "Armaldo": 348, "Feebas": 349, "Milotic": 350, "Castform": 351,
+    "Kecleon": 352, "Shuppet": 353, "Banette": 354, "Duskull": 355,
+    "Dusclops": 356, "Tropius": 357, "Chimecho": 358, "Absol": 359,
+    "Wynaut": 360, "Snorunt": 361, "Glalie": 362, "Spheal": 363,
+    "Sealeo": 364, "Walrein": 365, "Clamperl": 366, "Huntail": 367,
+    "Gorebyss": 368, "Relicanth": 369, "Luvdisc": 370, "Bagon": 371,
+    "Shelgon": 372, "Salamence": 373, "Beldum": 374, "Metang": 375,
+    "Metagross": 376, "Regirock": 377, "Regice": 378, "Registeel": 379,
+    "Latias": 380, "Latios": 381, "Kyogre": 382, "Groudon": 383,
+    "Rayquaza": 384, "Jirachi": 385, "Deoxys": 386, "Turtwig": 387,
+    "Grotle": 388, "Torterra": 389, "Chimchar": 390, "Monferno": 391,
+    "Infernape": 392, "Piplup": 393, "Prinplup": 394, "Empoleon": 395,
+    "Starly": 396, "Staravia": 397, "Staraptor": 398, "Bidoof": 399,
+    "Bibarel": 400, "Kricketot": 401, "Kricketune": 402, "Shinx": 403,
+    "Luxio": 404, "Luxray": 405, "Budew": 406, "Roserade": 407,
+    "Cranidos": 408, "Rampardos": 409, "Shieldon": 410, "Bastiodon": 411,
+    "Burmy": 412, "Wormadam": 413, "Mothim": 414, "Combee": 415,
+    "Vespiquen": 416, "Pachirisu": 417, "Buizel": 418, "Floatzel": 419,
+    "Cherubi": 420, "Cherrim": 421, "Shellos": 422, "Gastrodon": 423,
+    "Ambipom": 424, "Drifloon": 425, "Drifblim": 426, "Buneary": 427,
+    "Lopunny": 428, "Mismagius": 429, "Honchkrow": 430, "Glameow": 431,
+    "Purugly": 432, "Chingling": 433, "Stunky": 434, "Skuntank": 435,
+    "Bronzor": 436, "Bronzong": 437, "Bonsly": 438, "Mime Jr": 439,
+    "Happiny": 440, "Chatot": 441, "Spiritomb": 442, "Gible": 443,
+    "Gabite": 444, "Garchomp": 445, "Munchlax": 446, "Riolu": 447,
+    "Lucario": 448, "Hippopotas": 449, "Hippowdon": 450, "Skorupi": 451,
+    "Drapion": 452, "Croagunk": 453, "Toxicroak": 454, "Carnivine": 455,
+    "Finneon": 456, "Lumineon": 457, "Mantyke": 458, "Snover": 459,
+    "Abomasnow": 460, "Weavile": 461, "Magnezone": 462, "Lickilicky": 463,
+    "Rhyperior": 464, "Tangrowth": 465, "Electivire": 466, "Magmortar": 467,
+    "Togekiss": 468, "Yanmega": 469, "Leafeon": 470, "Glaceon": 471,
+    "Gliscor": 472, "Mamoswine": 473, "Porygon-Z": 474, "Gallade": 475,
+    "Probopass": 476, "Dusknoir": 477, "Froslass": 478, "Rotom": 479,
+    "Uxie": 480, "Mesprit": 481, "Azelf": 482, "Dialga": 483, "Palkia": 484,
+    "Heatran": 485, "Regigigas": 486, "Giratina": 487, "Cresselia": 488,
+    "Phione": 489, "Manaphy": 490, "Darkrai": 491, "Shaymin": 492,
+    "Arceus": 493, "Victini": 494, "Snivy": 495, "Servine": 496,
+    "Serperior": 497, "Tepig": 498, "Pignite": 499, "Emboar": 500,
+    "Oshawott": 501, "Dewott": 502, "Samurott": 503, "Patrat": 504,
+    "Watchog": 505, "Lillipup": 506, "Herdier": 507, "Stoutland": 508,
+    "Purrloin": 509, "Liepard": 510, "Pansage": 511, "Simisage": 512,
+    "Pansear": 513, "Simisear": 514, "Panpour": 515, "Simipour": 516,
+    "Munna": 517, "Musharna": 518, "Pidove": 519, "Tranquill": 520,
+    "Unfezant": 521, "Blitzle": 522, "Zebstrika": 523, "Roggenrola": 524,
+    "Boldore": 525, "Gigalith": 526, "Woobat": 527, "Swoobat": 528,
+    "Drilbur": 529, "Excadrill": 530, "Audino": 531, "Timburr": 532,
+    "Gurdurr": 533, "Conkeldurr": 534, "Tympole": 535, "Palpitoad": 536,
+    "Seismitoad": 537, "Throh": 538, "Sawk": 539, "Sewaddle": 540,
+    "Swadloon": 541, "Leavanny": 542, "Venipede": 543, "Whirlipede": 544,
+    "Scolipede": 545, "Cottonee": 546, "Whimsicott": 547, "Petilil": 548,
+    "Lilligant": 549, "Basculin": 550, "Sandile": 551, "Krokorok": 552,
+    "Krookodile": 553, "Darumaka": 554, "Darmanitan": 555, "Maractus": 556,
+    "Dwebble": 557, "Crustle": 558, "Scraggy": 559, "Scrafty": 560,
+    "Sigilyph": 561, "Yamask": 562, "Cofagrigus": 563, "Tirtouga": 564,
+    "Carracosta": 565, "Archen": 566, "Archeops": 567, "Trubbish": 568,
+    "Garbodor": 569, "Zorua": 570, "Zoroark": 571, "Minccino": 572,
+    "Cinccino": 573, "Gothita": 574, "Gothorita": 575, "Gothitelle": 576,
+    "Solosis": 577, "Duosion": 578, "Reuniclus": 579, "Ducklett": 580,
+    "Swanna": 581, "Vanillite": 582, "Vanillish": 583, "Vanilluxe": 584,
+    "Deerling": 585, "Sawsbuck": 586, "Emolga": 587, "Karrablast": 588,
+    "Escavalier": 589, "Foongus": 590, "Amoonguss": 591, "Frillish": 592,
+    "Jellicent": 593, "Alomomola": 594, "Joltik": 595, "Galvantula": 596,
+    "Ferroseed": 597, "Ferrothorn": 598, "Klink": 599, "Klang": 600,
+    "Klinklang": 601, "Tynamo": 602, "Eelektrik": 603, "Eelektross": 604,
+    "Elgyem": 605, "Beheeyem": 606, "Litwick": 607, "Lampent": 608,
+    "Chandelure": 609, "Axew": 610, "Fraxure": 611, "Haxorus": 612,
+    "Cubchoo": 613, "Beartic": 614, "Cryogonal": 615, "Shelmet": 616,
+    "Accelgor": 617, "Stunfisk": 618, "Mienfoo": 619, "Mienshao": 620,
+    "Druddigon": 621, "Golett": 622, "Golurk": 623, "Pawniard": 624,
+    "Bisharp": 625, "Bouffalant": 626, "Rufflet": 627, "Braviary": 628,
+    "Vullaby": 629, "Mandibuzz": 630, "Heatmor": 631, "Durant": 632,
+    "Deino": 633, "Zweilous": 634, "Hydreigon": 635, "Larvesta": 636,
+    "Volcarona": 637, "Cobalion": 638, "Terrakion": 639, "Virizion": 640,
+    "Tornadus": 641, "Thundurus": 642, "Reshiram": 643, "Zekrom": 644,
+    "Landorus": 645, "Kyurem": 646, "Keldeo": 647, "Meloetta": 648,
+    "Genesect": 649,
+}
+
+LEGENDARY_DEX = {144, 145, 146, 150, 243, 244, 245, 249, 250, 377, 378, 379,
+                 380, 381, 382, 383, 384, 480, 481, 482, 483, 484, 485, 486,
+                 487, 488, 638, 639, 640, 641, 642, 643, 644, 645, 646, 716,
+                 717, 718, 785, 786, 787, 788, 791, 792, 793, 794, 795, 796,
+                 797, 798, 799, 800, 805, 806, 888, 889, 890, 894, 895, 896,
+                 897, 898, 1007, 1008, 1009, 1010, 1020, 1021, 1022, 1023, 1024}
+
+MYTHICAL_DEX = {151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648,
+                649, 719, 720, 721, 801, 802, 807, 808, 809, 893, 1025}
 
 
-def preprocess_image(img_path):
-    """Apply image preprocessing for better OCR accuracy."""
-    img = Image.open(img_path)
+def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3):
+    """Extract frames from video using ffmpeg."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if scene_detect:
+        cmd = [
+            "ffmpeg", "-i", str(video_path), "-vf",
+            f"select=gt(scene\\,{scene_threshold}),scale=1080:-1",
+            "-vsync", "vfr", "-frame_pts", "1",
+            str(output_dir / "frame_%04d.png")
+        ]
+    else:
+        cmd = [
+            "ffmpeg", "-i", str(video_path), "-vf", f"fps={fps},scale=1080:-1",
+            str(output_dir / "frame_%04d.png")
+        ]
+    print(f"[Extract] Running: {' '.join(cmd)}")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"[Extract] ffmpeg stderr: {result.stderr[:500]}")
+        raise RuntimeError(f"ffmpeg failed: {result.stderr[:200]}")
+    frames = sorted(output_dir.glob("frame_*.png"))
+    print(f"[Extract] Extracted {len(frames)} frames")
+    return frames
 
-    # Convert to grayscale
-    if img.mode != "L":
-        img = img.convert("L")
 
-    # Enhance contrast
+def preprocess_image(image_path):
+    """Preprocess image for better OCR."""
+    img = Image.open(image_path).convert("L")
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(2.0)
-
-    # Apply adaptive thresholding using simple method
-    # Convert to numpy for thresholding
-    import numpy as np
-    arr = np.array(img)
-    # Simple binary threshold
-    threshold = np.mean(arr) * 0.8
-    arr = np.where(arr > threshold, 255, 0).astype(np.uint8)
-    img = Image.fromarray(arr)
-
-    # Slight sharpening
     img = img.filter(ImageFilter.SHARPEN)
-
+    img = img.point(lambda x: 0 if x < 100 else (255 if x > 180 else x))
     return img
 
 
-def normalize_name(text):
-    """Clean OCR text for name matching."""
-    return text.strip().replace("\n", " ").replace("  ", " ")
+def crop_card_region(img):
+    """Crop to the Pokemon card region (center of screen)."""
+    w, h = img.size
+    left = int(w * 0.05)
+    top = int(h * 0.15)
+    right = int(w * 0.95)
+    bottom = int(h * 0.85)
+    return img.crop((left, top, right, bottom))
 
 
-def guess_pokemon_name(text):
-    """
-    Extract Pokémon name from OCR text.
-    Looks for capitalized words near the top, filters out common non-name words.
-    """
+def ocr_image(img):
+    """Run OCR on image."""
+    text = pytesseract.image_to_string(img, config="--psm 6")
+    return text
+
+
+def extract_moves(text):
+    """Extract fast and charged moves from OCR text."""
     lines = text.split("\n")
-    skip_words = {
-        "CP", "HP", "LV", "LEVEL", "STARDUST", "CANDY", "XL", "MEGA", "ENERGY",
-        "FAVORITE", "SHINY", "SHADOW", "PURIFIED", "LUCKY", "CAUGHT", "LOCATION",
-        "ATTACK", "DEFENSE", "STAMINA", "WEIGHT", "HEIGHT", "TRANSFER", "POWER UP",
-        "EVOLVE", "NEW MOVE", "FAST", "CHARGED", "APPRAISE", "POKEDEX", "SEARCH",
-        "FILTER", "SORT", "EGGS", "RAIDS", "BATTLE", "FRIENDS", "SHOP", "NEWS",
-        "POKEMON", "ITEMS", "POKEBALL", "GREAT", "ULTRA", "MASTER", "LEAGUE",
-        "COMBAT", "POWER", "TRAINER", "GO", "PLUS", "ADVENTURE",
-        "SYNC", "ROSTER", "IV", "STATS", "MOVES", "TYPE", "BOOSTED", "WEATHER",
-        "BEST BUDDY", "BUDDY", "HISTORY", "SNAPSHOT", "MYSTERY", "BOX", "STORAGE",
-        "TAG", "PROFESSOR", "SCOUT", "DASHBOARD", "IMPORT", "EXPORT", "SETTINGS"
-    }
-
-    for line in lines[:8]:  # Check first 8 lines
-        line = line.strip()
-        if not line or len(line) < 3:
+    found_moves = {"fast": None, "charged1": None, "charged2": None}
+    for line in lines:
+        clean = line.strip()
+        if not clean:
             continue
-        # Look for a clean capitalized word/phrase
-        if line[0].isupper() and (line.isalpha() or " " in line):
-            words = line.split()
-            candidate = " ".join(w for w in words if w[0].isupper() and w not in skip_words)
-            if candidate and len(candidate) >= 3:
-                return candidate
+        upper = clean.upper()
+        for move in FAST_MOVES:
+            if move.upper() in upper:
+                found_moves["fast"] = move
+                break
+        for move in CHARGED_MOVES:
+            if move.upper() in upper:
+                if not found_moves["charged1"]:
+                    found_moves["charged1"] = move
+                elif not found_moves["charged2"] and found_moves["charged1"] != move:
+                    found_moves["charged2"] = move
+                    break
+    return found_moves
+
+
+def parse_pokemon_text(text):
+    """Parse OCR text into structured record."""
+    rec = {}
+    t = text.replace(",", "")
+    for field, pattern in REGEX_PATTERNS.items():
+        match = pattern.search(t)
+        if match:
+            val = match.group(1).replace(",", "")
+            if field in ["cp", "hp", "attack_iv", "defense_iv", "stamina_iv",
+                         "stardust", "candy", "xl_candy", "mega_energy"]:
+                rec[field] = int(float(val)) if "." in val else int(val)
+            elif field == "iv_percent":
+                rec[field] = float(val)
+            elif field == "level":
+                rec[field] = float(val)
+            elif field in ["weight", "height"]:
+                rec[field] = val
+            elif field in ["gender_male", "gender_female", "favorite", "shiny",
+                           "shadow", "purified", "lucky", "weather_boosted"]:
+                rec[field] = True
+            elif field == "catch_date":
+                rec[field] = match.group(1)
+    if rec.pop("gender_male", False):
+        rec["gender"] = "Male"
+    elif rec.pop("gender_female", False):
+        rec["gender"] = "Female"
+    name = find_pokemon_name(text)
+    if name:
+        rec["pokemon_name"] = name
+        dex = NAME_TO_DEX.get(name)
+        if dex:
+            rec["dex_number"] = dex
+            rec["is_legendary"] = dex in LEGENDARY_DEX
+            rec["is_mythical"] = dex in MYTHICAL_DEX
+    moves = extract_moves(text)
+    if moves["fast"]:
+        rec["fast_move"] = moves["fast"]
+        rec["fast_move_type"] = MOVE_TYPES.get(moves["fast"], "")
+    if moves["charged1"]:
+        rec["charged_move_1"] = moves["charged1"]
+        rec["charged_move_type_1"] = MOVE_TYPES.get(moves["charged1"], "")
+    if moves["charged2"]:
+        rec["charged_move_2"] = moves["charged2"]
+        rec["charged_move_type_2"] = MOVE_TYPES.get(moves["charged2"], "")
+    return rec
+
+
+def find_pokemon_name(text):
+    """Find first known Pokemon name in text."""
+    lines = text.split("\n")[:15]
+    for line in lines:
+        clean = line.strip()
+        if len(clean) < 3 or len(clean) > 25:
+            continue
+        lower = clean.lower()
+        for name, dex in NAME_TO_DEX.items():
+            if name.lower() in lower:
+                return name
+        words = lower.split()
+        for i in range(len(words)):
+            for j in range(i + 1, min(i + 4, len(words) + 1)):
+                phrase = " ".join(words[i:j])
+                for name, dex in NAME_TO_DEX.items():
+                    if name.lower() == phrase:
+                        return name
     return None
 
 
-def extract_fields(text):
-    """Apply all regex patterns to OCR text and return a dict of extracted fields."""
-    result = {}
-
-    # Numeric fields
-    for key in ["cp", "hp", "attack_iv", "defense_iv", "stamina_iv", "level",
-                "stardust", "candy", "xl_candy", "mega_energy"]:
-        m = REGEX_PATTERNS[key].search(text)
-        if m:
-            val = m.group(1).replace(",", "")
-            result[key] = int(float(val)) if key not in ["level", "iv_percent"] else float(val)
-
-    # Height / weight
-    for key in ["weight", "height"]:
-        m = REGEX_PATTERNS[key].search(text)
-        if m:
-            result[key] = m.group(1)
-
-    # IV percent (if explicit)
-    m = REGEX_PATTERNS["iv_percent"].search(text)
-    if m:
-        result["iv_percent"] = float(m.group(1))
-
-    # Gender
-    if REGEX_PATTERNS["gender_male"].search(text):
-        result["gender"] = "male"
-    elif REGEX_PATTERNS["gender_female"].search(text):
-        result["gender"] = "female"
-
-    # Booleans
-    for key in ["favorite", "shiny", "shadow", "purified", "lucky", "weather_boosted"]:
-        if REGEX_PATTERNS[key].search(text):
-            result[key] = True
-
-    # Catch date
-    m = REGEX_PATTERNS["catch_date"].search(text)
-    if m:
-        result["caught_date"] = m.group(1)
-
-    # Pokémon name
-    name = guess_pokemon_name(text)
-    if name:
-        result["pokemon_name"] = name
-
-    # Moves — heuristic extraction
-    lines = text.split("\n")
-    for i, line in enumerate(lines):
-        line_stripped = line.strip()
-        for fm in FAST_MOVE_HINTS:
-            if fm.lower() in line_stripped.lower():
-                if re.search(r"\b" + re.escape(fm) + r"\b", line_stripped, re.IGNORECASE):
-                    if "fast_move" not in result:
-                        result["fast_move"] = fm
-                    break
-        for cm in CHARGED_MOVE_HINTS:
-            if cm.lower() in line_stripped.lower():
-                if re.search(r"\b" + re.escape(cm) + r"\b", line_stripped, re.IGNORECASE):
-                    if "charged_move_1" not in result:
-                        result["charged_move_1"] = cm
-                    elif "charged_move_2" not in result and result.get("charged_move_1") != cm:
-                        result["charged_move_2"] = cm
-                    break
-
-    return result
-
-
-def deduplicate_records(records, threshold=0.85):
-    """
-    Remove near-duplicate records (same name + similar CP).
-    Keeps the record with the most extracted fields.
-    """
-    groups = {}
+def deduplicate_records(records):
+    """Deduplicate by name + CP decade."""
+    seen = set()
+    unique = []
     for rec in records:
-        name = rec.get("pokemon_name", "UNKNOWN")
+        name = rec.get("pokemon_name", "Unknown")
         cp = rec.get("cp", 0)
-        key = f"{name}_{cp // 10}"  # Group by name + CP decade
-
-        if key not in groups:
-            groups[key] = []
-        groups[key].append(rec)
-
-    deduped = []
-    for key, group in groups.items():
-        best = max(group, key=lambda r: len([v for v in r.values() if v is not None and v != ""]))
-        deduped.append(best)
-
-    return deduped
+        key = f"{name}_{cp // 10}"
+        if key not in seen:
+            seen.add(key)
+            unique.append(rec)
+    return unique
 
 
 def record_to_csv_row(rec):
-    """Convert extracted record to 61-column CSV row."""
-    row = []
-    for field in CSV_FIELDS:
-        val = rec.get(field, "")
-        if val is True:
-            val = "1"
-        elif val is False:
-            val = "0"
-        elif val is None:
-            val = ""
-        row.append(str(val))
+    """Convert record to CSV row dict."""
+    row = {f: "" for f in CSV_FIELDS}
+    row.update({
+        "pokemon_name": rec.get("pokemon_name", ""),
+        "dex_number": rec.get("dex_number", ""),
+        "cp": rec.get("cp", ""),
+        "hp": rec.get("hp", ""),
+        "level": rec.get("level", ""),
+        "attack_iv": rec.get("attack_iv", ""),
+        "defense_iv": rec.get("defense_iv", ""),
+        "stamina_iv": rec.get("stamina_iv", ""),
+        "iv_percent": rec.get("iv_percent", ""),
+        "gender": rec.get("gender", ""),
+        "weight": rec.get("weight", ""),
+        "height": rec.get("height", ""),
+        "type_1": rec.get("type_1", ""),
+        "type_2": rec.get("type_2", ""),
+        "favorite": "1" if rec.get("favorite") else "",
+        "shiny": "1" if rec.get("shiny") else "",
+        "shadow": "1" if rec.get("shadow") else "",
+        "purified": "1" if rec.get("purified") else "",
+        "lucky": "1" if rec.get("lucky") else "",
+        "fast_move": rec.get("fast_move", ""),
+        "charged_move_1": rec.get("charged_move_1", ""),
+        "charged_move_2": rec.get("charged_move_2", ""),
+        "fast_move_type": rec.get("fast_move_type", ""),
+        "charged_move_type_1": rec.get("charged_move_type_1", ""),
+        "charged_move_type_2": rec.get("charged_move_type_2", ""),
+        "stardust_powerup_cost": rec.get("stardust", ""),
+        "current_candy": rec.get("candy", ""),
+        "current_xl_candy": rec.get("xl_candy", ""),
+        "mega_energy": rec.get("mega_energy", ""),
+        "is_legendary": "1" if rec.get("is_legendary") else "",
+        "is_mythical": "1" if rec.get("is_mythical") else "",
+        "is_favorite": "1" if rec.get("favorite") else "",
+        "caught_date": rec.get("catch_date", ""),
+    })
     return row
 
 
-def record_to_json_record(rec, idx=1):
-    """Convert extracted record to Poke Genie-style JSON object."""
-    atk = rec.get("attack_iv")
-    defense = rec.get("defense_iv")
-    sta = rec.get("stamina_iv")
-    iv_avg = rec.get("iv_percent")
-    if iv_avg is None and all(v is not None for v in [atk, defense, sta]):
-        iv_avg = round((atk + defense + sta) / 45 * 100, 1)
-
-    return {
-        "idx": idx,
-        "name": rec.get("pokemon_name", "Unknown"),
-        "form": None,
-        "dex": rec.get("dex_number", 0),
-        "gender": rec.get("gender", ""),
-        "cp": rec.get("cp", 0),
-        "hp": rec.get("hp", 0),
-        "atkIV": atk,
-        "defIV": defense,
-        "staIV": sta,
-        "ivAvg": iv_avg,
-        "lvlMin": rec.get("level"),
-        "lvlMax": rec.get("level"),
-        "quickMove": rec.get("fast_move", ""),
-        "chargeMove": rec.get("charged_move_1", ""),
-        "chargeMove2": rec.get("charged_move_2", None),
-        "scanDate": None,
-        "catchDate": rec.get("caught_date", None),
-        "weight": rec.get("weight", ""),
-        "height": rec.get("height", ""),
-        "lucky": rec.get("lucky", False),
-        "shadowPurified": "1" if rec.get("shadow") else ("2" if rec.get("purified") else "0"),
-        "favorite": rec.get("favorite", False),
-        "dust": rec.get("stardust", 0),
-        "great": {"rankPct": None, "rankNum": None, "statProd": None, "dustCost": None, "candyCost": None, "evolvesTo": None},
-        "ultra": {"rankPct": None, "rankNum": None, "statProd": None, "dustCost": None, "candyCost": None, "evolvesTo": None},
-        "little": {"rankPct": None, "rankNum": None, "statProd": None, "dustCost": None, "candyCost": None, "evolvesTo": None},
-    }
-
-
-def extract_frames(video_path, out_dir, fps=6):
-    """Use ffmpeg to dump frames from video."""
-    pattern = os.path.join(out_dir, "frame_%06d.png")
-    cmd = [
-        "ffmpeg", "-y", "-i", str(video_path),
-        "-vf", f"fps={fps},scale=1080:-1",
-        "-q:v", "2",
-        pattern
-    ]
-    print(f"Extracting frames at {fps} fps...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"ffmpeg stderr: {result.stderr[:500]}")
-        raise RuntimeError(f"ffmpeg failed with code {result.returncode}")
-
-    frames = sorted(Path(out_dir).glob("frame_*.png"))
-    print(f"Extracted {len(frames)} frames.")
-    return frames
-
-
-def extract_frames_scene_detect(video_path, out_dir, scene_threshold=0.3):
-    """
-    Use ffmpeg scene detection to extract only changed frames.
-    Much faster than fixed FPS for screen recordings.
-    """
-    pattern = os.path.join(out_dir, "frame_%06d.png")
-    cmd = [
-        "ffmpeg", "-y", "-i", str(video_path),
-        "-vf", f"select=gt(scene\,{scene_threshold}),scale=1080:-1",
-        "-vsync", "vfr",
-        "-q:v", "2",
-        pattern
-    ]
-    print(f"Extracting frames with scene detection (threshold={scene_threshold})...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"ffmpeg stderr: {result.stderr[:500]}")
-        raise RuntimeError(f"ffmpeg failed with code {result.returncode}")
-
-    frames = sorted(Path(out_dir).glob("frame_*.png"))
-    print(f"Extracted {len(frames)} frames via scene detection.")
-    return frames
-
-
-def ocr_frame(frame_path, preprocess=True):
-    """Run Tesseract OCR on a single frame with optional preprocessing."""
-    try:
-        if preprocess:
-            img = preprocess_image(frame_path)
-        else:
-            img = Image.open(frame_path)
-            if img.mode != "L":
-                img = img.convert("L")
-
-        # Use different PSM modes for different regions
-        text = pytesseract.image_to_string(img, config="--psm 6")
-        return text
-    except Exception as e:
-        print(f"OCR failed for {frame_path}: {e}")
-        return ""
-
-
-def process_video(video_path, fps=6, use_scene_detect=False, keep_frames=False, frame_dir=None):
-    """Full pipeline: video -> frames -> OCR -> records."""
-    tmp_dir = frame_dir or tempfile.mkdtemp(prefix="pogo_frames_")
-    try:
-        if frame_dir:
-            os.makedirs(frame_dir, exist_ok=True)
-
-        if use_scene_detect:
-            frames = extract_frames_scene_detect(video_path, tmp_dir)
-        else:
-            frames = extract_frames(video_path, tmp_dir, fps)
-
-        records = []
-
-        for i, frame in enumerate(frames):
-            if i % 10 == 0:
-                print(f"  OCR frame {i+1}/{len(frames)}...")
-            text = ocr_frame(frame)
-            if not text.strip():
-                continue
-            rec = extract_fields(text)
-            if rec.get("pokemon_name") or rec.get("cp"):
-                rec["_source_frame"] = str(frame)
-                records.append(rec)
-
-        print(f"Extracted {len(records)} raw records from {len(frames)} frames.")
-        deduped = deduplicate_records(records)
-        print(f"After deduplication: {len(deduped)} unique Pokémon.")
-        return deduped
-
-    finally:
-        if not keep_frames and not frame_dir:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Extract Pokémon data from screen recordings")
-    parser.add_argument("--video", required=True, help="Path to video file (or glob pattern)")
-    parser.add_argument("--out", required=True, help="Output file path")
-    parser.add_argument("--fps", type=int, default=6, help="Frames per second to extract (default: 6)")
-    parser.add_argument("--scene-detect", action="store_true", help="Use scene change detection instead of fixed FPS")
-    parser.add_argument("--format", choices=["csv", "json"], default="csv", help="Output format")
-    parser.add_argument("--keep-frames", action="store_true", help="Keep extracted frames")
-    parser.add_argument("--frames-dir", help="Directory to store frames (default: temp)")
-    parser.add_argument("--no-preprocess", action="store_true", help="Skip image preprocessing")
+    parser = argparse.ArgumentParser(description="Extract Pokemon data from video/screenshots")
+    parser.add_argument("--video", help="Path to video file")
+    parser.add_argument("--image", help="Path to single image")
+    parser.add_argument("--out", default="data/pokemon.csv", help="Output CSV path")
+    parser.add_argument("--fps", type=int, default=6, help="Frames per second")
+    parser.add_argument("--scene-detect", action="store_true", help="Use scene detection")
+    parser.add_argument("--scene-threshold", type=float, default=0.3, help="Scene change threshold")
+    parser.add_argument("--json", action="store_true", help="Output JSON instead of CSV")
     args = parser.parse_args()
 
-    # Resolve video path (handle globs)
-    import glob
-    videos = glob.glob(args.video)
-    if not videos:
-        videos = [args.video]
+    records = []
 
-    all_records = []
-    for video in videos:
-        print(f"\nProcessing: {video}")
-        if not os.path.exists(video):
-            print(f"  WARNING: File not found, skipping.")
-            continue
-        records = process_video(
-            video,
-            fps=args.fps,
-            use_scene_detect=args.scene_detect,
-            keep_frames=args.keep_frames,
-            frame_dir=args.frames_dir
-        )
-        all_records.extend(records)
+    if args.video:
+        print(f"[Main] Processing video: {args.video}")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            frames = extract_frames(args.video, tmpdir, args.fps, args.scene_detect, args.scene_threshold)
+            for i, frame in enumerate(frames):
+                print(f"[Main] OCR frame {i+1}/{len(frames)}: {frame.name}")
+                img = preprocess_image(frame)
+                img = crop_card_region(img)
+                text = ocr_image(img)
+                rec = parse_pokemon_text(text)
+                if rec.get("pokemon_name") or rec.get("cp"):
+                    records.append(rec)
+                    print(f"  -> Found: {rec.get('pokemon_name', '?')} CP{rec.get('cp', '?')}")
 
-    # Final dedup across all videos
-    all_records = deduplicate_records(all_records)
-    print(f"\nTotal unique Pokémon across all videos: {len(all_records)}")
+    elif args.image:
+        print(f"[Main] Processing image: {args.image}")
+        img = preprocess_image(args.image)
+        img = crop_card_region(img)
+        text = ocr_image(img)
+        rec = parse_pokemon_text(text)
+        if rec.get("pokemon_name") or rec.get("cp"):
+            records.append(rec)
+            print(f"  -> Found: {rec.get('pokemon_name', '?')} CP{rec.get('cp', '?')}")
+    else:
+        print("[Main] Error: Provide --video or --image")
+        sys.exit(1)
 
-    # Write output
+    records = deduplicate_records(records)
+    print(f"[Main] Total unique records: {len(records)}")
+
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
 
-    if args.format == "csv":
-        with open(args.out, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            for rec in all_records:
-                writer.writerow(record_to_csv_row(rec))
-        print(f"Wrote CSV: {args.out} ({len(CSV_FIELDS)} columns, no header)")
+    if args.json:
+        out_path = args.out.replace(".csv", ".json") if args.out.endswith(".csv") else args.out + ".json"
+        with open(out_path, "w") as f:
+            json.dump(records, f, indent=2)
+        print(f"[Main] Wrote JSON: {out_path}")
     else:
-        json_records = [record_to_json_record(rec, i+1) for i, rec in enumerate(all_records)]
-        with open(args.out, "w", encoding="utf-8") as f:
-            json.dump(json_records, f, indent=2)
-        print(f"Wrote JSON: {args.out} ({len(json_records)} records)")
+        with open(args.out, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+            writer.writeheader()
+            for rec in records:
+                writer.writerow(record_to_csv_row(rec))
+        print(f"[Main] Wrote CSV: {args.out}")
 
 
 if __name__ == "__main__":

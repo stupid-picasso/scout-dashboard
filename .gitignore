@@ -1,39 +1,41 @@
 # Build artifacts
 index.html
+*.bundle.js
+*.map
+.thumbnail
 
-# User data / generated (NEVER commit real scans)
+# User data (NEVER commit real scans)
+pokemon-data.js
+src/pokemon-data.js
 data/*.csv
 data/*.json
-!data/.gitkeep
+videos/*.mp4
+videos/*.mov
 
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
 venv/
-.env
-
-# Frame extraction temp
-frames_tmp/
-*.png
-*.jpg
-
-# Videos (use Git LFS if you must commit them)
-videos/*.mp4
-videos/*.mov
-!videos/.gitkeep
+.venv/
+pip-log.txt
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# Old repo artifacts
-.github/workflows/main.yml
-pokemon-data.js
-.thumbnail
+# Temp frames from OCR
+frames/
+tmp/
+temp/
