@@ -988,7 +988,7 @@ class Component extends DCLogic {
   }
 
   SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory'];
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -1144,10 +1144,16 @@ class Component extends DCLogic {
       checklistDate: remote.checklistDate || this.state.checklistDate,
       checklistDone: remote.checklistDone || {},
       resources: remote.resources || { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
-      megaEnergyInventory: remote.megaEnergyInventory || {}
+      megaEnergyInventory: remote.megaEnergyInventory || {},
+      // Only adopt a remote key when this device has none — a device that just
+      // had its storage cleared gets the key back, but a locally-entered key is
+      // never clobbered by a stale one from another device.
+      geminiKey: this.state.geminiKey || remote.geminiKey || '',
+      geminiKeyDraft: this.state.geminiKey || remote.geminiKey || this.state.geminiKeyDraft || ''
     };
     this.setState(patch, () => { this._applyingRemote = false; });
     try {
+      if (patch.geminiKey) localStorage.setItem('scout_gemini_key_v1', patch.geminiKey);
       localStorage.setItem('scout_roster_v1', JSON.stringify(patch.roster));
       localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(patch.ivOverrides));
       localStorage.setItem('scout_added_v1', JSON.stringify(patch.addedPokemon));
@@ -3286,6 +3292,7 @@ class Component extends DCLogic {
       hasGeminiKey: !!this.state.geminiKey,
       geminiStatusLine: this.state.geminiKey
         ? 'Gemini key saved — free tier: 1,500 requests/day, 10 per minute.'
+          + (this.state.cloudUser ? ' Synced to your account, so it survives a cache clear.' : '')
         : '',
       geminiBadge: this.state.customBaseUrl ? '· GATEWAY' : (this.state.geminiKey ? '· GEMINI' : (this.state.aiOutOfCredit ? '· NO CREDIT' : '· PUTER (FREE)')),
       customBaseDraft: this.state.customBaseDraft || '',
