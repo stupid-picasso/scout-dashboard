@@ -217,10 +217,13 @@
           </sc-if>
           <sc-if value="{{ videoImportSummary }}" hint-placeholder-val="{{ false }}">
             <div style="font:13px sans-serif;color:oklch(90% 0.02 280)">Done! Updated {{ videoImportSummary.updated }}, added {{ videoImportSummary.inserted }} new, from {{ videoImportSummary.total }} Pokemon read off the recording.</div>
+            <sc-if value="{{ videoPartialWarning }}" hint-placeholder-val="{{ false }}">
+              <div style="font:12px ui-monospace,monospace;color:oklch(78% 0.15 70);margin-top:6px">{{ videoPartialWarning }}</div>
+            </sc-if>
           </sc-if>
           <sc-if value="{{ videoFrameThumbs }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;flex-direction:column;gap:6px">
-              <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">FRAMES SENT TO CLAUDE (check these actually show your Pokemon)</div>
+              <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">{{ videoFrameLabel }}</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap">
                 <sc-for list="{{ videoFrameThumbs }}" as="thumb" hint-placeholder-count="0">
                   <img ref="{{ thumb.ref }}" style="width:76px;height:56px;object-fit:cover;border-radius:4px;border:1px solid oklch(35% 0.04 280);background:oklch(15% 0.01 260)" />
@@ -253,9 +256,10 @@
             <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">CANDY</div><input type="number" value="{{ ocrParsedDisplay.candy }}" onChange="{{ onOcrCandy }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
             <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">XL CANDY</div><input type="number" value="{{ ocrParsedDisplay.xlCandy }}" onChange="{{ onOcrXl }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
           </div>
-          <div style="display:flex;gap:8px;margin-top:4px">
-            <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.1 220);color:white;font:700 12px ui-monospace,monospace">SAVE CANDY/TYPE</div>
-            <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1;text-align:center;padding:9px;border-radius:6px;background:oklch(30% 0.03 260);color:oklch(80% 0.01 260);font:700 12px ui-monospace,monospace">CANCEL</div>
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.1 220);color:white;font:700 12px ui-monospace,monospace">SAVE CANDY/TYPE</div>
+            <div onClick="{{ addOcrAsNew }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:6px;background:oklch(42% 0.1 150);color:white;font:700 12px ui-monospace,monospace">ADD AS NEW POKEMON</div>
+            <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1 1 90px;text-align:center;padding:9px;border-radius:6px;background:oklch(30% 0.03 260);color:oklch(80% 0.01 260);font:700 12px ui-monospace,monospace">CANCEL</div>
           </div>
           <details style="margin-top:2px">
             <summary style="cursor:pointer;font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">Raw OCR text (debug)</summary>
@@ -836,7 +840,9 @@ class Component extends DCLogic {
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
       this.mechanics = mechanics;
       // Cloud base-stats overlay is applied from onAuthChange (auth isn't ready yet here).
-      this.setState({ roster: data || [], loaded: true });
+      // A locally-saved roster (OCR/CSV edits) wins over the bundled export.
+      const savedRoster = this.loadRoster();
+      this.setState({ roster: savedRoster || data || [], loaded: true });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
@@ -907,6 +913,15 @@ class Component extends DCLogic {
   }
 
   componentDidUpdate(prevProps, prevState) {
+    // Persist the roster locally whenever it changes (OCR, CSV, video, transfers).
+    // Single choke point so every mutation path survives a reload.
+    if (this.state.loaded && this.state.roster) {
+      const rosterSig = JSON.stringify(this.state.roster);
+      if (this._lastRosterSig !== undefined && rosterSig !== this._lastRosterSig) {
+        this.saveRoster(this.state.roster);
+      }
+      this._lastRosterSig = rosterSig;
+    }
     if (this._applyingRemote || !this.state.cloudUser) return;
     // The DC runtime calls componentDidUpdate(prevProps) only — prevState is never
     // passed, so the previous values are tracked on the instance instead.
@@ -1312,14 +1327,21 @@ class Component extends DCLogic {
     try { localStorage.setItem('scout_recommend_done_v1', JSON.stringify(arr)); } catch (e) {}
   }
 
-  async preprocessImage(dataUrl) {
+  // Mild contrast only. Hard binarization (gray > 150 ? 255 : 0) destroys the
+  // anti-aliased text Pokemon GO renders, which is what garbled CP/HP/candy.
+  async preprocessImage(fileOrDataUrl) {
+    const dataUrl = typeof fileOrDataUrl === 'string' ? fileOrDataUrl : await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(fileOrDataUrl);
+    });
     const img = await new Promise((resolve, reject) => {
       const im = new Image();
       im.onload = () => resolve(im);
       im.onerror = reject;
       im.src = dataUrl;
     });
-    const scale = img.width < 900 ? 2 : 1;
+    const scale = 2;
     const canvas = document.createElement('canvas');
     canvas.width = img.width * scale;
     canvas.height = img.height * scale;
@@ -1328,98 +1350,276 @@ class Component extends DCLogic {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.6 + 128));
-      d[i] = d[i + 1] = d[i + 2] = contrasted;
+      d[i] = Math.min(255, d[i] * 1.15);
+      d[i + 1] = Math.min(255, d[i + 1] * 1.15);
+      d[i + 2] = Math.min(255, d[i + 2] * 1.15);
     }
     ctx.putImageData(imgData, 0, 0);
-    return canvas.toDataURL('image/png');
+    return canvas;
   }
 
-  async cropTopRegion(dataUrl) {
-    const img = await new Promise((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = reject;
-      im.src = dataUrl;
-    });
-    const canvas = document.createElement('canvas');
-    const cropH = Math.round(img.height * 0.16);
-    canvas.width = img.width * 2;
-    canvas.height = cropH * 2;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, img.width, cropH, 0, 0, canvas.width, canvas.height);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const d = imgData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      const bw = gray > 150 ? 255 : 0;
-      d[i] = d[i + 1] = d[i + 2] = bw;
+  async loadTesseract() {
+    if (window.Tesseract) return window.Tesseract;
+    if (!window.__scoutTesseractPromise) {
+      window.__scoutTesseractPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        s.onload = () => resolve(window.Tesseract);
+        s.onerror = () => reject(new Error('Could not load the OCR engine \u2014 check your connection.'));
+        document.head.appendChild(s);
+      });
     }
-    ctx.putImageData(imgData, 0, 0);
-    return canvas.toDataURL('image/png');
+    return window.__scoutTesseractPromise;
+  }
+
+  // Single OCR pass. Tesseract.js v5 ignores tessedit_char_whitelist passed as a
+  // recognize() option (params need createWorker + setParameters), so a "digit
+  // pass" here was a byte-identical duplicate costing ~1.8s for nothing.
+  async runOCR(canvas) {
+    if (!window.Tesseract) await this.loadTesseract();
+    const result = await window.Tesseract.recognize(canvas, 'eng');
+    return (result && result.data && result.data.text) || '';
+  }
+
+  // Matches OCR text against the full DEX_NAMES table (all 1025 species) via
+  // mechanics.resolveDexByName — Tesseract reads species names far more reliably
+  // than numbers, so anchoring on the name is what makes the rest usable.
+  findPokemonName(text) {
+    const m = this.mechanics;
+    if (!m || !m.resolveDexByName) return null;
+    const lines = String(text).split('\n').slice(0, 20);
+    for (const line of lines) {
+      const clean = line.trim().replace(/[^A-Za-z0-9 '.\-]/g, '').trim();
+      if (clean.length < 3 || clean.length > 24) continue;
+      if (/^(CP|HP|XL|STARDUST|CANDY|WEIGHT|HEIGHT|POWER UP|EVOLVE|APPRAISE|TRANSFER)$/i.test(clean)) continue;
+      if (m.resolveDexByName(clean) != null) return this.capitalizeName(clean);
+      const words = clean.split(/\s+/);
+      for (let i = 0; i < words.length; i++) {
+        for (let j = i + 1; j <= Math.min(i + 3, words.length); j++) {
+          const phrase = words.slice(i, j).join(' ');
+          if (phrase.length < 3) continue;
+          if (m.resolveDexByName(phrase) != null) return this.capitalizeName(phrase);
+        }
+      }
+    }
+    return null;
+  }
+
+  capitalizeName(str) {
+    return String(str).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  lookupDexInfo(name) {
+    const info = {};
+    const m = this.mechanics;
+    if (!m || !name) return info;
+    const dex = m.resolveDexByName ? m.resolveDexByName(name) : null;
+    if (dex == null) return info;
+    info.dex_number = dex;
+    if (m.DEX_NAMES && m.DEX_NAMES[dex]) info.pokemon_name = m.DEX_NAMES[dex];
+    const base = m.BASE_STATS && m.BASE_STATS[dex];
+    if (base) {
+      if (base.type1) info.type_1 = base.type1;
+      if (base.type2) info.type_2 = base.type2;
+    }
+    return info;
+  }
+
+  // Builds a complete roster entry from OCR alone, so a brand-new Pokemon can be
+  // added without first matching an existing roster row by CP.
+  buildPokemonRecord(rec) {
+    const atk = Number.isFinite(rec.attack_iv) ? rec.attack_iv : null;
+    const def = Number.isFinite(rec.defense_iv) ? rec.defense_iv : null;
+    const sta = Number.isFinite(rec.stamina_iv) ? rec.stamina_iv : null;
+    const haveIvs = atk != null && def != null && sta != null;
+    const ivAvg = Number.isFinite(rec.iv_percent) ? rec.iv_percent
+      : (haveIvs ? Math.round((atk + def + sta) / 45 * 1000) / 10 : null);
+    const existing = this.state.roster || [];
+    return {
+      idx: 'ocr-' + Date.now() + '-' + existing.length,
+      name: rec.pokemon_name || 'Unknown',
+      form: rec.form || null,
+      dex: rec.dex_number || null,
+      gender: rec.gender || '',
+      cp: rec.cp || null,
+      hp: rec.hp || null,
+      atkIV: atk,
+      defIV: def,
+      staIV: sta,
+      ivAvg: ivAvg,
+      lvlMin: rec.level || null,
+      lvlMax: rec.level || null,
+      quickMove: rec.fast_move || '',
+      chargeMove: rec.charged_move_1 || '',
+      chargeMove2: rec.charged_move_2 || null,
+      scanDate: new Date().toISOString().split('T')[0],
+      catchDate: rec.caught_date || null,
+      weight: rec.weight || '',
+      height: rec.height || '',
+      lucky: rec.lucky || false,
+      shadowPurified: rec.shadow ? '1' : (rec.purified ? '2' : '0'),
+      favorite: rec.favorite || false,
+      dust: rec.stardust || null,
+      candy: rec.candy || null,
+      xlCandy: rec.xl_candy || null,
+      type1: rec.type_1 || '',
+      type2: rec.type_2 || '',
+      great: { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null },
+      ultra: { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null },
+      little: { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null }
+    };
+  }
+
+  saveRoster(roster) {
+    try {
+      localStorage.setItem('scout_roster_v1', JSON.stringify(roster));
+      localStorage.setItem('scout_roster_v1_ts', Date.now().toString());
+    } catch (e) {
+      if (e && e.name === 'QuotaExceededError') {
+        this.setState({ ocrError: 'Local storage is full \u2014 export your roster, then remove some Pokemon.' });
+      }
+    }
+  }
+
+  loadRoster() {
+    try {
+      const saved = localStorage.getItem('scout_roster_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  parsePokemonText(text) {
+    const rec = {};
+    const lines = String(text).split('\n').map(l => l.trim()).filter(Boolean);
+    const name = this.findPokemonName(text);
+    if (name) rec.pokemon_name = name;
+
+    const hpMatch = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i) || text.match(/HP\D{0,4}(\d{1,4})/i) || text.match(/(\d{1,4})\s*HP\b/i);
+    if (hpMatch) rec.hp = parseInt(hpMatch[1], 10);
+
+    const labeledCp = text.match(/CP\D{0,4}(\d{2,5})/i);
+    if (labeledCp) rec.cp = parseInt(labeledCp[1], 10);
+    if (rec.cp == null) {
+      const generic = (text.match(/\b\d{3,5}\b/g) || []).map(n => parseInt(n, 10)).find(n => n !== rec.hp);
+      if (generic != null) rec.cp = generic;
+    }
+
+    const xlMatch = text.match(/(\d{1,4})\D{0,15}CANDY\D{0,3}XL/i) || text.match(/XL\D{0,15}CANDY\D{0,5}(\d{1,4})/i)
+      || text.match(/CANDY\D{0,3}XL\D{0,5}(\d{1,4})/i) || text.match(/(\d{1,4})\D{0,10}XL\b/i);
+    if (xlMatch) rec.xl_candy = parseInt(xlMatch[1], 10);
+    const candyLine = lines.find(l => /CANDY/i.test(l) && !/XL/i.test(l) && /\d/.test(l));
+    if (candyLine) {
+      const cm = candyLine.match(/(\d+)/);
+      if (cm) rec.candy = parseInt(cm[1], 10);
+    } else {
+      const candyMatch = text.match(/(\d{1,4})\D{0,20}?CANDY(?!\D{0,3}XL)/i);
+      if (candyMatch) rec.candy = parseInt(candyMatch[1], 10);
+    }
+
+    const typePattern = /\b(Normal|Fire|Water|Grass|Electric|Ice|Fighting|Poison|Ground|Flying|Psychic|Bug|Rock|Ghost|Dragon|Dark|Steel|Fairy)\b/gi;
+    const types = [];
+    let tm;
+    while ((tm = typePattern.exec(text)) !== null) {
+      const t = tm[1].charAt(0).toUpperCase() + tm[1].slice(1).toLowerCase();
+      if (!types.includes(t)) types.push(t);
+    }
+    if (types.length) rec.type_1 = types[0];
+    if (types.length > 1) rec.type_2 = types[1];
+
+    const wt = text.match(/(\d+\.\d+)\s*kg/i);
+    if (wt) rec.weight = wt[1];
+    const ht = text.match(/(\d+\.\d+)\s*m\b/i);
+    if (ht) rec.height = ht[1];
+    const dust = text.match(/([\d,]+)\s*STARDUST/i);
+    if (dust) rec.stardust = parseInt(dust[1].replace(/,/g, ''), 10);
+
+    const atk = text.match(/Atk\D{0,3}(\d{1,2})/i);
+    const def = text.match(/Def\D{0,3}(\d{1,2})/i);
+    const sta = text.match(/Sta\D{0,3}(\d{1,2})/i);
+    if (atk) rec.attack_iv = parseInt(atk[1], 10);
+    if (def) rec.defense_iv = parseInt(def[1], 10);
+    if (sta) rec.stamina_iv = parseInt(sta[1], 10);
+    const lvl = text.match(/Level\D{0,3}(\d+\.?\d*)/i);
+    if (lvl) rec.level = parseFloat(lvl[1]);
+
+    if (/\bShadow\b/i.test(text)) rec.shadow = true;
+    if (/\bPurified\b/i.test(text)) rec.purified = true;
+    if (/\bLucky\b/i.test(text)) rec.lucky = true;
+    if (/\bShiny\b/i.test(text)) rec.shiny = true;
+    return rec;
   }
 
   async handleScreenshotUpload(file) {
     if (!file) return;
-    const dataUrl = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: dataUrl, ocrParsed: null });
+    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null });
     try {
-      const processed = await this.preprocessImage(dataUrl);
-      const cropTop = await this.cropTopRegion(dataUrl);
-      const [resultProcessed, resultRaw, resultTop] = await Promise.all([
-        Tesseract.recognize(processed, 'eng'),
-        Tesseract.recognize(dataUrl, 'eng'),
-        Tesseract.recognize(cropTop, 'eng', { tessedit_char_whitelist: 'CP0123456789' })
-      ]);
-      const text = (resultProcessed.data.text || '') + '\n' + (resultRaw.data.text || '') + '\n' + (resultTop.data.text || '');
-      const xlMatch = text.match(/(\d{1,4})\D{0,15}CANDY\D{0,3}XL/i) || text.match(/(\d{1,4})\D{0,15}XL/i)
-        || text.match(/XL\D{0,15}CANDY\D{0,3}(\d{1,4})/i) || text.match(/CANDY\D{0,3}XL\D{0,5}(\d{1,4})/i);
-      const candyMatch = text.match(/(\d{1,4})\D{0,20}?CANDY(?!\D{0,3}XL)/i);
-      const typeMatch = text.match(/\b([A-Z][A-Za-z]{3,10})\s*\/\s*([A-Z][A-Za-z]{3,10})\b/);
-      const singleTypeMatch = !typeMatch ? text.match(/\b(NORMAL|FIRE|WATER|GRASS|ELECTRIC|ICE|FIGHTING|POISON|GROUND|FLYING|PSYCHIC|BUG|ROCK|GHOST|DRAGON|DARK|STEEL|FAIRY)\b/i) : null;
-      const nameLines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      const nameGuess = nameLines.find(l => /^[A-Za-z][a-z]{2,}([ '.-][A-Za-z][a-z]+)*$/.test(l) && l.length > 2 && l.length < 20
-        && !/^(CP|HP|STARDUST|CANDY|WEIGHT|HEIGHT|POWER|CHANGE|FORM|GYMS|RAIDS|TRAINER|BATTLES|XL)$/i.test(l)) || '';
-      const hpMatch = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i);
-      const hpVal = hpMatch ? parseInt(hpMatch[1], 10) : null;
-      // Prefer the dedicated CP-crop scan (isolated to the CP badge) so the HP line's own
-      // digits never get mistaken for CP. Only fall back to whole-text scanning if that's empty,
-      // and when falling back, skip any number matching the HP value already found.
-      const topDigits = (resultTop.data.text || '').match(/(\d{2,5})/);
-      const labeledCpMatch = text.match(/CP\D{0,4}(\d{2,5})/i);
-      let cp = topDigits ? parseInt(topDigits[1], 10) : (labeledCpMatch ? parseInt(labeledCpMatch[1], 10) : null);
-      if (cp == null) {
-        const genericMatches = text.match(/\b\d{3,5}\b/g) || [];
-        const candidate = genericMatches.map(n => parseInt(n, 10)).find(n => n !== hpVal);
-        cp = candidate != null ? candidate : null;
+      const canvas = await this.preprocessImage(file);
+      this.setState({ ocrPreview: canvas.toDataURL('image/png') });
+
+      const text = await this.runOCR(canvas);
+
+      // Every field is anchored to its on-screen label. Unlabeled numbers are NOT
+      // guessed at — a wrong candy count is worse than a blank one.
+      let rec = this.parsePokemonText(text);
+      if (rec.pokemon_name) {
+        const dexInfo = this.lookupDexInfo(rec.pokemon_name);
+        rec = { ...dexInfo, ...rec, dex_number: rec.dex_number || dexInfo.dex_number,
+                type_1: rec.type_1 || dexInfo.type_1, type_2: rec.type_2 || dexInfo.type_2 };
       }
+
+      // Still try to match an existing roster row (keeps IV-solving working), but
+      // no longer require one — an unmatched read becomes a new record.
       const roster = this.state.roster || [];
-      const matched = roster.find(p => p.cp === cp && (!nameGuess || p.name.toLowerCase() === nameGuess.toLowerCase()))
-        || roster.find(p => p.cp === cp);
+      const nameLower = (rec.pokemon_name || '').toLowerCase();
+      const matched = roster.find(p => p.cp === rec.cp && nameLower && p.name.toLowerCase() === nameLower)
+        || roster.find(p => p.cp === rec.cp);
+
       this.setState({
         ocrBusy: false,
         ocrParsed: {
-          name: nameGuess || (matched ? matched.name : ''),
-          cp: cp,
-          dex: matched ? matched.dex : null,
+          name: rec.pokemon_name || (matched ? matched.name : ''),
+          cp: rec.cp != null ? rec.cp : (matched ? matched.cp : null),
+          dex: rec.dex_number || (matched ? matched.dex : null),
           matchedIdx: matched ? matched.idx : null,
           matchedName: matched ? matched.name : null,
           matchedForm: matched ? matched.form : null,
-          candy: candyMatch ? parseInt(candyMatch[1], 10) : null,
-          xlCandy: xlMatch ? parseInt(xlMatch[1], 10) : null,
-          hp: hpVal,
-          type: typeMatch ? `${typeMatch[1]} / ${typeMatch[2]}` : (singleTypeMatch ? singleTypeMatch[1] : ''),
+          candy: rec.candy != null ? rec.candy : null,
+          xlCandy: rec.xl_candy != null ? rec.xl_candy : null,
+          hp: rec.hp != null ? rec.hp : null,
+          atkIV: rec.attack_iv != null ? rec.attack_iv : null,
+          defIV: rec.defense_iv != null ? rec.defense_iv : null,
+          staIV: rec.stamina_iv != null ? rec.stamina_iv : null,
+          type: rec.type_1 ? (rec.type_2 ? rec.type_1 + ' / ' + rec.type_2 : rec.type_1) : '',
+          _rec: rec,
           rawText: text.slice(0, 1200)
         }
       });
     } catch (e) {
-      this.setState({ ocrBusy: false, ocrError: 'Could not read that screenshot. Try a clearer, uncropped capture.' });
+      this.setState({ ocrBusy: false, ocrError: (e && e.message) || 'Could not read that screenshot. Try a clearer, uncropped capture.' });
     }
+  }
+
+  // Adds the current OCR read as a brand-new roster entry — the escape hatch for
+  // "no roster match by CP", which previously dead-ended the import.
+  addOcrAsNew() {
+    const p = this.state.ocrParsed;
+    if (!p) return;
+    const rec = p._rec ? { ...p._rec } : {};
+    rec.pokemon_name = p.name || rec.pokemon_name;
+    rec.cp = p.cp != null ? p.cp : rec.cp;
+    rec.hp = p.hp != null ? p.hp : rec.hp;
+    rec.candy = p.candy != null ? p.candy : rec.candy;
+    rec.xl_candy = p.xlCandy != null ? p.xlCandy : rec.xl_candy;
+    rec.dex_number = p.dex || rec.dex_number;
+    if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
+    const mon = this.buildPokemonRecord(rec);
+    const nextRoster = [...(this.state.roster || []), mon];
+    this.saveRoster(nextRoster);
+    this.setState({ roster: nextRoster, ocrParsed: null, ocrPreview: null, ocrError: '' });
   }
 
   updateOcrField(field, value) {
@@ -1601,7 +1801,13 @@ class Component extends DCLogic {
     this.setState(s => ({ videoImport: { ...s.videoImport, stage, progress } }));
   }
 
-  async extractFrames(file, count) {
+  // Dense frame sampling + perceptual dedupe. A fixed small count (the old
+  // behaviour was 6 evenly-spread frames) misses most Pokemon in a pan: a 13s
+  // recording scrolling a collection only ever showed 2. Sample at `fps`, then
+  // drop frames that look near-identical to the last kept one (scroll pauses,
+  // duplicate frames) so the model sees many DISTINCT screens.
+  async extractFrames(file, opts) {
+    const cfg = Object.assign({ fps: 3, maxFrames: 32, minFrames: 6, width: 480, quality: 0.5, dedupeThreshold: 7.0 }, opts || {});
     const url = URL.createObjectURL(file);
     const video = document.createElement('video');
     video.muted = true;
@@ -1627,14 +1833,38 @@ class Component extends DCLogic {
     }
     const duration = video.duration || 1;
     const canvas = document.createElement('canvas');
-    const scale = Math.min(1, 360 / video.videoWidth);
+    const scale = Math.min(1, cfg.width / video.videoWidth);
     canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
     canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
     const ctx = canvas.getContext('2d');
+
+    // Small grayscale fingerprint used to tell frames apart.
+    const hashCanvas = document.createElement('canvas');
+    hashCanvas.width = 16; hashCanvas.height = 32;
+    const hashCtx = hashCanvas.getContext('2d');
+    const fingerprint = () => {
+      hashCtx.drawImage(canvas, 0, 0, 16, 32);
+      const d = hashCtx.getImageData(0, 0, 16, 32).data;
+      const out = new Uint8Array(512);
+      for (let p = 0, q = 0; p < d.length; p += 4, q++) {
+        out[q] = (d[p] * 299 + d[p + 1] * 587 + d[p + 2] * 114) / 1000;
+      }
+      return out;
+    };
+    const meanAbsDiff = (a, b) => {
+      let sum = 0;
+      for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]);
+      return sum / a.length;
+    };
+
+    const targetCount = Math.max(cfg.minFrames, Math.min(cfg.maxFrames, Math.ceil(duration * cfg.fps)));
     const frames = [];
+    let lastKept = null;
     let blackCount = 0;
-    for (let i = 0; i < count; i++) {
-      const t = Math.min(duration - 0.05, (duration * (i + 0.5)) / count);
+    let sampled = 0;
+
+    for (let i = 0; i < targetCount; i++) {
+      const t = Math.min(duration - 0.05, (duration * (i + 0.5)) / targetCount);
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => { video.removeEventListener('seeked', onSeeked); reject(new Error('Video seek timed out \u2014 this file may not be fully decodable in-browser. Re-export as MP4 (H.264) and try again.')); }, 8000);
         const onSeeked = () => { clearTimeout(timer); video.removeEventListener('seeked', onSeeked); resolve(); };
@@ -1643,17 +1873,31 @@ class Component extends DCLogic {
       });
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      sampled++;
+
       const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       let sum = 0;
       for (let p = 0; p < sample.length; p += 400) sum += sample[p];
-      if (sum === 0) blackCount++;
-      frames.push(canvas.toDataURL('image/jpeg', 0.5).split(',')[1]);
-      this.setVideoStage('extracting', Math.round(((i + 1) / count) * 100));
+      if (sum === 0) { blackCount++; continue; }
+
+      const fp = fingerprint();
+      // 7.0 mean-abs-diff on 0-255 grayscale ≈ "visibly different screen".
+      if (lastKept && meanAbsDiff(fp, lastKept) < cfg.dedupeThreshold) {
+        this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100));
+        continue;
+      }
+      lastKept = fp;
+      frames.push(canvas.toDataURL('image/jpeg', cfg.quality).split(',')[1]);
+      this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100));
     }
+
     URL.revokeObjectURL(url);
     video.remove();
-    if (blackCount === count) {
+    if (blackCount === sampled) {
       throw new Error('Every extracted frame came back black \u2014 this browser could not actually decode the video (common with HEVC .mov from iPhone). Re-export as MP4 (H.264) and try again.');
+    }
+    if (!frames.length) {
+      throw new Error('No usable frames came out of that recording. Re-export as MP4 (H.264) and try again.');
     }
     return frames;
   }
@@ -1665,7 +1909,7 @@ class Component extends DCLogic {
     this.setState({ videoImport: { stage: 'uploading', progress: 0, error: null, summary: null } });
     try {
       this.setVideoStage('uploading', 100);
-      const frames = await this.extractFrames(file, 6);
+      const frames = await this.extractFrames(file, { fps: 3, maxFrames: 32 });
       this._lastVideoFrames = frames;
       this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: frames } }));
       await this.runVideoPipeline(frames);
@@ -1690,28 +1934,76 @@ class Component extends DCLogic {
         + '{"name": string, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, "type": string|null, '
         + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
         + 'Only fill atkIV/defIV/staIV if exact numeric IV values (0-15) are visible on screen \u2014 never estimate from appraisal bars/stars. Use null for anything not clearly visible.';
-      let useFrames = frames;
-      while (useFrames.reduce((a, f) => a + f.length, 0) > 190000 && useFrames.length > 2) {
-        useFrames = useFrames.filter((f, i) => i % 2 === 0);
+
+      // Split into batches that each fit the request budget, instead of throwing
+      // frames away. Decimating to fit (the old behaviour) is what limited a
+      // whole recording to ~2 Pokemon.
+      const BUDGET = 180000;
+      const batches = [];
+      let current = [];
+      let currentSize = 0;
+      frames.forEach(f => {
+        if (current.length && currentSize + f.length > BUDGET) {
+          batches.push(current);
+          current = [];
+          currentSize = 0;
+        }
+        current.push(f);
+        currentSize += f.length;
+      });
+      if (current.length) batches.push(current);
+
+      const collected = [];
+      const rawReplies = [];
+      let failedBatches = 0;
+      for (let b = 0; b < batches.length; b++) {
+        const content = [
+          { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
+          ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
+        ];
+        let reply;
+        try {
+          reply = await this.completeWithRetry({ messages: [{ role: 'user', content }], max_tokens: 4000 });
+        } catch (err) {
+          // Keep whatever the other batches read — one overloaded call must not
+          // discard an entire multi-batch import.
+          failedBatches++;
+          this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95));
+          continue;
+        }
+        rawReplies.push(String(reply));
+        try {
+          const jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+          const arr = JSON.parse(jsonText);
+          if (Array.isArray(arr)) collected.push(...arr);
+        } catch (err) { /* keep going — other batches may still parse */ }
+        this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95));
       }
-      const content = [
-        { type: 'text', text: prompt },
-        ...useFrames.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
-      ];
-      const reply = await this.completeWithRetry({ messages: [{ role: 'user', content }], max_tokens: 4000 });
+
       clearInterval(this._videoReadingTimer);
       this.setVideoStage('reading', 100);
-      let parsed;
-      try {
-        const jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
-        parsed = JSON.parse(jsonText);
-      } catch (err) {
-        this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: String(reply).slice(0, 800) } }));
-        throw new Error('Could not parse what was read off that recording \u2014 try a slower pan across each screen.');
+
+      // Merge duplicate sightings across batches (same name + CP).
+      const seen = new Map();
+      collected.forEach(item => {
+        if (!item || !item.name) return;
+        const key = String(item.name).toLowerCase() + '|' + (item.cp == null ? '?' : item.cp);
+        const prev = seen.get(key);
+        if (!prev) { seen.set(key, { ...item }); return; }
+        // Prefer non-null values from whichever sighting had them.
+        Object.keys(item).forEach(k => {
+          if (prev[k] == null && item[k] != null) prev[k] = item[k];
+        });
+      });
+      const parsed = [...seen.values()];
+
+      if (!parsed.length) {
+        this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: rawReplies.join('\n---\n').slice(0, 800) } }));
+        throw new Error(failedBatches === batches.length
+          ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
+          : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.');
       }
-      if (!Array.isArray(parsed) || parsed.length === 0) {
-        this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: String(reply).slice(0, 800) } }));
-      }
+      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, frameCount: frames.length } }));
       this.setVideoStage('validating', 40);
       const mechanics = this.mechanics;
       const validated = (Array.isArray(parsed) ? parsed : []).map(item => {
@@ -2444,6 +2736,7 @@ class Component extends DCLogic {
       hasOcrPreview: !!this.state.ocrPreview,
       hasOcrParsed: !!ocrParsedDisplay,
       onScreenshotUpload: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.handleScreenshotUpload(f); },
+      addOcrAsNew: () => this.addOcrAsNew(),
       onOcrName: (e) => this.updateOcrField('name', e.target.value),
       onOcrCp: (e) => this.updateOcrField('cp', parseInt(e.target.value, 10) || null),
       onOcrCandy: (e) => this.updateOcrField('candy', parseInt(e.target.value, 10) || null),
@@ -2459,9 +2752,21 @@ class Component extends DCLogic {
       videoImportSteps: videoImportSteps,
       videoImportError: this.state.videoImport && this.state.videoImport.stage === 'error' ? this.state.videoImport.error : '',
       videoImportSummary: this.state.videoImport && this.state.videoImport.summary,
+      videoPartialWarning: (() => {
+        const vi = this.state.videoImport;
+        if (!vi || !vi.failedBatches) return '';
+        return `\u26a0 ${vi.failedBatches} of ${vi.batchCount} batches failed to read \u2014 re-run the import to fill the gaps.`;
+      })(),
       videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error')),
       videoFrameThumbs: (this.state.videoImport && this.state.videoImport.frameThumbs && this.state.videoImport.frameThumbs.length)
         ? this.state.videoImport.frameThumbs.map(f => ({ ref: this.makeSpriteRef('data:image/jpeg;base64,' + f) })) : null,
+      videoFrameLabel: (() => {
+        const vi = this.state.videoImport;
+        const n = (vi && vi.frameThumbs && vi.frameThumbs.length) || 0;
+        const b = vi && vi.batchCount;
+        return n + ' DISTINCT FRAMES READ' + (b ? ' \u00b7 ' + b + (b === 1 ? ' BATCH' : ' BATCHES') : '')
+          + ' (check these actually show your Pokemon)';
+      })(),
       videoRawReply: this.state.videoImport && this.state.videoImport.rawReply,
       dismissVideoImport: () => this.dismissVideoImport(),
       retryVideoImport: () => this.retryVideoImport(),
