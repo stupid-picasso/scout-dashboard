@@ -1,8 +1,16 @@
 // Sample Pokémon data for demo/testing
 // Replace this with your real Poke Genie export via IMPORT CSV
 // NEVER commit real scan data to git
+//
+// Loaded as a CLASSIC script from index.html's helmet. The DC helmet lifecycle
+// can re-append this <script src> on re-mount, which re-executes the file — so
+// the body is wrapped in a guarded IIFE. A top-level `const` here would throw
+// "Identifier 'SAMPLE_POKEMON' has already been declared" on the second pass
+// and kill the seeding logic below it.
+(function () {
+  if (window.SAMPLE_POKEMON) return; // already ran this page load — no-op
 
-const SAMPLE_POKEMON = [
+  var SAMPLE_POKEMON = [
   {
     "idx": 1,
     "name": "Dragonite",
@@ -150,10 +158,11 @@ const SAMPLE_POKEMON = [
   }
 ];
 
-// Export for DC runtime
-if (typeof window !== 'undefined') {
-  window.POKEMON_DATA = SAMPLE_POKEMON;
-  window.dispatchEvent(new CustomEvent('scout-data-ready'));
-}
+  window.SAMPLE_POKEMON = SAMPLE_POKEMON;
 
-export default SAMPLE_POKEMON;
+  // Only seed if real scan data (pokemon-data.js) hasn't already loaded.
+  if (!window.POKEMON_DATA || !window.POKEMON_DATA.length) {
+    window.POKEMON_DATA = SAMPLE_POKEMON;
+    window.dispatchEvent(new CustomEvent('scout-data-ready'));
+  }
+})();
