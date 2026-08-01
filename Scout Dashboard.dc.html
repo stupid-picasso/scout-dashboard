@@ -1988,27 +1988,29 @@ class Component extends DCLogic {
       : ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     let lastErr = null;
     for (const model of candidates) {
-      const buildConfig = (withThinking) => {
+      const buildConfig = (extras) => {
+        // Minimal, maximally-compatible config. responseMimeType and
+        // thinkingConfig are both model-dependent and each can trigger a bare
+        // 400 INVALID_ARGUMENT, so they are only added on the second attempt.
         const cfg = {
-          responseMimeType: 'application/json',
           maxOutputTokens: Math.max(body.max_tokens || 2048, 4096),
           temperature: 0
         };
-        if (withThinking) cfg.thinkingConfig = { thinkingBudget: 0 };
+        if (extras) {
+          cfg.responseMimeType = 'application/json';
+          cfg.thinkingConfig = { thinkingBudget: 0 };
+        }
         return cfg;
       };
-      const post = (withThinking) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+      const post = (extras) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(withThinking) })
+        body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras) })
       });
-      let res = await post(true);
+      let res = await post(false);
       if (res.status === 400) {
-        // Retry without thinkingConfig on ANY 400. Gemini 3 models (which
-        // `gemini-flash-latest` now aliases) reject thinkingBudget: 0 with a
-        // generic "Request contains an invalid argument" that never mentions
-        // thinking, so matching on the word missed the real failure.
-        res = await post(false);
+        // Some models need the JSON mime type to return parseable output.
+        res = await post(true);
       }
       if (res.ok) {
         const data = await res.json();
@@ -2039,11 +2041,15 @@ class Component extends DCLogic {
       // 400/404 = this model won't serve the request (bad alias, unsupported
       // arg, not enabled on the key) — try the next candidate rather than
       // giving up on Gemini entirely.
-      lastErr = new Error('Gemini ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
+      lastErr = new Error('[' + this.GEMINI_REQ_VERSION + '] Gemini ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
       if (res.status !== 404 && res.status !== 400) throw lastErr;
     }
     throw lastErr || new Error('No Gemini model available for this key.');
   }
+
+  // Bump on every change to callGemini's request shape, so a stale cached build
+  // is identifiable from the error text alone.
+  get GEMINI_REQ_VERSION() { return 'g3'; }
 
   // OpenAI-compatible chat/completions with vision. Works with OmniRoute,
   // OpenRouter, Groq, LM Studio, or any gateway exposing /v1/chat/completions.
