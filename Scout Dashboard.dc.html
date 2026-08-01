@@ -2004,9 +2004,11 @@ class Component extends DCLogic {
       });
       let res = await post(true);
       if (res.status === 400) {
-        // Older models reject thinkingConfig outright — retry without it.
-        const peek = await res.clone().text().catch(() => '');
-        if (/thinking/i.test(peek)) res = await post(false);
+        // Retry without thinkingConfig on ANY 400. Gemini 3 models (which
+        // `gemini-flash-latest` now aliases) reject thinkingBudget: 0 with a
+        // generic "Request contains an invalid argument" that never mentions
+        // thinking, so matching on the word missed the real failure.
+        res = await post(false);
       }
       if (res.ok) {
         const data = await res.json();
@@ -2034,9 +2036,11 @@ class Component extends DCLogic {
       if (res.status === 403) {
         throw new Error('Gemini refused the key (403). Enable the Generative Language API for this key at aistudio.google.com.');
       }
-      // 404 = model not available on this key; try the next candidate.
+      // 400/404 = this model won't serve the request (bad alias, unsupported
+      // arg, not enabled on the key) — try the next candidate rather than
+      // giving up on Gemini entirely.
       lastErr = new Error('Gemini ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
-      if (res.status !== 404) throw lastErr;
+      if (res.status !== 404 && res.status !== 400) throw lastErr;
     }
     throw lastErr || new Error('No Gemini model available for this key.');
   }
