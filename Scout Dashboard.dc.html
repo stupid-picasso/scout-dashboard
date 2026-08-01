@@ -183,6 +183,42 @@
             </sc-if>
           </div>
         </div>
+        <sc-if value="{{ aiOutOfCredit }}" hint-placeholder-val="{{ false }}">
+          <div style="background:oklch(24% 0.05 70);border:1px solid oklch(45% 0.1 70);border-radius:6px;padding:10px 12px;font:12px sans-serif;color:oklch(88% 0.04 70);line-height:1.5">Puter's free AI credit is used up. Screenshot import still works using on-device OCR — check the values before saving. For full accuracy again, paste a free Google Gemini key below (no credit card, 1,500 requests/day).</div>
+        </sc-if>
+        <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:6px;padding:8px 12px">
+          <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">AI ENGINE {{ geminiBadge }}</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Screenshot and screen-recording reading use AI vision. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:oklch(78% 0.13 220)">aistudio.google.com/apikey</a> — no credit card, 1,500 requests/day. It is stored only on this device.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input type="password" placeholder="AIza…" value="{{ geminiKeyDraft }}" onChange="{{ onGeminiKeyDraftChange }}" style="flex:1 1 200px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:12px ui-monospace,monospace" />
+              <div onClick="{{ saveGeminiKey }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE KEY</div>
+              <sc-if value="{{ hasGeminiKey }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ clearGeminiKey }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.03 260);color:oklch(80% 0.01 260);font:700 11.5px ui-monospace,monospace">REMOVE</div>
+              </sc-if>
+            </div>
+            <sc-if value="{{ geminiStatusLine }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ geminiStatusLine }}</div>
+            </sc-if>
+          </div>
+        </details>
+        <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:6px;padding:8px 12px">
+          <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">PASTE FROM ANY AI CHAT · FREE</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">No API key, no limits. Copy the prompt, drop it plus your screenshots into any AI chat (Kimi, Claude, ChatGPT, Gemini), then paste the JSON it returns back here.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div onClick="{{ copyImportPrompt }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace">{{ copyPromptLabel }}</div>
+            </div>
+            <textarea placeholder="Paste the JSON array here…" value="{{ pasteDraft }}" onChange="{{ onPasteDraftChange }}" style="width:100%;box-sizing:border-box;min-height:90px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace;resize:vertical"></textarea>
+            <div onClick="{{ applyPastedImport }}" style="cursor:pointer;align-self:flex-start;padding:9px 16px;border-radius:5px;background:oklch(42% 0.1 150);color:white;font:700 11.5px ui-monospace,monospace">IMPORT PASTED DATA</div>
+            <sc-if value="{{ pasteError }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ pasteError }}</div>
+            </sc-if>
+            <sc-if value="{{ pasteSummary }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ pasteSummary }}</div>
+            </sc-if>
+          </div>
+        </details>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <label style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
             IMPORT SCREENSHOT
@@ -798,6 +834,12 @@ class Component extends DCLogic {
     ocrHp: '',
     apiEndpoint: '',
     apiEndpointDraft: '',
+    geminiKey: '',
+    geminiKeyDraft: '',
+    pasteDraft: '',
+    pasteError: '',
+    pasteSummary: '',
+    promptCopied: false,
     viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1200,
     showOptimizePlan: false,
     checklistDate: '',
@@ -853,6 +895,10 @@ class Component extends DCLogic {
     try {
       const rawEndpoint = localStorage.getItem('scout_api_endpoint_v1');
       if (rawEndpoint) this.setState({ apiEndpoint: rawEndpoint, apiEndpointDraft: rawEndpoint });
+    } catch (e) {}
+    try {
+      const gk = localStorage.getItem('scout_gemini_key_v1');
+      if (gk) this.setState({ geminiKey: gk, geminiKeyDraft: gk });
     } catch (e) {}
     try {
       const raw = localStorage.getItem('scout_history_v1');
@@ -1456,6 +1502,11 @@ class Component extends DCLogic {
       quickMove: rec.fast_move || '',
       chargeMove: rec.charged_move_1 || '',
       chargeMove2: rec.charged_move_2 || null,
+      sizeClass: rec.size_class || null,
+      megaEnergy: rec.mega_energy != null ? rec.mega_energy : null,
+      powerUpStardust: rec.power_up_stardust != null ? rec.power_up_stardust : null,
+      powerUpCandy: rec.power_up_candy != null ? rec.power_up_candy : null,
+      evolveCandy: rec.evolve_candy != null ? rec.evolve_candy : null,
       scanDate: new Date().toISOString().split('T')[0],
       catchDate: rec.caught_date || null,
       weight: rec.weight || '',
@@ -1591,21 +1642,33 @@ class Component extends DCLogic {
 
   async readScreenshotWithVision(file) {
     const data = await this.fileToVisionJpeg(file, 760);
-    const prompt = 'This is a Pokemon GO detail screen. Read the values EXACTLY as printed. '
+    const prompt = 'This is a Pokemon GO detail screen. Extract every visible field EXACTLY as printed. '
       + 'Respond with ONLY a JSON object, no markdown fences, no commentary: '
-      + '{"name":string|null,"cp":number|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,'
-      + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
-      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"favorite":boolean}. '
-      + 'CP is the number in the badge at the very TOP of the screen (rendered as "CP" followed by the value) — it is NOT the stardust amount. '
-      + 'HP is the smaller "NN / NN HP" line under the name. Candy is the count next to "<SPECIES> CANDY"; xlCandy only if an XL candy count is shown. '
-      + 'Stardust is the comma-grouped number labelled STARDUST. Never confuse stardust with CP. '
-      + 'Only report atkIV/defIV/staIV if exact 0-15 numbers are visible; never infer them from appraisal bars. Use null for anything not clearly visible.';
+      + '{"name":string|null,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,'
+      + '"candy":number|null,"xlCandy":number|null,"stardust":number|null,'
+      + '"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,"sizeClass":"XS"|"XL"|null,'
+      + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,'
+      + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"megaEnergy":number|null,'
+      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
+      + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"favorite":boolean}. '
+      + 'Rules: '
+      + 'CP is the number in the badge at the very TOP of the screen. If the top of the card is scrolled off and no CP badge is visible, return null — never substitute another number. '
+      + 'CP is NEVER the stardust amount: stardust is the large comma-grouped number next to the stardust icon (e.g. 148,482). '
+      + 'HP is the "NN / NN HP" line under the name; return the current (first) value. '
+      + 'candy is the count beside "<SPECIES> CANDY"; xlCandy only if a separate "<SPECIES> CANDY XL" count is shown; megaEnergy only if "<SPECIES> MEGA ENERGY" is shown. '
+      + 'powerUpStardust/powerUpCandy are the two costs on the POWER UP button; evolveCandy is the candy cost on the EVOLVE button. '
+      + 'gender: "M" for the male symbol, "F" for the female symbol, null if neither. '
+      + 'sizeClass: "XL" or "XS" only if that tag appears next to height/weight. '
+      + 'A shadow Pokemon shows a PURIFY button and the Frustration move; set shadow true then. Set purified true only if the screen says Purified. '
+      + 'Moves are listed under Gyms & Raids: the first is fastMove, the rest are chargeMove1/chargeMove2. Give move names only, without the type in parentheses. '
+      + 'Only report atkIV/defIV/staIV if exact 0-15 numbers are visible; never infer them from appraisal bars or stars. '
+      + 'Never guess. Any field not clearly visible must be null.';
     const reply = await this.completeWithRetry({
       messages: [{ role: 'user', content: [
         { type: 'text', text: prompt },
         { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }
       ] }],
-      max_tokens: 700
+      max_tokens: 900
     });
     const jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
     const o = JSON.parse(jsonText);
@@ -1613,12 +1676,19 @@ class Component extends DCLogic {
     const num = v => (typeof v === 'number' && isFinite(v)) ? v : (v != null && /^\d[\d,]*$/.test(String(v)) ? parseInt(String(v).replace(/,/g, ''), 10) : null);
     return {
       pokemon_name: o.name ? this.capitalizeName(o.name) : undefined,
+      gender: o.gender === 'M' || o.gender === 'F' ? o.gender : undefined,
       cp: num(o.cp), hp: num(o.hp), candy: num(o.candy), xl_candy: num(o.xlCandy), stardust: num(o.stardust),
       type_1: o.type1 ? this.capitalizeName(o.type1) : undefined,
       type_2: o.type2 ? this.capitalizeName(o.type2) : undefined,
       weight: o.weight || undefined, height: o.height || undefined,
+      size_class: o.sizeClass || undefined,
+      fast_move: o.fastMove || undefined,
+      charged_move_1: o.chargeMove1 || undefined,
+      charged_move_2: o.chargeMove2 || undefined,
+      power_up_stardust: num(o.powerUpStardust), power_up_candy: num(o.powerUpCandy),
+      evolve_candy: num(o.evolveCandy), mega_energy: num(o.megaEnergy),
       attack_iv: num(o.atkIV), defense_iv: num(o.defIV), stamina_iv: num(o.staIV),
-      lucky: !!o.lucky, shadow: !!o.shadow, favorite: !!o.favorite,
+      lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, favorite: !!o.favorite,
       _source: 'vision'
     };
   }
@@ -1636,10 +1706,11 @@ class Component extends DCLogic {
       let text = '';
       let readerUsed = 'vision';
       try {
+        if (this._puterOutOfCredit) throw new Error('AI_NO_CREDIT');
         rec = await this.readScreenshotWithVision(file);
         text = '[read by Claude vision]';
       } catch (visionErr) {
-        readerUsed = 'tesseract';
+        readerUsed = ((visionErr && visionErr.message) === 'AI_NO_CREDIT') ? 'tesseract-nocredit' : 'tesseract';
         text = await this.runOCR(canvas);
         rec = this.parsePokemonText(text);
       }
@@ -1779,11 +1850,35 @@ class Component extends DCLogic {
     const key = (p.matchedName || p.name || '').trim().toLowerCase();
     const candyInv = { ...this.state.candyInventory };
     const types = { ...this.state.typeTable };
+    const rec = p._rec || {};
     if (key) {
       if (p.candy != null || p.xlCandy != null) {
         candyInv[key] = { name: p.matchedName || p.name, candy: p.candy, xlCandy: p.xlCandy };
       }
       if (p.type) types[key] = p.type;
+    }
+    // Species-level costs and moves read off the same screen, applied to the
+    // matched roster entry so power-up planning can use real numbers.
+    const overrides = { ...this.state.ivOverrides };
+    if (p.matchedIdx != null) {
+      const patch = { ...overrides[p.matchedIdx] };
+      let touched = false;
+      const put = (k, v) => { if (v != null && v !== '') { patch[k] = v; touched = true; } };
+      put('powerUpStardust', rec.power_up_stardust);
+      put('powerUpCandy', rec.power_up_candy);
+      put('evolveCandy', rec.evolve_candy);
+      put('quickMove', rec.fast_move);
+      put('chargeMove', rec.charged_move_1);
+      put('chargeMove2', rec.charged_move_2);
+      put('gender', rec.gender);
+      put('weight', rec.weight);
+      put('height', rec.height);
+      put('sizeClass', rec.size_class);
+      if (touched) {
+        overrides[p.matchedIdx] = patch;
+        this.setState({ ivOverrides: overrides });
+        try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
+      }
     }
     this.setState({ candyInventory: candyInv, typeTable: types, ocrParsed: null, ocrPreview: null });
     // Stardust is the first thing the importer promises to update — it was being
@@ -1823,6 +1918,53 @@ class Component extends DCLogic {
     try { localStorage.setItem('scout_api_endpoint_v1', url); } catch (e) {}
   }
 
+  // Google AI Studio free tier. Key is stored locally on this device only.
+  async callGemini(body) {
+    const key = this.state.geminiKey;
+    const parts = [];
+    (body.messages || []).forEach(m => {
+      const c = m.content;
+      if (typeof c === 'string') { parts.push({ text: c }); return; }
+      (c || []).forEach(item => {
+        if (item.type === 'text') parts.push({ text: item.text });
+        else if (item.type === 'image' && item.source && item.source.data) {
+          parts.push({ inline_data: { mime_type: item.source.media_type || 'image/jpeg', data: item.source.data } });
+        }
+      });
+    });
+    if (body.system) parts.unshift({ text: body.system });
+    const model = 'gemini-2.5-flash';
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: parts }],
+        generationConfig: { maxOutputTokens: body.max_tokens || 2048, temperature: 0 }
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      if (res.status === 429) throw new Error('Gemini rate limit (429) \u2014 free tier is 10 requests/minute. Wait a moment.');
+      if (res.status === 400 && /API key not valid/i.test(errText)) throw new Error('That Gemini API key was rejected \u2014 check it under AI ENGINE.');
+      throw new Error('Gemini error ' + res.status + ': ' + errText.slice(0, 200));
+    }
+    const data = await res.json();
+    const cand = data && data.candidates && data.candidates[0];
+    const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
+    if (!text) throw new Error('Gemini returned no text');
+    return text;
+  }
+
+  setGeminiKey(v) {
+    const key = String(v || '').trim();
+    this.setState({ geminiKey: key, aiOutOfCredit: false });
+    this._puterOutOfCredit = false;
+    try {
+      if (key) localStorage.setItem('scout_gemini_key_v1', key);
+      else localStorage.removeItem('scout_gemini_key_v1');
+    } catch (e) {}
+  }
+
   loadPuter() {
     if (window.puter && window.puter.ai) return Promise.resolve();
     if (this._puterLoad) return this._puterLoad;
@@ -1842,8 +1984,20 @@ class Component extends DCLogic {
     for (let i = 0; i < attempts; i++) {
       try {
         if (window.claude && window.claude.complete) return await window.claude.complete(body);
-        if (!(window.puter && window.puter.ai)) { try { await this.loadPuter(); } catch (e) {} }
-        if (window.puter && window.puter.ai && window.puter.ai.chat) {
+        // Gemini first when a key is set: free tier is 1500 req/day, 10 rpm, and
+        // includes vision — far past what this app needs, and no card required.
+        if (this.state.geminiKey) {
+          try { return await this.callGemini(body); }
+          catch (gErr) {
+            const gm = (gErr && gErr.message) || '';
+            // Rate limit: fall through to Puter. Anything else (bad key) surfaces.
+            if (!/quota|429|rate limit/i.test(gm)) throw gErr;
+          }
+        }
+        // Skip Puter for the rest of the session once it reports no funding —
+        // retrying just re-opens its "Low Balance / Upgrade Now" modal.
+        if (!this._puterOutOfCredit && !(window.puter && window.puter.ai)) { try { await this.loadPuter(); } catch (e) {} }
+        if (!this._puterOutOfCredit && window.puter && window.puter.ai && window.puter.ai.chat) {
           const msgs = (body.messages || []).map(m => ({ ...m }));
           if (body.system && msgs[0]) {
             if (Array.isArray(msgs[0].content)) {
@@ -1856,7 +2010,9 @@ class Component extends DCLogic {
           if (res && res.message && res.message.content && res.message.content[0]) return res.message.content[0].text;
           return String(res && res.text != null ? res.text : res);
         }
-        if (!this.state.apiEndpoint) throw new Error('No Claude proxy endpoint set — add one under AI IMPORT SETUP (only needed if Puter.js is unavailable).');
+        if (!this.state.apiEndpoint) throw new Error(this.state.geminiKey
+          ? 'AI request failed and no fallback is available.'
+          : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
         const res = await fetch(this.state.apiEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1867,7 +2023,16 @@ class Component extends DCLogic {
         return data.text != null ? data.text : data;
       } catch (err) {
         lastErr = err;
-        const msg = (err && err.message) || String(err);
+        const msg = (err && (err.message || err.error && err.error.message)) || String(err);
+        const code = err && (err.code || (err.error && err.error.code));
+        // Puter free-tier exhaustion: don't retry, don't fall through to the
+        // proxy branch's confusing "no endpoint set" message.
+        if (/insufficient|low balance|not enough funding|usage.?limit|quota|payment|upgrade to continue/i.test(msg)
+            || code === 'insufficient_funds' || code === 'error_400_from_delegate') {
+          this._puterOutOfCredit = true;
+          this.setState({ aiOutOfCredit: true });
+          throw new Error('AI_NO_CREDIT');
+        }
         if (!/overload|rate.?limit|529|503/i.test(msg) || i === attempts - 1) throw err;
         await new Promise(r => setTimeout(r, 1200 * Math.pow(2, i)));
       }
@@ -2014,8 +2179,12 @@ class Component extends DCLogic {
       const prompt = 'These are frames sampled from a Pokemon GO screen recording (collection list and/or Pokemon detail/appraise screens). '
         + 'Identify every distinct Pokemon shown. Merge repeat sightings of the same Pokemon across frames into one entry, using the most complete data seen. '
         + 'Respond with ONLY a JSON array, no markdown fences, no commentary. Each item: '
-        + '{"name": string, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, "type": string|null, '
+        + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, '
+        + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
+        + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, '
         + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
+        + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
+        + 'A shadow Pokemon shows a PURIFY button and the Frustration move. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'Only fill atkIV/defIV/staIV if exact numeric IV values (0-15) are visible on screen \u2014 never estimate from appraisal bars/stars. Use null for anything not clearly visible.';
 
       // Split into batches that each fit the request budget, instead of throwing
@@ -2039,6 +2208,7 @@ class Component extends DCLogic {
       const collected = [];
       const rawReplies = [];
       let failedBatches = 0;
+      let noCredit = false;
       for (let b = 0; b < batches.length; b++) {
         const content = [
           { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
@@ -2051,6 +2221,7 @@ class Component extends DCLogic {
           // Keep whatever the other batches read — one overloaded call must not
           // discard an entire multi-batch import.
           failedBatches++;
+          if ((err && err.message) === 'AI_NO_CREDIT') { noCredit = true; break; }
           this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95));
           continue;
         }
@@ -2082,9 +2253,11 @@ class Component extends DCLogic {
 
       if (!parsed.length) {
         this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: rawReplies.join('\n---\n').slice(0, 800) } }));
-        throw new Error(failedBatches === batches.length
-          ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
-          : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.');
+        throw new Error(noCredit
+          ? 'Free AI credit is used up, so the recording could not be read. Screenshot import still works (on-device OCR). To restore video import, paste a free Google Gemini key under AI ENGINE \u2014 no credit card, 1,500 requests/day.'
+          : (failedBatches === batches.length
+            ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
+            : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.'));
       }
       this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, frameCount: frames.length } }));
       this.setVideoStage('validating', 40);
@@ -2108,6 +2281,95 @@ class Component extends DCLogic {
     }
   }
 
+  // Import from any external AI chat (Kimi, Claude, ChatGPT, Gemini web — all
+  // free and unlimited in their web UIs). Accepts a JSON array or single object,
+  // tolerates markdown fences and preamble, then reuses the video merge path.
+  applyPastedImport() {
+    const raw = (this.state.pasteDraft || '').trim();
+    if (!raw) { this.setState({ pasteError: 'Paste the JSON from your AI chat first.' }); return; }
+    let parsed;
+    try {
+      let t = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      const idxs = [t.indexOf('['), t.indexOf('{')].filter(n => n >= 0);
+      if (idxs.length) {
+        const first = Math.min.apply(null, idxs);
+        if (first > 0) t = t.slice(first);
+      }
+      const last = Math.max(t.lastIndexOf(']'), t.lastIndexOf('}'));
+      if (last >= 0) t = t.slice(0, last + 1);
+      parsed = JSON.parse(t);
+    } catch (e) {
+      this.setState({ pasteError: 'That is not valid JSON. Copy the whole JSON block from the chat, including the outer [ ].' });
+      return;
+    }
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+    const clean = items.filter(o => o && typeof o === 'object' && o.name);
+    if (!clean.length) {
+      this.setState({ pasteError: 'No Pokemon found — each entry needs at least a "name" field.' });
+      return;
+    }
+    const mechanics = this.mechanics;
+    clean.forEach(o => {
+      if (o.dex == null && mechanics && mechanics.resolveDexByName) {
+        const d = mechanics.resolveDexByName(String(o.name));
+        if (d != null) o.dex = d;
+      }
+      // Accept snake_case too, so output from any chat drops straight in.
+      if (o.type == null && o.type1) o.type = o.type2 ? o.type1 + ' / ' + o.type2 : o.type1;
+      if (o.type == null && o.type_1) o.type = o.type_2 ? o.type_1 + ' / ' + o.type_2 : o.type_1;
+      if (o.xlCandy == null && o.xl_candy != null) o.xlCandy = o.xl_candy;
+      if (o.fastMove == null && o.fast_move) o.fastMove = o.fast_move;
+      if (o.chargeMove1 == null && o.charged_move_1) o.chargeMove1 = o.charged_move_1;
+      if (o.chargeMove2 == null && o.charged_move_2) o.chargeMove2 = o.charged_move_2;
+      if (o.atkIV == null && o.attack_iv != null) o.atkIV = o.attack_iv;
+      if (o.defIV == null && o.defense_iv != null) o.defIV = o.defense_iv;
+      if (o.staIV == null && o.stamina_iv != null) o.staIV = o.stamina_iv;
+      if (o.evolveCandy == null && o.evolution_candy_cost != null) o.evolveCandy = o.evolution_candy_cost;
+      if (o.stardust == null && o.current_stardust != null) o.stardust = o.current_stardust;
+    });
+    const summary = this.mergeVideoImport(clean);
+    this.setState({
+      pasteDraft: '',
+      pasteError: '',
+      pasteSummary: 'Imported ' + clean.length + ' Pokemon \u2014 updated ' + summary.updated + ', added ' + summary.inserted + ' new.'
+    });
+    clearTimeout(this._pasteSummaryTimer);
+    this._pasteSummaryTimer = setTimeout(() => this.setState({ pasteSummary: '' }), 6000);
+  }
+
+  importPromptText() {
+    return 'Read every Pokemon GO screenshot I have attached. For each Pokemon, extract exactly what is printed on screen.\n\n'
+      + 'Respond with ONLY a JSON array \u2014 no commentary, no markdown fences. One object per Pokemon:\n'
+      + '{"name":string,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,'
+      + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
+      + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
+      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"favorite":boolean}\n\n'
+      + 'Rules:\n'
+      + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
+      + '- CP is NEVER the stardust figure (the large comma-grouped number such as 148,482).\n'
+      + '- hp is the first number in the "NN / NN HP" line.\n'
+      + '- candy is the count beside "<SPECIES> CANDY"; xlCandy only if a separate "<SPECIES> CANDY XL" is shown.\n'
+      + '- evolveCandy is the candy cost on the EVOLVE button.\n'
+      + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
+      + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
+      + '- Only give atkIV/defIV/staIV if exact 0-15 numbers are visible. Never infer them from appraisal bars or stars.\n'
+      + '- Never guess. Any value not clearly visible must be null.';
+  }
+
+  copyImportPrompt() {
+    const prompt = this.importPromptText();
+    const done = () => {
+      this.setState({ promptCopied: true });
+      clearTimeout(this._promptCopyTimer);
+      this._promptCopyTimer = setTimeout(() => this.setState({ promptCopied: false }), 2200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(prompt).then(done).catch(() => this.setState({ pasteDraft: prompt }));
+    } else {
+      this.setState({ pasteDraft: prompt });
+    }
+  }
+
   mergeVideoImport(items) {
     const overrides = { ...this.state.ivOverrides };
     const candyInv = { ...this.state.candyInventory };
@@ -2116,7 +2378,13 @@ class Component extends DCLogic {
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
     let updated = 0, inserted = 0;
+    // Stardust is a single account-wide balance, not per-Pokemon. Take the
+    // highest reading across frames — a mid-scroll frame can clip a digit.
+    let seenStardust = null;
     items.forEach((item, i) => {
+      if (item.stardust != null && Number.isFinite(item.stardust)) {
+        if (seenStardust == null || item.stardust > seenStardust) seenStardust = item.stardust;
+      }
       const nameLower = item.name.toLowerCase();
       const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
         || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
@@ -2142,16 +2410,28 @@ class Component extends DCLogic {
           hp: item.hp != null ? item.hp : match.hp,
           lucky: item.lucky != null ? !!item.lucky : match.lucky,
           favorite: item.favorite != null ? !!item.favorite : match.favorite,
+          ...(item.gender ? { gender: item.gender } : {}),
+          ...(item.fastMove ? { quickMove: item.fastMove } : {}),
+          ...(item.chargeMove1 ? { chargeMove: item.chargeMove1 } : {}),
+          ...(item.chargeMove2 ? { chargeMove2: item.chargeMove2 } : {}),
+          ...(item.weight ? { weight: item.weight } : {}),
+          ...(item.height ? { height: item.height } : {}),
           ...ivPatch
         };
         updated++;
       } else {
         added.push({
-          idx: 'video-' + Date.now() + '-' + i, name: item.name, form: null, dex: item.dex, gender: null,
+          idx: 'video-' + Date.now() + '-' + i, name: item.name, form: null, dex: item.dex,
+          gender: item.gender || null,
           cp: item.cp, hp: item.hp != null ? item.hp : null,
           atkIV: ivPatch.atkIV != null ? ivPatch.atkIV : null, defIV: ivPatch.defIV != null ? ivPatch.defIV : null,
           staIV: ivPatch.staIV != null ? ivPatch.staIV : null, ivAvg: ivPatch.ivAvg != null ? ivPatch.ivAvg : null,
-          lvlMin: null, lvlMax: null, quickMove: null, chargeMove: null, chargeMove2: null,
+          lvlMin: null, lvlMax: null,
+          quickMove: item.fastMove || null,
+          chargeMove: item.chargeMove1 || null,
+          chargeMove2: item.chargeMove2 || null,
+          weight: item.weight || null, height: item.height || null,
+          evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
           catchDate: null, lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, dust: null,
           great: ivPatch.great || null, ultra: ivPatch.ultra || null, little: ivPatch.little || null
         });
@@ -2167,6 +2447,7 @@ class Component extends DCLogic {
       if (item.type) types[nameLower] = item.type;
     });
     this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types });
+    if (seenStardust != null) this.setStardust(seenStardust);
     try {
       localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides));
       localStorage.setItem('scout_added_v1', JSON.stringify(added));
@@ -2618,9 +2899,11 @@ class Component extends DCLogic {
         : (this.state.ocrParsed.dex != null
             ? `Identified as ${this.state.ocrParsed.name || 'this Pokemon'} (#${this.state.ocrParsed.dex}) \u2014 not in your roster yet. Use ADD AS NEW POKEMON.`
             : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.'),
-      readerLine: this.state.ocrParsed.readerUsed === 'tesseract'
-        ? 'Read with on-device OCR (vision unavailable) \u2014 double-check CP and candy.'
-        : '',
+      readerLine: this.state.ocrParsed.readerUsed === 'tesseract-nocredit'
+        ? 'Free AI credit is used up \u2014 fell back to on-device OCR. Check CP, candy and stardust below, or add a free Gemini key under AI ENGINE.'
+        : (this.state.ocrParsed.readerUsed === 'tesseract'
+            ? 'Read with on-device OCR (vision unavailable) \u2014 double-check CP and candy.'
+            : ''),
       rawText: this.state.ocrParsed.rawText || ''
     } : null;
     const solvedIvResult = this.state.solvedIvResult ? (this.state.solvedIvResult.error ? { error: this.state.solvedIvResult.error } : {
@@ -2820,6 +3103,7 @@ class Component extends DCLogic {
       stardustDisplay,
       candyEntries,
       ocrBusy: this.state.ocrBusy,
+      aiOutOfCredit: !!this.state.aiOutOfCredit && !this.state.geminiKey,
       ocrError: this.state.ocrError,
       ocrPreview: this.state.ocrPreview,
       ocrParsedDisplay,
@@ -2837,6 +3121,22 @@ class Component extends DCLogic {
       onVideoUpload: (e) => this.onVideoUpload(e),
       onApiEndpointDraftChange: (e) => this.setState({ apiEndpointDraft: e.target.value }),
       saveApiEndpoint: () => this.saveApiEndpoint(),
+      onGeminiKeyDraftChange: (e) => this.setState({ geminiKeyDraft: e.target.value }),
+      saveGeminiKey: () => this.setGeminiKey(this.state.geminiKeyDraft),
+      clearGeminiKey: () => { this.setState({ geminiKeyDraft: '' }); this.setGeminiKey(''); },
+      geminiKeyDraft: this.state.geminiKeyDraft,
+      hasGeminiKey: !!this.state.geminiKey,
+      geminiStatusLine: this.state.geminiKey
+        ? 'Gemini key saved — free tier: 1,500 requests/day, 10 per minute.'
+        : '',
+      geminiBadge: this.state.geminiKey ? '· GEMINI' : (this.state.aiOutOfCredit ? '· NO CREDIT' : '· PUTER (FREE)'),
+      pasteDraft: this.state.pasteDraft || '',
+      pasteError: this.state.pasteError || '',
+      pasteSummary: this.state.pasteSummary || '',
+      copyPromptLabel: this.state.promptCopied ? 'COPIED ✓' : 'COPY PROMPT',
+      onPasteDraftChange: (e) => this.setState({ pasteDraft: e.target.value, pasteError: '' }),
+      applyPastedImport: () => this.applyPastedImport(),
+      copyImportPrompt: () => this.copyImportPrompt(),
       apiEndpoint: this.state.apiEndpoint,
       apiEndpointDraft: this.state.apiEndpointDraft,
       hasVideoImport: !!this.state.videoImport,
