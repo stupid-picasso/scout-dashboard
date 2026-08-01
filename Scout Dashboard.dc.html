@@ -1748,9 +1748,10 @@ class Component extends DCLogic {
       } catch (visionErr) {
         const vm = (visionErr && visionErr.message) || String(visionErr);
         readerUsed = vm === 'AI_NO_CREDIT' ? 'tesseract-nocredit' : 'tesseract';
-        // Keep the real reason — silently degrading to OCR hid a bad key/model
-        // behind a generic "vision unavailable".
-        this._lastAiError = vm === 'AI_NO_CREDIT' ? '' : vm;
+        // Keep whatever the earlier engine reported. AI_NO_CREDIT comes from
+        // Puter at the END of the chain, so overwriting with it would erase the
+        // Gemini failure that actually caused the fall-through.
+        if (vm !== 'AI_NO_CREDIT') this._lastAiError = vm;
         text = await this.runOCR(canvas);
         rec = this.parsePokemonText(text);
       }
@@ -3053,7 +3054,10 @@ class Component extends DCLogic {
             ? `Identified as ${this.state.ocrParsed.name || 'this Pokemon'} (#${this.state.ocrParsed.dex}) \u2014 not in your roster yet. Use ADD AS NEW POKEMON.`
             : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.'),
       readerLine: this.state.ocrParsed.readerUsed === 'tesseract-nocredit'
-        ? 'Free AI credit is used up \u2014 fell back to on-device OCR. Check CP, candy and stardust below, or add a free Gemini key under AI ENGINE.'
+        ? (this.state.geminiKey
+            ? 'Your Gemini key failed and Puter has no credit left, so on-device OCR was used. Gemini said: '
+              + (this.state.ocrParsed.aiError || 'no details')
+            : 'Free AI credit is used up \u2014 fell back to on-device OCR. Check CP, candy and stardust below, or add a free Gemini key under AI ENGINE.')
         : (this.state.ocrParsed.readerUsed === 'tesseract'
             ? 'AI vision failed, used on-device OCR \u2014 double-check CP and candy.'
               + (this.state.ocrParsed.aiError ? ' (' + this.state.ocrParsed.aiError + ')' : '')
