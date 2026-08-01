@@ -200,6 +200,21 @@
             <sc-if value="{{ geminiStatusLine }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ geminiStatusLine }}</div>
             </sc-if>
+            <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:600 10.5px ui-monospace,monospace;color:oklch(62% 0.02 260)">OR A SELF-HOSTED GATEWAY {{ customBadge }}</div>
+              <div style="font:12px sans-serif;color:oklch(70% 0.02 260);line-height:1.55">Any OpenAI-compatible endpoint — OmniRoute, OpenRouter, Groq. Must be reachable over HTTPS from this device (localhost will not work on your phone).</div>
+              <input type="text" placeholder="https://your-gateway.example.com/v1" value="{{ customBaseDraft }}" onChange="{{ onCustomBaseChange }}" style="background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <input type="text" placeholder="model (e.g. auto)" value="{{ customModelDraft }}" onChange="{{ onCustomModelChange }}" style="flex:1 1 130px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
+                <input type="password" placeholder="key (optional)" value="{{ customKeyDraft }}" onChange="{{ onCustomKeyChange }}" style="flex:1 1 130px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div onClick="{{ saveCustomEndpoint }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE GATEWAY</div>
+                <sc-if value="{{ hasCustomEndpoint }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ clearCustomEndpoint }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.03 260);color:oklch(80% 0.01 260);font:700 11.5px ui-monospace,monospace">REMOVE</div>
+                </sc-if>
+              </div>
+            </div>
           </div>
         </details>
         <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:6px;padding:8px 12px">
@@ -836,6 +851,12 @@ class Component extends DCLogic {
     apiEndpointDraft: '',
     geminiKey: '',
     geminiKeyDraft: '',
+    customBaseUrl: '',
+    customModel: '',
+    customApiKey: '',
+    customBaseDraft: '',
+    customModelDraft: '',
+    customKeyDraft: '',
     pasteDraft: '',
     pasteError: '',
     pasteSummary: '',
@@ -899,6 +920,14 @@ class Component extends DCLogic {
     try {
       const gk = localStorage.getItem('scout_gemini_key_v1');
       if (gk) this.setState({ geminiKey: gk, geminiKeyDraft: gk });
+    } catch (e) {}
+    try {
+      const cb = localStorage.getItem('scout_custom_base_v1');
+      const cm = localStorage.getItem('scout_custom_model_v1');
+      const ck = localStorage.getItem('scout_custom_key_v1');
+      if (cb) this.setState({ customBaseUrl: cb, customBaseDraft: cb });
+      if (cm) this.setState({ customModel: cm, customModelDraft: cm });
+      if (ck) this.setState({ customApiKey: ck, customKeyDraft: ck });
     } catch (e) {}
     try {
       const raw = localStorage.getItem('scout_history_v1');
@@ -1559,6 +1588,12 @@ class Component extends DCLogic {
     const labeledCp = text.match(/CP\D{0,4}(\d{2,5})/i);
     if (labeledCp) rec.cp = parseInt(labeledCp[1], 10);
     if (rec.cp == null) {
+      // Tesseract routinely mangles the stylized CP badge: "CP100" comes back as
+      // "cr100", "cP1OO", "c?100". Accept C + one wrong letter + digits.
+      const fuzzyCp = text.match(/\bc[prf][^\dA-Za-z]{0,2}(\d{2,5})\b/i);
+      if (fuzzyCp) rec.cp = parseInt(fuzzyCp[1], 10);
+    }
+    if (rec.cp == null) {
       // Strip comma-grouped numbers (stardust) wholesale before scanning: "148,482"
       // yielded CP 148 from the head, and 482 still leaked from the tail.
       const withoutGrouped = text.replace(/\d{1,3}(?:,\d{3})+/g, ' ');
@@ -1695,6 +1730,7 @@ class Component extends DCLogic {
 
   async handleScreenshotUpload(file) {
     if (!file) return;
+    this._lastAiError = '';
     this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null });
     try {
       const canvas = await this.preprocessImage(file);
@@ -1710,7 +1746,11 @@ class Component extends DCLogic {
         rec = await this.readScreenshotWithVision(file);
         text = '[read by Claude vision]';
       } catch (visionErr) {
-        readerUsed = ((visionErr && visionErr.message) === 'AI_NO_CREDIT') ? 'tesseract-nocredit' : 'tesseract';
+        const vm = (visionErr && visionErr.message) || String(visionErr);
+        readerUsed = vm === 'AI_NO_CREDIT' ? 'tesseract-nocredit' : 'tesseract';
+        // Keep the real reason — silently degrading to OCR hid a bad key/model
+        // behind a generic "vision unavailable".
+        this._lastAiError = vm === 'AI_NO_CREDIT' ? '' : vm;
         text = await this.runOCR(canvas);
         rec = this.parsePokemonText(text);
       }
@@ -1746,6 +1786,7 @@ class Component extends DCLogic {
           type: rec.type_1 ? (rec.type_2 ? rec.type_1 + ' / ' + rec.type_2 : rec.type_1) : '',
           _rec: rec,
           readerUsed,
+          aiError: this._lastAiError || '',
           rawText: text.slice(0, 1200)
         }
       });
@@ -1933,26 +1974,96 @@ class Component extends DCLogic {
       });
     });
     if (body.system) parts.unshift({ text: body.system });
-    const model = 'gemini-2.5-flash';
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+    // Model availability varies by key/region and Google rotates names, so try a
+    // list and remember the first that works.
+    const candidates = this._geminiModel
+      ? [this._geminiModel]
+      : ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let lastErr = null;
+    for (const model of candidates) {
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: parts }],
+          generationConfig: { maxOutputTokens: body.max_tokens || 2048, temperature: 0 }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const cand = data && data.candidates && data.candidates[0];
+        const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
+        if (!text) { lastErr = new Error('Gemini returned no text'); continue; }
+        this._geminiModel = model;
+        return text;
+      }
+      const errText = await res.text().catch(() => '');
+      if (res.status === 429) throw new Error('Gemini rate limit (429) \u2014 free tier is 10 requests/minute. Wait a moment.');
+      if (res.status === 400 && /API.?key not valid|API_KEY_INVALID/i.test(errText)) {
+        throw new Error('That Gemini API key was rejected \u2014 check it under AI ENGINE.');
+      }
+      if (res.status === 403) {
+        throw new Error('Gemini refused the key (403). Enable the Generative Language API for this key at aistudio.google.com.');
+      }
+      // 404 = model not available on this key; try the next candidate.
+      lastErr = new Error('Gemini ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
+      if (res.status !== 404) throw lastErr;
+    }
+    throw lastErr || new Error('No Gemini model available for this key.');
+  }
+
+  // OpenAI-compatible chat/completions with vision. Works with OmniRoute,
+  // OpenRouter, Groq, LM Studio, or any gateway exposing /v1/chat/completions.
+  async callOpenAICompatible(body) {
+    const base = String(this.state.customBaseUrl || '').trim().replace(/\/+$/, '');
+    if (!base) throw new Error('No base URL set');
+    const url = /\/chat\/completions$/.test(base) ? base : base + '/chat/completions';
+    const messages = (body.messages || []).map(m => {
+      const c = m.content;
+      if (typeof c === 'string') return { role: m.role, content: c };
+      const parts = (c || []).map(item => {
+        if (item.type === 'text') return { type: 'text', text: item.text };
+        if (item.type === 'image' && item.source && item.source.data) {
+          return { type: 'image_url', image_url: { url: 'data:' + (item.source.media_type || 'image/jpeg') + ';base64,' + item.source.data } };
+        }
+        return null;
+      }).filter(Boolean);
+      return { role: m.role, content: parts };
+    });
+    if (body.system) messages.unshift({ role: 'system', content: body.system });
+    const headers = { 'Content-Type': 'application/json' };
+    if (this.state.customApiKey) headers['Authorization'] = 'Bearer ' + this.state.customApiKey;
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: parts }],
-        generationConfig: { maxOutputTokens: body.max_tokens || 2048, temperature: 0 }
+        model: this.state.customModel || 'auto',
+        messages: messages,
+        max_tokens: body.max_tokens || 2048,
+        temperature: 0
       })
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      if (res.status === 429) throw new Error('Gemini rate limit (429) \u2014 free tier is 10 requests/minute. Wait a moment.');
-      if (res.status === 400 && /API key not valid/i.test(errText)) throw new Error('That Gemini API key was rejected \u2014 check it under AI ENGINE.');
-      throw new Error('Gemini error ' + res.status + ': ' + errText.slice(0, 200));
+      throw new Error('Gateway error ' + res.status + ': ' + errText.slice(0, 180));
     }
     const data = await res.json();
-    const cand = data && data.candidates && data.candidates[0];
-    const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
-    if (!text) throw new Error('Gemini returned no text');
-    return text;
+    const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (!text) throw new Error('Gateway returned no text');
+    return typeof text === 'string' ? text : JSON.stringify(text);
+  }
+
+  setCustomEndpoint(baseUrl, model, apiKey) {
+    const b = String(baseUrl || '').trim();
+    const m = String(model || '').trim();
+    const k = String(apiKey || '').trim();
+    this.setState({ customBaseUrl: b, customModel: m, customApiKey: k, aiOutOfCredit: false });
+    this._puterOutOfCredit = false;
+    try {
+      if (b) localStorage.setItem('scout_custom_base_v1', b); else localStorage.removeItem('scout_custom_base_v1');
+      if (m) localStorage.setItem('scout_custom_model_v1', m); else localStorage.removeItem('scout_custom_model_v1');
+      if (k) localStorage.setItem('scout_custom_key_v1', k); else localStorage.removeItem('scout_custom_key_v1');
+    } catch (e) {}
   }
 
   setGeminiKey(v) {
@@ -1984,6 +2095,21 @@ class Component extends DCLogic {
     for (let i = 0; i < attempts; i++) {
       try {
         if (window.claude && window.claude.complete) return await window.claude.complete(body);
+        // A self-hosted OpenAI-compatible gateway (OmniRoute, OpenRouter, Groq…)
+        // wins when configured — the user chose it explicitly.
+        if (this.state.customBaseUrl) {
+          try { return await this.callOpenAICompatible(body); }
+          catch (cErr) {
+            const cm = (cErr && cErr.message) || '';
+            // Safari throws "TypeError: Load failed" for network/CORS failures,
+            // not "Failed to fetch" — without these, an unreachable gateway on
+            // iOS would skip Gemini AND Puter instead of degrading to them.
+            const transient = /429|rate|quota|timeout|Failed to fetch|NetworkError|Load failed|Access-Control-Allow-Origin|CORS|cancelled|The network connection was lost/i.test(cm)
+              || cErr instanceof TypeError;
+            this._lastAiError = 'Gateway: ' + cm;
+            if (!transient) throw cErr;
+          }
+        }
         // Gemini first when a key is set: free tier is 1500 req/day, 10 rpm, and
         // includes vision — far past what this app needs, and no card required.
         if (this.state.geminiKey) {
@@ -1992,6 +2118,7 @@ class Component extends DCLogic {
             const gm = (gErr && gErr.message) || '';
             // Rate limit: fall through to Puter. Anything else (bad key) surfaces.
             if (!/quota|429|rate limit/i.test(gm)) throw gErr;
+            this._lastAiError = gm;
           }
         }
         // Skip Puter for the rest of the session once it reports no funding —
@@ -2902,7 +3029,8 @@ class Component extends DCLogic {
       readerLine: this.state.ocrParsed.readerUsed === 'tesseract-nocredit'
         ? 'Free AI credit is used up \u2014 fell back to on-device OCR. Check CP, candy and stardust below, or add a free Gemini key under AI ENGINE.'
         : (this.state.ocrParsed.readerUsed === 'tesseract'
-            ? 'Read with on-device OCR (vision unavailable) \u2014 double-check CP and candy.'
+            ? 'AI vision failed, used on-device OCR \u2014 double-check CP and candy.'
+              + (this.state.ocrParsed.aiError ? ' (' + this.state.ocrParsed.aiError + ')' : '')
             : ''),
       rawText: this.state.ocrParsed.rawText || ''
     } : null;
@@ -3129,7 +3257,17 @@ class Component extends DCLogic {
       geminiStatusLine: this.state.geminiKey
         ? 'Gemini key saved — free tier: 1,500 requests/day, 10 per minute.'
         : '',
-      geminiBadge: this.state.geminiKey ? '· GEMINI' : (this.state.aiOutOfCredit ? '· NO CREDIT' : '· PUTER (FREE)'),
+      geminiBadge: this.state.customBaseUrl ? '· GATEWAY' : (this.state.geminiKey ? '· GEMINI' : (this.state.aiOutOfCredit ? '· NO CREDIT' : '· PUTER (FREE)')),
+      customBaseDraft: this.state.customBaseDraft || '',
+      customModelDraft: this.state.customModelDraft || '',
+      customKeyDraft: this.state.customKeyDraft || '',
+      hasCustomEndpoint: !!this.state.customBaseUrl,
+      customBadge: this.state.customBaseUrl ? '✓ ACTIVE' : '',
+      onCustomBaseChange: (e) => this.setState({ customBaseDraft: e.target.value }),
+      onCustomModelChange: (e) => this.setState({ customModelDraft: e.target.value }),
+      onCustomKeyChange: (e) => this.setState({ customKeyDraft: e.target.value }),
+      saveCustomEndpoint: () => this.setCustomEndpoint(this.state.customBaseDraft, this.state.customModelDraft, this.state.customKeyDraft),
+      clearCustomEndpoint: () => { this.setState({ customBaseDraft: '', customModelDraft: '', customKeyDraft: '' }); this.setCustomEndpoint('', '', ''); },
       pasteDraft: this.state.pasteDraft || '',
       pasteError: this.state.pasteError || '',
       pasteSummary: this.state.pasteSummary || '',
