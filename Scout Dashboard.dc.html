@@ -4,8 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
-<base target="_blank">
-<base target="_blank">
 </head>
 <body>
 <x-dc>
@@ -834,22 +832,11 @@ class Component extends DCLogic {
 
   async componentDidMount() {
     try {
+      const data = await this.waitForGlobal('POKEMON_DATA', 'scout-data-ready');
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
       this.mechanics = mechanics;
-      this.loadMechanicsFromCloud();
-    } catch (e) {}
-    if (!this.mechanics && window.PokemonMechanics) {
-      try { this.mechanics = new window.PokemonMechanics(); } catch (e) {}
-    }
-    try {
-      const savedRoster = this.loadRoster();
-      if (savedRoster && savedRoster.length > 0) {
-        this.setState({ roster: savedRoster, loaded: true });
-      } else {
-        const data = await this.waitForGlobal('POKEMON_DATA', 'scout-data-ready');
-        this.setState({ roster: data || [], loaded: true });
-        this.saveRoster(data || []);
-      }
+      // Cloud base-stats overlay is applied from onAuthChange (auth isn't ready yet here).
+      this.setState({ roster: data || [], loaded: true });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
@@ -921,8 +908,11 @@ class Component extends DCLogic {
 
   componentDidUpdate(prevProps, prevState) {
     if (this._applyingRemote || !this.state.cloudUser) return;
-    const changed = this.SYNC_KEYS().some(k => JSON.stringify(prevState[k]) !== JSON.stringify(this.state[k]));
-    if (changed) this.queueCloudPush();
+    // The DC runtime calls componentDidUpdate(prevProps) only — prevState is never
+    // passed, so the previous values are tracked on the instance instead.
+    const sig = JSON.stringify(this.SYNC_KEYS().map(k => this.state[k]));
+    if (this._lastSyncSig !== undefined && sig !== this._lastSyncSig) this.queueCloudPush();
+    this._lastSyncSig = sig;
   }
 
   loadFirebaseSdk() {
@@ -974,7 +964,8 @@ class Component extends DCLogic {
       this.auth = firebase.auth(app);
       this.db = firebase.firestore(app);
       this.setState({ firebaseConfigured: true, firebaseConfigError: '' });
-      this.loadMechanicsFromCloud();
+      // Cloud reads are auth-gated (rules require request.auth != null), so they
+      // fire from onAuthChange once a user is present — not here.
       this.auth.onAuthStateChanged(
         user => this.onAuthChange(user),
         err => this.setState({ authError: (err && err.message) || 'Auth error \u2014 check your Firebase config/rules.' })
@@ -1028,6 +1019,7 @@ class Component extends DCLogic {
       this.setState({ cloudUser: { uid: user.uid, email: user.email }, authError: '', authPassword: '' });
       this.subscribeCloudDoc(user.uid);
       this.checkMigrationStatus();
+      this.loadMechanicsFromCloud();
     } else {
       this.setState({ cloudUser: null, syncStatus: '' });
     }
@@ -1109,7 +1101,7 @@ class Component extends DCLogic {
   }
 
   async checkMigrationStatus() {
-    if (!this.db) return;
+    if (!this.db || !this.auth || !this.auth.currentUser) return; // rules require auth
     try {
       const snap = await this.db.collection('gameData').doc('meta').get();
       this.setState({ migrationAlreadyDone: !!(snap.exists && snap.data().statsUploaded && snap.data().spritesUploaded) });
@@ -1191,23 +1183,19 @@ class Component extends DCLogic {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const summary = this.parseCSV(ev.target.result);
-        this.setState({ 
-          importStatus: `CSV imported: ${summary.inserted} new, ${summary.total} total rows` 
-        });
-      } catch (err) {
-        console.error('CSV import failed:', err);
-        this.setState({ importStatus: 'CSV import failed: ' + err.message });
-      }
+        const parsed = this.parseCSV(ev.target.result);
+        this.setState({ roster: parsed, syncedFrom: file.name });
+      } catch (err) {}
     };
     reader.readAsText(file);
   }
+
   bestRank(p) {
     return Math.max(p.great.rankPct || 0, p.ultra.rankPct || 0, p.little.rankPct || 0);
   }
 
   masterRankFor(p) {
-    if (!this.mechanics || p.atkIV == null || p.defIV == null || p.staIV == null || p.dex == null) return null;
+    if (!this.mechanics || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV) || p.dex == null) return null;
     let base = null;
     if (p.form) base = this.mechanics.BASE_STATS_BY_FORM[p.dex + '_' + String(p.form).toLowerCase()];
     if (!base) base = this.mechanics.BASE_STATS[p.dex];
@@ -1269,7 +1257,7 @@ class Component extends DCLogic {
     this._spriteCache = this._spriteCache || {};
     if (this._spriteCache[dex]) return this._spriteCache[dex];
     const p = (async () => {
-      if (this.db) {
+      if (this.db && this.auth && this.auth.currentUser) {
         try {
           const snap = await this.db.collection('sprites').doc(String(dex)).get();
           if (snap.exists) {
@@ -1295,6 +1283,7 @@ class Component extends DCLogic {
 
   async loadMechanicsFromCloud() {
     if (!this.db || !this.mechanics) return;
+    if (!this.auth || !this.auth.currentUser) return; // rules require auth
     try {
       const snap = await this.db.collection('gameData').doc('baseStats').get();
       if (snap.exists) {
@@ -1323,19 +1312,14 @@ class Component extends DCLogic {
     try { localStorage.setItem('scout_recommend_done_v1', JSON.stringify(arr)); } catch (e) {}
   }
 
-  async preprocessImage(fileOrDataUrl) {
-    const dataUrl = typeof fileOrDataUrl === 'string' ? fileOrDataUrl : await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(fileOrDataUrl);
-    });
+  async preprocessImage(dataUrl) {
     const img = await new Promise((resolve, reject) => {
       const im = new Image();
       im.onload = () => resolve(im);
       im.onerror = reject;
       im.src = dataUrl;
     });
-    const scale = 2;
+    const scale = img.width < 900 ? 2 : 1;
     const canvas = document.createElement('canvas');
     canvas.width = img.width * scale;
     canvas.height = img.height * scale;
@@ -1344,13 +1328,14 @@ class Component extends DCLogic {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      d[i] = Math.min(255, d[i] * 1.15);
-      d[i+1] = Math.min(255, d[i+1] * 1.15);
-      d[i+2] = Math.min(255, d[i+2] * 1.15);
+      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.6 + 128));
+      d[i] = d[i + 1] = d[i + 2] = contrasted;
     }
     ctx.putImageData(imgData, 0, 0);
-    return canvas;
+    return canvas.toDataURL('image/png');
   }
+
   async cropTopRegion(dataUrl) {
     const img = await new Promise((resolve, reject) => {
       const im = new Image();
@@ -1377,326 +1362,66 @@ class Component extends DCLogic {
 
   async handleScreenshotUpload(file) {
     if (!file) return;
-    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, importProgress: 10 });
+    const dataUrl = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: dataUrl, ocrParsed: null });
     try {
-      const canvas = await this.preprocessImage(file);
-      const dataUrl = canvas.toDataURL('image/png');
-      this.setState({ ocrPreview: dataUrl, importProgress: 30 });
-
-      // Run OCR on FULL image twice: once permissive, once digits-only
-      const [fullText, digitText] = await Promise.all([
-        this.runOCR(canvas, null),  // no whitelist = read everything
-        this.runOCR(canvas, '0123456789,.')  // digits only for numbers
+      const processed = await this.preprocessImage(dataUrl);
+      const cropTop = await this.cropTopRegion(dataUrl);
+      const [resultProcessed, resultRaw, resultTop] = await Promise.all([
+        Tesseract.recognize(processed, 'eng'),
+        Tesseract.recognize(dataUrl, 'eng'),
+        Tesseract.recognize(cropTop, 'eng', { tessedit_char_whitelist: 'CP0123456789' })
       ]);
-
-      console.log('[OCR] Full text:', fullText.slice(0, 500));
-      console.log('[OCR] Digits:', digitText.slice(0, 300));
-
-      this.setState({ importProgress: 60 });
-
-      // Parse everything from full text
-      let rec = this.parsePokemonText(fullText);
-
-      // Fallback: if HP/candy not found, try digit-only text
-      if (!rec.hp) {
-        const hpM = digitText.match(/(\d+)\s*\/\s*\d+/) || digitText.match(/\b(\d{2,4})\b/);
-        if (hpM) rec.hp = parseInt(hpM[1], 10);
+      const text = (resultProcessed.data.text || '') + '\n' + (resultRaw.data.text || '') + '\n' + (resultTop.data.text || '');
+      const xlMatch = text.match(/(\d{1,4})\D{0,15}CANDY\D{0,3}XL/i) || text.match(/(\d{1,4})\D{0,15}XL/i)
+        || text.match(/XL\D{0,15}CANDY\D{0,3}(\d{1,4})/i) || text.match(/CANDY\D{0,3}XL\D{0,5}(\d{1,4})/i);
+      const candyMatch = text.match(/(\d{1,4})\D{0,20}?CANDY(?!\D{0,3}XL)/i);
+      const typeMatch = text.match(/\b([A-Z][A-Za-z]{3,10})\s*\/\s*([A-Z][A-Za-z]{3,10})\b/);
+      const singleTypeMatch = !typeMatch ? text.match(/\b(NORMAL|FIRE|WATER|GRASS|ELECTRIC|ICE|FIGHTING|POISON|GROUND|FLYING|PSYCHIC|BUG|ROCK|GHOST|DRAGON|DARK|STEEL|FAIRY)\b/i) : null;
+      const nameLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const nameGuess = nameLines.find(l => /^[A-Za-z][a-z]{2,}([ '.-][A-Za-z][a-z]+)*$/.test(l) && l.length > 2 && l.length < 20
+        && !/^(CP|HP|STARDUST|CANDY|WEIGHT|HEIGHT|POWER|CHANGE|FORM|GYMS|RAIDS|TRAINER|BATTLES|XL)$/i.test(l)) || '';
+      const hpMatch = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i);
+      const hpVal = hpMatch ? parseInt(hpMatch[1], 10) : null;
+      // Prefer the dedicated CP-crop scan (isolated to the CP badge) so the HP line's own
+      // digits never get mistaken for CP. Only fall back to whole-text scanning if that's empty,
+      // and when falling back, skip any number matching the HP value already found.
+      const topDigits = (resultTop.data.text || '').match(/(\d{2,5})/);
+      const labeledCpMatch = text.match(/CP\D{0,4}(\d{2,5})/i);
+      let cp = topDigits ? parseInt(topDigits[1], 10) : (labeledCpMatch ? parseInt(labeledCpMatch[1], 10) : null);
+      if (cp == null) {
+        const genericMatches = text.match(/\b\d{3,5}\b/g) || [];
+        const candidate = genericMatches.map(n => parseInt(n, 10)).find(n => n !== hpVal);
+        cp = candidate != null ? candidate : null;
       }
-      if (!rec.candy) {
-        const lines = digitText.split('\n').map(l => l.trim()).filter(Boolean);
-        for (const line of lines) {
-          const m = line.match(/^(\d+)$/);
-          if (m) {
-            const n = parseInt(m[1], 10);
-            if (n > 0 && n < 10000 && !rec.candy) rec.candy = n;
-            else if (n >= 0 && n < 100 && !rec.xl_candy) rec.xl_candy = n;
-          }
-        }
-      }
-
-      // Dex lookup for type
-      if (rec.pokemon_name) {
-        const dexInfo = this.lookupDexInfo(rec.pokemon_name);
-        rec = { ...dexInfo, ...rec };
-      }
-
-      this.setState({ importProgress: 80 });
-
-      // Merge into roster
       const roster = this.state.roster || [];
-      const existing = roster.find(p => p.name === rec.pokemon_name && Math.abs((p.cp || 0) - (rec.cp || 0)) < 10);
-
-      let newRoster;
-      if (existing) {
-        newRoster = roster.map(p => (p.name === rec.pokemon_name && Math.abs((p.cp || 0) - (rec.cp || 0)) < 10)
-          ? { ...p, candy: rec.candy || p.candy, xlCandy: rec.xl_candy || p.xlCandy, type1: rec.type_1 || p.type1, type2: rec.type_2 || p.type2, _updated: Date.now() }
-          : p);
-      } else if (rec.pokemon_name && rec.cp) {
-        const newMon = this.buildPokemonRecord(rec);
-        newRoster = [...roster, newMon];
-      } else {
-        newRoster = roster;
-      }
-
-      this.saveRoster(newRoster);
+      const matched = roster.find(p => p.cp === cp && (!nameGuess || p.name.toLowerCase() === nameGuess.toLowerCase()))
+        || roster.find(p => p.cp === cp);
       this.setState({
-        roster: newRoster,
         ocrBusy: false,
-        importProgress: 100,
         ocrParsed: {
-          name: rec.pokemon_name || '',
-          cp: rec.cp || null,
-          dex: rec.dex_number || null,
-          candy: rec.candy || null,
-          xlCandy: rec.xl_candy || null,
-          hp: rec.hp || null,
-          type: rec.type_1 ? (rec.type_2 ? `${rec.type_1} / ${rec.type_2}` : rec.type_1) : '',
-          rawText: fullText.slice(0, 1200)
+          name: nameGuess || (matched ? matched.name : ''),
+          cp: cp,
+          dex: matched ? matched.dex : null,
+          matchedIdx: matched ? matched.idx : null,
+          matchedName: matched ? matched.name : null,
+          matchedForm: matched ? matched.form : null,
+          candy: candyMatch ? parseInt(candyMatch[1], 10) : null,
+          xlCandy: xlMatch ? parseInt(xlMatch[1], 10) : null,
+          hp: hpVal,
+          type: typeMatch ? `${typeMatch[1]} / ${typeMatch[2]}` : (singleTypeMatch ? singleTypeMatch[1] : ''),
+          rawText: text.slice(0, 1200)
         }
       });
-    } catch (err) {
-      console.error('Screenshot import failed:', err);
-      this.setState({ ocrBusy: false, ocrError: 'Import failed: ' + err.message, importProgress: 0 });
-    }
-  }
-    async runOCR(canvas, whitelist = null) {
-    if (!window.Tesseract) {
-      await this.loadTesseract();
-    }
-    const config = {};
-    if (whitelist) config.tessedit_char_whitelist = whitelist;
-    const result = await window.Tesseract.recognize(canvas, 'eng', config);
-    return result.data.text || '';
-  }
-
-  async extractDetailFields(canvas) {
-    // Fallback: full-image OCR with permissive whitelist
-    const text = await this.runOCR(canvas, null);
-    const rec = {};
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-
-    // HP from any line with HP
-    const hpLine = lines.find(l => /\d+\s*\/\s*\d+.*HP/i.test(l));
-    if (hpLine) {
-      const m = hpLine.match(/(\d+)\s*\//);
-      if (m) rec.hp = parseInt(m[1], 10);
-    }
-
-    // Candy from line containing CANDY (not XL)
-    const candyLine = lines.find(l => /CANDY(?!.*XL)/i.test(l) && /\d/.test(l));
-    if (candyLine) {
-      const m = candyLine.match(/(\d+)/);
-      if (m) rec.candy = parseInt(m[1], 10);
-    }
-
-    // XL from line containing XL
-    const xlLine = lines.find(l => /XL/i.test(l) && /\d/.test(l));
-    if (xlLine) {
-      const m = xlLine.match(/(\d+)/);
-      if (m) rec.xl_candy = parseInt(m[1], 10);
-    }
-
-    return rec;
-  }
-
-  parsePokemonText(text) {
-    const rec = {};
-    const t = text.replace(/,/g, '');
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    console.log('[OCR] Lines:', lines.slice(0, 20));
-
-    // Name: first known Pokemon name in first 15 lines
-    const nameMatch = this.findPokemonName(text);
-    if (nameMatch) rec.pokemon_name = nameMatch;
-
-    // CP: look for CP followed by number (multi-line ok)
-    const cp = text.match(/CP\s*[:]*\s*(\d{2,5})/i) ||
-               text.match(/CP\s*\n\s*(\d{2,5})/im) ||
-               lines.find(l => /^CP\s*\d+$/i.test(l))?.match(/(\d+)/);
-    if (cp) rec.cp = parseInt(cp[1] || cp, 10);
-
-    // HP: "108/108 HP" or "HP 65" or "65 / 65 HP"
-    const hp = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i) ||
-               text.match(/HP\s*[:]*\s*(\d{1,4})/i) ||
-               text.match(/(\d{1,4})\s*HP\b/i) ||
-               lines.find(l => /\d+\s*\/\s*\d+\s*HP/i.test(l))?.match(/(\d+)/);
-    if (hp) rec.hp = parseInt(hp[1] || hp, 10);
-
-    // Candy: "79 EEVEE CANDY" or "CANDY 79" or just "79" near CANDY
-    const candyLine = lines.find(l => /CANDY(?!.*XL)/i.test(l) && /\d/.test(l));
-    if (candyLine) {
-      const cm = candyLine.match(/(\d+)/);
-      if (cm) rec.candy = parseInt(cm[1], 10);
-    }
-    // XL Candy: "4 EEVEE CANDY XL" or "XL 4"
-    const xlLine = lines.find(l => /XL/i.test(l) && /\d/.test(l));
-    if (xlLine) {
-      const xm = xlLine.match(/(\d+)/);
-      if (xm) rec.xl_candy = parseInt(xm[1], 10);
-    }
-
-    // Type: scan all lines for known types
-    const typePattern = /\b(Normal|Fire|Water|Grass|Electric|Ice|Fighting|Poison|Ground|Flying|Psychic|Bug|Rock|Ghost|Dragon|Dark|Steel|Fairy)\b/gi;
-    const types = [];
-    let tm;
-    while ((tm = typePattern.exec(text)) !== null) {
-      const type = tm[1].charAt(0).toUpperCase() + tm[1].slice(1).toLowerCase();
-      if (!types.includes(type)) types.push(type);
-    }
-    if (types.length > 0) rec.type_1 = types[0];
-    if (types.length > 1) rec.type_2 = types[1];
-
-    // Weight: "4.17kg"
-    const wt = text.match(/(\d+\.\d+)\s*kg/i) || text.match(/(\d+)\s*kg/i);
-    if (wt) rec.weight = wt[1];
-
-    // Height: "0.24m"
-    const ht = text.match(/(\d+\.\d+)\s*m\b/i) || text.match(/(\d+)\s*m\b/i);
-    if (ht) rec.height = ht[1];
-
-    // Stardust: "81,839 STARDUST"
-    const dust = text.match(/([\d,]+)\s*STARDUST/i);
-    if (dust) rec.stardust = parseInt(dust[1].replace(/,/g, ''), 10);
-
-    // IVs
-    const atk = text.match(/Atk\s*[:]*\s*(\d+)/i);
-    const def = text.match(/Def\s*[:]*\s*(\d+)/i);
-    const sta = text.match(/Sta\s*[:]*\s*(\d+)/i);
-    if (atk) rec.attack_iv = parseInt(atk[1], 10);
-    if (def) rec.defense_iv = parseInt(def[1], 10);
-    if (sta) rec.stamina_iv = parseInt(sta[1], 10);
-
-    // Level
-    const lvl = text.match(/Level\s*[:]*\s*(\d+\.?\d*)/i);
-    if (lvl) rec.level = parseFloat(lvl[1]);
-
-    // Booleans
-    if (/\bShadow\b/i.test(t)) rec.shadow = true;
-    if (/\bPurified\b/i.test(t)) rec.purified = true;
-    if (/\bLucky\b/i.test(t)) rec.lucky = true;
-    if (/\bShiny\b/i.test(t)) rec.shiny = true;
-    if (/\bFavorite\b/i.test(t)) rec.favorite = true;
-
-    // Moves
-    const moves = this.extractMoves(text);
-    if (moves.fast) rec.fast_move = moves.fast;
-    if (moves.charged1) rec.charged_move_1 = moves.charged1;
-    if (moves.charged2) rec.charged_move_2 = moves.charged2;
-
-    console.log('[OCR] Parsed:', JSON.stringify(rec));
-    return rec;
-  }
-
-  findPokemonName(text) {
-    if (!this._nameList) {
-      this._nameList = Object.keys(this.mechanics?.BASE_STATS_BY_FORM || {}).map(n => n.toLowerCase());
-      this._nameList.push(...['eevee','pikachu','charizard','dragonite','garchomp','mewtwo','tyranitar','metagross','gengar','machamp']);
-    }
-    const lines = text.split('\n').slice(0, 15);
-    for (const line of lines) {
-      const clean = line.trim().toLowerCase();
-      if (clean.length < 3 || clean.length > 20) continue;
-      if (this._nameList.includes(clean)) return this.capitalizeName(clean);
-      const words = clean.split(/\s+/);
-      for (let i = 0; i < words.length; i++) {
-        for (let j = i + 1; j <= Math.min(i + 3, words.length); j++) {
-          const phrase = words.slice(i, j).join(' ');
-          if (this._nameList.includes(phrase)) return this.capitalizeName(phrase);
-        }
-      }
-    }
-    return null;
-  }
-
-  capitalizeName(str) {
-    return str.replace(/\b\w/g, c => c.toUpperCase());
-  }
-
-  lookupDexInfo(name) {
-    const info = {};
-    const key = Object.keys(this.mechanics?.BASE_STATS_BY_FORM || {}).find(k => k.toLowerCase() === name.toLowerCase());
-    if (key) {
-      const stats = this.mechanics.BASE_STATS_BY_FORM[key];
-      info.dex_number = stats.dex || 0;
-      info.type_1 = stats.type1 || '';
-      info.type_2 = stats.type2 || '';
-    }
-    const manual = {
-      'eevee': { dex_number: 133, type_1: 'Normal' },
-      'pikachu': { dex_number: 25, type_1: 'Electric' },
-      'charizard': { dex_number: 6, type_1: 'Fire', type_2: 'Flying' },
-      'dragonite': { dex_number: 149, type_1: 'Dragon', type_2: 'Flying' },
-      'garchomp': { dex_number: 445, type_1: 'Dragon', type_2: 'Ground' },
-      'mewtwo': { dex_number: 150, type_1: 'Psychic' },
-      'tyranitar': { dex_number: 248, type_1: 'Rock', type_2: 'Dark' },
-      'metagross': { dex_number: 376, type_1: 'Steel', type_2: 'Psychic' },
-      'gengar': { dex_number: 94, type_1: 'Ghost', type_2: 'Poison' },
-      'machamp': { dex_number: 68, type_1: 'Fighting' },
-    };
-    const lower = name.toLowerCase();
-    if (manual[lower]) return { ...manual[lower], ...info };
-    return info;
-  }
-
-  buildPokemonRecord(rec) {
-    const atk = rec.attack_iv || 0;
-    const def = rec.defense_iv || 0;
-    const sta = rec.stamina_iv || 0;
-    const ivAvg = rec.iv_percent || Math.round((atk + def + sta) / 45 * 100 * 10) / 10;
-    return {
-      idx: (this.state.roster?.length || 0) + 1,
-      name: rec.pokemon_name || 'Unknown',
-      form: rec.form || null,
-      dex: rec.dex_number || 0,
-      gender: rec.gender || '',
-      cp: rec.cp || 0,
-      hp: rec.hp || 0,
-      atkIV: atk,
-      defIV: def,
-      staIV: sta,
-      ivAvg: ivAvg,
-      lvlMin: rec.level || null,
-      lvlMax: rec.level || null,
-      quickMove: rec.fast_move || '',
-      chargeMove: rec.charged_move_1 || '',
-      chargeMove2: rec.charged_move_2 || null,
-      scanDate: new Date().toISOString().split('T')[0],
-      catchDate: rec.caught_date || null,
-      weight: rec.weight || '',
-      height: rec.height || '',
-      lucky: rec.lucky || false,
-      shadowPurified: rec.shadow ? '1' : (rec.purified ? '2' : '0'),
-      favorite: rec.favorite || false,
-      dust: rec.stardust || 0,
-      candy: rec.candy || 0,
-      xlCandy: rec.xl_candy || 0,
-      type1: rec.type_1 || '',
-      type2: rec.type_2 || '',
-      great: { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null },
-      ultra: { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null },
-      little: { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null },
-    };
-  }
-
-  saveRoster(roster) {
-    try {
-      localStorage.setItem('scout_roster', JSON.stringify(roster));
-      localStorage.setItem('scout_roster_ts', Date.now().toString());
     } catch (e) {
-      console.error('[Scout] save failed:', e);
-      if (e.name === 'QuotaExceededError') alert('Storage full! Export and clear some Pokemon.');
+      this.setState({ ocrBusy: false, ocrError: 'Could not read that screenshot. Try a clearer, uncropped capture.' });
     }
   }
 
-  loadRoster() {
-    try {
-      const saved = localStorage.getItem('scout_roster');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('[Scout] load failed:', e);
-    }
-    return null;
-  }
   updateOcrField(field, value) {
     this.setState({ ocrParsed: { ...this.state.ocrParsed, [field]: value }, solvedIvResult: null });
   }
@@ -1833,7 +1558,7 @@ class Component extends DCLogic {
     let lastErr;
     for (let i = 0; i < attempts; i++) {
       try {
-        if (window.claude && typeof window.claude.complete === 'function') { try { return await window.claude.complete(body); } catch (e) { console.warn('window.claude.complete failed:', e); } }
+        if (window.claude && window.claude.complete) return await window.claude.complete(body);
         if (!(window.puter && window.puter.ai)) { try { await this.loadPuter(); } catch (e) {} }
         if (window.puter && window.puter.ai && window.puter.ai.chat) {
           const msgs = (body.messages || []).map(m => ({ ...m }));
@@ -1873,7 +1598,7 @@ class Component extends DCLogic {
   }
 
   setVideoStage(stage, progress) {
-    this.setState(s => ({ videoImport: { ...(s.videoImport || {}), stage, progress } }));
+    this.setState(s => ({ videoImport: { ...s.videoImport, stage, progress } }));
   }
 
   async extractFrames(file, count) {
@@ -1946,7 +1671,7 @@ class Component extends DCLogic {
       await this.runVideoPipeline(frames);
     } catch (err) {
       clearInterval(this._videoReadingTimer);
-      console.error('Video import error:', err); this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: (err && err.message) || 'Something went wrong reading that recording.' } }));
+      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: (err && err.message) || 'Something went wrong reading that recording.' } }));
     }
   }
 
@@ -2002,7 +1727,6 @@ class Component extends DCLogic {
       this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary } }));
     } catch (err) {
       clearInterval(this._videoReadingTimer);
-      console.error('runVideoPipeline error:', err);
       const msg = (err && err.message) || String(err);
       const friendly = /overload|rate.?limit|529|503/i.test(msg) ? 'Claude is overloaded right now \u2014 wait a moment and hit Retry.' : msg;
       this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: friendly } }));
@@ -2010,10 +1734,10 @@ class Component extends DCLogic {
   }
 
   mergeVideoImport(items) {
-    const overrides = { ...(this.state.ivOverrides || {}) };
-    const candyInv = { ...(this.state.candyInventory || {}) };
-    const types = { ...(this.state.typeTable || {}) };
-    const added = this.state.addedPokemon ? [...this.state.addedPokemon] : [];
+    const overrides = { ...this.state.ivOverrides };
+    const candyInv = { ...this.state.candyInventory };
+    const types = { ...this.state.typeTable };
+    const added = [...this.state.addedPokemon];
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
     let updated = 0, inserted = 0;
@@ -2304,11 +2028,11 @@ class Component extends DCLogic {
         delay: Math.min(i, 24) * 15,
         cp: p.cp,
         hp: p.hp,
-        ivDisplay: p.ivAvg != null ? p.ivAvg.toFixed(0) + '%' : '—',
+        ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '%' : '—',
         ivColor: ivColor(p.ivAvg),
         ringDasharray: ring.dasharray,
         ringDashoffset: ring.dashoffset,
-        spread: (p.atkIV != null ? p.atkIV + '/' + p.defIV + '/' + p.staIV : '—'),
+        spread: ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite) ? p.atkIV + '/' + p.defIV + '/' + p.staIV : '—'),
         moves: [p.quickMove, p.chargeMove].filter(Boolean).join(' / ') || '—',
         bestLeagueLabel: best ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'oklch(55% 0.02 260)',
@@ -2416,7 +2140,7 @@ class Component extends DCLogic {
       spriteRef: this.makeSpriteRefByDex(p.dex),
       badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
       initial: (p.name || '?').charAt(0),
-      ivDisplay: p.ivAvg != null ? p.ivAvg.toFixed(1) + '%' : '—',
+      ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '—',
       cp: p.cp,
       markTransferred: () => this.removePokemon(p.idx)
     }));
@@ -2574,9 +2298,9 @@ class Component extends DCLogic {
       const p = detailPoke;
       const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : ''].filter(Boolean).join('  ');
       const statRings = [
-        { label: 'ATK', value: p.atkIV != null ? p.atkIV : '—', color: 'oklch(75% 0.15 30)', ...this.ringGeom((p.atkIV || 0) / 15 * 100, 27) },
-        { label: 'DEF', value: p.defIV != null ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((p.defIV || 0) / 15 * 100, 27) },
-        { label: 'STA', value: p.staIV != null ? p.staIV : '—', color: 'oklch(75% 0.15 150)', ...this.ringGeom((p.staIV || 0) / 15 * 100, 27) }
+        { label: 'ATK', value: Number.isFinite(p.atkIV) ? p.atkIV : '—', color: 'oklch(75% 0.15 30)', ...this.ringGeom((Number.isFinite(p.atkIV) ? p.atkIV : 0) / 15 * 100, 27) },
+        { label: 'DEF', value: Number.isFinite(p.defIV) ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((Number.isFinite(p.defIV) ? p.defIV : 0) / 15 * 100, 27) },
+        { label: 'STA', value: Number.isFinite(p.staIV) ? p.staIV : '—', color: 'oklch(75% 0.15 150)', ...this.ringGeom((Number.isFinite(p.staIV) ? p.staIV : 0) / 15 * 100, 27) }
       ];
       const leagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].map(([label, o]) => ({
         label,

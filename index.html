@@ -1,185 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#171b26">
-  <meta name="description" content="Scout Dashboard - Pokemon GO Progress Tracker">
-  <title>Scout Dashboard</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100%;
-      height: 100%;
-      background: #171b26;
-      color: #e8ecf1;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #app-root {
-      width: 100%;
-      height: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-    }
-    #loading {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #171b26;
-      z-index: 9999;
-      transition: opacity 0.4s ease;
-    }
-    #loading.hidden { opacity: 0; pointer-events: none; }
-    #loading .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(100, 180, 255, 0.15);
-      border-top-color: #64b4ff;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: 20px;
-    }
-    #loading .title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #e8ecf1;
-      margin-bottom: 8px;
-    }
-    #loading .subtitle {
-      font-size: 13px;
-      color: #8b95a5;
-    }
-    #loading .progress {
-      width: 200px;
-      height: 3px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 2px;
-      margin-top: 20px;
-      overflow: hidden;
-    }
-    #loading .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: #64b4ff;
-      border-radius: 2px;
-      transition: width 0.3s ease;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Scout Dashboard</title>
+<script src="./support.js"></script>
 </head>
 <body>
-  <div id="loading">
-    <div class="spinner"></div>
-    <div class="title">Scout Dashboard</div>
-    <div class="subtitle" id="load-status">Loading runtime...</div>
-    <div class="progress"><div class="progress-bar" id="load-bar"></div></div>
-  </div>
-  <div id="app-root"></div>
-
-  <script>
-    // ============================================================
-    // SCOUT DASHBOARD BOOTSTRAP
-    // Loads support.js (DC runtime), pokemon-mechanics.js,
-  // and Scout Dashboard.dc.html dynamically
-    // ============================================================
-
-    const loadStatus = document.getElementById('load-status');
-    const loadBar = document.getElementById('load-bar');
-    let progress = 0;
-    function setProgress(p, text) {
-      progress = p;
-      loadBar.style.width = p + '%';
-      if (text) loadStatus.textContent = text;
-    }
-
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = src;
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('Failed to load: ' + src));
-        document.head.appendChild(s);
+<x-dc>
+<helmet>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#171b26">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Professor">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<style>
+  html,body{margin:0;padding:0;width:100%;background:#171b26;color:#e8ecf1;-webkit-tap-highlight-color:transparent}
+  a{color:oklch(78% 0.13 220)}
+  a:hover{color:oklch(85% 0.13 220)}
+</style>
+<script src="./src/sample-data.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').then(function (reg) {
+      reg.update();
+      // A new SW taking control means the code just changed under us — reload
+      // once so the page runs the fresh deploy instead of the previous one.
+      var reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (reloaded) return;
+        reloaded = true;
+        window.location.reload();
       });
-    }
-
-    function loadText(url) {
-      return fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); });
-    }
-
-    async function bootstrap() {
-      try {
-        // Step 1: Load support.js (DC runtime)
-        setProgress(15, 'Loading DC runtime...');
-        await loadScript('support.js');
-
-        // Step 2: Load pokemon-mechanics.js
-        setProgress(35, 'Loading game mechanics...');
-        await loadScript('pokemon-mechanics.js');
-
-        // Step 3: Load sample data as POKEMON_DATA global
-        setProgress(50, 'Loading sample data...');
-        const sampleData = await loadText('src/sample-data.js');
-        const dataScript = document.createElement('script');
-        dataScript.textContent = sampleData;
-        document.head.appendChild(dataScript);
-
-        // Step 4: Fetch Scout Dashboard template
-        setProgress(70, 'Loading dashboard template...');
-        const template = await loadText('Scout%20Dashboard.dc.html');
-
-        // Step 5: Mount the app
-        setProgress(85, 'Mounting dashboard...');
-        const appRoot = document.getElementById('app-root');
-
-        // The DC runtime in support.js should expose a way to compile/mount
-        // If it uses a standard pattern, try common mount approaches
-        if (window.DC && window.DC.mount) {
-          window.DC.mount(template, appRoot);
-        } else if (window.mountDC) {
-          window.mountDC(template, appRoot);
-        } else if (window.compileTemplate) {
-          appRoot.innerHTML = window.compileTemplate(template);
-        } else {
-          // Fallback: inject template directly and let support.js handle it
-          appRoot.innerHTML = template;
-          // Dispatch a ready event that support.js might be listening for
-          window.dispatchEvent(new CustomEvent('scout-template-ready', { detail: { template } }));
-        }
-
-        // Step 6: Hide loader
-        setProgress(100, 'Ready!');
-        setTimeout(() => {
-          document.getElementById('loading').classList.add('hidden');
-        }, 400);
-
-        // Register service worker
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('sw.js').catch(() => {});
-        }
-
-      } catch (err) {
-        console.error('Bootstrap failed:', err);
-        loadStatus.textContent = 'Error: ' + err.message;
-        loadStatus.style.color = '#ff6b6b';
-      }
-    }
-
-    // Start bootstrap when DOM is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bootstrap);
-    } else {
-      bootstrap();
-    }
-  </script>
+    }).catch(function () {});
+  });
+}
+</script>
+</helmet>
+<dc-import name="Scout Dashboard" hint-size="100%,100vh" style="display:block;width:100%"></dc-import>
+</x-dc>
 </body>
 </html>
