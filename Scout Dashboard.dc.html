@@ -2850,8 +2850,22 @@ class Component extends DCLogic {
   // outrunning request latency (20 keys -> 700ms global -> 14s per key).
   effectiveInterval(base) {
     const live = this.activeGeminiKeys().length;
-    if (live > 1) return Math.max(700, (base || this.RATE_INTERVAL_MS) / live);
-    return base || this.RATE_INTERVAL_MS;
+    const backoff = this._rateBackoff || 1;
+    if (live > 1) return Math.max(700, (base || this.RATE_INTERVAL_MS) / live) * backoff;
+    return (base || this.RATE_INTERVAL_MS) * backoff;
+  }
+
+  // Every 429 widens the gap for the rest of the import; a clean run narrows it
+  // back. Without this a single stall cascades into dozens of failures, which
+  // is exactly what turned a 10-Pokemon recording into 2.
+  noteRateLimit() {
+    this._rateBackoff = Math.min(4, (this._rateBackoff || 1) * 1.6);
+  }
+
+  noteRateSuccess() {
+    if (this._rateBackoff && this._rateBackoff > 1) {
+      this._rateBackoff = Math.max(1, this._rateBackoff * 0.9);
+    }
   }
 
   async throttleForRateLimit(index, total, spacing) {
@@ -3185,6 +3199,8 @@ class Component extends DCLogic {
       let failedBatches = 0;
       let unreadableBatches = 0;
       let noCredit = false;
+      let lastBatchError = '';
+      this._rateBackoff = 1;
       const runBatch = async (b, spacing, pass) => {
         const content = [
           { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
@@ -3198,9 +3214,12 @@ class Component extends DCLogic {
           const bMsg = (err && err.message) || String(err);
           console.error('[Scout] batch ' + (b + 1) + '/' + batches.length + ' (pass ' + pass + ') failed:', bMsg);
           if (bMsg === 'AI_NO_CREDIT') { noCredit = true; return 'nocredit'; }
+          if (/429|rate limit|quota|overload|503|529/i.test(bMsg)) this.noteRateLimit();
           this._lastAiError = bMsg;
+          lastBatchError = bMsg;
           return 'failed';
         }
+        this.noteRateSuccess();
         rawReplies.push(String(reply));
         const arr = this.extractJsonArray(reply);
         if (arr === null) {
@@ -3266,7 +3285,7 @@ class Component extends DCLogic {
             ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
             : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.'));
       }
-      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, frameCount: frames.length, rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
+      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, lastError: lastBatchError, frameCount: frames.length, rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
       this.setVideoStage('validating', 40);
       const mechanics = this.mechanics;
       const validated = (Array.isArray(parsed) ? parsed : []).map(item => {
@@ -4562,7 +4581,8 @@ class Component extends DCLogic {
         if (vi.failedBatches) parts.push(`${vi.failedBatches} of ${vi.batchCount} batches failed to send`);
         if (vi.unreadableBatches) parts.push(`${vi.unreadableBatches} of ${vi.batchCount} returned unreadable output`);
         if (!parts.length) return '';
-        return '\u26a0 ' + parts.join(' \u00b7 ') + ' \u2014 hit RETRY to fill the gaps.';
+        const why = vi.lastError ? ' Reason: ' + vi.lastError : '';
+        return '\u26a0 ' + parts.join(' \u00b7 ') + '.' + why + ' Hit RETRY to fill the gaps.';
       })(),
       videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error')),
       videoFrameThumbs: (this.state.videoImport && this.state.videoImport.frameThumbs && this.state.videoImport.frameThumbs.length)
