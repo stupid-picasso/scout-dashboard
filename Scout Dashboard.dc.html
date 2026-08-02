@@ -2490,9 +2490,9 @@ class Component extends DCLogic {
 
   // Frames are kept briefly after a successful read so Retry still works, then
   // dropped — at 600 frames the buffer is ~20 MB of base64.
-  _releaseFramesSoon() {
+  _releaseFramesSoon(ms) {
     clearTimeout(this._frameReleaseTimer);
-    this._frameReleaseTimer = setTimeout(() => { this._lastVideoFrames = null; }, 90000);
+    this._frameReleaseTimer = setTimeout(() => { this._lastVideoFrames = null; }, ms || 90000);
   }
 
   retryVideoImport() {
@@ -2890,9 +2890,13 @@ class Component extends DCLogic {
       const parsed = [...seen.values()];
 
       if (!parsed.length) {
+        // Hold the extracted frames for 30 minutes on a credit failure: the fix
+        // is "go and get a Gemini key", which takes longer than the normal
+        // retry window, and re-extracting is minutes of work.
+        if (noCredit) this._releaseFramesSoon(1800000);
         this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: rawReplies.join('\n---\n').slice(0, 800) } }));
         throw new Error(noCredit
-          ? 'Free AI credit is used up, so the recording could not be read. Screenshot import still works (on-device OCR). To restore video import, paste a free Google Gemini key under AI ENGINE \u2014 no credit card, 1,500 requests/day.'
+          ? 'Free AI credit is used up, so the recording could not be read. Your ' + frames.length + ' extracted frames are held for 30 minutes \u2014 paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day) or sign in to restore a saved key, then hit RETRY.'
           : (failedBatches === batches.length
             ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
             : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.'));

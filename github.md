@@ -2,7 +2,26 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
-date: 2026-08-01T21:57:09Z
+date: 2026-08-02T18:22:17Z
+commit: 38172cdd1dd0
+
+### Updated in this project
+- Extracted video frames are now held for 30 minutes (rather than 90 seconds) when an import fails for lack of AI credit — the remedy is "go and get a Gemini key", which takes longer than the old retry window, and re-extracting is minutes of work.
+- The no-credit message now states how many frames are being held and points at both remedies (paste a key, or sign in to restore the synced one).
+
+## Sync history
+
+### 2026-08-02T17:15:50Z
+
+### Updated in this project
+- Video extraction picks its strategy with a probe seek: files that don't seek reliably (iPhone screen recordings have sparse keyframes) are read by PLAYING the video at 4–8× and capturing frames as they decode, so there is no keyframe hunting and nothing to time out. Removes the need to re-encode before importing.
+- Mid-run fallback: six consecutive slow seeks switches to playback, resuming at the stalled timestamp with the remaining frame budget — restarting at 0 re-captured the span seeking had already read (dedupe only compares against the previous kept frame) and could breach the 600-frame cap.
+- Individual slow seeks are now skipped rather than fatal; only wholesale seek failure aborts.
+- Verified against repo commit 29d777480a82: the string "Video seek timed out" is absent from the pushed source, so that error on-device is a stale cached build (GitHub Pages CDN or the installed PWA), not the repo.
+
+## Sync history
+
+### 2026-08-01T21:57:09Z
 commit: b7ec03018f46
 
 ### Updated in this project
