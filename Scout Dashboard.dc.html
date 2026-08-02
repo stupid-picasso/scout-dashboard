@@ -32,14 +32,29 @@
   @keyframes flipIn{from{opacity:0;transform:rotateY(90deg) scale(.9)}to{opacity:1;transform:rotateY(0deg) scale(1)}}
   @keyframes cardPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
   @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 oklch(70% 0.15 220 / 0.5)}50%{box-shadow:0 0 0 8px oklch(70% 0.15 220 / 0)}}
+  @keyframes riseIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes sheenSweep{0%{transform:translateX(-120%) skewX(-18deg)}55%,100%{transform:translateX(320%) skewX(-18deg)}}
+  @keyframes auraBreathe{0%,100%{opacity:.42;transform:scale(1)}50%{opacity:.72;transform:scale(1.09)}}
+  @keyframes shimmerSlide{0%{background-position:-460px 0}100%{background-position:460px 0}}
+  @keyframes ambientDrift{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(3%,-2.5%,0) scale(1.06)}66%{transform:translate3d(-2.5%,2%,0) scale(1.03)}}
+  @keyframes sheetRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes scrimIn{from{opacity:0}to{opacity:1}}
+  /* Entrance stagger: --i is set per card so lists cascade instead of popping
+     in all at once. Capped so a 200-row roster never waits seconds. */
+  .om-stagger{animation:riseIn .42s cubic-bezier(.22,1,.36,1) both;animation-delay:min(calc(var(--i, 0) * 34ms), 620ms)}
+  /* Loading placeholders: a moving highlight band over a flat card. */
+  .om-skel{background:linear-gradient(100deg, oklch(24% 0.025 260) 28%, oklch(31% 0.03 260) 46%, oklch(24% 0.025 260) 64%);background-size:460px 100%;animation:shimmerSlide 1.25s linear infinite}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+  }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
 <script type="module" src="./pokemon-data.js"></script>
 <script type="module" src="./pokemon-mechanics.js"></script>
 </helmet>
-<div ref="{{ rootRef }}" style="min-height:100%;width:100%;box-sizing:border-box;background:oklch(18% 0.025 260);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.01 260);padding:{{ rootPadding }}">
+<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100%;width:100%;box-sizing:border-box;background:oklch(18% 0.025 260);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.01 260);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(42% 0.09 220 / .20), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(44% 0.10 150 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(40% 0.09 300 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:{{ headerWrap }};gap:12px">
+  <div style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px;padding:14px {{ rootPadX }};background:oklch(18% 0.025 260 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.03 260 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:14px">
       <div style="width:14px;height:14px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 14px oklch(78% 0.16 150)"></div>
       <div>
@@ -409,14 +424,20 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div style="background:oklch(21% 0.03 150);border:1px solid oklch(35% 0.05 150);border-radius:8px;padding:16px">
         <div style="font:700 11px ui-monospace,monospace;color:oklch(80% 0.15 150);letter-spacing:.05em;margin-bottom:8px">STARDUST PRIORITY</div>
-        <sc-for list="{{ digest.dustPriority }}" as="name" hint-placeholder-count="3">
-          <div style="font:13px sans-serif;padding:4px 0">{{ name }}</div>
+        <sc-for list="{{ digest.dustPriority }}" as="d" hint-placeholder-count="3">
+          <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:6px;transition:background .12s ease" style-hover="background:oklch(28% 0.045 150)">
+            <div style="width:24px;height:24px;border-radius:50%;background:{{ d.badgeColor }};overflow:hidden;flex-shrink:0"><img ref="{{ d.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+            <div style="font:13px sans-serif">{{ d.name }}</div>
+          </div>
         </sc-for>
       </div>
       <div style="background:oklch(23% 0.04 30);border:1px solid oklch(40% 0.06 30);border-radius:8px;padding:16px">
         <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 40);letter-spacing:.05em;margin-bottom:8px">DON'T SPEND DUST ON</div>
-        <sc-for list="{{ digest.avoidList }}" as="name" hint-placeholder-count="3">
-          <div style="font:13px sans-serif;padding:4px 0">{{ name }}</div>
+        <sc-for list="{{ digest.avoidList }}" as="d" hint-placeholder-count="3">
+          <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:6px;transition:background .12s ease" style-hover="background:oklch(30% 0.055 30)">
+            <div style="width:24px;height:24px;border-radius:50%;background:{{ d.badgeColor }};overflow:hidden;flex-shrink:0"><img ref="{{ d.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+            <div style="font:13px sans-serif">{{ d.name }}</div>
+          </div>
         </sc-for>
       </div>
     </div>
@@ -428,13 +449,16 @@
     <sc-if value="{{ showOptimizePlan }}" hint-placeholder-val="{{ false }}">
     <div style="display:flex;flex-direction:column;gap:16px">
       <div>
-        <div style="font:700 11px ui-monospace,monospace;color:oklch(80% 0.15 150);letter-spacing:.05em;margin-bottom:8px">1. POWER UP THESE</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(80% 0.15 150);letter-spacing:.05em">1. POWER UP THESE</div>
+          <div style="font:10.5px ui-monospace,monospace;color:oklch(52% 0.02 260)">{{ optimizePlanDisplay.powerUpCount }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.powerUp }}" as="p" hint-placeholder-count="3">
-            <div style="background:oklch(19% 0.025 150);border:1px solid oklch(30% 0.04 150);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(19% 0.025 150);border:1px solid oklch(30% 0.04 150);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(58% 0.13 150);background:oklch(23% 0.035 150);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
-                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px ui-monospace,monospace;color:oklch(80% 0.15 150)">{{ p.sub }} &middot; {{ p.cp }} CP</div>
             </div>
@@ -442,13 +466,16 @@
         </div>
       </div>
       <div>
-        <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.05em;margin-bottom:8px">2. EVOLVE THESE NEXT EVENT</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.05em">2. EVOLVE THESE NEXT EVENT</div>
+          <div style="font:10.5px ui-monospace,monospace;color:oklch(52% 0.02 260)">{{ optimizePlanDisplay.evolveCount }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.evolveSoon }}" as="p" hint-placeholder-count="3">
-            <div style="background:oklch(22% 0.03 70);border:1px solid oklch(35% 0.05 70);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(22% 0.03 70);border:1px solid oklch(35% 0.05 70);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(62% 0.14 70);background:oklch(26% 0.04 70);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
-                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ p.sub }}</div>
             </div>
@@ -456,36 +483,44 @@
         </div>
       </div>
       <div>
-        <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 40);letter-spacing:.05em;margin-bottom:8px">3. TRANSFER THESE SAFELY</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 40);letter-spacing:.05em">3. TRANSFER THESE SAFELY</div>
+          <div style="font:10.5px ui-monospace,monospace;color:oklch(52% 0.02 260)">{{ optimizePlanDisplay.transferCount }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.transferSafe }}" as="p" hint-placeholder-count="3">
-            <div style="background:oklch(21% 0.035 30);border:1px solid oklch(38% 0.05 30);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(21% 0.035 30);border:1px solid oklch(38% 0.05 30);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(62% 0.14 30);background:oklch(25% 0.045 30);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
-                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
-              <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:4px;border-radius:4px;background:oklch(38% 0.05 30);color:oklch(90% 0.02 30);font:700 10px ui-monospace,monospace">TRANSFERRED &mdash; REMOVE</div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(72% 0.02 30)">{{ p.sub }}</div>
+              <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:5px;border-radius:4px;background:oklch(38% 0.05 30);color:oklch(90% 0.02 30);font:700 10px ui-monospace,monospace" style-hover="background:oklch(46% 0.07 30)">TRANSFERRED &mdash; REMOVE</div>
             </div>
           </sc-for>
         </div>
       </div>
       <div>
-        <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 220);letter-spacing:.05em;margin-bottom:8px">4. LUCKY TRADE CANDIDATES (duplicate species)</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 220);letter-spacing:.05em">4. LUCKY TRADE CANDIDATES</div>
+          <div style="font:10.5px ui-monospace,monospace;color:oklch(52% 0.02 260)">{{ optimizePlanDisplay.luckyCount }} &middot; duplicate species</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.luckyTrade }}" as="p" hint-placeholder-count="3">
-            <div style="background:oklch(21% 0.03 220);border:1px solid oklch(38% 0.05 220);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(21% 0.03 220);border:1px solid oklch(38% 0.05 220);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(62% 0.13 220);background:oklch(25% 0.04 220);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:26px;height:26px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
-                <div style="font:600 12px sans-serif">{{ p.displayName }}</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(72% 0.02 220)">{{ p.sub }} &middot; {{ p.cp }} CP</div>
             </div>
           </sc-for>
         </div>
       </div>
       <sc-if value="{{ optimizePlanDisplay.buddySuggestion }}" hint-placeholder-val="{{ false }}">
-        <div style="background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.04 260);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+        <div onClick="{{ optimizePlanDisplay.buddySuggestion.onClick }}" style="cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.04 260);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;transition:border-color .12s ease,background .12s ease" style-hover="border-color:oklch(55% 0.07 260);background:oklch(27% 0.035 260)">
           <div style="font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260)">5. SET AS BUDDY NEXT</div>
-          <div style="width:26px;height:26px;border-radius:50%;background:{{ optimizePlanDisplay.buddySuggestion.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ optimizePlanDisplay.buddySuggestion.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+          <div style="width:32px;height:32px;border-radius:50%;background:{{ optimizePlanDisplay.buddySuggestion.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ optimizePlanDisplay.buddySuggestion.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
           <div style="font:600 13px sans-serif">{{ optimizePlanDisplay.buddySuggestion.displayName }}</div>
         </div>
       </sc-if>
@@ -534,9 +569,29 @@
       </select>
       <div style="font:12px ui-monospace,monospace;color:oklch(55% 0.02 260)">{{ rosterCountLabel }}</div>
     </div>
+    <sc-if value="{{ rosterLoading }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
+        <sc-for list="{{ skeletonCards }}" as="s" hint-placeholder-count="8">
+          <div style="background:oklch(23% 0.03 260);border:1px solid oklch(30% 0.03 260);border-radius:10px;padding:{{ cardPadding }};display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="om-skel" style="width:38px;height:38px;border-radius:50%;flex-shrink:0"></div>
+              <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+                <div class="om-skel" style="height:11px;width:{{ s.nameWidth }};border-radius:4px"></div>
+                <div class="om-skel" style="height:9px;width:38%;border-radius:4px"></div>
+              </div>
+            </div>
+            <div class="om-skel" style="height:30px;border-radius:6px"></div>
+            <div style="display:flex;gap:6px">
+              <div class="om-skel" style="height:9px;flex:1;border-radius:4px"></div>
+              <div class="om-skel" style="height:9px;width:26%;border-radius:4px"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
     <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:{{ cardPadding }};animation:cardPop .4s ease backwards;animation-delay:{{ p.delay }}ms" style-hover="transform:translateY(-4px);border-color:oklch(50% 0.1 220);box-shadow:0 8px 20px rgba(0,0,0,.35)">
+        <div onClick="{{ p.onClick }}" class="om-stagger" style="--i:{{ $index }};cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:{{ cardPadding }};transition:transform .16s cubic-bezier(.22,1,.36,1),border-color .16s ease,box-shadow .16s ease" style-hover="transform:translateY(-4px);border-color:oklch(50% 0.1 220);box-shadow:0 8px 20px rgba(0,0,0,.35)">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:38px;height:38px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 16px ui-monospace,monospace;color:oklch(15% 0.02 260);flex-shrink:0;overflow:hidden;position:relative">
@@ -577,8 +632,8 @@
   </sc-if>
 
   <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
-  <div onClick="{{ closeDetail }}" style="position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:center;justify-content:center;z-index:50;animation:fadeSlideIn .25s cubic-bezier(.22,1,.36,1);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif">
-    <div onClick="{{ stopProp }}" style="background:oklch(21% 0.022 260);border-radius:28px;width:400px;max-width:92vw;max-height:90vh;overflow-y:auto;animation:flipIn .45s cubic-bezier(.22,1,.36,1);box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
+  <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:center;justify-content:center;z-index:50;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif">
+    <div onClick="{{ stopProp }}" style="background:oklch(21% 0.022 260);border-radius:28px;width:400px;max-width:92vw;max-height:90vh;overflow-y:auto;animation:sheetRise .44s cubic-bezier(.22,1,.36,1) both;box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
 
       <div style="position:relative;height:248px;background:{{ detail.headerGradient }};border-radius:28px 28px 0 0;overflow:hidden">
         <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14), transparent 60%)"></div>
@@ -592,7 +647,7 @@
             <circle cx="74" cy="74" r="64" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"></circle>
             <circle cx="74" cy="74" r="64" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" transform="rotate(-90 74 74)" style="transition:stroke-dashoffset 1s ease"></circle>
           </svg>
-          <div style="width:94px;height:94px;position:relative;display:flex;align-items:center;justify-content:center">
+          <div style="--aura:{{ detail.auraColor }};width:94px;height:94px;position:relative;display:flex;align-items:center;justify-content:center" style-before="content:'';position:absolute;inset:-26%;border-radius:50%;background:radial-gradient(circle, var(--aura) 0%, transparent 68%);animation:auraBreathe 4.2s ease-in-out infinite;pointer-events:none">
             <span style="position:absolute;font:800 34px ui-monospace,monospace;color:rgba(255,255,255,.45)">{{ detail.initial }}</span>
             <img ref="{{ detail.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.35))" />
           </div>
@@ -697,7 +752,7 @@
         <div>#</div><div>NAME</div><div>CP</div><div>RANK %</div><div>STAT PROD</div><div>EVOLVES TO</div>
       </div>
       <sc-for list="{{ pvpList }}" as="p" hint-placeholder-count="8">
-        <div style="display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:13px sans-serif;border-bottom:1px solid oklch(27% 0.02 260);align-items:center">
+        <div class="om-stagger" style="--i:{{ $index }};display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:13px sans-serif;border-bottom:1px solid oklch(27% 0.02 260);align-items:center">
           <div style="font:ui-monospace,monospace;color:oklch(55% 0.02 260)">{{ p.rankNum }}</div>
           <div style="font-weight:600">{{ p.displayName }}</div>
           <div style="font:ui-monospace,monospace">{{ p.cp }}</div>
@@ -938,7 +993,7 @@ class Component extends DCLogic {
       // Cloud base-stats overlay is applied from onAuthChange (auth isn't ready yet here).
       // A locally-saved roster (OCR/CSV edits) wins over the bundled export.
       const savedRoster = this.loadRoster();
-      this.setState({ roster: savedRoster || data || [], loaded: true });
+      this.setState({ roster: this.sanitizeRoster(savedRoster || data || []), loaded: true });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
@@ -1011,6 +1066,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     if (this.updateWidth) window.removeEventListener('resize', this.updateWidth);
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    if (this._statRaf) cancelAnimationFrame(this._statRaf);
   }
 
   rootRef(el) {
@@ -1167,7 +1223,7 @@ class Component extends DCLogic {
     this._applyingRemote = true;
     const needsRosterBackfill = !remote.roster || !remote.roster.length;
     const patch = {
-      roster: needsRosterBackfill ? this.state.roster : remote.roster,
+      roster: needsRosterBackfill ? this.state.roster : this.sanitizeRoster(remote.roster),
       ivOverrides: remote.ivOverrides || {},
       addedPokemon: remote.addedPokemon || [],
       candyInventory: remote.candyInventory || {},
@@ -1388,31 +1444,63 @@ class Component extends DCLogic {
     };
   }
 
-  resolveSpriteSrc(dex) {
+  // Sprite lookup is form-aware: `sprites/741.png` is a single file per dex, so
+  // an Oricorio (Pom-Pom) rendered by dex alone shows the red Baile art. Tries a
+  // local form file, then PokeAPI's form sprite, then plain dex.
+  formSlug(form) {
+    if (!form) return '';
+    return String(form).toLowerCase().trim()
+      .replace(/[()]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  resolveSpriteSrc(dex, form) {
+    const slug = this.formSlug(form);
+    const key = slug ? dex + '-' + slug : String(dex);
     this._spriteCache = this._spriteCache || {};
-    if (this._spriteCache[dex]) return this._spriteCache[dex];
+    if (this._spriteCache[key]) return this._spriteCache[key];
+    const canLoad = (url) => new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => resolve(url);
+      im.onerror = () => resolve(null);
+      im.src = url;
+    });
     const p = (async () => {
       if (this.db && this.auth && this.auth.currentUser) {
-        try {
-          const snap = await this.db.collection('sprites').doc(String(dex)).get();
-          if (snap.exists) {
-            const d = snap.data();
-            return 'data:' + (d.contentType || 'image/png') + ';base64,' + d.data;
-          }
-        } catch (e) {}
+        // Try the form-specific doc, then the plain dex doc — sprites uploaded
+        // before form support are keyed by dex alone and must still resolve.
+        for (const docId of (slug ? [key, String(dex)] : [String(dex)])) {
+          try {
+            const snap = await this.db.collection('sprites').doc(docId).get();
+            if (snap.exists) {
+              const d = snap.data();
+              return 'data:' + (d.contentType || 'image/png') + ';base64,' + d.data;
+            }
+          } catch (e) {}
+        }
+      }
+      if (slug) {
+        // Local form file only. A remote per-dex URL cannot disambiguate a form,
+        // so probing one costs a cross-origin round-trip (which sw.js bypasses,
+        // so it hangs until onerror when offline) and returns identical pixels.
+        const local = await canLoad('sprites/' + dex + '-' + slug + '.png');
+        if (local) return local;
       }
       return 'sprites/' + dex + '.png';
     })();
-    this._spriteCache[dex] = p;
+    this._spriteCache[key] = p;
     return p;
   }
 
-  makeSpriteRefByDex(dex) {
+  makeSpriteRefByDex(dex, form) {
+    const slug = this.formSlug(form);
+    const key = slug ? dex + '-' + slug : String(dex);
     return (el) => {
-      if (!el || el.dataset.spriteDex === String(dex)) return;
-      el.dataset.spriteDex = String(dex);
+      if (!el || el.dataset.spriteDex === key) return;
+      el.dataset.spriteDex = key;
       el.onerror = () => { el.style.display = 'none'; };
-      this.resolveSpriteSrc(dex).then(src => { if (src && el.isConnected) el.src = src; });
+      this.resolveSpriteSrc(dex, form).then(src => { if (src && el.isConnected) el.src = src; });
     };
   }
 
@@ -1604,6 +1692,33 @@ class Component extends DCLogic {
         this.setState({ ocrError: 'Local storage is full \u2014 export your roster, then remove some Pokemon.' });
       }
     }
+  }
+
+  // NaN sanitizer at the import boundary. A malformed CSV cell parses to NaN,
+  // which is NOT null — so every downstream `!= null` check admits it and it
+  // surfaces as "NaN%" / "#NaN". Normalizing once here makes every consumer
+  // correct by construction.
+  sanitizeRoster(roster) {
+    if (!Array.isArray(roster)) return roster;
+    const NUM_KEYS = ['cp', 'hp', 'atkIV', 'defIV', 'staIV', 'ivAvg', 'lvlMin', 'lvlMax', 'dust', 'candy', 'xlCandy', 'dex'];
+    const LEAGUE_KEYS = ['rankPct', 'rankNum', 'statProd', 'dustCost', 'candyCost'];
+    return roster.map(p => {
+      if (!p || typeof p !== 'object') return p;
+      const out = { ...p };
+      NUM_KEYS.forEach(k => { if (typeof out[k] === 'number' && !Number.isFinite(out[k])) out[k] = null; });
+      ['great', 'ultra', 'little', 'master'].forEach(lg => {
+        if (out[lg] && typeof out[lg] === 'object') {
+          const o = { ...out[lg] };
+          LEAGUE_KEYS.forEach(k => { if (typeof o[k] === 'number' && !Number.isFinite(o[k])) o[k] = null; });
+          // Rank % is a ratio against the best legal spread for the species, so
+          // it cannot exceed 100. Poke Genie exports >100 for Little League when
+          // the species can't reach the 500 cap; clamp rather than show "105%".
+          if (typeof o.rankPct === 'number' && o.rankPct > 100) o.rankPct = 100;
+          out[lg] = o;
+        }
+      });
+      return out;
+    });
   }
 
   loadRoster() {
@@ -2750,7 +2865,7 @@ class Component extends DCLogic {
     const text = this.state.chatInput.trim();
     if (!text || this.state.chatBusy) return;
     const roster = this.state.roster;
-    const withIV = roster.filter(p => p.ivAvg != null);
+    const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
     const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length).toFixed(1) : 'n/a';
     const plan = this.buildOptimizePlan(roster);
     const contextLines = [
@@ -2785,11 +2900,41 @@ class Component extends DCLogic {
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: 'Chat failed to reach the model. Try again.' }], chatBusy: false });
     }
   }
+  // Eases the header stat cards toward their real values. Driven by rAF and
+  // only restarted when a target actually changes, so ordinary re-renders
+  // (filter typing, hover) don't retrigger the count-up.
+  syncStatCounters(targets) {
+    const sig = JSON.stringify(targets);
+    if (this._statSig === sig) return;
+    this._statSig = sig;
+    const keys = ['total', 'avgIV', 'lucky', 'shadow', 'pvpReady'];
+    const first = this._statAnimStarted !== true;
+    this._statAnimStarted = true;
+    const from = { ...(this.state.statAnim || {}) };
+    keys.forEach(k => { if (from[k] === undefined) from[k] = first ? 0 : (targets[k] || 0); });
+    if (this._statRaf) cancelAnimationFrame(this._statRaf);
+    const t0 = performance.now();
+    const dur = 900;
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      const next = {};
+      keys.forEach(k => {
+        const target = targets[k] == null ? 0 : targets[k];
+        const start = from[k] == null ? 0 : from[k];
+        next[k] = start + (target - start) * e;
+      });
+      this.setState({ statAnim: next });
+      this._statRaf = t < 1 ? requestAnimationFrame(step) : null;
+    };
+    this._statRaf = requestAnimationFrame(step);
+  }
+
   openDetail(p) { this.setState({ detailPoke: p }); }
   closeDetail() { this.setState({ detailPoke: null }); }
 
   topForLeague(key) {
-    const pool = this.state.roster.filter(p => p[key] && p[key].rankPct != null);
+    const pool = this.state.roster.filter(p => p[key] && Number.isFinite(p[key].rankPct));
     pool.sort((a, b) => b[key].rankPct - a[key].rankPct);
     return pool[0] || null;
   }
@@ -2828,12 +2973,12 @@ class Component extends DCLogic {
     } else if (q.includes('shadow')) {
       answer = `You have ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length} Shadow Pokemon.`;
     } else if (q.includes('average') || q.includes('avg')) {
-      const withIV = roster.filter(p => p.ivAvg != null);
+      const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
       const avg = withIV.length ? withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length : 0;
       answer = `Your average IV is ${avg.toFixed(1)} percent.`;
     } else if (q.includes('great')) {
       const best = this.topForLeague('great');
-      answer = best ? `Your best Great League pick is ${best.name} at ${best.great.rankPct.toFixed(1)} percent rank.` : 'No Great League data found.';
+      answer = (best && Number.isFinite(best.great.rankPct)) ? `Your best Great League pick is ${best.name} at ${best.great.rankPct.toFixed(1)} percent rank.` : 'No Great League data found.';
     } else if (q.includes('ultra')) {
       const best = this.topForLeague('ultra');
       answer = best ? `Your best Ultra League pick is ${best.name} at ${best.ultra.rankPct.toFixed(1)} percent rank.` : 'No Ultra League data found.';
@@ -2859,7 +3004,7 @@ class Component extends DCLogic {
     const opts = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]];
     let best = null;
     for (const [label, obj] of opts) {
-      if (obj.rankPct != null && (!best || obj.rankPct > best.rankPct)) best = { label, rankPct: obj.rankPct };
+      if (Number.isFinite(obj.rankPct) && (!best || obj.rankPct > best.rankPct)) best = { label, rankPct: obj.rankPct };
     }
     return best;
   }
@@ -2867,13 +3012,13 @@ class Component extends DCLogic {
   logSnapshot() {
     const roster = this.state.roster;
     if (!roster.length) return;
-    const withIV = roster.filter(p => p.ivAvg != null);
+    const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
     const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length) : 0;
     const entry = {
       date: new Date().toISOString().slice(0, 16).replace('T', ' '),
       stardust: this.state.stardustBalance,
       count: roster.length,
-      avgIV: avgIV.toFixed(1),
+      avgIV: Number.isFinite(avgIV) ? avgIV.toFixed(1) : 'n/a',
       lucky: roster.filter(p => p.lucky).length
     };
     const history = [entry, ...this.state.history];
@@ -2926,7 +3071,7 @@ class Component extends DCLogic {
         initial: (p.name || '?').charAt(0),
         dex: p.dex,
         badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
-        spriteRef: this.makeSpriteRefByDex(p.dex),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         delay: Math.min(i, 24) * 15,
         cp: p.cp,
         hp: p.hp,
@@ -2936,28 +3081,38 @@ class Component extends DCLogic {
         ringDashoffset: ring.dashoffset,
         spread: ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite) ? p.atkIV + '/' + p.defIV + '/' + p.staIV : '—'),
         moves: [p.quickMove, p.chargeMove].filter(Boolean).join(' / ') || '—',
-        bestLeagueLabel: best ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
+        bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'oklch(55% 0.02 260)',
         flags: flags || '—',
         stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : ''
       };
     });
 
-    const withIV = roster.filter(p => p.ivAvg != null);
+    const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
     const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length) : 0;
     const pvpReady = roster.filter(p => this.bestRank(p) >= 90).length;
 
-    const stats = {
+    const statTargets = {
       total: roster.length,
-      avgIV: avgIV.toFixed(1) + '%',
+      avgIV: Number.isFinite(avgIV) ? avgIV : null,
       lucky: roster.filter(p => p.lucky).length,
       shadow: roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length,
       pvpReady
     };
+    this.syncStatCounters(statTargets);
+    const anim = this.state.statAnim || {};
+    const shown = (k) => (anim[k] === undefined ? (statTargets[k] || 0) : anim[k]);
+    const stats = {
+      total: Math.round(shown('total')),
+      avgIV: statTargets.avgIV == null ? '—' : shown('avgIV').toFixed(1) + '%',
+      lucky: Math.round(shown('lucky')),
+      shadow: Math.round(shown('shadow')),
+      pvpReady: Math.round(shown('pvpReady'))
+    };
 
     const callouts = [];
     if (pvpReady > 0) callouts.push(`${pvpReady} Pokemon are sitting at 90%+ rank in at least one league — check PVP RANKINGS.`);
-    if (stats.lucky > 0) callouts.push(`You're holding ${stats.lucky} Lucky Pokemon — cheap power-ups, guaranteed 12+ IV floor.`);
+    if (statTargets.lucky > 0) callouts.push(`You're holding ${statTargets.lucky} Lucky Pokemon — cheap power-ups, guaranteed 12+ IV floor.`);
     callouts.push(`Roster synced from ${this.state.syncedFrom}. Drop a new CSV anytime via SYNC CSV.`);
     const rawCallout = callouts[0] || 'Standing by. Sync a roster export to get started.';
     const calloutLine = personality === 'hype' ? rawCallout.replace(/\.$/, '!').toUpperCase()
@@ -2966,14 +3121,14 @@ class Component extends DCLogic {
 
     const leagueKey = league;
     const rosterForLeague = leagueKey === 'master' ? roster.map(p => ({ ...p, master: this.masterRankFor(p) })) : roster;
-    const leaguePool = rosterForLeague.filter(p => p[leagueKey] && p[leagueKey].rankPct != null);
+    const leaguePool = rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct));
     leaguePool.sort((a, b) => b[leagueKey].rankPct - a[leagueKey].rankPct);
     const pvpList = leaguePool.slice(0, 20).map(p => ({
       displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
       cp: p.cp,
-      rankNum: p[leagueKey].rankNum != null ? '#' + p[leagueKey].rankNum : '—',
-      rankPctDisplay: p[leagueKey].rankPct.toFixed(1) + '%',
-      statProdDisplay: p[leagueKey].statProd != null ? p[leagueKey].statProd.toFixed(1) + '%' : '—',
+      rankNum: Number.isFinite(p[leagueKey].rankNum) ? '#' + p[leagueKey].rankNum : '—',
+      rankPctDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(1) + '%' : '—',
+      statProdDisplay: Number.isFinite(p[leagueKey].statProd) ? p[leagueKey].statProd.toFixed(1) + '%' : '—',
       evolvesTo: p[leagueKey].evolvesTo || '—'
     }));
 
@@ -2996,10 +3151,10 @@ class Component extends DCLogic {
       teamTypes[key] = true;
       suggestedTeam.push({
         idx: p.idx, displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
-        spriteRef: this.makeSpriteRefByDex(p.dex),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
         initial: (p.name || '?').charAt(0),
-        typeLabel: t || 'Unknown', rankDisplay: p[leagueKey].rankPct.toFixed(0) + '%'
+        typeLabel: t || 'Unknown', rankDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(0) + '%' : '—'
       });
     });
     const suggestedTeamDisplay = suggestedTeam.length ? suggestedTeam : null;
@@ -3024,12 +3179,12 @@ class Component extends DCLogic {
       return {
         idx: p.idx,
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
-        spriteRef: this.makeSpriteRefByDex(p.dex),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
         initial: (p.name || '?').charAt(0),
         cp: p.cp,
         bestLeagueLabel: best ? best.label : '',
-        bestRankDisplay: best ? best.rankPct.toFixed(0) + '%' : '',
+        bestRankDisplay: (best && Number.isFinite(best.rankPct)) ? best.rankPct.toFixed(0) + '%' : '',
         markDone: () => this.toggleDone(p.idx)
       };
     });
@@ -3039,7 +3194,7 @@ class Component extends DCLogic {
     const transferList = transferPool.slice(0, 12).map(p => ({
       idx: p.idx,
       displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
-      spriteRef: this.makeSpriteRefByDex(p.dex),
+      spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
       badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
       initial: (p.name || '?').charAt(0),
       ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '—',
@@ -3055,43 +3210,51 @@ class Component extends DCLogic {
     const greeting = personality === 'hype' ? baseGreeting.replace('.', '!') + ' Let\'s cook.'
       : personality === 'deadpan' ? baseGreeting.replace('Trainer.', 'Trainer. Data follows.')
       : baseGreeting;
-    const greatProjects = roster.filter(p => p.great && p.great.rankPct != null && p.great.rankPct >= 80 && notDone(p)).length;
+    const greatProjects = roster.filter(p => p.great && Number.isFinite(p.great.rankPct) && p.great.rankPct >= 80 && notDone(p)).length;
     const mapMini = (arr) => arr.map(p => ({
       idx: p.idx,
       displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
-      spriteRef: this.makeSpriteRefByDex(p.dex),
+      spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
       badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
       initial: (p.name || '?').charAt(0),
       sub: this.bestRank(p) ? this.bestRank(p).toFixed(0) + '% rank' : '',
       cp: p.cp,
+      onClick: () => this.openDetail(p),
       markDone: () => this.toggleDone(p.idx)
     }));
     const optimizePlanDisplay = {
+      powerUpCount: plan.powerUp.length,
+      evolveCount: plan.evolveSoon.length,
+      transferCount: plan.transferSafe.length,
+      luckyCount: plan.luckyTrade.length,
       powerUp: mapMini(plan.powerUp),
       evolveSoon: plan.evolveSoon.map(p => ({
         idx: p.idx,
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
-        spriteRef: this.makeSpriteRefByDex(p.dex),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
         initial: (p.name || '?').charAt(0),
         sub: 'evolves to ' + p.great.evolvesTo,
         cp: p.cp,
+        onClick: () => this.openDetail(p),
         markDone: () => this.toggleDone(p.idx)
       })),
       transferSafe: plan.transferSafe.map(p => ({
         idx: p.idx,
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
-        spriteRef: this.makeSpriteRefByDex(p.dex),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
         initial: (p.name || '?').charAt(0),
-        sub: '',
+        sub: Number.isFinite(p.cp) ? p.cp + ' CP' : '',
         cp: p.cp,
-        markTransferred: () => this.removePokemon(p.idx)
+        onClick: () => this.openDetail(p),
+        markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.removePokemon(p.idx); }
       })),
       luckyTrade: mapMini(plan.luckyTrade),
       buddySuggestion: plan.buddySuggestion ? {
+        onClick: () => this.openDetail(plan.buddySuggestion),
         displayName: plan.buddySuggestion.name,
-        spriteRef: this.makeSpriteRefByDex(plan.buddySuggestion.dex),
+        spriteRef: this.makeSpriteRefByDex(plan.buddySuggestion.dex, plan.buddySuggestion.form),
         badgeColor: `oklch(70% 0.15 ${this.hueFor(plan.buddySuggestion.dex || 0)})`,
         initial: (plan.buddySuggestion.name || '?').charAt(0)
       } : null
@@ -3101,8 +3264,18 @@ class Component extends DCLogic {
       powerUpCount: plan.powerUp.length,
       evolveCount: plan.evolveSoon.length,
       greatProjects,
-      dustPriority: plan.powerUp.slice(0, 3).map(p => p.name),
-      avoidList: plan.transferSafe.slice(0, 3).map(p => p.name)
+      dustPriority: plan.powerUp.slice(0, 3).map(p => ({
+        name: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        onClick: () => this.openDetail(p)
+      })),
+      avoidList: plan.transferSafe.slice(0, 3).map(p => ({
+        name: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        onClick: () => this.openDetail(p)
+      }))
     };
     const VIDEO_STAGES = [
       { key: 'uploading', label: 'Uploading\u2026' },
@@ -3225,17 +3398,18 @@ class Component extends DCLogic {
       const leagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].map(([label, o]) => ({
         label,
         color: leagueColor(label),
-        pctDisplay: o.rankPct != null ? o.rankPct.toFixed(1) + '%' : '—',
-        rankDisplay: o.rankNum != null ? '#' + o.rankNum : '—',
-        barWidth: (o.rankPct != null ? o.rankPct : 0) + '%'
+        pctDisplay: Number.isFinite(o.rankPct) ? o.rankPct.toFixed(1) + '%' : '—',
+        rankDisplay: Number.isFinite(o.rankNum) ? '#' + o.rankNum : '—',
+        barWidth: (Number.isFinite(o.rankPct) ? o.rankPct : 0) + '%'
       }));
       const hue = this.hueFor(p.dex || 0);
       detail = {
         initial: (p.name || '?').charAt(0),
         badgeColor: `oklch(70% 0.15 ${hue})`,
+        auraColor: `oklch(72% 0.17 ${hue} / .55)`,
         headerGradient: `linear-gradient(160deg, oklch(48% 0.1 ${hue}), oklch(38% 0.09 ${(hue + 40) % 360}))`,
         overallRing: this.ringGeom(p.ivAvg, 66),
-        spriteRef: this.makeSpriteRefByDex(p.dex),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         dex: p.dex, cp: p.cp, hp: p.hp,
         statRings, leagues,
@@ -3277,7 +3451,7 @@ class Component extends DCLogic {
     roster.forEach(p => { if (p.dex != null) { (dexGroups[p.dex] = dexGroups[p.dex] || []).push(p); } });
     const duplicateGroups = Object.values(dexGroups).filter(g => g.length > 1 && !g.some(p => p.lucky))
       .sort((a, b) => b.length - a.length).slice(0, 12)
-      .map(g => ({ name: g[0].name, count: g.length, spriteRef: this.makeSpriteRefByDex(g[0].dex), badgeColor: `oklch(70% 0.15 ${this.hueFor(g[0].dex || 0)})`, initial: (g[0].name || '?').charAt(0) }));
+      .map(g => ({ name: g[0].name, count: g.length, spriteRef: this.makeSpriteRefByDex(g[0].dex, g[0].form), badgeColor: `oklch(70% 0.15 ${this.hueFor(g[0].dex || 0)})`, initial: (g[0].name || '?').charAt(0) }));
     const intelDisplay = {
       livingDexPct: livingDexPct.toFixed(1) + '%', ownedCount: ownedDex.size, totalSpecies,
       kantoPct: kantoDex.length ? (kantoOwned.length / kantoDex.length * 100).toFixed(1) + '%' : '—',
@@ -3310,6 +3484,7 @@ class Component extends DCLogic {
       rootRef: (el) => this.rootRef(el),
       isMobile,
       rootPadding: isMobile ? 'max(54px, env(safe-area-inset-top)) 14px 40px' : '28px 40px 60px',
+      rootPadX: isMobile ? '14px' : '40px',
       statGridCols: isMobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)',
       rosterGridCols: isMobile ? `repeat(auto-fill,minmax(${isCompact ? 128 : 150}px,1fr))` : `repeat(auto-fill,minmax(${isCompact ? 168 : 220}px,1fr))`,
       cardPadding: isCompact ? '10px' : '16px',
@@ -3318,6 +3493,8 @@ class Component extends DCLogic {
       headerActionsBasis: isMobile ? '100%' : 'auto',
       syncLabelWidth: isMobile ? '100%' : 'auto',
       syncLabel: this.state.loaded ? `${roster.length} Pokemon loaded` : 'Loading roster…',
+      rosterLoading: !this.state.loaded,
+      skeletonCards: Array.from({ length: 8 }, (_, i) => ({ nameWidth: [70, 58, 82, 64][i % 4] + '%' })),
       calloutLine,
       stats,
       tab,
