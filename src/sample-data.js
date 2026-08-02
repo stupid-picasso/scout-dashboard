@@ -160,9 +160,10 @@
 
   window.SAMPLE_POKEMON = SAMPLE_POKEMON;
 
-  // Only seed if real scan data (pokemon-data.js) hasn't already loaded.
-  if (!window.POKEMON_DATA || !window.POKEMON_DATA.length) {
-    window.POKEMON_DATA = SAMPLE_POKEMON;
-    window.dispatchEvent(new CustomEvent('scout-data-ready'));
-  }
+  // Deliberately does NOT set window.POKEMON_DATA. This file is a CLASSIC
+  // script so it executes during parse, while pokemon-data.js is a MODULE and
+  // is always deferred until after parse — seeding the global here would always
+  // win the race and the dashboard would render 5 demo Pokemon while the real
+  // collection sat loaded but unused. The DC waits for the module and calls
+  // back here only if it never arrives.
 })();
