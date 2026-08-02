@@ -44,6 +44,8 @@
   .om-stagger{animation:riseIn .42s cubic-bezier(.22,1,.36,1) both;animation-delay:min(calc(var(--i, 0) * 34ms), 620ms)}
   /* Loading placeholders: a moving highlight band over a flat card. */
   .om-skel{background:linear-gradient(100deg, oklch(24% 0.025 260) 28%, oklch(31% 0.03 260) 46%, oklch(24% 0.025 260) 64%);background-size:460px 100%;animation:shimmerSlide 1.25s linear infinite}
+  :focus-visible{outline:2px solid oklch(80% 0.14 220);outline-offset:2px;border-radius:4px}
+  @keyframes scanSweep{0%{top:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:100%;opacity:0}}
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
   }
@@ -54,7 +56,8 @@
 </helmet>
 <div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100%;width:100%;box-sizing:border-box;background:oklch(18% 0.025 260);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.01 260);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(42% 0.09 220 / .20), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(44% 0.10 150 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(40% 0.09 300 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
 
-  <div style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px;padding:14px {{ rootPadX }};background:oklch(18% 0.025 260 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.03 260 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
+  <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
+  <div ref="{{ headerRef }}" style="position:sticky;top:0;z-index:30;transition:box-shadow .24s ease,background .24s ease;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px;padding:14px {{ rootPadX }};background:oklch(18% 0.025 260 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.03 260 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:14px">
       <div style="width:14px;height:14px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 14px oklch(78% 0.16 150)"></div>
       <div>
@@ -316,7 +319,15 @@
         </div>
       </sc-if>
       <sc-if value="{{ ocrBusy }}" hint-placeholder-val="{{ false }}">
-        <div style="font:12px ui-monospace,monospace;color:oklch(70% 0.13 220)">Reading screenshot&hellip;</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="position:relative;width:52px;height:74px;border-radius:6px;overflow:hidden;background:oklch(24% 0.03 260);border:1px solid oklch(36% 0.04 220);flex-shrink:0">
+            <div style="position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,oklch(82% 0.15 220),transparent);box-shadow:0 0 10px oklch(75% 0.15 220);animation:scanSweep 1.5s ease-in-out infinite"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div aria-live="polite" style="font:12px ui-monospace,monospace;color:oklch(78% 0.13 220)">Reading screenshot&hellip;</div>
+            <div style="font:11px sans-serif;color:oklch(55% 0.02 260)">Extracting name, CP, HP, candy and moves.</div>
+          </div>
+        </div>
       </sc-if>
       <sc-if value="{{ ocrError }}" hint-placeholder-val="{{ false }}">
         <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ ocrError }}</div>
@@ -457,7 +468,7 @@
           <sc-for list="{{ optimizePlanDisplay.powerUp }}" as="p" hint-placeholder-count="3">
             <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(19% 0.025 150);border:1px solid oklch(30% 0.04 150);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(58% 0.13 150);background:oklch(23% 0.035 150);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px ui-monospace,monospace;color:oklch(80% 0.15 150)">{{ p.sub }} &middot; {{ p.cp }} CP</div>
@@ -474,7 +485,7 @@
           <sc-for list="{{ optimizePlanDisplay.evolveSoon }}" as="p" hint-placeholder-count="3">
             <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(22% 0.03 70);border:1px solid oklch(35% 0.05 70);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(62% 0.14 70);background:oklch(26% 0.04 70);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ p.sub }}</div>
@@ -491,7 +502,7 @@
           <sc-for list="{{ optimizePlanDisplay.transferSafe }}" as="p" hint-placeholder-count="3">
             <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(21% 0.035 30);border:1px solid oklch(38% 0.05 30);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(62% 0.14 30);background:oklch(25% 0.045 30);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px ui-monospace,monospace;color:oklch(72% 0.02 30)">{{ p.sub }}</div>
@@ -509,7 +520,7 @@
           <sc-for list="{{ optimizePlanDisplay.luckyTrade }}" as="p" hint-placeholder-count="3">
             <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(21% 0.03 220);border:1px solid oklch(38% 0.05 220);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(62% 0.13 220);background:oklch(25% 0.04 220);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px ui-monospace,monospace;color:oklch(72% 0.02 220)">{{ p.sub }} &middot; {{ p.cp }} CP</div>
@@ -591,12 +602,12 @@
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div onClick="{{ p.onClick }}" class="om-stagger" style="--i:{{ $index }};cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:{{ cardPadding }};transition:transform .16s cubic-bezier(.22,1,.36,1),border-color .16s ease,box-shadow .16s ease" style-hover="transform:translateY(-4px);border-color:oklch(50% 0.1 220);box-shadow:0 8px 20px rgba(0,0,0,.35)">
+        <div onClick="{{ p.onClick }}" class="om-stagger" style="--i:{{ $index }};cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:{{ cardPadding }};content-visibility:auto;contain-intrinsic-size:0 168px;transition:transform .16s cubic-bezier(.22,1,.36,1),border-color .16s ease,box-shadow .16s ease" style-hover="transform:translateY(-4px);border-color:oklch(50% 0.1 220);box-shadow:0 8px 20px rgba(0,0,0,.35)">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:38px;height:38px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 16px ui-monospace,monospace;color:oklch(15% 0.02 260);flex-shrink:0;overflow:hidden;position:relative">
                 <span style="position:absolute">{{ p.initial }}</span>
-                <img ref="{{ p.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
               </div>
               <div>
                 <div style="font-weight:700;font:14px sans-serif">{{ p.displayName }}</div>
@@ -633,7 +644,7 @@
 
   <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
   <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:center;justify-content:center;z-index:50;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif">
-    <div onClick="{{ stopProp }}" style="background:oklch(21% 0.022 260);border-radius:28px;width:400px;max-width:92vw;max-height:90vh;overflow-y:auto;animation:sheetRise .44s cubic-bezier(.22,1,.36,1) both;box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
+    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" style="touch-action:pan-y;background:oklch(21% 0.022 260);border-radius:28px;width:400px;max-width:92vw;max-height:90vh;overflow-y:auto;animation:sheetRise .44s cubic-bezier(.22,1,.36,1) both;box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
 
       <div style="position:relative;height:248px;background:{{ detail.headerGradient }};border-radius:28px 28px 0 0;overflow:hidden">
         <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14), transparent 60%)"></div>
@@ -794,7 +805,7 @@
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px ui-monospace,monospace;color:oklch(15% 0.02 260);position:relative;overflow:hidden;flex-shrink:0">
                 <span style="position:absolute">{{ p.initial }}</span>
-                <img ref="{{ p.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
               </div>
               <div style="font:600 12.5px sans-serif;line-height:1.2">{{ p.displayName }}</div>
             </div>
@@ -813,7 +824,7 @@
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px ui-monospace,monospace;color:oklch(15% 0.02 260);position:relative;overflow:hidden;flex-shrink:0">
                 <span style="position:absolute">{{ p.initial }}</span>
-                <img ref="{{ p.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
               </div>
               <div style="font:600 12.5px sans-serif;line-height:1.2">{{ p.displayName }}</div>
             </div>
@@ -1067,6 +1078,7 @@ class Component extends DCLogic {
     if (this.updateWidth) window.removeEventListener('resize', this.updateWidth);
     if (this.resizeObserver) this.resizeObserver.disconnect();
     if (this._statRaf) cancelAnimationFrame(this._statRaf);
+    if (this._headerIO) this._headerIO.disconnect();
   }
 
   rootRef(el) {
@@ -2819,6 +2831,7 @@ class Component extends DCLogic {
   }
 
   removePokemon(idx) {
+    this.haptic('heavy');
     const set = new Set(this.state.removedIds);
     set.add(idx);
     const arr = [...set];
@@ -2930,7 +2943,76 @@ class Component extends DCLogic {
     this._statRaf = requestAnimationFrame(step);
   }
 
-  openDetail(p) { this.setState({ detailPoke: p }); }
+  // Short vibration on meaningful actions. Silently absent on iOS Safari, which
+  // doesn't expose the Vibration API — so it's an enhancement, never a
+  // dependency.
+  haptic(weight) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(weight === 'heavy' ? 18 : weight === 'medium' ? 12 : 8);
+    } catch (e) {}
+  }
+
+  headerSentinelRef(el) {
+    if (!el || this._headerIO) return;
+    this._headerIO = new IntersectionObserver(([entry]) => {
+      const stuck = !entry.isIntersecting;
+      if (this._headerStuck === stuck) return;
+      this._headerStuck = stuck;
+      const h = this._headerEl;
+      if (!h) return;
+      h.style.boxShadow = stuck ? '0 10px 30px rgba(0,0,0,.42)' : 'none';
+      h.style.background = stuck ? 'oklch(16% 0.022 260 / .86)' : 'oklch(18% 0.025 260 / .72)';
+    }, { threshold: 0 });
+    this._headerIO.observe(el);
+  }
+
+  // Drag the detail sheet down to dismiss, the way a native bottom sheet works.
+  // Past 110px (or a fast flick) it closes; otherwise it springs back.
+  sheetRef(el) {
+    if (!el || el.dataset.swipeBound) return;
+    el.dataset.swipeBound = '1';
+    let startY = 0, lastY = 0, startT = 0, dragging = false;
+    const onStart = (e) => {
+      if (el.scrollTop > 0) return; // let the sheet scroll its own content first
+      const t = e.touches ? e.touches[0] : e;
+      startY = lastY = t.clientY;
+      startT = Date.now();
+      dragging = true;
+      el.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const t = e.touches ? e.touches[0] : e;
+      lastY = t.clientY;
+      const dy = lastY - startY;
+      if (dy <= 0) { el.style.transform = 'translateY(0)'; return; }
+      if (e.cancelable) e.preventDefault();
+      el.style.transform = 'translateY(' + dy + 'px)';
+      el.style.opacity = String(Math.max(0.45, 1 - dy / 620));
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      const dy = lastY - startY;
+      const velocity = dy / Math.max(1, Date.now() - startT);
+      el.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1), opacity .28s ease';
+      if (dy > 110 || velocity > 0.65) {
+        el.style.transform = 'translateY(110%)';
+        el.style.opacity = '0';
+        this.haptic('medium');
+        setTimeout(() => this.closeDetail(), 210);
+      } else {
+        el.style.transform = 'translateY(0)';
+        el.style.opacity = '1';
+      }
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+  }
+
+  openDetail(p) { this.haptic('light'); this.setState({ detailPoke: p }); }
   closeDetail() { this.setState({ detailPoke: null }); }
 
   topForLeague(key) {
@@ -3482,6 +3564,9 @@ class Component extends DCLogic {
 
     return {
       rootRef: (el) => this.rootRef(el),
+      headerRef: (el) => { if (el) this._headerEl = el; },
+      headerSentinelRef: (el) => this.headerSentinelRef(el),
+      sheetRef: (el) => this.sheetRef(el),
       isMobile,
       rootPadding: isMobile ? 'max(54px, env(safe-area-inset-top)) 14px 40px' : '28px 40px 60px',
       rootPadX: isMobile ? '14px' : '40px',
