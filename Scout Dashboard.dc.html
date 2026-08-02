@@ -209,23 +209,34 @@
             </sc-if>
           </div>
         </div>
-        <sc-if value="{{ aiOutOfCredit }}" hint-placeholder-val="{{ false }}">
-          <div style="background:oklch(24% 0.05 70);border:1px solid oklch(45% 0.1 70);border-radius:6px;padding:10px 12px;font:12px sans-serif;color:oklch(88% 0.04 70);line-height:1.5">Puter's free AI credit is used up. Screenshot import still works using on-device OCR — check the values before saving. For full accuracy again, paste a free Google Gemini key below (no credit card, 1,500 requests/day).</div>
-        </sc-if>
         <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:6px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">AI ENGINE {{ geminiBadge }}</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Screenshot and screen-recording reading use AI vision. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:oklch(78% 0.13 220)">aistudio.google.com/apikey</a> — no credit card, 1,500 requests/day. It is stored only on this device.</div>
+            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Screenshot and screen-recording reading use AI vision. Get free keys at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:oklch(78% 0.13 220)">aistudio.google.com/apikey</a> — no credit card. <strong style="color:oklch(85% 0.02 260)">Paste several, one per line.</strong> Limits are per key, so each one adds 1,500 requests/day and 10 more per minute — with a handful of keys a long recording imports without pausing.</div>
+            <textarea placeholder="AIza…&#10;AIza…&#10;AIza…" value="{{ geminiKeyDraft }}" onChange="{{ onGeminiKeyDraftChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;min-height:72px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:12px ui-monospace,monospace;resize:vertical"></textarea>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <input type="password" placeholder="AIza…" value="{{ geminiKeyDraft }}" onChange="{{ onGeminiKeyDraftChange }}" style="flex:1 1 200px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:12px ui-monospace,monospace" />
-              <div onClick="{{ saveGeminiKey }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE KEY</div>
+              <div onClick="{{ saveGeminiKey }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE KEYS</div>
               <sc-if value="{{ hasGeminiKey }}" hint-placeholder-val="{{ false }}">
-                <div onClick="{{ clearGeminiKey }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.03 260);color:oklch(80% 0.01 260);font:700 11.5px ui-monospace,monospace">REMOVE</div>
+                <div onClick="{{ clearGeminiKey }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.03 260);color:oklch(80% 0.01 260);font:700 11.5px ui-monospace,monospace">REMOVE ALL</div>
               </sc-if>
             </div>
             <sc-if value="{{ geminiStatusLine }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ geminiStatusLine }}</div>
             </sc-if>
+            <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.04em">FALLBACK &middot; GROQ</div>
+              <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Used when Gemini is rate-limited or out of quota. Free key at <a href="https://console.groq.com/keys" target="_blank" style="color:oklch(78% 0.13 220)">console.groq.com/keys</a> — 14,400 requests/day, 30 per minute, no card. One key is enough; Groq counts limits per account, so extra keys add nothing.</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input type="password" placeholder="gsk_…" value="{{ groqKeyDraft }}" onChange="{{ onGroqKeyDraftChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="flex:1 1 200px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:12px ui-monospace,monospace" />
+                <div onClick="{{ saveGroqKey }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE</div>
+                <sc-if value="{{ hasGroqKey }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ clearGroqKey }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.03 260);color:oklch(80% 0.01 260);font:700 11.5px ui-monospace,monospace">REMOVE</div>
+                </sc-if>
+              </div>
+              <sc-if value="{{ hasGroqKey }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">Groq fallback active &mdash; 14,400 requests/day.</div>
+              </sc-if>
+            </div>
             <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:6px">
               <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.04em">TODAY'S USAGE</div>
               <sc-for list="{{ aiUsageRows }}" as="u" hint-placeholder-count="3">
@@ -957,7 +968,10 @@ class Component extends DCLogic {
     apiEndpoint: '',
     apiEndpointDraft: '',
     geminiKey: '',
+    geminiKeys: [],
     geminiKeyDraft: '',
+    groqKey: '',
+    groqKeyDraft: '',
     customBaseUrl: '',
     customModel: '',
     customApiKey: '',
@@ -1030,8 +1044,19 @@ class Component extends DCLogic {
       if (rawEndpoint) this.setState({ apiEndpoint: rawEndpoint, apiEndpointDraft: rawEndpoint });
     } catch (e) {}
     try {
+      const multi = localStorage.getItem('scout_gemini_keys_v1');
       const gk = localStorage.getItem('scout_gemini_key_v1');
-      if (gk) this.setState({ geminiKey: gk, geminiKeyDraft: gk });
+      if (multi) {
+        const arr = JSON.parse(multi);
+        if (Array.isArray(arr) && arr.length) {
+          this.setState({ geminiKeys: arr, geminiKey: arr[0], geminiKeyDraft: arr.join('\n') });
+        }
+      } else if (gk) {
+        // Migrate the old single-key storage.
+        this.setState({ geminiKeys: [gk], geminiKey: gk, geminiKeyDraft: gk });
+      }
+      const qk = localStorage.getItem('scout_groq_key_v1');
+      if (qk) this.setState({ groqKey: qk, groqKeyDraft: qk });
     } catch (e) {}
     try {
       const cb = localStorage.getItem('scout_custom_base_v1');
@@ -1124,7 +1149,7 @@ class Component extends DCLogic {
   }
 
   SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey'];
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'groqKey'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -1297,12 +1322,21 @@ class Component extends DCLogic {
       // Only adopt a remote key when this device has none — a device that just
       // had its storage cleared gets the key back, but a locally-entered key is
       // never clobbered by a stale one from another device.
-      geminiKey: this.state.geminiKey || remote.geminiKey || '',
-      geminiKeyDraft: this.state.geminiKey || remote.geminiKey || this.state.geminiKeyDraft || ''
+      geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length)
+        ? this.state.geminiKeys
+        : (remote.geminiKeys && remote.geminiKeys.length ? remote.geminiKeys : (remote.geminiKey ? [remote.geminiKey] : [])),
+      geminiKey: this.state.geminiKey || (remote.geminiKeys && remote.geminiKeys[0]) || remote.geminiKey || '',
+      geminiKeyDraft: this.state.geminiKeyDraft
+        || ((this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys.join('\n') : '')
+        || ((remote.geminiKeys && remote.geminiKeys.length) ? remote.geminiKeys.join('\n') : (remote.geminiKey || '')),
+      groqKey: this.state.groqKey || remote.groqKey || '',
+      groqKeyDraft: this.state.groqKeyDraft || this.state.groqKey || remote.groqKey || ''
     };
     this.setState(patch, () => { this._applyingRemote = false; });
     try {
       if (patch.geminiKey) localStorage.setItem('scout_gemini_key_v1', patch.geminiKey);
+      if (patch.geminiKeys && patch.geminiKeys.length) localStorage.setItem('scout_gemini_keys_v1', JSON.stringify(patch.geminiKeys));
+      if (patch.groqKey) localStorage.setItem('scout_groq_key_v1', patch.groqKey);
       localStorage.setItem('scout_roster_v1', JSON.stringify(patch.roster));
       localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(patch.ivOverrides));
       localStorage.setItem('scout_added_v1', JSON.stringify(patch.addedPokemon));
@@ -1993,7 +2027,6 @@ class Component extends DCLogic {
       let text = '';
       let readerUsed = 'vision';
       try {
-        if (this._puterOutOfCredit) throw new Error('AI_NO_CREDIT');
         rec = await this.readScreenshotWithVision(file);
         text = '[read by Claude vision]';
       } catch (visionErr) {
@@ -2229,8 +2262,74 @@ class Component extends DCLogic {
   }
 
   // Google AI Studio free tier. Key is stored locally on this device only.
+  // Rotates across every stored key. Both Gemini limits (10 rpm and 1,500/day)
+  // are PER KEY, so a 429 on one key is not a 429 on the next — rotating turns
+  // a hard stop into a hop. Keys go on a cooldown rather than being discarded:
+  // 60s for a per-minute 429, until midnight for a daily-quota 429.
   async callGemini(body) {
-    const key = this.state.geminiKey;
+    const keys = this.activeGeminiKeys();
+    if (!keys.length) {
+      const total = (this.state.geminiKeys || []).length;
+      throw new Error(total
+        ? 'All ' + total + ' Gemini keys are rate-limited or out of quota right now.'
+        : 'No Gemini key set.');
+    }
+    let lastErr = null;
+    for (let ki = 0; ki < keys.length; ki++) {
+      const key = keys[ki];
+      try {
+        const out = await this.callGeminiWithKey(body, key);
+        this._geminiKeyIdx = (this.state.geminiKeys || []).indexOf(key);
+        return out;
+      } catch (e) {
+        const m = (e && e.message) || '';
+        if (/quota|exhausted|RESOURCE_EXHAUSTED/i.test(m) && /day|daily|PerDay/i.test(m)) {
+          this.coolDownKey(key, 'day');
+          lastErr = e; continue;
+        }
+        if (/429|rate limit/i.test(m)) {
+          this.coolDownKey(key, 60000);
+          lastErr = e; continue;
+        }
+        if (/rejected|API_KEY_INVALID|refused the key/i.test(m)) {
+          // Bad key: park it for the session so it stops costing a round-trip.
+          this.coolDownKey(key, 'day');
+          lastErr = e; continue;
+        }
+        throw e;
+      }
+    }
+    throw lastErr || new Error('All Gemini keys failed.');
+  }
+
+  activeGeminiKeys() {
+    const all = this.state.geminiKeys || [];
+    const cd = this._keyCooldown || {};
+    const now = Date.now();
+    const live = all.filter(k => !cd[k] || cd[k] <= now);
+    if (!live.length) return [];
+    // Start from the key AFTER the last successful one. Starting AT it means
+    // every request reuses the same key until it 429s, which combined with the
+    // divided pacing interval below would push one key to N x 10 rpm and burn
+    // the whole pool down in about a minute.
+    const li = live.indexOf(all[this._geminiKeyIdx || 0]);
+    const start = li < 0 ? 0 : (li + 1) % live.length;
+    return live.slice(start).concat(live.slice(0, start));
+  }
+
+  coolDownKey(key, until) {
+    this._keyCooldown = this._keyCooldown || {};
+    if (until === 'day') {
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      this._keyCooldown[key] = midnight.getTime();
+    } else {
+      this._keyCooldown[key] = Date.now() + until;
+    }
+    this.forceUpdate();
+  }
+
+  async callGeminiWithKey(body, key) {
     const parts = [];
     (body.messages || []).forEach(m => {
       const c = m.content;
@@ -2294,7 +2393,12 @@ class Component extends DCLogic {
         return text;
       }
       const errText = await res.text().catch(() => '');
-      if (res.status === 429) throw new Error('Gemini rate limit (429) \u2014 free tier is 10 requests/minute. Wait a moment.');
+      if (res.status === 429) {
+        const daily = /PerDay|per day|daily/i.test(errText);
+        throw new Error(daily
+          ? 'Gemini daily quota exhausted for this key (429).'
+          : 'Gemini rate limit (429) \u2014 10 requests/minute per key.');
+      }
       if (res.status === 400 && /API.?key not valid|API_KEY_INVALID/i.test(errText)) {
         throw new Error('That Gemini API key was rejected \u2014 check it under AI ENGINE.');
       }
@@ -2382,27 +2486,95 @@ class Component extends DCLogic {
     try { localStorage.setItem('scout_ai_usage_v1', JSON.stringify(usage)); } catch (e) {}
   }
 
+  // Accepts one key or many (newline, comma, or space separated). Rotation is
+  // what makes a long video import viable: limits are per key, so N keys is
+  // N x 1,500 requests/day and N x 10 rpm.
   setGeminiKey(v) {
-    const key = String(v || '').trim();
-    this.setState({ geminiKey: key, aiOutOfCredit: false });
+    const keys = String(v || '')
+      .split(/[\s,;]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 20);
+    const uniq = [...new Set(keys)];
+    this.setState({ geminiKeys: uniq, geminiKey: uniq[0] || '', aiOutOfCredit: false });
     this._puterOutOfCredit = false;
+    this._keyCooldown = {};
+    this._geminiKeyIdx = 0;
     try {
-      if (key) localStorage.setItem('scout_gemini_key_v1', key);
-      else localStorage.removeItem('scout_gemini_key_v1');
+      if (uniq.length) {
+        localStorage.setItem('scout_gemini_keys_v1', JSON.stringify(uniq));
+        localStorage.setItem('scout_gemini_key_v1', uniq[0]);
+      } else {
+        localStorage.removeItem('scout_gemini_keys_v1');
+        localStorage.removeItem('scout_gemini_key_v1');
+      }
     } catch (e) {}
   }
 
-  loadPuter() {
-    if (window.puter && window.puter.ai) return Promise.resolve();
-    if (this._puterLoad) return this._puterLoad;
-    this._puterLoad = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://js.puter.com/v2/';
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('Could not load Puter.js'));
-      document.head.appendChild(s);
-    }).catch(err => { this._puterLoad = null; throw err; });
-    return this._puterLoad;
+  // Groq free tier: 30 rpm / 14,400 requests per day, no card. Limits are
+  // ORGANIZATION-level, so unlike Gemini extra keys buy nothing here — one key
+  // is the whole pool. Used as the fallback behind Gemini because its open
+  // vision models read small stylized text (CP badge, candy counts) less
+  // reliably than Gemini does.
+  async callGroq(body) {
+    const key = this.state.groqKey;
+    if (!key) throw new Error('No Groq key set.');
+    const messages = (body.messages || []).map(m => {
+      if (typeof m.content === 'string') return { role: m.role, content: m.content };
+      const content = (m.content || []).map(item => {
+        if (item.type === 'text') return { type: 'text', text: item.text };
+        if (item.type === 'image' && item.source && item.source.data) {
+          return { type: 'image_url', image_url: { url: 'data:' + (item.source.media_type || 'image/jpeg') + ';base64,' + item.source.data } };
+        }
+        return null;
+      }).filter(Boolean);
+      return { role: m.role, content };
+    });
+    if (body.system) messages.unshift({ role: 'system', content: body.system });
+
+    const models = this._groqModel ? [this._groqModel] : this.GROQ_MODELS;
+    let lastErr = null;
+    for (const model of models) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model, messages, max_tokens: Math.max(body.max_tokens || 2048, 4096), temperature: 0 })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (!text) { lastErr = new Error('Groq returned no text'); continue; }
+        this._groqModel = model;
+        this.bumpAiUsage('groq');
+        return text;
+      }
+      const errText = await res.text().catch(() => '');
+      if (res.status === 401) throw new Error('Groq key was rejected \u2014 check it under AI ENGINE.');
+      if (res.status === 429) throw new Error('Groq rate limit (429) \u2014 30 requests/minute.');
+      // 400/404 usually means this model name is retired; try the next.
+      lastErr = new Error('Groq ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
+      if (res.status !== 404 && res.status !== 400) throw lastErr;
+    }
+    throw lastErr || new Error('No Groq model available for this key.');
+  }
+
+  // Groq retires model names fairly often, so try current vision models in order.
+  get GROQ_MODELS() {
+    return [
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'meta-llama/llama-4-maverick-17b-128e-instruct',
+      'llama-3.2-90b-vision-preview',
+      'llama-3.2-11b-vision-preview'
+    ];
+  }
+
+  setGroqKey(v) {
+    const key = String(v || '').trim();
+    this.setState({ groqKey: key });
+    this._groqModel = null;
+    try {
+      if (key) localStorage.setItem('scout_groq_key_v1', key);
+      else localStorage.removeItem('scout_groq_key_v1');
+    } catch (e) {}
   }
 
   async completeWithRetry(body, attempts) {
@@ -2432,33 +2604,26 @@ class Component extends DCLogic {
           try { return await this.callGemini(body); }
           catch (gErr) {
             const gm = (gErr && gErr.message) || '';
-            // Only a rejected key / disabled API is terminal. Everything else
-            // (rate limit, truncation, safety block, 5xx, network) falls through
-            // to Puter — the video path has no OCR fallback, so throwing here
-            // hard-fails a whole recording import.
+            // A rejected key is terminal only if there is nothing behind it.
+            // Everything else (rate limit, truncation, safety block, 5xx,
+            // network) falls through — the video path has no OCR fallback, so
+            // throwing here would hard-fail a whole recording import.
             const terminal = /key was rejected|API_KEY_INVALID|refused the key/i.test(gm);
             this._lastAiError = gm;
-            if (terminal) throw gErr;
+            if (terminal && !this.state.groqKey) throw gErr;
           }
         }
-        // Skip Puter for the rest of the session once it reports no funding —
-        // retrying just re-opens its "Low Balance / Upgrade Now" modal.
-        if (!this._puterOutOfCredit && !(window.puter && window.puter.ai)) { try { await this.loadPuter(); } catch (e) {} }
-        if (!this._puterOutOfCredit && window.puter && window.puter.ai && window.puter.ai.chat) {
-          const msgs = (body.messages || []).map(m => ({ ...m }));
-          if (body.system && msgs[0]) {
-            if (Array.isArray(msgs[0].content)) {
-              msgs[0] = { ...msgs[0], content: [{ type: 'text', text: body.system }, ...msgs[0].content] };
-            } else {
-              msgs[0] = { ...msgs[0], content: body.system + '\n\n' + msgs[0].content };
-            }
+        // Groq behind Gemini: 14,400 requests/day is a large safety net for the
+        // one-off bulk import and for any day Gemini's quota runs out.
+        if (this.state.groqKey) {
+          try { return await this.callGroq(body); }
+          catch (qErr) {
+            const qm = (qErr && qErr.message) || '';
+            this._lastAiError = qm;
+            if (/rejected/i.test(qm)) throw qErr;
           }
-          const res = await window.puter.ai.chat(msgs, { model: 'claude-sonnet-5' });
-          this.bumpAiUsage('puter');
-          if (res && res.message && res.message.content && res.message.content[0]) return res.message.content[0].text;
-          return String(res && res.text != null ? res.text : res);
         }
-        if (!this.state.apiEndpoint) throw new Error(this.state.geminiKey
+        if (!this.state.apiEndpoint) throw new Error((this.state.geminiKey || this.state.groqKey)
           ? 'AI request failed and no fallback is available.'
           : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
         const res = await fetch(this.state.apiEndpoint, {
@@ -2507,22 +2672,43 @@ class Component extends DCLogic {
   batchLabel(done, total) {
     if (total <= 1) return '';
     const remaining = total - done;
-    // Only Gemini is rate-limited; other engines run back to back.
-    const paced = !!this.state.geminiKey;
-    const secs = paced ? Math.round(remaining * this.RATE_INTERVAL_MS / 1000) : remaining * 3;
     if (remaining <= 0) return `Batch ${done} of ${total}`;
+    // Every engine is paced now, not just Gemini — Puter has its own limits and
+    // ran unthrottled until this was fixed.
+    const secs = Math.round(remaining * this.effectiveInterval() / 1000);
     const mins = Math.floor(secs / 60);
     const eta = mins >= 1 ? `~${mins}m ${secs % 60}s left` : `~${secs}s left`;
-    return `Batch ${done} of ${total} · ${eta}`;
+    const live = this.activeGeminiKeys().length;
+    return `Batch ${done} of ${total} · ${eta}` + (live > 1 ? ` · ${live} keys` : '');
+  }
+
+  // The retry pass runs at double spacing and is invisible to the main ETA, so
+  // it carries its own.
+  retryLabel(done, total) {
+    const remaining = total - done;
+    const secs = Math.round(remaining * this.effectiveInterval() * 2 / 1000);
+    const mins = Math.floor(secs / 60);
+    const eta = remaining > 0 ? (mins >= 1 ? ` · ~${mins}m ${secs % 60}s left` : ` · ~${secs}s left`) : '';
+    return `Retrying ${done} of ${total} rate-limited batches${eta}`;
   }
 
   // Gemini's free tier allows 10 requests/minute. Spacing calls keeps a long
   // import inside that budget instead of tripping 429s halfway through.
   get RATE_INTERVAL_MS() { return 6500; }
 
+  // Gemini allows 10 rpm PER KEY. With N keys in true round-robin, each key is
+  // hit once every N intervals, so the global interval can be base/N and every
+  // key still sits at base ms apart. The 700ms floor keeps a large pool from
+  // outrunning request latency (20 keys -> 700ms global -> 14s per key).
+  effectiveInterval(base) {
+    const live = this.activeGeminiKeys().length;
+    if (live > 1) return Math.max(700, (base || this.RATE_INTERVAL_MS) / live);
+    return base || this.RATE_INTERVAL_MS;
+  }
+
   async throttleForRateLimit(index, total, spacing) {
     if (total <= 1) return;
-    const gap = spacing || this.RATE_INTERVAL_MS;
+    const gap = this.effectiveInterval(spacing);
     if (index === 0) { this._lastAiCallAt = Date.now(); return; }
     const since = Date.now() - (this._lastAiCallAt || 0);
     const wait = gap - since;
@@ -2887,7 +3073,7 @@ class Component extends DCLogic {
           if (res === 'nocredit') break;
           if (res === 'failed') failedBatches++;
           else if (res === 'unreadable') unreadableBatches++;
-          this.setVideoStage('reading', 92 + Math.round(((q + 1) / retryQueue.length) * 6), `Retrying ${q + 1} of ${retryQueue.length} rate-limited batches`);
+          this.setVideoStage('reading', 92 + Math.round(((q + 1) / retryQueue.length) * 6), this.retryLabel(q + 1, retryQueue.length));
         }
       }
 
@@ -3737,10 +3923,10 @@ class Component extends DCLogic {
             ? `Identified as ${this.state.ocrParsed.name || 'this Pokemon'} (#${this.state.ocrParsed.dex}) \u2014 not in your roster yet. Use ADD AS NEW POKEMON.`
             : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.'),
       readerLine: this.state.ocrParsed.readerUsed === 'tesseract-nocredit'
-        ? (this.state.geminiKey
-            ? 'Your Gemini key failed and Puter has no credit left, so on-device OCR was used. Gemini said: '
+        ? ((this.state.geminiKey || this.state.groqKey)
+            ? 'Every AI engine failed, so on-device OCR was used. Last error: '
               + (this.state.ocrParsed.aiError || 'no details')
-            : 'Free AI credit is used up \u2014 fell back to on-device OCR. Check CP, candy and stardust below, or add a free Gemini key under AI ENGINE.')
+            : 'No AI key set \u2014 fell back to on-device OCR. Check CP, candy and stardust below, or add a free Gemini key under AI ENGINE.')
         : (this.state.ocrParsed.readerUsed === 'tesseract'
             ? 'AI vision failed, used on-device OCR \u2014 double-check CP and candy.'
               + (this.state.ocrParsed.aiError ? ' (' + this.state.ocrParsed.aiError + ')' : '')
@@ -4001,27 +4187,48 @@ class Component extends DCLogic {
       clearGeminiKey: () => { this.setState({ geminiKeyDraft: '' }); this.setGeminiKey(''); },
       geminiKeyDraft: this.state.geminiKeyDraft,
       hasGeminiKey: !!this.state.geminiKey,
-      geminiStatusLine: this.state.geminiKey
-        ? 'Gemini key saved — free tier: 1,500 requests/day, 10 per minute.'
-          + (this.state.cloudUser ? ' Synced to your account, so it survives a cache clear.' : '')
-        : '',
-      geminiBadge: this.state.customBaseUrl ? '· GATEWAY' : (this.state.geminiKey ? '· GEMINI' : (this.state.aiOutOfCredit ? '· NO CREDIT' : '· PUTER (FREE)')),
+      groqKeyDraft: this.state.groqKeyDraft,
+      hasGroqKey: !!this.state.groqKey,
+      onGroqKeyDraftChange: (e) => this.setState({ groqKeyDraft: e.target.value }),
+      saveGroqKey: () => this.setGroqKey(this.state.groqKeyDraft),
+      clearGroqKey: () => { this.setState({ groqKeyDraft: '' }); this.setGroqKey(''); },
+      geminiStatusLine: (() => {
+        const all = this.state.geminiKeys || [];
+        if (!all.length) return '';
+        const live = this.activeGeminiKeys().length;
+        const capDay = (all.length * 1500).toLocaleString();
+        const head = all.length === 1
+          ? '1 key saved — 1,500 requests/day, 10 per minute.'
+          : all.length + ' keys in rotation — ' + capDay + ' requests/day, ' + (all.length * 10) + ' per minute.';
+        const cooled = all.length - live;
+        return head
+          + (cooled ? ' ' + cooled + ' cooling down right now.' : '')
+          + (this.state.cloudUser ? ' Synced to your account, so they survive a cache clear.' : '');
+      })(),
+      geminiBadge: this.state.customBaseUrl ? '· GATEWAY'
+        : ((this.state.geminiKeys || []).length > 1 ? '· GEMINI ×' + this.state.geminiKeys.length
+        : (this.state.geminiKey ? '· GEMINI' : (this.state.groqKey ? '· GROQ' : '· NO KEY'))),
       aiUsageRows: (() => {
         const u = (this.state.aiUsage && this.state.aiUsage.day === this.todayKey()) ? this.state.aiUsage : {};
         const g = u.gemini || 0;
         const rows = [];
         if (this.state.geminiKey) {
+          const nKeys = Math.max(1, (this.state.geminiKeys || []).length);
+          const cap = nKeys * 1500;
           rows.push({
-            label: 'Gemini',
-            value: g + ' / 1,500',
-            color: g >= 1500 ? 'oklch(75% 0.15 30)' : (g >= 1200 ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.13 150)')
+            label: nKeys > 1 ? 'Gemini (' + nKeys + ' keys)' : 'Gemini',
+            value: g + ' / ' + cap.toLocaleString(),
+            color: g >= cap ? 'oklch(75% 0.15 30)' : (g >= cap * 0.8 ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.13 150)')
           });
         }
-        rows.push({
-          label: 'Puter (free)',
-          value: (u.puter || 0) + (this.state.aiOutOfCredit ? ' · no credit' : ''),
-          color: this.state.aiOutOfCredit ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.02 260)'
-        });
+        if (this.state.groqKey) {
+          const gq = u.groq || 0;
+          rows.push({
+            label: 'Groq (fallback)',
+            value: gq + ' / 14,400',
+            color: gq >= 14400 ? 'oklch(75% 0.15 30)' : (gq >= 11520 ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.02 260)')
+          });
+        }
         if (this.state.customBaseUrl) rows.push({ label: 'Gateway', value: String(u.gateway || 0), color: 'oklch(72% 0.02 260)' });
         rows.push({ label: 'On-device OCR', value: String(u.ocr || 0), color: 'oklch(60% 0.02 260)' });
         return rows;
