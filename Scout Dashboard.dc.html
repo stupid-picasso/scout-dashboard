@@ -2839,6 +2839,7 @@ class Component extends DCLogic {
       const collected = [];
       const rawReplies = [];
       let failedBatches = 0;
+      let unreadableBatches = 0;
       let noCredit = false;
       for (let b = 0; b < batches.length; b++) {
         const content = [
@@ -2861,11 +2862,13 @@ class Component extends DCLogic {
           continue;
         }
         rawReplies.push(String(reply));
-        try {
-          const jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
-          const arr = JSON.parse(jsonText);
-          if (Array.isArray(arr)) collected.push(...arr);
-        } catch (err) { /* keep going — other batches may still parse */ }
+        const arr = this.extractJsonArray(reply);
+        if (arr && arr.length) {
+          collected.push(...arr);
+        } else {
+          unreadableBatches++;
+          console.warn('[Scout] batch ' + (b + 1) + '/' + batches.length + ' returned no parseable Pokemon:', String(reply).slice(0, 300));
+        }
         this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95), this.batchLabel(b + 1, batches.length));
       }
 
@@ -2901,7 +2904,7 @@ class Component extends DCLogic {
             ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
             : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.'));
       }
-      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, frameCount: frames.length } }));
+      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, frameCount: frames.length, rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
       this.setVideoStage('validating', 40);
       const mechanics = this.mechanics;
       const validated = (Array.isArray(parsed) ? parsed : []).map(item => {
@@ -2926,6 +2929,53 @@ class Component extends DCLogic {
   // Import from any external AI chat (Kimi, Claude, ChatGPT, Gemini web — all
   // free and unlimited in their web UIs). Accepts a JSON array or single object,
   // tolerates markdown fences and preamble, then reuses the video merge path.
+  // Tolerant JSON-array extraction. Models wrap output in ``` fences, prepend
+  // "Here is the JSON:", or get truncated mid-array by a token limit — all of
+  // which made a strict JSON.parse throw and silently drop a whole batch.
+  extractJsonArray(reply) {
+    let t = String(reply == null ? '' : reply).trim();
+    if (!t) return null;
+    t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    const open = t.indexOf('[');
+    const brace = t.indexOf('{');
+    const start = (open >= 0 && (brace < 0 || open < brace)) ? open : brace;
+    if (start < 0) return null;
+    t = t.slice(start);
+    const lastClose = Math.max(t.lastIndexOf(']'), t.lastIndexOf('}'));
+    const candidates = [];
+    if (lastClose >= 0) candidates.push(t.slice(0, lastClose + 1));
+    candidates.push(t);
+    for (const c of candidates) {
+      try {
+        const v = JSON.parse(c);
+        const arr = Array.isArray(v) ? v : [v];
+        if (arr.length) return arr;
+      } catch (e) { /* try the next shape */ }
+    }
+    // Truncated array: salvage the complete objects before the cut.
+    const objs = [];
+    let depth = 0, objStart = -1, inStr = false, esc = false;
+    for (let i = 0; i < t.length; i++) {
+      const ch = t[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === '{') { if (depth === 0) objStart = i; depth++; }
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0 && objStart >= 0) {
+          try { objs.push(JSON.parse(t.slice(objStart, i + 1))); } catch (e) {}
+          objStart = -1;
+        }
+      }
+    }
+    return objs.length ? objs : null;
+  }
+
   applyPastedImport() {
     const raw = (this.state.pasteDraft || '').trim();
     if (!raw) { this.setState({ pasteError: 'Paste the JSON from your AI chat first.' }); return; }
@@ -3989,8 +4039,12 @@ class Component extends DCLogic {
       videoImportSummary: this.state.videoImport && this.state.videoImport.summary,
       videoPartialWarning: (() => {
         const vi = this.state.videoImport;
-        if (!vi || !vi.failedBatches) return '';
-        return `\u26a0 ${vi.failedBatches} of ${vi.batchCount} batches failed to read \u2014 re-run the import to fill the gaps.`;
+        if (!vi) return '';
+        const parts = [];
+        if (vi.failedBatches) parts.push(`${vi.failedBatches} of ${vi.batchCount} batches failed to send`);
+        if (vi.unreadableBatches) parts.push(`${vi.unreadableBatches} of ${vi.batchCount} returned unreadable output`);
+        if (!parts.length) return '';
+        return '\u26a0 ' + parts.join(' \u00b7 ') + ' \u2014 hit RETRY to fill the gaps.';
       })(),
       videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error')),
       videoFrameThumbs: (this.state.videoImport && this.state.videoImport.frameThumbs && this.state.videoImport.frameThumbs.length)
