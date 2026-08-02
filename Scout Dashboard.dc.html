@@ -300,6 +300,27 @@
           <div onClick="{{ resetImportProgress }}" style="cursor:pointer;margin-left:auto;font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);text-decoration:underline">RESET</div>
         </div>
       </sc-if>
+      <sc-if value="{{ hasCoverage }}" hint-placeholder-val="{{ false }}">
+        <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:7px;padding:8px 12px">
+          <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">COVERAGE &middot; {{ coverageHeadline }}</summary>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+            <div style="display:flex;flex-wrap:wrap;gap:14px">
+              <sc-for list="{{ coverageStats }}" as="c" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:96px">
+                  <div style="font:10px ui-monospace,monospace;color:oklch(52% 0.02 260);letter-spacing:.04em">{{ c.label }}</div>
+                  <div style="font:600 15px ui-monospace,monospace;color:{{ c.color }}">{{ c.value }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ coverageGapLine }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px sans-serif;color:oklch(70% 0.02 260);line-height:1.5;text-wrap:pretty">{{ coverageGapLine }}</div>
+            </sc-if>
+            <sc-if value="{{ hasStaleList }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11px sans-serif;color:oklch(72% 0.11 70);line-height:1.5;text-wrap:pretty">{{ staleLine }}</div>
+            </sc-if>
+          </div>
+        </details>
+      </sc-if>
       <div style="border-top:1px solid oklch(28% 0.03 260);margin-top:2px;padding-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px">
         <sc-if value="{{ clearArmed }}" hint-placeholder-val="{{ false }}">
           <div style="font:11.5px ui-monospace,monospace;color:oklch(78% 0.15 40)">{{ clearWarning }}</div>
@@ -334,23 +355,17 @@
           <sc-if value="{{ hasVideoReview }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;flex-direction:column;gap:10px">
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
-                <div style="font:700 12px ui-monospace,monospace;color:oklch(85% 0.08 280)">REVIEW BEFORE SAVING</div>
+                <div style="font:700 12px ui-monospace,monospace;color:oklch(85% 0.08 280)">WHAT WAS IMPORTED</div>
                 <div style="font:11px ui-monospace,monospace;color:oklch(62% 0.02 260)">{{ reviewCountLine }}</div>
               </div>
-              <div style="font:11.5px sans-serif;color:oklch(62% 0.02 260);line-height:1.5">Untick anything read wrong. Nothing is written to your roster or your account until you save.</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <div onClick="{{ reviewSelectAll }}" style="cursor:pointer;padding:6px 11px;border-radius:4px;background:oklch(28% 0.03 260);color:oklch(82% 0.01 260);font:700 10.5px ui-monospace,monospace">SELECT ALL</div>
-                <div onClick="{{ reviewSelectNone }}" style="cursor:pointer;padding:6px 11px;border-radius:4px;background:oklch(28% 0.03 260);color:oklch(82% 0.01 260);font:700 10.5px ui-monospace,monospace">NONE</div>
-              </div>
               <div style="border:1px solid oklch(32% 0.04 280);border-radius:7px;overflow:hidden">
-                <div style="display:grid;grid-template-columns:26px 1.7fr .7fr .6fr .9fr .7fr;gap:8px;padding:8px 10px;background:oklch(24% 0.04 280);font:700 9.5px ui-monospace,monospace;color:oklch(66% 0.03 280);letter-spacing:.05em">
-                  <div></div><div>NAME</div><div>CP</div><div>HP</div><div>IV</div><div>CANDY</div>
+                <div style="display:grid;grid-template-columns:1.7fr .7fr .6fr .9fr .8fr;gap:8px;padding:8px 10px;background:oklch(24% 0.04 280);font:700 9.5px ui-monospace,monospace;color:oklch(66% 0.03 280);letter-spacing:.05em">
+                  <div>NAME</div><div>CP</div><div>HP</div><div>IV</div><div>CANDY</div>
                 </div>
                 <sc-for list="{{ videoReviewRows }}" as="r" hint-placeholder-count="5">
-                  <div onClick="{{ r.toggle }}" style="cursor:pointer;display:grid;grid-template-columns:26px 1.7fr .7fr .6fr .9fr .7fr;gap:8px;padding:9px 10px;border-top:1px solid oklch(27% 0.03 280);background:{{ r.rowBg }};align-items:center;transition:background .12s ease">
-                    <div style="width:15px;height:15px;border-radius:3px;border:1.5px solid {{ r.boxBorder }};background:{{ r.boxBg }};display:flex;align-items:center;justify-content:center;font:700 10px ui-monospace,monospace;color:oklch(18% 0.02 260)">{{ r.tick }}</div>
+                  <div style="display:grid;grid-template-columns:1.7fr .7fr .6fr .9fr .8fr;gap:8px;padding:9px 10px;border-top:1px solid oklch(27% 0.03 280);align-items:center;background:{{ r.rowBg }}">
                     <div style="min-width:0">
-                      <div style="font:600 12px sans-serif;color:{{ r.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</div>
+                      <div style="font:600 12px sans-serif;color:oklch(92% 0.01 260);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</div>
                       <div style="font:9.5px ui-monospace,monospace;color:{{ r.tagColor }};letter-spacing:.04em">{{ r.tag }}</div>
                     </div>
                     <div style="font:12px ui-monospace,monospace;color:oklch(84% 0.01 260)">{{ r.cp }}</div>
@@ -360,10 +375,7 @@
                   </div>
                 </sc-for>
               </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                <div onClick="{{ commitReview }}" style="cursor:pointer;padding:9px 16px;border-radius:5px;background:oklch(42% 0.1 150);color:white;font:700 11.5px ui-monospace,monospace">{{ commitLabel }}</div>
-                <div onClick="{{ dismissVideoImport }}" style="cursor:pointer;padding:9px 14px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(84% 0.01 260);font:700 11.5px ui-monospace,monospace">DISCARD</div>
-              </div>
+              <div style="font:11px sans-serif;color:oklch(55% 0.02 260);line-height:1.5">Anything read wrong can be fixed by tapping that Pokemon in the roster, or by re-importing a clearer clip &mdash; a re-import updates rather than duplicates.</div>
             </div>
           </sc-if>
           <sc-if value="{{ videoImportSummary }}" hint-placeholder-val="{{ false }}">
@@ -741,6 +753,9 @@
         <div style="text-align:center;margin-bottom:22px">
           <div style="font:750 21px sans-serif;letter-spacing:-.3px;color:oklch(96% 0.005 260)">{{ detail.displayName }}</div>
           <div style="font:600 11.5px ui-monospace,monospace;color:oklch(52% 0.02 260);letter-spacing:.04em;margin-top:2px">#{{ detail.dex }}</div>
+          <sc-if value="{{ detail.scanLine }}" hint-placeholder-val="{{ false }}">
+            <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 10px;border-radius:999px;background:{{ detail.scanBg }};font:600 10.5px ui-monospace,monospace;color:{{ detail.scanColor }};letter-spacing:.03em">{{ detail.scanLine }}</div>
+          </sc-if>
         </div>
 
         <div style="background:oklch(25% 0.025 260);border-radius:16px;padding:16px;margin-bottom:14px">
@@ -1591,6 +1606,15 @@ class Component extends DCLogic {
     });
     // Push the empty roster up immediately so another device can't sync it back.
     if (this.state.cloudUser) this.queueCloudPush();
+  }
+
+  // Days since this Pokemon was last read off a screenshot/recording. Null when
+  // it has never been scanned (CSV import), so those aren't reported as stale.
+  scanAgeDays(p) {
+    if (!p || !p.scanDate) return null;
+    const t = Date.parse(p.scanDate);
+    if (!Number.isFinite(t)) return null;
+    return Math.floor((Date.now() - t) / 86400000);
   }
 
   emptyLeague() {
@@ -3127,17 +3151,26 @@ class Component extends DCLogic {
         + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
         + 'A shadow Pokemon shows a PURIFY button and the Frustration move. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
-        + 'Only fill atkIV/defIV/staIV if exact numeric IV values (0-15) are visible on screen \u2014 never estimate from appraisal bars/stars. Use null for anything not clearly visible.';
+        + 'IV RULES (important):\n'
+        + '- Frames fall into two kinds. A DETAIL screen shows CP at the top, HP, weight/height, candy and the POWER UP / EVOLVE buttons. An APPRAISAL screen shows three labelled stat bars (Attack, Defense, HP) and a star rating.\n'
+        + '- atkIV/defIV/staIV exist ONLY as printed 0-15 numbers next to those bars, which appear once the appraisal is expanded. If you can see bars or stars but no numbers, return null for all three.\n'
+        + '- NEVER convert bar length, bar colour, star count or the appraisal phrase into an IV number. A full red bar is not 15.\n'
+        + '- The same Pokemon often appears on both screen kinds across frames: take CP/HP/candy from the detail frames and the IV numbers from the appraisal frames, and merge them into one entry.\n'
+        + '- Use null for anything not clearly visible. Never guess.';
 
       // Split into batches that each fit the request budget, instead of throwing
       // frames away. Decimating to fit (the old behaviour) is what limited a
       // whole recording to ~2 Pokemon.
       const BUDGET = 180000;
+      // 5 frames per request instead of 3: ~40% fewer requests, which is the
+      // single biggest lever on wall-clock time for a long import (each request
+      // carries a rate-limit gap). Payload cap still wins if frames are large.
+      const MAX_FRAMES_PER_BATCH = 5;
       const batches = [];
       let current = [];
       let currentSize = 0;
       frames.forEach(f => {
-        if (current.length && currentSize + f.length > BUDGET) {
+        if (current.length && (currentSize + f.length > BUDGET || current.length >= MAX_FRAMES_PER_BATCH)) {
           batches.push(current);
           current = [];
           currentSize = 0;
@@ -3243,16 +3276,24 @@ class Component extends DCLogic {
         return { ...item, name, dex };
       }).filter(Boolean);
       this.setVideoStage('validating', 100);
-      // Nothing is written yet — the read goes to a review table so mistakes
-      // can be dropped before they reach the roster or the synced account.
+      // Save immediately, then show what landed. The table is a receipt, not a
+      // gate — it exists so a bad read is easy to spot, not to be approved.
       const roster = this.state.roster || [];
-      const review = validated.map((item, i) => {
+      const seenKeys = new Set();
+      const receipt = validated.map((item, i) => {
         const nameLower = item.name.toLowerCase();
         const match = roster.find(p => p.cp === item.cp && p.name.toLowerCase() === nameLower)
           || roster.find(p => p.dex != null && item.dex != null && p.dex === item.dex && p.cp === item.cp);
-        return { ...item, _rid: 'r' + i, _include: true, _isNew: !match, _matchName: match ? match.name : null };
+        const key = nameLower + '|' + (item.cp == null ? '?' : item.cp);
+        const isDupe = seenKeys.has(key);
+        seenKeys.add(key);
+        return { ...item, _rid: 'r' + i, _isNew: !match, _matchName: match ? match.name : null, _dupe: isDupe };
       });
-      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'review', review } }));
+      this.setVideoStage('updating', 30);
+      const summary = this.mergeVideoImport(validated);
+      this.bumpImportProgress(summary);
+      this.setVideoStage('updating', 100);
+      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary, review: receipt } }));
     } catch (err) {
       clearInterval(this._videoReadingTimer);
       const msg = (err && err.message) || String(err);
@@ -3409,39 +3450,6 @@ class Component extends DCLogic {
     try { localStorage.removeItem('scout_import_progress_v1'); } catch (e) {}
   }
 
-  toggleReviewRow(rid) {
-    this.setState(s => ({
-      videoImport: {
-        ...s.videoImport,
-        review: (s.videoImport.review || []).map(r => r._rid === rid ? { ...r, _include: !r._include } : r)
-      }
-    }));
-  }
-
-  setAllReviewRows(on) {
-    this.setState(s => ({
-      videoImport: {
-        ...s.videoImport,
-        review: (s.videoImport.review || []).map(r => ({ ...r, _include: on }))
-      }
-    }));
-  }
-
-  commitReviewedImport() {
-    const review = (this.state.videoImport && this.state.videoImport.review) || [];
-    const chosen = review.filter(r => r._include).map(r => {
-      const o = { ...r };
-      delete o._rid; delete o._include; delete o._isNew; delete o._matchName;
-      return o;
-    });
-    if (!chosen.length) return;
-    this.setVideoStage('updating', 30);
-    const summary = this.mergeVideoImport(chosen);
-    this.bumpImportProgress(summary);
-    this.setVideoStage('updating', 100);
-    this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary, review: null } }));
-  }
-
   mergeVideoImport(items) {
     const overrides = { ...this.state.ivOverrides };
     const candyInv = { ...this.state.candyInventory };
@@ -3450,6 +3458,12 @@ class Component extends DCLogic {
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
     let updated = 0, inserted = 0;
+    const dupes = [];
+    const today = new Date().toISOString().split('T')[0];
+    // Two frames of the SAME Pokemon merge silently by design. Two different
+    // Pokemon of one species at the same CP are indistinguishable here, so a
+    // second sighting within one import is flagged rather than assumed.
+    const seenThisImport = new Map();
     // Stardust is a single account-wide balance, not per-Pokemon. Take the
     // highest reading across frames — a mid-scroll frame can clip a digit.
     let seenStardust = null;
@@ -3458,6 +3472,11 @@ class Component extends DCLogic {
         if (seenStardust == null || item.stardust > seenStardust) seenStardust = item.stardust;
       }
       const nameLower = item.name.toLowerCase();
+      const dupeKey = nameLower + '|' + (item.cp == null ? '?' : item.cp);
+      if (seenThisImport.has(dupeKey)) {
+        dupes.push({ name: item.name, cp: item.cp });
+      }
+      seenThisImport.set(dupeKey, true);
       const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
         || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
         || roster.find(p => p.name.toLowerCase() === nameLower)
@@ -3488,6 +3507,7 @@ class Component extends DCLogic {
           ...(item.chargeMove2 ? { chargeMove2: item.chargeMove2 } : {}),
           ...(item.weight ? { weight: item.weight } : {}),
           ...(item.height ? { height: item.height } : {}),
+          scanDate: today,
           ...ivPatch
         };
         updated++;
@@ -3504,7 +3524,8 @@ class Component extends DCLogic {
           chargeMove2: item.chargeMove2 || null,
           weight: item.weight || null, height: item.height || null,
           evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
-          catchDate: null, lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, dust: null,
+          catchDate: null, scanDate: today,
+          lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, dust: null,
           // Never null — the render path reads p.great.rankPct directly.
           great: ivPatch.great || this.emptyLeague(),
           ultra: ivPatch.ultra || this.emptyLeague(),
@@ -3529,7 +3550,7 @@ class Component extends DCLogic {
       localStorage.setItem('scout_candy_v1', JSON.stringify(candyInv));
       localStorage.setItem('scout_types_v1', JSON.stringify(types));
     } catch (e) {}
-    return { updated, inserted, total: items.length };
+    return { updated, inserted, total: items.length, dupes };
   }
 
   removePokemon(idx) {
@@ -4069,7 +4090,7 @@ class Component extends DCLogic {
       { key: 'updating', label: 'Updating Collection\u2026' }
     ];
     const vi = this.state.videoImport;
-    const viOrder = ['uploading', 'extracting', 'reading', 'validating', 'review', 'updating', 'done', 'error'];
+    const viOrder = ['uploading', 'extracting', 'reading', 'validating', 'updating', 'done', 'error'];
     const viIndex = vi ? viOrder.indexOf(vi.stage) : -1;
     const videoImportSteps = vi ? VIDEO_STAGES.map((s, i) => {
       const stageIdx = viOrder.indexOf(s.key);
@@ -4187,7 +4208,13 @@ class Component extends DCLogic {
         barWidth: (Number.isFinite(o.rankPct) ? o.rankPct : 0) + '%'
       }));
       const hue = this.hueFor(p.dex || 0);
+      const age = this.scanAgeDays(p);
       detail = {
+        // Stale scans matter because powering a Pokemon up changes its CP, and
+        // nothing in the app can know that happened until it is re-scanned.
+        scanLine: age == null ? '' : (age === 0 ? 'SCANNED TODAY' : age === 1 ? 'SCANNED YESTERDAY' : 'SCANNED ' + age + ' DAYS AGO'),
+        scanColor: age != null && age > 30 ? 'oklch(82% 0.13 70)' : 'oklch(62% 0.02 260)',
+        scanBg: age != null && age > 30 ? 'oklch(28% 0.06 70)' : 'oklch(26% 0.02 260)',
         initial: (p.name || '?').charAt(0),
         badgeColor: `oklch(70% 0.15 ${hue})`,
         auraColor: `oklch(72% 0.17 ${hue} / .55)`,
@@ -4456,6 +4483,50 @@ class Component extends DCLogic {
           + ' \u00b7 ' + total + ' in roster';
       })(),
       resetImportProgress: () => this.resetImportProgress(),
+      hasCoverage: (this.state.roster || []).length > 0,
+      coverageHeadline: (() => {
+        const r = this.state.roster || [];
+        const withIv = r.filter(p => Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)).length;
+        return r.length + ' Pokemon \u00b7 ' + (r.length ? Math.round(withIv / r.length * 100) : 0) + '% with IVs';
+      })(),
+      coverageStats: (() => {
+        const r = this.state.roster || [];
+        if (!r.length) return [];
+        const pct = (k) => Math.round(k / r.length * 100);
+        const withIv = r.filter(p => Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)).length;
+        const withCp = r.filter(p => Number.isFinite(p.cp)).length;
+        const withMoves = r.filter(p => p.quickMove).length;
+        const species = new Set(r.map(p => (p.dex != null ? p.dex : p.name))).size;
+        const tone = (v) => v >= 90 ? 'oklch(78% 0.13 150)' : (v >= 60 ? 'oklch(80% 0.13 90)' : 'oklch(76% 0.14 40)');
+        return [
+          { label: 'TOTAL', value: String(r.length), color: 'oklch(88% 0.02 260)' },
+          { label: 'SPECIES', value: String(species), color: 'oklch(88% 0.02 260)' },
+          { label: 'WITH CP', value: pct(withCp) + '%', color: tone(pct(withCp)) },
+          { label: 'WITH IVS', value: pct(withIv) + '%', color: tone(pct(withIv)) },
+          { label: 'WITH MOVES', value: pct(withMoves) + '%', color: tone(pct(withMoves)) }
+        ];
+      })(),
+      coverageGapLine: (() => {
+        const r = this.state.roster || [];
+        if (!r.length) return '';
+        const noIv = r.filter(p => !(Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)));
+        if (!noIv.length) return 'Every Pokemon has exact IVs \u2014 nothing left to re-scan.';
+        const names = noIv.slice(0, 8).map(p => p.name).join(', ');
+        return noIv.length + ' still missing exact IVs: ' + names
+          + (noIv.length > 8 ? ' and ' + (noIv.length - 8) + ' more' : '')
+          + '. Record their appraisal screens to fill these in.';
+      })(),
+      hasStaleList: (() => {
+        const r = this.state.roster || [];
+        return r.some(p => this.scanAgeDays(p) != null && this.scanAgeDays(p) > 30);
+      })(),
+      staleLine: (() => {
+        const r = this.state.roster || [];
+        const stale = r.filter(p => { const d = this.scanAgeDays(p); return d != null && d > 30; });
+        if (!stale.length) return '';
+        const oldest = stale.reduce((a, p) => Math.max(a, this.scanAgeDays(p) || 0), 0);
+        return stale.length + ' scanned over a month ago (oldest ' + oldest + ' days) \u2014 CP may be out of date if you have powered them up since.';
+      })(),
       videoImportSummary: this.state.videoImport && this.state.videoImport.summary,
       hasVideoReview: !!(this.state.videoImport && this.state.videoImport.review && this.state.videoImport.review.length),
       videoReviewRows: ((this.state.videoImport && this.state.videoImport.review) || []).map(r => {
@@ -4463,35 +4534,27 @@ class Component extends DCLogic {
         const haveIv = ivs.every(v => Number.isFinite(v));
         return {
           name: r.name,
-          tag: r._isNew ? 'NEW' : 'UPDATES ' + (r._matchName || '').toUpperCase(),
-          tagColor: r._isNew ? 'oklch(72% 0.13 150)' : 'oklch(60% 0.02 260)',
-          nameColor: r._include ? 'oklch(92% 0.01 260)' : 'oklch(48% 0.02 260)',
-          rowBg: r._include ? 'transparent' : 'oklch(17% 0.02 280)',
-          boxBorder: r._include ? 'oklch(62% 0.13 150)' : 'oklch(42% 0.03 260)',
-          boxBg: r._include ? 'oklch(72% 0.15 150)' : 'transparent',
-          tick: r._include ? '\u2713' : '',
+          tag: r._dupe ? 'POSSIBLE DUPLICATE' : (r._isNew ? 'ADDED' : 'UPDATED ' + (r._matchName || '').toUpperCase()),
+          tagColor: r._dupe ? 'oklch(78% 0.15 70)' : (r._isNew ? 'oklch(72% 0.13 150)' : 'oklch(60% 0.02 260)'),
           cp: Number.isFinite(r.cp) ? r.cp : '\u2014',
           hp: Number.isFinite(r.hp) ? r.hp : '\u2014',
           iv: haveIv ? ivs.join('/') : '\u2014',
           ivColor: haveIv ? 'oklch(80% 0.12 150)' : 'oklch(52% 0.02 260)',
           candy: Number.isFinite(r.candy) ? (r.candy + (Number.isFinite(r.xlCandy) ? ' \u00b7 ' + r.xlCandy + 'XL' : '')) : '\u2014',
-          toggle: () => this.toggleReviewRow(r._rid)
+          // Amber-tint rows with gaps so a follow-up scan can target just those
+          // Pokemon instead of redoing the whole clip.
+          rowBg: r._dupe ? 'oklch(21% 0.04 70)' : ((!Number.isFinite(r.cp) || !haveIv) ? 'oklch(19% 0.025 70)' : 'transparent')
         };
       }),
       reviewCountLine: (() => {
         const rev = (this.state.videoImport && this.state.videoImport.review) || [];
-        const on = rev.filter(r => r._include).length;
-        const fresh = rev.filter(r => r._include && r._isNew).length;
-        return on + ' of ' + rev.length + ' selected \u00b7 ' + fresh + ' new';
+        const fresh = rev.filter(r => r._isNew).length;
+        const noIv = rev.filter(r => ![r.atkIV, r.defIV, r.staIV].every(v => Number.isFinite(v))).length;
+        const dupes = rev.filter(r => r._dupe).length;
+        return rev.length + ' read \u00b7 ' + fresh + ' new'
+          + (noIv ? ' \u00b7 ' + noIv + ' without IVs' : '')
+          + (dupes ? ' \u00b7 ' + dupes + ' possible duplicate' + (dupes === 1 ? '' : 's') : '');
       })(),
-      commitLabel: (() => {
-        const rev = (this.state.videoImport && this.state.videoImport.review) || [];
-        const on = rev.filter(r => r._include).length;
-        return on ? 'SAVE ' + on + ' TO MY ACCOUNT' : 'NOTHING SELECTED';
-      })(),
-      reviewSelectAll: () => this.setAllReviewRows(true),
-      reviewSelectNone: () => this.setAllReviewRows(false),
-      commitReview: () => this.commitReviewedImport(),
       videoPartialWarning: (() => {
         const vi = this.state.videoImport;
         if (!vi) return '';
@@ -4501,7 +4564,7 @@ class Component extends DCLogic {
         if (!parts.length) return '';
         return '\u26a0 ' + parts.join(' \u00b7 ') + ' \u2014 hit RETRY to fill the gaps.';
       })(),
-      videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error' || this.state.videoImport.stage === 'review')),
+      videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error')),
       videoFrameThumbs: (this.state.videoImport && this.state.videoImport.frameThumbs && this.state.videoImport.frameThumbs.length)
         ? this.state.videoImport.frameThumbs.map(f => ({ ref: this.makeSpriteRef('data:image/jpeg;base64,' + f) })) : null,
       videoFrameLabel: (() => {
