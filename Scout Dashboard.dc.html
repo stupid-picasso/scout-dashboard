@@ -2520,11 +2520,12 @@ class Component extends DCLogic {
   // import inside that budget instead of tripping 429s halfway through.
   get RATE_INTERVAL_MS() { return 6500; }
 
-  async throttleForRateLimit(index, total) {
-    if (!this.state.geminiKey || total <= 1) return;
+  async throttleForRateLimit(index, total, spacing) {
+    if (total <= 1) return;
+    const gap = spacing || this.RATE_INTERVAL_MS;
     if (index === 0) { this._lastAiCallAt = Date.now(); return; }
     const since = Date.now() - (this._lastAiCallAt || 0);
-    const wait = this.RATE_INTERVAL_MS - since;
+    const wait = gap - since;
     if (wait > 0) await new Promise(r => setTimeout(r, wait));
     this._lastAiCallAt = Date.now();
   }
@@ -2841,35 +2842,53 @@ class Component extends DCLogic {
       let failedBatches = 0;
       let unreadableBatches = 0;
       let noCredit = false;
-      for (let b = 0; b < batches.length; b++) {
+      const runBatch = async (b, spacing, pass) => {
         const content = [
           { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
           ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
         ];
-        await this.throttleForRateLimit(b, batches.length);
+        await this.throttleForRateLimit(pass === 1 && b === 0 ? 0 : 1, batches.length, spacing);
         let reply;
         try {
           reply = await this.completeWithRetry({ messages: [{ role: 'user', content }], max_tokens: 4000 });
         } catch (err) {
-          // Keep whatever the other batches read — one overloaded call must not
-          // discard an entire multi-batch import.
-          failedBatches++;
           const bMsg = (err && err.message) || String(err);
-          console.error('[Scout] video batch ' + (b + 1) + '/' + batches.length + ' failed:', bMsg);
-          if (bMsg === 'AI_NO_CREDIT') { noCredit = true; break; }
+          console.error('[Scout] batch ' + (b + 1) + '/' + batches.length + ' (pass ' + pass + ') failed:', bMsg);
+          if (bMsg === 'AI_NO_CREDIT') { noCredit = true; return 'nocredit'; }
           this._lastAiError = bMsg;
-          this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95), this.batchLabel(b + 1, batches.length));
-          continue;
+          return 'failed';
         }
         rawReplies.push(String(reply));
         const arr = this.extractJsonArray(reply);
-        if (arr && arr.length) {
-          collected.push(...arr);
-        } else {
-          unreadableBatches++;
-          console.warn('[Scout] batch ' + (b + 1) + '/' + batches.length + ' returned no parseable Pokemon:', String(reply).slice(0, 300));
+        if (arr === null) {
+          // null means genuinely unparseable. An empty array is a real answer.
+          console.warn('[Scout] batch ' + (b + 1) + '/' + batches.length + ' returned unparseable output:', String(reply).slice(0, 300));
+          return 'unreadable';
         }
-        this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95), this.batchLabel(b + 1, batches.length));
+        if (arr.length) collected.push(...arr);
+        return 'ok';
+      };
+
+      const retryQueue = [];
+      for (let b = 0; b < batches.length; b++) {
+        const res = await runBatch(b, this.RATE_INTERVAL_MS, 1);
+        if (res === 'nocredit') break;
+        if (res === 'failed') retryQueue.push(b);
+        else if (res === 'unreadable') unreadableBatches++;
+        this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 92), this.batchLabel(b + 1, batches.length));
+      }
+
+      // Second pass at double spacing — most first-pass failures are 429s and
+      // succeed once the window clears.
+      if (retryQueue.length && !noCredit) {
+        for (let q = 0; q < retryQueue.length; q++) {
+          const b = retryQueue[q];
+          const res = await runBatch(b, this.RATE_INTERVAL_MS * 2, 2);
+          if (res === 'nocredit') break;
+          if (res === 'failed') failedBatches++;
+          else if (res === 'unreadable') unreadableBatches++;
+          this.setVideoStage('reading', 92 + Math.round(((q + 1) / retryQueue.length) * 6), `Retrying ${q + 1} of ${retryQueue.length} rate-limited batches`);
+        }
       }
 
       clearInterval(this._videoReadingTimer);
@@ -2948,8 +2967,11 @@ class Component extends DCLogic {
     for (const c of candidates) {
       try {
         const v = JSON.parse(c);
-        const arr = Array.isArray(v) ? v : [v];
-        if (arr.length) return arr;
+        // Return as-is: an empty array is a VALID answer ("no Pokemon in these
+        // frames" — scroll transitions, the map, a list view). Treating [] as a
+        // parse failure told the user to retry batches that were already
+        // correct and could never change.
+        return Array.isArray(v) ? v : [v];
       } catch (e) { /* try the next shape */ }
     }
     // Truncated array: salvage the complete objects before the cut.
@@ -2979,22 +3001,12 @@ class Component extends DCLogic {
   applyPastedImport() {
     const raw = (this.state.pasteDraft || '').trim();
     if (!raw) { this.setState({ pasteError: 'Paste the JSON from your AI chat first.' }); return; }
-    let parsed;
-    try {
-      let t = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-      const idxs = [t.indexOf('['), t.indexOf('{')].filter(n => n >= 0);
-      if (idxs.length) {
-        const first = Math.min.apply(null, idxs);
-        if (first > 0) t = t.slice(first);
-      }
-      const last = Math.max(t.lastIndexOf(']'), t.lastIndexOf('}'));
-      if (last >= 0) t = t.slice(0, last + 1);
-      parsed = JSON.parse(t);
-    } catch (e) {
+    const parsed = this.extractJsonArray(raw);
+    if (parsed === null) {
       this.setState({ pasteError: 'That is not valid JSON. Copy the whole JSON block from the chat, including the outer [ ].' });
       return;
     }
-    const items = Array.isArray(parsed) ? parsed : [parsed];
+    const items = parsed;
     const clean = items.filter(o => o && typeof o === 'object' && o.name);
     if (!clean.length) {
       this.setState({ pasteError: 'No Pokemon found — each entry needs at least a "name" field.' });
