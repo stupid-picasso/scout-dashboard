@@ -837,33 +837,53 @@ function solveIVs(base, cp, hp) {
   return candidates;
 }
 
-// Best possible stat product for a species at/under a league's CP cap (IV 15/15/15 at highest legal level).
+// Best possible stat product for a species at/under a league's CP cap, searched
+// across ALL 4096 IV spreads. Using 15/15/15 as the reference is wrong for
+// capped leagues: a lower-attack spread reaches a higher level under the cap and
+// produces a HIGHER stat product, which made real Pokemon rank above 100%.
+const _bestSPCache = new Map();
 function bestStatProductUnderCap(base, capCP) {
+  // base is an array [atk, def, sta] — an object-style key collides across species.
+  const key = (Array.isArray(base) ? base.join('_') : [base.atk, base.def, base.sta].join('_')) + '|' + capCP;
+  const hit = _bestSPCache.get(key);
+  if (hit !== undefined) return hit;
   const levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
   let best = 0;
-  for (const level of levels) {
-    const cp = cpFor(base, [15, 15, 15], level);
-    if (cp <= capCP) best = Math.max(best, statProductFor(base, [15, 15, 15], level));
+  for (let atkIV = 0; atkIV <= 15; atkIV++) {
+    for (let defIV = 0; defIV <= 15; defIV++) {
+      for (let staIV = 0; staIV <= 15; staIV++) {
+        const ivs = [atkIV, defIV, staIV];
+        // Levels ascend, so walk down from the top and take the first legal one.
+        for (let i = levels.length - 1; i >= 0; i--) {
+          if (cpFor(base, ivs, levels[i]) <= capCP) {
+            const sp = statProductFor(base, ivs, levels[i]);
+            if (sp > best) best = sp;
+            break;
+          }
+        }
+      }
+    }
   }
+  _bestSPCache.set(key, best);
   return best;
 }
 
 // This Pokemon's own best stat product at/under a league cap, searching all legal levels for its fixed IVs.
 function ownBestStatProductUnderCap(base, ivs, capCP) {
   const levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
-  let best = 0;
-  for (const level of levels) {
-    const cp = cpFor(base, ivs, level);
-    if (cp <= capCP) best = Math.max(best, statProductFor(base, ivs, level));
+  for (let i = levels.length - 1; i >= 0; i--) {
+    if (cpFor(base, ivs, levels[i]) <= capCP) return statProductFor(base, ivs, levels[i]);
   }
-  return best;
+  return 0;
 }
 
 function rankPctForLeague(base, ivs, leagueKey) {
   const cap = LEAGUE_CAPS[leagueKey];
   const own = ownBestStatProductUnderCap(base, ivs, cap);
   const max = bestStatProductUnderCap(base, cap);
-  return max > 0 ? (own / max) * 100 : null;
+  if (!(max > 0)) return null;
+  // Clamp: floating-point noise can nudge an optimal spread a hair over 100.
+  return Math.min(100, (own / max) * 100);
 }
 
 if (typeof window !== 'undefined') {

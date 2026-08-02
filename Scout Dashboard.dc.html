@@ -200,6 +200,16 @@
             <sc-if value="{{ geminiStatusLine }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ geminiStatusLine }}</div>
             </sc-if>
+            <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:6px">
+              <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.04em">TODAY'S USAGE</div>
+              <sc-for list="{{ aiUsageRows }}" as="u" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:11.5px ui-monospace,monospace">
+                  <span style="color:{{ u.color }}">{{ u.label }}</span>
+                  <span style="color:oklch(80% 0.01 260)">{{ u.value }}</span>
+                </div>
+              </sc-for>
+              <div style="font:10.5px sans-serif;color:oklch(50% 0.02 260)">Counts reset at midnight, this device only.</div>
+            </div>
             <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
               <div style="font:600 10.5px ui-monospace,monospace;color:oklch(62% 0.02 260)">OR A SELF-HOSTED GATEWAY {{ customBadge }}</div>
               <div style="font:12px sans-serif;color:oklch(70% 0.02 260);line-height:1.55">Any OpenAI-compatible endpoint — OmniRoute, OpenRouter, Groq. Must be reachable over HTTPS from this device (localhost will not work on your phone).</div>
@@ -310,6 +320,11 @@
             <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">CANDY</div><input type="number" value="{{ ocrParsedDisplay.candy }}" onChange="{{ onOcrCandy }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
             <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">XL CANDY</div><input type="number" value="{{ ocrParsedDisplay.xlCandy }}" onChange="{{ onOcrXl }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
             <div style="grid-column:1 / -1"><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">STARDUST BALANCE</div><input type="number" value="{{ ocrParsedDisplay.stardust }}" onChange="{{ onOcrStardust }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">WEIGHT</div><input type="text" value="{{ ocrParsedDisplay.weight }}" onChange="{{ onOcrWeight }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">HEIGHT</div><input type="text" value="{{ ocrParsedDisplay.height }}" onChange="{{ onOcrHeight }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">FAST MOVE</div><input type="text" value="{{ ocrParsedDisplay.fastMove }}" onChange="{{ onOcrFastMove }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">CHARGE MOVE</div><input type="text" value="{{ ocrParsedDisplay.chargeMove1 }}" onChange="{{ onOcrChargeMove1 }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
+            <div style="grid-column:1 / -1"><div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">CHARGE MOVE 2 <span style="color:oklch(45% 0.02 260)">(optional)</span></div><input type="text" value="{{ ocrParsedDisplay.chargeMove2 }}" onChange="{{ onOcrChargeMove2 }}" style="width:100%;box-sizing:border-box;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:6px 8px;border-radius:5px;font:13px sans-serif" /></div>
           </div>
           <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
             <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.1 220);color:white;font:700 12px ui-monospace,monospace">SAVE CANDY/TYPE</div>
@@ -624,6 +639,14 @@
           </sc-if>
         </div>
 
+        <sc-if value="{{ detail.hasBodyStats }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <sc-for list="{{ detail.bodyChips }}" as="bc" hint-placeholder-count="2">
+              <div style="background:oklch(27% 0.03 260);border-radius:10px;padding:8px 12px;font:12px ui-monospace,monospace;color:oklch(75% 0.02 260);flex:1;text-align:center">{{ bc.label }} <strong style="color:oklch(90% 0.01 260);font-weight:700">{{ bc.value }}</strong></div>
+            </sc-for>
+          </div>
+        </sc-if>
+
         <div style="background:oklch(25% 0.025 260);border-radius:16px;padding:16px;margin-bottom:14px">
           <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:12px">LEAGUE RANKINGS</div>
           <sc-for list="{{ detail.leagues }}" as="l" hint-placeholder-count="3">
@@ -639,14 +662,19 @@
           </sc-for>
         </div>
 
-        <div style="margin-bottom:14px">
-          <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:9px">MOVES</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <sc-for list="{{ detail.moveChips }}" as="mv" hint-placeholder-count="0">
-              <div style="background:oklch(27% 0.03 260);border-radius:10px;padding:8px 13px;font:600 12.5px sans-serif;color:oklch(88% 0.01 260)">{{ mv }}</div>
-            </sc-for>
+        <sc-if value="{{ detail.hasMoveset }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-bottom:14px">
+            <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:9px">MOVES</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ detail.moveRows }}" as="mv" hint-placeholder-count="2">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;background:oklch(24% 0.02 260);border-radius:10px;padding:8px 13px">
+                  <span style="font:10.5px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.04em">{{ mv.label }}</span>
+                  <span style="font:600 12.5px sans-serif;color:oklch(88% 0.01 260);text-align:right">{{ mv.value }}</span>
+                </div>
+              </sc-for>
+            </div>
           </div>
-        </div>
+        </sc-if>
 
         <div style="background:oklch(27% 0.05 220);border:1px solid oklch(42% 0.09 220);border-radius:16px;padding:14px 16px">
           <div style="font:700 10.5px ui-monospace,monospace;color:oklch(75% 0.13 220);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
@@ -843,6 +871,7 @@ class Component extends DCLogic {
     ocrError: '',
     ocrPreview: null,
     ocrParsed: null,
+    aiUsage: { day: '' },
     ivOverrides: {},
     addedPokemon: [],
     solvedIvResult: null,
@@ -950,6 +979,12 @@ class Component extends DCLogic {
       if (rawTypes) this.setState({ typeTable: JSON.parse(rawTypes) });
       const rawOverrides = localStorage.getItem('scout_iv_overrides_v1');
       if (rawOverrides) this.setState({ ivOverrides: JSON.parse(rawOverrides) });
+      const rawUsage = localStorage.getItem('scout_ai_usage_v1');
+      if (rawUsage) {
+        const u = JSON.parse(rawUsage);
+        // Counters are per-day; a stale day starts fresh.
+        if (u && u.day === this.todayKey()) this.setState({ aiUsage: u });
+      }
       const rawAdded = localStorage.getItem('scout_added_v1');
       if (rawAdded) this.setState({ addedPokemon: JSON.parse(rawAdded) });
       const rawRes = localStorage.getItem('scout_resources_v1');
@@ -1711,7 +1746,15 @@ class Component extends DCLogic {
       ] }],
       max_tokens: 900
     });
-    const jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+    let jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+    // Models sometimes emit a bare `undefined` as a value, which is not valid
+    // JSON and killed the whole read. Also trim any prose around the object.
+    const objStart = jsonText.indexOf('{');
+    const objEnd = jsonText.lastIndexOf('}');
+    if (objStart > 0 || (objEnd >= 0 && objEnd < jsonText.length - 1)) {
+      if (objStart >= 0 && objEnd > objStart) jsonText = jsonText.slice(objStart, objEnd + 1);
+    }
+    jsonText = jsonText.replace(/:\s*undefined\b/g, ': null').replace(/,\s*([}\]])/g, '$1');
     const o = JSON.parse(jsonText);
     if (!o || typeof o !== 'object') throw new Error('bad vision payload');
     const num = v => (typeof v === 'number' && isFinite(v)) ? v : (v != null && /^\d[\d,]*$/.test(String(v)) ? parseInt(String(v).replace(/,/g, ''), 10) : null);
@@ -1760,6 +1803,7 @@ class Component extends DCLogic {
         if (vm !== 'AI_NO_CREDIT') this._lastAiError = vm;
         text = await this.runOCR(canvas);
         rec = this.parsePokemonText(text);
+        this.bumpAiUsage('ocr');
       }
       if (rec.pokemon_name) {
         const dexInfo = this.lookupDexInfo(rec.pokemon_name);
@@ -1786,6 +1830,11 @@ class Component extends DCLogic {
           candy: rec.candy != null ? rec.candy : null,
           xlCandy: rec.xl_candy != null ? rec.xl_candy : null,
           stardust: rec.stardust != null ? rec.stardust : null,
+          weight: rec.weight || '',
+          height: rec.height || '',
+          fastMove: rec.fast_move || '',
+          chargeMove1: rec.charged_move_1 || '',
+          chargeMove2: rec.charged_move_2 || '',
           hp: rec.hp != null ? rec.hp : null,
           atkIV: rec.attack_iv != null ? rec.attack_iv : null,
           defIV: rec.defense_iv != null ? rec.defense_iv : null,
@@ -1814,6 +1863,17 @@ class Component extends DCLogic {
     rec.candy = p.candy != null ? p.candy : rec.candy;
     rec.xl_candy = p.xlCandy != null ? p.xlCandy : rec.xl_candy;
     rec.dex_number = p.dex || rec.dex_number;
+    // Panel edits win over the raw read.
+    if (p.weight) rec.weight = p.weight;
+    if (p.height) rec.height = p.height;
+    if (p.fastMove) rec.fast_move = p.fastMove;
+    if (p.chargeMove1) rec.charged_move_1 = p.chargeMove1;
+    if (p.chargeMove2) rec.charged_move_2 = p.chargeMove2;
+    if (p.type && !rec.type_1) {
+      const parts = String(p.type).split('/').map(s => s.trim()).filter(Boolean);
+      if (parts[0]) rec.type_1 = parts[0];
+      if (parts[1]) rec.type_2 = parts[1];
+    }
     if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
     const mon = this.buildPokemonRecord(rec);
     const nextRoster = [...(this.state.roster || []), mon];
@@ -1915,12 +1975,12 @@ class Component extends DCLogic {
       put('powerUpStardust', rec.power_up_stardust);
       put('powerUpCandy', rec.power_up_candy);
       put('evolveCandy', rec.evolve_candy);
-      put('quickMove', rec.fast_move);
-      put('chargeMove', rec.charged_move_1);
-      put('chargeMove2', rec.charged_move_2);
+      put('quickMove', p.fastMove || rec.fast_move);
+      put('chargeMove', p.chargeMove1 || rec.charged_move_1);
+      put('chargeMove2', p.chargeMove2 || rec.charged_move_2);
       put('gender', rec.gender);
-      put('weight', rec.weight);
-      put('height', rec.height);
+      put('weight', p.weight || rec.weight);
+      put('height', p.height || rec.height);
       put('sizeClass', rec.size_class);
       if (touched) {
         overrides[p.matchedIdx] = patch;
@@ -2028,6 +2088,7 @@ class Component extends DCLogic {
           throw new Error('Gemini reply was cut off (MAX_TOKENS).');
         }
         this._geminiModel = model;
+        this.bumpAiUsage('gemini');
         return text;
       }
       const errText = await res.text().catch(() => '');
@@ -2089,6 +2150,7 @@ class Component extends DCLogic {
     const data = await res.json();
     const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (!text) throw new Error('Gateway returned no text');
+    this.bumpAiUsage('gateway');
     return typeof text === 'string' ? text : JSON.stringify(text);
   }
 
@@ -2103,6 +2165,19 @@ class Component extends DCLogic {
       if (m) localStorage.setItem('scout_custom_model_v1', m); else localStorage.removeItem('scout_custom_model_v1');
       if (k) localStorage.setItem('scout_custom_key_v1', k); else localStorage.removeItem('scout_custom_key_v1');
     } catch (e) {}
+  }
+
+  // Per-day call counters, so the free-tier budgets are visible before they run out.
+  todayKey() { return new Date().toISOString().slice(0, 10); }
+
+  bumpAiUsage(engine) {
+    const day = this.todayKey();
+    const prev = this.state.aiUsage || {};
+    const usage = (prev.day === day) ? { ...prev } : { day };
+    usage[engine] = (usage[engine] || 0) + 1;
+    usage.day = day;
+    this.setState({ aiUsage: usage });
+    try { localStorage.setItem('scout_ai_usage_v1', JSON.stringify(usage)); } catch (e) {}
   }
 
   setGeminiKey(v) {
@@ -2177,6 +2252,7 @@ class Component extends DCLogic {
             }
           }
           const res = await window.puter.ai.chat(msgs, { model: 'claude-sonnet-5' });
+          this.bumpAiUsage('puter');
           if (res && res.message && res.message.content && res.message.content[0]) return res.message.content[0].text;
           return String(res && res.text != null ? res.text : res);
         }
@@ -3061,6 +3137,11 @@ class Component extends DCLogic {
       hp: this.state.ocrParsed.hp ?? '',
       matchedName: this.state.ocrParsed.matchedName,
       stardust: this.state.ocrParsed.stardust ?? '',
+      weight: this.state.ocrParsed.weight || '',
+      height: this.state.ocrParsed.height || '',
+      fastMove: this.state.ocrParsed.fastMove || '',
+      chargeMove1: this.state.ocrParsed.chargeMove1 || '',
+      chargeMove2: this.state.ocrParsed.chargeMove2 || '',
       candy: this.state.ocrParsed.candy ?? '',
       xlCandy: this.state.ocrParsed.xlCandy ?? '',
       type: this.state.ocrParsed.type || '',
@@ -3157,12 +3238,27 @@ class Component extends DCLogic {
         spriteRef: this.makeSpriteRefByDex(p.dex),
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         dex: p.dex, cp: p.cp, hp: p.hp,
-        moves: [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).join(' / ') || '—',
-        moveChips: [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean),
         statRings, leagues,
         flags: flags || 'No special flags',
         flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
         dust: p.dust != null ? p.dust : '—',
+        moveRows: (() => {
+          const rows = [
+            { label: 'FAST', value: p.quickMove },
+            { label: 'CHARGE', value: p.chargeMove },
+            { label: 'CHARGE 2', value: p.chargeMove2 }
+          ].filter(r => r.value);
+          return rows.length ? rows : null;
+        })(),
+        hasMoveset: !!(p.quickMove || p.chargeMove || p.chargeMove2),
+        bodyChips: (() => {
+          const chips = [];
+          if (p.weight) chips.push({ label: 'Weight', value: p.weight + (/kg/i.test(String(p.weight)) ? '' : ' kg') });
+          if (p.height) chips.push({ label: 'Height', value: p.height + (/m$/i.test(String(p.height)) ? '' : ' m') });
+          if (p.sizeClass) chips.push({ label: 'Size', value: p.sizeClass });
+          return chips.length ? chips : null;
+        })(),
+        hasBodyStats: !!(p.weight || p.height || p.sizeClass),
         recommendation: this.computeRecommendation(p)
       };
     }
@@ -3291,6 +3387,11 @@ class Component extends DCLogic {
       onOcrStardust: (e) => this.updateOcrField('stardust', parseInt(String(e.target.value).replace(/,/g, ''), 10) || null),
       onOcrXl: (e) => this.updateOcrField('xlCandy', parseInt(e.target.value, 10) || null),
       onOcrType: (e) => this.updateOcrField('type', e.target.value),
+      onOcrWeight: (e) => this.updateOcrField('weight', e.target.value),
+      onOcrHeight: (e) => this.updateOcrField('height', e.target.value),
+      onOcrFastMove: (e) => this.updateOcrField('fastMove', e.target.value),
+      onOcrChargeMove1: (e) => this.updateOcrField('chargeMove1', e.target.value),
+      onOcrChargeMove2: (e) => this.updateOcrField('chargeMove2', e.target.value),
       onOcrHp: (e) => this.updateOcrField('hp', parseInt(e.target.value, 10) || null),
       onVideoUpload: (e) => this.onVideoUpload(e),
       onApiEndpointDraftChange: (e) => this.setState({ apiEndpointDraft: e.target.value }),
@@ -3305,6 +3406,26 @@ class Component extends DCLogic {
           + (this.state.cloudUser ? ' Synced to your account, so it survives a cache clear.' : '')
         : '',
       geminiBadge: this.state.customBaseUrl ? '· GATEWAY' : (this.state.geminiKey ? '· GEMINI' : (this.state.aiOutOfCredit ? '· NO CREDIT' : '· PUTER (FREE)')),
+      aiUsageRows: (() => {
+        const u = (this.state.aiUsage && this.state.aiUsage.day === this.todayKey()) ? this.state.aiUsage : {};
+        const g = u.gemini || 0;
+        const rows = [];
+        if (this.state.geminiKey) {
+          rows.push({
+            label: 'Gemini',
+            value: g + ' / 1,500',
+            color: g >= 1500 ? 'oklch(75% 0.15 30)' : (g >= 1200 ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.13 150)')
+          });
+        }
+        rows.push({
+          label: 'Puter (free)',
+          value: (u.puter || 0) + (this.state.aiOutOfCredit ? ' · no credit' : ''),
+          color: this.state.aiOutOfCredit ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.02 260)'
+        });
+        if (this.state.customBaseUrl) rows.push({ label: 'Gateway', value: String(u.gateway || 0), color: 'oklch(72% 0.02 260)' });
+        rows.push({ label: 'On-device OCR', value: String(u.ocr || 0), color: 'oklch(60% 0.02 260)' });
+        return rows;
+      })(),
       customBaseDraft: this.state.customBaseDraft || '',
       customModelDraft: this.state.customModelDraft || '',
       customKeyDraft: this.state.customKeyDraft || '',
