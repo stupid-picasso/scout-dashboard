@@ -56,6 +56,12 @@
 </helmet>
 <div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100%;width:100%;box-sizing:border-box;background:oklch(18% 0.025 260);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.01 260);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(42% 0.09 220 / .20), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(44% 0.10 150 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(40% 0.09 300 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
 
+  <sc-if value="{{ statusBanner }}" hint-placeholder-val="{{ false }}">
+    <div role="status" aria-live="polite" style="position:sticky;top:0;z-index:41;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});padding:9px {{ rootPadX }};background:{{ statusBanner.bg }};color:{{ statusBanner.fg }};font:600 11.5px ui-monospace,monospace;letter-spacing:.03em;display:flex;align-items:center;gap:9px">
+      <div style="width:7px;height:7px;border-radius:50%;background:{{ statusBanner.dot }};flex-shrink:0"></div>
+      <div style="text-wrap:pretty">{{ statusBanner.text }}</div>
+    </div>
+  </sc-if>
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
   <div ref="{{ headerRef }}" style="position:sticky;top:0;z-index:30;transition:box-shadow .24s ease,background .24s ease;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px;padding:14px {{ rootPadX }};background:oklch(18% 0.025 260 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.03 260 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:14px">
@@ -933,6 +939,10 @@ class Component extends DCLogic {
     stardustBalance: null,
     candyInventory: {},
     typeTable: {},
+    online: true,
+    storageWarning: '',
+    csvNotice: '',
+    csvError: '',
     ocrBusy: false,
     ocrError: '',
     ocrPreview: null,
@@ -997,6 +1007,7 @@ class Component extends DCLogic {
   }
 
   async componentDidMount() {
+    this.bindNetworkStatus();
     try {
       // POKEMON_DATA comes from pokemon-data.js, a deferred module. If it never
       // arrives (missing file — it's gitignored), fall back to the demo sample
@@ -1078,11 +1089,27 @@ class Component extends DCLogic {
     this.initFirebase();
   }
 
+  bindNetworkStatus() {
+    if (this._netBound) return;
+    this._netBound = true;
+    this._onOnline = () => this.setState({ online: true });
+    this._onOffline = () => this.setState({ online: false });
+    window.addEventListener('online', this._onOnline);
+    window.addEventListener('offline', this._onOffline);
+    this.setState({ online: navigator.onLine !== false });
+  }
+
   componentWillUnmount() {
+    if (this._onOnline) window.removeEventListener('online', this._onOnline);
+    if (this._onOffline) window.removeEventListener('offline', this._onOffline);
+    clearTimeout(this._saveTimer);
+    clearTimeout(this._csvNoticeTimer);
+    clearInterval(this._videoReadingTimer);
     if (this.updateWidth) window.removeEventListener('resize', this.updateWidth);
     if (this.resizeObserver) this.resizeObserver.disconnect();
     if (this._statRaf) cancelAnimationFrame(this._statRaf);
     if (this._headerIO) this._headerIO.disconnect();
+    clearTimeout(this._frameReleaseTimer);
   }
 
   rootRef(el) {
@@ -1101,10 +1128,14 @@ class Component extends DCLogic {
   componentDidUpdate(prevProps, prevState) {
     // Persist the roster locally whenever it changes (OCR, CSV, video, transfers).
     // Single choke point so every mutation path survives a reload.
-    if (this.state.loaded && this.state.roster) {
+    // Identity check first: serialising 300+ Pokemon on every render (hover,
+    // filter keystroke, stat tick) was costing milliseconds per frame for a
+    // value that only changes on an actual mutation.
+    if (this.state.loaded && this.state.roster && this._lastRosterRef !== this.state.roster) {
+      this._lastRosterRef = this.state.roster;
       const rosterSig = JSON.stringify(this.state.roster);
       if (this._lastRosterSig !== undefined && rosterSig !== this._lastRosterSig) {
-        this.saveRoster(this.state.roster);
+        this.queueSaveRoster(this.state.roster);
       }
       this._lastRosterSig = rosterSig;
     }
@@ -1184,7 +1215,16 @@ class Component extends DCLogic {
     const text = (this.state.firebaseConfigDraft || '').trim().replace(/;\s*$/, '');
     if (!text) return;
     try {
-      const config = new Function('return (' + text + ')')();
+      // JSON.parse rather than new Function(): the latter is blocked under any
+      // strict Content-Security-Policy. Tolerates unquoted keys and trailing
+      // commas, which is how the Firebase console presents the snippet.
+      const normalised = text
+        .replace(/^[\s\S]*?\{/, '{')
+        .replace(/\};?[\s\S]*$/, '}')
+        .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
+        .replace(/'/g, '"')
+        .replace(/,(\s*[}\]])/g, '$1');
+      const config = JSON.parse(normalised);
       if (!config || !config.apiKey || !config.projectId) throw new Error('missing apiKey/projectId');
       localStorage.setItem('scout_firebase_config_v1', JSON.stringify(config));
       this.setState({ firebaseConfigError: '' });
@@ -1391,8 +1431,22 @@ class Component extends DCLogic {
     reader.onload = (ev) => {
       try {
         const parsed = this.parseCSV(ev.target.result);
-        this.setState({ roster: parsed, syncedFrom: file.name });
-      } catch (err) {}
+        if (!Array.isArray(parsed) || !parsed.length) {
+          throw new Error('No rows found — is this a Poke Genie CSV export?');
+        }
+        const prev = (this.state.roster || []).length;
+        this.setState({
+          roster: this.sanitizeRoster(parsed),
+          syncedFrom: file.name,
+          csvNotice: `Loaded ${parsed.length} Pokemon from ${file.name}${prev ? ` (replaced ${prev})` : ''}.`,
+          csvError: ''
+        });
+        clearTimeout(this._csvNoticeTimer);
+        this._csvNoticeTimer = setTimeout(() => this.setState({ csvNotice: '' }), 7000);
+      } catch (err) {
+        console.error('[Scout] CSV import failed:', err);
+        this.setState({ csvError: 'Could not read that CSV: ' + ((err && err.message) || err), csvNotice: '' });
+      }
     };
     reader.readAsText(file);
   }
@@ -1699,14 +1753,29 @@ class Component extends DCLogic {
     };
   }
 
+  // Debounced so a burst of mutations (a video import writing 200 Pokemon one
+  // merge at a time) performs one write instead of two hundred.
+  queueSaveRoster(roster) {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => this.saveRoster(roster), 400);
+  }
+
   saveRoster(roster) {
     try {
       localStorage.setItem('scout_roster_v1', JSON.stringify(roster));
       localStorage.setItem('scout_roster_v1_ts', Date.now().toString());
+      if (this.state.storageWarning) this.setState({ storageWarning: '' });
     } catch (e) {
-      if (e && e.name === 'QuotaExceededError') {
-        this.setState({ ocrError: 'Local storage is full \u2014 export your roster, then remove some Pokemon.' });
-      }
+      console.error('[Scout] saveRoster failed:', e);
+      // Safari private mode throws on every write; quota is hit around 800-1000
+      // Pokemon. Either way the roster is still live in memory and in Firestore
+      // if signed in — warn rather than fail silently.
+      const quota = e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014);
+      this.setState({
+        storageWarning: quota
+          ? 'This device\u2019s local storage is full, so changes are not being saved offline. Sign in to sync, or transfer some Pokemon.'
+          : 'Changes can\u2019t be saved on this device (private browsing blocks storage). Sign in to sync instead.'
+      });
     }
   }
 
@@ -2417,13 +2486,45 @@ class Component extends DCLogic {
     throw lastErr;
   }
 
+  // Frames are kept briefly after a successful read so Retry still works, then
+  // dropped — at 600 frames the buffer is ~20 MB of base64.
+  _releaseFramesSoon() {
+    clearTimeout(this._frameReleaseTimer);
+    this._frameReleaseTimer = setTimeout(() => { this._lastVideoFrames = null; }, 90000);
+  }
+
   retryVideoImport() {
     if (!this._lastVideoFrames) return;
     this.runVideoPipeline(this._lastVideoFrames);
   }
 
-  setVideoStage(stage, progress) {
-    this.setState(s => ({ videoImport: { ...s.videoImport, stage, progress } }));
+  setVideoStage(stage, progress, note) {
+    this.setState(s => ({ videoImport: { ...s.videoImport, stage, progress, note: note !== undefined ? note : (s.videoImport && s.videoImport.note) } }));
+  }
+
+  batchLabel(done, total) {
+    if (total <= 1) return '';
+    const remaining = total - done;
+    // Only Gemini is rate-limited; other engines run back to back.
+    const paced = !!this.state.geminiKey;
+    const secs = paced ? Math.round(remaining * this.RATE_INTERVAL_MS / 1000) : remaining * 3;
+    if (remaining <= 0) return `Batch ${done} of ${total}`;
+    const mins = Math.floor(secs / 60);
+    const eta = mins >= 1 ? `~${mins}m ${secs % 60}s left` : `~${secs}s left`;
+    return `Batch ${done} of ${total} · ${eta}`;
+  }
+
+  // Gemini's free tier allows 10 requests/minute. Spacing calls keeps a long
+  // import inside that budget instead of tripping 429s halfway through.
+  get RATE_INTERVAL_MS() { return 6500; }
+
+  async throttleForRateLimit(index, total) {
+    if (!this.state.geminiKey || total <= 1) return;
+    if (index === 0) { this._lastAiCallAt = Date.now(); return; }
+    const since = Date.now() - (this._lastAiCallAt || 0);
+    const wait = this.RATE_INTERVAL_MS - since;
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    this._lastAiCallAt = Date.now();
   }
 
   // Dense frame sampling + perceptual dedupe. A fixed small count (the old
@@ -2463,6 +2564,16 @@ class Component extends DCLogic {
     canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
     const ctx = canvas.getContext('2d');
 
+    // Display thumbnails are encoded separately at ~96px. The API frames are
+    // ~35 KB of base64 each; at the raised cap, rendering those as an <img>
+    // wall retained tens of megabytes on a phone. The strip only exists so the
+    // user can sanity-check what was read, so ~2 KB per frame is plenty.
+    const thumbCanvas = document.createElement('canvas');
+    const thumbScale = Math.min(1, 96 / canvas.width);
+    thumbCanvas.width = Math.max(1, Math.round(canvas.width * thumbScale));
+    thumbCanvas.height = Math.max(1, Math.round(canvas.height * thumbScale));
+    const thumbCtx = thumbCanvas.getContext('2d');
+
     // Small grayscale fingerprint used to tell frames apart.
     const hashCanvas = document.createElement('canvas');
     hashCanvas.width = 16; hashCanvas.height = 32;
@@ -2484,9 +2595,22 @@ class Component extends DCLogic {
 
     const targetCount = Math.max(cfg.minFrames, Math.min(cfg.maxFrames, Math.ceil(duration * cfg.fps)));
     const frames = [];
+    const thumbs = [];
     let lastKept = null;
     let blackCount = 0;
     let sampled = 0;
+    const extractStart = Date.now();
+    // Up to 600 sequential seek + rAF + getImageData cycles is minutes long;
+    // a bare percentage is the quietest stretch of the whole import.
+    const extractNote = (i) => {
+      const done = i + 1;
+      if (done < 4 || done >= targetCount) return `Frame ${done} of ${targetCount}`;
+      const perFrame = (Date.now() - extractStart) / done;
+      const secs = Math.round(((targetCount - done) * perFrame) / 1000);
+      const mins = Math.floor(secs / 60);
+      const eta = mins >= 1 ? `~${mins}m ${secs % 60}s left` : `~${secs}s left`;
+      return `Frame ${done} of ${targetCount} · ${eta}`;
+    };
 
     for (let i = 0; i < targetCount; i++) {
       const t = Math.min(duration - 0.05, (duration * (i + 0.5)) / targetCount);
@@ -2508,12 +2632,14 @@ class Component extends DCLogic {
       const fp = fingerprint();
       // 7.0 mean-abs-diff on 0-255 grayscale ≈ "visibly different screen".
       if (lastKept && meanAbsDiff(fp, lastKept) < cfg.dedupeThreshold) {
-        this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100));
+        this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100), extractNote(i));
         continue;
       }
       lastKept = fp;
       frames.push(canvas.toDataURL('image/jpeg', cfg.quality).split(',')[1]);
-      this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100));
+      thumbCtx.drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
+      thumbs.push(thumbCanvas.toDataURL('image/jpeg', 0.4).split(',')[1]);
+      this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100), extractNote(i));
     }
 
     URL.revokeObjectURL(url);
@@ -2524,19 +2650,20 @@ class Component extends DCLogic {
     if (!frames.length) {
       throw new Error('No usable frames came out of that recording. Re-export as MP4 (H.264) and try again.');
     }
-    return frames;
+    return { frames, thumbs };
   }
 
   async onVideoUpload(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     e.target.value = '';
-    this.setState({ videoImport: { stage: 'uploading', progress: 0, error: null, summary: null } });
+    this.setState({ videoImport: { stage: 'uploading', progress: 0, error: null, summary: null, note: '' } });
     try {
       this.setVideoStage('uploading', 100);
-      const frames = await this.extractFrames(file, { fps: 3, maxFrames: 32 });
+      const { frames, thumbs } = await this.extractFrames(file, { fps: 3, maxFrames: 600 });
       this._lastVideoFrames = frames;
-      this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: frames } }));
+      // Cap the visible strip too — 600 thumbnails is a wall, not a check.
+      this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: thumbs.slice(0, 24), frameTotal: frames.length } }));
       await this.runVideoPipeline(frames);
     } catch (err) {
       clearInterval(this._videoReadingTimer);
@@ -2591,6 +2718,7 @@ class Component extends DCLogic {
           { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
           ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
         ];
+        await this.throttleForRateLimit(b, batches.length);
         let reply;
         try {
           reply = await this.completeWithRetry({ messages: [{ role: 'user', content }], max_tokens: 4000 });
@@ -2598,8 +2726,11 @@ class Component extends DCLogic {
           // Keep whatever the other batches read — one overloaded call must not
           // discard an entire multi-batch import.
           failedBatches++;
-          if ((err && err.message) === 'AI_NO_CREDIT') { noCredit = true; break; }
-          this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95));
+          const bMsg = (err && err.message) || String(err);
+          console.error('[Scout] video batch ' + (b + 1) + '/' + batches.length + ' failed:', bMsg);
+          if (bMsg === 'AI_NO_CREDIT') { noCredit = true; break; }
+          this._lastAiError = bMsg;
+          this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95), this.batchLabel(b + 1, batches.length));
           continue;
         }
         rawReplies.push(String(reply));
@@ -2608,11 +2739,14 @@ class Component extends DCLogic {
           const arr = JSON.parse(jsonText);
           if (Array.isArray(arr)) collected.push(...arr);
         } catch (err) { /* keep going — other batches may still parse */ }
-        this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95));
+        this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 95), this.batchLabel(b + 1, batches.length));
       }
 
       clearInterval(this._videoReadingTimer);
       this.setVideoStage('reading', 100);
+      // The retry buffer can be tens of MB at the raised frame cap; hold it only
+      // while a retry is still plausible.
+      this._releaseFramesSoon();
 
       // Merge duplicate sightings across batches (same name + CP).
       const seen = new Map();
@@ -3378,7 +3512,7 @@ class Component extends DCLogic {
       const pct = vi.stage === 'error' ? 0 : (stageIdx < viIndex ? 100 : (stageIdx === viIndex ? (vi.progress || 0) : 0));
       const active = stageIdx <= viIndex && vi.stage !== 'error';
       return {
-        label: s.label,
+        label: s.label + (stageIdx === viIndex && vi.note ? '  ' + vi.note : ''),
         pct,
         labelColor: active ? 'oklch(88% 0.06 280)' : 'oklch(50% 0.02 260)',
         barColor: pct >= 100 ? 'oklch(70% 0.15 150)' : 'oklch(65% 0.13 280)'
@@ -3568,6 +3702,13 @@ class Component extends DCLogic {
 
     return {
       rootRef: (el) => this.rootRef(el),
+      statusBanner: (() => {
+        if (this.state.csvError) return { text: this.state.csvError, bg: 'oklch(30% 0.09 30)', fg: 'oklch(94% 0.03 30)', dot: 'oklch(72% 0.17 30)' };
+        if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'oklch(32% 0.07 70)', fg: 'oklch(95% 0.03 70)', dot: 'oklch(78% 0.15 70)' };
+        if (this.state.storageWarning) return { text: this.state.storageWarning, bg: 'oklch(32% 0.07 70)', fg: 'oklch(95% 0.03 70)', dot: 'oklch(78% 0.15 70)' };
+        if (this.state.csvNotice) return { text: this.state.csvNotice, bg: 'oklch(28% 0.07 150)', fg: 'oklch(94% 0.03 150)', dot: 'oklch(75% 0.16 150)' };
+        return null;
+      })(),
       headerRef: (el) => { if (el) this._headerEl = el; },
       headerSentinelRef: (el) => this.headerSentinelRef(el),
       sheetRef: (el) => this.sheetRef(el),
@@ -3725,9 +3866,12 @@ class Component extends DCLogic {
         ? this.state.videoImport.frameThumbs.map(f => ({ ref: this.makeSpriteRef('data:image/jpeg;base64,' + f) })) : null,
       videoFrameLabel: (() => {
         const vi = this.state.videoImport;
-        const n = (vi && vi.frameThumbs && vi.frameThumbs.length) || 0;
+        const shown = (vi && vi.frameThumbs && vi.frameThumbs.length) || 0;
+        const total = (vi && vi.frameTotal) || shown;
         const b = vi && vi.batchCount;
-        return n + ' DISTINCT FRAMES READ' + (b ? ' \u00b7 ' + b + (b === 1 ? ' BATCH' : ' BATCHES') : '')
+        const head = total + ' DISTINCT FRAMES READ'
+          + (total > shown ? ' \u00b7 FIRST ' + shown + ' SHOWN' : '');
+        return head + (b ? ' \u00b7 ' + b + (b === 1 ? ' BATCH' : ' BATCHES') : '')
           + ' (check these actually show your Pokemon)';
       })(),
       videoRawReply: this.state.videoImport && this.state.videoImport.rawReply,
