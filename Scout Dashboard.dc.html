@@ -293,6 +293,24 @@
         </div>
       </div>
       <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
+      <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:oklch(20% 0.03 150);border:1px solid oklch(33% 0.05 150);border-radius:7px;padding:9px 12px">
+          <div style="font:700 10.5px ui-monospace,monospace;color:oklch(72% 0.13 150);letter-spacing:.05em">IMPORT PROGRESS</div>
+          <div style="font:12px ui-monospace,monospace;color:oklch(86% 0.02 260)">{{ importProgressLine }}</div>
+          <div onClick="{{ resetImportProgress }}" style="cursor:pointer;margin-left:auto;font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);text-decoration:underline">RESET</div>
+        </div>
+      </sc-if>
+      <div style="border-top:1px solid oklch(28% 0.03 260);margin-top:2px;padding-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+        <sc-if value="{{ clearArmed }}" hint-placeholder-val="{{ false }}">
+          <div style="font:11.5px ui-monospace,monospace;color:oklch(78% 0.15 40)">{{ clearWarning }}</div>
+          <div onClick="{{ confirmClearRoster }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.16 30);color:white;font:700 11.5px ui-monospace,monospace">YES, DELETE ALL</div>
+          <div onClick="{{ cancelClearRoster }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace">CANCEL</div>
+        </sc-if>
+        <sc-if value="{{ clearNotArmed }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ armClearRoster }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:transparent;border:1px solid oklch(42% 0.08 30);color:oklch(72% 0.11 30);font:700 11.5px ui-monospace,monospace" style-hover="background:oklch(26% 0.05 30);color:oklch(84% 0.13 30)">CLEAR ROSTER</div>
+          <div style="font:11px sans-serif;color:oklch(50% 0.02 260)">Wipes every Pokemon on this device before a fresh import. Candy, stardust and settings are kept.</div>
+        </sc-if>
+      </div>
       <sc-if value="{{ hasVideoImport }}" hint-placeholder-val="{{ false }}">
         <div style="background:oklch(19% 0.03 280);border:1px solid oklch(38% 0.06 280);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;justify-content:space-between;align-items:center">
@@ -312,6 +330,41 @@
           <sc-if value="{{ videoImportError }}" hint-placeholder-val="{{ false }}">
             <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ videoImportError }}</div>
             <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">RETRY</div>
+          </sc-if>
+          <sc-if value="{{ hasVideoReview }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+                <div style="font:700 12px ui-monospace,monospace;color:oklch(85% 0.08 280)">REVIEW BEFORE SAVING</div>
+                <div style="font:11px ui-monospace,monospace;color:oklch(62% 0.02 260)">{{ reviewCountLine }}</div>
+              </div>
+              <div style="font:11.5px sans-serif;color:oklch(62% 0.02 260);line-height:1.5">Untick anything read wrong. Nothing is written to your roster or your account until you save.</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div onClick="{{ reviewSelectAll }}" style="cursor:pointer;padding:6px 11px;border-radius:4px;background:oklch(28% 0.03 260);color:oklch(82% 0.01 260);font:700 10.5px ui-monospace,monospace">SELECT ALL</div>
+                <div onClick="{{ reviewSelectNone }}" style="cursor:pointer;padding:6px 11px;border-radius:4px;background:oklch(28% 0.03 260);color:oklch(82% 0.01 260);font:700 10.5px ui-monospace,monospace">NONE</div>
+              </div>
+              <div style="border:1px solid oklch(32% 0.04 280);border-radius:7px;overflow:hidden">
+                <div style="display:grid;grid-template-columns:26px 1.7fr .7fr .6fr .9fr .7fr;gap:8px;padding:8px 10px;background:oklch(24% 0.04 280);font:700 9.5px ui-monospace,monospace;color:oklch(66% 0.03 280);letter-spacing:.05em">
+                  <div></div><div>NAME</div><div>CP</div><div>HP</div><div>IV</div><div>CANDY</div>
+                </div>
+                <sc-for list="{{ videoReviewRows }}" as="r" hint-placeholder-count="5">
+                  <div onClick="{{ r.toggle }}" style="cursor:pointer;display:grid;grid-template-columns:26px 1.7fr .7fr .6fr .9fr .7fr;gap:8px;padding:9px 10px;border-top:1px solid oklch(27% 0.03 280);background:{{ r.rowBg }};align-items:center;transition:background .12s ease">
+                    <div style="width:15px;height:15px;border-radius:3px;border:1.5px solid {{ r.boxBorder }};background:{{ r.boxBg }};display:flex;align-items:center;justify-content:center;font:700 10px ui-monospace,monospace;color:oklch(18% 0.02 260)">{{ r.tick }}</div>
+                    <div style="min-width:0">
+                      <div style="font:600 12px sans-serif;color:{{ r.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</div>
+                      <div style="font:9.5px ui-monospace,monospace;color:{{ r.tagColor }};letter-spacing:.04em">{{ r.tag }}</div>
+                    </div>
+                    <div style="font:12px ui-monospace,monospace;color:oklch(84% 0.01 260)">{{ r.cp }}</div>
+                    <div style="font:12px ui-monospace,monospace;color:oklch(70% 0.02 260)">{{ r.hp }}</div>
+                    <div style="font:11.5px ui-monospace,monospace;color:{{ r.ivColor }}">{{ r.iv }}</div>
+                    <div style="font:11.5px ui-monospace,monospace;color:oklch(70% 0.02 260)">{{ r.candy }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <div onClick="{{ commitReview }}" style="cursor:pointer;padding:9px 16px;border-radius:5px;background:oklch(42% 0.1 150);color:white;font:700 11.5px ui-monospace,monospace">{{ commitLabel }}</div>
+                <div onClick="{{ dismissVideoImport }}" style="cursor:pointer;padding:9px 14px;border-radius:5px;background:oklch(30% 0.03 260);color:oklch(84% 0.01 260);font:700 11.5px ui-monospace,monospace">DISCARD</div>
+              </div>
+            </div>
           </sc-if>
           <sc-if value="{{ videoImportSummary }}" hint-placeholder-val="{{ false }}">
             <div style="font:13px sans-serif;color:oklch(90% 0.02 280)">Done! Updated {{ videoImportSummary.updated }}, added {{ videoImportSummary.inserted }} new, from {{ videoImportSummary.total }} Pokemon read off the recording.</div>
@@ -961,6 +1014,9 @@ class Component extends DCLogic {
     ocrPreview: null,
     ocrParsed: null,
     aiUsage: { day: '' },
+    importProgress: { day: '', clips: 0, added: 0, updated: 0 },
+    clearArmed: false,
+    rosterCleared: false,
     ivOverrides: {},
     addedPokemon: [],
     solvedIvResult: null,
@@ -1035,7 +1091,9 @@ class Component extends DCLogic {
       // Cloud base-stats overlay is applied from onAuthChange (auth isn't ready yet here).
       // A locally-saved roster (OCR/CSV edits) wins over the bundled export.
       const savedRoster = this.loadRoster();
-      this.setState({ roster: this.sanitizeRoster(savedRoster || data || []), loaded: true });
+      const wasCleared = localStorage.getItem('scout_roster_cleared_v1') === '1';
+      if (wasCleared) this.setState({ rosterCleared: true });
+      this.setState({ roster: this.sanitizeRoster(savedRoster || (wasCleared ? [] : data) || []), loaded: true });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
@@ -1092,6 +1150,11 @@ class Component extends DCLogic {
         const u = JSON.parse(rawUsage);
         // Counters are per-day; a stale day starts fresh.
         if (u && u.day === this.todayKey()) this.setState({ aiUsage: u });
+      }
+      const rawProg = localStorage.getItem('scout_import_progress_v1');
+      if (rawProg) {
+        const p = JSON.parse(rawProg);
+        if (p && p.day === this.todayKey()) this.setState({ importProgress: p });
       }
       const rawAdded = localStorage.getItem('scout_added_v1');
       if (rawAdded) this.setState({ addedPokemon: JSON.parse(rawAdded) });
@@ -1304,7 +1367,10 @@ class Component extends DCLogic {
 
   applyRemote(remote) {
     this._applyingRemote = true;
-    const needsRosterBackfill = !remote.roster || !remote.roster.length;
+    // An empty remote roster normally means "first sync, push what we have".
+    // After an explicit CLEAR ROSTER it means the user deleted everything, so
+    // backfilling would resurrect the whole collection on the next snapshot.
+    const needsRosterBackfill = (!remote.roster || !remote.roster.length) && !this.state.rosterCleared;
     const patch = {
       roster: needsRosterBackfill ? this.state.roster : this.sanitizeRoster(remote.roster),
       ivOverrides: remote.ivOverrides || {},
@@ -1487,8 +1553,57 @@ class Component extends DCLogic {
     reader.readAsText(file);
   }
 
+  // Wipes the on-device roster so a fresh video import starts clean. Deliberately
+  // keeps candy/stardust/type inventories and settings — those are trainer-level
+  // and survive a re-scan. Two-step because it also clears the synced copy.
+  armClearRoster() {
+    this.setState({ clearArmed: true });
+    clearTimeout(this._clearArmTimer);
+    this._clearArmTimer = setTimeout(() => this.setState({ clearArmed: false }), 12000);
+  }
+
+  cancelClearRoster() {
+    clearTimeout(this._clearArmTimer);
+    this.setState({ clearArmed: false });
+  }
+
+  confirmClearRoster() {
+    clearTimeout(this._clearArmTimer);
+    this.saveRoster([]);
+    try {
+      localStorage.removeItem('scout_iv_overrides_v1');
+      // loadRoster() treats an empty array as "nothing saved" and falls back to
+      // the bundled pokemon-data.js export, which would repopulate on reload.
+      localStorage.setItem('scout_roster_cleared_v1', '1');
+    } catch (e) {}
+    this.setState({
+      roster: [],
+      ivOverrides: {},
+      addedPokemon: [],
+      removedIds: [],
+      completedIds: [],
+      detailPoke: null,
+      solvedIvResult: null,
+      clearArmed: false,
+      // Empty roster is a real state, not a backfill trigger — otherwise the
+      // next cloud snapshot would restore everything that was just deleted.
+      rosterCleared: true
+    });
+    // Push the empty roster up immediately so another device can't sync it back.
+    if (this.state.cloudUser) this.queueCloudPush();
+  }
+
+  emptyLeague() {
+    return { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null };
+  }
+
   bestRank(p) {
-    return Math.max(p.great.rankPct || 0, p.ultra.rankPct || 0, p.little.rankPct || 0);
+    // Video/OCR-imported Pokemon can arrive without league objects at all, so
+    // reading p.great.rankPct directly crashes the whole render.
+    const g = (p.great && p.great.rankPct) || 0;
+    const u = (p.ultra && p.ultra.rankPct) || 0;
+    const l = (p.little && p.little.rankPct) || 0;
+    return Math.max(g, u, l);
   }
 
   masterRankFor(p) {
@@ -1800,6 +1915,8 @@ class Component extends DCLogic {
     try {
       localStorage.setItem('scout_roster_v1', JSON.stringify(roster));
       localStorage.setItem('scout_roster_v1_ts', Date.now().toString());
+      // Once anything is imported again, the cleared state no longer applies.
+      if (roster && roster.length) localStorage.removeItem('scout_roster_cleared_v1');
       if (this.state.storageWarning) this.setState({ storageWarning: '' });
     } catch (e) {
       console.error('[Scout] saveRoster failed:', e);
@@ -1827,6 +1944,13 @@ class Component extends DCLogic {
       if (!p || typeof p !== 'object') return p;
       const out = { ...p };
       NUM_KEYS.forEach(k => { if (typeof out[k] === 'number' && !Number.isFinite(out[k])) out[k] = null; });
+      // Guarantee the league objects exist. Video/OCR imports can insert rows
+      // without them, and any `p.great.rankPct` read then throws during render.
+      ['great', 'ultra', 'little'].forEach(lg => {
+        if (!out[lg] || typeof out[lg] !== 'object') {
+          out[lg] = { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null };
+        }
+      });
       ['great', 'ultra', 'little', 'master'].forEach(lg => {
         if (out[lg] && typeof out[lg] === 'object') {
           const o = { ...out[lg] };
@@ -3119,10 +3243,16 @@ class Component extends DCLogic {
         return { ...item, name, dex };
       }).filter(Boolean);
       this.setVideoStage('validating', 100);
-      this.setVideoStage('updating', 30);
-      const summary = this.mergeVideoImport(validated);
-      this.setVideoStage('updating', 100);
-      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary } }));
+      // Nothing is written yet — the read goes to a review table so mistakes
+      // can be dropped before they reach the roster or the synced account.
+      const roster = this.state.roster || [];
+      const review = validated.map((item, i) => {
+        const nameLower = item.name.toLowerCase();
+        const match = roster.find(p => p.cp === item.cp && p.name.toLowerCase() === nameLower)
+          || roster.find(p => p.dex != null && item.dex != null && p.dex === item.dex && p.cp === item.cp);
+        return { ...item, _rid: 'r' + i, _include: true, _isNew: !match, _matchName: match ? match.name : null };
+      });
+      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'review', review } }));
     } catch (err) {
       clearInterval(this._videoReadingTimer);
       const msg = (err && err.message) || String(err);
@@ -3260,6 +3390,58 @@ class Component extends DCLogic {
     }
   }
 
+  // Running tally across clips, so a multi-video import shows coverage instead
+  // of just the last clip's result.
+  bumpImportProgress(summary) {
+    const day = this.todayKey();
+    const prev = this.state.importProgress || {};
+    const p = (prev.day === day) ? { ...prev } : { day, clips: 0, added: 0, updated: 0 };
+    p.day = day;
+    p.clips = (p.clips || 0) + 1;
+    p.added = (p.added || 0) + (summary.inserted || 0);
+    p.updated = (p.updated || 0) + (summary.updated || 0);
+    this.setState({ importProgress: p });
+    try { localStorage.setItem('scout_import_progress_v1', JSON.stringify(p)); } catch (e) {}
+  }
+
+  resetImportProgress() {
+    this.setState({ importProgress: { day: this.todayKey(), clips: 0, added: 0, updated: 0 } });
+    try { localStorage.removeItem('scout_import_progress_v1'); } catch (e) {}
+  }
+
+  toggleReviewRow(rid) {
+    this.setState(s => ({
+      videoImport: {
+        ...s.videoImport,
+        review: (s.videoImport.review || []).map(r => r._rid === rid ? { ...r, _include: !r._include } : r)
+      }
+    }));
+  }
+
+  setAllReviewRows(on) {
+    this.setState(s => ({
+      videoImport: {
+        ...s.videoImport,
+        review: (s.videoImport.review || []).map(r => ({ ...r, _include: on }))
+      }
+    }));
+  }
+
+  commitReviewedImport() {
+    const review = (this.state.videoImport && this.state.videoImport.review) || [];
+    const chosen = review.filter(r => r._include).map(r => {
+      const o = { ...r };
+      delete o._rid; delete o._include; delete o._isNew; delete o._matchName;
+      return o;
+    });
+    if (!chosen.length) return;
+    this.setVideoStage('updating', 30);
+    const summary = this.mergeVideoImport(chosen);
+    this.bumpImportProgress(summary);
+    this.setVideoStage('updating', 100);
+    this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary, review: null } }));
+  }
+
   mergeVideoImport(items) {
     const overrides = { ...this.state.ivOverrides };
     const candyInv = { ...this.state.candyInventory };
@@ -3323,7 +3505,10 @@ class Component extends DCLogic {
           weight: item.weight || null, height: item.height || null,
           evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
           catchDate: null, lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, dust: null,
-          great: ivPatch.great || null, ultra: ivPatch.ultra || null, little: ivPatch.little || null
+          // Never null — the render path reads p.great.rankPct directly.
+          great: ivPatch.great || this.emptyLeague(),
+          ultra: ivPatch.ultra || this.emptyLeague(),
+          little: ivPatch.little || this.emptyLeague()
         });
         inserted++;
       }
@@ -3577,13 +3762,13 @@ class Component extends DCLogic {
       answer = `Your average IV is ${avg.toFixed(1)} percent.`;
     } else if (q.includes('great')) {
       const best = this.topForLeague('great');
-      answer = (best && Number.isFinite(best.great.rankPct)) ? `Your best Great League pick is ${best.name} at ${best.great.rankPct.toFixed(1)} percent rank.` : 'No Great League data found.';
+      answer = (best && best.great && Number.isFinite(best.great.rankPct)) ? `Your best Great League pick is ${best.name} at ${best.great.rankPct.toFixed(1)} percent rank.` : 'No Great League data found.';
     } else if (q.includes('ultra')) {
       const best = this.topForLeague('ultra');
-      answer = best ? `Your best Ultra League pick is ${best.name} at ${best.ultra.rankPct.toFixed(1)} percent rank.` : 'No Ultra League data found.';
+      answer = best ? `Your best Ultra League pick is ${best.name} at ${(best.ultra && Number.isFinite(best.ultra.rankPct)) ? best.ultra.rankPct.toFixed(1) : '?'} percent rank.` : 'No Ultra League data found.';
     } else if (q.includes('little')) {
       const best = this.topForLeague('little');
-      answer = best ? `Your best Little Cup pick is ${best.name} at ${best.little.rankPct.toFixed(1)} percent rank.` : 'No Little Cup data found.';
+      answer = best ? `Your best Little Cup pick is ${best.name} at ${(best.little && Number.isFinite(best.little.rankPct)) ? best.little.rankPct.toFixed(1) : '?'} percent rank.` : 'No Little Cup data found.';
     } else if (q.includes('raid') || q.includes('cp')) {
       const top = roster.slice().sort((a, b) => (b.cp || 0) - (a.cp || 0))[0];
       answer = top ? `Your highest CP Pokemon is ${top.name} at ${top.cp} CP.` : 'No CP data.';
@@ -3884,7 +4069,7 @@ class Component extends DCLogic {
       { key: 'updating', label: 'Updating Collection\u2026' }
     ];
     const vi = this.state.videoImport;
-    const viOrder = ['uploading', 'extracting', 'reading', 'validating', 'updating', 'done', 'error'];
+    const viOrder = ['uploading', 'extracting', 'reading', 'validating', 'review', 'updating', 'done', 'error'];
     const viIndex = vi ? viOrder.indexOf(vi.stage) : -1;
     const videoImportSteps = vi ? VIDEO_STAGES.map((s, i) => {
       const stageIdx = viOrder.indexOf(s.key);
@@ -4185,6 +4370,13 @@ class Component extends DCLogic {
       onGeminiKeyDraftChange: (e) => this.setState({ geminiKeyDraft: e.target.value }),
       saveGeminiKey: () => this.setGeminiKey(this.state.geminiKeyDraft),
       clearGeminiKey: () => { this.setState({ geminiKeyDraft: '' }); this.setGeminiKey(''); },
+      clearArmed: !!this.state.clearArmed,
+      clearNotArmed: !this.state.clearArmed,
+      clearWarning: 'Delete all ' + ((this.state.roster || []).length) + ' Pokemon?'
+        + (this.state.cloudUser ? ' This also clears your synced copy.' : ''),
+      armClearRoster: () => this.armClearRoster(),
+      cancelClearRoster: () => this.cancelClearRoster(),
+      confirmClearRoster: () => this.confirmClearRoster(),
       geminiKeyDraft: this.state.geminiKeyDraft,
       hasGeminiKey: !!this.state.geminiKey,
       groqKeyDraft: this.state.groqKeyDraft,
@@ -4255,7 +4447,51 @@ class Component extends DCLogic {
       hasVideoImport: !!this.state.videoImport,
       videoImportSteps: videoImportSteps,
       videoImportError: this.state.videoImport && this.state.videoImport.stage === 'error' ? this.state.videoImport.error : '',
+      importProgressLine: (() => {
+        const p = this.state.importProgress || {};
+        if (p.day !== this.todayKey() || !p.clips) return '';
+        const total = (this.state.roster || []).length;
+        return p.clips + (p.clips === 1 ? ' clip' : ' clips')
+          + ' \u00b7 ' + (p.added || 0) + ' added, ' + (p.updated || 0) + ' updated'
+          + ' \u00b7 ' + total + ' in roster';
+      })(),
+      resetImportProgress: () => this.resetImportProgress(),
       videoImportSummary: this.state.videoImport && this.state.videoImport.summary,
+      hasVideoReview: !!(this.state.videoImport && this.state.videoImport.review && this.state.videoImport.review.length),
+      videoReviewRows: ((this.state.videoImport && this.state.videoImport.review) || []).map(r => {
+        const ivs = [r.atkIV, r.defIV, r.staIV];
+        const haveIv = ivs.every(v => Number.isFinite(v));
+        return {
+          name: r.name,
+          tag: r._isNew ? 'NEW' : 'UPDATES ' + (r._matchName || '').toUpperCase(),
+          tagColor: r._isNew ? 'oklch(72% 0.13 150)' : 'oklch(60% 0.02 260)',
+          nameColor: r._include ? 'oklch(92% 0.01 260)' : 'oklch(48% 0.02 260)',
+          rowBg: r._include ? 'transparent' : 'oklch(17% 0.02 280)',
+          boxBorder: r._include ? 'oklch(62% 0.13 150)' : 'oklch(42% 0.03 260)',
+          boxBg: r._include ? 'oklch(72% 0.15 150)' : 'transparent',
+          tick: r._include ? '\u2713' : '',
+          cp: Number.isFinite(r.cp) ? r.cp : '\u2014',
+          hp: Number.isFinite(r.hp) ? r.hp : '\u2014',
+          iv: haveIv ? ivs.join('/') : '\u2014',
+          ivColor: haveIv ? 'oklch(80% 0.12 150)' : 'oklch(52% 0.02 260)',
+          candy: Number.isFinite(r.candy) ? (r.candy + (Number.isFinite(r.xlCandy) ? ' \u00b7 ' + r.xlCandy + 'XL' : '')) : '\u2014',
+          toggle: () => this.toggleReviewRow(r._rid)
+        };
+      }),
+      reviewCountLine: (() => {
+        const rev = (this.state.videoImport && this.state.videoImport.review) || [];
+        const on = rev.filter(r => r._include).length;
+        const fresh = rev.filter(r => r._include && r._isNew).length;
+        return on + ' of ' + rev.length + ' selected \u00b7 ' + fresh + ' new';
+      })(),
+      commitLabel: (() => {
+        const rev = (this.state.videoImport && this.state.videoImport.review) || [];
+        const on = rev.filter(r => r._include).length;
+        return on ? 'SAVE ' + on + ' TO MY ACCOUNT' : 'NOTHING SELECTED';
+      })(),
+      reviewSelectAll: () => this.setAllReviewRows(true),
+      reviewSelectNone: () => this.setAllReviewRows(false),
+      commitReview: () => this.commitReviewedImport(),
       videoPartialWarning: (() => {
         const vi = this.state.videoImport;
         if (!vi) return '';
@@ -4265,7 +4501,7 @@ class Component extends DCLogic {
         if (!parts.length) return '';
         return '\u26a0 ' + parts.join(' \u00b7 ') + ' \u2014 hit RETRY to fill the gaps.';
       })(),
-      videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error')),
+      videoImportDismissable: !!(this.state.videoImport && (this.state.videoImport.stage === 'done' || this.state.videoImport.stage === 'error' || this.state.videoImport.stage === 'review')),
       videoFrameThumbs: (this.state.videoImport && this.state.videoImport.frameThumbs && this.state.videoImport.frameThumbs.length)
         ? this.state.videoImport.frameThumbs.map(f => ({ ref: this.makeSpriteRef('data:image/jpeg;base64,' + f) })) : null,
       videoFrameLabel: (() => {
