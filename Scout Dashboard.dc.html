@@ -56,14 +56,15 @@
 </helmet>
 <div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100%;width:100%;box-sizing:border-box;background:oklch(18% 0.025 260);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.01 260);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(42% 0.09 220 / .20), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(44% 0.10 150 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(40% 0.09 300 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
 
-  <sc-if value="{{ statusBanner }}" hint-placeholder-val="{{ false }}">
-    <div role="status" aria-live="polite" style="position:sticky;top:0;z-index:41;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});padding:9px {{ rootPadX }};background:{{ statusBanner.bg }};color:{{ statusBanner.fg }};font:600 11.5px ui-monospace,monospace;letter-spacing:.03em;display:flex;align-items:center;gap:9px">
-      <div style="width:7px;height:7px;border-radius:50%;background:{{ statusBanner.dot }};flex-shrink:0"></div>
-      <div style="text-wrap:pretty">{{ statusBanner.text }}</div>
-    </div>
-  </sc-if>
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
-  <div ref="{{ headerRef }}" style="position:sticky;top:0;z-index:30;transition:box-shadow .24s ease,background .24s ease;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px;padding:14px {{ rootPadX }};background:oklch(18% 0.025 260 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.03 260 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
+  <div style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
+    <sc-if value="{{ statusBanner }}" hint-placeholder-val="{{ false }}">
+      <div role="status" aria-live="polite" style="padding:9px {{ rootPadX }};background:{{ statusBanner.bg }};color:{{ statusBanner.fg }};font:600 11.5px ui-monospace,monospace;letter-spacing:.03em;display:flex;align-items:center;gap:9px">
+        <div style="width:7px;height:7px;border-radius:50%;background:{{ statusBanner.dot }};flex-shrink:0"></div>
+        <div style="text-wrap:pretty">{{ statusBanner.text }}</div>
+      </div>
+    </sc-if>
+    <div ref="{{ headerRef }}" style="transition:box-shadow .24s ease,background .24s ease;padding:14px {{ rootPadX }};background:oklch(18% 0.025 260 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.03 260 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:14px">
       <div style="width:14px;height:14px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 14px oklch(78% 0.16 150)"></div>
       <div>
@@ -86,6 +87,7 @@
   <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:16px 22px;margin-bottom:24px;display:flex;gap:10px;align-items:center">
     <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.06em;flex-shrink:0">PROFESSOR SAYS</div>
     <div style="font:14.5px/1.4 sans-serif;color:oklch(88% 0.01 260)">{{ calloutLine }}</div>
+  </div>
   </div>
 
   <sc-if value="{{ hasVoiceExchange }}" hint-placeholder-val="{{ false }}">
@@ -2599,6 +2601,8 @@ class Component extends DCLogic {
     let lastKept = null;
     let blackCount = 0;
     let sampled = 0;
+    let seekFails = 0;
+    let consecutiveSeekFails = 0;
     const extractStart = Date.now();
     // Up to 600 sequential seek + rAF + getImageData cycles is minutes long;
     // a bare percentage is the quietest stretch of the whole import.
@@ -2612,14 +2616,70 @@ class Component extends DCLogic {
       return `Frame ${done} of ${targetCount} · ${eta}`;
     };
 
+    const capture = () => {
+      const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let sum = 0;
+      for (let p = 0; p < sample.length; p += 400) sum += sample[p];
+      if (sum === 0) { blackCount++; return false; }
+      const fp = fingerprint();
+      if (lastKept && meanAbsDiff(fp, lastKept) < cfg.dedupeThreshold) return false;
+      lastKept = fp;
+      frames.push(canvas.toDataURL('image/jpeg', cfg.quality).split(',')[1]);
+      thumbCtx.drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
+      thumbs.push(thumbCanvas.toDataURL('image/jpeg', 0.4).split(',')[1]);
+      return true;
+    };
+
+    const seekTo = (t, budget) => new Promise((resolve) => {
+      const timer = setTimeout(() => { video.removeEventListener('seeked', onSeeked); resolve(false); }, budget);
+      const onSeeked = () => { clearTimeout(timer); video.removeEventListener('seeked', onSeeked); resolve(true); };
+      video.addEventListener('seeked', onSeeked);
+      try { video.currentTime = Math.max(0, t); } catch (e) { clearTimeout(timer); resolve(false); }
+    });
+
+    // One probe seek into the middle of the file decides the strategy.
+    const seekable = await seekTo(Math.min(duration - 0.05, duration * 0.5), 4500);
+    if (!seekable) {
+      const res = await this.captureByPlayback(video, canvas, ctx, capture, duration, targetCount, (done) => {
+        this.setVideoStage('extracting', Math.round((done / targetCount) * 100), extractNote(done - 1));
+      });
+      URL.revokeObjectURL(url);
+      video.remove();
+      if (!frames.length) {
+        throw new Error('Could not read any frames from that recording, even by playing it. Re-export as MP4 (H.264) and try again.');
+      }
+      return { frames, thumbs, seekFails: 0, targetCount, mode: 'playback', playedFor: res };
+    }
+
     for (let i = 0; i < targetCount; i++) {
       const t = Math.min(duration - 0.05, (duration * (i + 0.5)) / targetCount);
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { video.removeEventListener('seeked', onSeeked); reject(new Error('Video seek timed out \u2014 this file may not be fully decodable in-browser. Re-export as MP4 (H.264) and try again.')); }, 8000);
-        const onSeeked = () => { clearTimeout(timer); video.removeEventListener('seeked', onSeeked); resolve(); };
+      const seeked = await new Promise((resolve) => {
+        const timer = setTimeout(() => { video.removeEventListener('seeked', onSeeked); resolve(false); }, 6000);
+        const onSeeked = () => { clearTimeout(timer); video.removeEventListener('seeked', onSeeked); resolve(true); };
         video.addEventListener('seeked', onSeeked);
-        video.currentTime = Math.max(0, t);
+        try { video.currentTime = Math.max(0, t); } catch (e) { clearTimeout(timer); resolve(false); }
       });
+      if (!seeked) {
+        seekFails++;
+        consecutiveSeekFails++;
+        // Seeking has degraded mid-run (common once a long recording gets past
+        // its early keyframes) — switch strategies rather than burning six
+        // seconds per remaining frame.
+        if (consecutiveSeekFails >= 6) {
+          const res = await this.captureByPlayback(video, canvas, ctx, capture, duration, targetCount, (done) => {
+            this.setVideoStage('extracting', Math.round((done / targetCount) * 100), extractNote(done - 1));
+          });
+          URL.revokeObjectURL(url);
+          video.remove();
+          if (!frames.length) {
+            throw new Error('Could not read any frames from that recording, even by playing it. Re-export as MP4 (H.264) and try again.');
+          }
+          return { frames, thumbs, seekFails, targetCount, mode: 'playback', playedFor: res };
+        }
+        this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100), extractNote(i));
+        continue;
+      }
+      consecutiveSeekFails = 0;
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       sampled++;
@@ -2650,7 +2710,60 @@ class Component extends DCLogic {
     if (!frames.length) {
       throw new Error('No usable frames came out of that recording. Re-export as MP4 (H.264) and try again.');
     }
-    return { frames, thumbs };
+    if (seekFails) console.warn('[Scout] ' + seekFails + ' of ' + targetCount + ' frames skipped (slow seeks)');
+    return { frames, thumbs, seekFails, targetCount };
+  }
+
+  // Capture frames by PLAYING the video rather than seeking through it.
+  // Sequential decode means no keyframe hunting, which is what makes seeking
+  // slow (and eventually time out) on iPhone screen recordings. Costs real
+  // time, so playback is sped up as far as the decoder will keep up.
+  captureByPlayback(video, canvas, ctx, capture, duration, targetCount, onProgress) {
+    return new Promise((resolve) => {
+      const interval = duration / targetCount;
+      let next = 0;
+      let taken = 0;
+      let raf = 0;
+      const rate = duration > 240 ? 8 : duration > 90 ? 6 : 4;
+      const started = Date.now();
+
+      const finish = () => {
+        cancelAnimationFrame(raf);
+        video.removeEventListener('ended', finish);
+        try { video.pause(); } catch (e) {}
+        resolve(Date.now() - started);
+      };
+
+      const tick = () => {
+        const t = video.currentTime;
+        if (t >= next) {
+          try {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capture();
+          } catch (e) { /* frame not ready — try again next tick */ }
+          taken++;
+          if (onProgress) onProgress(taken);
+          // Skip ahead past anything playback already ran through, so a slow
+          // decode doesn't make every remaining sample fire back to back.
+          while (next <= t) next += interval;
+        }
+        if (video.ended || taken >= targetCount) { finish(); return; }
+        raf = requestAnimationFrame(tick);
+      };
+
+      video.addEventListener('ended', finish);
+      video.currentTime = 0;
+      video.playbackRate = rate;
+      video.muted = true;
+      const p = video.play();
+      if (p && p.catch) {
+        p.catch(() => {
+          // Autoplay blocked — nothing further is possible without a gesture.
+          finish();
+        });
+      }
+      raf = requestAnimationFrame(tick);
+    });
   }
 
   async onVideoUpload(e) {
@@ -2660,8 +2773,10 @@ class Component extends DCLogic {
     this.setState({ videoImport: { stage: 'uploading', progress: 0, error: null, summary: null, note: '' } });
     try {
       this.setVideoStage('uploading', 100);
-      const { frames, thumbs } = await this.extractFrames(file, { fps: 3, maxFrames: 600 });
+      const { frames, thumbs, seekFails, targetCount, mode } = await this.extractFrames(file, { fps: 3, maxFrames: 600 });
       this._lastVideoFrames = frames;
+      if (mode === 'playback') console.info('[Scout] extracted by playback (video was not reliably seekable)');
+      if (seekFails) console.warn('[Scout] extraction skipped ' + seekFails + '/' + targetCount + ' frames');
       // Cap the visible strip too — 600 thumbnails is a wall, not a check.
       this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: thumbs.slice(0, 24), frameTotal: frames.length } }));
       await this.runVideoPipeline(frames);
