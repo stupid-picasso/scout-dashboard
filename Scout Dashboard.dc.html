@@ -998,7 +998,11 @@ class Component extends DCLogic {
 
   async componentDidMount() {
     try {
-      const data = await this.waitForGlobal('POKEMON_DATA', 'scout-data-ready');
+      // POKEMON_DATA comes from pokemon-data.js, a deferred module. If it never
+      // arrives (missing file — it's gitignored), fall back to the demo sample
+      // so a fresh clone isn't an empty screen.
+      const realData = await this.waitForGlobal('POKEMON_DATA', 'scout-data-ready');
+      const data = (realData && realData.length) ? realData : (window.SAMPLE_POKEMON || []);
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
       this.mechanics = mechanics;
       // Cloud base-stats overlay is applied from onAuthChange (auth isn't ready yet here).
