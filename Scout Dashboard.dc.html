@@ -2642,7 +2642,7 @@ class Component extends DCLogic {
     if (!seekable) {
       const res = await this.captureByPlayback(video, canvas, ctx, capture, duration, targetCount, (done) => {
         this.setVideoStage('extracting', Math.round((done / targetCount) * 100), extractNote(done - 1));
-      });
+      }, 0);
       URL.revokeObjectURL(url);
       video.remove();
       if (!frames.length) {
@@ -2666,9 +2666,17 @@ class Component extends DCLogic {
         // its early keyframes) — switch strategies rather than burning six
         // seconds per remaining frame.
         if (consecutiveSeekFails >= 6) {
-          const res = await this.captureByPlayback(video, canvas, ctx, capture, duration, targetCount, (done) => {
-            this.setVideoStage('extracting', Math.round((done / targetCount) * 100), extractNote(done - 1));
-          });
+          // Resume from where seeking stalled — replaying from 0 would capture
+          // the already-covered span a second time (dedupe only compares
+          // against the previous kept frame, so it cannot absorb that) and
+          // would blow past the frame cap.
+          const resumeAt = Math.min(duration - 0.05, (duration * (i + 0.5)) / targetCount);
+          const budget = Math.max(1, targetCount - frames.length);
+          const alreadyTaken = frames.length;
+          const res = await this.captureByPlayback(video, canvas, ctx, capture, duration, budget, (done) => {
+            const total = Math.min(targetCount, alreadyTaken + done);
+            this.setVideoStage('extracting', Math.round((total / targetCount) * 100), extractNote(total - 1));
+          }, resumeAt);
           URL.revokeObjectURL(url);
           video.remove();
           if (!frames.length) {
@@ -2718,13 +2726,17 @@ class Component extends DCLogic {
   // Sequential decode means no keyframe hunting, which is what makes seeking
   // slow (and eventually time out) on iPhone screen recordings. Costs real
   // time, so playback is sped up as far as the decoder will keep up.
-  captureByPlayback(video, canvas, ctx, capture, duration, targetCount, onProgress) {
+  // `startAt` / `budget` exist so the mid-run fallback resumes where seeking
+  // gave up instead of replaying — and re-capturing — the head of the video.
+  captureByPlayback(video, canvas, ctx, capture, duration, budget, onProgress, startAt) {
     return new Promise((resolve) => {
-      const interval = duration / targetCount;
-      let next = 0;
+      const from = startAt || 0;
+      const remaining = Math.max(0, duration - from);
+      const interval = remaining / Math.max(1, budget);
+      let next = from;
       let taken = 0;
       let raf = 0;
-      const rate = duration > 240 ? 8 : duration > 90 ? 6 : 4;
+      const rate = remaining > 240 ? 8 : remaining > 90 ? 6 : 4;
       const started = Date.now();
 
       const finish = () => {
@@ -2747,12 +2759,12 @@ class Component extends DCLogic {
           // decode doesn't make every remaining sample fire back to back.
           while (next <= t) next += interval;
         }
-        if (video.ended || taken >= targetCount) { finish(); return; }
+        if (video.ended || taken >= budget) { finish(); return; }
         raf = requestAnimationFrame(tick);
       };
 
       video.addEventListener('ended', finish);
-      video.currentTime = 0;
+      video.currentTime = from;
       video.playbackRate = rate;
       video.muted = true;
       const p = video.play();
