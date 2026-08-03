@@ -1452,6 +1452,8 @@ class Component extends DCLogic {
     // After an explicit CLEAR ROSTER it means the user deleted everything, so
     // backfilling would resurrect the whole collection on the next snapshot.
     let needsRosterBackfill = (!remote.roster || !remote.roster.length) && !this.state.rosterCleared;
+    // Applies to EVERY field confirmClearRoster resets, not just roster.
+    let keepCleared = false;
     // A snapshot that still carries the pre-clear roster can land just after
     // CLEAR ROSTER (the listener fires before the write round-trips). Adopting
     // it undoes the delete, so non-empty remote rosters are ignored for a few
@@ -1472,7 +1474,12 @@ class Component extends DCLogic {
       try {
         localStorage.setItem('scout_cleared_at_v1', String(remoteClearedAt));
         localStorage.setItem('scout_roster_cleared_v1', '1');
+        localStorage.removeItem('scout_candy_v1');
+        localStorage.removeItem('scout_types_v1');
+        localStorage.removeItem('scout_iv_overrides_v1');
+        localStorage.removeItem('scout_added_v1');
       } catch (e) {}
+      this.setState({ candyInventory: {}, typeTable: {}, ivOverrides: {}, addedPokemon: [] });
       this._clearedAt = remoteClearedAt;
       needsRosterBackfill = false;
     }
@@ -1486,12 +1493,18 @@ class Component extends DCLogic {
       clearTimeout(this._pushTimer);
       this._pushTimer = setTimeout(() => this.pushCloud(), 400);
     }
+    // Computed here because staleAfterOwnClear is declared above this point.
+    // NOTE: keepCleared is deliberately FALSE on the cloudClearBeatsLocal path —
+    // that branch has already emptied local roster/candy/types/overrides, and the
+    // remote doc it is adopting is itself empty. Do not extend the guard to that
+    // path or it will pin stale local data instead of taking the cleared remote.
+    keepCleared = needsRosterBackfill || staleAfterOwnClear;
     const patch = {
-      roster: (needsRosterBackfill || staleAfterOwnClear) ? this.state.roster : this.sanitizeRoster(remote.roster),
-      ivOverrides: remote.ivOverrides || {},
-      addedPokemon: remote.addedPokemon || [],
-      candyInventory: remote.candyInventory || {},
-      typeTable: remote.typeTable || {},
+      roster: keepCleared ? this.state.roster : this.sanitizeRoster(remote.roster),
+      ivOverrides: keepCleared ? this.state.ivOverrides : (remote.ivOverrides || {}),
+      addedPokemon: keepCleared ? this.state.addedPokemon : (remote.addedPokemon || []),
+      candyInventory: keepCleared ? this.state.candyInventory : (remote.candyInventory || {}),
+      typeTable: keepCleared ? this.state.typeTable : (remote.typeTable || {}),
       stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
       history: remote.history || [],
       completedIds: remote.completedIds || [],
@@ -2315,13 +2328,13 @@ class Component extends DCLogic {
       let readerUsed = 'vision';
       try {
         rec = await this.readScreenshotWithVision(file);
-        text = '[read by Claude vision]';
+        text = '[read by ' + (this._lastEngine || 'AI vision') + ']';
       } catch (visionErr) {
         const vm = (visionErr && visionErr.message) || String(visionErr);
         readerUsed = vm === 'AI_NO_CREDIT' ? 'tesseract-nocredit' : 'tesseract';
-        // Keep whatever the earlier engine reported. AI_NO_CREDIT comes from
-        // Puter at the END of the chain, so overwriting with it would erase the
-        // Gemini failure that actually caused the fall-through.
+        // Keep whatever the earlier engine reported: AI_NO_CREDIT is raised at
+        // the END of the chain, so overwriting with it would erase the Gemini or
+        // Groq failure that actually caused the fall-through.
         if (vm !== 'AI_NO_CREDIT') this._lastAiError = vm;
         text = await this.runOCR(canvas);
         rec = this.parsePokemonText(text);
@@ -2846,7 +2859,6 @@ class Component extends DCLogic {
     const m = String(model || '').trim();
     const k = String(apiKey || '').trim();
     this.setState({ customBaseUrl: b, customModel: m, customApiKey: k, aiOutOfCredit: false });
-    this._puterOutOfCredit = false;
     try {
       if (b) localStorage.setItem('scout_custom_base_v1', b); else localStorage.removeItem('scout_custom_base_v1');
       if (m) localStorage.setItem('scout_custom_model_v1', m); else localStorage.removeItem('scout_custom_model_v1');
@@ -2877,7 +2889,6 @@ class Component extends DCLogic {
       .filter(s => s.length > 20);
     const uniq = [...new Set(keys)];
     this.setState({ geminiKeys: uniq, geminiKey: uniq[0] || '', aiOutOfCredit: false });
-    this._puterOutOfCredit = false;
     this._keyCooldown = {};
     this._geminiKeyIdx = 0;
     this._groqFailed = null;
@@ -2980,7 +2991,7 @@ class Component extends DCLogic {
             const cm = (cErr && cErr.message) || '';
             // Safari throws "TypeError: Load failed" for network/CORS failures,
             // not "Failed to fetch" — without these, an unreachable gateway on
-            // iOS would skip Gemini AND Puter instead of degrading to them.
+            // iOS would skip Gemini AND Groq instead of degrading to them.
             const transient = /429|rate|quota|timeout|Failed to fetch|NetworkError|Load failed|Access-Control-Allow-Origin|CORS|cancelled|The network connection was lost/i.test(cm)
               || cErr instanceof TypeError;
             this._lastAiError = 'Gateway: ' + cm;
@@ -3033,15 +3044,17 @@ class Component extends DCLogic {
         lastErr = err;
         const msg = (err && (err.message || err.error && err.error.message)) || String(err);
         const code = err && (err.code || (err.error && err.error.code));
-        // Puter free-tier exhaustion: don't retry, don't fall through to the
-        // proxy branch's confusing "no endpoint set" message.
-        if (/insufficient|low balance|not enough funding|usage.?limit|quota|payment|upgrade to continue/i.test(msg)
-            || code === 'insufficient_funds' || code === 'error_400_from_delegate') {
-          this._puterOutOfCredit = true;
+        // Billing/credit exhaustion on a paid gateway: not retryable, and the
+        // proxy branch's "no endpoint set" message would be misleading. Note
+        // /quota/ is deliberately NOT matched here — Gemini's daily-quota error
+        // contains it, and treating that as "no credit" short-circuited the
+        // chain before Groq was tried.
+        if (/insufficient|low balance|not enough funding|payment required|upgrade to continue/i.test(msg)
+            || code === 'insufficient_funds') {
           this.setState({ aiOutOfCredit: true });
           throw new Error('AI_NO_CREDIT');
         }
-        if (!/overload|rate.?limit|529|503/i.test(msg) || i === attempts - 1) throw err;
+        if (!/overload|rate.?limit|\b(429|503|529)\b/i.test(msg) || i === attempts - 1) throw err;
         await new Promise(r => setTimeout(r, 1200 * Math.pow(2, i)));
       }
     }
@@ -3073,8 +3086,7 @@ class Component extends DCLogic {
     if (total <= 1) return '';
     const remaining = total - done;
     if (remaining <= 0) return `Batch ${done} of ${total}`;
-    // Every engine is paced now, not just Gemini — Puter has its own limits and
-    // ran unthrottled until this was fixed.
+    // Every engine is paced, not just Gemini — each has its own limits.
     const secs = Math.round(remaining * this.effectiveInterval() / 1000);
     const mins = Math.floor(secs / 60);
     const eta = mins >= 1 ? `~${mins}m ${secs % 60}s left` : `~${secs}s left`;
@@ -3629,7 +3641,12 @@ class Component extends DCLogic {
   }
 
   async runVideoPipeline(frames) {
-    this.setState(s => ({ videoImport: { stage: 'reading', progress: 10, error: null, summary: null, frameThumbs: frames } }));
+    // Spread prior state and do NOT touch frameThumbs: the caller already set a
+    // capped thumbnail strip (thumbs.slice(0, 24)). Writing `frames` here put
+    // ~21 MB of API-resolution base64 into an <img> wall at the 600-frame cap,
+    // and replacing the object wiped frameTotal/stitchedPairs, which is why the
+    // "FIRST 24 SHOWN" and "N SCROLL PAIRS STITCHED" labels never appeared.
+    this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'reading', progress: 10, error: null, summary: null } }));
     try {
       this._videoReadingTimer = setInterval(() => {
         this.setState(s => {
@@ -3723,16 +3740,21 @@ class Component extends DCLogic {
           return 'unreadable';
         }
         if (arr.length) collected.push(...arr);
-        return 'ok';
+        // Distinguish "answered, found nothing" from "answered with Pokemon" —
+        // a wall of empty answers means the frames or the prompt are at fault,
+        // not the network.
+        return arr.length ? 'ok' : 'empty';
       };
 
       const enginesUsed = new Set();
+      let emptyBatches = 0;
       const retryQueue = [];
       for (let b = 0; b < batches.length; b++) {
         const res = await runBatch(b, this.RATE_INTERVAL_MS, 1);
         if (res === 'nocredit') break;
         if (res === 'failed') retryQueue.push(b);
         else if (res === 'unreadable') unreadableBatches++;
+        else if (res === 'empty') emptyBatches++;
         this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 92), this.batchLabel(b + 1, batches.length));
       }
 
@@ -3747,6 +3769,7 @@ class Component extends DCLogic {
           if (res === 'nocredit') { stillFailed.push(...retryQueue.slice(q)); break; }
           if (res === 'failed') { failedBatches++; stillFailed.push(b); }
           else if (res === 'unreadable') unreadableBatches++;
+          else if (res === 'empty') emptyBatches++;
           this.setVideoStage('reading', 92 + Math.round(((q + 1) / retryQueue.length) * 6), this.retryLabel(q + 1, retryQueue.length));
         }
         this._failedFrames = stillFailed.flatMap(b => batches[b] || []);
@@ -3777,19 +3800,36 @@ class Component extends DCLogic {
       });
       const parsed = [...seen.values()];
 
+      // Commit the diagnostics BEFORE the zero-result throw. Previously this ran
+      // after it, so a 0-Pokemon import — the case these counters exist to
+      // explain — lost emptyBatches, batchCount and the engine attribution
+      // entirely, and the user just saw "try a slower pan".
+      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, emptyBatches, lastError: lastBatchError, frameCount: frames.length, engines: [...enginesUsed], rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
+
       if (!parsed.length) {
         // Hold the extracted frames for 30 minutes on a credit failure: the fix
         // is "go and get a Gemini key", which takes longer than the normal
         // retry window, and re-extracting is minutes of work.
         if (noCredit) this._releaseFramesSoon(1800000);
         this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: rawReplies.join('\n---\n').slice(0, 800) } }));
-        throw new Error(noCredit
+        // Spell out the breakdown: "answered but saw nothing" (frames/prompt) is
+        // a completely different problem from "never landed" (transport).
+        const eng = enginesUsed.size ? ' Read by ' + [...enginesUsed].join(' + ') + '.' : '';
+        const parts = [];
+        if (emptyBatches) parts.push(emptyBatches + ' of ' + batches.length + ' batches answered but saw no Pokemon');
+        if (failedBatches) parts.push(failedBatches + ' failed to send');
+        if (unreadableBatches) parts.push(unreadableBatches + ' returned unreadable output');
+        const breakdown = parts.length ? ' (' + parts.join(', ') + ').' : '';
+        const composed = new Error(noCredit
           ? 'Free AI credit is used up, so the recording could not be read. Your ' + frames.length + ' extracted frames are held for 30 minutes \u2014 paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day) or sign in to restore a saved key, then hit RETRY.'
           : (failedBatches === batches.length
-            ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
-            : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.'));
+            ? 'No batch reached the AI' + breakdown + ' Wait a moment and hit RETRY \u2014 your frames are held.'
+            : (emptyBatches === batches.length
+              ? 'The AI read every frame but found no Pokemon' + breakdown + eng + ' Make sure the recording shows Pokemon detail screens, and pan slowly enough to pause on each one.'
+              : 'Could not read any Pokemon off that recording' + breakdown + eng + ' Try a slower pan across each screen.')));
+        composed.composed = true;
+        throw composed;
       }
-      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, lastError: lastBatchError, frameCount: frames.length, engines: [...enginesUsed], rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
       this.setVideoStage('validating', 40);
       const mechanics = this.mechanics;
       let droppedNoName = 0;
@@ -3834,7 +3874,13 @@ class Component extends DCLogic {
     } catch (err) {
       clearInterval(this._videoReadingTimer);
       const msg = (err && err.message) || String(err);
-      const friendly = /overload|rate.?limit|529|503/i.test(msg) ? 'Claude is overloaded right now \u2014 wait a moment and hit Retry.' : msg;
+      const engine = this._lastEngine ? this._lastEngine.replace(/\s*\(.*\)$/, '') : 'The AI service';
+      // err.composed marks messages this pipeline built itself (they already
+      // carry the batch breakdown and the recovery step) — rewriting them loses
+      // both. Only genuine transport errors get the friendly treatment.
+      const friendly = (!err || !err.composed) && /overload|rate.?limit|\b(429|503|529)\b/i.test(msg)
+        ? engine + ' is overloaded right now \u2014 wait a moment and hit RETRY. Your frames are held.'
+        : msg;
       this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: friendly } }));
     }
   }
@@ -5178,7 +5224,15 @@ class Component extends DCLogic {
         const lost = (vi.droppedNoName || 0) + (vi.droppedUnknown || 0);
         const eng = (this.state.videoImport && this.state.videoImport.engines) || [];
         return rev.length + ' read \u00b7 ' + fresh + ' new'
-          + (eng.length ? ' \u00b7 read by ' + eng.join(' + ') : '')
+          + (eng.length ? ' \u2022 read by ' + eng.join(' + ') : '')
+          + (() => {
+            // A wall of empty answers is the signal that frames or prompt are at
+            // fault — silence here is what made "24 batches, 3 Pokemon" opaque.
+            const vi = this.state.videoImport || {};
+            const e = vi.emptyBatches || 0;
+            const b = vi.batchCount || 0;
+            return e ? ' \u2022 ' + e + ' of ' + b + ' batches saw no Pokemon' : '';
+          })()
           + (lost ? ' \u00b7 ' + lost + ' unreadable entr' + (lost === 1 ? 'y' : 'ies') + ' skipped' : '')
           + (solved ? ' \u00b7 ' + solved + ' IVs solved from CP/HP' : '')
           + (noIv ? ' \u00b7 ' + noIv + ' without IVs' : '')
