@@ -2718,6 +2718,15 @@ class Component extends DCLogic {
       }
       const errText = await res.text().catch(() => '');
       if (res.status === 429) {
+        const q = errText.match(/"quotaValue"\s*:\s*"?(\d+)/i)
+          || errText.match(/quota_value["\s:]+(\d+)/i);
+        if (q && /PerMinute|per minute/i.test(errText)) {
+          const rpm = parseInt(q[1], 10);
+          if (rpm > 0 && rpm < 60) {
+            this._geminiRpm = rpm;
+            console.warn('[Scout] Gemini reports ' + rpm + ' requests/minute for this key \u2014 pacing to that.');
+          }
+        }
         const daily = /PerDay|per day|daily/i.test(errText);
         throw new Error(daily
           ? 'Gemini daily quota exhausted for this key (429).'
@@ -3045,6 +3054,8 @@ class Component extends DCLogic {
   effectiveInterval(base) {
     const live = this.activeGeminiKeys().length;
     const backoff = this._rateBackoff || 1;
+    // Prefer the limit Google actually reported over the assumed 10 rpm.
+    if (this._geminiRpm && !base) base = Math.ceil(60000 / this._geminiRpm) + 500;
     if (live > 1) return Math.max(700, (base || this.RATE_INTERVAL_MS) / live) * backoff;
     return (base || this.RATE_INTERVAL_MS) * backoff;
   }
