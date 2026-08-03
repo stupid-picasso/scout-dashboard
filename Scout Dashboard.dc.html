@@ -1451,15 +1451,43 @@ class Component extends DCLogic {
     // An empty remote roster normally means "first sync, push what we have".
     // After an explicit CLEAR ROSTER it means the user deleted everything, so
     // backfilling would resurrect the whole collection on the next snapshot.
-    const needsRosterBackfill = (!remote.roster || !remote.roster.length) && !this.state.rosterCleared;
+    let needsRosterBackfill = (!remote.roster || !remote.roster.length) && !this.state.rosterCleared;
     // A snapshot that still carries the pre-clear roster can land just after
     // CLEAR ROSTER (the listener fires before the write round-trips). Adopting
     // it undoes the delete, so non-empty remote rosters are ignored for a few
     // seconds after an explicit clear.
-    const staleAfterClear = this._clearedAt && (Date.now() - this._clearedAt) < 8000
-      && remote.roster && remote.roster.length;
+    const localClearedAt = this._clearedAt || Number(localStorage.getItem('scout_cleared_at_v1')) || 0;
+    const remoteClearedAt = Number(remote.clearedAt) || 0;
+    const localRosterTs = Number(localStorage.getItem('scout_roster_v1_ts')) || 0;
+
+    // Someone cleared the roster (possibly on another device) AFTER this device
+    // last saved its own. This device's copy is therefore obsolete: drop it and
+    // do NOT push it back. Without this the stale device re-seeds the cloud on
+    // its next state change and the collection reappears everywhere.
+    const cloudClearBeatsLocal = !!(remoteClearedAt && localRosterTs && remoteClearedAt > localRosterTs
+      && remoteClearedAt !== this._clearedAt);
+    if (cloudClearBeatsLocal && (this.state.roster || []).length) {
+      console.warn('[Scout] roster was cleared on another device after this one last saved \u2014 dropping ' + this.state.roster.length + ' local Pokemon instead of re-uploading them.');
+      this.saveRoster([]);
+      try {
+        localStorage.setItem('scout_cleared_at_v1', String(remoteClearedAt));
+        localStorage.setItem('scout_roster_cleared_v1', '1');
+      } catch (e) {}
+      this._clearedAt = remoteClearedAt;
+      needsRosterBackfill = false;
+    }
+
+    // Our own clear vs a snapshot that still carries the old roster (the
+    // listener fires before the delete round-trips).
+    const staleAfterOwnClear = !!(localClearedAt && remote.roster && remote.roster.length
+      && !remoteClearedAt);
+    if (staleAfterOwnClear) {
+      console.warn('[Scout] ignoring ' + remote.roster.length + ' Pokemon from a cloud copy written before CLEAR ROSTER; re-pushing the empty roster.');
+      clearTimeout(this._pushTimer);
+      this._pushTimer = setTimeout(() => this.pushCloud(), 400);
+    }
     const patch = {
-      roster: (needsRosterBackfill || staleAfterClear) ? this.state.roster : this.sanitizeRoster(remote.roster),
+      roster: (needsRosterBackfill || staleAfterOwnClear) ? this.state.roster : this.sanitizeRoster(remote.roster),
       ivOverrides: remote.ivOverrides || {},
       addedPokemon: remote.addedPokemon || [],
       candyInventory: remote.candyInventory || {},
@@ -1483,7 +1511,8 @@ class Component extends DCLogic {
         || ((this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys.join('\n') : '')
         || ((remote.geminiKeys && remote.geminiKeys.length) ? remote.geminiKeys.join('\n') : (remote.geminiKey || '')),
       groqKey: this.state.groqKey || remote.groqKey || '',
-      groqKeyDraft: this.state.groqKeyDraft || this.state.groqKey || remote.groqKey || ''
+      groqKeyDraft: this.state.groqKeyDraft || this.state.groqKey || remote.groqKey || '',
+      ...(cloudClearBeatsLocal ? { rosterCleared: true } : {})
     };
     this.setState(patch, () => { this._applyingRemote = false; });
     try {
@@ -1521,7 +1550,10 @@ class Component extends DCLogic {
       roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
       typeTable: s.typeTable, stardustBalance: s.stardustBalance, history: s.history,
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
-      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory, updatedAt: Date.now()
+      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory, updatedAt: Date.now(),
+      // Carried on every push so the marker cannot be dropped by a later write
+      // from any device. Null until a clear has happened.
+      clearedAt: this._clearedAt || Number(localStorage.getItem('scout_cleared_at_v1')) || null
     };
     this.db.collection('scoutUsers').doc(s.cloudUser.uid).set(blob, { merge: true })
       .then(() => this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() }))
@@ -1656,6 +1688,11 @@ class Component extends DCLogic {
 
   confirmClearRoster() {
     clearTimeout(this._clearArmTimer);
+    // Stamp the clear BEFORE saveRoster, which writes scout_roster_v1_ts —
+    // otherwise clearedAt > rosterTs on our own echo snapshot and this device
+    // logs a false "cleared on another device".
+    this._clearedAt = Date.now();
+    try { localStorage.setItem('scout_cleared_at_v1', String(this._clearedAt)); } catch (e) {}
     this.saveRoster([]);
     try {
       localStorage.removeItem('scout_iv_overrides_v1');
@@ -1681,7 +1718,6 @@ class Component extends DCLogic {
     // arrives within milliseconds — if the push is still sitting in the debounce
     // window, applyRemote adopts that stale doc and the whole collection comes
     // straight back. This is what made CLEAR ROSTER look like it never worked.
-    this._clearedAt = Date.now();
     if (this.state.cloudUser) {
       clearTimeout(this._pushTimer);
       this.pushCloud();
@@ -2031,7 +2067,11 @@ class Component extends DCLogic {
       localStorage.setItem('scout_roster_v1', JSON.stringify(roster));
       localStorage.setItem('scout_roster_v1_ts', Date.now().toString());
       // Once anything is imported again, the cleared state no longer applies.
-      if (roster && roster.length) localStorage.removeItem('scout_roster_cleared_v1');
+      if (roster && roster.length) {
+        localStorage.removeItem('scout_roster_cleared_v1');
+        localStorage.removeItem('scout_cleared_at_v1');
+        this._clearedAt = null;
+      }
       if (this.state.storageWarning) this.setState({ storageWarning: '' });
     } catch (e) {
       console.error('[Scout] saveRoster failed:', e);
