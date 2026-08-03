@@ -849,7 +849,7 @@ function filterByAppraisal(candidates, hint) {
   if (!hint) return candidates;
   const band = Number.isInteger(hint.stars) ? STAR_BANDS[hint.stars] : null;
   const maxed = Array.isArray(hint.maxed) ? hint.maxed : [];
-  const useMaxed = !!hint.maxedKnown && maxed.length >= 0;
+  const useMaxed = !!hint.maxedKnown;
   const out = candidates.filter(c => {
     if (band) {
       const total = c.atkIV + c.defIV + c.staIV;
@@ -864,9 +864,18 @@ function filterByAppraisal(candidates, hint) {
     }
     return true;
   });
-  // Never return nothing: a mis-remembered appraisal shouldn't erase a real
-  // solve, so fall back to the unfiltered set.
-  return out.length ? out : candidates;
+  // A hint that matches nothing is INFORMATION, not noise: it means the
+  // appraisal contradicts the CP/HP, so one of the three was misread. Silently
+  // returning the unfiltered set made the feature look like a no-op (a 3-star
+  // hint on an 84-candidate Rookidee still gave 84) and told the user to add
+  // more input when what they gave had been thrown away. Keep the full set so
+  // nothing is lost, but flag the contradiction.
+  if (!out.length) {
+    const all = candidates.slice();
+    all.hintMismatch = true;
+    return all;
+  }
+  return out;
 }
 
 // Best possible stat product for a species at/under a league's CP cap, searched

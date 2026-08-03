@@ -2365,6 +2365,9 @@ class Component extends DCLogic {
       return;
     }
     const candidates = this.mechanics.solveIVs(base, p.cp, p.hp, this.appraisalHint());
+    // hintMismatch means the appraisal cannot coexist with this CP/HP, so one of
+    // the three was misread — a useful signal rather than something to swallow.
+    const hintMismatch = !!(candidates && candidates.hintMismatch);
     if (!candidates.length) {
       this.setState({ solvedIvResult: { error: 'No IV combo matches that CP/HP exactly — double-check the numbers.' } });
       return;
@@ -2378,7 +2381,7 @@ class Component extends DCLogic {
     this.setState({
       solvedIvResult: {
         level: c.level, atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV,
-        ivAvg, great, ultra, little, candidateCount: candidates.length
+        ivAvg, great, ultra, little, candidateCount: candidates.length, hintMismatch
       }
     });
   }
@@ -3126,6 +3129,7 @@ class Component extends DCLogic {
     const frames = [];
     const thumbs = [];
     const topFps = [];
+    const botFps = [];
     let lastKept = null;
     let blackCount = 0;
     let sampled = 0;
@@ -3148,18 +3152,22 @@ class Component extends DCLogic {
     // screen that band holds the CP badge and name, which do NOT move when the
     // card is scrolled — so an identical top band with a different body means
     // "same Pokemon, scrolled", not "new Pokemon".
-    const topCanvas = document.createElement('canvas');
-    topCanvas.width = 16; topCanvas.height = 8;
-    const topCtx = topCanvas.getContext('2d');
-    const topFingerprint = () => {
-      topCtx.drawImage(canvas, 0, 0, canvas.width, Math.round(canvas.height * 0.22), 0, 0, 16, 8);
-      const d = topCtx.getImageData(0, 0, 16, 8).data;
+    const bandCanvas = document.createElement('canvas');
+    bandCanvas.width = 16; bandCanvas.height = 8;
+    const bandCtx = bandCanvas.getContext('2d');
+    const bandFingerprint = (yFrac, hFrac) => {
+      bandCtx.drawImage(canvas,
+        0, Math.round(canvas.height * yFrac), canvas.width, Math.round(canvas.height * hFrac),
+        0, 0, 16, 8);
+      const d = bandCtx.getImageData(0, 0, 16, 8).data;
       const out = new Uint8Array(128);
       for (let p = 0, q = 0; p < d.length; p += 4, q++) {
         out[q] = (d[p] * 299 + d[p + 1] * 587 + d[p + 2] * 114) / 1000;
       }
       return out;
     };
+    const topFingerprint = () => bandFingerprint(0, 0.22);
+    const bottomFingerprint = () => bandFingerprint(0.55, 0.45);
 
     const capture = () => {
       const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -3171,6 +3179,7 @@ class Component extends DCLogic {
       lastKept = fp;
       frames.push(canvas.toDataURL('image/jpeg', cfg.quality).split(',')[1]);
       topFps.push(topFingerprint());
+      botFps.push(bottomFingerprint());
       thumbCtx.drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
       thumbs.push(thumbCanvas.toDataURL('image/jpeg', 0.4).split(',')[1]);
       return true;
@@ -3194,7 +3203,7 @@ class Component extends DCLogic {
       if (!frames.length) {
         throw new Error('Could not read any frames from that recording, even by playing it. Re-export as MP4 (H.264) and try again.');
       }
-      return { frames, thumbs, topFps, seekFails: 0, targetCount, mode: 'playback', playedFor: res };
+      return { frames, thumbs, topFps, botFps, seekFails: 0, targetCount, mode: 'playback', playedFor: res };
     }
 
     for (let i = 0; i < targetCount; i++) {
@@ -3228,7 +3237,7 @@ class Component extends DCLogic {
           if (!frames.length) {
             throw new Error('Could not read any frames from that recording, even by playing it. Re-export as MP4 (H.264) and try again.');
           }
-          return { frames, thumbs, topFps, seekFails, targetCount, mode: 'playback', playedFor: res };
+          return { frames, thumbs, topFps, botFps, seekFails, targetCount, mode: 'playback', playedFor: res };
         }
         this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100), extractNote(i));
         continue;
@@ -3265,7 +3274,7 @@ class Component extends DCLogic {
       throw new Error('No usable frames came out of that recording. Re-export as MP4 (H.264) and try again.');
     }
     if (seekFails) console.warn('[Scout] ' + seekFails + ' of ' + targetCount + ' frames skipped (slow seeks)');
-    return { frames, thumbs, topFps, seekFails, targetCount };
+    return { frames, thumbs, topFps, botFps, seekFails, targetCount };
   }
 
   // Capture frames by PLAYING the video rather than seeking through it.
@@ -3353,8 +3362,9 @@ class Component extends DCLogic {
   // same Pokemon scrolled. Stacking that pair into one tall image means the
   // model sees stats and moves together instead of two half-Pokemon it has to
   // guess are related — and it halves the request count at the same time.
-  async stitchScrollPairs(frames, topFps, quality) {
+  async stitchScrollPairs(frames, topFps, botFps, quality) {
     if (!topFps || topFps.length !== frames.length || frames.length < 2) return { frames, stitched: 0 };
+    if (!botFps || botFps.length !== frames.length) return { frames, stitched: 0 };
     const diff = (a, b) => {
       let s = 0;
       for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
@@ -3370,9 +3380,14 @@ class Component extends DCLogic {
     let stitched = 0;
     let i = 0;
     while (i < frames.length) {
-      // 4.0 on the top band is tight: the CP badge and name are identical when
-      // only the lower card scrolled, but change completely between Pokemon.
-      const pair = i + 1 < frames.length && diff(topFps[i], topFps[i + 1]) < 4.0;
+      // Two conditions, both required:
+      //   top band nearly identical  -> same Pokemon (name/CP header unchanged)
+      //   bottom band clearly different -> the card actually scrolled
+      // Demanding the second is what stops two similar-looking but DIFFERENT
+      // Pokemon being stitched together and merged into one entry.
+      const pair = i + 1 < frames.length
+        && diff(topFps[i], topFps[i + 1]) < 4.0
+        && diff(botFps[i], botFps[i + 1]) > 10.0;
       if (!pair) { out.push(frames[i]); i++; continue; }
       const [a, b] = await Promise.all([load(frames[i]), load(frames[i + 1])]);
       if (!a || !b) { out.push(frames[i]); i++; continue; }
@@ -3500,7 +3515,7 @@ class Component extends DCLogic {
       const { thumbs, seekFails, targetCount, mode, topFps } = raw;
       if (mode === 'playback') console.info('[Scout] extracted by playback (video was not reliably seekable)');
       if (seekFails) console.warn('[Scout] extraction skipped ' + seekFails + '/' + targetCount + ' frames');
-      const { frames, stitched } = await this.stitchScrollPairs(raw.frames, topFps, 0.5);
+      const { frames, stitched } = await this.stitchScrollPairs(raw.frames, topFps, raw.botFps, 0.5);
       if (stitched) console.info('[Scout] stitched ' + stitched + ' scroll pairs (' + raw.frames.length + ' -> ' + frames.length + ' images)');
       this._lastVideoFrames = frames;
       // Extraction is the slow half — persist it so closing the tab mid-read
@@ -3894,10 +3909,13 @@ class Component extends DCLogic {
           try {
             const cands = mechanics.solveIVs(solveBase, item.cp, item.hp);
             if (cands && cands.length) {
-              // A single match is exact. Several means CP/HP alone cannot
-              // separate them, so take the first and record the ambiguity
-              // rather than presenting a guess as fact.
-              const c = cands[0];
+              // A single match is exact. When several fit, solveIVs returns them
+              // level-ascending, so cands[0] is always the lowest-level (and
+              // lowest-IV) option — a systematic downward bias across a whole
+              // import. Take the median by total IV instead.
+              const sorted = cands.slice().sort((a, b) =>
+                (a.atkIV + a.defIV + a.staIV) - (b.atkIV + b.defIV + b.staIV));
+              const c = sorted[Math.floor(sorted.length / 2)];
               item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
               item.level = c.level;
               solvedFrom = cands.length;
@@ -4595,11 +4613,13 @@ class Component extends DCLogic {
       great: this.state.solvedIvResult.great != null ? this.state.solvedIvResult.great.toFixed(1) + '%' : '—',
       ultra: this.state.solvedIvResult.ultra != null ? this.state.solvedIvResult.ultra.toFixed(1) + '%' : '—',
       little: this.state.solvedIvResult.little != null ? this.state.solvedIvResult.little.toFixed(1) + '%' : '—',
-      ambiguous: this.state.solvedIvResult.candidateCount > 1
-        ? (this.appraisalHint()
-            ? `${this.state.solvedIvResult.candidateCount} spreads still match \u2014 showing the first. Mark more bars, or check the star count.`
-            : `${this.state.solvedIvResult.candidateCount} possible spreads matched \u2014 showing the first. Set the appraisal hint above to narrow this down.`)
-        : (this.appraisalHint() ? 'Exact match \u2014 appraisal hint pinned it to one spread.' : 'Exact match \u2014 only one spread fits this CP and HP.')
+      ambiguous: this.state.solvedIvResult.hintMismatch
+        ? `That appraisal doesn't fit this CP and HP \u2014 no spread matches both, so the hint was ignored. Re-check the star tier, or the HP reading. (${this.state.solvedIvResult.candidateCount} spreads match CP/HP alone.)`
+        : (this.state.solvedIvResult.candidateCount > 1
+          ? (this.appraisalHint()
+              ? `${this.state.solvedIvResult.candidateCount} spreads still match \u2014 showing the middle one. Mark more bars to narrow further.`
+              : `${this.state.solvedIvResult.candidateCount} possible spreads matched \u2014 showing the middle one. Set the appraisal hint above to narrow this down.`)
+          : (this.appraisalHint() ? 'Exact match \u2014 appraisal hint pinned it to one spread.' : 'Exact match \u2014 only one spread fits this CP and HP.'))
     }) : null;
     const checklistDefs = [
       { id: 'spin', label: 'Spin a PokeStop' },
@@ -5021,8 +5041,9 @@ class Component extends DCLogic {
           cp: Number.isFinite(r.cp) ? r.cp : '\u2014',
           hp: Number.isFinite(r.hp) ? r.hp : '\u2014',
           iv: haveIv ? (ivs.join('/') + (r._solvedCount ? (r._solvedCount > 1 ? ' \u2248' : ' \u2713') : '')) : '\u2014',
-          ivColor: r._solvedCount > 1 ? 'oklch(78% 0.13 90)' : (r._solvedCount ? 'oklch(76% 0.13 150)' : 'inherit'),
-          ivColor: haveIv ? 'oklch(80% 0.12 150)' : 'oklch(52% 0.02 260)',
+          ivColor: r._solvedCount > 1 ? 'oklch(78% 0.13 90)'
+            : (r._solvedCount ? 'oklch(76% 0.13 150)'
+            : (haveIv ? 'oklch(80% 0.12 150)' : 'oklch(52% 0.02 260)')),
           candy: Number.isFinite(r.candy) ? (r.candy + (Number.isFinite(r.xlCandy) ? ' \u00b7 ' + r.xlCandy + 'XL' : '')) : '\u2014',
           // Amber-tint rows with gaps so a follow-up scan can target just those
           // Pokemon instead of redoing the whole clip.
