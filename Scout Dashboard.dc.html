@@ -351,7 +351,7 @@
         </sc-if>
         <sc-if value="{{ clearNotArmed }}" hint-placeholder-val="{{ true }}">
           <div onClick="{{ armClearRoster }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:transparent;border:1px solid oklch(42% 0.08 30);color:oklch(72% 0.11 30);font:700 11.5px ui-monospace,monospace" style-hover="background:oklch(26% 0.05 30);color:oklch(84% 0.13 30)">CLEAR ROSTER</div>
-          <div style="font:11px sans-serif;color:oklch(50% 0.02 260)">Wipes every Pokemon on this device before a fresh import. Candy, stardust and settings are kept.</div>
+          <div style="font:11px sans-serif;color:oklch(50% 0.02 260)">Wipes every Pokemon and all candy/XL counts before a fresh import. Stardust, resources and settings are kept.</div>
         </sc-if>
       </div>
       <sc-if value="{{ hasVideoImport }}" hint-placeholder-val="{{ false }}">
@@ -1700,9 +1700,15 @@ class Component extends DCLogic {
       // the bundled pokemon-data.js export, which would repopulate on reload.
       localStorage.setItem('scout_roster_cleared_v1', '1');
     } catch (e) {}
+    try {
+      localStorage.removeItem('scout_candy_v1');
+      localStorage.removeItem('scout_types_v1');
+    } catch (e) {}
     this.setState({
       roster: [],
       ivOverrides: {},
+      candyInventory: {},
+      typeTable: {},
       addedPokemon: [],
       removedIds: [],
       completedIds: [],
@@ -2753,6 +2759,7 @@ class Component extends DCLogic {
           throw new Error('Gemini reply was cut off (MAX_TOKENS).');
         }
         this._geminiModel = model;
+        this._lastEngine = 'Gemini (' + model + ')';
         this.bumpAiUsage('gemini');
         return text;
       }
@@ -2829,6 +2836,7 @@ class Component extends DCLogic {
     const data = await res.json();
     const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (!text) throw new Error('Gateway returned no text');
+    this._lastEngine = 'Gateway';
     this.bumpAiUsage('gateway');
     return typeof text === 'string' ? text : JSON.stringify(text);
   }
@@ -2918,6 +2926,7 @@ class Component extends DCLogic {
         const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
         if (!text) { lastErr = new Error('Groq returned no text'); continue; }
         this._groqModel = model;
+        this._lastEngine = 'Groq (' + model + ')';
         this.bumpAiUsage('groq');
         return text;
       }
@@ -3637,12 +3646,15 @@ class Component extends DCLogic {
         + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
         + 'A shadow Pokemon shows a PURIFY button and the Frustration move. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
+        + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
+        + 'A partially-readable Pokemon is still a Pokemon \u2014 emit it with nulls. The null/never-guess rules below apply to individual FIELDS, never to whether a Pokemon is listed. '
+        + 'Only return an empty array if these frames genuinely contain no Pokemon at all (map view, item bag, loading screen).\n'
         + 'IV RULES (important):\n'
         + '- Frames fall into two kinds. A DETAIL screen shows CP at the top, HP, weight/height, candy and the POWER UP / EVOLVE buttons. An APPRAISAL screen shows three labelled stat bars (Attack, Defense, HP) and a star rating.\n'
         + '- atkIV/defIV/staIV exist ONLY as printed 0-15 numbers next to those bars, which appear once the appraisal is expanded. If you can see bars or stars but no numbers, return null for all three.\n'
         + '- NEVER convert bar length, bar colour, star count or the appraisal phrase into an IV number. A full red bar is not 15.\n'
         + '- The same Pokemon often appears on both screen kinds across frames: take CP/HP/candy from the detail frames and the IV numbers from the appraisal frames, and merge them into one entry.\n'
-        + '- Use null for anything not clearly visible. Never guess.';
+        + '- Use null for any FIELD not clearly visible. Never guess a field value \u2014 but never drop the Pokemon itself over a missing field.';
 
       // Split into batches that each fit the request budget, instead of throwing
       // frames away. Decimating to fit (the old behaviour) is what limited a
@@ -3703,6 +3715,7 @@ class Component extends DCLogic {
         }
         this.noteRateSuccess();
         rawReplies.push(String(reply));
+        if (this._lastEngine) enginesUsed.add(this._lastEngine);
         const arr = this.extractJsonArray(reply);
         if (arr === null) {
           // null means genuinely unparseable. An empty array is a real answer.
@@ -3713,6 +3726,7 @@ class Component extends DCLogic {
         return 'ok';
       };
 
+      const enginesUsed = new Set();
       const retryQueue = [];
       for (let b = 0; b < batches.length; b++) {
         const res = await runBatch(b, this.RATE_INTERVAL_MS, 1);
@@ -3775,15 +3789,26 @@ class Component extends DCLogic {
             ? 'Every batch failed to read \u2014 Claude may be overloaded. Wait a moment and hit Retry.'
             : 'Could not read any Pokemon off that recording \u2014 try a slower pan across each screen.'));
       }
-      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, lastError: lastBatchError, frameCount: frames.length, rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
+      this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, lastError: lastBatchError, frameCount: frames.length, engines: [...enginesUsed], rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
       this.setVideoStage('validating', 40);
       const mechanics = this.mechanics;
+      let droppedNoName = 0;
+      let droppedUnknown = 0;
       const validated = (Array.isArray(parsed) ? parsed : []).map(item => {
         const name = (item && item.name || '').trim();
-        if (!name || !item.cp) return null;
+        if (!name) { droppedNoName++; return null; }
         const dex = mechanics && mechanics.resolveDexByName ? mechanics.resolveDexByName(name) : null;
+        // No dex match means the name is not a real species (an OCR artefact or
+        // a UI label), so there is nothing useful to store.
+        if (dex == null) { droppedUnknown++; return null; }
         return { ...item, name, dex };
       }).filter(Boolean);
+      const raw = Array.isArray(parsed) ? parsed.length : 0;
+      if (raw !== validated.length) {
+        console.warn('[Scout] validation kept ' + validated.length + '/' + raw
+          + ' (no name: ' + droppedNoName + ', unknown species: ' + droppedUnknown + ')');
+      }
+      this.setState(s => ({ videoImport: { ...s.videoImport, droppedNoName, droppedUnknown, rawRead: raw } }));
       this.setVideoStage('validating', 100);
       // Save immediately, then show what landed. The table is a receipt, not a
       // gate — it exists so a bad read is easy to spot, not to be approved.
@@ -3917,6 +3942,7 @@ class Component extends DCLogic {
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"favorite":boolean}\n\n'
+      + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
       + 'Rules:\n'
       + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
       + '- CP is NEVER the stardust figure (the large comma-grouped number such as 148,482).\n'
@@ -3926,7 +3952,7 @@ class Component extends DCLogic {
       + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
       + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
       + '- Only give atkIV/defIV/staIV if exact 0-15 numbers are visible. Never infer them from appraisal bars or stars.\n'
-      + '- Never guess. Any value not clearly visible must be null.';
+      + '- Never guess a FIELD: anything not clearly visible must be null. Never omit a Pokemon because fields are missing.';
   }
 
   copyImportPrompt() {
@@ -4964,7 +4990,7 @@ class Component extends DCLogic {
       clearGeminiKey: () => { this.setState({ geminiKeyDraft: '' }); this.setGeminiKey(''); },
       clearArmed: !!this.state.clearArmed,
       clearNotArmed: !this.state.clearArmed,
-      clearWarning: 'Delete all ' + ((this.state.roster || []).length) + ' Pokemon?'
+      clearWarning: 'Delete all ' + ((this.state.roster || []).length) + ' Pokemon, plus every candy and XL candy count?'
         + (this.state.cloudUser ? ' This also clears your synced copy.' : ''),
       armClearRoster: () => this.armClearRoster(),
       cancelClearRoster: () => this.cancelClearRoster(),
@@ -5130,7 +5156,7 @@ class Component extends DCLogic {
           name: r.name,
           tag: r._dupe ? 'POSSIBLE DUPLICATE' : (r._isNew ? 'ADDED' : 'UPDATED ' + (r._matchName || '').toUpperCase()),
           tagColor: r._dupe ? 'oklch(78% 0.15 70)' : (r._isNew ? 'oklch(72% 0.13 150)' : 'oklch(60% 0.02 260)'),
-          cp: Number.isFinite(r.cp) ? r.cp : '\u2014',
+          cp: Number.isFinite(r.cp) ? r.cp : 'no CP',
           hp: Number.isFinite(r.hp) ? r.hp : '\u2014',
           iv: haveIv ? (ivs.join('/') + (r._solvedCount ? (r._solvedCount > 1 ? ' \u2248' : ' \u2713') : '')) : '\u2014',
           ivColor: r._solvedCount > 1 ? 'oklch(78% 0.13 90)'
@@ -5148,7 +5174,12 @@ class Component extends DCLogic {
         const noIv = rev.filter(r => ![r.atkIV, r.defIV, r.staIV].every(v => Number.isFinite(v))).length;
         const dupes = rev.filter(r => r._dupe).length;
         const solved = rev.filter(r => r._solvedCount).length;
+        const vi = this.state.videoImport || {};
+        const lost = (vi.droppedNoName || 0) + (vi.droppedUnknown || 0);
+        const eng = (this.state.videoImport && this.state.videoImport.engines) || [];
         return rev.length + ' read \u00b7 ' + fresh + ' new'
+          + (eng.length ? ' \u00b7 read by ' + eng.join(' + ') : '')
+          + (lost ? ' \u00b7 ' + lost + ' unreadable entr' + (lost === 1 ? 'y' : 'ies') + ' skipped' : '')
           + (solved ? ' \u00b7 ' + solved + ' IVs solved from CP/HP' : '')
           + (noIv ? ' \u00b7 ' + noIv + ' without IVs' : '')
           + (dupes ? ' \u00b7 ' + dupes + ' possible duplicate' + (dupes === 1 ? '' : 's') : '');
