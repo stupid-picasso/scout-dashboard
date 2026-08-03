@@ -819,7 +819,12 @@ function statProductFor(base, ivs, level) {
 }
 
 // Brute-force every level/IV combo matching an observed CP and HP exactly.
-function solveIVs(base, cp, hp) {
+// `hint` optionally narrows the result using what the in-game appraisal shows:
+//   { stars: 0-4, maxed: ['atk','def','sta'] }
+// Star tiers are total-IV bands, and a "maxed" bar means that stat is exactly
+// 15. CP+HP alone often leaves dozens of spreads on low-CP Pokemon; the
+// appraisal collapses that to one or two without needing exact printed numbers.
+function solveIVs(base, cp, hp, hint) {
   const candidates = [];
   const levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
   for (const level of levels) {
@@ -834,7 +839,34 @@ function solveIVs(base, cp, hp) {
       }
     }
   }
-  return candidates;
+  return hint ? filterByAppraisal(candidates, hint) : candidates;
+}
+
+// Total-IV range for each appraisal star tier.
+const STAR_BANDS = [[0, 22], [23, 29], [30, 36], [37, 44], [45, 45]];
+
+function filterByAppraisal(candidates, hint) {
+  if (!hint) return candidates;
+  const band = Number.isInteger(hint.stars) ? STAR_BANDS[hint.stars] : null;
+  const maxed = Array.isArray(hint.maxed) ? hint.maxed : [];
+  const useMaxed = !!hint.maxedKnown && maxed.length >= 0;
+  const out = candidates.filter(c => {
+    if (band) {
+      const total = c.atkIV + c.defIV + c.staIV;
+      if (total < band[0] || total > band[1]) return false;
+    }
+    // A highlighted bar means that stat is 15; a bar the user did NOT mark must
+    // therefore be below 15, which is what makes this so effective.
+    if (useMaxed) {
+      if (maxed.includes('atk') !== (c.atkIV === 15)) return false;
+      if (maxed.includes('def') !== (c.defIV === 15)) return false;
+      if (maxed.includes('sta') !== (c.staIV === 15)) return false;
+    }
+    return true;
+  });
+  // Never return nothing: a mis-remembered appraisal shouldn't erase a real
+  // solve, so fall back to the unfiltered set.
+  return out.length ? out : candidates;
 }
 
 // Best possible stat product for a species at/under a league's CP cap, searched
@@ -887,6 +919,6 @@ function rankPctForLeague(base, ivs, leagueKey) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague };
+  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

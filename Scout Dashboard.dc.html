@@ -78,6 +78,7 @@
         SYNC CSV
         <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
       </label>
+      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px" style-hover="background:oklch(34% 0.04 260);border-color:oklch(50% 0.05 260)">{{ exportCsvLabel }}</div>
       <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid oklch(45% 0.1 220);color:oklch(96% 0.01 220);font:700 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px;animation:{{ micAnim }};flex:1 1 0;min-width:0;box-sizing:border-box;white-space:nowrap">
         <span>&#127908;</span>{{ micLabel }}
       </div>
@@ -300,6 +301,27 @@
           <div onClick="{{ resetImportProgress }}" style="cursor:pointer;margin-left:auto;font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);text-decoration:underline">RESET</div>
         </div>
       </sc-if>
+      <sc-if value="{{ pendingImport }}" hint-placeholder-val="{{ false }}">
+        <div style="background:oklch(23% 0.045 90);border:1px solid oklch(42% 0.08 90);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(82% 0.13 90);letter-spacing:.04em">UNFINISHED IMPORT</div>
+          <div style="font:13px sans-serif;color:oklch(88% 0.02 260);line-height:1.55;text-wrap:pretty">{{ pendingImport.line }}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div onClick="{{ resumePendingImport }}" style="cursor:pointer;padding:9px 16px;border-radius:6px;background:oklch(45% 0.13 90);color:oklch(15% 0.02 90);font:700 11.5px ui-monospace,monospace">RESUME READING</div>
+            <div onClick="{{ discardPendingImport }}" style="cursor:pointer;padding:9px 14px;border-radius:6px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace">DISCARD</div>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ videoEstimate }}" hint-placeholder-val="{{ false }}">
+        <div style="background:oklch(22% 0.04 250);border:1px solid oklch(40% 0.07 250);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(80% 0.11 250);letter-spacing:.04em">BEFORE WE START</div>
+          <div style="font:13px sans-serif;color:oklch(88% 0.02 260);line-height:1.55;text-wrap:pretty">{{ videoEstimate.line }}</div>
+          <div style="font:11.5px sans-serif;color:oklch(65% 0.02 260);line-height:1.5">{{ videoEstimate.hint }}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div onClick="{{ confirmVideoImport }}" style="cursor:pointer;padding:9px 16px;border-radius:6px;background:oklch(45% 0.13 250);color:white;font:700 11.5px ui-monospace,monospace">START IMPORT</div>
+            <div onClick="{{ cancelVideoEstimate }}" style="cursor:pointer;padding:9px 14px;border-radius:6px;background:oklch(30% 0.03 260);color:oklch(85% 0.01 260);font:700 11.5px ui-monospace,monospace">CANCEL</div>
+          </div>
+        </div>
+      </sc-if>
       <sc-if value="{{ hasCoverage }}" hint-placeholder-val="{{ false }}">
         <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:7px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">COVERAGE &middot; {{ coverageHeadline }}</summary>
@@ -446,6 +468,18 @@
             <pre style="white-space:pre-wrap;font:10.5px ui-monospace,monospace;color:oklch(60% 0.02 260);background:oklch(16% 0.02 260);padding:8px;border-radius:6px;max-height:160px;overflow:auto">{{ ocrParsedDisplay.rawText }}</pre>
           </details>
           <div style="border-top:1px solid oklch(32% 0.04 220);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
+            <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.04em">APPRAISAL HINT <span style="color:oklch(45% 0.02 260)">(optional &mdash; narrows the solve)</span></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{ starOptions }}" as="s" hint-placeholder-count="6">
+                <div onClick="{{ s.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:999px;background:{{ s.bg }};border:1px solid {{ s.border }};color:{{ s.color }};font:600 11px ui-monospace,monospace;transition:background .12s ease,border-color .12s ease">{{ s.label }}</div>
+              </sc-for>
+            </div>
+            <div style="font:10.5px sans-serif;color:oklch(52% 0.02 260)">Which bars are completely full?</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{ maxedOptions }}" as="m" hint-placeholder-count="4">
+                <div onClick="{{ m.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:6px;background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.color }};font:600 11px ui-monospace,monospace;transition:background .12s ease,border-color .12s ease">{{ m.label }}</div>
+              </sc-for>
+            </div>
             <div onClick="{{ solveIv }}" style="cursor:pointer;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.13 150);color:white;font:700 12px ui-monospace,monospace">SOLVE IV &amp; PVP RANK</div>
             <sc-if value="{{ hasSolvedIv }}" hint-placeholder-val="{{ false }}">
               <sc-if value="{{ solvedIvResult.error }}" hint-placeholder-val="{{ false }}">
@@ -612,9 +646,29 @@
           </sc-for>
         </div>
       </div>
+      <sc-if value="{{ hasSecondMoveList }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+            <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.14 300);letter-spacing:.05em">5. UNLOCK A SECOND CHARGE MOVE</div>
+            <div style="font:10.5px ui-monospace,monospace;color:oklch(52% 0.02 260)">{{ optimizePlanDisplay.secondMoveCount }} &middot; cheapest PvP upgrade</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
+            <sc-for list="{{ optimizePlanDisplay.needsSecondMove }}" as="p" hint-placeholder-count="3">
+              <div onClick="{{ p.onClick }}" style="cursor:pointer;background:oklch(21% 0.035 300);border:1px solid oklch(38% 0.05 300);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:oklch(62% 0.14 300);background:oklch(25% 0.045 300);transform:translateY(-1px)" style-active="transform:translateY(0)">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
+                  <div style="font:600 12.5px sans-serif;line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
+                </div>
+                <div style="font:10.5px ui-monospace,monospace;color:oklch(76% 0.11 300)">{{ p.moveLine }}</div>
+                <div style="font:11px ui-monospace,monospace;color:oklch(70% 0.02 300)">{{ p.rankLine }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
       <sc-if value="{{ optimizePlanDisplay.buddySuggestion }}" hint-placeholder-val="{{ false }}">
         <div onClick="{{ optimizePlanDisplay.buddySuggestion.onClick }}" style="cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.04 260);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;transition:border-color .12s ease,background .12s ease" style-hover="border-color:oklch(55% 0.07 260);background:oklch(27% 0.035 260)">
-          <div style="font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260)">5. SET AS BUDDY NEXT</div>
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(60% 0.02 260)">6. SET AS BUDDY NEXT</div>
           <div style="width:32px;height:32px;border-radius:50%;background:{{ optimizePlanDisplay.buddySuggestion.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ optimizePlanDisplay.buddySuggestion.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
           <div style="font:600 13px sans-serif">{{ optimizePlanDisplay.buddySuggestion.displayName }}</div>
         </div>
@@ -1035,6 +1089,12 @@ class Component extends DCLogic {
     ivOverrides: {},
     addedPokemon: [],
     solvedIvResult: null,
+    videoEstimate: null,
+    csvExported: false,
+    pendingImport: null,
+    apprStars: null,
+    apprMaxed: [],
+    apprMaxedKnown: false,
     ocrHp: '',
     apiEndpoint: '',
     apiEndpointDraft: '',
@@ -1192,6 +1252,7 @@ class Component extends DCLogic {
     this.updateWidth();
     window.addEventListener('resize', this.updateWidth);
     this.initFirebase();
+    this.checkPendingImport();
   }
 
   bindNetworkStatus() {
@@ -1386,8 +1447,14 @@ class Component extends DCLogic {
     // After an explicit CLEAR ROSTER it means the user deleted everything, so
     // backfilling would resurrect the whole collection on the next snapshot.
     const needsRosterBackfill = (!remote.roster || !remote.roster.length) && !this.state.rosterCleared;
+    // A snapshot that still carries the pre-clear roster can land just after
+    // CLEAR ROSTER (the listener fires before the write round-trips). Adopting
+    // it undoes the delete, so non-empty remote rosters are ignored for a few
+    // seconds after an explicit clear.
+    const staleAfterClear = this._clearedAt && (Date.now() - this._clearedAt) < 8000
+      && remote.roster && remote.roster.length;
     const patch = {
-      roster: needsRosterBackfill ? this.state.roster : this.sanitizeRoster(remote.roster),
+      roster: (needsRosterBackfill || staleAfterClear) ? this.state.roster : this.sanitizeRoster(remote.roster),
       ivOverrides: remote.ivOverrides || {},
       addedPokemon: remote.addedPokemon || [],
       candyInventory: remote.candyInventory || {},
@@ -1604,8 +1671,16 @@ class Component extends DCLogic {
       // next cloud snapshot would restore everything that was just deleted.
       rosterCleared: true
     });
-    // Push the empty roster up immediately so another device can't sync it back.
-    if (this.state.cloudUser) this.queueCloudPush();
+    // Push the empty roster up IMMEDIATELY, not via the debounced queue. The
+    // Firestore listener is live, so a snapshot carrying the old 300-entry doc
+    // arrives within milliseconds — if the push is still sitting in the debounce
+    // window, applyRemote adopts that stale doc and the whole collection comes
+    // straight back. This is what made CLEAR ROSTER look like it never worked.
+    this._clearedAt = Date.now();
+    if (this.state.cloudUser) {
+      clearTimeout(this._pushTimer);
+      this.pushCloud();
+    }
   }
 
   // Days since this Pokemon was last read off a screenshot/recording. Null when
@@ -2164,6 +2239,7 @@ class Component extends DCLogic {
   async handleScreenshotUpload(file) {
     if (!file) return;
     this._lastAiError = '';
+    this.resetAppraisalHint();
     this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null });
     try {
       const canvas = await this.preprocessImage(file);
@@ -2262,6 +2338,7 @@ class Component extends DCLogic {
     const nextRoster = [...(this.state.roster || []), mon];
     this.saveRoster(nextRoster);
     this.setState({ roster: nextRoster, ocrParsed: null, ocrPreview: null, ocrError: '' });
+    this.resetAppraisalHint();
   }
 
   updateOcrField(field, value) {
@@ -2287,7 +2364,7 @@ class Component extends DCLogic {
       this.setState({ solvedIvResult: { error: 'Need both CP and HP to solve — fill in HP below.' } });
       return;
     }
-    const candidates = this.mechanics.solveIVs(base, p.cp, p.hp);
+    const candidates = this.mechanics.solveIVs(base, p.cp, p.hp, this.appraisalHint());
     if (!candidates.length) {
       this.setState({ solvedIvResult: { error: 'No IV combo matches that CP/HP exactly — double-check the numbers.' } });
       return;
@@ -2304,6 +2381,35 @@ class Component extends DCLogic {
         ivAvg, great, ultra, little, candidateCount: candidates.length
       }
     });
+  }
+
+  // Builds the hint object the solver understands. maxedKnown distinguishes
+  // "user says no bars are full" (a real constraint: every stat < 15) from
+  // "user hasn't told us" (no constraint at all).
+  appraisalHint() {
+    const stars = this.state.apprStars;
+    const maxed = this.state.apprMaxed || [];
+    const known = !!this.state.apprMaxedKnown;
+    if (!Number.isInteger(stars) && !known) return null;
+    const hint = {};
+    if (Number.isInteger(stars)) hint.stars = stars;
+    if (known) { hint.maxed = maxed; hint.maxedKnown = true; }
+    return hint;
+  }
+
+  setApprStars(v) {
+    this.setState({ apprStars: this.state.apprStars === v ? null : v, solvedIvResult: null });
+  }
+
+  toggleApprMaxed(stat) {
+    const cur = this.state.apprMaxed || [];
+    const next = cur.includes(stat) ? cur.filter(s => s !== stat) : [...cur, stat];
+    this.setState({ apprMaxed: next, apprMaxedKnown: true, solvedIvResult: null });
+  }
+
+  setApprNoneMaxed() {
+    const already = this.state.apprMaxedKnown && !(this.state.apprMaxed || []).length;
+    this.setState({ apprMaxed: [], apprMaxedKnown: !already, solvedIvResult: null });
   }
 
   applySolvedIv() {
@@ -2372,6 +2478,7 @@ class Component extends DCLogic {
       }
     }
     this.setState({ candyInventory: candyInv, typeTable: types, ocrParsed: null, ocrPreview: null });
+    this.resetAppraisalHint();
     // Stardust is the first thing the importer promises to update — it was being
     // read off the screenshot, held in state, then dropped on save.
     if (p.stardust != null) this.setStardust(p.stardust);
@@ -2394,8 +2501,57 @@ class Component extends DCLogic {
     this._stardustSavedTimer = setTimeout(() => this.setState({ stardustJustSaved: false }), 1800);
   }
 
+  exportCsv() {
+    const roster = this.state.roster || [];
+    if (!roster.length) return;
+    const cols = ['Index', 'Name', 'Form', 'Pokemon Number', 'Gender', 'CP', 'HP',
+      'Atk IV', 'Def IV', 'Sta IV', 'IV Avg', 'Level Min', 'Level Max',
+      'Quick Move', 'Charge Move', 'Charge Move 2', 'Scan Date', 'Catch Date',
+      'Weight', 'Height', 'Lucky', 'Shadow/Purified', 'Favorite', 'Dust',
+      'Candy', 'XL Candy', 'Type 1', 'Type 2',
+      'Rank % (G)', 'Rank # (G)', 'Stat Prod (G)', 'Dust Cost (G)', 'Candy Cost (G)', 'Evolves To (G)',
+      'Rank % (U)', 'Rank # (U)', 'Stat Prod (U)', 'Dust Cost (U)', 'Candy Cost (U)', 'Evolves To (U)',
+      'Rank % (L)', 'Rank # (L)', 'Stat Prod (L)', 'Dust Cost (L)', 'Candy Cost (L)', 'Evolves To (L)'];
+    const cell = (v) => {
+      if (v == null || (typeof v === 'number' && !Number.isFinite(v))) return '';
+      const s = String(v);
+      // Quote anything containing a delimiter, quote or newline; double inner quotes.
+      return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const lg = (p, k, f) => (p[k] && p[k][f] != null ? p[k][f] : '');
+    const rows = roster.map((p, i) => [
+      i + 1, p.name, p.form || '', p.dex, p.gender || '', p.cp, p.hp,
+      p.atkIV, p.defIV, p.staIV, p.ivAvg, p.lvlMin, p.lvlMax,
+      p.quickMove || '', p.chargeMove || '', p.chargeMove2 || '', p.scanDate || '', p.catchDate || '',
+      p.weight || '', p.height || '', p.lucky ? 'Y' : '', p.shadowPurified || '0', p.favorite ? 'Y' : '', p.dust,
+      p.candy, p.xlCandy, p.type1 || '', p.type2 || '',
+      lg(p, 'great', 'rankPct'), lg(p, 'great', 'rankNum'), lg(p, 'great', 'statProd'), lg(p, 'great', 'dustCost'), lg(p, 'great', 'candyCost'), lg(p, 'great', 'evolvesTo'),
+      lg(p, 'ultra', 'rankPct'), lg(p, 'ultra', 'rankNum'), lg(p, 'ultra', 'statProd'), lg(p, 'ultra', 'dustCost'), lg(p, 'ultra', 'candyCost'), lg(p, 'ultra', 'evolvesTo'),
+      lg(p, 'little', 'rankPct'), lg(p, 'little', 'rankNum'), lg(p, 'little', 'statProd'), lg(p, 'little', 'dustCost'), lg(p, 'little', 'candyCost'), lg(p, 'little', 'evolvesTo')
+    ].map(cell).join(','));
+    // BOM so Excel opens UTF-8 names (Farfetch'd, Flabébé) correctly.
+    const csv = '\ufeff' + cols.join(',') + '\r\n' + rows.join('\r\n') + '\r\n';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'scout-roster-' + new Date().toISOString().split('T')[0] + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    this.setState({ csvExported: true });
+    clearTimeout(this._csvExportTimer);
+    this._csvExportTimer = setTimeout(() => this.setState({ csvExported: false }), 2400);
+  }
+
+  resetAppraisalHint() {
+    this.setState({ apprStars: null, apprMaxed: [], apprMaxedKnown: false });
+  }
+
   cancelOcr() {
     this.setState({ ocrParsed: null, ocrPreview: null, ocrError: '' });
+    this.resetAppraisalHint();
   }
 
   dismissVideoImport() {
@@ -2842,7 +2998,7 @@ class Component extends DCLogic {
 
   // Gemini's free tier allows 10 requests/minute. Spacing calls keeps a long
   // import inside that budget instead of tripping 429s halfway through.
-  get RATE_INTERVAL_MS() { return 6500; }
+  get RATE_INTERVAL_MS() { return 7000; }
 
   // Gemini allows 10 rpm PER KEY. With N keys in true round-robin, each key is
   // hit once every N intervals, so the global interval can be base/N and every
@@ -2860,6 +3016,28 @@ class Component extends DCLogic {
   // is exactly what turned a 10-Pokemon recording into 2.
   noteRateLimit() {
     this._rateBackoff = Math.min(4, (this._rateBackoff || 1) * 1.6);
+  }
+
+  // Earliest moment a Gemini key frees up, ignoring keys parked until midnight
+  // (daily quota) since those cannot be waited out inside an import.
+  msUntilKeyFree() {
+    const all = this.state.geminiKeys || [];
+    const cd = this._keyCooldown || {};
+    const now = Date.now();
+    const soon = all
+      .map(k => cd[k])
+      .filter(t => Number.isFinite(t) && t > now && (t - now) <= 180000);
+    if (!soon.length) return 0;
+    return Math.min(...soon) - now;
+  }
+
+  async waitForKeyCooldown() {
+    if (this.activeGeminiKeys().length) return false;
+    if (this.state.groqKey) return false; // fallback can serve it right now
+    const wait = this.msUntilKeyFree();
+    if (wait <= 0) return false;
+    await new Promise(r => setTimeout(r, wait + 250));
+    return true;
   }
 
   noteRateSuccess() {
@@ -2947,6 +3125,7 @@ class Component extends DCLogic {
     const targetCount = Math.max(cfg.minFrames, Math.min(cfg.maxFrames, Math.ceil(duration * cfg.fps)));
     const frames = [];
     const thumbs = [];
+    const topFps = [];
     let lastKept = null;
     let blackCount = 0;
     let sampled = 0;
@@ -2965,6 +3144,23 @@ class Component extends DCLogic {
       return `Frame ${done} of ${targetCount} · ${eta}`;
     };
 
+    // Fingerprint of just the top ~22% of the frame. In a Pokemon GO detail
+    // screen that band holds the CP badge and name, which do NOT move when the
+    // card is scrolled — so an identical top band with a different body means
+    // "same Pokemon, scrolled", not "new Pokemon".
+    const topCanvas = document.createElement('canvas');
+    topCanvas.width = 16; topCanvas.height = 8;
+    const topCtx = topCanvas.getContext('2d');
+    const topFingerprint = () => {
+      topCtx.drawImage(canvas, 0, 0, canvas.width, Math.round(canvas.height * 0.22), 0, 0, 16, 8);
+      const d = topCtx.getImageData(0, 0, 16, 8).data;
+      const out = new Uint8Array(128);
+      for (let p = 0, q = 0; p < d.length; p += 4, q++) {
+        out[q] = (d[p] * 299 + d[p + 1] * 587 + d[p + 2] * 114) / 1000;
+      }
+      return out;
+    };
+
     const capture = () => {
       const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       let sum = 0;
@@ -2974,6 +3170,7 @@ class Component extends DCLogic {
       if (lastKept && meanAbsDiff(fp, lastKept) < cfg.dedupeThreshold) return false;
       lastKept = fp;
       frames.push(canvas.toDataURL('image/jpeg', cfg.quality).split(',')[1]);
+      topFps.push(topFingerprint());
       thumbCtx.drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
       thumbs.push(thumbCanvas.toDataURL('image/jpeg', 0.4).split(',')[1]);
       return true;
@@ -2997,7 +3194,7 @@ class Component extends DCLogic {
       if (!frames.length) {
         throw new Error('Could not read any frames from that recording, even by playing it. Re-export as MP4 (H.264) and try again.');
       }
-      return { frames, thumbs, seekFails: 0, targetCount, mode: 'playback', playedFor: res };
+      return { frames, thumbs, topFps, seekFails: 0, targetCount, mode: 'playback', playedFor: res };
     }
 
     for (let i = 0; i < targetCount; i++) {
@@ -3031,7 +3228,7 @@ class Component extends DCLogic {
           if (!frames.length) {
             throw new Error('Could not read any frames from that recording, even by playing it. Re-export as MP4 (H.264) and try again.');
           }
-          return { frames, thumbs, seekFails, targetCount, mode: 'playback', playedFor: res };
+          return { frames, thumbs, topFps, seekFails, targetCount, mode: 'playback', playedFor: res };
         }
         this.setVideoStage('extracting', Math.round(((i + 1) / targetCount) * 100), extractNote(i));
         continue;
@@ -3068,7 +3265,7 @@ class Component extends DCLogic {
       throw new Error('No usable frames came out of that recording. Re-export as MP4 (H.264) and try again.');
     }
     if (seekFails) console.warn('[Scout] ' + seekFails + ' of ' + targetCount + ' frames skipped (slow seeks)');
-    return { frames, thumbs, seekFails, targetCount };
+    return { frames, thumbs, topFps, seekFails, targetCount };
   }
 
   // Capture frames by PLAYING the video rather than seeking through it.
@@ -3127,19 +3324,190 @@ class Component extends DCLogic {
     });
   }
 
+  // Reads only the metadata (no decode) so the cost can be quoted before any
+  // quota is spent. A 5-minute clip silently becomes ~120 requests, which is
+  // most of an hour of waiting — worth showing first.
+  async estimateVideoCost(file) {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.src = url;
+    const duration = await new Promise((resolve) => {
+      const t = setTimeout(() => resolve(0), 6000);
+      video.onloadedmetadata = () => { clearTimeout(t); resolve(video.duration || 0); };
+      video.onerror = () => { clearTimeout(t); resolve(0); };
+    });
+    URL.revokeObjectURL(url);
+    video.remove();
+    if (!duration) return null;
+    const sampled = Math.min(600, Math.ceil(duration * 3));
+    // Dedupe historically keeps roughly 60% of sampled frames on a steady pan.
+    const frames = Math.max(6, Math.round(sampled * 0.6));
+    const requests = Math.ceil(frames / 5);
+    const secs = Math.round(requests * this.effectiveInterval() / 1000);
+    return { duration, frames, requests, secs };
+  }
+
+  // Consecutive frames whose TOP band matches but whose bodies differ are the
+  // same Pokemon scrolled. Stacking that pair into one tall image means the
+  // model sees stats and moves together instead of two half-Pokemon it has to
+  // guess are related — and it halves the request count at the same time.
+  async stitchScrollPairs(frames, topFps, quality) {
+    if (!topFps || topFps.length !== frames.length || frames.length < 2) return { frames, stitched: 0 };
+    const diff = (a, b) => {
+      let s = 0;
+      for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
+      return s / a.length;
+    };
+    const load = (b64) => new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => resolve(null);
+      im.src = 'data:image/jpeg;base64,' + b64;
+    });
+    const out = [];
+    let stitched = 0;
+    let i = 0;
+    while (i < frames.length) {
+      // 4.0 on the top band is tight: the CP badge and name are identical when
+      // only the lower card scrolled, but change completely between Pokemon.
+      const pair = i + 1 < frames.length && diff(topFps[i], topFps[i + 1]) < 4.0;
+      if (!pair) { out.push(frames[i]); i++; continue; }
+      const [a, b] = await Promise.all([load(frames[i]), load(frames[i + 1])]);
+      if (!a || !b) { out.push(frames[i]); i++; continue; }
+      const w = Math.max(a.width, b.width);
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = a.height + b.height;
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#000';
+      cx.fillRect(0, 0, c.width, c.height);
+      cx.drawImage(a, 0, 0, a.width, a.height);
+      cx.drawImage(b, 0, a.height, b.width, b.height);
+      out.push(c.toDataURL('image/jpeg', quality || 0.5).split(',')[1]);
+      stitched++;
+      i += 2;
+    }
+    return { frames: out, stitched };
+  }
+
+  idb() {
+    if (this._idbPromise) return this._idbPromise;
+    this._idbPromise = new Promise((resolve, reject) => {
+      let req;
+      try { req = indexedDB.open('scout-import', 1); }
+      catch (e) { reject(e); return; }
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('pending')) db.createObjectStore('pending');
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('IndexedDB unavailable'));
+    }).catch(err => { this._idbPromise = null; throw err; });
+    return this._idbPromise;
+  }
+
+  async idbPut(key, value) {
+    try {
+      const db = await this.idb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('pending', 'readwrite');
+        tx.objectStore('pending').put(value, key);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (e) { /* resume is a convenience, never a hard requirement */ }
+  }
+
+  async idbGet(key) {
+    try {
+      const db = await this.idb();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction('pending', 'readonly');
+        const r = tx.objectStore('pending').get(key);
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+    } catch (e) { return null; }
+  }
+
+  async idbDelete(key) {
+    try {
+      const db = await this.idb();
+      await new Promise((resolve) => {
+        const tx = db.transaction('pending', 'readwrite');
+        tx.objectStore('pending').delete(key);
+        tx.oncomplete = resolve;
+        tx.onerror = resolve;
+      });
+    } catch (e) {}
+  }
+
+  // Offer to resume if a previous session extracted frames but never finished
+  // reading them. Anything older than a day is stale and dropped.
+  async checkPendingImport() {
+    const rec = await this.idbGet('frames');
+    if (!rec || !rec.frames || !rec.frames.length) return;
+    if (Date.now() - (rec.savedAt || 0) > 86400000) { this.idbDelete('frames'); return; }
+    this.setState({ pendingImport: { count: rec.frames.length, savedAt: rec.savedAt, name: rec.name || 'a recording' } });
+  }
+
+  async resumePendingImport() {
+    const rec = await this.idbGet('frames');
+    this.setState({ pendingImport: null });
+    if (!rec || !rec.frames || !rec.frames.length) return;
+    this._lastVideoFrames = rec.frames;
+    this.setState({ videoImport: { stage: 'reading', progress: 8, error: null, summary: null, frameThumbs: rec.thumbs || [], frameTotal: rec.frames.length } });
+    await this.runVideoPipeline(rec.frames);
+  }
+
+  discardPendingImport() {
+    this.idbDelete('frames');
+    this.setState({ pendingImport: null });
+  }
+
   async onVideoUpload(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     e.target.value = '';
+    const est = await this.estimateVideoCost(file);
+    if (est && est.requests > 12) {
+      this._pendingVideoFile = file;
+      this.setState({ videoEstimate: est, videoImport: null });
+      return;
+    }
+    await this.startVideoImport(file);
+  }
+
+  confirmVideoImport() {
+    const file = this._pendingVideoFile;
+    this._pendingVideoFile = null;
+    this.setState({ videoEstimate: null });
+    if (file) this.startVideoImport(file);
+  }
+
+  cancelVideoEstimate() {
+    this._pendingVideoFile = null;
+    this.setState({ videoEstimate: null });
+  }
+
+  async startVideoImport(file) {
     this.setState({ videoImport: { stage: 'uploading', progress: 0, error: null, summary: null, note: '' } });
     try {
       this.setVideoStage('uploading', 100);
-      const { frames, thumbs, seekFails, targetCount, mode } = await this.extractFrames(file, { fps: 3, maxFrames: 600 });
-      this._lastVideoFrames = frames;
+      const raw = await this.extractFrames(file, { fps: 3, maxFrames: 600 });
+      const { thumbs, seekFails, targetCount, mode, topFps } = raw;
       if (mode === 'playback') console.info('[Scout] extracted by playback (video was not reliably seekable)');
       if (seekFails) console.warn('[Scout] extraction skipped ' + seekFails + '/' + targetCount + ' frames');
+      const { frames, stitched } = await this.stitchScrollPairs(raw.frames, topFps, 0.5);
+      if (stitched) console.info('[Scout] stitched ' + stitched + ' scroll pairs (' + raw.frames.length + ' -> ' + frames.length + ' images)');
+      this._lastVideoFrames = frames;
+      // Extraction is the slow half — persist it so closing the tab mid-read
+      // doesn't mean decoding the whole clip again.
+      this.idbPut('frames', { frames, thumbs: thumbs.slice(0, 24), savedAt: Date.now(), name: file.name || '' });
       // Cap the visible strip too — 600 thumbnails is a wall, not a check.
-      this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: thumbs.slice(0, 24), frameTotal: frames.length } }));
+      this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: thumbs.slice(0, 24), frameTotal: raw.frames.length, stitchedPairs: stitched } }));
       await this.runVideoPipeline(frames);
     } catch (err) {
       clearInterval(this._videoReadingTimer);
@@ -3206,6 +3574,14 @@ class Component extends DCLogic {
           { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
           ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
         ];
+        if ((this.state.geminiKeys || []).length && !this.activeGeminiKeys().length && !this.state.groqKey) {
+          const wait = this.msUntilKeyFree();
+          if (wait > 0) {
+            this.setVideoStage('reading', Math.round((b / batches.length) * 92),
+              'Rate limit reached \u2014 waiting ' + Math.ceil(wait / 1000) + 's for a key to free up');
+            await this.waitForKeyCooldown();
+          }
+        }
         await this.throttleForRateLimit(pass === 1 && b === 0 ? 0 : 1, batches.length, spacing);
         let reply;
         try {
@@ -3258,6 +3634,7 @@ class Component extends DCLogic {
       // The retry buffer can be tens of MB at the raised frame cap; hold it only
       // while a retry is still plausible.
       this._releaseFramesSoon();
+      this.idbDelete('frames');
 
       // Merge duplicate sightings across batches (same name + CP).
       const seen = new Map();
@@ -3299,6 +3676,11 @@ class Component extends DCLogic {
       // gate — it exists so a bad read is easy to spot, not to be approved.
       const roster = this.state.roster || [];
       const seenKeys = new Set();
+      this.setVideoStage('updating', 30);
+      // Merge FIRST: it solves IVs from CP/HP and writes them back onto each
+      // item, so the receipt below reports the solved spread rather than the
+      // nulls the model returned.
+      const summary = this.mergeVideoImport(validated);
       const receipt = validated.map((item, i) => {
         const nameLower = item.name.toLowerCase();
         const match = roster.find(p => p.cp === item.cp && p.name.toLowerCase() === nameLower)
@@ -3306,10 +3688,8 @@ class Component extends DCLogic {
         const key = nameLower + '|' + (item.cp == null ? '?' : item.cp);
         const isDupe = seenKeys.has(key);
         seenKeys.add(key);
-        return { ...item, _rid: 'r' + i, _isNew: !match, _matchName: match ? match.name : null, _dupe: isDupe };
+        return { ...item, _rid: 'r' + i, _isNew: !match, _matchName: match ? match.name : null, _dupe: isDupe, _solvedCount: item._solvedCount || null };
       });
-      this.setVideoStage('updating', 30);
-      const summary = this.mergeVideoImport(validated);
       this.bumpImportProgress(summary);
       this.setVideoStage('updating', 100);
       this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary, review: receipt } }));
@@ -3476,7 +3856,7 @@ class Component extends DCLogic {
     const added = [...this.state.addedPokemon];
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
-    let updated = 0, inserted = 0;
+    let updated = 0, inserted = 0, solved = 0;
     const dupes = [];
     const today = new Date().toISOString().split('T')[0];
     // Two frames of the SAME Pokemon merge silently by design. Two different
@@ -3501,6 +3881,34 @@ class Component extends DCLogic {
         || roster.find(p => p.name.toLowerCase() === nameLower)
         || added.find(p => p.name.toLowerCase() === nameLower);
       let ivPatch = {};
+      let solvedFrom = null;
+      // The detail screen never prints IVs, but CP + HP + base stats pin them
+      // down mathematically: solveIVs brute-forces all 4096 combos across every
+      // level and keeps only those producing this exact CP and HP. This is the
+      // same solver the screenshot path uses behind SOLVE IV, so video imports
+      // no longer need the appraisal screen for a usable spread.
+      if ((item.atkIV == null || item.defIV == null || item.staIV == null)
+          && item.dex && item.cp && item.hp && mechanics && mechanics.solveIVs) {
+        const solveBase = mechanics.BASE_STATS[item.dex];
+        if (solveBase) {
+          try {
+            const cands = mechanics.solveIVs(solveBase, item.cp, item.hp);
+            if (cands && cands.length) {
+              // A single match is exact. Several means CP/HP alone cannot
+              // separate them, so take the first and record the ambiguity
+              // rather than presenting a guess as fact.
+              const c = cands[0];
+              item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
+              item.level = c.level;
+              solvedFrom = cands.length;
+              // Written back onto the item so the import receipt can mark which
+              // spreads were solved rather than read.
+              item._solvedCount = cands.length;
+            }
+          } catch (e) { /* unsolvable — leave IVs null */ }
+        }
+      }
+      if (solvedFrom != null) solved++;
       if (item.atkIV != null && item.defIV != null && item.staIV != null && item.dex && mechanics) {
         const base = mechanics.BASE_STATS[item.dex];
         if (base) {
@@ -3508,6 +3916,8 @@ class Component extends DCLogic {
           const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
           ivPatch = {
             atkIV: item.atkIV, defIV: item.defIV, staIV: item.staIV, ivAvg,
+            ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level } : {}),
+            ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {}),
             great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: item.name },
             ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: item.name },
             little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: item.name }
@@ -3569,7 +3979,7 @@ class Component extends DCLogic {
       localStorage.setItem('scout_candy_v1', JSON.stringify(candyInv));
       localStorage.setItem('scout_types_v1', JSON.stringify(types));
     } catch (e) {}
-    return { updated, inserted, total: items.length, dupes };
+    return { updated, inserted, total: items.length, dupes, solved };
   }
 
   removePokemon(idx) {
@@ -3613,7 +4023,15 @@ class Component extends DCLogic {
     roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
     const luckyTrade = roster.filter(p => !p.lucky && dexCounts[p.dex] > 1 && (p.ivAvg || 0) < 90 && notDone(p)).slice(0, 8);
     const buddySuggestion = withRank.filter(x => !x.p.favorite).sort((a, b) => b.rank - a.rank)[0]?.p || null;
-    return { powerUp, evolveSoon, transferSafe, luckyTrade, buddySuggestion };
+    // A strong Pokemon with only one charge move is the cheapest real PvP
+    // upgrade available — an unlocked second move roughly doubles its shield
+    // pressure, and the data to spot it is already in the roster.
+    const needsSecondMove = withRank
+      .filter(x => x.rank >= 80 && x.p.chargeMove && !x.p.chargeMove2 && notDone(x.p))
+      .sort((a, b) => b.rank - a.rank)
+      .slice(0, 6)
+      .map(x => x.p);
+    return { powerUp, evolveSoon, transferSafe, luckyTrade, buddySuggestion, needsSecondMove };
   }
 
   async sendChat() {
@@ -3628,6 +4046,7 @@ class Component extends DCLogic {
       `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
       `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${p.great && p.great.evolvesTo ? p.great.evolvesTo : '?'}`).join(', ') || 'none'}.`,
       `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
+      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.quickMove || '?'} / ${p.chargeMove || '?'})`).join(', ') || 'none'}.`,
       (() => {
         const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
         const total = Object.keys(dexNames).length;
@@ -4075,6 +4494,17 @@ class Component extends DCLogic {
         markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.removePokemon(p.idx); }
       })),
       luckyTrade: mapMini(plan.luckyTrade),
+      secondMoveCount: (plan.needsSecondMove || []).length,
+      needsSecondMove: (plan.needsSecondMove || []).map(p => ({
+        idx: p.idx,
+        displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+        moveLine: (p.quickMove || '?') + ' / ' + (p.chargeMove || '?'),
+        rankLine: Number.isFinite(this.bestRank(p)) ? this.bestRank(p).toFixed(0) + '% rank' : '',
+        onClick: () => this.openDetail(p),
+        markDone: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleDone(p.idx); }
+      })),
       buddySuggestion: plan.buddySuggestion ? {
         onClick: () => this.openDetail(plan.buddySuggestion),
         displayName: plan.buddySuggestion.name,
@@ -4165,7 +4595,11 @@ class Component extends DCLogic {
       great: this.state.solvedIvResult.great != null ? this.state.solvedIvResult.great.toFixed(1) + '%' : '—',
       ultra: this.state.solvedIvResult.ultra != null ? this.state.solvedIvResult.ultra.toFixed(1) + '%' : '—',
       little: this.state.solvedIvResult.little != null ? this.state.solvedIvResult.little.toFixed(1) + '%' : '—',
-      ambiguous: this.state.solvedIvResult.candidateCount > 1 ? `${this.state.solvedIvResult.candidateCount} possible spreads matched \u2014 showing the first. Add an appraisal hint later to narrow further.` : ''
+      ambiguous: this.state.solvedIvResult.candidateCount > 1
+        ? (this.appraisalHint()
+            ? `${this.state.solvedIvResult.candidateCount} spreads still match \u2014 showing the first. Mark more bars, or check the star count.`
+            : `${this.state.solvedIvResult.candidateCount} possible spreads matched \u2014 showing the first. Set the appraisal hint above to narrow this down.`)
+        : (this.appraisalHint() ? 'Exact match \u2014 appraisal hint pinned it to one spread.' : 'Exact match \u2014 only one spread fits this CP and HP.')
     }) : null;
     const checklistDefs = [
       { id: 'spin', label: 'Spin a PokeStop' },
@@ -4502,6 +4936,35 @@ class Component extends DCLogic {
           + ' \u00b7 ' + total + ' in roster';
       })(),
       resetImportProgress: () => this.resetImportProgress(),
+      videoEstimate: (() => {
+        const e = this.state.videoEstimate;
+        if (!e) return null;
+        const mins = Math.floor(e.secs / 60);
+        const eta = mins >= 1 ? mins + 'm ' + (e.secs % 60) + 's' : e.secs + 's';
+        const clipMin = Math.floor(e.duration / 60);
+        const clipLen = clipMin >= 1 ? clipMin + 'm ' + Math.round(e.duration % 60) + 's' : Math.round(e.duration) + 's';
+        return {
+          line: 'This ' + clipLen + ' clip needs about ' + e.requests + ' AI requests (~' + e.frames + ' frames) and will take roughly ' + eta + '.',
+          hint: e.requests > 60
+            ? 'That is a large batch \u2014 splitting the recording into 2\u20133 minute clips imports more reliably and lets you check results as you go.'
+            : 'Keep this tab open while it runs.'
+        };
+      })(),
+      pendingImport: (() => {
+        const p = this.state.pendingImport;
+        if (!p) return null;
+        const mins = Math.max(1, Math.round((Date.now() - p.savedAt) / 60000));
+        const when = mins < 60 ? mins + ' minute' + (mins === 1 ? '' : 's') + ' ago'
+          : Math.round(mins / 60) + ' hour' + (Math.round(mins / 60) === 1 ? '' : 's') + ' ago';
+        return { line: p.count + ' frames from ' + p.name + ' were extracted ' + when + ' but never finished reading. Resume without re-processing the video.' };
+      })(),
+      resumePendingImport: () => this.resumePendingImport(),
+      discardPendingImport: () => this.discardPendingImport(),
+      exportCsv: () => this.exportCsv(),
+      exportCsvLabel: this.state.csvExported ? 'EXPORTED \u2713' : 'EXPORT CSV',
+      confirmVideoImport: () => this.confirmVideoImport(),
+      cancelVideoEstimate: () => this.cancelVideoEstimate(),
+      hasSecondMoveList: !!(plan.needsSecondMove && plan.needsSecondMove.length),
       hasCoverage: (this.state.roster || []).length > 0,
       coverageHeadline: (() => {
         const r = this.state.roster || [];
@@ -4557,7 +5020,8 @@ class Component extends DCLogic {
           tagColor: r._dupe ? 'oklch(78% 0.15 70)' : (r._isNew ? 'oklch(72% 0.13 150)' : 'oklch(60% 0.02 260)'),
           cp: Number.isFinite(r.cp) ? r.cp : '\u2014',
           hp: Number.isFinite(r.hp) ? r.hp : '\u2014',
-          iv: haveIv ? ivs.join('/') : '\u2014',
+          iv: haveIv ? (ivs.join('/') + (r._solvedCount ? (r._solvedCount > 1 ? ' \u2248' : ' \u2713') : '')) : '\u2014',
+          ivColor: r._solvedCount > 1 ? 'oklch(78% 0.13 90)' : (r._solvedCount ? 'oklch(76% 0.13 150)' : 'inherit'),
           ivColor: haveIv ? 'oklch(80% 0.12 150)' : 'oklch(52% 0.02 260)',
           candy: Number.isFinite(r.candy) ? (r.candy + (Number.isFinite(r.xlCandy) ? ' \u00b7 ' + r.xlCandy + 'XL' : '')) : '\u2014',
           // Amber-tint rows with gaps so a follow-up scan can target just those
@@ -4570,7 +5034,9 @@ class Component extends DCLogic {
         const fresh = rev.filter(r => r._isNew).length;
         const noIv = rev.filter(r => ![r.atkIV, r.defIV, r.staIV].every(v => Number.isFinite(v))).length;
         const dupes = rev.filter(r => r._dupe).length;
+        const solved = rev.filter(r => r._solvedCount).length;
         return rev.length + ' read \u00b7 ' + fresh + ' new'
+          + (solved ? ' \u00b7 ' + solved + ' IVs solved from CP/HP' : '')
           + (noIv ? ' \u00b7 ' + noIv + ' without IVs' : '')
           + (dupes ? ' \u00b7 ' + dupes + ' possible duplicate' + (dupes === 1 ? '' : 's') : '');
       })(),
@@ -4592,7 +5058,9 @@ class Component extends DCLogic {
         const shown = (vi && vi.frameThumbs && vi.frameThumbs.length) || 0;
         const total = (vi && vi.frameTotal) || shown;
         const b = vi && vi.batchCount;
+        const st = vi && vi.stitchedPairs;
         const head = total + ' DISTINCT FRAMES READ'
+          + (st ? ' \u00b7 ' + st + ' SCROLL PAIR' + (st === 1 ? '' : 'S') + ' STITCHED' : '')
           + (total > shown ? ' \u00b7 FIRST ' + shown + ' SHOWN' : '');
         return head + (b ? ' \u00b7 ' + b + (b === 1 ? ' BATCH' : ' BATCHES') : '')
           + ' (check these actually show your Pokemon)';
@@ -4634,6 +5102,34 @@ class Component extends DCLogic {
       onStardustDraftChange: (e) => this.setState({ stardustDraft: e.target.value }),
       onStardustSave: () => this.saveStardustDraft(),
       stardustJustSaved: !!this.state.stardustJustSaved,
+      starOptions: (() => {
+        const cur = this.state.apprStars;
+        const labels = ['0\u2605', '1\u2605', '2\u2605', '3\u2605', '4\u2605'];
+        return labels.map((label, i) => ({
+          label,
+          bg: cur === i ? 'oklch(42% 0.12 90)' : 'oklch(24% 0.02 260)',
+          border: cur === i ? 'oklch(62% 0.14 90)' : 'oklch(36% 0.03 260)',
+          color: cur === i ? 'oklch(96% 0.03 90)' : 'oklch(70% 0.02 260)',
+          onClick: () => this.setApprStars(i)
+        }));
+      })(),
+      maxedOptions: (() => {
+        const maxed = this.state.apprMaxed || [];
+        const known = !!this.state.apprMaxedKnown;
+        const chip = (label, on, onClick) => ({
+          label,
+          bg: on ? 'oklch(40% 0.12 150)' : 'oklch(24% 0.02 260)',
+          border: on ? 'oklch(60% 0.13 150)' : 'oklch(36% 0.03 260)',
+          color: on ? 'oklch(96% 0.03 150)' : 'oklch(70% 0.02 260)',
+          onClick
+        });
+        return [
+          chip('ATTACK', maxed.includes('atk'), () => this.toggleApprMaxed('atk')),
+          chip('DEFENSE', maxed.includes('def'), () => this.toggleApprMaxed('def')),
+          chip('HP', maxed.includes('sta'), () => this.toggleApprMaxed('sta')),
+          chip('NONE', known && !maxed.length, () => this.setApprNoneMaxed())
+        ];
+      })(),
       solvedIvResult,
       hasSolvedIv: !!solvedIvResult,
       solveIv: () => this.solveIv(),
