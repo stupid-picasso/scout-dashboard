@@ -2,6 +2,33 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
+date: 2026-08-03T11:56:35Z
+commit: d629b9849074
+
+### Updated in this project
+- Confirmed the repo now carries the corrected file (the earlier `>`→`?` corruption is gone) — a stale message text on device means a cached build, not a bad push.
+- Gemini pacing is now self-tuning: the 429 body states the real per-minute quota for the model actually served, so `_geminiRpm` is read from it and `effectiveInterval` paces to that instead of assuming 10 rpm. `gemini-flash-latest` aliases a Gemini 3 model whose free-tier limit can be lower, which guarantees a 429 wall on a long import.
+- `_groqFailed` latch now clears in `setGroqKey`, `setGeminiKey` and on every screenshot upload, so a newly saved key is tried immediately instead of after a reload.
+- Groq model list replaced with `qwen/qwen3.6-27b` + `qwen/qwen3-vl-32b-instruct`; all four previous vision models are decommissioned. Retired-model errors no longer report as a rejected key.
+
+## Previous sync
+date: 2026-08-03T07:27:22Z
+commit: b1f5fec9f67c
+
+### Updated in this project
+- ⚠ The pushed copy of `Scout Dashboard.dc.html` at b1f5fec is corrupted: three `>` characters became `?` (`r._solvedCount ? 1`, `rev.filter(r =? ...)`), a JS syntax error that stops the logic class parsing — which is why an import read 24 Pokémon with zero solved IVs. Re-upload needed.
+- Fixed a duplicate `ivColor` key in the receipt rows (the second silently overrode the solved-IV colouring).
+- Ambiguous IV solves now take the median candidate by total IV instead of `cands[0]`; solveIVs returns level-ascending, so the first match was systematically the lowest-level, lowest-IV option.
+
+## Previous sync
+date: 2026-08-03T02:49:02Z
+
+### Updated in this project
+- Video/paste imports now solve IVs from CP + HP using `mechanics.solveIVs` — the same brute-force solver the screenshot path runs behind SOLVE IV. The detail screen never prints IVs, but base stats + exact CP + exact HP pin the spread down mathematically, so the appraisal screen is no longer required for a usable result.
+- Solved level is written to `lvlMin`/`lvlMax`; receipt marks solved spreads (`✓` unique, `≈` ambiguous) and counts them in the header.
+- Merge now runs before the receipt is built so it reports solved values, not the model's nulls.
+
+## Previous sync
 date: 2026-08-02T18:22:17Z
 commit: 38172cdd1dd0
 
