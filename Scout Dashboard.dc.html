@@ -2725,11 +2725,12 @@ class Component extends DCLogic {
       });
     });
     if (body.system) parts.unshift({ text: body.system });
-    // Model availability varies by key/region and Google rotates names, so try a
-    // list and remember the first that works.
+    // Model rotation: cycle through top 5 models for best accuracy + quota spread.
+    // (3.5 Flash is best, then 2.5 Flash, then lite variants)
+    const modelRotation = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'];
     const candidates = this._geminiModel
       ? [this._geminiModel]
-      : ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      : [modelRotation[this._geminiModelIdx ? this._geminiModelIdx % modelRotation.length : 0], 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     let lastErr = null;
     for (const model of candidates) {
       const buildConfig = (extras) => {
@@ -2773,6 +2774,9 @@ class Component extends DCLogic {
         }
         this._geminiModel = model;
         this._lastEngine = 'Gemini (' + model + ')';
+        // Advance model index for next batch (round-robin rotation)
+        const modelRotation = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'];
+        this._geminiModelIdx = ((this._geminiModelIdx || 0) + 1) % modelRotation.length;
         this.bumpAiUsage('gemini');
         return text;
       }
