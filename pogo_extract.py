@@ -371,6 +371,37 @@ def _run_ffmpeg_extract(video_path, output_dir, vf_filter, vfr_mode=False):
     return sorted(output_dir.glob("frame_*.png"))
 
 
+def _frame_signature(path, size=24):
+    """Small grayscale thumbnail used as a cheap perceptual fingerprint."""
+    img = Image.open(path).convert("L").resize((size, size))
+    return list(img.getdata())
+
+
+def dedupe_similar_frames(frames, threshold=4.0, sig_size=24):
+    """Drop frames that are near-identical to the previously kept frame.
+
+    Fixed-fps sampling of a slow scroll/pan produces many consecutive frames
+    that show almost the same content (the sample rate outruns how fast the
+    screen actually changes). Feeding all of them to Gemini multiplies batch
+    count (and API quota use) for zero extra information. This keeps the
+    first frame, then keeps any later frame whose mean per-pixel grayscale
+    difference against the last *kept* frame is >= threshold (0-255 scale),
+    which is enough to catch real scroll/content changes while collapsing
+    runs of static duplicates.
+    """
+    if len(frames) <= 1:
+        return frames
+    kept = [frames[0]]
+    prev_sig = _frame_signature(frames[0], sig_size)
+    for f in frames[1:]:
+        sig = _frame_signature(f, sig_size)
+        diff = sum(abs(a - b) for a, b in zip(sig, prev_sig)) / len(sig)
+        if diff >= threshold:
+            kept.append(f)
+            prev_sig = sig
+    return kept
+
+
 def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3):
     """Extract frames from video using ffmpeg.
 
@@ -379,6 +410,10 @@ def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_thre
     panning/scrolling through a list rarely crosses that scene-score
     threshold at all, so it can legitimately extract 0 frames. When that
     happens, fall back to fixed-fps sampling instead of failing outright.
+
+    Whichever path produces the frames, near-duplicate consecutive frames
+    are then collapsed (see dedupe_similar_frames) since fixed-fps sampling
+    in particular tends to way over-sample slow scrolls.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -391,13 +426,17 @@ def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_thre
         )
         print(f"[Extract] Scene-detect extracted {len(frames)} frames")
         if frames:
-            return frames
+            deduped = dedupe_similar_frames(frames)
+            print(f"[Extract] {len(deduped)} frames remain after near-duplicate dedup")
+            return deduped
         print(f"[Extract] Scene-detect found 0 frames (threshold={scene_threshold}) "
               f"\u2014 falling back to fixed fps={fps} sampling")
 
     frames = _run_ffmpeg_extract(video_path, output_dir, f"fps={fps},scale=1080:-1")
     print(f"[Extract] Extracted {len(frames)} frames")
-    return frames
+    deduped = dedupe_similar_frames(frames)
+    print(f"[Extract] {len(deduped)} frames remain after near-duplicate dedup")
+    return deduped
 
 
 def preprocess_image(image_path):
@@ -582,9 +621,15 @@ def record_to_csv_row(rec):
 # duplicating the 1500+ species BASE_STATS table here would be a maintenance
 # trap. This script only extracts what's printed on screen.
 
+# NOTE: gemini-2.5-flash / gemini-2.5-flash-lite are dropped here on purpose.
+# For newer API keys/projects Google now returns HTTP 404 "no longer
+# available to new users" on the whole 2.5 generation ahead of its official
+# Oct 2026 retirement, so keeping them in rotation just burns retries every
+# batch. Only the confirmed-working 3.x generation is listed. run_gemini_
+# video_ocr() also blacklists any model that 404s at runtime, so a future
+# deprecation degrades gracefully instead of stalling the whole import.
 GEMINI_MODELS = [
-    "gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.5-flash-lite",
-    "gemini-2.5-flash-lite", "gemini-3.1-flash-lite",
+    "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite",
 ]
 
 VIDEO_IMPORT_PROMPT = (
@@ -626,9 +671,16 @@ VIDEO_IMPORT_PROMPT = (
     "but never drop the Pokemon itself over a missing field."
 )
 
-MAX_FRAMES_PER_BATCH = 5
-BATCH_CHAR_BUDGET = 180000
-REQUEST_TIMEOUT_S = 60
+# A single 1080px-wide phone-screenshot frame, re-encoded as base64 JPEG,
+# measures ~140-180K chars on its own \u2014 the old 180000 budget let almost
+# NO more than 1 frame per batch, so MAX_FRAMES_PER_BATCH=5 never actually
+# bound and one Gemini call was spent per frame. A generateContent request
+# can carry many MB of inline image data, so raise the budget generously;
+# MAX_FRAMES_PER_BATCH is the real cap now (fewer, bigger requests = far
+# fewer calls against the free tier's per-model daily request cap).
+MAX_FRAMES_PER_BATCH = 10
+BATCH_CHAR_BUDGET = 1600000
+REQUEST_TIMEOUT_S = 90
 BATCH_PACE_S = 1.5
 
 
@@ -794,23 +846,56 @@ def run_gemini_video_ocr(frame_paths):
     print(f"[Gemini] {len(batches)} batch(es) of up to {MAX_FRAMES_PER_BATCH} frames each")
 
     model_idx = 0
-    key_cooldowns = {k: 0 for k in keys}  # key -> unix ts it becomes usable again
+    dead_models = set()  # models that returned 404 "no longer available" this run
+    # Cooldown tracked per (model, key) pair, not per key alone: Gemini's
+    # per-minute AND per-day request caps are counted separately per model
+    # (see the account's own rate-limit page \u2014 each model has its own
+    # RPD bucket). A key hitting its daily cap on one model still has full
+    # headroom on the others, so a whole-key cooldown was wasting quota.
+    pair_cooldowns = {(m, k): 0 for m in GEMINI_MODELS for k in keys}
     collected = []
+
+    def next_live_model_idx(start_idx):
+        """First rotation slot, starting at start_idx, that isn't blacklisted.
+        Returns None if every model has 404'd this run."""
+        n = len(GEMINI_MODELS)
+        for step in range(n):
+            idx = (start_idx + step) % n
+            if GEMINI_MODELS[idx] not in dead_models:
+                return idx
+        return None
 
     for b_i, batch in enumerate(batches):
         note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
-        model = GEMINI_MODELS[model_idx % len(GEMINI_MODELS)]
         attempts = 0
+        no_capacity_streak = 0
+        max_attempts = len(GEMINI_MODELS) * len(keys) * 2 + 4
         succeeded = False
-        while attempts < len(keys) * 2 and not succeeded:
+        while attempts < max_attempts and not succeeded:
+            idx = next_live_model_idx(model_idx)
+            if idx is None:
+                print("[Gemini] Every model in GEMINI_MODELS returned 404 for this "
+                      "API key/account \u2014 aborting. Check available model names "
+                      "at aistudio.google.com.")
+                break
+            model = GEMINI_MODELS[idx]
             now = time.time()
-            usable_keys = [k for k in keys if key_cooldowns[k] <= now]
+            usable_keys = [k for k in keys if pair_cooldowns[(model, k)] <= now]
             if not usable_keys:
-                wait = max(0, min(key_cooldowns.values()) - now)
-                print(f"[Gemini] All keys cooling down \u2014 waiting {wait:.0f}s")
-                time.sleep(min(wait, 60) + 1)
+                # This model has no usable key right now, but a *different*
+                # model may still have headroom \u2014 try that before waiting.
+                model_idx = idx + 1
                 attempts += 1
+                no_capacity_streak += 1
+                if no_capacity_streak >= len(GEMINI_MODELS):
+                    live = [m for m in GEMINI_MODELS if m not in dead_models]
+                    pending = [pair_cooldowns[(m, k)] for m in live for k in keys]
+                    wait = max(0, (min(pending) if pending else now + 60) - now)
+                    print(f"[Gemini] No model/key combo has capacity \u2014 waiting {wait:.0f}s")
+                    time.sleep(min(wait, 60) + 1)
+                    no_capacity_streak = 0
                 continue
+            no_capacity_streak = 0
             key = usable_keys[attempts % len(usable_keys)]
             try:
                 reply = call_gemini(VIDEO_IMPORT_PROMPT, batch, model, key, note)
@@ -822,12 +907,19 @@ def run_gemini_video_ocr(frame_paths):
                     print(f"[Gemini] batch {b_i + 1}/{len(batches)} -> {len(arr)} Pokemon (model={model})")
                 else:
                     print(f"[Gemini] batch {b_i + 1}/{len(batches)} -> 0 Pokemon (model={model})")
-                model_idx += 1  # advance rotation only on a real answer
+                model_idx = idx + 1  # advance rotation only on a real answer
                 succeeded = True
             except GeminiError as e:
                 print(f"[Gemini] batch {b_i + 1}/{len(batches)} failed on {model}/{key[:8]}...: {e}")
-                if e.status == 429:
-                    key_cooldowns[key] = now + (86400 if e.daily else 60)
+                if e.status == 404:
+                    # Permanent failure (model doesn't exist / not available to
+                    # this account) \u2014 blacklist it for the rest of the run
+                    # instead of burning retries on it every batch.
+                    dead_models.add(model)
+                    print(f"[Gemini] {model} returned 404 \u2014 removing it from "
+                          f"rotation for the rest of this run")
+                elif e.status == 429:
+                    pair_cooldowns[(model, key)] = now + (86400 if e.daily else 60)
                 attempts += 1
         if not succeeded:
             print(f"[Gemini] batch {b_i + 1}/{len(batches)} exhausted all retries \u2014 skipping")
