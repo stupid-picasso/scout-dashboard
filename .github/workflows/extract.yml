@@ -7,6 +7,10 @@ on:
       - 'videos/*.mov'
   workflow_dispatch:
     inputs:
+      drive_link:
+        description: 'Google Drive share link to a screen recording (must be set to "Anyone with the link")'
+        required: false
+        default: ''
       fps:
         description: 'Frames per second for extraction'
         required: false
@@ -43,35 +47,61 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Download video from Google Drive
+        if: github.event_name == 'workflow_dispatch' && inputs.drive_link != ''
+        run: |
+          mkdir -p /tmp/drive_video
+          gdown --fuzzy "${{ inputs.drive_link }}" -O /tmp/drive_video/clip.mp4
+          echo "DRIVE_VIDEO_PATH=/tmp/drive_video/clip.mp4" >> $GITHUB_ENV
+
       - name: Check for videos
         id: check_videos
         run: |
           video_count=$(find videos/ -type f \( -name '*.mp4' -o -name '*.mov' \) | wc -l)
           echo "count=$video_count" >> $GITHUB_OUTPUT
-          echo "Found $video_count video(s)"
-          if [ "$video_count" -eq 0 ]; then
-            echo "No videos found. Skipping extraction."
+          echo "Found $video_count video(s) in videos/"
+          if [ -n "$DRIVE_VIDEO_PATH" ]; then
+            echo "Plus one Drive-downloaded video: $DRIVE_VIDEO_PATH"
           fi
 
-      - name: Extract video data
+      - name: Extract video data (repo videos/*.mp4)
         if: steps.check_videos.outputs.count > 0
         run: |
-          FPS="${{ github.event.inputs.fps || '6' }}"
-          SCENE="${{ github.event.inputs.scene_detect || 'true' }}"
-          THRESH="${{ github.event.inputs.scene_threshold || '0.3' }}"
+          FPS="${{ inputs.fps || '6' }}"
+          SCENE="${{ inputs.scene_detect || 'true' }}"
+          THRESH="${{ inputs.scene_threshold || '0.3' }}"
           mkdir -p data
           for video in videos/*.mp4 videos/*.mov; do
             [ -f "$video" ] || continue
             echo "Processing: $video"
             if [ "$SCENE" = "true" ]; then
-              python pogo_extract.py --video "$video" --out data/pokemon.csv --scene-detect --scene-threshold "$THRESH"
+              python pogo_extract.py --video "$video" --scene-detect --scene-threshold "$THRESH"
             else
-              python pogo_extract.py --video "$video" --out data/pokemon.csv --fps "$FPS"
+              python pogo_extract.py --video "$video" --fps "$FPS"
             fi
           done
+        env:
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
+
+      - name: Extract video data (Google Drive link)
+        if: env.DRIVE_VIDEO_PATH != ''
+        run: |
+          FPS="${{ inputs.fps || '6' }}"
+          SCENE="${{ inputs.scene_detect || 'true' }}"
+          THRESH="${{ inputs.scene_threshold || '0.3' }}"
+          mkdir -p data
+          if [ "$SCENE" = "true" ]; then
+            python pogo_extract.py --video "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$THRESH"
+          else
+            python pogo_extract.py --video "$DRIVE_VIDEO_PATH" --fps "$FPS"
+          fi
+        env:
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
 
       - name: Commit extracted data
-        if: steps.check_videos.outputs.count > 0
+        if: steps.check_videos.outputs.count > 0 || env.DRIVE_VIDEO_PATH != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
