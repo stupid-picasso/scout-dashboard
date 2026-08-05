@@ -2,13 +2,16 @@
 *.bundle.js
 *.map
 .thumbnail
-
 # User data (NEVER commit real scans)
 pokemon-data.js
 src/pokemon-data.js
 data/*.csv
 data/*.json
-
+# Exception: the server-side video-OCR pipeline's output is committed on
+# purpose so the phone app's "IMPORT FROM SERVER" button can fetch it via
+# raw.githubusercontent.com. This repo is public \u2014 confirmed acceptable
+# for this project (gameplay stats only, no account credentials).
+!data/pokemon_import.json
 # Python
 __pycache__/
 *.py[cod]
@@ -19,19 +22,16 @@ env/
 venv/
 .venv/
 pip-log.txt
-
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
 # Temp frames from OCR
 frames/
 tmp/
