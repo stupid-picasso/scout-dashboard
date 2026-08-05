@@ -77,7 +77,7 @@ jobs:
             [ -f "$video" ] || continue
             echo "Processing: $video"
             if [ "$SCENE" = "true" ]; then
-              python pogo_extract.py --video "$video" --scene-detect --scene-threshold "$THRESH"
+              python pogo_extract.py --video "$video" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
             else
               python pogo_extract.py --video "$video" --fps "$FPS"
             fi
@@ -94,7 +94,7 @@ jobs:
           THRESH="${{ inputs.scene_threshold || '0.3' }}"
           mkdir -p data
           if [ "$SCENE" = "true" ]; then
-            python pogo_extract.py --video "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$THRESH"
+            python pogo_extract.py --video "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
           else
             python pogo_extract.py --video "$DRIVE_VIDEO_PATH" --fps "$FPS"
           fi
