@@ -51,7 +51,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.drive_link != ''
         run: |
           mkdir -p /tmp/drive_video
-          gdown --fuzzy "${{ inputs.drive_link }}" -O /tmp/drive_video/clip.mp4
+          gdown "${{ inputs.drive_link }}" -O /tmp/drive_video/clip.mp4
           echo "DRIVE_VIDEO_PATH=/tmp/drive_video/clip.mp4" >> $GITHUB_ENV
 
       - name: Check for videos
