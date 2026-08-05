@@ -27,6 +27,8 @@ on:
 jobs:
   extract:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed so the auto-commit step can push its own results
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
