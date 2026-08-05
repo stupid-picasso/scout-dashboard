@@ -358,28 +358,44 @@ MYTHICAL_DEX = {151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648,
                 649, 719, 720, 721, 801, 802, 807, 808, 809, 893, 1025}
 
 
-def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3):
-    """Extract frames from video using ffmpeg."""
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    if scene_detect:
-        cmd = [
-            "ffmpeg", "-i", str(video_path), "-vf",
-            f"select=gt(scene\\,{scene_threshold}),scale=1080:-1",
-            "-vsync", "vfr", "-frame_pts", "1",
-            str(output_dir / "frame_%04d.png")
-        ]
-    else:
-        cmd = [
-            "ffmpeg", "-i", str(video_path), "-vf", f"fps={fps},scale=1080:-1",
-            str(output_dir / "frame_%04d.png")
-        ]
+def _run_ffmpeg_extract(video_path, output_dir, vf_filter, vfr_mode=False):
+    cmd = ["ffmpeg", "-i", str(video_path), "-vf", vf_filter]
+    if vfr_mode:
+        cmd += ["-vsync", "vfr", "-frame_pts", "1"]
+    cmd.append(str(output_dir / "frame_%04d.png"))
     print(f"[Extract] Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"[Extract] ffmpeg stderr: {result.stderr[:500]}")
         raise RuntimeError(f"ffmpeg failed: {result.stderr[:200]}")
-    frames = sorted(output_dir.glob("frame_*.png"))
+    return sorted(output_dir.glob("frame_*.png"))
+
+
+def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3):
+    """Extract frames from video using ffmpeg.
+
+    Scene-cut detection (select=gt(scene,N)) is tuned for hard cuts in
+    filmed/edited video. A phone screen recording of someone smoothly
+    panning/scrolling through a list rarely crosses that scene-score
+    threshold at all, so it can legitimately extract 0 frames. When that
+    happens, fall back to fixed-fps sampling instead of failing outright.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if scene_detect:
+        frames = _run_ffmpeg_extract(
+            video_path, output_dir,
+            f"select=gt(scene\\,{scene_threshold}),scale=1080:-1",
+            vfr_mode=True
+        )
+        print(f"[Extract] Scene-detect extracted {len(frames)} frames")
+        if frames:
+            return frames
+        print(f"[Extract] Scene-detect found 0 frames (threshold={scene_threshold}) "
+              f"\u2014 falling back to fixed fps={fps} sampling")
+
+    frames = _run_ffmpeg_extract(video_path, output_dir, f"fps={fps},scale=1080:-1")
     print(f"[Extract] Extracted {len(frames)} frames")
     return frames
 
