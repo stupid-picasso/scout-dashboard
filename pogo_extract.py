@@ -4,12 +4,13 @@ pogo_extract.py v2 — Fixed regex, scene detection, full dex lookup.
 CRITICAL FIX: Word boundaries now use single backslash (was double = backspace char).
 """
 
-import argparse, csv, json, os, re, shutil, subprocess, sys, tempfile
+import argparse, csv, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
 try:
     from PIL import Image, ImageEnhance, ImageFilter
     import pytesseract
+    import requests
 except ImportError as e:
     print(f"Missing dependency: {e}")
     sys.exit(1)
@@ -555,34 +556,325 @@ def record_to_csv_row(rec):
     return row
 
 
+# ---------------------------------------------------------------------------
+# Gemini vision OCR for video frames (server-side, replaces Tesseract for the
+# --video path only). Mirrors the exact prompt/JSON schema the phone app uses
+# in Scout Dashboard.dc.html's runVideoPipeline(), so output drops straight
+# into the app's existing "PASTE FROM ANY AI CHAT" -> mergeVideoImport() path
+# with zero client-side changes. Dex resolution and IV/rank math are left to
+# the client (mechanics.resolveDexByName / solveIVs / rankPctForLeague) —
+# duplicating the 1500+ species BASE_STATS table here would be a maintenance
+# trap. This script only extracts what's printed on screen.
+
+GEMINI_MODELS = [
+    "gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.5-flash-lite",
+    "gemini-2.5-flash-lite", "gemini-3.1-flash-lite",
+]
+
+VIDEO_IMPORT_PROMPT = (
+    "These are frames sampled from a Pokemon GO screen recording (collection list "
+    "and/or Pokemon detail/appraise screens). Identify every distinct Pokemon shown. "
+    "Merge repeat sightings of the same Pokemon across frames into one entry, using "
+    "the most complete data seen. Respond with ONLY a JSON array, no markdown fences, "
+    "no commentary. Each item: "
+    '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, '
+    '"candy": number|null, "xlCandy": number|null, "stardust": number|null, '
+    '"type": string|null, "weight": string|null, "height": string|null, '
+    '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, '
+    '"evolveCandy": number|null, "atkIV": number|null, "defIV": number|null, '
+    '"staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
+    "CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the "
+    "large comma-grouped number). If a card is scrolled past its top and no CP badge "
+    "is visible in any frame, use null. A shadow Pokemon shows a PURIFY button and the "
+    "Frustration move. Moves come from the Gyms & Raids section: the first is "
+    "fastMove, the rest are charge moves; names only, without the type in parentheses. "
+    "REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even "
+    "if every other field is null. A partially-readable Pokemon is still a Pokemon "
+    "\u2014 emit it with nulls. The null/never-guess rules below apply to individual "
+    "FIELDS, never to whether a Pokemon is listed. Only return an empty array if "
+    "these frames genuinely contain no Pokemon at all (map view, item bag, loading "
+    "screen).\n"
+    "IV RULES (important):\n"
+    "- Frames fall into two kinds. A DETAIL screen shows CP at the top, HP, "
+    "weight/height, candy and the POWER UP / EVOLVE buttons. An APPRAISAL screen "
+    "shows three labelled stat bars (Attack, Defense, HP) and a star rating.\n"
+    "- atkIV/defIV/staIV exist ONLY as printed 0-15 numbers next to those bars, which "
+    "appear once the appraisal is expanded. If you can see bars or stars but no "
+    "numbers, return null for all three.\n"
+    "- NEVER convert bar length, bar colour, star count or the appraisal phrase into "
+    "an IV number. A full red bar is not 15.\n"
+    "- The same Pokemon often appears on both screen kinds across frames: take "
+    "CP/HP/candy from the detail frames and the IV numbers from the appraisal "
+    "frames, and merge them into one entry.\n"
+    "- Use null for any FIELD not clearly visible. Never guess a field value \u2014 "
+    "but never drop the Pokemon itself over a missing field."
+)
+
+MAX_FRAMES_PER_BATCH = 5
+BATCH_CHAR_BUDGET = 180000
+REQUEST_TIMEOUT_S = 60
+BATCH_PACE_S = 1.5
+
+
+class GeminiError(Exception):
+    def __init__(self, message, status=None, daily=False):
+        super().__init__(message)
+        self.status = status
+        self.daily = daily
+
+
+def get_gemini_keys():
+    """Reads GEMINI_API_KEY_1 / GEMINI_API_KEY_2 (or single GEMINI_API_KEY)."""
+    keys = []
+    for name in ("GEMINI_API_KEY_1", "GEMINI_API_KEY_2", "GEMINI_API_KEY"):
+        v = os.environ.get(name)
+        if v and v not in keys:
+            keys.append(v)
+    return keys
+
+
+def image_to_base64_jpeg(path, quality=85):
+    """Loads a frame (ffmpeg outputs PNG) and re-encodes as base64 JPEG —
+    smaller payload, and Gemini's inline_data expects a mime type we control."""
+    import io
+    import base64
+    img = Image.open(path)
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=quality)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def extract_json_array(reply):
+    """Python port of the client's extractJsonArray(): strips markdown fences,
+    tolerates preamble/postamble text, and salvages complete objects out of a
+    truncated array rather than failing the whole batch."""
+    t = (reply or "").strip()
+    if not t:
+        return None
+    t = re.sub(r"^```(?:json)?\s*", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"```\s*$", "", t)
+    t = t.strip()
+    open_br = t.find("[")
+    open_cu = t.find("{")
+    if open_br < 0 and open_cu < 0:
+        return None
+    start = open_br if (open_br >= 0 and (open_cu < 0 or open_br < open_cu)) else open_cu
+    t = t[start:]
+    last_close = max(t.rfind("]"), t.rfind("}"))
+    candidates = []
+    if last_close >= 0:
+        candidates.append(t[:last_close + 1])
+    candidates.append(t)
+    for c in candidates:
+        try:
+            v = json.loads(c)
+            return v if isinstance(v, list) else [v]
+        except (ValueError, TypeError):
+            continue
+    # Truncated array: salvage whichever complete {...} objects appear before the cut.
+    objs = []
+    depth = 0
+    obj_start = -1
+    in_str = False
+    esc = False
+    for i, ch in enumerate(t):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+            continue
+        if ch == "{":
+            if depth == 0:
+                obj_start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and obj_start >= 0:
+                try:
+                    objs.append(json.loads(t[obj_start:i + 1]))
+                except (ValueError, TypeError):
+                    pass
+                obj_start = -1
+    return objs if objs else None
+
+
+def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
+    """POSTs one batch of frames to Gemini. Raises GeminiError on failure so
+    the caller can rotate keys/models; returns the raw text reply on success."""
+    parts = [{"text": prompt_text + batch_note}]
+    for data in images_b64:
+        parts.append({"inline_data": {"mime_type": "image/jpeg", "data": data}})
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        + model + ":generateContent?key=" + api_key
+    )
+
+    def build_body(extras):
+        cfg = {"maxOutputTokens": 4096, "temperature": 0}
+        if extras:
+            cfg["responseMimeType"] = "application/json"
+            cfg["thinkingConfig"] = {"thinkingBudget": 0}
+        return {"contents": [{"role": "user", "parts": parts}], "generationConfig": cfg}
+
+    resp = requests.post(url, json=build_body(False), timeout=REQUEST_TIMEOUT_S)
+    if resp.status_code == 400:
+        # Some models need the JSON mime type to return parseable output.
+        resp = requests.post(url, json=build_body(True), timeout=REQUEST_TIMEOUT_S)
+
+    if resp.ok:
+        data = resp.json()
+        cands = data.get("candidates") or []
+        cand = cands[0] if cands else None
+        text_parts = (cand or {}).get("content", {}).get("parts", [])
+        text = "".join(p.get("text", "") for p in text_parts)
+        if not text:
+            raise GeminiError("Gemini returned no text")
+        return text
+
+    err_text = resp.text or ""
+    if resp.status_code == 429:
+        daily = bool(re.search(r"PerDay|per day|daily", err_text, re.IGNORECASE))
+        raise GeminiError("Gemini 429" + (" (daily quota)" if daily else " (per-minute)"),
+                           status=429, daily=daily)
+    if resp.status_code == 403:
+        raise GeminiError("Gemini refused the key (403) \u2014 enable the Generative "
+                           "Language API for this key at aistudio.google.com.", status=403)
+    raise GeminiError(f"Gemini {model} error {resp.status_code}: {err_text[:200]}",
+                       status=resp.status_code)
+
+
+def run_gemini_video_ocr(frame_paths):
+    """Batches frames, rotates 5 models x N keys the same way the phone app
+    does, and merges duplicate sightings across batches by name+CP. Returns a
+    list of item dicts matching the app's video-import JSON schema exactly."""
+    keys = get_gemini_keys()
+    if not keys:
+        raise RuntimeError(
+            "No Gemini API key found. Set GEMINI_API_KEY_1 (and optionally "
+            "GEMINI_API_KEY_2) as GitHub Actions secrets."
+        )
+
+    print(f"[Gemini] Encoding {len(frame_paths)} frames as base64 JPEG...")
+    encoded = [image_to_base64_jpeg(p) for p in frame_paths]
+
+    batches = []
+    current, current_size = [], 0
+    for data in encoded:
+        if current and (current_size + len(data) > BATCH_CHAR_BUDGET or len(current) >= MAX_FRAMES_PER_BATCH):
+            batches.append(current)
+            current, current_size = [], 0
+        current.append(data)
+        current_size += len(data)
+    if current:
+        batches.append(current)
+    print(f"[Gemini] {len(batches)} batch(es) of up to {MAX_FRAMES_PER_BATCH} frames each")
+
+    model_idx = 0
+    key_cooldowns = {k: 0 for k in keys}  # key -> unix ts it becomes usable again
+    collected = []
+
+    for b_i, batch in enumerate(batches):
+        note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
+        model = GEMINI_MODELS[model_idx % len(GEMINI_MODELS)]
+        attempts = 0
+        succeeded = False
+        while attempts < len(keys) * 2 and not succeeded:
+            now = time.time()
+            usable_keys = [k for k in keys if key_cooldowns[k] <= now]
+            if not usable_keys:
+                wait = max(0, min(key_cooldowns.values()) - now)
+                print(f"[Gemini] All keys cooling down \u2014 waiting {wait:.0f}s")
+                time.sleep(min(wait, 60) + 1)
+                attempts += 1
+                continue
+            key = usable_keys[attempts % len(usable_keys)]
+            try:
+                reply = call_gemini(VIDEO_IMPORT_PROMPT, batch, model, key, note)
+                arr = extract_json_array(reply)
+                if arr is None:
+                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} returned unparseable output")
+                elif arr:
+                    collected.extend(arr)
+                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} -> {len(arr)} Pokemon (model={model})")
+                else:
+                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} -> 0 Pokemon (model={model})")
+                model_idx += 1  # advance rotation only on a real answer
+                succeeded = True
+            except GeminiError as e:
+                print(f"[Gemini] batch {b_i + 1}/{len(batches)} failed on {model}/{key[:8]}...: {e}")
+                if e.status == 429:
+                    key_cooldowns[key] = now + (86400 if e.daily else 60)
+                attempts += 1
+        if not succeeded:
+            print(f"[Gemini] batch {b_i + 1}/{len(batches)} exhausted all retries \u2014 skipping")
+        time.sleep(BATCH_PACE_S)
+
+    # Merge duplicate sightings across batches (same name + CP), same rule as
+    # the client: keep the first sighting, backfill any nulls from later ones.
+    seen = {}
+    order = []
+    for item in collected:
+        if not item or not item.get("name"):
+            continue
+        key = str(item["name"]).lower() + "|" + ("?" if item.get("cp") is None else str(item.get("cp")))
+        if key not in seen:
+            seen[key] = dict(item)
+            order.append(key)
+        else:
+            prev = seen[key]
+            for k, v in item.items():
+                if prev.get(k) is None and v is not None:
+                    prev[k] = v
+    merged = [seen[k] for k in order]
+    print(f"[Gemini] {len(collected)} raw sightings merged into {len(merged)} unique Pokemon")
+    return merged
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract Pokemon data from video/screenshots")
     parser.add_argument("--video", help="Path to video file")
     parser.add_argument("--image", help="Path to single image")
-    parser.add_argument("--out", default="data/pokemon.csv", help="Output CSV path")
+    parser.add_argument("--out", default="data/pokemon.csv", help="Output path (CSV for --image, JSON for --video)")
     parser.add_argument("--fps", type=int, default=6, help="Frames per second")
     parser.add_argument("--scene-detect", action="store_true", help="Use scene detection")
     parser.add_argument("--scene-threshold", type=float, default=0.3, help="Scene change threshold")
-    parser.add_argument("--json", action="store_true", help="Output JSON instead of CSV")
+    parser.add_argument("--json", action="store_true", help="Output JSON instead of CSV (--image path only)")
     args = parser.parse_args()
 
-    records = []
-
     if args.video:
+        # --video now uses Gemini vision OCR (server-side, quota-pooled across
+        # up to 2 keys x 5 models) instead of Tesseract regex. Output is the
+        # app's video-import JSON schema, dropped straight into
+        # data/pokemon_import.json for "IMPORT FROM SERVER" / paste-import to
+        # pick up client-side — no dex/IV/rank math happens here by design.
         print(f"[Main] Processing video: {args.video}")
         with tempfile.TemporaryDirectory() as tmpdir:
             frames = extract_frames(args.video, tmpdir, args.fps, args.scene_detect, args.scene_threshold)
-            for i, frame in enumerate(frames):
-                print(f"[Main] OCR frame {i+1}/{len(frames)}: {frame.name}")
-                img = preprocess_image(frame)
-                img = crop_card_region(img)
-                text = ocr_image(img)
-                rec = parse_pokemon_text(text)
-                if rec.get("pokemon_name") or rec.get("cp"):
-                    records.append(rec)
-                    print(f"  -> Found: {rec.get('pokemon_name', '?')} CP{rec.get('cp', '?')}")
+            if not frames:
+                print("[Main] No frames extracted \u2014 nothing to do.")
+                sys.exit(1)
+            items = run_gemini_video_ocr(frames)
 
-    elif args.image:
+        out_path = args.out
+        if out_path.endswith(".csv"):
+            out_path = "data/pokemon_import.json"
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        with open(out_path, "w") as f:
+            json.dump(items, f, indent=2)
+        print(f"[Main] Wrote {len(items)} Pokemon to {out_path}")
+        return
+
+    records = []
+
+    if args.image:
         print(f"[Main] Processing image: {args.image}")
         img = preprocess_image(args.image)
         img = crop_card_region(img)

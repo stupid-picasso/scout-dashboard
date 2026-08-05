@@ -266,6 +266,21 @@
           </div>
         </details>
         <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:6px;padding:8px 12px">
+          <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">SERVER-SIDE VIDEO IMPORT · FREE</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Run the "Extract Pokemon Data" GitHub Actions workflow with your recording's Google Drive link, then tap below to pull the result straight in \u2014 no copy/paste needed.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div onClick="{{ importFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:5px;background:oklch(42% 0.1 150);color:white;font:700 11.5px ui-monospace,monospace">{{ serverImportLabel }}</div>
+            </div>
+            <sc-if value="{{ serverImportError }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ serverImportError }}</div>
+            </sc-if>
+            <sc-if value="{{ serverImportSummary }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ serverImportSummary }}</div>
+            </sc-if>
+          </div>
+        </details>
+        <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:6px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">PASTE FROM ANY AI CHAT · FREE</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">No API key, no limits. Copy the prompt, drop it plus your screenshots into any AI chat (Kimi, Claude, ChatGPT, Gemini), then paste the JSON it returns back here.</div>
@@ -3942,27 +3957,17 @@ class Component extends DCLogic {
     return objs.length ? objs : null;
   }
 
-  applyPastedImport() {
-    const raw = (this.state.pasteDraft || '').trim();
-    if (!raw) { this.setState({ pasteError: 'Paste the JSON from your AI chat first.' }); return; }
-    const parsed = this.extractJsonArray(raw);
-    if (parsed === null) {
-      this.setState({ pasteError: 'That is not valid JSON. Copy the whole JSON block from the chat, including the outer [ ].' });
-      return;
-    }
-    const items = parsed;
+  // Shared by paste-import and server-import: tolerate camelCase or
+  // snake_case / Poke-Genie-style field names so any upstream source
+  // (AI chat paste, or the server-side Gemini pipeline) can feed in as-is.
+  normalizePastedItems(items) {
     const clean = items.filter(o => o && typeof o === 'object' && o.name);
-    if (!clean.length) {
-      this.setState({ pasteError: 'No Pokemon found — each entry needs at least a "name" field.' });
-      return;
-    }
     const mechanics = this.mechanics;
     clean.forEach(o => {
       if (o.dex == null && mechanics && mechanics.resolveDexByName) {
         const d = mechanics.resolveDexByName(String(o.name));
         if (d != null) o.dex = d;
       }
-      // Accept snake_case too, so output from any chat drops straight in.
       if (o.type == null && o.type1) o.type = o.type2 ? o.type1 + ' / ' + o.type2 : o.type1;
       if (o.type == null && o.type_1) o.type = o.type_2 ? o.type_1 + ' / ' + o.type_2 : o.type_1;
       if (o.xlCandy == null && o.xl_candy != null) o.xlCandy = o.xl_candy;
@@ -3975,6 +3980,22 @@ class Component extends DCLogic {
       if (o.evolveCandy == null && o.evolution_candy_cost != null) o.evolveCandy = o.evolution_candy_cost;
       if (o.stardust == null && o.current_stardust != null) o.stardust = o.current_stardust;
     });
+    return clean;
+  }
+
+  applyPastedImport() {
+    const raw = (this.state.pasteDraft || '').trim();
+    if (!raw) { this.setState({ pasteError: 'Paste the JSON from your AI chat first.' }); return; }
+    const parsed = this.extractJsonArray(raw);
+    if (parsed === null) {
+      this.setState({ pasteError: 'That is not valid JSON. Copy the whole JSON block from the chat, including the outer [ ].' });
+      return;
+    }
+    const clean = this.normalizePastedItems(parsed);
+    if (!clean.length) {
+      this.setState({ pasteError: 'No Pokemon found — each entry needs at least a "name" field.' });
+      return;
+    }
     const summary = this.mergeVideoImport(clean);
     this.setState({
       pasteDraft: '',
@@ -3983,6 +4004,36 @@ class Component extends DCLogic {
     });
     clearTimeout(this._pasteSummaryTimer);
     this._pasteSummaryTimer = setTimeout(() => this.setState({ pasteSummary: '' }), 6000);
+  }
+
+  // Pulls the JSON produced by the server-side GitHub Actions video pipeline
+  // (pogo_extract.py --video, committed to data/pokemon_import.json) and
+  // feeds it through the same additive merge path as paste-import — no
+  // manual copy/paste needed once the workflow has run.
+  importFromServer() {
+    const url = 'https://raw.githubusercontent.com/stupid-picasso/scout-dashboard/main/data/pokemon_import.json?t=' + Date.now();
+    this.setState({ serverImportBusy: true, serverImportError: '', serverImportSummary: '' });
+    fetch(url, { cache: 'no-store' })
+      .then(res => {
+        if (!res.ok) throw new Error('No import file found yet (HTTP ' + res.status + '). Run the "Extract Pokemon Data" workflow first.');
+        return res.json();
+      })
+      .then(items => {
+        if (!Array.isArray(items)) throw new Error('data/pokemon_import.json is not a JSON array.');
+        const clean = this.normalizePastedItems(items);
+        if (!clean.length) throw new Error('No Pokemon found in data/pokemon_import.json.');
+        const summary = this.mergeVideoImport(clean);
+        this.setState({
+          serverImportBusy: false,
+          serverImportError: '',
+          serverImportSummary: 'Imported ' + clean.length + ' Pokemon from server \u2014 updated ' + summary.updated + ', added ' + summary.inserted + ' new.'
+        });
+        clearTimeout(this._serverImportSummaryTimer);
+        this._serverImportSummaryTimer = setTimeout(() => this.setState({ serverImportSummary: '' }), 6000);
+      })
+      .catch(err => {
+        this.setState({ serverImportBusy: false, serverImportSummary: '', serverImportError: (err && err.message) || 'Import failed.' });
+      });
   }
 
   importPromptText() {
@@ -5110,6 +5161,11 @@ class Component extends DCLogic {
       onPasteDraftChange: (e) => this.setState({ pasteDraft: e.target.value, pasteError: '' }),
       applyPastedImport: () => this.applyPastedImport(),
       copyImportPrompt: () => this.copyImportPrompt(),
+      serverImportBusy: !!this.state.serverImportBusy,
+      serverImportError: this.state.serverImportError || '',
+      serverImportSummary: this.state.serverImportSummary || '',
+      serverImportLabel: this.state.serverImportBusy ? 'IMPORTING…' : 'IMPORT FROM SERVER',
+      importFromServer: () => this.importFromServer(),
       apiEndpoint: this.state.apiEndpoint,
       apiEndpointDraft: this.state.apiEndpointDraft,
       hasVideoImport: !!this.state.videoImport,
