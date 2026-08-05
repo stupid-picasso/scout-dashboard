@@ -901,7 +901,16 @@ def run_gemini_video_ocr(frame_paths):
                 reply = call_gemini(VIDEO_IMPORT_PROMPT, batch, model, key, note)
                 arr = extract_json_array(reply)
                 if arr is None:
-                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} returned unparseable output")
+                    # Unparseable text is NOT a success \u2014 it's indistinguishable
+                    # from a truncated/garbled response. Retrying on a different
+                    # model/key catches the (common) case where one model just had
+                    # a bad day; only after max_attempts is this batch actually
+                    # given up on, same as a real GeminiError.
+                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} returned unparseable output "
+                          f"on {model} \u2014 retrying with a different model/key")
+                    attempts += 1
+                    model_idx = idx + 1
+                    continue
                 elif arr:
                     collected.extend(arr)
                     print(f"[Gemini] batch {b_i + 1}/{len(batches)} -> {len(arr)} Pokemon (model={model})")

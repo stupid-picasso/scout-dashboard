@@ -1583,9 +1583,26 @@ class Component extends DCLogic {
       // from any device. Null until a clear has happened.
       clearedAt: this._clearedAt || Number(localStorage.getItem('scout_cleared_at_v1')) || null
     };
-    this.db.collection('scoutUsers').doc(s.cloudUser.uid).set(blob, { merge: true })
-      .then(() => this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() }))
-      .catch(err => this.setState({ syncStatus: 'error: ' + err.message }));
+    // Drop literal `undefined`s (JSON.stringify silently omits them) before
+    // Firestore ever sees the blob \u2014 e.g. a video-imported Pokemon missing
+    // a field the SDK isn't tolerant of. The try/catch below is a backstop,
+    // not the primary fix.
+    let safeBlob = blob;
+    try { safeBlob = JSON.parse(JSON.stringify(blob)); } catch (e) { /* fall back to raw blob */ }
+    // Firestore's compat SDK validates the payload SYNCHRONOUSLY and THROWS
+    // (rather than rejecting) on bad field shapes (e.g. a literal `undefined`
+    // anywhere in the object graph). This fires from a bare setTimeout with no
+    // enclosing try/catch, so an uncaught throw here used to escape straight
+    // to the window-level error handler as an opaque "[bundle] script error"
+    // ~1.2s after any roster mutation (import, edit, etc.) for cloud-synced
+    // users \u2014 nothing about the .catch() below could ever see it.
+    try {
+      this.db.collection('scoutUsers').doc(s.cloudUser.uid).set(safeBlob, { merge: true })
+        .then(() => this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() }))
+        .catch(err => this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) }));
+    } catch (err) {
+      this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) });
+    }
   }
 
   syncNow() {
@@ -4208,6 +4225,22 @@ class Component extends DCLogic {
       }
       if (item.type) types[nameLower] = item.type;
     });
+    // A prior CLEAR ROSTER sets rosterCleared=true, which makes applyRemote()
+    // treat an empty/stale cloud roster as authoritative (so a delete on one
+    // device doesn't get undone by another). But that guard only ever gets
+    // reset by saveRoster() on state.roster changes \u2014 a video import only
+    // touches addedPokemon, so rosterCleared stayed stuck true forever after
+    // one CLEAR ROSTER, and a later stale/failed cloud push could silently
+    // wipe every video-imported Pokemon back to empty on the next refresh.
+    // Newly added Pokemon here means the cleared state no longer applies.
+    if (added.length && (this.state.rosterCleared || localStorage.getItem('scout_roster_cleared_v1') === '1')) {
+      try {
+        localStorage.removeItem('scout_roster_cleared_v1');
+        localStorage.removeItem('scout_cleared_at_v1');
+      } catch (e) {}
+      this._clearedAt = null;
+      this.setState({ rosterCleared: false });
+    }
     this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types });
     if (seenStardust != null) this.setStardust(seenStardust);
     try {
