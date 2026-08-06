@@ -91,6 +91,90 @@ def build_authoritative():
     return {dex: (name, stats) for dex, (name, stats, _) in by_dex.items()}
 
 
+def build_cpm_block():
+    """Rebuilds the CPM literal from the authoritative CP-multiplier table."""
+    raw = fetch_json(POGOAPI_CPM_URL)
+
+    def pick(entry, *names):
+        for n in names:
+            if n in entry:
+                return entry[n]
+        raise KeyError(f"none of {names} in cp_multiplier entry {entry!r}")
+
+    rows = sorted(
+        (
+            (
+                float(pick(e, "level", "pokemon_level")),
+                float(pick(e, "multiplier", "cp_multiplier")),
+            )
+            for e in raw
+        ),
+        key=lambda r: r[0],
+    )
+    if not rows:
+        raise ValueError("cp_multiplier.json returned no rows")
+
+    def fmt_level(level):
+        return str(int(level)) if level == int(level) else str(level)
+
+    def fmt_mult(mult):
+        text = f"{mult:.8f}".rstrip("0")
+        return text + "0" if text.endswith(".") else text
+
+    cells = [f"{fmt_level(lvl)}: {fmt_mult(mult)}" for lvl, mult in rows]
+    lines = ["  " + ", ".join(cells[i:i + 6]) + "," for i in range(0, len(cells), 6)]
+    lines[-1] = lines[-1].rstrip(",")
+    return "const CPM = {\n" + "\n".join(lines) + "\n};", len(rows)
+
+
+def build_dust_tier_block():
+    """Rebuilds _DUST_TIER_START_LEVEL: the first level of each Stardust tier.
+
+    The API gives a cost per half-level. A tier is a RUN of consecutive
+    half-levels sharing one cost, so the runs are derived here rather than
+    assuming every tier spans exactly four half-levels -- that assumption is
+    what let the hand-typed level 41+ values drift out of sync with the game.
+    """
+    raw = fetch_json(POGOAPI_POWERUP_URL)
+    rows = sorted(
+        ((float(v["current_level"]), int(v["stardust_to_upgrade"])) for v in raw.values()),
+        key=lambda r: r[0],
+    )
+    if not rows:
+        raise ValueError("pokemon_powerup_requirements.json returned no rows")
+
+    tiers = []
+    prev_dust = None
+    for level, dust in rows:
+        if dust != prev_dust:
+            tiers.append((level, dust))
+            prev_dust = dust
+
+    cells = [f"[{level:.1f}, {dust}]" for level, dust in tiers]
+    lines = ["  " + ", ".join(cells[i:i + 5]) + "," for i in range(0, len(cells), 5)]
+    return "const _DUST_TIER_START_LEVEL = [\n" + "\n".join(lines) + "\n];", len(tiers)
+
+
+def replace_block(content, start_marker, end_marker, new_block):
+    """Swaps the text from start_marker through the FIRST following end_marker.
+
+    Returns (content, changed). A missing marker is a warning, not a crash: a
+    failed refresh must leave the existing (working) table in place.
+    """
+    start = content.find(start_marker)
+    if start == -1:
+        print(f"WARNING: could not find {start_marker!r} to regenerate", file=sys.stderr)
+        return content, False
+    end = content.find(end_marker, start + len(start_marker))
+    if end == -1:
+        print(f"WARNING: no {end_marker!r} after {start_marker!r}", file=sys.stderr)
+        return content, False
+    end += len(end_marker)
+    if content[start:end] == new_block:
+        return content, False
+    return content[:start] + new_block + content[end:], True
+
+
 def main():
     content, base_stats, dex_names, last_dex = load_current()
     authoritative = build_authoritative()
@@ -106,6 +190,34 @@ def main():
             new_pokemon[dex] = {"name": name, "stats": stats}
 
     changed_mech = False
+
+    # Mechanics tables first: these drive every IV / CP / level calculation, so
+    # drift here is worse than a missing species. Each refresh is independently
+    # guarded -- an API outage leaves the existing table alone rather than
+    # blanking the solver's inputs.
+    mech_table_fixes = 0
+
+    try:
+        cpm_block, cpm_rows = build_cpm_block()
+        content, did = replace_block(content, "const CPM = {", "\n};", cpm_block)
+        if did:
+            changed_mech = True
+            mech_table_fixes += 1
+            print(f"Regenerated CPM table from pogoapi.net ({cpm_rows} levels)")
+    except Exception as e:
+        print(f"WARNING: CPM refresh failed, keeping existing table: {e}", file=sys.stderr)
+
+    try:
+        dust_block, dust_tiers = build_dust_tier_block()
+        content, did = replace_block(
+            content, "const _DUST_TIER_START_LEVEL = [", "\n];", dust_block
+        )
+        if did:
+            changed_mech = True
+            mech_table_fixes += 1
+            print(f"Regenerated Stardust power-up tiers from pogoapi.net ({dust_tiers} tiers)")
+    except Exception as e:
+        print(f"WARNING: Stardust tier refresh failed, keeping existing table: {e}", file=sys.stderr)
 
     if stat_fixes:
         for dex, stats in stat_fixes.items():
