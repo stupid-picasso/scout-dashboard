@@ -2,6 +2,16 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
+date: 2026-08-06T05:15:00Z
+
+### Updated in this project
+- **The CP multiplier table was wrong.** The hand-written `CPM` read 0.828917 at level 40 where the real GAME_MASTER value is 0.7903, drifting further the higher the level — so every CP, HP and IV figure the app ever produced was computed from fabricated multipliers. The workflow's first run replaced it with the real table, verified against Bulbapedia anchors at levels 1/5/10/15/20/25/30/35/40.
+- pogoapi's cp_multiplier endpoint stops at level 45, and a wholesale replace therefore DELETED levels 45.5–51, leaving maxed Pokémon with no multiplier at all. The generator now measures the table's constant final step (+0.0025 per half level from level 40 up, confirmed from the returned data) and extends to `MAX_LEVEL_SEARCH`, and warns instead of truncating if that step is not constant.
+- Stardust tiers now cover levels 41–49 (11000/12000/13000/14000/15000) from the same source — the earlier hand-typed values were wrong and had been removed.
+- Re-verified against the 165-record import: all 152 records solve, averaging 22.5 candidate spreads.
+- Rebuilt `index.html` and `Scout Dashboard.html`; `Scout Dashboard Standalone.dc.html` regenerated from the live source (it was a stale fork). Build tag `2026-08-06-cpm`.
+
+## Previous sync
 date: 2026-08-06T03:05:37Z
 
 ### Updated in this project

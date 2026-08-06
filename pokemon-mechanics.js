@@ -1,6 +1,15 @@
 // GENERATED BLOCK — do not hand-edit. CP Multiplier table, level 1 to 51 in 0.5
 // steps. Rewritten weekly by `scripts/update_pokemon_data.py` from pogoapi.net's
 // cp_multiplier endpoint (republished from Niantic's GAME_MASTER).
+//
+// The endpoint currently stops at level 45. From level 40 up the table is exactly
+// linear at +0.0025 per half level (verified against the returned values), so the
+// generator extends that step to level 51 rather than leaving 45.5+ missing —
+// without those rows a maxed Pokemon has no multiplier and cannot be solved at all.
+//
+// The hand-written table this replaced was wrong: it read 0.828917 at level 40
+// where the real multiplier is 0.7903, drifting further the higher the level. Every
+// CP, HP and IV figure the app produced was computed from those numbers.
 const CPM = {
   1: 0.094, 1.5: 0.13513743, 2: 0.16639787, 2.5: 0.19265091, 3: 0.21573247, 3.5: 0.23657265,
   4: 0.25572005, 4.5: 0.27353038, 5: 0.29024988, 5.5: 0.30605738, 6: 0.3210876, 6.5: 0.33544503,
@@ -16,7 +25,9 @@ const CPM = {
   34: 0.75568551, 34.5: 0.75863037, 35: 0.76156384, 35.5: 0.76448607, 36: 0.76739717, 36.5: 0.77029727,
   37: 0.7731865, 37.5: 0.77606495, 38: 0.77893275, 38.5: 0.78179006, 39: 0.78463697, 39.5: 0.78747358,
   40: 0.79030001, 40.5: 0.79280001, 41: 0.79530001, 41.5: 0.79780001, 42: 0.8003, 42.5: 0.8028,
-  43: 0.8053, 43.5: 0.8078, 44: 0.81029999, 44.5: 0.81279999, 45: 0.81529999
+  43: 0.8053, 43.5: 0.8078, 44: 0.81029999, 44.5: 0.81279999, 45: 0.81529999, 45.5: 0.81779999,
+  46: 0.82029999, 46.5: 0.82279999, 47: 0.82529999, 47.5: 0.82779999, 48: 0.83029999, 48.5: 0.83279999,
+  49: 0.83529999, 49.5: 0.83779999, 50: 0.84029999, 50.5: 0.84279999, 51: 0.84529999
 };
 
 const LEAGUE_CAPS = { great: 1500, ultra: 2500, little: 500, master: Infinity };
