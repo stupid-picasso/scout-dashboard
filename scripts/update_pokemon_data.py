@@ -91,6 +91,19 @@ def build_authoritative():
     return {dex: (name, stats) for dex, (name, stats, _) in by_dex.items()}
 
 
+def _max_level_search():
+    """Reads MAX_LEVEL_SEARCH out of pokemon-mechanics.js so the CPM table is
+    always generated at least as far as the solver actually searches."""
+    try:
+        content = open(MECH_PATH, encoding="utf-8").read()
+        m = re.search(r"const MAX_LEVEL_SEARCH = ([0-9.]+)", content)
+        if m:
+            return float(m.group(1))
+    except Exception:
+        pass
+    return 51.0
+
+
 def build_cpm_block():
     """Rebuilds the CPM literal from the authoritative CP-multiplier table."""
     raw = fetch_json(POGOAPI_CPM_URL)
@@ -120,6 +133,29 @@ def build_cpm_block():
     def fmt_mult(mult):
         text = f"{mult:.8f}".rstrip("0")
         return text + "0" if text.endswith(".") else text
+
+    # The endpoint currently stops at level 45, but the app searches to
+    # MAX_LEVEL_SEARCH. Replacing the table wholesale therefore DELETED levels
+    # 45.5-51 and left every maxed Pokemon unsolvable. From level 40 up the
+    # multiplier is exactly linear, so the constant final step is measured from
+    # the returned data (never assumed) and extended to the app's max level.
+    max_level = _max_level_search()
+    if rows[-1][0] < max_level:
+        step = round(rows[-1][1] - rows[-2][1], 8)
+        prev_step = round(rows[-2][1] - rows[-3][1], 8)
+        if step > 0 and step == prev_step:
+            lvl, mult = rows[-1]
+            while lvl < max_level:
+                lvl += 0.5
+                mult = round(mult + step, 8)
+                rows.append((lvl, mult))
+            print(f"Extended CPM to level {max_level} at the table's constant +{step} step")
+        else:
+            print(
+                f"WARNING: CPM data stops at level {rows[-1][0]} and the final step is not "
+                f"constant ({prev_step} then {step}); levels above it will be missing",
+                file=sys.stderr,
+            )
 
     cells = [f"{fmt_level(lvl)}: {fmt_mult(mult)}" for lvl, mult in rows]
     lines = ["  " + ", ".join(cells[i:i + 6]) + "," for i in range(0, len(cells), 6)]
