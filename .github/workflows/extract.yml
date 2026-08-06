@@ -112,5 +112,19 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Auto-extract Pokemon data from video [skip ci]"
-            git push
+            # main can move while this job runs (e.g. a manual upload), so
+            # rebase onto the latest remote and retry a few times instead of
+            # failing outright on a non-fast-forward push.
+            for attempt in 1 2 3 4 5; do
+              if git push; then
+                break
+              fi
+              echo "Push rejected (attempt $attempt), fetching and rebasing..."
+              git fetch origin main
+              git rebase origin/main
+              if [ "$attempt" = "5" ]; then
+                echo "::error::Failed to push extracted data after $attempt attempts"
+                exit 1
+              fi
+            done
           fi
