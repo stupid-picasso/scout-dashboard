@@ -1,4 +1,6 @@
-// CP Multiplier table, level 1 to 51 in 0.5 steps (public game constant)
+// GENERATED BLOCK — do not hand-edit. CP Multiplier table, level 1 to 51 in 0.5
+// steps. Rewritten weekly by `scripts/update_pokemon_data.py` from pogoapi.net's
+// cp_multiplier endpoint (republished from Niantic's GAME_MASTER).
 const CPM = {
   1: 0.093750, 1.5: 0.135137, 2: 0.166397, 2.5: 0.192650, 3: 0.215732, 3.5: 0.236572,
   4: 0.255720, 4.5: 0.273530, 5: 0.290063, 5.5: 0.305646, 6: 0.320530, 6.5: 0.334301,
@@ -1001,12 +1003,24 @@ function statProductFor(base, ivs, level) {
 // half-levels (2 full levels), which made every prior lookup come out at
 // roughly HALF the Pokemon's true level. Levels 41+ require Candy XL instead
 // of regular Candy but the dust progression continues the same pattern.
+// GENERATED BLOCK — do not hand-edit. `scripts/update_pokemon_data.py` rewrites
+// this list every week from pogoapi.net's powerup-requirements table, which is
+// republished from Niantic's GAME_MASTER (the same source PokeGenie and CalcyIV
+// read). It lists the first level of each Stardust tier; the tiers are derived
+// from the per-half-level costs rather than assumed to span four half-levels
+// each, so a cost-curve change is picked up automatically.
+//
+// This was hand-typed before, and the level 41+ entries
+// (12000/15000/19000/22000/25000) were wrong — the real cost at level 49 is
+// 15000. A wrong tier filters the IV solve to the wrong levels and discards the
+// true spread, which is why it is now generated. Until the first refresh runs,
+// only levels 1–40.5 (verified against Bulbapedia) are listed; a 41+ cost fails
+// the 5% tolerance below, returns [], and the caller solves unrestricted.
 const _DUST_TIER_START_LEVEL = [
   [1.0, 200], [3.0, 400], [5.0, 600], [7.0, 800], [9.0, 1000],
   [11.0, 1300], [13.0, 1600], [15.0, 1900], [17.0, 2200], [19.0, 2500],
   [21.0, 3000], [23.0, 3500], [25.0, 4000], [27.0, 4500], [29.0, 5000],
   [31.0, 6000], [33.0, 7000], [35.0, 8000], [37.0, 9000], [39.0, 10000],
-  [41.0, 12000], [43.0, 15000], [45.0, 19000], [47.0, 22000], [49.0, 25000],
 ];
 
 // dust value -> [levels...] that cost exactly that much to power up from.

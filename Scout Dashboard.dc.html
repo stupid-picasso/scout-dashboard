@@ -500,6 +500,16 @@
                 <div onClick="{{ m.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:6px;background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.color }};font:600 11px ui-monospace,monospace;transition:background .12s ease,border-color .12s ease">{{ m.label }}</div>
               </sc-for>
             </div>
+            <div style="font:10.5px sans-serif;color:oklch(52% 0.02 260)">Stardust cost of the next Power Up (narrows the level)</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <input type="text" inputmode="numeric" placeholder="e.g. 3500" value="{{ apprDust }}" onChange="{{ onApprDustChange }}" style="width:110px;background:transparent;border:none;border-bottom:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);font:13px ui-monospace,monospace;padding:5px 2px;outline:none" />
+              <sc-for list="{{ dustModOptions }}" as="d" hint-placeholder-count="3">
+                <div onClick="{{ d.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:6px;background:{{ d.bg }};border:1px solid {{ d.border }};color:{{ d.color }};font:600 11px ui-monospace,monospace;transition:background .12s ease,border-color .12s ease">{{ d.label }}</div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ dustLevelHint }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(70% 0.09 220)">{{ dustLevelHint }}</div>
+            </sc-if>
             <div onClick="{{ solveIv }}" style="cursor:pointer;text-align:center;padding:9px;border-radius:6px;background:oklch(45% 0.13 150);color:white;font:700 12px ui-monospace,monospace">SOLVE IV &amp; PVP RANK</div>
             <sc-if value="{{ hasSolvedIv }}" hint-placeholder-val="{{ false }}">
               <sc-if value="{{ solvedIvResult.error }}" hint-placeholder-val="{{ false }}">
@@ -1115,6 +1125,8 @@ class Component extends DCLogic {
     apprStars: null,
     apprMaxed: [],
     apprMaxedKnown: false,
+    apprDust: '',
+    apprDustMods: {},
     ocrHp: '',
     apiEndpoint: '',
     apiEndpointDraft: '',
@@ -2472,7 +2484,19 @@ class Component extends DCLogic {
       this.setState({ solvedIvResult: { error: 'Need both CP and HP to solve — fill in HP below.' } });
       return;
     }
-    const candidates = this.mechanics.solveIVs(base, p.cp, p.hp, this.appraisalHint());
+    // CP + HP alone leaves dozens of spreads on anything below ~L20 because the
+    // level is unknown. The Power Up stardust cost pins the level to a 4-half-
+    // level band, which is what collapses the search — so it is fed in here the
+    // same way the video-import path does it.
+    const levelFilter = this.dustLevelFilter();
+    let candidates = this.mechanics.solveIVs(base, p.cp, p.hp, this.appraisalHint(), levelFilter);
+    // A mistyped or misread dust cost would filter out every real spread; fall
+    // back to the unrestricted solve rather than reporting "unsolvable".
+    let dustIgnored = false;
+    if (!candidates.length && levelFilter) {
+      candidates = this.mechanics.solveIVs(base, p.cp, p.hp, this.appraisalHint());
+      dustIgnored = true;
+    }
     // hintMismatch means the appraisal cannot coexist with this CP/HP, so one of
     // the three was misread — a useful signal rather than something to swallow.
     const hintMismatch = !!(candidates && candidates.hintMismatch);
@@ -2489,9 +2513,29 @@ class Component extends DCLogic {
     this.setState({
       solvedIvResult: {
         level: c.level, atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV,
-        ivAvg, great, ultra, little, candidateCount: candidates.length, hintMismatch
+        ivAvg, great, ultra, little, candidateCount: candidates.length, hintMismatch,
+        dustUsed: !!levelFilter && !dustIgnored, dustIgnored
       }
     });
+  }
+
+  // Turns the typed Power Up cost into the levels it could belong to, undoing
+  // the lucky/shadow/purified multipliers. Returns null when nothing usable was
+  // entered so the solver searches every level as before.
+  dustLevelFilter() {
+    const raw = String(this.state.apprDust ?? '').replace(/[^0-9]/g, '');
+    if (!raw || !this.mechanics || !this.mechanics.levelsForPowerUpDust) return null;
+    const mods = this.state.apprDustMods || {};
+    const levels = this.mechanics.levelsForPowerUpDust(Number(raw), {
+      lucky: !!mods.lucky, shadow: !!mods.shadow, purified: !!mods.purified
+    });
+    return levels && levels.length ? levels : null;
+  }
+
+  toggleDustMod(key) {
+    const mods = { ...(this.state.apprDustMods || {}) };
+    mods[key] = !mods[key];
+    this.setState({ apprDustMods: mods, solvedIvResult: null });
   }
 
   // Builds the hint object the solver understands. maxedKnown distinguishes
@@ -2657,7 +2701,7 @@ class Component extends DCLogic {
   }
 
   resetAppraisalHint() {
-    this.setState({ apprStars: null, apprMaxed: [], apprMaxedKnown: false });
+    this.setState({ apprStars: null, apprMaxed: [], apprMaxedKnown: false, apprDust: '', apprDustMods: {} });
   }
 
   cancelOcr() {
@@ -4159,8 +4203,9 @@ class Component extends DCLogic {
             // table), so reversing it narrows the search to the 1-2 levels
             // that could actually produce that cost \u2014 the same trick
             // third-party IV checkers use instead of requiring an appraisal.
-            // Only levels 1-25 are covered (the cost table plateaus above
-            // that and stops narrowing anything); levelsForPowerUpDust
+            // Levels 1-40.5 are covered; 41+ tiers are omitted from the cost
+            // table until their values can be source-confirmed, so a maxed
+            // Pokemon just solves unrestricted. levelsForPowerUpDust
             // returns [] whenever it can't confidently narrow, in which case
             // this silently falls back to the old unrestricted solve.
             let levelFilter = null;
@@ -4894,13 +4939,19 @@ class Component extends DCLogic {
       great: this.state.solvedIvResult.great != null ? this.state.solvedIvResult.great.toFixed(1) + '%' : '—',
       ultra: this.state.solvedIvResult.ultra != null ? this.state.solvedIvResult.ultra.toFixed(1) + '%' : '—',
       little: this.state.solvedIvResult.little != null ? this.state.solvedIvResult.little.toFixed(1) + '%' : '—',
-      ambiguous: this.state.solvedIvResult.hintMismatch
-        ? `That appraisal doesn't fit this CP and HP \u2014 no spread matches both, so the hint was ignored. Re-check the star tier, or the HP reading. (${this.state.solvedIvResult.candidateCount} spreads match CP/HP alone.)`
-        : (this.state.solvedIvResult.candidateCount > 1
-          ? (this.appraisalHint()
-              ? `${this.state.solvedIvResult.candidateCount} spreads still match \u2014 showing the middle one. Mark more bars to narrow further.`
-              : `${this.state.solvedIvResult.candidateCount} possible spreads matched \u2014 showing the middle one. Set the appraisal hint above to narrow this down.`)
-          : (this.appraisalHint() ? 'Exact match \u2014 appraisal hint pinned it to one spread.' : 'Exact match \u2014 only one spread fits this CP and HP.'))
+      ambiguous: (() => {
+        const r = this.state.solvedIvResult;
+        if (r.hintMismatch) return `That appraisal doesn't fit this CP and HP \u2014 no spread matches both, so the hint was ignored. Re-check the star tier, or the HP reading. (${r.candidateCount} spreads match CP/HP alone.)`;
+        if (r.dustIgnored) return `That Power Up cost rules out every spread that fits this CP and HP, so it was ignored. Re-check the cost (and the lucky/shadow/purified toggles). ${r.candidateCount} spreads match CP/HP alone \u2014 showing the middle one.`;
+        const narrowed = r.dustUsed || this.appraisalHint();
+        if (r.candidateCount > 1) {
+          return narrowed
+            ? `${r.candidateCount} spreads still match \u2014 showing the middle one. ${r.dustUsed ? 'Mark the appraisal bars to narrow further.' : 'Enter the Power Up stardust cost to narrow further.'}`
+            : `${r.candidateCount} possible spreads matched \u2014 showing the middle one. Enter the Power Up stardust cost above to pin the level down.`;
+        }
+        if (r.dustUsed) return 'Exact match \u2014 CP, HP and the Power Up cost pin this to one spread.';
+        return this.appraisalHint() ? 'Exact match \u2014 appraisal hint pinned it to one spread.' : 'Exact match \u2014 only one spread fits this CP and HP.';
+      })()
     }) : null;
     const checklistDefs = [
       { id: 'spin', label: 'Spin a PokeStop' },
@@ -5433,6 +5484,25 @@ class Component extends DCLogic {
           color: cur === i ? 'oklch(96% 0.03 90)' : 'oklch(70% 0.02 260)',
           onClick: () => this.setApprStars(i)
         }));
+      })(),
+      apprDust: this.state.apprDust ?? '',
+      onApprDustChange: (e) => this.setState({ apprDust: e.target.value, solvedIvResult: null }),
+      dustModOptions: (() => {
+        const mods = this.state.apprDustMods || {};
+        const chip = (label, key) => ({
+          label,
+          bg: mods[key] ? 'oklch(40% 0.12 280)' : 'oklch(24% 0.02 260)',
+          border: mods[key] ? 'oklch(60% 0.13 280)' : 'oklch(36% 0.03 260)',
+          color: mods[key] ? 'oklch(96% 0.03 280)' : 'oklch(70% 0.02 260)',
+          onClick: () => this.toggleDustMod(key)
+        });
+        return [chip('LUCKY', 'lucky'), chip('SHADOW', 'shadow'), chip('PURIFIED', 'purified')];
+      })(),
+      dustLevelHint: (() => {
+        if (!String(this.state.apprDust ?? '').replace(/[^0-9]/g, '')) return '';
+        const levels = this.dustLevelFilter();
+        if (!levels) return 'That cost doesn\u2019t match any Power Up tier \u2014 the solve will search every level.';
+        return `Level ${levels[0]}\u2013${levels[levels.length - 1]}`;
       })(),
       maxedOptions: (() => {
         const maxed = this.state.apprMaxed || [];
