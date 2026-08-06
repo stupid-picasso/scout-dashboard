@@ -640,6 +640,7 @@ VIDEO_IMPORT_PROMPT = (
     "no commentary. Each item: "
     '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, '
     '"candy": number|null, "xlCandy": number|null, "stardust": number|null, '
+    '"powerUpDust": number|null, '
     '"type": string|null, "weight": string|null, "height": string|null, '
     '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, '
     '"evolveCandy": number|null, "atkIV": number|null, "defIV": number|null, '
@@ -664,9 +665,15 @@ VIDEO_IMPORT_PROMPT = (
     "numbers, return null for all three.\n"
     "- NEVER convert bar length, bar colour, star count or the appraisal phrase into "
     "an IV number. A full red bar is not 15.\n"
+    "- powerUpDust is the SMALL stardust number printed directly on/beside the POWER "
+    "UP button on a detail screen (next to a small candy count) \u2014 completely "
+    "different from the large comma-grouped account-wide stardust balance elsewhere "
+    "on screen. If the Power Up button is greyed out, missing, or shows only an XL "
+    "Candy icon with no stardust number, return null; never guess it from the balance "
+    "figure or from candy count alone.\n"
     "- The same Pokemon often appears on both screen kinds across frames: take "
-    "CP/HP/candy from the detail frames and the IV numbers from the appraisal "
-    "frames, and merge them into one entry.\n"
+    "CP/HP/candy/powerUpDust from the detail frames and the IV numbers from the "
+    "appraisal frames, and merge them into one entry.\n"
     "- Use null for any FIELD not clearly visible. Never guess a field value \u2014 "
     "but never drop the Pokemon itself over a missing field."
 )

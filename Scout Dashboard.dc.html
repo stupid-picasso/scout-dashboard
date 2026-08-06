@@ -4153,7 +4153,32 @@ class Component extends DCLogic {
         const solveBase = mechanics.BASE_STATS[item.dex];
         if (solveBase) {
           try {
-            const cands = mechanics.solveIVs(solveBase, item.cp, item.hp);
+            // CP+HP alone is usually ambiguous across dozens of level/IV
+            // combos. The stardust cost printed on the Power Up button is a
+            // fixed, public function of level only (Niantic's own cost
+            // table), so reversing it narrows the search to the 1-2 levels
+            // that could actually produce that cost \u2014 the same trick
+            // third-party IV checkers use instead of requiring an appraisal.
+            // Only levels 1-25 are covered (the cost table plateaus above
+            // that and stops narrowing anything); levelsForPowerUpDust
+            // returns [] whenever it can't confidently narrow, in which case
+            // this silently falls back to the old unrestricted solve.
+            let levelFilter = null;
+            if (item.powerUpDust != null && mechanics.levelsForPowerUpDust) {
+              const levels = mechanics.levelsForPowerUpDust(item.powerUpDust, {
+                lucky: !!item.lucky,
+                shadow: !!item.shadow,
+                purified: item.shadowPurified === '1' && !item.shadow
+              });
+              if (levels && levels.length) levelFilter = levels;
+            }
+            let cands = mechanics.solveIVs(solveBase, item.cp, item.hp, null, levelFilter);
+            // A bad OCR read of powerUpDust could narrow to the wrong level
+            // and wipe out every real candidate; if that happens, fall back
+            // to the unrestricted solve rather than reporting "unsolvable".
+            if ((!cands || !cands.length) && levelFilter) {
+              cands = mechanics.solveIVs(solveBase, item.cp, item.hp);
+            }
             if (cands && cands.length) {
               const c = this.pickCandidate(cands);
               item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;

@@ -818,15 +818,78 @@ function statProductFor(base, ivs, level) {
   return atk * def * hp;
 }
 
+// Stardust cost to Power Up FROM level N to N+0.5, index 0 = level 1.
+// Sourced directly from Niantic's live datamined game-master config
+// (POKEMON_UPGRADE_SETTINGS.pokemonUpgrades.stardustCost, PokeMiners/game_masters,
+// verified against this array's own candyCost sibling and known low-level costs).
+// Each value repeats across exactly 2 consecutive half-levels EXCEPT the final
+// entry (15000 @ level 25), which the game reuses flat for every level from 25
+// up to the XL Candy boundary (level 40) \u2014 so 15000 does NOT narrow anything
+// and is deliberately excluded from the reverse lookup below.
+const STARDUST_COST_PER_HALF_LEVEL = [
+  200, 200, 400, 400, 600, 600, 800, 800, 1000, 1000,
+  1300, 1300, 1600, 1600, 1900, 1900, 2200, 2200, 2500, 2500,
+  3000, 3000, 3500, 3500, 4000, 4000, 4500, 4500, 5000, 5000,
+  6000, 6000, 7000, 7000, 8000, 8000, 9000, 9000, 10000, 10000,
+  11000, 11000, 12000, 12000, 13000, 13000, 14000, 14000, 15000
+];
+
+// dust value -> [levels...] that cost exactly that much to power up from.
+// Built once; every value below the final 15000 maps to exactly 2 levels.
+const _STARDUST_TO_LEVELS = (() => {
+  const map = {};
+  STARDUST_COST_PER_HALF_LEVEL.forEach((dust, i) => {
+    if (dust === 15000) return; // flat/plateaued past level 25 \u2014 not useful for narrowing
+    const level = 1 + i * 0.5;
+    (map[dust] = map[dust] || []).push(level);
+  });
+  return map;
+})();
+
+// Reverses an OCR'd "Power Up" stardust cost into the small set of Pokemon
+// levels that could produce it, undoing the lucky/shadow/purified cost
+// multipliers first. Returns [] when the cost can't be matched (bad OCR,
+// already-maxed Pokemon showing no Power Up button, or the ambiguous 15000
+// plateau) \u2014 callers should treat an empty result as "no extra info",
+// not as an error.
+function levelsForPowerUpDust(observedDust, opts) {
+  if (observedDust == null || !Number.isFinite(observedDust)) return [];
+  opts = opts || {};
+  let mult = 1;
+  if (opts.lucky) mult *= 0.5;
+  if (opts.shadow) mult *= 1.2;
+  if (opts.purified) mult *= 0.9;
+  const normalized = observedDust / mult;
+  // In-game costs round to the nearest displayed value; allow a small
+  // tolerance around the multiplier reversal rather than requiring exact
+  // floating-point equality.
+  let best = null, bestDiff = Infinity;
+  for (const dustKey of Object.keys(_STARDUST_TO_LEVELS)) {
+    const diff = Math.abs(Number(dustKey) - normalized);
+    if (diff < bestDiff) { bestDiff = diff; best = dustKey; }
+  }
+  if (best == null || bestDiff > Number(best) * 0.05) return [];
+  return _STARDUST_TO_LEVELS[best].slice();
+}
+
 // Brute-force every level/IV combo matching an observed CP and HP exactly.
 // `hint` optionally narrows the result using what the in-game appraisal shows:
 //   { stars: 0-4, maxed: ['atk','def','sta'] }
 // Star tiers are total-IV bands, and a "maxed" bar means that stat is exactly
 // 15. CP+HP alone often leaves dozens of spreads on low-CP Pokemon; the
 // appraisal collapses that to one or two without needing exact printed numbers.
-function solveIVs(base, cp, hp, hint) {
+// `levelFilter`, if given, restricts the search to only those levels (e.g.
+// the 1-2 levels implied by an OCR'd Power Up stardust cost via
+// levelsForPowerUpDust) instead of every level 1-51 \u2014 the same kind of
+// narrowing an appraisal gives, but derived from a number visible on every
+// detail screen instead of a separate appraisal screen.
+function solveIVs(base, cp, hp, hint, levelFilter) {
   const candidates = [];
-  const levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
+  let levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
+  if (Array.isArray(levelFilter) && levelFilter.length) {
+    const allowed = new Set(levelFilter);
+    levels = levels.filter(l => allowed.has(l));
+  }
   for (const level of levels) {
     for (let staIV = 0; staIV <= 15; staIV++) {
       if (hpFor(base, staIV, level) !== hp) continue;
@@ -928,6 +991,6 @@ function rankPctForLeague(base, ivs, leagueKey) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague };
+  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }
