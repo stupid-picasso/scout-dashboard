@@ -1406,6 +1406,7 @@ window.__spriteUrl = function (file) {
           <div style="font:11px sans-serif;color:oklch(50% 0.02 260)">Wipes every Pokemon and all candy/XL counts before a fresh import. Stardust, resources and settings are kept.</div>
         </sc-if>
       </div>
+      <div style="font:11px ui-monospace,monospace;color:oklch(48% 0.02 260);letter-spacing:.04em">BUILD {{ buildTag }}</div>
       <sc-if value="{{ hasVideoImport }}" hint-placeholder-val="{{ false }}">
         <div style="background:oklch(19% 0.03 280);border:1px solid oklch(38% 0.06 280);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;justify-content:space-between;align-items:center">
@@ -6675,6 +6676,9 @@ class Component extends DCLogic {
       signOutCloud: () => this.signOutCloud(),
       migrateStatsAndSprites: () => this.migrateStatsAndSprites(),
       refreshCloudGameData: () => this.refreshCloudGameData(),
+      // Set by the bundle's helmet. Shown so "did the deploy actually land?" is
+      // answerable on the phone instead of guessed at.
+      buildTag: (typeof window !== 'undefined' && window.SCOUT_BUILD) || 'dev',
       cloudDataRefreshLabel: (() => {
         const r = this.state.cloudDataRefresh;
         if (!r) return '';
