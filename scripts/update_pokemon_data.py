@@ -30,6 +30,13 @@ NEW_POKEMON_PATH = os.path.join(REPO_ROOT, "data", "new_pokemon.json")
 SPRITE_DIR = os.path.join(REPO_ROOT, "sprites")
 
 POGOAPI_STATS_URL = "https://pogoapi.net/api/v1/pokemon_stats.json"
+# The two tables the IV solver runs on. Both are derived from Niantic's own
+# GAME_MASTER (PokeMiners mirrors the raw file; pogoapi.net republishes the
+# relevant slices as clean JSON), which is the same source PokeGenie/CalcyIV
+# ultimately read. Hand-typing either one is how the level 41+ Stardust tiers
+# ended up wrong, so both are now regenerated from the API on every run.
+POGOAPI_CPM_URL = "https://pogoapi.net/api/v1/cp_multiplier.json"
+POGOAPI_POWERUP_URL = "https://pogoapi.net/api/v1/pokemon_powerup_requirements.json"
 # Public sprite source used only for brand-new dex numbers we don't have a
 # local sprite for yet (existing 1025 sprites are untouched).
 SPRITE_URL_TEMPLATE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{dex}.png"
@@ -170,7 +177,7 @@ def main():
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
         with open(gh_out, "a", encoding="utf-8") as f:
-            f.write(f"stat_fixes={len(stat_fixes)}\n")
+            f.write(f"stat_fixes={len(stat_fixes) + mech_table_fixes}\n")
             f.write(f"new_pokemon={len(new_pokemon)}\n")
 
 
