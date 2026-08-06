@@ -4133,10 +4133,14 @@ class Component extends DCLogic {
         dupes.push({ name: item.name, cp: item.cp });
       }
       seenThisImport.set(dupeKey, true);
+      // Species-name-only fallback used to match here too, which silently
+      // merged distinct individuals of the same species (different CP) into
+      // one roster entry \u2014 losing whichever catch's data lost the race.
+      // CP is part of a Pokemon's identity for import purposes: same species
+      // + same CP is "the same catch seen again"; same species + different
+      // CP is a different individual and must become its own entry.
       const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
-        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
-        || roster.find(p => p.name.toLowerCase() === nameLower)
-        || added.find(p => p.name.toLowerCase() === nameLower);
+        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp);
       let ivPatch = {};
       let solvedFrom = null;
       // The detail screen never prints IVs, but CP + HP + base stats pin them
