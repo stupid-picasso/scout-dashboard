@@ -4466,8 +4466,14 @@ class Component extends DCLogic {
   // Build a solveIVs hint from an appraisal item. When all three bars are maxed
   // (or the model flagged perfect), the total is pinned to 45 — the star band
   // must be the perfect band or it would contradict the maxed filter.
+  // Star tier + full-bar flags read by the model are a GUESS, not a measurement.
+  // A wrong guess plus CP/HP can still collapse to exactly one spread, which is
+  // the worst case: a confident, pinned, wrong IV (Absol pinned 14/10/13 against
+  // a true 14/15/15 this way). So an unmeasured item's hint is discarded and the
+  // solve runs on CP/HP alone — unique there is real, anything else stays a range.
   appraisalHintFromItem(item) {
     if (!item) return null;
+    if (item.ivSource === 'model-guess') return { stars: null, maxed: null, maxedKnown: false };
     const maxed = Array.isArray(item.maxed) ? item.maxed.filter(s => ['atk', 'def', 'sta'].includes(s)) : [];
     const allMaxed = maxed.length === 3;
     const hint = {};

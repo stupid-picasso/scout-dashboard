@@ -5406,8 +5406,13 @@ class Component extends DCLogic {
     return [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !removedSet.has(p.idx));
   }
 
+  // Star tier + full-bar flags read by the model are a GUESS, not a measurement.
+  // A wrong guess plus CP/HP can still collapse to exactly one spread \u2014 a
+  // confident, pinned, WRONG IV. So an unmeasured item's hint is discarded and
+  // the solve runs on CP/HP alone.
   appraisalHintFromItem(item) {
     if (!item) return null;
+    if (item.ivSource === 'model-guess') return { stars: null, maxed: null, maxedKnown: false };
     const maxed = Array.isArray(item.maxed) ? item.maxed.filter(s => ['atk', 'def', 'sta'].includes(s)) : [];
     const allMaxed = maxed.length === 3;
     const hint = {};

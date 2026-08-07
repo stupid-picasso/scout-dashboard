@@ -968,6 +968,263 @@ APPRAISAL_ID_PROMPT = (
 )
 
 
+def _row_dark_runs(px, y, W, min_run):
+    """Split one row into runs of "darker than this row's midpoint".
+
+    The threshold is derived per row from that row's own min/max luminance, so
+    it holds whatever the bar's actual colour is — red on white, green on cream,
+    or a re-encoded video frame whose colours have drifted. Nothing here refers
+    to a specific hue.
+    """
+    xlo, xhi = int(W * 0.02), int(W * 0.98)
+    lo, hi = 255.0, 0.0
+    for x in range(xlo, xhi):
+        r, g, b = px[x, y]
+        l = 0.299 * r + 0.587 * g + 0.114 * b
+        if l < lo:
+            lo = l
+        if l > hi:
+            hi = l
+    if hi - lo < 45:
+        return []
+    t = (lo + hi) / 2.0
+    runs, start = [], None
+    for x in range(xlo, xhi):
+        r, g, b = px[x, y]
+        dark = (0.299 * r + 0.587 * g + 0.114 * b) < t
+        if dark and start is None:
+            start = x
+        elif not dark and start is not None:
+            runs.append((start, x - 1))
+            start = None
+    if start is not None:
+        runs.append((start, xhi - 1))
+    return [r for r in runs if r[1] - r[0] + 1 >= min_run]
+
+
+def _bar_groups(runs, W):
+    """Cluster a row's runs into bar-shaped groups: 2-3 runs of equal width
+    separated by narrow gaps. That shape is what an appraisal bar IS — three
+    segments, the last possibly cut short by the fill — and almost nothing else
+    on the screen looks like it."""
+    if not runs:
+        return []
+    groups, cur = [], [runs[0]]
+    for i in range(1, len(runs)):
+        gap = runs[i][0] - runs[i - 1][1] - 1
+        w = runs[i - 1][1] - runs[i - 1][0] + 1
+        if gap <= max(6, w * 0.35):
+            cur.append(runs[i])
+        else:
+            groups.append(cur)
+            cur = [runs[i]]
+    groups.append(cur)
+    out = []
+    for gr in groups:
+        if not (2 <= len(gr) <= 3):
+            continue
+        widths = [r[1] - r[0] + 1 for r in gr]
+        complete = widths[:-1]          # the last segment may be partly filled
+        lo, hi = min(complete), max(complete)
+        if hi - lo > max(3, hi * 0.15):
+            continue
+        if widths[-1] > hi * 1.15:
+            continue
+        span = gr[-1][1] - gr[0][0] + 1
+        if span < W * 0.10 or span > W * 0.80:
+            continue
+        out.append({"x0": gr[0][0], "fill_end": gr[-1][1],
+                    "seg_w": (lo + hi) // 2,
+                    "gap": gr[1][0] - gr[0][1] - 1})
+    return out
+
+
+def _median(vals):
+    s = sorted(vals)
+    return s[len(s) // 2]
+
+
+def measure_appraisal_bars_structural(image_path):
+    """Colour-free fallback reader.
+
+    Finds the bars by SHAPE rather than hue: three parallel rows, each made of
+    equal-width segments with narrow gaps, sharing a left edge and evenly
+    spaced. The full bar width is reconstructed from the segment geometry
+    (3 segments + 2 gaps), so a bar that is only part-filled still yields a
+    correct denominator without needing to see its unfilled remainder.
+
+    This exists because the colour thresholds in _bar_px_kind were calibrated on
+    PNG screenshots and find nothing at all on frames that have been through
+    video encoding and rescaling — a recording measured 0/20 frames while the
+    same screen as a screenshot measured perfectly.
+    """
+    try:
+        img = Image.open(image_path).convert("RGB")
+    except Exception:
+        return None
+    W, H = img.size
+    if W < 200 or H < 200:
+        return None
+    px = img.load()
+    min_run = max(6, int(W * 0.02))
+
+    cand = []
+    for y in range(int(H * 0.35), H):
+        runs = _row_dark_runs(px, y, W, min_run)
+        if len(runs) < 2:
+            continue
+        for g in _bar_groups(runs, W):
+            g["y"] = y
+            cand.append(g)
+    if not cand:
+        return None
+
+    bands, cur = [], []
+    for r in cand:
+        if cur and r["y"] - cur[-1]["y"] <= 2 and abs(r["x0"] - cur[0]["x0"]) <= max(3, W * 0.01):
+            cur.append(r)
+        else:
+            if len(cur) >= 3:
+                bands.append(cur)
+            cur = [r]
+    if len(cur) >= 3:
+        bands.append(cur)
+    if len(bands) < 3:
+        return None
+
+    def mid(b):
+        return b[len(b) // 2]
+
+    best = None
+    for i in range(len(bands)):
+        for j in range(i + 1, len(bands)):
+            for k in range(j + 1, len(bands)):
+                t = [mid(bands[i]), mid(bands[j]), mid(bands[k])]
+                xs = [r["x0"] for r in t]
+                if max(xs) - min(xs) > max(3, W * 0.01):
+                    continue
+                g1 = t[1]["y"] - t[0]["y"]
+                g2 = t[2]["y"] - t[1]["y"]
+                if abs(g1 - g2) > max(5, H * 0.01):
+                    continue
+                sw = [r["seg_w"] for r in t]
+                if max(sw) - min(sw) > max(3, max(sw) * 0.15):
+                    continue
+                # Prefer the lowest trio on screen: the appraisal card sits
+                # below everything else it could be confused with.
+                if best is None or t[0]["y"] > best[0][0]["y"]:
+                    best = (t, [bands[i], bands[j], bands[k]])
+    if best is None:
+        return None
+
+    trio = best[1]
+    allrows = [r for b in trio for r in b]
+    seg_w = _median([r["seg_w"] for r in allrows])
+    gap = _median([r["gap"] for r in allrows])
+    x0 = _median([r["x0"] for r in allrows])
+    width = 3 * seg_w + 2 * gap
+    if width <= 0:
+        return None
+
+    raw = []
+    for b in trio:
+        vals = sorted(15.0 * (r["fill_end"] - x0 + 1) / width for r in b)
+        raw.append(vals[len(vals) // 2])
+    ivs = [int(round(v)) for v in raw]
+    if any(v < 0 or v > 15 for v in ivs):
+        return None
+    drift = max(abs(v - round(v)) for v in raw)
+    if drift > 0.45:
+        return None
+    cands = []
+    for v, iv in zip(raw, ivs):
+        alt = [iv]
+        nb = iv + (1 if v > iv else -1)
+        if abs(v - iv) > 0.2 and 0 <= nb <= 15:
+            alt.append(nb)
+        cands.append(alt)
+    return {"atk": ivs[0], "def": ivs[1], "sta": ivs[2],
+            "raw": [round(v, 3) for v in raw],
+            "rawSegment": [None, None, None],
+            "maxDrift": round(drift, 3), "rowSpread": 0.0,
+            "confidence": "high" if drift < 0.2 else "low",
+            "candidates": cands, "method": "structural"}
+
+
+def measure_appraisal_bars_any(image_path):
+    """Colour reader first (exact on native screenshots), shape reader second."""
+    m = measure_appraisal_bars(image_path)
+    if m:
+        m.setdefault("method", "colour")
+        return m
+    return measure_appraisal_bars_structural(image_path)
+
+
+def _dump_bar_diagnostics(frames, out_dir="data/debug_bars"):
+    """Save a few frames and report what the bar-colour test actually saw.
+
+    Measurement failing on every frame is not debuggable from a boolean. The
+    thresholds in _bar_px_kind were calibrated on PNG screenshots; frames that
+    come out of ffmpeg can differ in colour range (tone mapping, chroma
+    subsampling, rescaling), so this prints the real numbers instead of guessing
+    at them, and commits the frames so the geometry can be checked directly.
+    """
+    if not frames:
+        return
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        picks = [frames[len(frames) // 2]]
+        if len(frames) > 3:
+            picks = [frames[len(frames) // 4], frames[len(frames) // 2],
+                     frames[(3 * len(frames)) // 4]]
+        for n, path in enumerate(picks):
+            img = Image.open(path).convert("RGB")
+            W, H = img.size
+            img.save(os.path.join(out_dir, f"frame_{n + 1}.png"))
+            px = img.load()
+            fill = track = 0
+            near_fill = near_track = 0
+            rows = {}
+            for y in range(int(H * 0.40), H, 2):
+                n_row = 0
+                for x in range(int(W * 0.04), int(W * 0.96), 3):
+                    r, g, b = px[x, y]
+                    mx, mn = max(r, g, b), min(r, g, b)
+                    k = _bar_px_kind(r, g, b)
+                    if k == "fill":
+                        fill += 1
+                        n_row += 1
+                    elif k == "track":
+                        track += 1
+                        n_row += 1
+                    else:
+                        # How close did it come? Saturated-but-dim, or pale but
+                        # not quite in the track's grey window.
+                        if mx > 90 and (mx - mn) > 25 and r > b:
+                            near_fill += 1
+                        elif 180 < mx < 252 and (mx - mn) < 25:
+                            near_track += 1
+                if n_row:
+                    rows[y] = n_row
+            best = sorted(rows.items(), key=lambda kv: -kv[1])[:4]
+            print(f"[Bars][debug] {os.path.basename(path)} {W}x{H} "
+                  f"fill={fill} track={track} nearFill={near_fill} nearTrack={near_track}")
+            print(f"[Bars][debug]   busiest rows (y, hits): {best}")
+            # A colour census of the lower half tells us what the bar actually is.
+            census = {}
+            for y in range(int(H * 0.55), H, 4):
+                for x in range(int(W * 0.06), int(W * 0.62), 4):
+                    r, g, b = px[x, y]
+                    key = (r // 24 * 24, g // 24 * 24, b // 24 * 24)
+                    census[key] = census.get(key, 0) + 1
+            top = sorted(census.items(), key=lambda kv: -kv[1])[:8]
+            print(f"[Bars][debug]   top colours (lower area): {top}")
+        print(f"[Bars][debug] wrote {len(picks)} frame(s) to {out_dir}/ — "
+              f"open them to check the bars are actually on screen")
+    except Exception as e:
+        print(f"[Bars][debug] diagnostics failed: {e}")
+
+
 def run_appraisal_pipeline(frames):
     """Measure IVs off every frame's appraisal bars, collapse consecutive frames
     showing the same Pokemon, then ask Gemini only for the name/CP/HP on each
@@ -979,12 +1236,20 @@ def run_appraisal_pipeline(frames):
     the wrong Pokemon."""
     readings = []
     for idx, path in enumerate(frames):
-        readings.append((idx, path, measure_appraisal_bars(path)))
+        readings.append((idx, path, measure_appraisal_bars_any(path)))
     hits = [(i, p, m) for i, p, m in readings if m]
     print(f"[Bars] Measured appraisal bars on {len(hits)}/{len(frames)} frames")
     if not hits:
         print("[Bars] No appraisal bars found \u2014 falling back to the model-read prompt.")
-        return run_gemini_video_ocr(frames, prompt=APPRAISAL_PROMPT, merge_key=_appraisal_merge_key)
+        _dump_bar_diagnostics(frames)
+        items = run_gemini_video_ocr(frames, prompt=APPRAISAL_PROMPT,
+                                     merge_key=_appraisal_merge_key)
+        # These spreads are MODEL GUESSES, not measurements. Tagging them is what
+        # stops the client pinning them as exact IVs \u2014 which is exactly what
+        # produced wrong spreads (Absol read 14/10/13 against a true 14/15/15).
+        for it in items:
+            it["ivSource"] = "model-guess"
+        return items
 
     # Group frames into one-Pokemon runs. A run continues only while the frames
     # are ADJACENT in the original recording AND the spread is unchanged.
@@ -1030,13 +1295,14 @@ def run_appraisal_pipeline(frames):
         it["barRaw"], it["barDrift"] = m["raw"], m["maxDrift"]
         it["barSegmentRaw"] = m["rawSegment"]
         it["barConfidence"] = m["confidence"]
+        it["barMethod"] = m.get("method", "colour")
         it["ivCandidateSets"] = m["candidates"]
         items.append(it)
         alt = "" if all(len(c) == 1 for c in m["candidates"]) else \
             " alts " + "|".join(",".join(str(v) for v in c) for c in m["candidates"])
         print(f"[Bars] {it.get('name')} cp{it.get('cp')} hp{it.get('hp')} "
               f"\u2192 {m['atk']}/{m['def']}/{m['sta']} "
-              f"(drift {m['maxDrift']}, rows \u00b1{m['rowSpread']}, {m['confidence']}){alt}")
+              f"(drift {m['maxDrift']}, {m.get('method', 'colour')}, {m['confidence']}){alt}")
 
     # Same individual can appear twice in one recording; keep the first.
     seen, out = set(), []
