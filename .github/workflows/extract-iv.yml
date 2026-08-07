@@ -1,0 +1,127 @@
+name: Extract IV Ratings
+
+on:
+  push:
+    paths:
+      - 'appraisal_videos/*.mp4'
+      - 'appraisal_videos/*.mov'
+  workflow_dispatch:
+    inputs:
+      drive_link:
+        description: 'Google Drive share link to an APPRAISAL screen recording (must be set to "Anyone with the link")'
+        required: false
+        default: ''
+      fps:
+        description: 'Frames per second for extraction'
+        required: false
+        default: '6'
+      scene_detect:
+        description: 'Use scene detection instead of fixed FPS'
+        required: false
+        default: 'true'
+      scene_threshold:
+        description: 'Scene change threshold (0.0-1.0)'
+        required: false
+        default: '0.3'
+
+jobs:
+  extract-iv:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed so the auto-commit step can push its own results
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr tesseract-ocr-eng
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Download appraisal video from Google Drive
+        if: github.event_name == 'workflow_dispatch' && inputs.drive_link != ''
+        run: |
+          mkdir -p /tmp/drive_video
+          gdown "${{ inputs.drive_link }}" -O /tmp/drive_video/appraisal.mp4
+          echo "DRIVE_VIDEO_PATH=/tmp/drive_video/appraisal.mp4" >> $GITHUB_ENV
+
+      - name: Check for appraisal videos
+        id: check_videos
+        run: |
+          video_count=$(find appraisal_videos/ -type f \( -name '*.mp4' -o -name '*.mov' \) 2>/dev/null | wc -l)
+          echo "count=$video_count" >> $GITHUB_OUTPUT
+          echo "Found $video_count appraisal video(s) in appraisal_videos/"
+          if [ -n "$DRIVE_VIDEO_PATH" ]; then
+            echo "Plus one Drive-downloaded video: $DRIVE_VIDEO_PATH"
+          fi
+
+      - name: Extract IV ratings (repo appraisal_videos/*)
+        if: steps.check_videos.outputs.count > 0
+        run: |
+          FPS="${{ inputs.fps || '6' }}"
+          SCENE="${{ inputs.scene_detect || 'true' }}"
+          THRESH="${{ inputs.scene_threshold || '0.3' }}"
+          mkdir -p data
+          for video in appraisal_videos/*.mp4 appraisal_videos/*.mov; do
+            [ -f "$video" ] || continue
+            echo "Processing: $video"
+            if [ "$SCENE" = "true" ]; then
+              python pogo_extract.py --appraisal "$video" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
+            else
+              python pogo_extract.py --appraisal "$video" --fps "$FPS"
+            fi
+          done
+        env:
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
+
+      - name: Extract IV ratings (Google Drive link)
+        if: env.DRIVE_VIDEO_PATH != ''
+        run: |
+          FPS="${{ inputs.fps || '6' }}"
+          SCENE="${{ inputs.scene_detect || 'true' }}"
+          THRESH="${{ inputs.scene_threshold || '0.3' }}"
+          mkdir -p data
+          if [ "$SCENE" = "true" ]; then
+            python pogo_extract.py --appraisal "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
+          else
+            python pogo_extract.py --appraisal "$DRIVE_VIDEO_PATH" --fps "$FPS"
+          fi
+        env:
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
+
+      - name: Commit extracted IV ratings
+        if: steps.check_videos.outputs.count > 0 || env.DRIVE_VIDEO_PATH != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/appraisal_import.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-extract IV ratings from appraisal video [skip ci]"
+            for attempt in 1 2 3 4 5; do
+              if git push; then
+                break
+              fi
+              echo "Push rejected (attempt $attempt), fetching and rebasing..."
+              git fetch origin main
+              git rebase origin/main
+              if [ "$attempt" = "5" ]; then
+                echo "::error::Failed to push extracted IV ratings after $attempt attempts"
+                exit 1
+              fi
+            done
+          fi
