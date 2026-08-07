@@ -678,6 +678,35 @@ VIDEO_IMPORT_PROMPT = (
     "but never drop the Pokemon itself over a missing field."
 )
 
+# Appraisal recordings only — reads the star tier and which stat bars are
+# completely full (never a 0-15 IV number off a partial bar), matching the
+# phone app's appraisalPrompt(). The client's mergeAppraisalImport() turns
+# star tier + full bars + CP/HP into the exact spread.
+APPRAISAL_PROMPT = (
+    "These are frames from a Pokemon GO APPRAISAL screen recording. Each Pokemon is "
+    "shown on its appraisal view: a team-leader badge with a star rating, and three "
+    "labelled stat bars (Attack, Defense, HP). Identify every distinct Pokemon. Merge "
+    "repeat frames of the same Pokemon into one entry using the most complete data. "
+    "Respond with ONLY a JSON array, no markdown, no commentary. Each item: "
+    '{"name": string, "cp": number|null, "hp": number|null, "stars": 0|1|2|3|null, '
+    '"perfect": boolean, "maxed": string[]}. \n'
+    "RULES:\n"
+    "- name is the Pokemon name at the top of the card; cp is the CP badge; hp is the "
+    '"X / X HP" number (either figure).\n'
+    "- stars = how many stars are filled in the appraisal badge medallion (0, 1, 2, or "
+    "3). Use null only if the badge is not visible in any frame.\n"
+    "- perfect = true ONLY when the rating is a flawless 100% (the badge/bars are shown "
+    "fully red, or all three bars are completely full). Otherwise false.\n"
+    "- maxed = the subset of [\"atk\",\"def\",\"sta\"] whose bar is COMPLETELY full "
+    "— the coloured fill reaches the far right end of the bar. A bar that is nearly "
+    "full but has any grey gap at the right is NOT maxed. Use \"atk\" for the Attack "
+    "bar, \"def\" for Defense, \"sta\" for the HP bar. Return [] if no bar is "
+    "completely full.\n"
+    "- Do NOT output any 0-15 IV numbers. Report only the star tier and which bars are "
+    "full.\n"
+    "- Report every Pokemon whose name you can read, even if other fields are null."
+)
+
 # A single 1080px-wide phone-screenshot frame, re-encoded as base64 JPEG,
 # measures ~140-180K chars on its own \u2014 the old 180000 budget let almost
 # NO more than 1 frame per batch, so MAX_FRAMES_PER_BATCH=5 never actually
@@ -826,10 +855,27 @@ def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
                        status=resp.status_code)
 
 
-def run_gemini_video_ocr(frame_paths):
+def _video_merge_key(item):
+    return str(item["name"]).lower() + "|" + ("?" if item.get("cp") is None else str(item.get("cp")))
+
+
+def _appraisal_merge_key(item):
+    # Two different individuals of one species can share a CP; the HP tells them
+    # apart, so the appraisal merge keys on name+CP+HP (the client matches the
+    # same way).
+    return (str(item["name"]).lower() + "|"
+            + ("?" if item.get("cp") is None else str(item.get("cp")))
+            + "|" + ("?" if item.get("hp") is None else str(item.get("hp"))))
+
+
+def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None):
     """Batches frames, rotates 5 models x N keys the same way the phone app
-    does, and merges duplicate sightings across batches by name+CP. Returns a
-    list of item dicts matching the app's video-import JSON schema exactly."""
+    does, and merges duplicate sightings across batches. `prompt` and
+    `merge_key` are swapped out for the appraisal path; everything else
+    (rotation, cooldowns, JSON salvage) is shared. Returns a list of item
+    dicts matching whichever JSON schema the prompt asked for."""
+    if merge_key is None:
+        merge_key = _video_merge_key
     keys = get_gemini_keys()
     if not keys:
         raise RuntimeError(
@@ -905,7 +951,7 @@ def run_gemini_video_ocr(frame_paths):
             no_capacity_streak = 0
             key = usable_keys[attempts % len(usable_keys)]
             try:
-                reply = call_gemini(VIDEO_IMPORT_PROMPT, batch, model, key, note)
+                reply = call_gemini(prompt, batch, model, key, note)
                 arr = extract_json_array(reply)
                 if arr is None:
                     # Unparseable text is NOT a success \u2014 it's indistinguishable
@@ -948,7 +994,7 @@ def run_gemini_video_ocr(frame_paths):
     for item in collected:
         if not item or not item.get("name"):
             continue
-        key = str(item["name"]).lower() + "|" + ("?" if item.get("cp") is None else str(item.get("cp")))
+        key = merge_key(item)
         if key not in seen:
             seen[key] = dict(item)
             order.append(key)
@@ -965,6 +1011,7 @@ def run_gemini_video_ocr(frame_paths):
 def main():
     parser = argparse.ArgumentParser(description="Extract Pokemon data from video/screenshots")
     parser.add_argument("--video", help="Path to video file")
+    parser.add_argument("--appraisal", help="Path to an APPRAISAL screen recording (reads star tier + full bars only)")
     parser.add_argument("--image", help="Path to single image")
     parser.add_argument("--out", default="data/pokemon.csv", help="Output path (CSV for --image, JSON for --video)")
     parser.add_argument("--fps", type=int, default=6, help="Frames per second")
@@ -972,6 +1019,26 @@ def main():
     parser.add_argument("--scene-threshold", type=float, default=0.3, help="Scene change threshold")
     parser.add_argument("--json", action="store_true", help="Output JSON instead of CSV (--image path only)")
     args = parser.parse_args()
+
+    if args.appraisal:
+        # Appraisal recordings feed the app's "IMPORT IV FROM SERVER" step. We
+        # read only star tier + which bars are full and write the appraisal
+        # schema to data/appraisal_import.json; the client matches each reading
+        # to an already-imported Pokemon and solves the exact spread.
+        print(f"[Main] Processing appraisal recording: {args.appraisal}")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            frames = extract_frames(args.appraisal, tmpdir, args.fps, args.scene_detect, args.scene_threshold)
+            if not frames:
+                print("[Main] No frames extracted \u2014 nothing to do.")
+                sys.exit(1)
+            items = run_gemini_video_ocr(frames, prompt=APPRAISAL_PROMPT, merge_key=_appraisal_merge_key)
+
+        out_path = "data/appraisal_import.json"
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        with open(out_path, "w") as f:
+            json.dump(items, f, indent=2)
+        print(f"[Main] Wrote {len(items)} appraisal readings to {out_path}")
+        return
 
     if args.video:
         # --video now uses Gemini vision OCR (server-side, quota-pooled across
