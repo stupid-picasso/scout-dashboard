@@ -402,6 +402,8 @@ def dedupe_similar_frames(frames, threshold=4.0, sig_size=24):
 
 
 def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3):
+def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3,
+                   native=False):
     """Extract frames from video using ffmpeg.
 
     Scene-cut detection (select=gt(scene,N)) is tuned for hard cuts in
@@ -410,17 +412,27 @@ def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_thre
     threshold at all, so it can legitimately extract 0 frames. When that
     happens, fall back to fixed-fps sampling instead of failing outright.
 
-    Whichever path produces the frames, near-duplicate consecutive frames
-    are then collapsed (see dedupe_similar_frames) since fixed-fps sampling
-    in particular tends to way over-sample slow scrolls.
+    native=True skips the 1080px rescale. The rescale exists to keep Gemini
+    payloads small, but it is pure loss for anything MEASURED off the frame:
+    it resamples every bar edge, and on a recording narrower than 1080 it
+    upscales, inventing soft edges that were never captured. Frames sent to
+    Gemini are downscaled later (image_to_base64_jpeg), so the payload saving
+    is kept without paying for it in precision.
+
+    Both paths force out_range=full. A phone recording is usually tagged
+    limited range (16-235); decoding it without converting leaves every colour
+    compressed toward grey, which drops saturation by roughly 15% — enough on
+    its own to push a bar's fill colour under a saturation threshold and make
+    the bars undetectable.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    scale = "scale=iw:ih:out_range=full" if native else "scale=1080:-1:out_range=full"
 
     if scene_detect:
         frames = _run_ffmpeg_extract(
             video_path, output_dir,
-            f"select=gt(scene\\,{scene_threshold}),scale=1080:-1",
+            f"select=gt(scene\\,{scene_threshold}),{scale}",
             vfr_mode=True
         )
         print(f"[Extract] Scene-detect extracted {len(frames)} frames")
@@ -431,8 +443,9 @@ def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_thre
         print(f"[Extract] Scene-detect found 0 frames (threshold={scene_threshold}) "
               f"\u2014 falling back to fixed fps={fps} sampling")
 
-    frames = _run_ffmpeg_extract(video_path, output_dir, f"fps={fps},scale=1080:-1")
-    print(f"[Extract] Extracted {len(frames)} frames")
+    frames = _run_ffmpeg_extract(video_path, output_dir, f"fps={fps},{scale}")
+    print(f"[Extract] Extracted {len(frames)} frames"
+          + (" at native resolution" if native else ""))
     deduped = dedupe_similar_frames(frames)
     print(f"[Extract] {len(deduped)} frames remain after near-duplicate dedup")
     return deduped
@@ -1332,14 +1345,20 @@ def get_gemini_keys():
     return keys
 
 
-def image_to_base64_jpeg(path, quality=85):
+def image_to_base64_jpeg(path, quality=85, max_width=1080):
     """Loads a frame (ffmpeg outputs PNG) and re-encodes as base64 JPEG —
-    smaller payload, and Gemini's inline_data expects a mime type we control."""
+    smaller payload, and Gemini's inline_data expects a mime type we control.
+
+    Downscaling happens HERE rather than at extraction, so the measured frame
+    keeps every pixel while the uploaded copy stays small."""
     import io
     import base64
     img = Image.open(path)
     if img.mode not in ("RGB", "L"):
         img = img.convert("RGB")
+    if max_width and img.width > max_width:
+        h = max(1, round(img.height * max_width / img.width))
+        img = img.resize((max_width, h), Image.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=quality)
     return base64.b64encode(buf.getvalue()).decode("ascii")
@@ -1621,7 +1640,8 @@ def main():
         # Gemini is used only for the name/CP/HP printed on the same frame.
         print(f"[Main] Processing appraisal recording: {args.appraisal}")
         with tempfile.TemporaryDirectory() as tmpdir:
-            frames = extract_frames(args.appraisal, tmpdir, args.fps, args.scene_detect, args.scene_threshold)
+            frames = extract_frames(args.appraisal, tmpdir, args.fps, args.scene_detect,
+                                    args.scene_threshold, native=True)
             if not frames:
                 print("[Main] No frames extracted \u2014 nothing to do.")
                 sys.exit(1)
