@@ -19,7 +19,6 @@
 <meta name="apple-mobile-web-app-title" content="Professor">
 <meta name="theme-color" content="#12181f">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   body{margin:0;background:oklch(18% 0.025 260);}
   ::selection{background:oklch(45% 0.1 220);}
@@ -229,20 +228,7 @@
             <sc-if value="{{ geminiStatusLine }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ geminiStatusLine }}</div>
             </sc-if>
-            <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
-              <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.04em">FALLBACK &middot; GROQ</div>
-              <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Used when Gemini is rate-limited or out of quota. Free key at <a href="https://console.groq.com/keys" target="_blank" style="color:oklch(78% 0.13 220)">console.groq.com/keys</a> — 14,400 requests/day, 30 per minute, no card. One key is enough; Groq counts limits per account, so extra keys add nothing.</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                <input type="password" placeholder="gsk_…" value="{{ groqKeyDraft }}" onChange="{{ onGroqKeyDraftChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="flex:1 1 200px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:12px ui-monospace,monospace" />
-                <div onClick="{{ saveGroqKey }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">SAVE</div>
-                <sc-if value="{{ hasGroqKey }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ clearGroqKey }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.03 260);color:oklch(80% 0.01 260);font:700 11.5px ui-monospace,monospace">REMOVE</div>
-                </sc-if>
-              </div>
-              <sc-if value="{{ hasGroqKey }}" hint-placeholder-val="{{ false }}">
-                <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">Groq fallback active &mdash; 14,400 requests/day.</div>
-              </sc-if>
-            </div>
+
             <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:6px">
               <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.04em">TODAY'S USAGE</div>
               <sc-for list="{{ aiUsageRows }}" as="u" hint-placeholder-count="3">
@@ -255,7 +241,7 @@
             </div>
             <div style="border-top:1px solid oklch(30% 0.03 260);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
               <div style="font:600 10.5px ui-monospace,monospace;color:oklch(62% 0.02 260)">OR A SELF-HOSTED GATEWAY {{ customBadge }}</div>
-              <div style="font:12px sans-serif;color:oklch(70% 0.02 260);line-height:1.55">Any OpenAI-compatible endpoint — OmniRoute, OpenRouter, Groq. Must be reachable over HTTPS from this device (localhost will not work on your phone).</div>
+              <div style="font:12px sans-serif;color:oklch(70% 0.02 260);line-height:1.55">Any OpenAI-compatible endpoint — OmniRoute, OpenRouter. Must be reachable over HTTPS from this device (localhost will not work on your phone).</div>
               <input type="text" placeholder="https://your-gateway.example.com/v1" value="{{ customBaseDraft }}" onChange="{{ onCustomBaseChange }}" style="background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <input type="text" placeholder="model (e.g. auto)" value="{{ customModelDraft }}" onChange="{{ onCustomModelChange }}" style="flex:1 1 130px;background:oklch(23% 0.03 260);border:1px solid oklch(38% 0.03 260);color:oklch(92% 0.01 260);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
@@ -534,7 +520,7 @@
             <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1 1 90px;text-align:center;padding:9px;border-radius:6px;background:oklch(30% 0.03 260);color:oklch(80% 0.01 260);font:700 12px ui-monospace,monospace">CANCEL</div>
           </div>
           <details style="margin-top:2px">
-            <summary style="cursor:pointer;font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">Raw OCR text (debug)</summary>
+            <summary style="cursor:pointer;font:10.5px ui-monospace,monospace;color:oklch(55% 0.02 260)">Raw read (debug)</summary>
             <pre style="white-space:pre-wrap;font:10.5px ui-monospace,monospace;color:oklch(60% 0.02 260);background:oklch(16% 0.02 260);padding:8px;border-radius:6px;max-height:160px;overflow:auto">{{ ocrParsedDisplay.rawText }}</pre>
           </details>
           <div style="border-top:1px solid oklch(32% 0.04 220);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
@@ -575,7 +561,9 @@
                   <sc-if value="{{ solvedIvResult.ambiguous }}" hint-placeholder-val="{{ false }}">
                     <div style="font:11px sans-serif;color:oklch(70% 0.02 260)">{{ solvedIvResult.ambiguous }}</div>
                   </sc-if>
-                  <div onClick="{{ applySolvedIv }}" style="cursor:pointer;margin-top:4px;text-align:center;padding:8px;border-radius:5px;background:oklch(50% 0.13 150);color:white;font:700 11.5px ui-monospace,monospace">ADD/UPDATE IN ROSTER</div>
+                  <sc-if value="{{ solvedIvResult.canApply }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ applySolvedIv }}" style="cursor:pointer;margin-top:4px;text-align:center;padding:8px;border-radius:5px;background:oklch(50% 0.13 150);color:white;font:700 11.5px ui-monospace,monospace">ADD/UPDATE IN ROSTER</div>
+                  </sc-if>
                 </div>
               </sc-if>
             </sc-if>
@@ -1186,8 +1174,6 @@ class Component extends DCLogic {
     geminiKey: '',
     geminiKeys: [],
     geminiKeyDraft: '',
-    groqKey: '',
-    groqKeyDraft: '',
     customBaseUrl: '',
     customModel: '',
     customApiKey: '',
@@ -1254,7 +1240,11 @@ class Component extends DCLogic {
       const savedRoster = this.loadRoster();
       const wasCleared = localStorage.getItem('scout_roster_cleared_v1') === '1';
       if (wasCleared) this.setState({ rosterCleared: true });
-      this.setState({ roster: this.sanitizeRoster(savedRoster || (wasCleared ? [] : data) || []), loaded: true });
+      // `savedRoster` is null ONLY when nothing was ever saved. An empty array
+      // must win over the bundled demo export, so this tests for null rather
+      // than falsiness — `[] || data` would hand back the demo Pokemon.
+      const seed = savedRoster !== null ? savedRoster : (wasCleared ? [] : (data || []));
+      this.setState({ roster: this.sanitizeRoster(seed), loaded: true });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
@@ -1274,8 +1264,6 @@ class Component extends DCLogic {
         // Migrate the old single-key storage.
         this.setState({ geminiKeys: [gk], geminiKey: gk, geminiKeyDraft: gk });
       }
-      const qk = localStorage.getItem('scout_groq_key_v1');
-      if (qk) this.setState({ groqKey: qk, groqKeyDraft: qk });
     } catch (e) {}
     try {
       const cb = localStorage.getItem('scout_custom_base_v1');
@@ -1374,7 +1362,7 @@ class Component extends DCLogic {
   }
 
   SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'groqKey'];
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -1604,15 +1592,12 @@ class Component extends DCLogic {
       geminiKeyDraft: this.state.geminiKeyDraft
         || ((this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys.join('\n') : '')
         || ((remote.geminiKeys && remote.geminiKeys.length) ? remote.geminiKeys.join('\n') : (remote.geminiKey || '')),
-      groqKey: this.state.groqKey || remote.groqKey || '',
-      groqKeyDraft: this.state.groqKeyDraft || this.state.groqKey || remote.groqKey || '',
       ...(cloudClearBeatsLocal ? { rosterCleared: true } : {})
     };
     this.setState(patch, () => { this._applyingRemote = false; });
     try {
       if (patch.geminiKey) localStorage.setItem('scout_gemini_key_v1', patch.geminiKey);
       if (patch.geminiKeys && patch.geminiKeys.length) localStorage.setItem('scout_gemini_keys_v1', JSON.stringify(patch.geminiKeys));
-      if (patch.groqKey) localStorage.setItem('scout_groq_key_v1', patch.groqKey);
       localStorage.setItem('scout_roster_v1', JSON.stringify(patch.roster));
       localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(patch.ivOverrides));
       localStorage.setItem('scout_added_v1', JSON.stringify(patch.addedPokemon));
@@ -2116,53 +2101,6 @@ class Component extends DCLogic {
     return canvas;
   }
 
-  async loadTesseract() {
-    if (window.Tesseract) return window.Tesseract;
-    if (!window.__scoutTesseractPromise) {
-      window.__scoutTesseractPromise = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-        s.onload = () => resolve(window.Tesseract);
-        s.onerror = () => reject(new Error('Could not load the OCR engine \u2014 check your connection.'));
-        document.head.appendChild(s);
-      });
-    }
-    return window.__scoutTesseractPromise;
-  }
-
-  // Single OCR pass. Tesseract.js v5 ignores tessedit_char_whitelist passed as a
-  // recognize() option (params need createWorker + setParameters), so a "digit
-  // pass" here was a byte-identical duplicate costing ~1.8s for nothing.
-  async runOCR(canvas) {
-    if (!window.Tesseract) await this.loadTesseract();
-    const result = await window.Tesseract.recognize(canvas, 'eng');
-    return (result && result.data && result.data.text) || '';
-  }
-
-  // Matches OCR text against the full DEX_NAMES table (all 1025 species) via
-  // mechanics.resolveDexByName — Tesseract reads species names far more reliably
-  // than numbers, so anchoring on the name is what makes the rest usable.
-  findPokemonName(text) {
-    const m = this.mechanics;
-    if (!m || !m.resolveDexByName) return null;
-    const lines = String(text).split('\n').slice(0, 20);
-    for (const line of lines) {
-      const clean = line.trim().replace(/[^A-Za-z0-9 '.\-]/g, '').trim();
-      if (clean.length < 3 || clean.length > 24) continue;
-      if (/^(CP|HP|XL|STARDUST|CANDY|WEIGHT|HEIGHT|POWER UP|EVOLVE|APPRAISE|TRANSFER)$/i.test(clean)) continue;
-      if (m.resolveDexByName(clean) != null) return this.capitalizeName(clean);
-      const words = clean.split(/\s+/);
-      for (let i = 0; i < words.length; i++) {
-        for (let j = i + 1; j <= Math.min(i + 3, words.length); j++) {
-          const phrase = words.slice(i, j).join(' ');
-          if (phrase.length < 3) continue;
-          if (m.resolveDexByName(phrase) != null) return this.capitalizeName(phrase);
-        }
-      }
-    }
-    return null;
-  }
-
   capitalizeName(str) {
     return String(str).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   }
@@ -2304,86 +2242,15 @@ class Component extends DCLogic {
       const saved = localStorage.getItem('scout_roster_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
+        // An EMPTY saved roster is a real state ("I deleted everything"), not
+        // "nothing saved". Returning null for it made it indistinguishable from
+        // a fresh install, so componentDidMount re-seeded the bundled demo
+        // export from pokemon-data.js — five Pokemon with hardcoded IVs
+        // reappearing on their own. Only a missing/corrupt key is null now.
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
     return null;
-  }
-
-  parsePokemonText(text) {
-    const rec = {};
-    const lines = String(text).split('\n').map(l => l.trim()).filter(Boolean);
-    const name = this.findPokemonName(text);
-    if (name) rec.pokemon_name = name;
-
-    const hpMatch = text.match(/(\d{1,4})\s*\/\s*\d{1,4}\s*HP/i) || text.match(/HP\D{0,4}(\d{1,4})/i) || text.match(/(\d{1,4})\s*HP\b/i);
-    if (hpMatch) rec.hp = parseInt(hpMatch[1], 10);
-
-    const labeledCp = text.match(/CP\D{0,4}(\d{2,5})/i);
-    if (labeledCp) rec.cp = parseInt(labeledCp[1], 10);
-    if (rec.cp == null) {
-      // Tesseract routinely mangles the stylized CP badge: "CP100" comes back as
-      // "cr100", "cP1OO", "c?100". Accept C + one wrong letter + digits.
-      const fuzzyCp = text.match(/\bc[prf][^\dA-Za-z]{0,2}(\d{2,5})\b/i);
-      if (fuzzyCp) rec.cp = parseInt(fuzzyCp[1], 10);
-    }
-    if (rec.cp == null) {
-      // Strip comma-grouped numbers (stardust) wholesale before scanning: "148,482"
-      // yielded CP 148 from the head, and 482 still leaked from the tail.
-      const withoutGrouped = text.replace(/\d{1,3}(?:,\d{3})+/g, ' ');
-      const generic = (withoutGrouped.match(/\b\d{3,5}\b/g) || [])
-        .map(n => parseInt(n, 10))
-        .find(n => n !== rec.hp);
-      if (generic != null) rec.cp = generic;
-    }
-
-    const xlMatch = text.match(/(\d{1,4})\D{0,15}CANDY\D{0,3}XL/i) || text.match(/XL\D{0,15}CANDY\D{0,5}(\d{1,4})/i)
-      || text.match(/CANDY\D{0,3}XL\D{0,5}(\d{1,4})/i) || text.match(/(\d{1,4})\D{0,10}XL\b/i);
-    if (xlMatch) rec.xl_candy = parseInt(xlMatch[1], 10);
-    const candyLine = lines.find(l => /CANDY/i.test(l) && !/XL/i.test(l) && /\d/.test(l));
-    if (candyLine) {
-      const cm = candyLine.match(/(\d+)/);
-      if (cm) rec.candy = parseInt(cm[1], 10);
-    } else {
-      const candyMatch = text.match(/(\d{1,4})\D{0,20}?CANDY(?!\D{0,3}XL)/i);
-      if (candyMatch) rec.candy = parseInt(candyMatch[1], 10);
-    }
-
-    const typePattern = /\b(Normal|Fire|Water|Grass|Electric|Ice|Fighting|Poison|Ground|Flying|Psychic|Bug|Rock|Ghost|Dragon|Dark|Steel|Fairy)\b/gi;
-    const types = [];
-    let tm;
-    while ((tm = typePattern.exec(text)) !== null) {
-      const t = tm[1].charAt(0).toUpperCase() + tm[1].slice(1).toLowerCase();
-      if (!types.includes(t)) types.push(t);
-    }
-    if (types.length) rec.type_1 = types[0];
-    if (types.length > 1) rec.type_2 = types[1];
-
-    const wt = text.match(/(\d+\.\d+)\s*kg/i);
-    if (wt) rec.weight = wt[1];
-    const ht = text.match(/(\d+\.\d+)\s*m\b/i);
-    if (ht) rec.height = ht[1];
-    const dust = text.match(/([\d,]+)\s*STARDUST/i);
-    if (dust) rec.stardust = parseInt(dust[1].replace(/,/g, ''), 10);
-    // Guard against the stardust figure leaking into CP via a bad label match.
-    if (rec.stardust != null && rec.cp != null && String(rec.stardust).startsWith(String(rec.cp)) && rec.cp > 99) {
-      rec.cp = null;
-    }
-
-    const atk = text.match(/Atk\D{0,3}(\d{1,2})/i);
-    const def = text.match(/Def\D{0,3}(\d{1,2})/i);
-    const sta = text.match(/Sta\D{0,3}(\d{1,2})/i);
-    if (atk) rec.attack_iv = parseInt(atk[1], 10);
-    if (def) rec.defense_iv = parseInt(def[1], 10);
-    if (sta) rec.stamina_iv = parseInt(sta[1], 10);
-    const lvl = text.match(/Level\D{0,3}(\d+\.?\d*)/i);
-    if (lvl) rec.level = parseFloat(lvl[1]);
-
-    if (/\bShadow\b/i.test(text)) rec.shadow = true;
-    if (/\bPurified\b/i.test(text)) rec.purified = true;
-    if (/\bLucky\b/i.test(text)) rec.lucky = true;
-    if (/\bShiny\b/i.test(text)) rec.shiny = true;
-    return rec;
   }
 
   // Downscale + JPEG-encode for the vision request (full color — the model reads
@@ -2473,32 +2340,20 @@ class Component extends DCLogic {
   async handleScreenshotUpload(file) {
     if (!file) return;
     this._lastAiError = '';
-    this._groqFailed = null;
     this.resetAppraisalHint();
     this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null });
     try {
       const canvas = await this.preprocessImage(file);
       this.setState({ ocrPreview: canvas.toDataURL('image/jpeg', 0.7) });
 
-      // Vision first — Tesseract cannot read the stylized CP badge or the type
-      // chips, and its numeric misreads were landing stardust digits in CP.
-      let rec = null;
-      let text = '';
-      let readerUsed = 'vision';
-      try {
-        rec = await this.readScreenshotWithVision(file);
-        text = '[read by ' + (this._lastEngine || 'AI vision') + ']';
-      } catch (visionErr) {
-        const vm = (visionErr && visionErr.message) || String(visionErr);
-        readerUsed = vm === 'AI_NO_CREDIT' ? 'tesseract-nocredit' : 'tesseract';
-        // Keep whatever the earlier engine reported: AI_NO_CREDIT is raised at
-        // the END of the chain, so overwriting with it would erase the Gemini or
-        // Groq failure that actually caused the fall-through.
-        if (vm !== 'AI_NO_CREDIT') this._lastAiError = vm;
-        text = await this.runOCR(canvas);
-        rec = this.parsePokemonText(text);
-        this.bumpAiUsage('ocr');
-      }
+      // Vision only. On-device OCR used to sit behind this as a fallback and was
+      // removed: it could not read the stylized CP badge or the type chips, and
+      // its numeric misreads landed stardust digits in CP. A wrong record is
+      // worse than no record, so a failed read now surfaces as an error.
+      const rec0 = await this.readScreenshotWithVision(file);
+      let rec = rec0;
+      const text = '[read by ' + (this._lastEngine || 'AI vision') + ']';
+      const readerUsed = 'vision';
       if (rec.pokemon_name) {
         const dexInfo = this.lookupDexInfo(rec.pokemon_name);
         rec = { ...dexInfo, ...rec, dex_number: rec.dex_number || dexInfo.dex_number,
@@ -2633,7 +2488,28 @@ class Component extends DCLogic {
       this.setState({ solvedIvResult: { error: 'No IV combo matches that CP/HP exactly — double-check the numbers.' } });
       return;
     }
-    const c = this.pickCandidate(candidates);
+    // Same rule as the import and appraisal paths: an exact spread only when
+    // exactly one fits. Otherwise report the range and how many still fit, and
+    // leave APPLY disabled — the appraisal is what narrows it.
+    if (candidates.length > 1) {
+      const rangeOf = k => {
+        let lo = 15, hi = 0;
+        for (const cc of candidates) { if (cc[k] < lo) lo = cc[k]; if (cc[k] > hi) hi = cc[k]; }
+        return [lo, hi];
+      };
+      const lv = candidates.map(cc => cc.level);
+      this.setState({
+        solvedIvResult: {
+          ambiguousRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+          lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
+          candidateCount: candidates.length, hintMismatch,
+          dustUsed: !!levelFilter && !dustIgnored, dustIgnored,
+          form: usedForm && usedForm !== 'normal' ? usedForm : null
+        }
+      });
+      return;
+    }
+    const c = candidates[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
     const great = this.mechanics.rankPctForLeague(base, ivs, 'great');
@@ -3027,7 +2903,7 @@ class Component extends DCLogic {
   get GEMINI_REQ_VERSION() { return 'g3'; }
 
   // OpenAI-compatible chat/completions with vision. Works with OmniRoute,
-  // OpenRouter, Groq, LM Studio, or any gateway exposing /v1/chat/completions.
+  // OpenRouter, LM Studio, or any gateway exposing /v1/chat/completions.
   async callOpenAICompatible(body) {
     const base = String(this.state.customBaseUrl || '').trim().replace(/\/+$/, '');
     if (!base) throw new Error('No base URL set');
@@ -3106,7 +2982,6 @@ class Component extends DCLogic {
     this.setState({ geminiKeys: uniq, geminiKey: uniq[0] || '', aiOutOfCredit: false });
     this._keyCooldown = {};
     this._geminiKeyIdx = 0;
-    this._groqFailed = null;
     try {
       if (uniq.length) {
         localStorage.setItem('scout_gemini_keys_v1', JSON.stringify(uniq));
@@ -3118,87 +2993,13 @@ class Component extends DCLogic {
     } catch (e) {}
   }
 
-  // Groq free tier: 30 rpm / 14,400 requests per day, no card. Limits are
-  // ORGANIZATION-level, so unlike Gemini extra keys buy nothing here — one key
-  // is the whole pool. Used as the fallback behind Gemini because its open
-  // vision models read small stylized text (CP badge, candy counts) less
-  // reliably than Gemini does.
-  async callGroq(body) {
-    const key = this.state.groqKey;
-    if (!key) throw new Error('No Groq key set.');
-    const messages = (body.messages || []).map(m => {
-      if (typeof m.content === 'string') return { role: m.role, content: m.content };
-      const content = (m.content || []).map(item => {
-        if (item.type === 'text') return { type: 'text', text: item.text };
-        if (item.type === 'image' && item.source && item.source.data) {
-          return { type: 'image_url', image_url: { url: 'data:' + (item.source.media_type || 'image/jpeg') + ';base64,' + item.source.data } };
-        }
-        return null;
-      }).filter(Boolean);
-      return { role: m.role, content };
-    });
-    if (body.system) messages.unshift({ role: 'system', content: body.system });
-
-    const models = this._groqModel ? [this._groqModel] : this.GROQ_MODELS;
-    let lastErr = null;
-    for (const model of models) {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-        body: JSON.stringify({ model, messages, max_tokens: Math.max(body.max_tokens || 2048, 4096), temperature: 0 })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-        if (!text) { lastErr = new Error('Groq returned no text'); continue; }
-        this._groqModel = model;
-        this._lastEngine = 'Groq (' + model + ')';
-        this.bumpAiUsage('groq');
-        return text;
-      }
-      const errText = await res.text().catch(() => '');
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('Groq key was rejected (' + res.status + ') \u2014 regenerate it at console.groq.com/keys.');
-      }
-      if (res.status === 429) throw new Error('Groq rate limit (429) \u2014 30 requests/minute.');
-      if (/decommissioned|does not exist|not found|deprecat/i.test(errText)) {
-        // Model retired, not a credential problem — say so plainly.
-        lastErr = new Error('Groq model ' + model + ' is no longer available on this account.');
-        continue;
-      }
-      lastErr = new Error('Groq ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
-      if (res.status !== 404 && res.status !== 400) throw lastErr;
-    }
-    throw lastErr || new Error('No Groq model available for this key.');
-  }
-
-  // Groq retires model names fairly often, so try current vision models in order.
-  get GROQ_MODELS() {
-    return [
-      'qwen/qwen3.6-27b',
-      'qwen/qwen3-vl-32b-instruct',
-      'meta-llama/llama-4-scout-17b-16e-instruct'
-    ];
-  }
-
-  setGroqKey(v) {
-    const key = String(v || '').trim();
-    this.setState({ groqKey: key });
-    this._groqModel = null;
-    this._groqFailed = null;
-    try {
-      if (key) localStorage.setItem('scout_groq_key_v1', key);
-      else localStorage.removeItem('scout_groq_key_v1');
-    } catch (e) {}
-  }
-
   async completeWithRetry(body, attempts) {
     attempts = attempts || 4;
     let lastErr;
     for (let i = 0; i < attempts; i++) {
       try {
         if (window.claude && window.claude.complete) return await window.claude.complete(body);
-        // A self-hosted OpenAI-compatible gateway (OmniRoute, OpenRouter, Groq…)
+        // A self-hosted OpenAI-compatible gateway (OmniRoute, OpenRouter…)
         // wins when configured — the user chose it explicitly.
         if (this.state.customBaseUrl) {
           try { return await this.callOpenAICompatible(body); }
@@ -3206,7 +3007,7 @@ class Component extends DCLogic {
             const cm = (cErr && cErr.message) || '';
             // Safari throws "TypeError: Load failed" for network/CORS failures,
             // not "Failed to fetch" — without these, an unreachable gateway on
-            // iOS would skip Gemini AND Groq instead of degrading to them.
+            // iOS would skip Gemini instead of degrading to it.
             const transient = /429|rate|quota|timeout|Failed to fetch|NetworkError|Load failed|Access-Control-Allow-Origin|CORS|cancelled|The network connection was lost/i.test(cm)
               || cErr instanceof TypeError;
             this._lastAiError = 'Gateway: ' + cm;
@@ -3219,31 +3020,18 @@ class Component extends DCLogic {
           try { return await this.callGemini(body); }
           catch (gErr) {
             const gm = (gErr && gErr.message) || '';
-            // A rejected key is terminal only if there is nothing behind it.
+            // A rejected key is terminal — there is nothing behind Gemini now.
             // Everything else (rate limit, truncation, safety block, 5xx,
-            // network) falls through — the video path has no OCR fallback, so
-            // throwing here would hard-fail a whole recording import.
+            // network) falls through so a transient failure does not hard-fail
+            // a whole recording import.
             const terminal = /key was rejected|API_KEY_INVALID|refused the key/i.test(gm);
             this._lastAiError = gm;
-            if (terminal && !this.state.groqKey) throw gErr;
-          }
-        }
-        // Groq behind Gemini: 14,400 requests/day is a large safety net for the
-        // one-off bulk import and for any day Gemini's quota runs out.
-        if (this.state.groqKey && !this._groqFailed) {
-          try { return await this.callGroq(body); }
-          catch (qErr) {
-            const qm = (qErr && qErr.message) || '';
-            this._lastAiError = qm;
-            // A rejected key or a retired model will fail identically on every
-            // subsequent batch, so stop paying a round-trip for it each time.
-            if (/rejected|no longer available/i.test(qm)) this._groqFailed = qm;
-            if (/rejected/i.test(qm)) throw qErr;
+            if (terminal) throw gErr;
           }
         }
         if (!this.state.apiEndpoint) {
           const why = this._lastAiError ? ' Last engine said: ' + this._lastAiError : '';
-          throw new Error((this.state.geminiKey || this.state.groqKey)
+          throw new Error(this.state.geminiKey
             ? 'Every AI engine failed for this batch.' + why
             : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
         }
@@ -3263,7 +3051,7 @@ class Component extends DCLogic {
         // proxy branch's "no endpoint set" message would be misleading. Note
         // /quota/ is deliberately NOT matched here — Gemini's daily-quota error
         // contains it, and treating that as "no credit" short-circuited the
-        // chain before Groq was tried.
+        // retry chain.
         if (/insufficient|low balance|not enough funding|payment required|upgrade to continue/i.test(msg)
             || code === 'insufficient_funds') {
           this.setState({ aiOutOfCredit: true });
@@ -3358,10 +3146,6 @@ class Component extends DCLogic {
 
   async waitForKeyCooldown() {
     if (this.activeGeminiKeys().length) return false;
-    // Only skip the wait if the fallback is actually working. Once Groq has
-    // failed this run, waiting for a Gemini key is the ONLY way to make progress
-    // — previously this returned early and every remaining batch failed.
-    if (this.state.groqKey && !this._groqFailed) return false;
     const wait = this.msUntilKeyFree();
     if (wait <= 0) return false;
     await new Promise(r => setTimeout(r, wait + 250));
@@ -3918,14 +3702,12 @@ class Component extends DCLogic {
       let noCredit = false;
       let lastBatchError = '';
       this._rateBackoff = 1;
-      this._groqFailed = null;
       const runBatch = async (b, spacing, pass) => {
         const content = [
           { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
           ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
         ];
-        if ((this.state.geminiKeys || []).length && !this.activeGeminiKeys().length
-            && (!this.state.groqKey || this._groqFailed)) {
+        if ((this.state.geminiKeys || []).length && !this.activeGeminiKeys().length) {
           const wait = this.msUntilKeyFree();
           if (wait > 0) {
             this.setVideoStage('reading', Math.round((b / batches.length) * 92),
@@ -4297,11 +4079,19 @@ class Component extends DCLogic {
         if (barFull(it.hpFull) || barFull(it.appraisal_hp_bar) || barFull(it.hp_bar) || barFull(it.staFull)) maxed.push('sta');
       }
       const rawStars = it.stars != null ? it.stars : (it.appraisal_stars != null ? it.appraisal_stars : null);
+      // Exact IVs measured off the bar fill server-side (ivSource 'bar-measure').
+      // These are measurements, not model output, so they are carried through
+      // and pinned directly instead of being re-derived from CP/HP.
+      const iv = [num(it.atkIV), num(it.defIV), num(it.staIV)];
+      const measured = iv.every(v => Number.isInteger(v) && v >= 0 && v <= 15);
       return {
         name, dex, cp: num(it.cp), hp: num(it.hp),
         stars: rawStars == null ? null : num(rawStars),
         perfect: !!(it.perfect || it.hundo || it.is_perfect),
-        maxed
+        maxed,
+        ...(measured ? { atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivSource: it.ivSource || 'bar-measure',
+          barDrift: it.barDrift, barConfidence: it.barConfidence,
+          ivCandidateSets: Array.isArray(it.ivCandidateSets) ? it.ivCandidateSets : null } : {})
       };
     }).filter(Boolean);
   }
@@ -4507,13 +4297,28 @@ class Component extends DCLogic {
               if (fits.length > 1) item._formChoices = fits.map(c => c.form || 'default');
             }
             if (cands && cands.length) {
-              const c = this.pickCandidate(cands);
-              item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
-              item.level = c.level;
-              solvedFrom = cands.length;
-              // Written back onto the item so the import receipt can mark which
-              // spreads were solved rather than read.
               item._solvedCount = cands.length;
+              // A CP/HP pair almost always fits many spreads. Committing the
+              // median one wrote a GUESS into the roster that was indistinguishable
+              // from a read value — which is why the pinned IVs disagreed with the
+              // appraisal bars. Only a UNIQUE solve is pinned now; anything else
+              // keeps the candidate range and stays visibly unsolved until the
+              // appraisal collapses it in mergeAppraisalImport.
+              const rng = k => {
+                let lo = 15, hi = 0;
+                for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
+                return [lo, hi];
+              };
+              if (cands.length === 1) {
+                const c = cands[0];
+                item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
+                item.level = c.level;
+                solvedFrom = 1;
+              } else {
+                item._ivRange = { atk: rng('atkIV'), def: rng('defIV'), sta: rng('staIV') };
+                const lv = cands.map(c => c.level);
+                item._lvlRange = [Math.min.apply(null, lv), Math.max.apply(null, lv)];
+              }
             }
           } catch (e) { /* unsolvable — leave IVs null */ }
         }
@@ -4536,6 +4341,20 @@ class Component extends DCLogic {
             little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: item.name }
           };
         }
+      }
+      // Ambiguous solve: store the range, and actively null out any previously
+      // guessed spread + PvP rank rather than leaving a stale fabricated value.
+      // Only fill a range into records that have NO spread yet. If one is
+      // already recorded (an older trusted export or an exact solve), an
+      // ambiguous re-solve is weaker evidence and is left to the appraisal path,
+      // which checks membership properly before flagging a contradiction.
+      if (item._ivRange && !(match && this.knownSpread(match, overrides))) {
+        ivPatch = {
+          atkIV: null, defIV: null, staIV: null, ivAvg: null,
+          ivRange: item._ivRange, ivCandidates: item._solvedCount, ivSolved: false,
+          lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1],
+          great: null, ultra: null, little: null
+        };
       }
       if (match) {
         overrides[match.idx] = {
@@ -4641,7 +4460,7 @@ class Component extends DCLogic {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
     const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
-    return [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !removedSet.has(p.idx));
+    return [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !this.isRemoved(p, removedSet));
   }
 
   // Build a solveIVs hint from an appraisal item. When all three bars are maxed
@@ -4675,6 +4494,68 @@ class Component extends DCLogic {
     return bits.length ? bits.join(' \u00b7 ') : 'idx ' + m.idx;
   }
 
+  // Pin an exact spread measured from the appraisal bars. No solving — but the
+  // spread is still checked against the record's CP and HP, because a spread
+  // that cannot reproduce them means the frame was matched to the wrong
+  // Pokemon (or a bar was occluded), and that is worth surfacing.
+  applyMeasuredIv(rec, item, overrides) {
+    const mechanics = this.mechanics;
+    const bases = this.baseStatCandidates({ name: rec.name, dex: rec.dex, form: rec.form });
+    // The measurer's first choice, then its ranked alternates (emitted only when
+    // the whole-bar and per-segment reads disagreed, or the fill sat near a
+    // boundary). CP/HP is the arbiter: the alternate that reproduces both IS the
+    // answer, and if none does, nothing is written.
+    const spreads = this.measuredSpreadOrder(item);
+    let usedBase = null, level = null, ivs = null, arbitrated = false;
+    outer:
+    for (let i = 0; i < spreads.length; i++) {
+      const s = spreads[i];
+      for (const cand of bases) {
+        const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
+        const exact = (hit || []).find(c => c.atkIV === s[0] && c.defIV === s[1] && c.staIV === s[2]);
+        if (exact) { usedBase = cand; level = exact.level; ivs = s; arbitrated = i > 0; break outer; }
+      }
+    }
+    if (!usedBase) {
+      const first = spreads[0] || [item.atkIV, item.defIV, item.staIV];
+      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+        iv: first.join('/') + ' \u2014 does not fit this CP/HP', ivCount: 0 } };
+    }
+    const base = usedBase.base;
+    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+    overrides[rec.idx] = {
+      ...overrides[rec.idx],
+      atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
+      lvlMin: level, lvlMax: level,
+      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
+      ivArbitrated: arbitrated || undefined,
+      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
+      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
+      little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
+    };
+    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+      iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
+  }
+
+  // Expand the measurer's per-stat alternates into whole spreads to try, best
+  // first. Capped so a triple-ambiguous read cannot explode the search.
+  measuredSpreadOrder(item) {
+    const first = [item.atkIV, item.defIV, item.staIV];
+    const c = item.ivCandidateSets;
+    if (!Array.isArray(c) || c.length !== 3) return [first];
+    const lists = c.map((l, i) => (Array.isArray(l) && l.length ? l : [first[i]]));
+    const out = [];
+    for (const a of lists[0]) for (const d of lists[1]) for (const s of lists[2]) {
+      out.push([a, d, s]);
+      if (out.length >= 27) break;
+    }
+    // Nearest-first: the measurement's own pick leads, then spreads that differ
+    // from it in the fewest stats.
+    const dist = s => (s[0] !== first[0]) + (s[1] !== first[1]) + (s[2] !== first[2]);
+    out.sort((x, y) => dist(x) - dist(y));
+    return out;
+  }
+
   // Solve one appraisal item against a specific record and write the narrowed
   // spread + PvP ranks into overrides. Returns {review, contradiction}.
   solveAndApplyAppraisal(rec, item, hint, overrides) {
@@ -4695,21 +4576,60 @@ class Component extends DCLogic {
       }
       return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: null, ivCount: raw ? raw.length : 0 } };
     }
-    const c = this.pickCandidate(cands);
     const base = usedBase.base;
+    // The appraisal narrows the candidates; it does not always collapse them to
+    // one. Pinning a guess HERE is the worst version of the bug — this is the
+    // code path whose whole job is to make the roster agree with the bars.
+    if (cands.length > 1) {
+      const rangeOf = k => {
+        let lo = 15, hi = 0;
+        for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
+        return [lo, hi];
+      };
+      const lv = cands.map(c => c.level);
+      // A record can already carry a spread from a trusted earlier source (a
+      // Poke Genie/CSV export, a previous exact solve). An ambiguous solve is
+      // WEAKER evidence, not newer evidence — if the known spread is still one
+      // of the candidates, the appraisal has merely failed to narrow further
+      // and must not overwrite it with a range.
+      const known = this.knownSpread(rec, overrides);
+      if (known) {
+        if (cands.some(c => c.atkIV === known[0] && c.defIV === known[1] && c.staIV === known[2])) {
+          overrides[rec.idx] = { ...overrides[rec.idx], apprStars: hint.stars, apprMaxed: hint.maxed, ivConfirmed: true };
+          return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+            iv: known.join('/') + ' (kept \u00b7 consistent)', ivCount: cands.length } };
+        }
+        // Genuinely contradicted: the stored spread is not among the spreads
+        // that fit this CP/HP + appraisal. Report it, never silently replace.
+        return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+          iv: known.join('/') + ' \u2260 ' + this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+      }
+      overrides[rec.idx] = {
+        ...overrides[rec.idx],
+        atkIV: null, defIV: null, staIV: null, ivAvg: null,
+        ivRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+        ivCandidates: cands.length, ivSolved: false,
+        lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
+        apprStars: hint.stars, apprMaxed: hint.maxed,
+        great: null, ultra: null, little: null
+      };
+      return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+        iv: this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+    }
+    const c = cands[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
       atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV, ivAvg,
       lvlMin: c.level, lvlMax: c.level,
-      ivSolved: true, ivCandidates: cands.length,
+      ivRange: null, ivSolved: true, ivCandidates: 1,
       apprStars: hint.stars, apprMaxed: hint.maxed,
       great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
       ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
       little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
     };
-    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: cands.length } };
+    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: 1 } };
   }
 
   // Match each appraisal reading to an existing record by name(+dex) + exact
@@ -4741,6 +4661,13 @@ class Component extends DCLogic {
         collided++;
         review.push({ _rid: rid, _status: 'collision', name: item.name, read: readLabel, _item: item,
           _choices: matches.map(m => ({ idx: m.idx, label: this.recordDistinguisher(m) })) });
+        return;
+      }
+      // A measured spread needs no solving at all — pin it and move on.
+      if (item.ivSource === 'bar-measure') {
+        const res = this.applyMeasuredIv(matches[0], item, overrides);
+        if (res.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...res.review }); }
+        else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...res.review }); }
         return;
       }
       const hint = this.appraisalHintFromItem(item);
@@ -4781,10 +4708,51 @@ class Component extends DCLogic {
     this.setState(s => ({ videoImport: { ...s.videoImport, review } }));
   }
 
+  // Stable identity for a removal. `idx` is POSITIONAL for imported records, so
+  // a re-import renumbers everything and every previous removal silently points
+  // at a different Pokemon — which is how transferred Pokemon "came back out of
+  // nowhere". Removals are recorded by identity as well as index.
+  // An exact spread only when the solve was unique. Otherwise the honest answer
+  // is the candidate range plus how many spreads still fit — never one of them
+  // dressed up as the answer.
+  spreadText(p) {
+    if ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite)) return p.atkIV + '/' + p.defIV + '/' + p.staIV;
+    if (!p.ivRange) return '—';
+    return this.rangeText(p.ivRange)
+      + (p.ivCandidates ? '  (' + p.ivCandidates + ' fit \u00b7 appraise)' : '');
+  }
+
+  // The spread already recorded for a record (override wins over the base
+  // record), or null when it has never been pinned.
+  knownSpread(rec, overrides) {
+    const o = (overrides && overrides[rec.idx]) || {};
+    const a = o.atkIV != null ? o.atkIV : rec.atkIV;
+    const d = o.defIV != null ? o.defIV : rec.defIV;
+    const s = o.staIV != null ? o.staIV : rec.staIV;
+    return [a, d, s].every(Number.isFinite) ? [a, d, s] : null;
+  }
+
+  rangeText(r) {
+    const part = a => (a[0] === a[1] ? String(a[0]) : a[0] + '-' + a[1]);
+    return part(r.atk) + '/' + part(r.def) + '/' + part(r.sta);
+  }
+
+  pokeSig(p) {
+    if (!p) return '';
+    return 'sig:' + String(p.name || '').toLowerCase() + '|' + p.cp + '|' + p.hp;
+  }
+
+  isRemoved(p, removedSet) {
+    return removedSet.has(p.idx) || removedSet.has(this.pokeSig(p));
+  }
+
   removePokemon(idx) {
     this.haptic('heavy');
     const set = new Set(this.state.removedIds);
     set.add(idx);
+    const all = [...(this.state.roster || []), ...(this.state.addedPokemon || [])];
+    const hit = all.find(p => p.idx === idx);
+    if (hit) set.add(this.pokeSig(hit));
     const arr = [...set];
     this.setState({ removedIds: arr });
     try { localStorage.setItem('scout_removed_v1', JSON.stringify(arr)); } catch (e) {}
@@ -5072,7 +5040,7 @@ class Component extends DCLogic {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
     const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
-    const roster = [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !removedSet.has(p.idx));
+    const roster = [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !this.isRemoved(p, removedSet));
     const tab = this.state.tab;
     const search = this.state.search;
     const sortField = this.state.sortField;
@@ -5117,11 +5085,11 @@ class Component extends DCLogic {
         delay: Math.min(i, 24) * 15,
         cp: p.cp,
         hp: p.hp,
-        ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '%' : '—',
+        ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '%' : (p.ivRange ? '?' : '—'),
         ivColor: ivColor(p.ivAvg),
         ringDasharray: ring.dasharray,
         ringDashoffset: ring.dashoffset,
-        spread: ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite) ? p.atkIV + '/' + p.defIV + '/' + p.staIV : '—'),
+        spread: this.spreadText(p),
         moves: [p.quickMove, p.chargeMove].filter(Boolean).join(' / ') || '—',
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'oklch(55% 0.02 260)',
@@ -5376,33 +5344,32 @@ class Component extends DCLogic {
         : (this.state.ocrParsed.dex != null
             ? `Identified as ${this.state.ocrParsed.name || 'this Pokemon'} (#${this.state.ocrParsed.dex}) \u2014 not in your roster yet. Use ADD AS NEW POKEMON.`
             : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.'),
-      readerLine: this.state.ocrParsed.readerUsed === 'tesseract-nocredit'
-        ? ((this.state.geminiKey || this.state.groqKey)
-            ? 'Every AI engine failed, so on-device OCR was used. Last error: '
-              + (this.state.ocrParsed.aiError || 'no details')
-            : 'No AI key set \u2014 fell back to on-device OCR. Check CP, candy and stardust below, or add a free Gemini key under AI ENGINE.')
-        : (this.state.ocrParsed.readerUsed === 'tesseract'
-            ? 'AI vision failed, used on-device OCR \u2014 double-check CP and candy.'
-              + (this.state.ocrParsed.aiError ? ' (' + this.state.ocrParsed.aiError + ')' : '')
-            : ''),
+      readerLine: '',
       rawText: this.state.ocrParsed.rawText || ''
     } : null;
     const solvedIvResult = this.state.solvedIvResult ? (this.state.solvedIvResult.error ? { error: this.state.solvedIvResult.error } : {
-      level: this.state.solvedIvResult.level,
-      spread: `${this.state.solvedIvResult.atkIV}/${this.state.solvedIvResult.defIV}/${this.state.solvedIvResult.staIV}`,
-      ivAvg: this.state.solvedIvResult.ivAvg.toFixed(1) + '%',
+      level: this.state.solvedIvResult.ambiguousRange
+        ? (this.state.solvedIvResult.lvlMin === this.state.solvedIvResult.lvlMax
+            ? this.state.solvedIvResult.lvlMin
+            : this.state.solvedIvResult.lvlMin + '\u2013' + this.state.solvedIvResult.lvlMax)
+        : this.state.solvedIvResult.level,
+      spread: this.state.solvedIvResult.ambiguousRange
+        ? this.rangeText(this.state.solvedIvResult.ambiguousRange)
+        : `${this.state.solvedIvResult.atkIV}/${this.state.solvedIvResult.defIV}/${this.state.solvedIvResult.staIV}`,
+      ivAvg: this.state.solvedIvResult.ivAvg != null ? this.state.solvedIvResult.ivAvg.toFixed(1) + '%' : 'not pinned',
       great: this.state.solvedIvResult.great != null ? this.state.solvedIvResult.great.toFixed(1) + '%' : '—',
       ultra: this.state.solvedIvResult.ultra != null ? this.state.solvedIvResult.ultra.toFixed(1) + '%' : '—',
       little: this.state.solvedIvResult.little != null ? this.state.solvedIvResult.little.toFixed(1) + '%' : '—',
+      canApply: !this.state.solvedIvResult.ambiguousRange,
       ambiguous: (() => {
         const r = this.state.solvedIvResult;
         if (r.hintMismatch) return `That appraisal doesn't fit this CP and HP \u2014 no spread matches both, so the hint was ignored. Re-check the star tier, or the HP reading. (${r.candidateCount} spreads match CP/HP alone.)`;
-        if (r.dustIgnored) return `That Power Up cost rules out every spread that fits this CP and HP, so it was ignored. Re-check the cost (and the lucky/shadow/purified toggles). ${r.candidateCount} spreads match CP/HP alone \u2014 showing the middle one.`;
+        if (r.dustIgnored) return `That Power Up cost rules out every spread that fits this CP and HP, so it was ignored. Re-check the cost (and the lucky/shadow/purified toggles). ${r.candidateCount} spreads still match CP/HP alone.`;
         const narrowed = r.dustUsed || this.appraisalHint();
         if (r.candidateCount > 1) {
           return narrowed
-            ? `${r.candidateCount} spreads still match \u2014 showing the middle one. ${r.dustUsed ? 'Mark the appraisal bars to narrow further.' : 'Enter the Power Up stardust cost to narrow further.'}`
-            : `${r.candidateCount} possible spreads matched \u2014 showing the middle one. Enter the Power Up stardust cost above to pin the level down.`;
+            ? `${r.candidateCount} spreads still fit \u2014 the range above is everything that's possible, not an answer. ${r.dustUsed ? 'Mark the appraisal bars to narrow further.' : 'Enter the Power Up stardust cost to narrow further.'}`
+            : `${r.candidateCount} spreads fit \u2014 the range above is everything that's possible, not an answer. Enter the Power Up stardust cost above to pin the level down.`;
         }
         if (r.dustUsed) return 'Exact match \u2014 CP, HP and the Power Up cost pin this to one spread.';
         return this.appraisalHint() ? 'Exact match \u2014 appraisal hint pinned it to one spread.' : 'Exact match \u2014 only one spread fits this CP and HP.';
@@ -5673,11 +5640,6 @@ class Component extends DCLogic {
       confirmClearRoster: () => this.confirmClearRoster(),
       geminiKeyDraft: this.state.geminiKeyDraft,
       hasGeminiKey: !!this.state.geminiKey,
-      groqKeyDraft: this.state.groqKeyDraft,
-      hasGroqKey: !!this.state.groqKey,
-      onGroqKeyDraftChange: (e) => this.setState({ groqKeyDraft: e.target.value }),
-      saveGroqKey: () => this.setGroqKey(this.state.groqKeyDraft),
-      clearGroqKey: () => { this.setState({ groqKeyDraft: '' }); this.setGroqKey(''); },
       geminiStatusLine: (() => {
         const all = this.state.geminiKeys || [];
         if (!all.length) return '';
@@ -5693,7 +5655,7 @@ class Component extends DCLogic {
       })(),
       geminiBadge: this.state.customBaseUrl ? '· GATEWAY'
         : ((this.state.geminiKeys || []).length > 1 ? '· GEMINI ×' + this.state.geminiKeys.length
-        : (this.state.geminiKey ? '· GEMINI' : (this.state.groqKey ? '· GROQ' : '· NO KEY'))),
+        : (this.state.geminiKey ? '· GEMINI' : '· NO KEY')),
       aiUsageRows: (() => {
         const u = (this.state.aiUsage && this.state.aiUsage.day === this.todayKey()) ? this.state.aiUsage : {};
         const g = u.gemini || 0;
@@ -5707,16 +5669,7 @@ class Component extends DCLogic {
             color: g >= cap ? 'oklch(75% 0.15 30)' : (g >= cap * 0.8 ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.13 150)')
           });
         }
-        if (this.state.groqKey) {
-          const gq = u.groq || 0;
-          rows.push({
-            label: 'Groq (fallback)',
-            value: gq + ' / 14,400',
-            color: gq >= 14400 ? 'oklch(75% 0.15 30)' : (gq >= 11520 ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.02 260)')
-          });
-        }
         if (this.state.customBaseUrl) rows.push({ label: 'Gateway', value: String(u.gateway || 0), color: 'oklch(72% 0.02 260)' });
-        rows.push({ label: 'On-device OCR', value: String(u.ocr || 0), color: 'oklch(60% 0.02 260)' });
         return rows;
       })(),
       customBaseDraft: this.state.customBaseDraft || '',

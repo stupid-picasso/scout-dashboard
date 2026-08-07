@@ -2,6 +2,15 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
+date: 2026-08-07T00:00:00Z
+
+### Updated in this project
+- **Tesseract removed everywhere.** Gone from the app: the `tesseract.js` CDN `<script>` in the helmet, `loadTesseract`, `runOCR`, `findPokemonName` and the whole `parsePokemonText` regex layer (fuzzy CP badge matching, stardust-leak guards, XL-candy heuristics). Screenshot import is now vision-only — a failed read surfaces as an error instead of quietly writing a misread record. Gone from Python: `pytesseract` import, `ocr_image()`, the requirement, and the `tesseract-ocr` apt step in both workflows. `--image` now goes through the same Gemini reader as `--video` and writes JSON (the 61-column CSV row mapper cannot represent that schema).
+- **Groq removed as second engine.** `callGroq`, `GROQ_MODELS`, `setGroqKey`, the `_groqFailed` latch, the Settings FALLBACK · GROQ panel, the key in `SYNC_KEYS`/localStorage/Firestore sync, the usage row and the `· GROQ` badge. `completeWithRetry` is now gateway (if configured) → Gemini, and a rejected Gemini key is terminal since nothing sits behind it. `waitForKeyCooldown` no longer short-circuits on a Groq key.
+- **Ensemble bar measurement.** `measure_appraisal_bars()` fuses three independent reads per bar — whole-bar fill fraction, per-segment fill referenced to the segment's own boundaries, and a median across up to 5 rows from the band's middle 60%. Agreement means certainty; disagreement emits ranked per-stat alternates. `applyMeasuredIv` now uses CP/HP as an *arbiter* over those alternates rather than a pure veto, labelling corrected reads "measured (CP/HP-corrected)". Verified on both test screenshots: Ho-Oh 15/15/12, Absol 14/15/15, methods agreeing to 3 decimals.
+- Rebuilt `index.html` + `Scout Dashboard.html` from `Scout Dashboard Standalone.dc.html`; canonical source `Scout Dashboard.dc.html`. Build tag `2026-08-07-gemini-only`; `sw.js` cache `scout-v9`.
+
+## Previous sync
 date: 2026-08-06T07:30:00Z
 
 ### Updated in this project
