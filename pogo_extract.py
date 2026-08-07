@@ -401,7 +401,6 @@ def dedupe_similar_frames(frames, threshold=4.0, sig_size=24):
     return kept
 
 
-def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3):
 def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3,
                    native=False):
     """Extract frames from video using ffmpeg.
@@ -1052,7 +1051,8 @@ def _bar_groups(runs, W):
     return out
 
 
-def _median(vals):
+def _median_int(vals):
+    """Lower-middle value — keeps pixel measurements as whole pixels."""
     s = sorted(vals)
     return s[len(s) // 2]
 
@@ -1132,9 +1132,9 @@ def measure_appraisal_bars_structural(image_path):
 
     trio = best[1]
     allrows = [r for b in trio for r in b]
-    seg_w = _median([r["seg_w"] for r in allrows])
-    gap = _median([r["gap"] for r in allrows])
-    x0 = _median([r["x0"] for r in allrows])
+    seg_w = _median_int([r["seg_w"] for r in allrows])
+    gap = _median_int([r["gap"] for r in allrows])
+    x0 = _median_int([r["x0"] for r in allrows])
     width = 3 * seg_w + 2 * gap
     if width <= 0:
         return None
