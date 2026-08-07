@@ -312,6 +312,15 @@
             <input type="file" accept="video/*" onChange="{{ onVideoUpload }}" style="display:none" />
           </label>
         </div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
+          <div style="font:10px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.05em">SCREEN RECORDING TYPE</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <sc-for list="{{ importModeOptions }}" as="m" hint-placeholder-count="2">
+              <div onClick="{{ m.onClick }}" style="cursor:pointer;padding:7px 13px;border-radius:6px;background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.color }};font:600 11px ui-monospace,monospace;transition:background .12s ease,border-color .12s ease">{{ m.label }}</div>
+            </sc-for>
+          </div>
+          <div style="font:11px sans-serif;color:oklch(58% 0.02 260);line-height:1.5;text-wrap:pretty">{{ importModeHint }}</div>
+        </div>
       </div>
       <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
       <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
@@ -419,6 +428,35 @@
                 </sc-for>
               </div>
               <div style="font:11px sans-serif;color:oklch(55% 0.02 260);line-height:1.5">Anything read wrong can be fixed by tapping that Pokemon in the roster, or by re-importing a clearer clip &mdash; a re-import updates rather than duplicates.</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ hasAppraisalReview }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+                <div style="font:700 12px ui-monospace,monospace;color:oklch(85% 0.11 300)">APPRAISAL MATCHED</div>
+                <div style="font:11px ui-monospace,monospace;color:oklch(62% 0.02 260)">{{ appraisalCountLine }}</div>
+              </div>
+              <sc-for list="{{ appraisalReviewRows }}" as="r" hint-placeholder-count="4">
+                <div style="border:1px solid {{ r.border }};border-radius:7px;padding:10px 12px;background:{{ r.rowBg }};display:flex;flex-direction:column;gap:7px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+                    <div style="font:600 13px sans-serif;color:oklch(92% 0.01 260)">{{ r.name }}</div>
+                    <div style="font:10px ui-monospace,monospace;color:{{ r.statusColor }};letter-spacing:.04em">{{ r.statusLabel }}</div>
+                  </div>
+                  <div style="font:11px ui-monospace,monospace;color:oklch(66% 0.02 260)">{{ r.detail }}</div>
+                  <sc-if value="{{ r.showChoices }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <div style="font:10.5px sans-serif;color:oklch(78% 0.12 70)">{{ r.choicePrompt }}</div>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ r.choices }}" as="c" hint-placeholder-count="2">
+                          <div onClick="{{ c.onClick }}" style="cursor:pointer;padding:7px 12px;border-radius:6px;background:oklch(28% 0.05 300);border:1px solid oklch(45% 0.09 300);color:oklch(88% 0.04 300);font:600 11px ui-monospace,monospace">{{ c.label }}</div>
+                        </sc-for>
+                        <div onClick="{{ r.onSkip }}" style="cursor:pointer;padding:7px 12px;border-radius:6px;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(72% 0.02 260);font:600 11px ui-monospace,monospace">SKIP</div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="font:11px sans-serif;color:oklch(55% 0.02 260);line-height:1.5">Appraisal frames update existing Pokemon only &mdash; they never create new ones. If a Pokemon shows UNMATCHED, import its detail screen first (name + CP + HP), then re-run this appraisal recording.</div>
             </div>
           </sc-if>
           <sc-if value="{{ videoImportSummary }}" hint-placeholder-val="{{ false }}">
@@ -1165,6 +1203,7 @@ class Component extends DCLogic {
     lastQuestion: '',
     lastAnswer: '',
     videoImport: null,
+    importScreenMode: 'detail',
     resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
     resourcesDraft: { rareCandy: '', rareCandyXL: '', eliteFastTM: '', eliteChargedTM: '' },
     megaEnergyInventory: {},
@@ -3824,7 +3863,8 @@ class Component extends DCLogic {
           return { videoImport: { ...s.videoImport, progress: Math.min(92, s.videoImport.progress + 6) } };
         });
       }, 500);
-      const prompt = 'These are frames sampled from a Pokemon GO screen recording (collection list and/or Pokemon detail/appraise screens). '
+      const importMode = this.state.importScreenMode || 'detail';
+      const prompt = importMode === 'appraisal' ? this.appraisalPrompt() : ('These are frames sampled from a Pokemon GO screen recording (collection list and/or Pokemon detail/appraise screens). '
         + 'Identify every distinct Pokemon shown. Merge repeat sightings of the same Pokemon across frames into one entry, using the most complete data seen. '
         + 'Respond with ONLY a JSON array, no markdown fences, no commentary. Each item: '
         + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, '
@@ -3841,7 +3881,7 @@ class Component extends DCLogic {
         + '- atkIV/defIV/staIV exist ONLY as printed 0-15 numbers next to those bars, which appear once the appraisal is expanded. If you can see bars or stars but no numbers, return null for all three.\n'
         + '- NEVER convert bar length, bar colour, star count or the appraisal phrase into an IV number. A full red bar is not 15.\n'
         + '- The same Pokemon often appears on both screen kinds across frames: take CP/HP/candy from the detail frames and the IV numbers from the appraisal frames, and merge them into one entry.\n'
-        + '- Use null for any FIELD not clearly visible. Never guess a field value \u2014 but never drop the Pokemon itself over a missing field.';
+        + '- Use null for any FIELD not clearly visible. Never guess a field value \u2014 but never drop the Pokemon itself over a missing field.');
 
       // Split into batches that each fit the request budget, instead of throwing
       // frames away. Decimating to fit (the old behaviour) is what limited a
@@ -4028,19 +4068,25 @@ class Component extends DCLogic {
       // Merge FIRST: it solves IVs from CP/HP and writes them back onto each
       // item, so the receipt below reports the solved spread rather than the
       // nulls the model returned.
-      const summary = this.mergeVideoImport(validated);
-      const receipt = validated.map((item, i) => {
-        const nameLower = item.name.toLowerCase();
-        const match = roster.find(p => p.cp === item.cp && p.name.toLowerCase() === nameLower)
-          || roster.find(p => p.dex != null && item.dex != null && p.dex === item.dex && p.cp === item.cp);
-        const key = nameLower + '|' + (item.cp == null ? '?' : item.cp);
-        const isDupe = seenKeys.has(key);
-        seenKeys.add(key);
-        return { ...item, _rid: 'r' + i, _isNew: !match, _matchName: match ? match.name : null, _dupe: isDupe, _solvedCount: item._solvedCount || null };
-      });
+      let summary, receipt;
+      if (importMode === 'appraisal') {
+        summary = this.mergeAppraisalImport(validated);
+        receipt = summary._review || [];
+      } else {
+        summary = this.mergeVideoImport(validated);
+        receipt = validated.map((item, i) => {
+          const nameLower = item.name.toLowerCase();
+          const match = roster.find(p => p.cp === item.cp && p.name.toLowerCase() === nameLower)
+            || roster.find(p => p.dex != null && item.dex != null && p.dex === item.dex && p.cp === item.cp);
+          const key = nameLower + '|' + (item.cp == null ? '?' : item.cp);
+          const isDupe = seenKeys.has(key);
+          seenKeys.add(key);
+          return { ...item, _rid: 'r' + i, _isNew: !match, _matchName: match ? match.name : null, _dupe: isDupe, _solvedCount: item._solvedCount || null };
+        });
+      }
       this.bumpImportProgress(summary);
       this.setVideoStage('updating', 100);
-      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary, review: receipt } }));
+      this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'done', summary, review: receipt, mode: importMode } }));
     } catch (err) {
       clearInterval(this._videoReadingTimer);
       const msg = (err && err.message) || String(err);
@@ -4497,6 +4543,175 @@ class Component extends DCLogic {
     } catch (e) {}
     const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
     return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded };
+  }
+
+  setImportScreenMode(mode) {
+    this.setState({ importScreenMode: mode });
+  }
+
+  // The prompt for an APPRAISAL recording. Unlike the detail prompt (which
+  // forbids turning bars/stars into numbers), this deliberately reads the star
+  // tier and which bars are FULL — those are exactly what the solver needs to
+  // collapse a CP/HP candidate list to one spread. It never invents 0-15 IV
+  // numbers; it reports the tier and the maxed bars, and the solver does the math.
+  appraisalPrompt() {
+    return 'These are frames from a Pokemon GO APPRAISAL screen recording. Each Pokemon is shown on its appraisal view: a team-leader badge with a star rating, and three labelled stat bars (Attack, Defense, HP). '
+      + 'Identify every distinct Pokemon. Merge repeat frames of the same Pokemon into one entry using the most complete data. '
+      + 'Respond with ONLY a JSON array, no markdown, no commentary. Each item: '
+      + '{"name": string, "cp": number|null, "hp": number|null, "stars": 0|1|2|3|null, "perfect": boolean, "maxed": string[]}. '
+      + 'RULES:\n'
+      + '- name is the Pokemon name at the top of the card; cp is the CP badge; hp is the "X / X HP" number (either figure).\n'
+      + '- stars = how many stars are filled in the appraisal badge medallion (0, 1, 2, or 3). Use null only if the badge is not visible in any frame.\n'
+      + '- perfect = true ONLY when the rating is a flawless 100% (the badge/bars are shown fully red, or all three bars are completely full). Otherwise false.\n'
+      + '- maxed = the subset of ["atk","def","sta"] whose bar is COMPLETELY full — the coloured fill reaches the far right end of the bar. A bar that is nearly full but has any grey gap at the right is NOT maxed. Use "atk" for the Attack bar, "def" for Defense, "sta" for the HP bar. Return [] if no bar is completely full.\n'
+      + '- Do NOT output any 0-15 IV numbers. Report only the star tier and which bars are full.\n'
+      + '- Report every Pokemon whose name you can read, even if other fields are null.';
+  }
+
+  // Merged view used for matching: base roster with IV overrides applied, plus
+  // added Pokemon, minus removed — i.e. the same list the roster renders.
+  effectiveRosterForMatch() {
+    const removedSet = new Set(this.state.removedIds || []);
+    const overrides = this.state.ivOverrides || {};
+    const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    return [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !removedSet.has(p.idx));
+  }
+
+  // Build a solveIVs hint from an appraisal item. When all three bars are maxed
+  // (or the model flagged perfect), the total is pinned to 45 — the star band
+  // must be the perfect band or it would contradict the maxed filter.
+  appraisalHintFromItem(item) {
+    if (!item) return null;
+    const maxed = Array.isArray(item.maxed) ? item.maxed.filter(s => ['atk', 'def', 'sta'].includes(s)) : [];
+    const allMaxed = maxed.length === 3;
+    const hint = {};
+    let stars = Number.isInteger(item.stars) ? item.stars : null;
+    if (item.perfect || allMaxed) stars = 4;
+    if (stars != null) hint.stars = stars;
+    // The appraisal screen always shows all three bars, so "which are full" is
+    // known information — an empty maxed list is a real constraint (all < 15),
+    // not "unknown".
+    hint.maxed = maxed;
+    hint.maxedKnown = true;
+    return hint;
+  }
+
+  // Short label to tell two same-name/CP/HP records apart in the collision picker.
+  recordDistinguisher(m) {
+    const bits = [];
+    if (m.lvlMin != null) bits.push('Lv ' + m.lvlMin);
+    if (Number.isFinite(m.ivAvg)) bits.push(Math.round(m.ivAvg) + '%');
+    const mv = [m.quickMove, m.chargeMove].filter(Boolean).join('/');
+    if (mv) bits.push(mv);
+    if (m.weight) bits.push(m.weight);
+    if (m.scanDate) bits.push(m.scanDate);
+    return bits.length ? bits.join(' \u00b7 ') : 'idx ' + m.idx;
+  }
+
+  // Solve one appraisal item against a specific record and write the narrowed
+  // spread + PvP ranks into overrides. Returns {review, contradiction}.
+  solveAndApplyAppraisal(rec, item, hint, overrides) {
+    const mechanics = this.mechanics;
+    const bases = this.baseStatCandidates({ name: rec.name, dex: rec.dex, form: rec.form });
+    let cands = null, usedBase = null;
+    for (const cand of bases) {
+      const hit = mechanics.solveIVs(cand.base, item.cp, item.hp, hint);
+      if (hit && hit.length) { cands = hit; usedBase = cand; break; }
+    }
+    // Empty with a hint but non-empty without = the appraisal contradicts the
+    // CP/HP (a bar or star was misread). Report it rather than applying garbage.
+    if (!cands || !cands.length) {
+      let raw = null;
+      for (const cand of bases) {
+        const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
+        if (hit && hit.length) { raw = hit; break; }
+      }
+      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: null, ivCount: raw ? raw.length : 0 } };
+    }
+    const c = this.pickCandidate(cands);
+    const base = usedBase.base;
+    const ivs = [c.atkIV, c.defIV, c.staIV];
+    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+    overrides[rec.idx] = {
+      ...overrides[rec.idx],
+      atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV, ivAvg,
+      lvlMin: c.level, lvlMax: c.level,
+      ivSolved: true, ivCandidates: cands.length,
+      apprStars: hint.stars, apprMaxed: hint.maxed,
+      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
+      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
+      little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
+    };
+    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: cands.length } };
+  }
+
+  // Match each appraisal reading to an existing record by name(+dex) + exact
+  // CP + exact HP. One match → solve & apply. Several → flag for a manual pick
+  // (option B). None → report so the user knows to import the detail screen first.
+  mergeAppraisalImport(rawItems) {
+    const items = (rawItems || []).filter(it => it && it.name && it.cp != null && it.hp != null);
+    const overrides = { ...this.state.ivOverrides };
+    const records = this.effectiveRosterForMatch();
+    let applied = 0, collided = 0, unmatched = 0, contradiction = 0;
+    const review = [];
+    items.forEach((item, i) => {
+      const nameLower = item.name.toLowerCase();
+      const matches = records.filter(p => p.cp === item.cp && p.hp === item.hp
+        && ((p.dex != null && item.dex != null && p.dex === item.dex) || (p.name || '').toLowerCase() === nameLower));
+      const rid = 'a' + i;
+      const stars = this.appraisalHintFromItem(item).stars;
+      const barLabel = (Array.isArray(item.maxed) && item.maxed.length)
+        ? item.maxed.map(s => ({ atk: 'ATK', def: 'DEF', sta: 'HP' }[s] || s)).join('+') + ' full'
+        : 'no full bars';
+      const readLabel = 'CP ' + item.cp + ' \u00b7 ' + item.hp + ' HP \u00b7 '
+        + (stars != null ? (stars === 4 ? 'perfect' : stars + '\u2605') : 'no stars') + ' \u00b7 ' + barLabel;
+      if (!matches.length) {
+        unmatched++;
+        review.push({ _rid: rid, _status: 'unmatched', name: item.name, read: readLabel });
+        return;
+      }
+      if (matches.length > 1) {
+        collided++;
+        review.push({ _rid: rid, _status: 'collision', name: item.name, read: readLabel, _item: item,
+          _choices: matches.map(m => ({ idx: m.idx, label: this.recordDistinguisher(m) })) });
+        return;
+      }
+      const hint = this.appraisalHintFromItem(item);
+      const res = this.solveAndApplyAppraisal(matches[0], item, hint, overrides);
+      if (res.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...res.review }); }
+      else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...res.review }); }
+    });
+    this.setState({ ivOverrides: overrides });
+    try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
+    // updated/inserted/total keys keep bumpImportProgress happy.
+    return { applied, collided, unmatched, contradiction, total: items.length, updated: applied, inserted: 0, solved: applied, _review: review };
+  }
+
+  // Resolve a flagged collision: apply the held appraisal reading to the record
+  // the user tapped, then mark the review row done.
+  applyAppraisalPick(rid, idx) {
+    const vi = this.state.videoImport;
+    if (!vi || !vi.review) return;
+    const row = vi.review.find(r => r._rid === rid);
+    if (!row || !row._item) return;
+    const rec = this.effectiveRosterForMatch().find(p => p.idx === idx);
+    if (!rec) return;
+    const overrides = { ...this.state.ivOverrides };
+    const hint = this.appraisalHintFromItem(row._item);
+    const res = this.solveAndApplyAppraisal(rec, row._item, hint, overrides);
+    this.setState({ ivOverrides: overrides });
+    try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
+    const review = vi.review.map(r => r._rid === rid
+      ? { ...r, _status: res.contradiction ? 'contradiction' : 'applied', matchName: rec.name, iv: res.review.iv, ivCount: res.review.ivCount, _item: null, _choices: null }
+      : r);
+    this.setState(s => ({ videoImport: { ...s.videoImport, review } }));
+  }
+
+  skipAppraisalCollision(rid) {
+    const vi = this.state.videoImport;
+    if (!vi || !vi.review) return;
+    const review = vi.review.map(r => r._rid === rid ? { ...r, _status: 'skipped', _item: null, _choices: null } : r);
+    this.setState(s => ({ videoImport: { ...s.videoImport, review } }));
   }
 
   removePokemon(idx) {
@@ -5546,8 +5761,62 @@ class Component extends DCLogic {
         const oldest = stale.reduce((a, p) => Math.max(a, this.scanAgeDays(p) || 0), 0);
         return stale.length + ' scanned over a month ago (oldest ' + oldest + ' days) \u2014 CP may be out of date if you have powered them up since.';
       })(),
-      videoImportSummary: this.state.videoImport && this.state.videoImport.summary,
-      hasVideoReview: !!(this.state.videoImport && this.state.videoImport.review && this.state.videoImport.review.length),
+      importModeOptions: (() => {
+        const cur = this.state.importScreenMode || 'detail';
+        const defs = [
+          { id: 'detail', label: 'DETAIL SCREENS' },
+          { id: 'appraisal', label: 'APPRAISAL SCREENS' }
+        ];
+        return defs.map(d => {
+          const on = cur === d.id;
+          return {
+            label: d.label,
+            onClick: () => this.setImportScreenMode(d.id),
+            bg: on ? 'oklch(32% 0.09 300)' : 'oklch(24% 0.02 260)',
+            border: on ? 'oklch(55% 0.12 300)' : 'oklch(38% 0.03 260)',
+            color: on ? 'oklch(92% 0.05 300)' : 'oklch(70% 0.02 260)'
+          };
+        });
+      })(),
+      importModeHint: (this.state.importScreenMode || 'detail') === 'appraisal'
+        ? 'Record just the appraisal screens (star badge + Attack/Defense/HP bars visible). Reads the star tier and full bars, matches each to a Pokemon you already imported by name + CP + HP, and pins its exact IV. It never adds new Pokemon.'
+        : 'Record the normal Pokemon detail screens (CP, HP, stardust, weight/height, moves). Adds new Pokemon and updates existing ones, solving IVs from CP + HP + stardust.',
+      videoImportSummary: (this.state.videoImport && this.state.videoImport.mode === 'appraisal') ? null : (this.state.videoImport && this.state.videoImport.summary),
+      hasVideoReview: !!(this.state.videoImport && this.state.videoImport.mode !== 'appraisal' && this.state.videoImport.review && this.state.videoImport.review.length),
+      hasAppraisalReview: !!(this.state.videoImport && this.state.videoImport.mode === 'appraisal' && this.state.videoImport.review && this.state.videoImport.review.length),
+      appraisalCountLine: (() => {
+        const rev = (this.state.videoImport && this.state.videoImport.review) || [];
+        const c = { applied: 0, collision: 0, unmatched: 0, contradiction: 0, skipped: 0 };
+        rev.forEach(r => { if (c[r._status] != null) c[r._status]++; });
+        const parts = [rev.length + ' read', c.applied + ' pinned'];
+        if (c.collision) parts.push(c.collision + ' need a pick');
+        if (c.unmatched) parts.push(c.unmatched + ' unmatched');
+        if (c.contradiction) parts.push(c.contradiction + ' contradicted CP/HP');
+        return parts.join(' \u00b7 ');
+      })(),
+      appraisalReviewRows: ((this.state.videoImport && this.state.videoImport.mode === 'appraisal' && this.state.videoImport.review) || []).map(r => {
+        const S = r._status;
+        const meta = ({
+          applied: { label: 'PINNED', color: 'oklch(76% 0.13 150)', border: 'oklch(35% 0.05 150)', bg: 'oklch(18% 0.03 150)' },
+          collision: { label: 'PICK ONE', color: 'oklch(80% 0.13 70)', border: 'oklch(42% 0.08 70)', bg: 'oklch(20% 0.04 70)' },
+          unmatched: { label: 'UNMATCHED', color: 'oklch(68% 0.02 260)', border: 'oklch(34% 0.03 260)', bg: 'transparent' },
+          contradiction: { label: 'CP/HP MISMATCH', color: 'oklch(76% 0.16 30)', border: 'oklch(42% 0.1 30)', bg: 'oklch(20% 0.05 30)' },
+          skipped: { label: 'SKIPPED', color: 'oklch(58% 0.02 260)', border: 'oklch(32% 0.03 260)', bg: 'transparent' }
+        })[S] || { label: '', color: 'oklch(70% 0.02 260)', border: 'oklch(34% 0.03 260)', bg: 'transparent' };
+        let detail = r.read || '';
+        if (S === 'applied') detail = (r.iv ? 'IV ' + r.iv + (r.ivCount > 1 ? ' (' + r.ivCount + ' fit)' : '') + ' \u2192 ' + (r.matchName || '') : '') + ' \u00b7 ' + (r.read || '');
+        else if (S === 'contradiction') detail = 'The star/bar reading can\u2019t coexist with CP ' + r.cp + ' / ' + r.hp + ' HP \u2014 a bar or star was misread. ' + (r.read || '');
+        else if (S === 'unmatched') detail = 'No imported Pokemon at ' + (r.read || '') + '. Import its detail screen first.';
+        return {
+          name: r.name,
+          statusLabel: meta.label, statusColor: meta.color, border: meta.border, rowBg: meta.bg,
+          detail,
+          showChoices: S === 'collision',
+          choicePrompt: 'Two or more Pokemon match ' + (r.read || '') + '. Which one is this appraisal for?',
+          choices: (r._choices || []).map(ch => ({ label: ch.label, onClick: () => this.applyAppraisalPick(r._rid, ch.idx) })),
+          onSkip: () => this.skipAppraisalCollision(r._rid)
+        };
+      }),
       videoReviewRows: ((this.state.videoImport && this.state.videoImport.review) || []).map(r => {
         const ivs = [r.atkIV, r.defIV, r.staIV];
         const haveIv = ivs.every(v => Number.isFinite(v));

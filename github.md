@@ -2,6 +2,15 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
+date: 2026-08-06T06:40:00Z
+
+### Updated in this project
+- **New appraisal-recording import workflow.** The screen-recording importer now has a DETAIL / APPRAISAL mode toggle. Appraisal mode reads star tier + which stat bars are completely full (via the vision model, not OCR — it judges only "full vs not full", never a partial-bar number), matches each reading to an existing record by name + CP + HP, and passes the appraisal hint to `solveIVs` to pin the exact spread. It never creates new Pokémon.
+- Collisions (two records sharing name+CP+HP) are flagged with a one-tap "which one?" picker rather than silently overwriting; unmatched readings and appraisal↔CP/HP contradictions are surfaced in the receipt.
+- New logic on the DC: `appraisalPrompt`, `mergeAppraisalImport`, `solveAndApplyAppraisal`, `appraisalHintFromItem`, `effectiveRosterForMatch`, `recordDistinguisher`, `applyAppraisalPick`, `skipAppraisalCollision`. Reuses the existing `filterByAppraisal` hint support in `pokemon-mechanics.js` (no mechanics change).
+- Rebuilt `index.html` and `Scout Dashboard.html` from `Scout Dashboard Standalone.dc.html`; canonical source is `Scout Dashboard.dc.html`. Build tag `2026-08-06-appraise`; `sw.js` cache bumped to `scout-v7`.
+
+## Previous sync
 date: 2026-08-06T05:15:00Z
 
 ### Updated in this project
