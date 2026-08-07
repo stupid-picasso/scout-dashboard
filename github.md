@@ -2,6 +2,15 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
+date: 2026-08-06T07:30:00Z
+
+### Updated in this project
+- **Removed the in-app appraisal video reader** (the DETAIL/APPRAISAL toggle) — it failed on Gemini rate limits in the field ("No batch reached the AI"). Replaced with a second server-side step: **SERVER-SIDE IV IMPORT → IMPORT IV FROM SERVER**. It fetches `data/appraisal_import.json`, matches each reading to an existing record by name + CP + HP, and pins the exact IV via `mergeAppraisalImport`. Collisions get a one-tap picker; unmatched/contradiction readings are surfaced. New client methods: `importIvFromServer`, `normalizeAppraisalItems` (tolerant of `maxed[]` or per-bar booleans). The solver side (`mergeAppraisalImport`, `solveAndApplyAppraisal`, `filterByAppraisal`) was kept from the previous session and now feeds from JSON instead of the in-app vision pipeline.
+- **`pogo_extract.py` gained an `--appraisal` mode.** Reuses the existing Gemini batching/model-rotation infra (parameterized `run_gemini_video_ocr(prompt, merge_key)`), reads star tier + full bars only (new `APPRAISAL_PROMPT`, never a partial-bar number), merges by name+CP+HP, and writes `data/appraisal_import.json`.
+- **New workflow `.github/workflows/extract-iv.yml` ("Extract IV Ratings").** Mirrors `extract.yml` but calls `--appraisal`; triggers on `appraisal_videos/*` pushes or a Drive-link `workflow_dispatch`, and auto-commits `data/appraisal_import.json`. Uses the same `GEMINI_API_KEY_ONE/TWO` secrets.
+- Rebuilt `index.html` + `Scout Dashboard.html` from `Scout Dashboard Standalone.dc.html`; canonical source `Scout Dashboard.dc.html`. Build tag `2026-08-06-ivserver`; `sw.js` cache `scout-v8`.
+
+## Previous sync
 date: 2026-08-06T06:40:00Z
 
 ### Updated in this project

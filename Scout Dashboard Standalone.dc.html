@@ -1076,7 +1076,7 @@
   }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
-<script>window.SCOUT_BUILD = '2026-08-06-appraise';
+<script>window.SCOUT_BUILD = '2026-08-06-ivserver';
 window.__spriteUrl = function (file) {
   var r = window.__resources || {};
   var id = 'spr_' + String(file).replace(/^sprites\//, '').replace(/\.png$/, '').replace(/-/g, '_');
@@ -1317,6 +1317,21 @@ window.__spriteUrl = function (file) {
             </sc-if>
           </div>
         </details>
+        <details style="background:oklch(19% 0.025 300);border:1px solid oklch(34% 0.05 300);border-radius:6px;padding:8px 12px">
+          <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(74% 0.09 300);list-style:none">SERVER-SIDE IV IMPORT &middot; FREE</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Step 2, after importing Pokemon above. Run the "Extract IV Ratings" workflow with your <b>appraisal</b> recording, then tap below. It reads star tier + full bars per Pokemon, matches to what you already imported by name + CP + HP, and pins the exact IV. It never adds new Pokemon.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div onClick="{{ importIvFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:5px;background:oklch(45% 0.13 300);color:white;font:700 11.5px ui-monospace,monospace">{{ ivServerLabel }}</div>
+            </div>
+            <sc-if value="{{ ivServerError }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ ivServerError }}</div>
+            </sc-if>
+            <sc-if value="{{ ivServerSummary }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(80% 0.11 300)">{{ ivServerSummary }}</div>
+            </sc-if>
+          </div>
+        </details>
         <details style="background:oklch(19% 0.02 260);border:1px solid oklch(32% 0.03 260);border-radius:6px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(68% 0.02 260);list-style:none">PASTE FROM ANY AI CHAT · FREE</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
@@ -1343,15 +1358,6 @@ window.__spriteUrl = function (file) {
             IMPORT SCREEN RECORDING
             <input type="file" accept="video/*" onChange="{{ onVideoUpload }}" style="display:none" />
           </label>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
-          <div style="font:10px ui-monospace,monospace;color:oklch(55% 0.02 260);letter-spacing:.05em">SCREEN RECORDING TYPE</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <sc-for list="{{ importModeOptions }}" as="m" hint-placeholder-count="2">
-              <div onClick="{{ m.onClick }}" style="cursor:pointer;padding:7px 13px;border-radius:6px;background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.color }};font:600 11px ui-monospace,monospace;transition:background .12s ease,border-color .12s ease">{{ m.label }}</div>
-            </sc-for>
-          </div>
-          <div style="font:11px sans-serif;color:oklch(58% 0.02 260);line-height:1.5;text-wrap:pretty">{{ importModeHint }}</div>
         </div>
       </div>
       <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
@@ -5299,6 +5305,59 @@ class Component extends DCLogic {
     }
   }
 
+  normalizeAppraisalItems(items) {
+    const m = this.mechanics;
+    const num = v => (v == null || v === '' ? null : (Number.isFinite(+v) ? +v : null));
+    const barFull = v => v === true || v === 'full' || v === 15 || v === '15' || v === 1 || v === '1';
+    return (items || []).map(it => {
+      if (!it) return null;
+      const name = String(it.name || it.pokemon_name || '').trim();
+      if (!name) return null;
+      const dex = m && m.resolveDexByName ? m.resolveDexByName(name) : null;
+      if (dex == null) return null;
+      let maxed = Array.isArray(it.maxed)
+        ? it.maxed.map(s => String(s).toLowerCase()).filter(s => ['atk', 'def', 'sta'].includes(s))
+        : [];
+      if (!maxed.length) {
+        if (barFull(it.atkFull) || barFull(it.appraisal_attack_bar) || barFull(it.attack_bar)) maxed.push('atk');
+        if (barFull(it.defFull) || barFull(it.appraisal_defense_bar) || barFull(it.defense_bar)) maxed.push('def');
+        if (barFull(it.hpFull) || barFull(it.appraisal_hp_bar) || barFull(it.hp_bar) || barFull(it.staFull)) maxed.push('sta');
+      }
+      const rawStars = it.stars != null ? it.stars : (it.appraisal_stars != null ? it.appraisal_stars : null);
+      return {
+        name, dex, cp: num(it.cp), hp: num(it.hp),
+        stars: rawStars == null ? null : num(rawStars),
+        perfect: !!(it.perfect || it.hundo || it.is_perfect),
+        maxed
+      };
+    }).filter(Boolean);
+  }
+
+  importIvFromServer() {
+    const url = 'https://raw.githubusercontent.com/stupid-picasso/scout-dashboard/main/data/appraisal_import.json?t=' + Date.now();
+    this.setState({ ivServerBusy: true, ivServerError: '', ivServerSummary: '' });
+    fetch(url, { cache: 'no-store' })
+      .then(res => {
+        if (!res.ok) throw new Error('No appraisal file yet (HTTP ' + res.status + '). Run the "Extract IV Ratings" workflow first.');
+        return res.json();
+      })
+      .then(items => {
+        if (!Array.isArray(items)) throw new Error('appraisal_import.json is not a JSON array.');
+        const clean = this.normalizeAppraisalItems(items);
+        if (!clean.length) throw new Error('No usable appraisal readings in appraisal_import.json (need name + CP + HP that match imported Pokemon).');
+        const summary = this.mergeAppraisalImport(clean);
+        this.setState({
+          ivServerBusy: false, ivServerError: '',
+          ivServerSummary: summary.applied + ' pinned \u00b7 ' + summary.collided + ' need a pick \u00b7 ' + summary.unmatched + ' unmatched'
+            + (summary.contradiction ? ' \u00b7 ' + summary.contradiction + ' contradicted CP/HP' : ''),
+          videoImport: { stage: 'done', mode: 'appraisal', review: summary._review, summary }
+        });
+      })
+      .catch(err => {
+        this.setState({ ivServerBusy: false, ivServerSummary: '', ivServerError: (err && err.message) || 'Import failed.' });
+      });
+  }
+
   // Running tally across clips, so a multi-video import shows coverage instead
   // of just the last clip's result.
   bumpImportProgress(summary) {
@@ -6682,6 +6741,11 @@ class Component extends DCLogic {
       serverImportSummary: this.state.serverImportSummary || '',
       serverImportLabel: this.state.serverImportBusy ? 'IMPORTING…' : 'IMPORT FROM SERVER',
       importFromServer: () => this.importFromServer(),
+      ivServerBusy: !!this.state.ivServerBusy,
+      ivServerError: this.state.ivServerError || '',
+      ivServerSummary: this.state.ivServerSummary || '',
+      ivServerLabel: this.state.ivServerBusy ? 'IMPORTING…' : 'IMPORT IV FROM SERVER',
+      importIvFromServer: () => this.importIvFromServer(),
       apiEndpoint: this.state.apiEndpoint,
       apiEndpointDraft: this.state.apiEndpointDraft,
       hasVideoImport: !!this.state.videoImport,
