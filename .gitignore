@@ -9,9 +9,12 @@ data/*.csv
 data/*.json
 # Exception: the server-side video-OCR pipeline's output is committed on
 # purpose so the phone app's "IMPORT FROM SERVER" button can fetch it via
-# raw.githubusercontent.com. This repo is public \u2014 confirmed acceptable
+# raw.githubusercontent.com. This repo is public — confirmed acceptable
 # for this project (gameplay stats only, no account credentials).
 !data/pokemon_import.json
+# Same exception for the appraisal/IV pipeline's output, fetched by the app's
+# "IMPORT IV FROM SERVER" button.
+!data/appraisal_import.json
 # Python
 __pycache__/
 *.py[cod]
