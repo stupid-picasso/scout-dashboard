@@ -1075,7 +1075,7 @@
   }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
-<script>window.SCOUT_BUILD = '2026-08-07-gemini-only';
+<script>window.SCOUT_BUILD = '2026-08-08-measured-iv';
 window.__spriteUrl = function (file) {
   var r = window.__resources || {};
   var id = 'spr_' + String(file).replace(/^sprites\//, '').replace(/\.png$/, '').replace(/-/g, '_');
@@ -5050,6 +5050,68 @@ class Component extends DCLogic {
     }
   }
 
+  // Pin an exact spread measured from the appraisal bars. No solving — but the
+  // spread is still checked against the record's CP and HP, because a spread
+  // that cannot reproduce them means the frame was matched to the wrong
+  // Pokemon (or a bar was occluded), and that is worth surfacing.
+  applyMeasuredIv(rec, item, overrides) {
+    const mechanics = this.mechanics;
+    const bases = this.baseStatCandidates({ name: rec.name, dex: rec.dex, form: rec.form });
+    // The measurer's first choice, then its ranked alternates (emitted only when
+    // the whole-bar and per-segment reads disagreed, or the fill sat near a
+    // boundary). CP/HP is the arbiter: the alternate that reproduces both IS the
+    // answer, and if none does, nothing is written.
+    const spreads = this.measuredSpreadOrder(item);
+    let usedBase = null, level = null, ivs = null, arbitrated = false;
+    outer:
+    for (let i = 0; i < spreads.length; i++) {
+      const s = spreads[i];
+      for (const cand of bases) {
+        const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
+        const exact = (hit || []).find(c => c.atkIV === s[0] && c.defIV === s[1] && c.staIV === s[2]);
+        if (exact) { usedBase = cand; level = exact.level; ivs = s; arbitrated = i > 0; break outer; }
+      }
+    }
+    if (!usedBase) {
+      const first = spreads[0] || [item.atkIV, item.defIV, item.staIV];
+      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+        iv: first.join('/') + ' \u2014 does not fit this CP/HP', ivCount: 0 } };
+    }
+    const base = usedBase.base;
+    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+    overrides[rec.idx] = {
+      ...overrides[rec.idx],
+      atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
+      lvlMin: level, lvlMax: level,
+      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
+      ivArbitrated: arbitrated || undefined,
+      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
+      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
+      little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
+    };
+    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+      iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
+  }
+
+  // Expand the measurer's per-stat alternates into whole spreads to try, best
+  // first. Capped so a triple-ambiguous read cannot explode the search.
+  measuredSpreadOrder(item) {
+    const first = [item.atkIV, item.defIV, item.staIV];
+    const c = item.ivCandidateSets;
+    if (!Array.isArray(c) || c.length !== 3) return [first];
+    const lists = c.map((l, i) => (Array.isArray(l) && l.length ? l : [first[i]]));
+    const out = [];
+    for (const a of lists[0]) for (const d of lists[1]) for (const s of lists[2]) {
+      out.push([a, d, s]);
+      if (out.length >= 27) break;
+    }
+    // Nearest-first: the measurement's own pick leads, then spreads that differ
+    // from it in the fewest stats.
+    const dist = s => (s[0] !== first[0]) + (s[1] !== first[1]) + (s[2] !== first[2]);
+    out.sort((x, y) => dist(x) - dist(y));
+    return out;
+  }
+
   normalizeAppraisalItems(items) {
     const m = this.mechanics;
     const num = v => (v == null || v === '' ? null : (Number.isFinite(+v) ? +v : null));
@@ -5069,11 +5131,21 @@ class Component extends DCLogic {
         if (barFull(it.hpFull) || barFull(it.appraisal_hp_bar) || barFull(it.hp_bar) || barFull(it.staFull)) maxed.push('sta');
       }
       const rawStars = it.stars != null ? it.stars : (it.appraisal_stars != null ? it.appraisal_stars : null);
+      // Exact IVs measured off the bar fill server-side (ivSource 'bar-measure').
+      // These are measurements, not model output, so they are carried through
+      // and pinned directly instead of being re-derived from CP/HP. Dropping
+      // them here is what made a measured 14/15/15 come back out of the solver
+      // as 12/12/13: the numbers arrived correct and were then thrown away.
+      const iv = [num(it.atkIV), num(it.defIV), num(it.staIV)];
+      const measured = iv.every(v => Number.isInteger(v) && v >= 0 && v <= 15);
       return {
         name, dex, cp: num(it.cp), hp: num(it.hp),
         stars: rawStars == null ? null : num(rawStars),
         perfect: !!(it.perfect || it.hundo || it.is_perfect),
-        maxed
+        maxed,
+        ...(measured ? { atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivSource: it.ivSource || 'bar-measure',
+          barDrift: it.barDrift, barConfidence: it.barConfidence,
+          ivCandidateSets: Array.isArray(it.ivCandidateSets) ? it.ivCandidateSets : null } : {})
       };
     }).filter(Boolean);
   }
@@ -5494,6 +5566,13 @@ class Component extends DCLogic {
         collided++;
         review.push({ _rid: rid, _status: 'collision', name: item.name, read: readLabel, _item: item,
           _choices: matches.map(m => ({ idx: m.idx, label: this.recordDistinguisher(m) })) });
+        return;
+      }
+      // A measured spread needs no solving at all - pin it and move on.
+      if (item.ivSource === 'bar-measure') {
+        const mres = this.applyMeasuredIv(matches[0], item, overrides);
+        if (mres.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...mres.review }); }
+        else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...mres.review }); }
         return;
       }
       const hint = this.appraisalHintFromItem(item);
