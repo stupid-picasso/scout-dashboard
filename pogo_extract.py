@@ -1343,10 +1343,16 @@ def measure_appraisal_bars_warm(image_path):
     min_run = max(4, int(round(W * 0.01)))
     x_lo, x_hi = int(W * 0.02), int(W * 0.98)
 
+    # NO span filter here. A bar showing 2/15 is only ~55px of fill on a 420px
+    # bar, and requiring a span of 8% of frame width threw every low-IV bar
+    # away — after which the trio search had nothing left but the Pokemon
+    # sprite and the animating UI to the right of the card, matched those as
+    # "bars", and reported confident nonsense. It is why high-IV Pokemon read
+    # correctly for weeks while low ones came out as garbage.
     rows = []
     for y in range(int(H * 0.30), H):
         runs = _warm_runs(px, y, x_lo, x_hi, min_chroma, min_run)
-        if runs and (runs[-1][1] - runs[0][0] + 1) > W * 0.08:
+        if runs:
             rows.append((y, runs))
     if not rows:
         return None
@@ -1354,55 +1360,89 @@ def measure_appraisal_bars_warm(image_path):
     bands, cur = [], []
     for row in rows:
         if (cur and row[0] - cur[-1][0] <= 2
-                and abs(row[1][0][0] - cur[0][1][0][0]) <= W * 0.01):
+                and abs(row[1][0][0] - cur[0][1][0][0]) <= 4):
             cur.append(row)
         else:
-            if len(cur) >= 5:
+            if len(cur) >= 8:
                 bands.append(cur)
             cur = [row]
-    if len(cur) >= 5:
+    if len(cur) >= 8:
         bands.append(cur)
     if len(bands) < 3:
         return None
 
+    info = []
+    for b in bands:
+        m = b[len(b) // 2][1]
+        info.append({"top": b[0][0], "bot": b[-1][0],
+                     "mid": (b[0][0] + b[-1][0]) / 2.0,
+                     "x0": m[0][0], "fe": m[-1][1], "runs": m})
+
+    # Bars of one card share a left edge, so cluster bands by x0 first and
+    # only then look for structure. Searching all band triples for "three that
+    # happen to line up" is what let unrelated screen furniture win.
+    used = [False] * len(info)
+    clusters = []
+    for i in range(len(info)):
+        if used[i]:
+            continue
+        cl = [info[i]]
+        used[i] = True
+        for j in range(i + 1, len(info)):
+            if not used[j] and abs(info[j]["x0"] - info[i]["x0"]) <= 5:
+                cl.append(info[j])
+                used[j] = True
+        clusters.append(cl)
+
     best = None
-    for i in range(len(bands)):
-        for j in range(i + 1, len(bands)):
-            for k in range(j + 1, len(bands)):
-                t = [b[len(b) // 2] for b in (bands[i], bands[j], bands[k])]
-                xs = [r[1][0][0] for r in t]
-                if max(xs) - min(xs) > W * 0.01:
-                    continue
-                if abs((t[1][0] - t[0][0]) - (t[2][0] - t[1][0])) > H * 0.01:
-                    continue
-                # Lowest trio on screen: the appraisal card sits below the
-                # medallion, which is also gold and also makes warm runs.
-                if best is None or t[0][0] > best[0][0]:
-                    best = t
+    for cl in clusters:
+        if len(cl) < 3:
+            continue
+        segs, gaps = [], []
+        for b in cl:
+            rs = b["runs"]
+            for i in range(len(rs) - 1):
+                w = rs[i][1] - rs[i][0] + 1
+                g = rs[i + 1][0] - rs[i][1] - 1
+                if 2 <= g <= int(round(W * 0.02)) and W * 0.06 < w < W * 0.20:
+                    segs.append(w)
+                    gaps.append(g)
+        if not segs:
+            continue
+        seg_w = _median_int(segs)
+        gap = _median_int(gaps)
+        width = 3 * seg_w + 2 * gap
+        x0 = _median_int([b["x0"] for b in cl])
+        # Width comes from segment geometry ALONE. The previous version also
+        # took max(observed fill) as a floor, so whenever the longest bar in
+        # view was not actually full it silently became the 15/15 reference —
+        # pegging that stat to exactly 15.000 and inflating the other two.
+        ok = sorted((b for b in cl if (b["fe"] - x0 + 1) <= width * 1.04),
+                    key=lambda b: b["mid"])
+        for i in range(len(ok) - 2):
+            t = ok[i:i + 3]
+            p1 = t[1]["mid"] - t[0]["mid"]
+            p2 = t[2]["mid"] - t[1]["mid"]
+            if abs(p1 - p2) > max(6, 0.12 * max(p1, p2)):
+                continue
+            if not (H * 0.02 <= p1 <= H * 0.10):
+                continue
+            if best is None or t[0]["mid"] > best["t"][0]["mid"]:
+                best = {"t": t, "seg_w": seg_w, "gap": gap,
+                        "width": width, "x0": x0}
     if best is None:
         return None
 
-    segs, gaps = [], []
-    for _, runs in best:
-        for i in range(len(runs) - 1):
-            segs.append(runs[i][1] - runs[i][0] + 1)
-            gaps.append(runs[i + 1][0] - runs[i][1] - 1)
-    if not segs:
-        return None
-    seg_w = _median_int(segs)
-    gap = _median_int(gaps)
-    x0 = _median_int([r[1][0][0] for r in best])
-    max_fill = max(r[1][-1][1] for r in best)
-    width = max(3 * seg_w + 2 * gap, max_fill - x0 + 1)
-    if width <= 0:
-        return None
-
-    raw = [15.0 * (r[1][-1][1] - x0 + 1) / width for r in best]
+    x0, width = best["x0"], best["width"]
+    raw = [15.0 * (b["fe"] - x0 + 1) / width for b in best["t"]]
     ivs = [int(round(v)) for v in raw]
     if any(v < 0 or v > 15 for v in ivs):
         return None
     drift = max(abs(v - round(v)) for v in raw)
-    if drift > 0.45:
+    # A correctly located bar lands within about 0.2 of an integer; the three
+    # verified reference frames sit at 0.077-0.096. Anything past 0.35 is a
+    # frame caught mid-animation or a misplaced reference, not a close call.
+    if drift > 0.35:
         return None
     cands = []
     for v, iv in zip(raw, ivs):
@@ -1415,11 +1455,12 @@ def measure_appraisal_bars_warm(image_path):
             "raw": [round(v, 3) for v in raw],
             "rawSegment": [None, None, None],
             "maxDrift": round(drift, 3), "rowSpread": 0.0,
-            "confidence": "high" if drift < 0.25 else "low",
+            "confidence": "high" if drift < 0.2 else "low",
             "candidates": cands, "method": "warm",
-            "bands": {"x0": x0, "segW": seg_w, "gap": gap, "width": width,
-                      "white": white,
-                      "fillEnds": [r[1][-1][1] for r in best]}}
+            "bands": {"x0": x0, "segW": best["seg_w"], "gap": best["gap"],
+                      "width": width, "white": white,
+                      "barYs": [b["top"] for b in best["t"]],
+                      "fillEnds": [b["fe"] for b in best["t"]]}}
 
 
 def measure_appraisal_bars_any(image_path):
@@ -1445,7 +1486,7 @@ def _dump_bar_diagnostics(frames, out_dir="data/debug_bars", hits=None):
     if not frames:
         return
     try:
-        os.makedirs(out_dir, exist_ok=True)
+        _fresh_debug_dir(out_dir)
         n = len(frames)
         # The frames that DID measure are the informative ones — a wrong width
         # is only visible on a frame the reader actually locked onto. Dump those
@@ -1588,6 +1629,41 @@ def run_appraisal_pipeline(frames):
     return _resolve_duplicate_sightings(items)
 
 
+def _safe_label(key):
+    """Filesystem-safe label for a merge key.
+
+    The key is a single string, so joining over it with "-" spaced out every
+    character and produced names like `conflict_a-b-r-a-|-3-2-3-|-4-2_1.png`.
+    """
+    text = key if isinstance(key, str) else "-".join(
+        str(p) for p in key if p is not None)
+    safe = "".join(c if (c.isalnum() or c in "-_") else "-" for c in text)
+    while "--" in safe:
+        safe = safe.replace("--", "-")
+    return safe.strip("-").lower() or "unknown"
+
+
+_DEBUG_DIR_READY = set()
+
+
+def _fresh_debug_dir(out_dir):
+    """Create the debug dir, emptying it once per run.
+
+    Without this every run's frames pile up in the repo — 54 PNGs from three
+    runs — and it stops being obvious which ones came from the current run.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    if out_dir in _DEBUG_DIR_READY:
+        return
+    for name in os.listdir(out_dir):
+        if name.lower().endswith(".png"):
+            try:
+                os.remove(os.path.join(out_dir, name))
+            except OSError:
+                pass
+    _DEBUG_DIR_READY.add(out_dir)
+
+
 def _resolve_duplicate_sightings(items, out_dir="data/debug_bars"):
     """Collapse repeat sightings of one individual, and never resolve a
     disagreement silently.
@@ -1610,19 +1686,38 @@ def _resolve_duplicate_sightings(items, out_dir="data/debug_bars"):
         by_key.setdefault(_appraisal_merge_key(it), []).append(it)
     out = []
     for key, group in by_key.items():
+        # Lowest drift first: drift is the distance from the measured bar
+        # fractions to whole IVs, so it is a direct measure of whether the
+        # reference frame was right. A settled frame lands near 0.00; a frame
+        # caught while the bars were still filling in lands high.
+        group = sorted(group, key=lambda g: g.get("barDrift") or 0.0)
         first = group[0]
         spreads = {(g["atkIV"], g["defIV"], g["staIV"]) for g in group}
         if len(spreads) == 1:
             first.pop("_framePath", None)
             out.append(first)
             continue
-        label = "-".join(str(p) for p in key if p is not None) or "unknown"
+        best_drift = first.get("barDrift") or 0.0
+        runner_up = next((g.get("barDrift") or 0.0 for g in group[1:]
+                          if (g["atkIV"], g["defIV"], g["staIV"])
+                          != (first["atkIV"], first["defIV"], first["staIV"])), None)
+        if best_drift <= 0.10 and runner_up is not None and runner_up - best_drift >= 0.08:
+            # One frame reads as near-exact whole numbers and the others do
+            # not. That is not a tie — the clean frame is the settled one.
+            print(f"[Bars] {first.get('name')} cp{first.get('cp')} "
+                  f"hp{first.get('hp')}: {len(spreads)} spreads seen, taking "
+                  f"{first['atkIV']}/{first['defIV']}/{first['staIV']} "
+                  f"(drift {best_drift:.3f} vs {runner_up:.3f})")
+            first.pop("_framePath", None)
+            out.append(first)
+            continue
+        label = _safe_label(key)
         print(f"[Bars] CONFLICT {first.get('name')} cp{first.get('cp')} "
               f"hp{first.get('hp')}: {len(spreads)} different spreads measured "
               + " vs ".join("/".join(str(v) for v in s) for s in sorted(spreads))
               + " — flagged for manual pick, not pinned")
         try:
-            os.makedirs(out_dir, exist_ok=True)
+            _fresh_debug_dir(out_dir)
             for n, g in enumerate(group):
                 p = g.get("_framePath")
                 if p:
