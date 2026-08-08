@@ -1015,10 +1015,19 @@ def _row_dark_runs(px, y, W, min_run):
 
 
 def _bar_groups(runs, W):
-    """Cluster a row's runs into bar-shaped groups: 2-3 runs of equal width
-    separated by narrow gaps. That shape is what an appraisal bar IS — three
-    segments, the last possibly cut short by the fill — and almost nothing else
-    on the screen looks like it."""
+    """Cluster a row's runs into bar-shaped groups: exactly three runs of equal
+    width separated by narrow gaps. That shape is what an appraisal bar IS —
+    three segments, the last possibly cut short by the fill.
+
+    Three is required, not 2-3. A two-run group is ambiguous: it can be a bar
+    whose fill stops in segment 2, or a bar whose first gap was blurred away by
+    video encoding so that segments 1+2 arrived as ONE run. The two cases are
+    indistinguishable from the group alone, and reading the second as the first
+    makes seg_w twice the truth — which inflates the reconstructed bar width the
+    same way and reads a true 15 as a 6. With three runs the two leading
+    segments are both known-complete and can be checked against each other, so
+    a merged run is caught by the equal-width test instead of silently setting
+    the scale."""
     if not runs:
         return []
     groups, cur = [], [runs[0]]
@@ -1033,21 +1042,24 @@ def _bar_groups(runs, W):
     groups.append(cur)
     out = []
     for gr in groups:
-        if not (2 <= len(gr) <= 3):
+        if not (1 <= len(gr) <= 3):
             continue
         widths = [r[1] - r[0] + 1 for r in gr]
-        complete = widths[:-1]          # the last segment may be partly filled
-        lo, hi = min(complete), max(complete)
-        if hi - lo > max(3, hi * 0.15):
-            continue
-        if widths[-1] > hi * 1.15:
-            continue
         span = gr[-1][1] - gr[0][0] + 1
-        if span < W * 0.10 or span > W * 0.80:
+        if span < W * 0.03 or span > W * 0.80:
             continue
-        out.append({"x0": gr[0][0], "fill_end": gr[-1][1],
-                    "seg_w": (lo + hi) // 2,
-                    "gap": gr[1][0] - gr[0][1] - 1})
+        g = {"x0": gr[0][0], "fill_end": gr[-1][1], "span": span,
+             "nruns": len(gr), "seg_w": None, "gap": None}
+        if len(gr) == 3:
+            complete = widths[:-1]      # the last segment may be partly filled
+            lo, hi = min(complete), max(complete)
+            if hi - lo > max(3, hi * 0.15):
+                continue                # a merged run — not a real 3-segment bar
+            if widths[-1] > hi * 1.15:
+                continue
+            g["seg_w"] = (lo + hi) // 2
+            g["gap"] = gr[1][0] - gr[0][1] - 1
+        out.append(g)
     return out
 
 
@@ -1120,8 +1132,8 @@ def measure_appraisal_bars_structural(image_path):
                 g2 = t[2]["y"] - t[1]["y"]
                 if abs(g1 - g2) > max(5, H * 0.01):
                     continue
-                sw = [r["seg_w"] for r in t]
-                if max(sw) - min(sw) > max(3, max(sw) * 0.15):
+                sw = [r["seg_w"] for r in t if r["seg_w"]]
+                if sw and max(sw) - min(sw) > max(3, max(sw) * 0.15):
                     continue
                 # Prefer the lowest trio on screen: the appraisal card sits
                 # below everything else it could be confused with.
@@ -1132,11 +1144,30 @@ def measure_appraisal_bars_structural(image_path):
 
     trio = best[1]
     allrows = [r for b in trio for r in b]
-    seg_w = _median_int([r["seg_w"] for r in allrows])
-    gap = _median_int([r["gap"] for r in allrows])
+    # The SCALE (segment width + gap) may only be taken from rows that actually
+    # showed all three segments. A row whose fill stops early shows fewer runs
+    # and says nothing about how wide a segment is; letting it set the scale is
+    # what read a full bar as a third of one. Bars share one geometry, so the
+    # scale measured on the fullest bar applies to all three.
+    scaled = [r for r in allrows if r["seg_w"]]
+    if not scaled:
+        print("[Bars] structural: no row showed three complete segments — "
+              "cannot establish bar width, skipping frame")
+        return None
+    seg_w = _median_int([r["seg_w"] for r in scaled])
+    gap = _median_int([r["gap"] for r in scaled])
     x0 = _median_int([r["x0"] for r in allrows])
     width = 3 * seg_w + 2 * gap
     if width <= 0:
+        return None
+    # A fill can never run past the end of its own bar. If some band's fill
+    # extends beyond the reconstructed width, the width is wrong (merged
+    # segments), and every IV derived from it is wrong by the same factor.
+    widest = max(r["fill_end"] for r in allrows) - x0 + 1
+    if widest > width * 1.04:
+        print(f"[Bars] structural: reconstructed width {width}px is smaller than "
+              f"the observed fill {widest}px — segment geometry is wrong, "
+              f"skipping frame")
         return None
 
     raw = []
@@ -1161,7 +1192,9 @@ def measure_appraisal_bars_structural(image_path):
             "rawSegment": [None, None, None],
             "maxDrift": round(drift, 3), "rowSpread": 0.0,
             "confidence": "high" if drift < 0.2 else "low",
-            "candidates": cands, "method": "structural"}
+            "candidates": cands, "method": "structural",
+            "bands": {"x0": x0, "segW": seg_w, "gap": gap, "width": width,
+                      "fillEnds": [max(r["fill_end"] for r in b) for b in trio]}}
 
 
 def measure_appraisal_bars_any(image_path):
@@ -1173,67 +1206,58 @@ def measure_appraisal_bars_any(image_path):
     return measure_appraisal_bars_structural(image_path)
 
 
-def _dump_bar_diagnostics(frames, out_dir="data/debug_bars"):
-    """Save a few frames and report what the bar-colour test actually saw.
+def _dump_bar_diagnostics(frames, out_dir="data/debug_bars", hits=None):
+    """Save real frames and print the row structure the shape reader works from.
 
-    Measurement failing on every frame is not debuggable from a boolean. The
-    thresholds in _bar_px_kind were calibrated on PNG screenshots; frames that
-    come out of ffmpeg can differ in colour range (tone mapping, chroma
-    subsampling, rescaling), so this prints the real numbers instead of guessing
-    at them, and commits the frames so the geometry can be checked directly.
+    A wrong IV tells you the reader is wrong but not why. The run traces below
+    show the actual dark-runs per row, so a mis-sized segment (which is what
+    turns a true 15 into a 6) is visible directly instead of inferred.
     """
     if not frames:
         return
     try:
         os.makedirs(out_dir, exist_ok=True)
-        picks = [frames[len(frames) // 2]]
-        if len(frames) > 3:
-            picks = [frames[len(frames) // 4], frames[len(frames) // 2],
-                     frames[(3 * len(frames)) // 4]]
-        for n, path in enumerate(picks):
+        n = len(frames)
+        # The frames that DID measure are the informative ones — a wrong width
+        # is only visible on a frame the reader actually locked onto. Dump those
+        # first, then fill up to 3 with evenly spaced others.
+        picks = [p for _, p, _ in (hits or [])][:3]
+        spread = ([frames[n // 4], frames[n // 2], frames[(3 * n) // 4]]
+                  if n > 3 else list(frames[:3]))
+        for p in spread:
+            if len(picks) >= 3:
+                break
+            if p not in picks:
+                picks.append(p)
+        measured_by_path = {p: m for _, p, m in (hits or [])}
+        for idx, path in enumerate(picks):
             img = Image.open(path).convert("RGB")
             W, H = img.size
-            img.save(os.path.join(out_dir, f"frame_{n + 1}.png"))
+            img.save(os.path.join(out_dir, f"frame_{idx + 1}.png"))
             px = img.load()
-            fill = track = 0
-            near_fill = near_track = 0
-            rows = {}
-            for y in range(int(H * 0.40), H, 2):
-                n_row = 0
-                for x in range(int(W * 0.04), int(W * 0.96), 3):
-                    r, g, b = px[x, y]
-                    mx, mn = max(r, g, b), min(r, g, b)
-                    k = _bar_px_kind(r, g, b)
-                    if k == "fill":
-                        fill += 1
-                        n_row += 1
-                    elif k == "track":
-                        track += 1
-                        n_row += 1
-                    else:
-                        # How close did it come? Saturated-but-dim, or pale but
-                        # not quite in the track's grey window.
-                        if mx > 90 and (mx - mn) > 25 and r > b:
-                            near_fill += 1
-                        elif 180 < mx < 252 and (mx - mn) < 25:
-                            near_track += 1
-                if n_row:
-                    rows[y] = n_row
-            best = sorted(rows.items(), key=lambda kv: -kv[1])[:4]
-            print(f"[Bars][debug] {os.path.basename(path)} {W}x{H} "
-                  f"fill={fill} track={track} nearFill={near_fill} nearTrack={near_track}")
-            print(f"[Bars][debug]   busiest rows (y, hits): {best}")
-            # A colour census of the lower half tells us what the bar actually is.
-            census = {}
-            for y in range(int(H * 0.55), H, 4):
-                for x in range(int(W * 0.06), int(W * 0.62), 4):
-                    r, g, b = px[x, y]
-                    key = (r // 24 * 24, g // 24 * 24, b // 24 * 24)
-                    census[key] = census.get(key, 0) + 1
-            top = sorted(census.items(), key=lambda kv: -kv[1])[:8]
-            print(f"[Bars][debug]   top colours (lower area): {top}")
-        print(f"[Bars][debug] wrote {len(picks)} frame(s) to {out_dir}/ — "
-              f"open them to check the bars are actually on screen")
+            m = measured_by_path.get(path)
+            tag = "  MEASURED" if m else ""
+            print(f"[Bars][debug] frame_{idx + 1}.png  {W}x{H}{tag}")
+            if m:
+                print(f"[Bars][debug]   read {m.get('atk')}/{m.get('def')}/"
+                      f"{m.get('sta')} method={m.get('method')} "
+                      f"raw={m.get('raw')} seg={m.get('rawSegment')} "
+                      f"bands={m.get('bands')}")
+            min_run = max(6, int(W * 0.02))
+            shown = 0
+            for y in range(int(H * 0.35), H, 3):
+                runs = _row_dark_runs(px, y, W, min_run)
+                if not (2 <= len(runs) <= 4):
+                    continue
+                widths = [r[1] - r[0] + 1 for r in runs]
+                print(f"[Bars][debug]   y={y} runs={runs} widths={widths}")
+                shown += 1
+                if shown >= 20:
+                    break
+            if not shown:
+                print("[Bars][debug]   no row split into 2-4 runs \u2014 the bars are "
+                      "not being separated from the background at all")
+        print(f"[Bars][debug] wrote {len(picks)} frame(s) to {out_dir}/")
     except Exception as e:
         print(f"[Bars][debug] diagnostics failed: {e}")
 
@@ -1252,9 +1276,13 @@ def run_appraisal_pipeline(frames):
         readings.append((idx, path, measure_appraisal_bars_any(path)))
     hits = [(i, p, m) for i, p, m in readings if m]
     print(f"[Bars] Measured appraisal bars on {len(hits)}/{len(frames)} frames")
+    # Dump evidence whenever the read is WEAK, not only when it fails outright.
+    # A run that measures 1 frame in 20 is just as broken as one that measures
+    # none, and needs the same evidence to fix.
+    if len(hits) < max(3, len(frames) * 0.25):
+        _dump_bar_diagnostics(frames, hits=hits)
     if not hits:
         print("[Bars] No appraisal bars found \u2014 falling back to the model-read prompt.")
-        _dump_bar_diagnostics(frames)
         items = run_gemini_video_ocr(frames, prompt=APPRAISAL_PROMPT,
                                      merge_key=_appraisal_merge_key)
         # These spreads are MODEL GUESSES, not measurements. Tagging them is what
