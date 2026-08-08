@@ -401,6 +401,37 @@ def dedupe_similar_frames(frames, threshold=4.0, sig_size=24):
     return kept
 
 
+TONEMAP_CHAIN = (
+    "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,"
+    "tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=full,format=rgb24"
+)
+HDR_TRANSFERS = {"smpte2084", "arib-std-b67", "smpte428", "bt2020-10", "bt2020-12"}
+
+
+def _probe_colour(video_path):
+    """Return the stream's colour transfer characteristic, or '' if unknown."""
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=color_transfer,color_primaries,color_space",
+             "-of", "default=nw=1:nk=1", str(video_path)],
+            capture_output=True, text=True, timeout=30)
+        vals = [v.strip().lower() for v in out.stdout.split() if v.strip()]
+        print(f"[Extract] Source colour tags: {vals or ['unknown']}")
+        return vals
+    except Exception as e:
+        print(f"[Extract] ffprobe colour probe failed ({e}) \u2014 assuming SDR")
+        return []
+
+
+def _frame_peak_luma(path):
+    """Brightest pixel in a frame, 0-255."""
+    try:
+        return Image.open(path).convert("L").getextrema()[1]
+    except Exception:
+        return None
+
+
 def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_threshold=0.3,
                    native=False):
     """Extract frames from video using ffmpeg.
@@ -418,36 +449,82 @@ def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_thre
     Gemini are downscaled later (image_to_base64_jpeg), so the payload saving
     is kept without paying for it in precision.
 
-    Both paths force out_range=full. A phone recording is usually tagged
-    limited range (16-235); decoding it without converting leaves every colour
-    compressed toward grey, which drops saturation by roughly 15% — enough on
-    its own to push a bar's fill colour under a saturation threshold and make
-    the bars undetectable.
+    HDR TONE-MAPPING is the important part for measurement. A modern phone
+    screen recording is BT.2100 PQ. Decoding it as if it were BT.709 \u2014 which
+    is what ffmpeg does by default \u2014 leaves the PQ code values in place, and
+    PQ puts diffuse white at roughly 0.51 of full scale. The result is a frame
+    whose BRIGHTEST pixel is about 137/255: a white card lands on 129, and a
+    saturated gold progress bar on (130,129,125). That is one luminance level
+    and five chroma levels of signal \u2014 no threshold, colour or structural,
+    can recover a bar edge from it, and every measurement taken from such a
+    frame is noise. out_range=full does NOT fix this; it addresses limited vs
+    full range, a different and much smaller distortion.
+
+    Both paths also force out_range=full, which handles the ordinary
+    limited-range (16-235) case.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     scale = "scale=iw:ih:out_range=full" if native else "scale=1080:-1:out_range=full"
+    tags = _probe_colour(video_path)
+    hdr = any(t in HDR_TRANSFERS for t in tags)
+    if hdr:
+        print("[Extract] HDR source detected \u2014 tone-mapping to BT.709 before measuring")
+        scale = f"{TONEMAP_CHAIN},{scale}"
+
+    def _extract(vf, vfr=False):
+        """Run ffmpeg; if the tone-map chain is unavailable, retry without it."""
+        try:
+            return _run_ffmpeg_extract(video_path, output_dir, vf, vfr_mode=vfr)
+        except RuntimeError:
+            if TONEMAP_CHAIN not in vf:
+                raise
+            print("[Extract] tone-map filter unavailable (no libzimg?) \u2014 "
+                  "retrying without it; measurement accuracy will suffer")
+            return _run_ffmpeg_extract(
+                video_path, output_dir, vf.replace(TONEMAP_CHAIN + ",", ""),
+                vfr_mode=vfr)
 
     if scene_detect:
-        frames = _run_ffmpeg_extract(
-            video_path, output_dir,
-            f"select=gt(scene\\,{scene_threshold}),{scale}",
-            vfr_mode=True
-        )
+        frames = _extract(f"select=gt(scene\\,{scene_threshold}),{scale}", vfr=True)
         print(f"[Extract] Scene-detect extracted {len(frames)} frames")
         if frames:
+            _warn_if_crushed(frames)
             deduped = dedupe_similar_frames(frames)
             print(f"[Extract] {len(deduped)} frames remain after near-duplicate dedup")
             return deduped
         print(f"[Extract] Scene-detect found 0 frames (threshold={scene_threshold}) "
               f"\u2014 falling back to fixed fps={fps} sampling")
 
-    frames = _run_ffmpeg_extract(video_path, output_dir, f"fps={fps},{scale}")
+    frames = _extract(f"fps={fps},{scale}")
     print(f"[Extract] Extracted {len(frames)} frames"
           + (" at native resolution" if native else ""))
+    _warn_if_crushed(frames)
     deduped = dedupe_similar_frames(frames)
     print(f"[Extract] {len(deduped)} frames remain after near-duplicate dedup")
     return deduped
+
+
+def _warn_if_crushed(frames):
+    """Flag frames whose whole tonal range is compressed into the bottom half.
+
+    A screen recording contains a white UI, so the peak should sit near 255.
+    A peak around 137 means PQ code values reached the PNG untouched and the
+    frame carries almost no measurable contrast. Saying so explicitly beats
+    letting the bar readers fail with a threshold error, which is the wrong
+    place to look.
+    """
+    if not frames:
+        return
+    peaks = [p for p in (_frame_peak_luma(f) for f in frames[:5]) if p is not None]
+    if not peaks:
+        return
+    peak = max(peaks)
+    print(f"[Extract] Peak luminance across sampled frames: {peak}/255")
+    if peak < 200:
+        print(f"[Extract] WARNING: frames are tonally crushed (peak {peak}). A screen "
+              "recording should peak near 255. This is what an untone-mapped HDR "
+              "decode looks like, and bar measurement cannot work on it.")
 
 
 def preprocess_image(image_path):
@@ -1197,8 +1274,160 @@ def measure_appraisal_bars_structural(image_path):
                       "fillEnds": [max(r["fill_end"] for r in b) for b in trio]}}
 
 
+def _frame_white_point(img):
+    """Luminance of the frame's brightest 0.1% — its effective white.
+
+    Every threshold below is a RATIO of this rather than an absolute value.
+    The original thresholds were ratios of 255 with the 255 baked in, which is
+    correct only for a frame that actually reaches full scale. An HDR screen
+    recording decoded without tone-mapping peaks around 137, and the same UI
+    then sits at roughly half the code values the constants assume \u2014 the gold
+    bar fill lands on (120,107,78), missing `mx > 120` and `chroma > 45` by one
+    and three counts respectively. Scaling by the measured white point makes
+    one set of thresholds fit both a clean screenshot and a crushed frame.
+    """
+    h = img.convert("L").histogram()
+    total = sum(h) or 1
+    acc = 0
+    for v in range(255, -1, -1):
+        acc += h[v]
+        if acc >= total * 0.001:
+            return max(v, 32)
+    return 255
+
+
+def _warm_runs(px, y, x_lo, x_hi, min_chroma, min_run):
+    """Horizontal runs of bar-fill colour in one row.
+
+    The test is WARMTH (r - b) rather than darkness. The appraisal fill is a
+    gold/red on a near-white card, so it is barely darker than its background
+    but strongly warmer \u2014 42 counts of red-blue separation on a frame whose
+    total luminance range is 8. Thresholding on luminance finds the dark
+    team-leader avatar sharing the row and misses the bar entirely.
+    """
+    runs, start = [], None
+    for x in range(x_lo, x_hi):
+        r, g, b = px[x, y]
+        warm = (r - b) >= min_chroma and r >= g >= b
+        if warm and start is None:
+            start = x
+        elif not warm and start is not None:
+            if x - start >= min_run:
+                runs.append((start, x - 1))
+            start = None
+    if start is not None and x_hi - start >= min_run:
+        runs.append((start, x_hi - 1))
+    return runs
+
+
+def measure_appraisal_bars_warm(image_path):
+    """Primary reader: find the three appraisal bars by fill warmth, then take
+    the bar width from the SEGMENT GEOMETRY rather than from any single bar's
+    extent.
+
+    Three segments and two gaps reconstruct the full width even when no bar is
+    full, and the widest observed fill is used as a floor (a fill can never
+    exceed its own bar). Verified against three frames of the reference
+    recording: 14/15/15, 13/11/6 and 10/9/9, every raw value within 0.17 of an
+    integer."""
+    try:
+        img = Image.open(image_path).convert("RGB")
+    except Exception:
+        return None
+    W, H = img.size
+    if W < 200 or H < 200:
+        return None
+    px = img.load()
+    white = _frame_white_point(img)
+    min_chroma = max(8, int(round(0.14 * white)))
+    min_run = max(4, int(round(W * 0.01)))
+    x_lo, x_hi = int(W * 0.02), int(W * 0.98)
+
+    rows = []
+    for y in range(int(H * 0.30), H):
+        runs = _warm_runs(px, y, x_lo, x_hi, min_chroma, min_run)
+        if runs and (runs[-1][1] - runs[0][0] + 1) > W * 0.08:
+            rows.append((y, runs))
+    if not rows:
+        return None
+
+    bands, cur = [], []
+    for row in rows:
+        if (cur and row[0] - cur[-1][0] <= 2
+                and abs(row[1][0][0] - cur[0][1][0][0]) <= W * 0.01):
+            cur.append(row)
+        else:
+            if len(cur) >= 5:
+                bands.append(cur)
+            cur = [row]
+    if len(cur) >= 5:
+        bands.append(cur)
+    if len(bands) < 3:
+        return None
+
+    best = None
+    for i in range(len(bands)):
+        for j in range(i + 1, len(bands)):
+            for k in range(j + 1, len(bands)):
+                t = [b[len(b) // 2] for b in (bands[i], bands[j], bands[k])]
+                xs = [r[1][0][0] for r in t]
+                if max(xs) - min(xs) > W * 0.01:
+                    continue
+                if abs((t[1][0] - t[0][0]) - (t[2][0] - t[1][0])) > H * 0.01:
+                    continue
+                # Lowest trio on screen: the appraisal card sits below the
+                # medallion, which is also gold and also makes warm runs.
+                if best is None or t[0][0] > best[0][0]:
+                    best = t
+    if best is None:
+        return None
+
+    segs, gaps = [], []
+    for _, runs in best:
+        for i in range(len(runs) - 1):
+            segs.append(runs[i][1] - runs[i][0] + 1)
+            gaps.append(runs[i + 1][0] - runs[i][1] - 1)
+    if not segs:
+        return None
+    seg_w = _median_int(segs)
+    gap = _median_int(gaps)
+    x0 = _median_int([r[1][0][0] for r in best])
+    max_fill = max(r[1][-1][1] for r in best)
+    width = max(3 * seg_w + 2 * gap, max_fill - x0 + 1)
+    if width <= 0:
+        return None
+
+    raw = [15.0 * (r[1][-1][1] - x0 + 1) / width for r in best]
+    ivs = [int(round(v)) for v in raw]
+    if any(v < 0 or v > 15 for v in ivs):
+        return None
+    drift = max(abs(v - round(v)) for v in raw)
+    if drift > 0.45:
+        return None
+    cands = []
+    for v, iv in zip(raw, ivs):
+        alt = [iv]
+        nb = iv + (1 if v > iv else -1)
+        if abs(v - iv) > 0.2 and 0 <= nb <= 15:
+            alt.append(nb)
+        cands.append(alt)
+    return {"atk": ivs[0], "def": ivs[1], "sta": ivs[2],
+            "raw": [round(v, 3) for v in raw],
+            "rawSegment": [None, None, None],
+            "maxDrift": round(drift, 3), "rowSpread": 0.0,
+            "confidence": "high" if drift < 0.25 else "low",
+            "candidates": cands, "method": "warm",
+            "bands": {"x0": x0, "segW": seg_w, "gap": gap, "width": width,
+                      "white": white,
+                      "fillEnds": [r[1][-1][1] for r in best]}}
+
+
 def measure_appraisal_bars_any(image_path):
-    """Colour reader first (exact on native screenshots), shape reader second."""
+    """Warm-fill reader first (works on video frames and screenshots alike),
+    then the original colour reader, then the shape reader."""
+    m = measure_appraisal_bars_warm(image_path)
+    if m:
+        return m
     m = measure_appraisal_bars(image_path)
     if m:
         m.setdefault("method", "colour")
