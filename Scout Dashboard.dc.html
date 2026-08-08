@@ -4459,8 +4459,14 @@ class Component extends DCLogic {
   effectiveRosterForMatch() {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
-    const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
-    return [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !this.isRemoved(p, removedSet));
+    // Overrides must reach addedPokemon too. Pokemon created by the video
+    // import live in addedPokemon, not roster, so applying overrides to roster
+    // alone meant a measured IV was written to ivOverrides[idx] and then never
+    // read back — the card kept rendering the CP/HP-solved spread it was
+    // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
+    const withOverrides = p => (overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const baseRoster = (this.state.roster || []).map(withOverrides);
+    return [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !this.isRemoved(p, removedSet));
   }
 
   // Build a solveIVs hint from an appraisal item. When all three bars are maxed
@@ -5045,8 +5051,14 @@ class Component extends DCLogic {
   renderVals() {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
-    const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
-    const roster = [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !this.isRemoved(p, removedSet));
+    // Overrides must reach addedPokemon too. Pokemon created by the video
+    // import live in addedPokemon, not roster, so applying overrides to roster
+    // alone meant a measured IV was written to ivOverrides[idx] and then never
+    // read back — the card kept rendering the CP/HP-solved spread it was
+    // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
+    const withOverrides = p => (overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const baseRoster = (this.state.roster || []).map(withOverrides);
+    const roster = [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !this.isRemoved(p, removedSet));
     const tab = this.state.tab;
     const search = this.state.search;
     const sortField = this.state.sortField;

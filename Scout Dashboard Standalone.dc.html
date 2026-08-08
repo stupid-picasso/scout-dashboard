@@ -1075,7 +1075,7 @@
   }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
-<script>window.SCOUT_BUILD = '2026-08-08-measured-iv';
+<script>window.SCOUT_BUILD = '2026-08-08-measured-iv2';
 window.__spriteUrl = function (file) {
   var r = window.__resources || {};
   var id = 'spr_' + String(file).replace(/^sprites\//, '').replace(/\.png$/, '').replace(/-/g, '_');
@@ -5474,8 +5474,14 @@ class Component extends DCLogic {
   effectiveRosterForMatch() {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
-    const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
-    return [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !removedSet.has(p.idx));
+    // Overrides must reach addedPokemon too. Pokemon created by the video
+    // import live in addedPokemon, not roster, so applying overrides to roster
+    // alone meant a measured IV was written to ivOverrides[idx] and then never
+    // read back — the card kept rendering the CP/HP-solved spread it was
+    // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
+    const withOverrides = p => (overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const baseRoster = (this.state.roster || []).map(withOverrides);
+    return [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !removedSet.has(p.idx));
   }
 
   // Star tier + full-bar flags read by the model are a GUESS, not a measurement.
@@ -5900,8 +5906,14 @@ class Component extends DCLogic {
   renderVals() {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
-    const baseRoster = (this.state.roster || []).map(p => overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
-    const roster = [...baseRoster, ...(this.state.addedPokemon || [])].filter(p => !removedSet.has(p.idx));
+    // Overrides must reach addedPokemon too. Pokemon created by the video
+    // import live in addedPokemon, not roster, so applying overrides to roster
+    // alone meant a measured IV was written to ivOverrides[idx] and then never
+    // read back — the card kept rendering the CP/HP-solved spread it was
+    // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
+    const withOverrides = p => (overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const baseRoster = (this.state.roster || []).map(withOverrides);
+    const roster = [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !removedSet.has(p.idx));
     const tab = this.state.tab;
     const search = this.state.search;
     const sortField = this.state.sortField;
