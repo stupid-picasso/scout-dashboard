@@ -1075,7 +1075,7 @@
   }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
-<script>window.SCOUT_BUILD = '2026-08-08-measured-iv3';
+<script>window.SCOUT_BUILD = '2026-08-08-measured-iv4';
 window.__spriteUrl = function (file) {
   var r = window.__resources || {};
   var id = 'spr_' + String(file).replace(/^sprites\//, '').replace(/\.png$/, '').replace(/-/g, '_');
@@ -5604,11 +5604,16 @@ class Component extends DCLogic {
       if (res.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...res.review }); }
       else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...res.review }); }
     });
-    this.setState({ ivOverrides: overrides });
+    // The push MUST happen after the state commit. setState is asynchronous, so
+    // calling pushCloud() on the next line uploads this.state as it was BEFORE
+    // the import - the stale spreads - and the listener then hands them straight
+    // back, which looks exactly like the import silently failing.
+    this.setState({ ivOverrides: overrides }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
     try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
-    // Push straight away: the longer these sit local-only, the bigger the window
-    // in which a cloud snapshot written before the import can arrive and win.
-    try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    const measuredCount = Object.keys(overrides).filter(k => overrides[k] && overrides[k].ivMeasured).length;
+    console.log('[Scout] appraisal import: ' + applied + ' applied, ' + measuredCount + ' measured pins now held locally');
     return { applied, collided, unmatched, contradiction, total: items.length, updated: applied, inserted: 0, solved: applied, _review: review };
   }
 
@@ -5983,7 +5988,7 @@ class Component extends DCLogic {
         ivColor: ivColor(p.ivAvg),
         ringDasharray: ring.dasharray,
         ringDashoffset: ring.dashoffset,
-        spread: ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite) ? p.atkIV + '/' + p.defIV + '/' + p.staIV : '—'),
+        spread: ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite) ? p.atkIV + '/' + p.defIV + '/' + p.staIV + (p.ivMeasured ? ' ✓' : '') : '—'),
         moves: [p.quickMove, p.chargeMove].filter(Boolean).join(' / ') || '—',
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'oklch(55% 0.02 260)',
