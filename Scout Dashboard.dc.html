@@ -1361,6 +1361,24 @@ class Component extends DCLogic {
     this.resizeObserver.observe(el);
   }
 
+  // A remote snapshot must not silently undo a measured pin.
+  // ivOverrides used to be replaced wholesale by whatever the cloud doc held.
+  // The appraisal import writes locally and pushes on a debounce, so a listener
+  // firing with the pre-import document in between put the OLD spread back —
+  // the import reported 14/15/15, the card kept showing the 12/12/13 the cloud
+  // still carried, and re-importing could never win the race. A measured entry
+  // (ivMeasured) is a measurement, not an edit, so it outranks a remote entry
+  // that has no measurement of its own; everything else still takes the remote.
+  mergeIvOverrides(local, remote) {
+    const out = { ...(remote || {}) };
+    const mine = local || {};
+    for (const idx of Object.keys(mine)) {
+      const l = mine[idx];
+      if (l && l.ivMeasured && !(out[idx] && out[idx].ivMeasured)) out[idx] = l;
+    }
+    return out;
+  }
+
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
   }
@@ -1570,7 +1588,7 @@ class Component extends DCLogic {
     keepCleared = needsRosterBackfill || staleAfterOwnClear;
     const patch = {
       roster: keepCleared ? this.state.roster : this.sanitizeRoster(remote.roster),
-      ivOverrides: keepCleared ? this.state.ivOverrides : (remote.ivOverrides || {}),
+      ivOverrides: keepCleared ? this.state.ivOverrides : this.mergeIvOverrides(this.state.ivOverrides, remote.ivOverrides),
       addedPokemon: keepCleared ? this.state.addedPokemon : (remote.addedPokemon || []),
       candyInventory: keepCleared ? this.state.candyInventory : (remote.candyInventory || {}),
       typeTable: keepCleared ? this.state.typeTable : (remote.typeTable || {}),
@@ -4689,6 +4707,9 @@ class Component extends DCLogic {
     });
     this.setState({ ivOverrides: overrides });
     try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
+    // Push straight away: the longer these sit local-only, the bigger the window
+    // in which a cloud snapshot written before the import can arrive and win.
+    try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     // updated/inserted/total keys keep bumpImportProgress happy.
     return { applied, collided, unmatched, contradiction, total: items.length, updated: applied, inserted: 0, solved: applied, _review: review };
   }
