@@ -112,6 +112,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f data/appraisal_import.json
+          # Bar-measurement diagnostics: real frames the reader worked from.
+          # Without these committed there is no way to see WHY a measurement
+          # came out wrong — the log alone only says that it did.
+          git add -f data/debug_bars || true
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
