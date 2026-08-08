@@ -1577,6 +1577,7 @@ def run_appraisal_pipeline(frames):
         it["barConfidence"] = m["confidence"]
         it["barMethod"] = m.get("method", "colour")
         it["ivCandidateSets"] = m["candidates"]
+        it["_framePath"] = path
         items.append(it)
         alt = "" if all(len(c) == 1 for c in m["candidates"]) else \
             " alts " + "|".join(",".join(str(v) for v in c) for c in m["candidates"])
@@ -1584,14 +1585,59 @@ def run_appraisal_pipeline(frames):
               f"\u2192 {m['atk']}/{m['def']}/{m['sta']} "
               f"(drift {m['maxDrift']}, {m.get('method', 'colour')}, {m['confidence']}){alt}")
 
-    # Same individual can appear twice in one recording; keep the first.
-    seen, out = set(), []
+    return _resolve_duplicate_sightings(items)
+
+
+def _resolve_duplicate_sightings(items, out_dir="data/debug_bars"):
+    """Collapse repeat sightings of one individual, and never resolve a
+    disagreement silently.
+
+    The same Pokemon can be caught on several non-consecutive frames. When
+    those frames measure the SAME spread the extra sightings are just
+    confirmation. When they measure DIFFERENT spreads something is wrong and
+    which fix applies depends on why: bars still animating in would read short
+    (take the largest), while a name/CP/HP misread pulled from a neighbouring
+    card during a scroll makes the whole group untrustworthy (take neither).
+    Keeping the first sighting — the previous behaviour — picks blind between
+    those and pins the result as exact.
+
+    So: agreeing duplicates collapse, disagreeing ones are merged into a single
+    entry carrying every measured value as a candidate and flagged for the
+    client's picker, and their frames are written out so the cause is visible.
+    """
+    by_key = {}
     for it in items:
-        k = _appraisal_merge_key(it)
-        if k in seen:
+        by_key.setdefault(_appraisal_merge_key(it), []).append(it)
+    out = []
+    for key, group in by_key.items():
+        first = group[0]
+        spreads = {(g["atkIV"], g["defIV"], g["staIV"]) for g in group}
+        if len(spreads) == 1:
+            first.pop("_framePath", None)
+            out.append(first)
             continue
-        seen.add(k)
-        out.append(it)
+        label = "-".join(str(p) for p in key if p is not None) or "unknown"
+        print(f"[Bars] CONFLICT {first.get('name')} cp{first.get('cp')} "
+              f"hp{first.get('hp')}: {len(spreads)} different spreads measured "
+              + " vs ".join("/".join(str(v) for v in s) for s in sorted(spreads))
+              + " — flagged for manual pick, not pinned")
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+            for n, g in enumerate(group):
+                p = g.get("_framePath")
+                if p:
+                    Image.open(p).save(
+                        os.path.join(out_dir, f"conflict_{label}_{n + 1}.png"))
+            print(f"[Bars]   wrote {len(group)} conflicting frame(s) to {out_dir}/")
+        except Exception as e:
+            print(f"[Bars]   could not write conflict frames: {e}")
+        merged = dict(first)
+        merged["ivCandidateSets"] = [
+            sorted({s[i] for s in spreads}) for i in range(3)]
+        merged["barConfidence"] = "low"
+        merged["ivConflict"] = True
+        merged.pop("_framePath", None)
+        out.append(merged)
     return out
 
 
