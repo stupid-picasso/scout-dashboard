@@ -1244,18 +1244,28 @@ def _dump_bar_diagnostics(frames, out_dir="data/debug_bars", hits=None):
                       f"raw={m.get('raw')} seg={m.get('rawSegment')} "
                       f"bands={m.get('bands')}")
             min_run = max(6, int(W * 0.02))
-            shown = 0
-            for y in range(int(H * 0.35), H, 3):
+            wide = int(W * 0.20)
+            rows = []
+            for y in range(int(H * 0.30), H, 3):
                 runs = _row_dark_runs(px, y, W, min_run)
-                if not (2 <= len(runs) <= 4):
+                if not runs:
                     continue
                 widths = [r[1] - r[0] + 1 for r in runs]
-                print(f"[Bars][debug]   y={y} runs={runs} widths={widths}")
-                shown += 1
-                if shown >= 20:
-                    break
-            if not shown:
-                print("[Bars][debug]   no row split into 2-4 runs \u2014 the bars are "
+                # Two shapes matter: a segmented bar (2-4 runs) and a solid
+                # long run (a bar whose gaps the encoder smoothed away). The
+                # old filter caught only the first and capped at the first 20
+                # matching rows, which on a tall phone frame never got past
+                # the sprite \u2014 the bars sit below everything it printed.
+                if len(runs) <= 4 or max(widths) >= wide:
+                    rows.append((y, runs, widths))
+            if rows:
+                stepr = max(1, len(rows) // 24)
+                for y, runs, widths in rows[::stepr][:24]:
+                    print(f"[Bars][debug]   y={y} n={len(runs)} runs={runs} widths={widths}")
+                print(f"[Bars][debug]   {len(rows)} candidate rows total "
+                      f"(showing every {stepr})")
+            else:
+                print("[Bars][debug]   no row produced bar-like runs \u2014 the bars are "
                       "not being separated from the background at all")
         print(f"[Bars][debug] wrote {len(picks)} frame(s) to {out_dir}/")
     except Exception as e:
