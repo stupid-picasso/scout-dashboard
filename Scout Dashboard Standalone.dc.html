@@ -1075,7 +1075,7 @@
   }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
-<script>window.SCOUT_BUILD = '2026-08-08-measured-iv4';
+<script>window.SCOUT_BUILD = '2026-08-08-appraisal-shot';
 window.__spriteUrl = function (file) {
   var r = window.__resources || {};
   var id = 'spr_' + String(file).replace(/^sprites\//, '').replace(/\.png$/, '').replace(/-/g, '_');
@@ -1339,13 +1339,23 @@ window.__spriteUrl = function (file) {
             IMPORT SCREENSHOT
             <input type="file" accept="image/*" onChange="{{ onScreenshotUpload }}" style="display:none" />
           </label>
+          <label style="cursor:pointer;background:oklch(28% 0.05 200);border:1px solid oklch(42% 0.08 200);color:oklch(88% 0.03 200);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
+            {{ apprShotLabel }}
+            <input type="file" accept="image/*" onChange="{{ onAppraisalUpload }}" style="display:none" />
+          </label>
           <label style="cursor:pointer;background:oklch(28% 0.05 280);border:1px solid oklch(42% 0.08 280);color:oklch(88% 0.03 280);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
             IMPORT SCREEN RECORDING
             <input type="file" accept="video/*" onChange="{{ onVideoUpload }}" style="display:none" />
           </label>
         </div>
       </div>
-      <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
+      <sc-if value="{{ apprShotSummary }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ apprShotSummary }}</div>
+      </sc-if>
+      <sc-if value="{{ apprShotError }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11.5px ui-monospace,monospace;color:oklch(70% 0.15 25)">{{ apprShotError }}</div>
+      </sc-if>
+      <div style="font:11.5px sans-serif;color:oklch(55% 0.02 260)">Detail screenshot updates Stardust, that species' candy/XL candy, and its type. Appraisal screenshot measures the three bars and pins the exact IV on a Pokemon you already imported. A screen recording does either in bulk.</div>
       <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:oklch(20% 0.03 150);border:1px solid oklch(33% 0.05 150);border-radius:7px;padding:9px 12px">
           <div style="font:700 10.5px ui-monospace,monospace;color:oklch(72% 0.13 150);letter-spacing:.05em">IMPORT PROGRESS</div>
@@ -2187,6 +2197,9 @@ class Component extends DCLogic {
     clearArmed: false,
     rosterCleared: false,
     ivOverrides: {},
+    apprShotBusy: false,
+    apprShotError: '',
+    apprShotSummary: '',
     addedPokemon: [],
     solvedIvResult: null,
     videoEstimate: null,
@@ -2846,6 +2859,9 @@ class Component extends DCLogic {
     this.setState({
       roster: [],
       ivOverrides: {},
+    apprShotBusy: false,
+    apprShotError: '',
+    apprShotSummary: '',
       candyInventory: {},
       typeTable: {},
       addedPokemon: [],
@@ -5130,6 +5146,136 @@ class Component extends DCLogic {
     return out;
   }
 
+  // Measure the three appraisal bars from a still screenshot, in the browser.
+  // Same algorithm as the server-side reader in pogo_extract.py: find the fill
+  // by WARMTH (r-b) rather than darkness (the fill is barely darker than its
+  // card but strongly warmer, and darkness-thresholding locks onto the team
+  // leader avatar sharing the row), scale every threshold by the frame's own
+  // white point, and take the bar width from segment geometry - three segments
+  // plus two gaps - never from the longest observed fill, which turns a bar
+  // that merely looks full into a false 15/15 reference.
+  measureAppraisalBars(canvas) {
+    const W = canvas.width, H = canvas.height;
+    if (W < 200 || H < 200) return null;
+    const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+    const px = (x, y) => { const i = (y * W + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
+
+    const hist = new Array(256).fill(0);
+    for (let i = 0; i < d.length; i += 4) hist[Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2])]++;
+    let acc = 0, white = 255; const total = W * H;
+    for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= total * 0.001) { white = Math.max(v, 32); break; } }
+
+    const minChroma = Math.max(8, Math.round(0.14 * white));
+    const minRun = Math.max(4, Math.round(W * 0.01));
+    const xLo = Math.floor(W * 0.02), xHi = Math.floor(W * 0.98);
+    const rowRuns = (y) => {
+      const runs = []; let start = null;
+      for (let x = xLo; x < xHi; x++) {
+        const p = px(x, y);
+        const warm = (p[0] - p[2]) >= minChroma && p[0] >= p[1] && p[1] >= p[2];
+        if (warm && start === null) start = x;
+        else if (!warm && start !== null) { if (x - start >= minRun) runs.push([start, x - 1]); start = null; }
+      }
+      if (start !== null && xHi - start >= minRun) runs.push([start, xHi - 1]);
+      return runs;
+    };
+
+    const rows = [];
+    for (let y = Math.floor(H * 0.30); y < H; y++) { const r = rowRuns(y); if (r.length) rows.push([y, r]); }
+    if (!rows.length) return null;
+
+    const bands = []; let cur = [];
+    for (const row of rows) {
+      if (cur.length && row[0] - cur[cur.length - 1][0] <= 2 && Math.abs(row[1][0][0] - cur[0][1][0][0]) <= 4) cur.push(row);
+      else { if (cur.length >= 8) bands.push(cur); cur = [row]; }
+    }
+    if (cur.length >= 8) bands.push(cur);
+    if (bands.length < 3) return null;
+
+    const info = bands.map(b => { const m = b[Math.floor(b.length / 2)][1];
+      return { top: b[0][0], mid: (b[0][0] + b[b.length - 1][0]) / 2, x0: m[0][0], fe: m[m.length - 1][1], runs: m }; });
+
+    const med = a => { const t = [...a].sort((p, q) => p - q); return t[Math.floor(t.length / 2)]; };
+    const used = info.map(() => false), clusters = [];
+    for (let i = 0; i < info.length; i++) {
+      if (used[i]) continue;
+      const cl = [info[i]]; used[i] = true;
+      for (let j = i + 1; j < info.length; j++) if (!used[j] && Math.abs(info[j].x0 - info[i].x0) <= 5) { cl.push(info[j]); used[j] = true; }
+      clusters.push(cl);
+    }
+
+    let best = null;
+    for (const cl of clusters) {
+      if (cl.length < 3) continue;
+      const segs = [], gaps = [];
+      for (const b of cl) for (let i = 0; i < b.runs.length - 1; i++) {
+        const w = b.runs[i][1] - b.runs[i][0] + 1, g = b.runs[i + 1][0] - b.runs[i][1] - 1;
+        if (g >= 2 && g <= Math.round(W * 0.02) && w > W * 0.06 && w < W * 0.20) { segs.push(w); gaps.push(g); }
+      }
+      if (!segs.length) continue;
+      const segW = med(segs), gap = med(gaps), width = 3 * segW + 2 * gap;
+      const x0 = med(cl.map(b => b.x0));
+      const ok = cl.filter(b => (b.fe - x0 + 1) <= width * 1.04).sort((p, q) => p.mid - q.mid);
+      for (let i = 0; i + 2 < ok.length; i++) {
+        const t = [ok[i], ok[i + 1], ok[i + 2]];
+        const p1 = t[1].mid - t[0].mid, p2 = t[2].mid - t[1].mid;
+        if (Math.abs(p1 - p2) > Math.max(6, 0.12 * Math.max(p1, p2))) continue;
+        if (p1 < H * 0.02 || p1 > H * 0.10) continue;
+        if (!best || t[0].mid > best.t[0].mid) best = { t, segW, gap, width, x0 };
+      }
+    }
+    if (!best) return null;
+
+    const raw = best.t.map(b => 15 * (b.fe - best.x0 + 1) / best.width);
+    const ivs = raw.map(v => Math.round(v));
+    if (ivs.some(v => v < 0 || v > 15)) return null;
+    const drift = Math.max(...raw.map(v => Math.abs(v - Math.round(v))));
+    if (drift > 0.35) return null;
+    return { atk: ivs[0], def: ivs[1], sta: ivs[2], drift: +drift.toFixed(3), raw: raw.map(v => +v.toFixed(3)) };
+  }
+
+  // Full-resolution canvas. preprocessImage() downscales for the vision model,
+  // which is fine for reading printed digits and fatal for measuring a bar edge.
+  imageToCanvas(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        URL.revokeObjectURL(img.src);
+        resolve(c);
+      };
+      img.onerror = () => reject(new Error('Could not decode that image.'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  async handleAppraisalUpload(file) {
+    if (!file) return;
+    this.setState({ apprShotBusy: true, apprShotError: '', apprShotSummary: '' });
+    try {
+      const canvas = await this.imageToCanvas(file);
+      const bars = this.measureAppraisalBars(canvas);
+      if (!bars) throw new Error('No appraisal bars found in that screenshot. Capture the appraisal screen with all three bars visible, uncropped.');
+      const rec = await this.readScreenshotWithVision(file);
+      const name = rec.pokemon_name || '';
+      if (!name || rec.cp == null || rec.hp == null) throw new Error('Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but could not read the name, CP and HP from this shot. All three are needed to match it to a Pokemon you already imported.');
+      const item = { name, cp: rec.cp, hp: rec.hp, atkIV: bars.atk, defIV: bars.def, staIV: bars.sta,
+                     ivSource: 'bar-measure', barDrift: bars.drift, barConfidence: bars.drift < 0.2 ? 'high' : 'low' };
+      const clean = this.normalizeAppraisalItems([item]);
+      if (!clean.length) throw new Error('Read ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP but it did not normalize to a usable reading.');
+      const summary = this.mergeAppraisalImport(clean);
+      const line = summary.applied ? 'Pinned ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' to ' + name
+        : (summary.contradiction ? 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but it cannot produce CP ' + rec.cp + ' at ' + rec.hp + ' HP - check the screenshot is one Pokemon'
+        : 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but no imported Pokemon matches ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP');
+      this.setState({ apprShotBusy: false, apprShotSummary: line,
+        videoImport: { stage: 'done', mode: 'appraisal', review: summary._review, summary } });
+    } catch (e) {
+      this.setState({ apprShotBusy: false, apprShotError: (e && e.message) || 'Could not read that appraisal screenshot.' });
+    }
+  }
+
   normalizeAppraisalItems(items) {
     const m = this.mechanics;
     const num = v => (v == null || v === '' ? null : (Number.isFinite(+v) ? +v : null));
@@ -6504,6 +6650,10 @@ class Component extends DCLogic {
       hasOcrPreview: !!this.state.ocrPreview,
       hasOcrParsed: !!ocrParsedDisplay,
       onScreenshotUpload: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.handleScreenshotUpload(f); },
+      onAppraisalUpload: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.handleAppraisalUpload(f); e.target.value = ''; },
+      apprShotLabel: this.state.apprShotBusy ? 'MEASURING\u2026' : 'IMPORT APPRAISAL',
+      apprShotSummary: this.state.apprShotSummary || '',
+      apprShotError: this.state.apprShotError || '',
       addOcrAsNew: () => this.addOcrAsNew(),
       onOcrName: (e) => this.updateOcrField('name', e.target.value),
       onOcrCp: (e) => this.updateOcrField('cp', parseInt(e.target.value, 10) || null),
