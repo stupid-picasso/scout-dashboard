@@ -1057,6 +1057,25 @@ APPRAISAL_ID_PROMPT = (
 )
 
 
+APPRAISAL_ID_BATCH_PROMPT = (
+    "These are {n} separate frames from a Pokemon GO appraisal screen, in order. "
+    "Respond with ONLY a JSON array of exactly {n} objects, one per image, in the "
+    "SAME ORDER as the images, no markdown, no commentary: "
+    '[{{"i": int, "name": str|null, "cp": int|null, "hp": int|null}}]\n'
+    "- i is the 0-based index of the image this object describes. Always include it.\n"
+    "- Return one object for EVERY image, even if unreadable (use nulls). Never "
+    "merge two images into one object and never skip one.\n"
+    "- name is the Pokemon's species name shown on the card. If it has been given "
+    "a nickname you cannot resolve to a species, use null.\n"
+    "- cp is the number after CP at the top of the screen.\n"
+    '- hp is the number in the "X / X HP" line (either figure - they match).\n'
+    "- Do NOT report IVs, stars, bars or percentages. Ignore them entirely.\n"
+    "- Use null for anything not clearly legible. Never guess."
+)
+
+APPRAISAL_ID_BATCH_SIZE = 8
+
+
 def _row_dark_runs(px, y, W, min_run):
     """Split one row into runs of "darker than this row's midpoint".
 
@@ -1594,14 +1613,11 @@ def run_appraisal_pipeline(frames):
     print(f"[Bars] {len(groups)} distinct sightings after collapsing consecutive repeat frames")
 
     items = []
+    paths = [grp[len(grp) // 2][1] for grp in groups]
+    identified = _identify_frames(paths)
     for i, grp in enumerate(groups):
         _, path, m = grp[len(grp) // 2]
-        try:
-            got = run_gemini_video_ocr([path], prompt=APPRAISAL_ID_PROMPT,
-                                       merge_key=_appraisal_merge_key)
-        except Exception as e:
-            print(f"[Bars] group {i + 1}/{len(groups)}: identification failed ({e})")
-            got = []
+        got = [identified[i]] if identified[i] else []
         if not got:
             print(f"[Bars] group {i + 1}/{len(groups)}: measured {m['atk']}/{m['def']}/{m['sta']} "
                   f"but could not read the name/CP/HP \u2014 skipped")
@@ -1627,6 +1643,57 @@ def run_appraisal_pipeline(frames):
               f"(drift {m['maxDrift']}, {m.get('method', 'colour')}, {m['confidence']}){alt}")
 
     return _resolve_duplicate_sightings(items)
+
+
+def _identify_frames(paths):
+    """Read name/CP/HP for a list of frames, one entry per frame, order kept.
+
+    Identification used to be one Gemini call per sighting: 81 sightings meant
+    81 requests carrying a single image each, which burned the per-minute cap
+    within seconds and then the daily one, so most of the run was spent in 429
+    retries and fallbacks to weaker models. Nothing about the task needs one
+    call per frame - the model only reads three printed values - so frames go
+    up in batches and come back indexed. A batch that fails or returns the
+    wrong length falls back to per-frame calls for that batch alone, so one bad
+    response cannot cost the other seven.
+    """
+    out = [None] * len(paths)
+    for start in range(0, len(paths), APPRAISAL_ID_BATCH_SIZE):
+        chunk = paths[start:start + APPRAISAL_ID_BATCH_SIZE]
+        got = None
+        if len(chunk) > 1:
+            prompt = APPRAISAL_ID_BATCH_PROMPT.format(n=len(chunk))
+            try:
+                got = run_gemini_video_ocr(chunk, prompt=prompt, merge=False)
+            except Exception as e:
+                print(f"[Bars] batched identification failed ({e}) - "
+                      f"falling back to one call per frame")
+                got = None
+        if got is not None:
+            placed = 0
+            for obj in got:
+                try:
+                    i = int(obj.get("i"))
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= i < len(chunk) and out[start + i] is None:
+                    out[start + i] = obj
+                    placed += 1
+            if placed == len(chunk):
+                continue
+            print(f"[Bars] batch of {len(chunk)} returned {placed} usable entries - "
+                  f"re-reading the rest individually")
+        for n, p in enumerate(chunk):
+            if out[start + n] is not None:
+                continue
+            try:
+                one = run_gemini_video_ocr([p], prompt=APPRAISAL_ID_PROMPT,
+                                           merge_key=_appraisal_merge_key)
+                out[start + n] = one[0] if one else None
+            except Exception as e:
+                print(f"[Bars] identification failed for one frame ({e})")
+                out[start + n] = None
+    return out
 
 
 def _safe_label(key):
@@ -1890,14 +1957,19 @@ def _appraisal_merge_key(item):
             + "|" + ("?" if item.get("hp") is None else str(item.get("hp"))))
 
 
-def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None):
+def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None,
+                         merge=True):
     """Batches frames, rotates 5 models x N keys the same way the phone app
     does, and merges duplicate sightings across batches. `prompt` and
     `merge_key` are swapped out for the appraisal path; everything else
     (rotation, cooldowns, JSON salvage) is shared. Returns a list of item
-    dicts matching whichever JSON schema the prompt asked for."""
+    dicts matching whichever JSON schema the prompt asked for.
+
+    merge=False returns every object the model produced, unmerged and in
+    order — needed when the caller sends N frames and must get N answers back
+    (identifying N different Pokemon), rather than a deduplicated set."""
     if merge_key is None:
-        merge_key = _video_merge_key
+        merge_key = _video_merge_key if merge else (lambda it: id(it))
     keys = get_gemini_keys()
     if not keys:
         raise RuntimeError(
