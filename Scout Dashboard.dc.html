@@ -606,14 +606,21 @@
         </div>
       </sc-if>
       <sc-if value="{{ candyEntries }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;flex-direction:column;gap:6px">
+        <!-- Candy counts are reference data, not something to read top to
+             bottom: at 168 species the open list buried everything under it.
+             Collapsed by default, with the count on the summary so it is still
+             obvious the data is there. -->
+        <details style="display:flex;flex-direction:column;gap:6px">
+          <summary class="om-press" style="cursor:pointer;list-style:none;font:600 11px ui-monospace,monospace;color:oklch(70% 0.02 260);letter-spacing:.05em;padding:6px 0">CANDY BY SPECIES ({{ candyCount }})</summary>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
           <sc-for list="{{ candyEntries }}" as="c" hint-placeholder-count="0">
             <div style="display:flex;justify-content:space-between;font:12.5px sans-serif;color:oklch(80% 0.01 260)">
               <div>{{ c.name }}</div>
               <div style="font:ui-monospace,monospace;color:oklch(70% 0.02 260)">Candy {{ c.candy }} &middot; XL {{ c.xlCandy }}</div>
             </div>
           </sc-for>
-        </div>
+          </div>
+        </details>
       </sc-if>
     </div>
 
@@ -5879,6 +5886,7 @@ class Component extends DCLogic {
       digest,
       stardustDisplay,
       candyEntries,
+      candyCount: (candyEntries || []).length,
       ocrBusy: this.state.ocrBusy,
       aiOutOfCredit: !!this.state.aiOutOfCredit && !this.state.geminiKey,
       ocrError: this.state.ocrError,
