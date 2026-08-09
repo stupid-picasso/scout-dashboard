@@ -934,14 +934,14 @@
   <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif">
     <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:oklch(21% 0.0121 50);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
 
-      <div style="position:relative;height:282px;background:{{ detail.headerGradient }};border-radius:28px 28px 0 0;overflow:hidden">
+      <div style="position:relative;height:calc(282px + env(safe-area-inset-top));background:{{ detail.headerGradient }};border-radius:28px 28px 0 0;overflow:hidden">
         <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14), transparent 60%)"></div>
         <div style="position:absolute;top:14px;left:0;right:0;display:flex;justify-content:center">
           <div style="width:36px;height:5px;border-radius:3px;background:rgba(255,255,255,.35)"></div>
         </div>
         <div onClick="{{ closeDetail }}" style="position:absolute;top:26px;right:18px;cursor:pointer;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.28);backdrop-filter:blur(6px);color:white;display:flex;align-items:center;justify-content:center;font:600 15px sans-serif;transition:background .15s ease;z-index:2" style-hover="background:rgba(0,0,0,.42)">&times;</div>
-        <div style="position:absolute;top:30px;left:22px;color:white;font:800 30px ui-monospace,monospace;letter-spacing:-.5px;text-shadow:0 1px 6px rgba(0,0,0,.35);z-index:2;max-width:200px">{{ detail.cp }}<span style="font-size:12px;font-weight:600;opacity:.75;letter-spacing:.03em"> CP</span></div>
-        <div style="position:absolute;top:70px;left:22px;display:flex;gap:6px;z-index:2">
+        <div style="position:absolute;top:calc(26px + env(safe-area-inset-top));left:22px;color:white;font:800 30px ui-monospace,monospace;letter-spacing:-.5px;text-shadow:0 1px 6px rgba(0,0,0,.35);z-index:2;max-width:200px">{{ detail.cp }}<span style="font-size:12px;font-weight:600;opacity:.75;letter-spacing:.03em"> CP</span></div>
+        <div style="position:absolute;top:calc(66px + env(safe-area-inset-top));left:22px;display:flex;gap:6px;z-index:2">
           <sc-for list="{{ detail.typeChips }}" as="tc" hint-placeholder-count="2">
             <div style="font:700 9.5px ui-monospace,monospace;letter-spacing:.07em;padding:3px 8px;border-radius:5px;color:white;background:rgba(0,0,0,.3);backdrop-filter:blur(6px)">{{ tc.label }}</div>
           </sc-for>
@@ -4754,7 +4754,126 @@ class Component extends DCLogic {
   // white point, and take the bar width from segment geometry - three segments
   // plus two gaps - never from the longest observed fill, which turns a bar
   // that merely looks full into a false 15/15 reference.
+  // Bar reader, screenshot path. Finds the bar TRACK first — the three grooves,
+  // filled or not — rather than hunting for coloured fill. That matters for two
+  // reasons the warm-only reader could not solve: a bar with ZERO fill has no
+  // coloured pixels at all and simply vanished (a 0-attack Pokemon made the
+  // whole read fail), and the true bar width had to be guessed from whatever
+  // fill happened to be present. With the groove located, width is measured
+  // rather than inferred and an empty bar is an honest 0.
+  measureAppraisalBarsTrack(canvas) {
+    const W = canvas.width, H = canvas.height;
+    if (W < 200 || H < 200) return null;
+    const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+    const px = (x, y) => { const i = (y * W + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
+
+    const hist = new Array(256).fill(0);
+    for (let i = 0; i < d.length; i += 4) hist[Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2])]++;
+    let acc = 0, white = 255; const total = W * H;
+    for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= total * 0.001) { white = Math.max(v, 32); break; } }
+
+    const minChroma = Math.max(8, Math.round(0.14 * white));
+    const warmAt = (x, y) => { const p = px(x, y); return (p[0] - Math.min(p[1], p[2])) >= minChroma && p[0] > p[1]; };
+    // The empty groove is a light neutral — clearly darker than the card behind
+    // it, clearly lighter than any text on it, and near-grey in all channels.
+    const trackAt = (x, y) => {
+      if (warmAt(x, y)) return true;
+      const p = px(x, y), mx = Math.max(p[0], p[1], p[2]), mn = Math.min(p[0], p[1], p[2]);
+      return (mx - mn) <= Math.round(0.07 * white) && mx >= 0.66 * white && mx <= 0.95 * white;
+    };
+
+    const minSeg = W * 0.05, maxSeg = W * 0.22, maxGap = Math.round(W * 0.02);
+    const trackRuns = (y) => {
+      const runs = []; let s = null;
+      const lo = Math.floor(W * 0.01), hi = Math.floor(W * 0.99);
+      for (let x = lo; x < hi; x++) {
+        const on = trackAt(x, y);
+        if (on && s === null) s = x;
+        else if (!on && s !== null) { if (x - s >= 6) runs.push([s, x - 1]); s = null; }
+      }
+      if (s !== null) runs.push([s, hi - 1]);
+      // The boundary where fill meets groove leaves a 1-2px antialiased seam
+      // that is neither warm nor groove-grey. Left alone it splits one segment
+      // in two and the row stops looking like three equal bars.
+      const m = [];
+      for (const r of runs) { const last = m[m.length - 1]; if (last && r[0] - last[1] - 1 <= 2) last[1] = r[1]; else m.push([r[0], r[1]]); }
+      return m;
+    };
+
+    const cand = [];
+    for (let y = Math.floor(H * 0.20); y < H; y++) {
+      const runs = trackRuns(y);
+      for (let i = 0; i + 2 < runs.length; i++) {
+        const t = [runs[i], runs[i + 1], runs[i + 2]];
+        const w = t.map(r => r[1] - r[0] + 1);
+        const g = [t[1][0] - t[0][1] - 1, t[2][0] - t[1][1] - 1];
+        if (w.some(v => v < minSeg || v > maxSeg)) continue;
+        if (Math.max(...w) - Math.min(...w) > Math.max(4, 0.14 * Math.max(...w))) continue;
+        if (g.some(v => v < 1 || v > maxGap)) continue;
+        cand.push({ y, x0: t[0][0], x1: t[2][1] });
+        break;
+      }
+    }
+    if (!cand.length) return null;
+
+    const bands = []; let cur = [];
+    for (const r of cand) {
+      const p = cur[cur.length - 1];
+      if (p && r.y - p.y <= 2 && Math.abs(r.x0 - p.x0) <= 6 && Math.abs(r.x1 - p.x1) <= 6) cur.push(r);
+      else { if (cur.length >= 6) bands.push(cur); cur = [r]; }
+    }
+    if (cur.length >= 6) bands.push(cur);
+    if (bands.length < 3) return null;
+
+    const med = a => { const t = [...a].sort((p, q) => p - q); return t[Math.floor(t.length / 2)]; };
+    const info = bands.map(b => ({
+      mid: (b[0].y + b[b.length - 1].y) / 2,
+      x0: med(b.map(r => r.x0)), x1: med(b.map(r => r.x1)),
+      y: b[Math.floor(b.length / 2)].y
+    }));
+
+    // The three bars share a left edge and a width, and sit at an even pitch.
+    let best = null;
+    for (let i = 0; i < info.length; i++) for (let j = i + 1; j < info.length; j++) for (let k = j + 1; k < info.length; k++) {
+      const t = [info[i], info[j], info[k]].sort((p, q) => p.mid - q.mid);
+      if (Math.abs(t[0].x0 - t[1].x0) > 6 || Math.abs(t[1].x0 - t[2].x0) > 6) continue;
+      if (Math.abs(t[0].x1 - t[1].x1) > 6 || Math.abs(t[1].x1 - t[2].x1) > 6) continue;
+      const p1 = t[1].mid - t[0].mid, p2 = t[2].mid - t[1].mid;
+      if (Math.abs(p1 - p2) > Math.max(6, 0.12 * Math.max(p1, p2))) continue;
+      if (p1 < H * 0.015 || p1 > H * 0.12) continue;
+      if (!best || t[0].mid > best[0].mid) best = t;
+    }
+    if (!best) return null;
+
+    const width = best[0].x1 - best[0].x0 + 1;
+    const raw = best.map(b => {
+      let end = b.x0 - 1, x = b.x0;
+      while (x <= b.x1) {
+        if (warmAt(x, b.y)) { end = x; x++; continue; }
+        // Bridge the gap between segments; stop at the first real break.
+        let j = x, bridged = false;
+        while (j <= Math.min(b.x1, x + maxGap + 3)) { if (warmAt(j, b.y)) { bridged = true; break; } j++; }
+        if (!bridged) break;
+        x = j;
+      }
+      return 15 * (end - b.x0 + 1) / width;
+    });
+    const ivs = raw.map(v => Math.round(v));
+    if (ivs.some(v => v < 0 || v > 15)) return null;
+    const drift = Math.max(...raw.map(v => Math.abs(v - Math.round(v))));
+    if (drift > 0.35) return null;
+    return { atk: ivs[0], def: ivs[1], sta: ivs[2], drift: +drift.toFixed(3), raw: raw.map(v => +v.toFixed(3)) };
+  }
+
   measureAppraisalBars(canvas) {
+    // Groove-first, because it handles empty bars and measures real width.
+    // The older warm-only reader stays as the fallback: it is what works on
+    // tone-mapped video frames, where the card is dim and the groove contrast
+    // the track method relies on can disappear.
+    return this.measureAppraisalBarsTrack(canvas) || this.measureAppraisalBarsWarm(canvas);
+  }
+
+  measureAppraisalBarsWarm(canvas) {
     const W = canvas.width, H = canvas.height;
     if (W < 200 || H < 200) return null;
     const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W, H).data;
