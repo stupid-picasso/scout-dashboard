@@ -3391,6 +3391,12 @@ class Component extends DCLogic {
     });
   }
 
+  dupSpread(p) {
+    const ivs = this.ivsOf(p);
+    if (!ivs) return 'IV unknown';
+    return ivs.join('/') + (p.ivMeasured ? ' \u2713' : '');
+  }
+
   dominatedDuplicates(roster) {
     const groups = {};
     roster.forEach(p => {
@@ -7140,8 +7146,8 @@ class Component extends DCLogic {
       spriteRef: this.makeSpriteRefByDex(loser.dex, loser.form),
       badgeColor: `oklch(70% 0.15 ${this.hueFor(loser.dex || 0)})`,
       initial: (loser.name || '?').charAt(0),
-      loserLine: (loser.cp || '?') + ' CP \u00b7 ' + this.spreadText(loser),
-      winnerLine: 'beaten on every stat by your ' + (winner.cp || '?') + ' CP ' + this.spreadText(winner),
+      loserLine: (loser.cp || '?') + ' CP \u00b7 ' + this.dupSpread(loser),
+      winnerLine: 'beaten on every stat by your ' + (winner.cp || '?') + ' CP ' + this.dupSpread(winner),
       onClick: () => this.openDetail(loser),
       markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.removePokemon(loser.idx); }
     }));
