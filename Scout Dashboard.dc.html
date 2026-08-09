@@ -88,7 +88,7 @@
 <script type="module" src="./pokemon-data.js"></script>
 <script type="module" src="./pokemon-mechanics.js"></script>
 </helmet>
-<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100%;width:100%;max-width:100%;box-sizing:border-box;background:oklch(18% 0.0138 50);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.0055 50);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(46% 0.10 50 / .22), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(48% 0.09 25 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(44% 0.08 90 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
+<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100dvh;width:100%;max-width:100%;box-sizing:border-box;background:oklch(18% 0.0138 50);font-family:-apple-system,'Helvetica Neue',sans-serif;color:oklch(92% 0.0055 50);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(46% 0.10 50 / .22), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(48% 0.09 25 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(44% 0.08 90 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
 
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
   <div style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
@@ -101,7 +101,7 @@
     <div ref="{{ headerRef }}" style="transition:box-shadow .24s ease,background .24s ease;padding:10px {{ rootPadX }};background:oklch(18% 0.0138 50 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v32</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v34</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -152,7 +152,7 @@
     </div>
   </div>
 
-  <div class="om-scroll" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:oklch(26% 0.019 50 / .97);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);border-top:1px solid oklch(38% 0.02 50);box-shadow:0 -6px 18px rgba(0,0,0,.45);padding:8px 10px max(8px, env(safe-area-inset-bottom))">
+  <div data-navbar="1" class="om-scroll" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:oklch(26% 0.019 50 / .97);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);border-top:1px solid oklch(38% 0.02 50);box-shadow:0 -6px 18px rgba(0,0,0,.45);padding:8px 10px max(8px, env(safe-area-inset-bottom))">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="8">
       <div onClick="{{ t.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 13px;border-radius:11px;background:{{ t.navBg }};min-width:58px">
         <div style="font-size:16px;line-height:1;color:{{ t.color }}">{{ t.icon }}</div>
@@ -4760,6 +4760,34 @@ class Component extends DCLogic {
   // whole read fail), and the true bar width had to be guessed from whatever
   // fill happened to be present. With the groove located, width is measured
   // rather than inferred and an empty bar is an honest 0.
+  // TEMPORARY DIAGNOSTIC. The bottom-bar gap does not reproduce on desktop, so
+  // these are measured on the actual device and printed in the header. Remove
+  // once the cause is known.
+  measureBarDiag() {
+    try {
+      const bar = document.querySelector('[data-navbar]');
+      if (!bar) { this.setState({ barDiag: 'no bar' }); return; }
+      const r = bar.getBoundingClientRect();
+      const cs = getComputedStyle(bar);
+      const vv = window.visualViewport;
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;bottom:0;height:env(safe-area-inset-bottom);width:1px;';
+      document.body.appendChild(probe);
+      const inset = Math.round(probe.getBoundingClientRect().height);
+      probe.remove();
+      this.setState({ barDiag: [
+        'ih' + window.innerHeight,
+        'vv' + (vv ? Math.round(vv.height) : '-'),
+        'ch' + document.documentElement.clientHeight,
+        'bot' + Math.round(r.bottom),
+        'gap' + Math.round(window.innerHeight - r.bottom),
+        'pad' + cs.paddingBottom.replace('px',''),
+        'sai' + inset,
+        'op' + (bar.offsetParent ? bar.offsetParent.tagName : 'VP')
+      ].join(' ') });
+    } catch (e) { this.setState({ barDiag: 'err ' + e.message }); }
+  }
+
   measureAppraisalBarsTrack(canvas) {
     const W = canvas.width, H = canvas.height;
     if (W < 200 || H < 200) return null;
