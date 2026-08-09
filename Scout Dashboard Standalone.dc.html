@@ -1134,29 +1134,26 @@ window.__spriteUrl = function (file) {
       </div>
     </sc-if>
     <div ref="{{ headerRef }}" style="transition:box-shadow .24s ease,background .24s ease;padding:10px {{ rootPadX }};background:oklch(18% 0.0138 50 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
-    <div style="display:flex;align-items:center;gap:14px">
-      <div style="width:11px;height:11px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div>
-        <div style="font:800 19px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05">PROFESSOR</div>
-        
-      </div>
+    <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
+      <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR</div>
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-basis:{{ headerActionsBasis }}">
-      <div style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);flex-shrink:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150)"></div><div style="font:600 10.5px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.04em;white-space:nowrap">{{ syncLabel }}</div></div>
-      <label class="om-press" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;box-sizing:border-box">
+    <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
+      <label class="om-press" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;box-sizing:border-box;display:flex;align-items:center;justify-content:center">
         SYNC CSV
         <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
       </label>
-      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px" style-hover="background:oklch(34% 0.022 50);border-color:oklch(50% 0.0275 50)">{{ exportCsvLabel }}</div>
-      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid oklch(45% 0.1 62);color:oklch(96% 0.01 62);font:700 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px;animation:{{ micAnim }};flex:1 1 0;min-width:0;box-sizing:border-box;white-space:nowrap">
+      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center" style-hover="background:oklch(34% 0.022 50);border-color:oklch(50% 0.0275 50)">{{ exportCsvLabel }}</div>
+      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid oklch(45% 0.1 62);color:oklch(96% 0.01 62);font:700 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;animation:{{ micAnim }};flex:1 1 0;min-width:0;box-sizing:border-box;white-space:nowrap">
         <span>&#127908;</span>{{ micLabel }}
       </div>
     </div>
   </div>
 
-  <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:16px 22px;margin-bottom:24px;display:flex;gap:10px;align-items:center">
-    <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.06em;flex-shrink:0">PROFESSOR SAYS</div>
-    <div style="font:14.5px/1.4 sans-serif;color:oklch(88% 0.0055 50)">{{ calloutLine }}</div>
+  <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:10px;padding:14px 16px;margin-bottom:20px;display:flex;flex-direction:column;gap:6px">
+    <div style="font:700 10.5px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.06em">PROFESSOR SAYS</div>
+    <div style="font:14px/1.45 sans-serif;color:oklch(88% 0.0055 50);text-wrap:pretty">{{ calloutLine }}</div>
   </div>
   </div>
 
@@ -1167,24 +1164,24 @@ window.__spriteUrl = function (file) {
   </div>
   </sc-if>
 
-  <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:14px;margin-bottom:26px">
-    <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.0165 50)">
-      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em">ROSTER</div>
+  <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:9px;margin-bottom:20px">
+    <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
+      <div style="font:10px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em">ROSTER</div>
       <div style="font:800 26px ui-monospace,monospace;margin-top:4px">{{ stats.total }}</div>
     </div>
-    <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.0165 50)">
+    <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
       <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em">AVG IV%</div>
       <div style="font:800 26px ui-monospace,monospace;margin-top:4px">{{ stats.avgIV }}</div>
     </div>
-    <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.0165 50)">
+    <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
       <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em">LUCKY</div>
       <div style="font:800 26px ui-monospace,monospace;margin-top:4px;color:oklch(78% 0.15 70)">{{ stats.lucky }}</div>
     </div>
-    <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.0165 50)">
+    <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
       <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em">SHADOW</div>
       <div style="font:800 26px ui-monospace,monospace;margin-top:4px;color:oklch(70% 0.15 320)">{{ stats.shadow }}</div>
     </div>
-    <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:16px 18px;border:1px solid oklch(32% 0.0165 50)">
+    <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
       <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em">PVP READY</div>
       <div style="font:800 26px ui-monospace,monospace;margin-top:4px;color:oklch(78% 0.14 150)">{{ stats.pvpReady }}</div>
     </div>
@@ -1203,18 +1200,18 @@ window.__spriteUrl = function (file) {
   <div style="animation:fadeSlideIn .35s ease;display:flex;flex-direction:column;gap:20px">
     <div style="font:800 20px sans-serif">{{ digest.greeting }}</div>
 
-    <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:14px">
-      <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:14px 16px;border:1px solid oklch(32% 0.0165 50)">
-        <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50)">POWER UP</div>
-        <div style="font:800 22px ui-monospace,monospace;color:oklch(80% 0.15 150)">{{ digest.powerUpCount }}</div>
+    <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:9px">
+      <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
+        <div style="font:10px ui-monospace,monospace;color:oklch(60% 0.011 50)">POWER UP</div>
+        <div style="font:800 20px ui-monospace,monospace;color:oklch(80% 0.15 150)">{{ digest.powerUpCount }}</div>
       </div>
-      <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:14px 16px;border:1px solid oklch(32% 0.0165 50)">
+      <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
         <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50)">EVOLVE SOON</div>
-        <div style="font:800 22px ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ digest.evolveCount }}</div>
+        <div style="font:800 20px ui-monospace,monospace;color:oklch(78% 0.15 70)">{{ digest.evolveCount }}</div>
       </div>
-      <div style="background:oklch(23% 0.0165 50);border-radius:8px;padding:14px 16px;border:1px solid oklch(32% 0.0165 50)">
+      <div style="background:oklch(23% 0.0165 50);border-radius:10px;padding:11px 12px;border:1px solid oklch(32% 0.0165 50)">
         <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50)">GREAT LEAGUE PROJECTS</div>
-        <div style="font:800 22px ui-monospace,monospace;color:oklch(78% 0.13 62)">{{ digest.greatProjects }}</div>
+        <div style="font:800 20px ui-monospace,monospace;color:oklch(78% 0.13 62)">{{ digest.greatProjects }}</div>
       </div>
     </div>
 
@@ -7351,7 +7348,7 @@ class Component extends DCLogic {
         : 'sheetRise .44s cubic-bezier(.22,1,.36,1) both',
       rootPadding: isMobile ? 'max(54px, env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom))' : '28px 40px calc(96px + env(safe-area-inset-bottom))',
       rootPadX: isMobile ? '14px' : '40px',
-      statGridCols: isMobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)',
+      statGridCols: isMobile ? 'repeat(3,1fr)' : 'repeat(5,1fr)',
       rosterGridCols: isMobile ? '1fr' : 'repeat(auto-fill,minmax(380px,1fr))',
       cardPadding: isCompact ? '10px' : '16px',
       cardGap: isCompact ? '9px' : '10px',
