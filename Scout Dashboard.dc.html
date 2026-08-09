@@ -431,6 +431,18 @@
             <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30)">{{ videoImportError }}</div>
             <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 220);color:white;font:700 11.5px ui-monospace,monospace">RETRY</div>
           </sc-if>
+          <sc-if value="{{ importChanges }}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px solid oklch(34% 0.05 70);background:oklch(22% 0.035 70);border-radius:7px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:7px">
+              <div style="font:700 12px ui-monospace,monospace;color:oklch(85% 0.11 70);letter-spacing:.04em">WHAT CHANGED &middot; {{ importChangeCount }}</div>
+              <div style="font:11.5px sans-serif;color:oklch(70% 0.02 260)">Values this import overwrote on Pokemon you already had. A CP jump is a power-up you did; anything else is worth a second look.</div>
+              <sc-for list="{{ importChanges }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;gap:10px;font:11.5px ui-monospace,monospace;padding:5px 0;border-top:1px solid oklch(30% 0.03 70)">
+                  <span style="color:oklch(90% 0.01 260)">{{ c.name }}</span>
+                  <span style="color:oklch(78% 0.06 70);text-align:right">{{ c.changes }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
           <sc-if value="{{ hasVideoReview }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;flex-direction:column;gap:10px">
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -822,14 +834,21 @@
   <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ true }}">
   <div>
     <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
-      <input type="text" placeholder="Search name or move..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.03 260);color:oklch(92% 0.01 260);font:14px ui-monospace,monospace;padding:9px 14px;border-radius:6px;width:280px" />
+      <input type="text" placeholder="Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.03 260);color:oklch(92% 0.01 260);font:14px ui-monospace,monospace;padding:9px 14px;border-radius:6px;width:280px" />
       <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:oklch(23% 0.03 260);border:1px solid oklch(35% 0.03 260);color:oklch(92% 0.01 260);font:13px ui-monospace,monospace;padding:9px 12px;border-radius:6px">
         <option value="cp">Sort: CP</option>
         <option value="ivAvg">Sort: IV%</option>
+        <option value="rank">Sort: Best league rank</option>
+        <option value="ivFloor">Sort: IV floor (lowest first)</option>
         <option value="name">Sort: Name</option>
         <option value="dex">Sort: Dex #</option>
       </select>
       <div style="font:12px ui-monospace,monospace;color:oklch(55% 0.02 260)">{{ rosterCountLabel }}</div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <sc-for list="{{ rosterFilterChips }}" as="c" hint-placeholder-count="6">
+        <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;padding:6px 12px;border-radius:999px;font:700 11px ui-monospace,monospace;letter-spacing:.05em;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}">{{ c.label }}</div>
+      </sc-for>
     </div>
     <sc-if value="{{ rosterLoading }}" hint-placeholder-val="{{ false }}">
       <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
@@ -970,8 +989,35 @@
           </div>
         </sc-if>
 
+        <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
+          <div style="background:oklch(25% 0.025 260);border-radius:16px;padding:16px;margin-bottom:14px">
+            <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:4px">COST TO POWER UP</div>
+            <div style="font:12px ui-monospace,monospace;color:oklch(80% 0.02 260)">{{ detail.powerPlan.levelLine }}</div>
+            <div style="font:11.5px sans-serif;color:oklch(62% 0.02 260);margin-bottom:4px">{{ detail.powerPlan.luckyNote }}</div>
+            <div style="font:11.5px ui-monospace,monospace;color:oklch(62% 0.02 260);margin-bottom:12px">{{ detail.powerPlan.inventoryLine }}</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ detail.powerPlan.targets }}" as="t" hint-placeholder-count="3">
+                <div style="background:oklch(22% 0.02 260);border-radius:10px;padding:10px 12px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                    <span style="font:700 11.5px ui-monospace,monospace;color:oklch(88% 0.01 260);letter-spacing:.04em">{{ t.label }}</span>
+                    <span style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260)">{{ t.toLevel }}</span>
+                  </div>
+                  <div style="font:11px sans-serif;color:oklch(58% 0.02 260);margin:2px 0 7px">{{ t.note }}</div>
+                  <div style="display:flex;gap:14px;font:12px ui-monospace,monospace;color:oklch(84% 0.02 260);font-variant-numeric:tabular-nums">
+                    <span>&#10023; {{ t.dust }}</span>
+                    <span>Candy {{ t.candy }}</span>
+                    <span>XL {{ t.xlCandy }}</span>
+                  </div>
+                  <div style="font:700 10.5px ui-monospace,monospace;letter-spacing:.05em;color:{{ t.statusColor }};margin-top:6px">{{ t.statusLabel }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
         <div style="background:oklch(25% 0.025 260);border-radius:16px;padding:16px;margin-bottom:14px">
-          <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:12px">LEAGUE RANKINGS</div>
+          <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.02 260);letter-spacing:.05em;margin-bottom:4px">LEAGUE RANKINGS</div>
+          <div style="font:11.5px sans-serif;color:oklch(60% 0.02 260);margin-bottom:12px">{{ detail.ivFloorLine }}</div>
           <sc-for list="{{ detail.leagues }}" as="l" hint-placeholder-count="3">
             <div style="margin-bottom:14px">
               <div style="display:flex;justify-content:space-between;align-items:baseline;font:12.5px ui-monospace,monospace;margin-bottom:5px">
@@ -1051,8 +1097,88 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ isAttackers }}" hint-placeholder-val="{{ false }}">
+  <div style="animation:fadeSlideIn .35s ease">
+    <div style="background:oklch(21% 0.022 260);border:1px solid oklch(33% 0.03 260);border-radius:8px;padding:16px 20px;margin-bottom:20px">
+      <div style="font:800 13px ui-monospace,monospace;letter-spacing:.05em;color:oklch(88% 0.01 260);margin-bottom:6px">BEST ATTACKER PER TYPE</div>
+      <div style="font:12.5px sans-serif;color:oklch(70% 0.02 260);max-width:70ch;text-wrap:pretty">Ranked by damage per second at level 50 once move data is stored &mdash; a full cycle of the fast move charging the better of the two charge moves, with STAB applied and no particular defender in mind. Anything whose moves aren&rsquo;t in the database falls back to a raw-stat ranking and says so.</div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid oklch(30% 0.02 260)">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="font:700 11px ui-monospace,monospace;letter-spacing:.05em;color:oklch(70% 0.02 260)">MOVE DATABASE</div>
+          <div style="font:12px ui-monospace,monospace;color:oklch(80% 0.12 150)">{{ moveData.pct }}</div>
+          <div style="font:11.5px sans-serif;color:oklch(62% 0.02 260)">{{ moveData.known }} of {{ moveData.total }} of your moves have damage numbers</div>
+        </div>
+        <div style="height:5px;border-radius:3px;background:oklch(30% 0.02 260);overflow:hidden;margin-bottom:12px">
+          <div style="height:100%;width:{{ moveData.barWidth }};background:oklch(78% 0.13 150);border-radius:3px"></div>
+        </div>
+        <div style="font:11.5px sans-serif;color:oklch(62% 0.02 260);margin-bottom:12px;max-width:70ch;text-wrap:pretty">Looked up once by AI and stored, not re-fetched on every import. Moves it isn&rsquo;t confident about are left out rather than guessed, so the coverage number can stop short of 100%.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div onClick="{{ moveData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:oklch(30% 0.05 150);color:oklch(90% 0.08 150);font:700 11px ui-monospace,monospace;letter-spacing:.04em">{{ moveData.buttonLabel }}</div>
+          <div onClick="{{ moveData.onClear }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:oklch(26% 0.02 260);color:oklch(70% 0.02 260);font:700 11px ui-monospace,monospace;letter-spacing:.04em">CLEAR</div>
+          <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.02 260)">{{ moveData.status }}</div>
+          <div style="font:11.5px ui-monospace,monospace;color:oklch(78% 0.14 40)">{{ moveData.error }}</div>
+        </div>
+      </div>
+    </div>
+    <sc-if value="{{ attackerEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="background:oklch(21% 0.022 260);border:1px solid oklch(33% 0.03 260);border-radius:8px;padding:24px;font:13px sans-serif;color:oklch(70% 0.02 260)">No types logged yet. Import detail screens &mdash; they carry the type line &mdash; and this fills in.</div>
+    </sc-if>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+      <sc-for list="{{ attackerGroups }}" as="g" hint-placeholder-count="6">
+        <div style="background:oklch(21% 0.022 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:16px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+            <div style="font:800 14px ui-monospace,monospace;letter-spacing:.04em;color:{{ g.typeColor }}">{{ g.type }}</div>
+            <div style="font:11px ui-monospace,monospace;color:oklch(55% 0.02 260)">{{ g.count }} owned &middot; {{ g.basisLabel }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ g.members }}" as="m" hint-placeholder-count="4">
+              <div onClick="{{ m.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+                <div style="font:700 11px ui-monospace,monospace;color:oklch(55% 0.02 260);width:20px;flex-shrink:0">{{ m.rankLabel }}</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:{{ m.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px ui-monospace,monospace;color:oklch(15% 0.02 260)">{{ m.initial }}</span>
+                  <img ref="{{ m.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 12.5px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.displayName }}</div>
+                  <div style="font:10.5px ui-monospace,monospace;color:oklch(62% 0.02 260)">{{ m.cpLine }} &middot; {{ m.ivLine }}</div>
+                  <div style="font:10.5px ui-monospace,monospace;color:{{ m.dpsColor }};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.dpsLine }}</div>
+                  <div style="height:4px;border-radius:2px;background:oklch(30% 0.02 260);margin-top:5px;overflow:hidden">
+                    <div style="height:100%;width:{{ m.barWidth }};background:{{ g.typeColor }};border-radius:2px"></div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ isRecommend }}" hint-placeholder-val="{{ false }}">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;animation:fadeSlideIn .35s ease">
+    <div style="grid-column:1 / -1;background:oklch(21% 0.03 40);border:1px solid oklch(35% 0.05 40);border-radius:8px;padding:20px">
+      <div style="font:800 13px ui-monospace,monospace;color:oklch(80% 0.14 40);letter-spacing:.05em;margin-bottom:4px">DOMINATED DUPLICATES &middot; {{ dominatedCount }}</div>
+      <div style="font:12.5px sans-serif;color:oklch(70% 0.02 260);margin-bottom:14px;max-width:80ch;text-wrap:pretty">Same species and form, every IV equal or lower, no higher level, and none of them Lucky, Shadow or favorited. Each one loses to another Pokemon you already own on every axis at once, so there is nothing to weigh up.</div>
+      <sc-if value="{{ dominatedList }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+          <sc-for list="{{ dominatedList }}" as="d" hint-placeholder-count="6">
+            <div onClick="{{ d.onClick }}" class="om-tap" style="cursor:pointer;background:oklch(19% 0.025 40);border:1px solid oklch(30% 0.04 40);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:30px;height:30px;border-radius:50%;background:{{ d.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px ui-monospace,monospace;color:oklch(15% 0.02 260)">{{ d.initial }}</span>
+                  <img ref="{{ d.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                </div>
+                <div style="font:600 12.5px sans-serif;line-height:1.2">{{ d.displayName }}</div>
+              </div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(78% 0.02 260)">{{ d.loserLine }}</div>
+              <div style="font:11px sans-serif;color:oklch(62% 0.02 260);text-wrap:pretty">{{ d.winnerLine }}</div>
+              <div onClick="{{ d.markTransferred }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:5px 10px;border-radius:5px;background:oklch(28% 0.05 40);color:oklch(88% 0.06 40);font:700 10.5px ui-monospace,monospace;letter-spacing:.04em">MARK TRANSFERRED</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
     <div style="background:oklch(21% 0.03 150);border:1px solid oklch(35% 0.05 150);border-radius:8px;padding:20px">
       <div style="font:800 13px ui-monospace,monospace;color:oklch(80% 0.15 150);letter-spacing:.05em;margin-bottom:4px">POWER UP CANDIDATES</div>
       <div style="font:12.5px sans-serif;color:oklch(70% 0.02 260);margin-bottom:14px">High league rank, not yet favorited &mdash; invest stardust here first. Mark done once handled.</div>
@@ -1096,6 +1222,26 @@
 
   <sc-if value="{{ isIntel }}" hint-placeholder-val="{{ false }}">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;animation:fadeSlideIn .35s ease">
+    <div style="grid-column:1 / -1;background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:18px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:6px">DATA CONFIDENCE</div>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <div style="font:800 30px ui-monospace,monospace;color:oklch(80% 0.14 150)">{{ confidence.pct }}</div>
+        <div style="font:12.5px sans-serif;color:oklch(65% 0.02 260)">{{ confidence.measured }} measured off appraisal bars &middot; {{ confidence.needsAppraisal }} still solver-guessed</div>
+      </div>
+      <div style="height:6px;border-radius:3px;background:oklch(30% 0.02 260);margin:12px 0;overflow:hidden">
+        <div style="height:100%;width:{{ confidence.barWidth }};background:oklch(78% 0.14 150);border-radius:3px"></div>
+      </div>
+      <div style="font:11.5px sans-serif;color:oklch(60% 0.02 260);margin-bottom:12px;text-wrap:pretty">Next to appraise: {{ confidence.preview }}</div>
+      <div onClick="{{ confidence.goToList }}" class="om-press" style="cursor:pointer;display:inline-block;padding:7px 13px;border-radius:6px;background:oklch(28% 0.04 150);color:oklch(88% 0.08 150);font:700 11px ui-monospace,monospace;letter-spacing:.04em">SHOW THEM IN ROSTER</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid oklch(30% 0.02 260);font:11.5px ui-monospace,monospace;color:oklch(72% 0.02 260)">
+        <span>&#9733; Lucky {{ flagCounts.lucky }}</span>
+        <span>&#9670; Shadow {{ flagCounts.shadow }}</span>
+        <span>&#9671; Purified {{ flagCounts.purified }}</span>
+        <span>&#9829; Favorite {{ flagCounts.favorite }}</span>
+        <span>100% {{ flagCounts.hundo }}</span>
+        <span>0% {{ flagCounts.nundo }}</span>
+      </div>
+    </div>
     <div style="background:oklch(23% 0.03 260);border:1px solid oklch(32% 0.03 260);border-radius:8px;padding:18px">
       <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260);letter-spacing:.05em;margin-bottom:6px">LIVING DEX</div>
       <div style="font:800 30px ui-monospace,monospace;color:oklch(85% 0.13 220)">{{ intelDisplay.livingDexPct }}</div>
@@ -1179,6 +1325,11 @@ class Component extends DCLogic {
     loaded: false,
     tab: 'roster',
     search: '',
+    rosterFilter: 'all',
+    moveDB: {},
+    moveFetchBusy: false,
+    moveFetchStatus: '',
+    moveFetchError: '',
     sortField: 'cp',
     league: 'great',
     history: [],
@@ -1340,6 +1491,8 @@ class Component extends DCLogic {
       if (rawCandy) this.setState({ candyInventory: JSON.parse(rawCandy) });
       const rawTypes = localStorage.getItem('scout_types_v1');
       if (rawTypes) this.setState({ typeTable: JSON.parse(rawTypes) });
+      const rawMoves = localStorage.getItem('scout_moves_v1');
+      if (rawMoves) this.setState({ moveDB: JSON.parse(rawMoves) });
       const rawOverrides = localStorage.getItem('scout_iv_overrides_v1');
       if (rawOverrides) this.setState({ ivOverrides: JSON.parse(rawOverrides) });
       const rawUsage = localStorage.getItem('scout_ai_usage_v1');
@@ -1428,7 +1581,7 @@ class Component extends DCLogic {
   }
 
   SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -1640,6 +1793,9 @@ class Component extends DCLogic {
       addedPokemon: keepCleared ? this.state.addedPokemon : (remote.addedPokemon || []),
       candyInventory: keepCleared ? this.state.candyInventory : (remote.candyInventory || {}),
       typeTable: keepCleared ? this.state.typeTable : (remote.typeTable || {}),
+      // Move data is game reference data, not roster data — a CLEAR ROSTER
+      // should not throw away a lookup that cost API calls.
+      moveDB: remote.moveDB && Object.keys(remote.moveDB).length ? remote.moveDB : (this.state.moveDB || {}),
       stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
       history: remote.history || [],
       completedIds: remote.completedIds || [],
@@ -1669,6 +1825,7 @@ class Component extends DCLogic {
       localStorage.setItem('scout_added_v1', JSON.stringify(patch.addedPokemon));
       localStorage.setItem('scout_candy_v1', JSON.stringify(patch.candyInventory));
       localStorage.setItem('scout_types_v1', JSON.stringify(patch.typeTable));
+      localStorage.setItem('scout_moves_v1', JSON.stringify(patch.moveDB || {}));
       localStorage.setItem('scout_stardust_v1', JSON.stringify(patch.stardustBalance));
       localStorage.setItem('scout_history_v1', JSON.stringify(patch.history));
       localStorage.setItem('scout_recommend_done_v1', JSON.stringify(patch.completedIds));
@@ -1693,7 +1850,7 @@ class Component extends DCLogic {
     const s = this.state;
     const blob = {
       roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
-      typeTable: s.typeTable, stardustBalance: s.stardustBalance, history: s.history,
+      typeTable: s.typeTable, moveDB: s.moveDB, stardustBalance: s.stardustBalance, history: s.history,
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
       checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory, updatedAt: Date.now(),
       // Carried on every push so the marker cannot be dropped by a later write
@@ -1940,6 +2097,316 @@ class Component extends DCLogic {
     const maxProd = this.mechanics.bestStatProductUnderCap(base, Infinity);
     const statProd = maxProd > 0 ? (ownProd / maxProd) * 100 : null;
     return { rankPct, rankNum: null, statProd, evolvesTo: (p.great && p.great.evolvesTo) || p.name };
+  }
+
+  // Base stats for a specific Pokemon, honouring its regional form. Same lookup
+  // masterRankFor does; pulled out so every new feature agrees with it.
+  // ---- Move database -------------------------------------------------------
+  // The app reads move NAMES off the detail screen but has no damage numbers,
+  // which is why the attacker board could only rank on raw stats. This fills
+  // that gap once: every distinct move name in the roster is looked up, stored,
+  // and synced. It is not re-run per import — a move's stats change only when
+  // Niantic rebalances one, so the button is manual on purpose.
+  moveKey(name) { return String(name || '').trim().toLowerCase(); }
+
+  lookupMove(name) {
+    const k = this.moveKey(name);
+    if (!k) return null;
+    const rec = (this.state.moveDB || {})[k];
+    if (!rec || !(rec.power > 0)) return null;
+    return rec;
+  }
+
+  distinctMoveNames() {
+    const seen = new Set();
+    this.effectiveRosterForMatch().forEach(p => {
+      [p.quickMove, p.chargeMove, p.chargeMove2].forEach(m => {
+        const k = this.moveKey(m);
+        if (k) seen.add(k);
+      });
+    });
+    return [...seen];
+  }
+
+  missingMoveNames() {
+    const db = this.state.moveDB || {};
+    return this.distinctMoveNames().filter(k => !db[k]);
+  }
+
+  async fetchMoveData() {
+    if (this.state.moveFetchBusy) return;
+    const missing = this.missingMoveNames();
+    if (!missing.length) {
+      this.setState({ moveFetchStatus: 'Every move on your roster already has data.' });
+      return;
+    }
+    this.setState({ moveFetchBusy: true, moveFetchStatus: 'Looking up ' + missing.length + ' moves\u2026', moveFetchError: '' });
+    const db = { ...(this.state.moveDB || {}) };
+    // Batched so one oversized request can't blow the token limit and lose the
+    // whole lookup; each batch is saved as it lands, so a failure halfway
+    // through keeps what already arrived.
+    const BATCH = 40;
+    let got = 0, failed = 0;
+    for (let i = 0; i < missing.length; i += BATCH) {
+      const batch = missing.slice(i, i + BATCH);
+      this.setState({ moveFetchStatus: 'Looking up moves ' + (i + 1) + '\u2013' + Math.min(i + BATCH, missing.length) + ' of ' + missing.length + '\u2026' });
+      try {
+        const reply = await this.completeWithRetry({
+          messages: [{ role: 'user', content: this.movePrompt(batch) }],
+          max_tokens: 3000
+        });
+        const arr = this.extractJsonArray(reply);
+        if (!Array.isArray(arr)) { failed += batch.length; continue; }
+        arr.forEach(o => {
+          if (!o || !o.name) return;
+          const k = this.moveKey(o.name);
+          const power = Number(o.power);
+          const energy = Math.abs(Number(o.energy));
+          const durationMs = Number(o.durationMs);
+          const kind = o.kind === 'fast' ? 'fast' : o.kind === 'charged' ? 'charged' : null;
+          // A record missing any of these cannot produce a DPS figure, and a
+          // half-filled row would silently rank a Pokemon on partial data.
+          if (!kind || !(power > 0) || !(energy > 0) || !(durationMs > 0)) return;
+          db[k] = { name: o.name, type: o.type || null, kind, power, energy, durationMs, source: 'ai', fetchedAt: Date.now() };
+          got++;
+        });
+      } catch (e) {
+        failed += batch.length;
+        this.setState({ moveFetchError: (e && e.message) || 'Move lookup failed.' });
+      }
+    }
+    this.setState({ moveDB: db, moveFetchBusy: false,
+      moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushToCloud());
+    try { localStorage.setItem('scout_moves_v1', JSON.stringify(db)); } catch (e) {}
+  }
+
+  movePrompt(names) {
+    return 'You are a Pokemon GO game-data lookup. For each move name below, return its CURRENT Pokemon GO RAID/gym stats '
+      + '(not the main-series game values, and not the PvP turn-based values).\\n\\n'
+      + 'Respond with ONLY a JSON array, no markdown fences, no commentary. One object per move:\\n'
+      + '{"name":string,"kind":"fast"|"charged","type":string,"power":number,"energy":number,"durationMs":number}\\n\\n'
+      + '- kind: "fast" for fast moves, "charged" for charge moves.\\n'
+      + '- type: the move\u2019s Pokemon type, capitalised (e.g. "Fire", "Dragon").\\n'
+      + '- power: raid damage value.\\n'
+      + '- energy: energy GAINED for a fast move, energy COST for a charged move. Always a positive number.\\n'
+      + '- durationMs: full move duration in milliseconds.\\n'
+      + '- If you are not confident about a move, OMIT it entirely rather than guessing. A missing move is fine; a wrong one is not.\\n\\n'
+      + 'Moves:\\n' + names.join('\\n');
+  }
+
+  clearMoveData() {
+    this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushToCloud());
+    try { localStorage.removeItem('scout_moves_v1'); } catch (e) {}
+  }
+
+  baseStatsOf(p) {
+    if (!this.mechanics || !p || p.dex == null) return null;
+    let base = null;
+    if (p.form) base = this.mechanics.BASE_STATS_BY_FORM[p.dex + '_' + String(p.form).toLowerCase()];
+    if (!base) base = this.mechanics.BASE_STATS[p.dex];
+    return base || null;
+  }
+
+  ivsOf(p) {
+    if (!p || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return null;
+    return [p.atkIV, p.defIV, p.staIV];
+  }
+
+  // The worst of the three IVs. In PvP a low Attack is often a FEATURE (it buys
+  // levels under the CP cap), so this is a genuinely different sort from IV%.
+  ivFloorOf(p) {
+    const ivs = this.ivsOf(p);
+    return ivs ? Math.min(ivs[0], ivs[1], ivs[2]) : null;
+  }
+
+  // A spread the app measured off appraisal bars is a fact. Anything else is
+  // the solver's best guess from CP and HP, and this is what separates them.
+  needsAppraisal(p) {
+    if (!p) return false;
+    if (p.ivMeasured) return false;
+    if (!Number.isFinite(p.atkIV)) return true;
+    return !!p.ivSolved;
+  }
+
+  typeOf(p) {
+    if (!p) return '';
+    const fromTable = (this.state.typeTable || {})[String(p.name || '').toLowerCase()];
+    const raw = fromTable || p.type || [p.type1, p.type2].filter(Boolean).join(' / ') || '';
+    return String(raw);
+  }
+
+  primaryTypeOf(p) {
+    const t = this.typeOf(p).split('/')[0].trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
+  }
+
+  isShadow(p) { return p && (p.shadowPurified === '1' || p.shadowPurified === 1); }
+  isPurified(p) { return p && (p.shadowPurified === '2' || p.shadowPurified === 2); }
+
+  // What it actually costs to take this Pokemon somewhere useful, and whether
+  // the roster's own candy/stardust counts can pay for it today. Levels 41+
+  // need XL Candy, which is the real wall most trainers hit \u2014 it gets its own
+  // line rather than being folded into the candy total.
+  powerUpPlan(p) {
+    const m = this.mechanics;
+    if (!m || !m.powerUpCostBetween) return null;
+    const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+    const level = Number.isFinite(p.lvlMin) ? p.lvlMin : null;
+    if (!base || !ivs || level == null) return null;
+    const levelKnown = !Number.isFinite(p.lvlMax) || p.lvlMax === p.lvlMin;
+    const opts = { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) };
+    const inv = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()] || {};
+    const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
+    const haveXL = Number.isFinite(inv.xlCandy) ? inv.xlCandy : null;
+    const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
+
+    const targets = [];
+    const push = (label, toLevel, note) => {
+      if (toLevel == null || toLevel <= level) return;
+      const cost = m.powerUpCostBetween(level, toLevel, opts);
+      if (!cost.steps) return;
+      const short = [];
+      if (haveDust != null && cost.dust > haveDust) short.push('stardust');
+      if (haveCandy != null && cost.candy > haveCandy) short.push('candy');
+      if (haveXL != null && cost.xlCandy > haveXL) short.push('XL candy');
+      targets.push({
+        label, note: note || '',
+        toLevel: 'Lv ' + toLevel,
+        dust: cost.dust.toLocaleString(),
+        candy: cost.candy > 0 ? String(cost.candy) : '\u2014',
+        xlCandy: cost.xlCandy > 0 ? String(cost.xlCandy) : '\u2014',
+        blocked: short.length > 0,
+        statusLabel: short.length ? 'SHORT ON ' + short.join(' + ').toUpperCase() : (haveDust == null && haveCandy == null ? 'NO INVENTORY LOGGED' : 'AFFORDABLE NOW'),
+        statusColor: short.length ? 'oklch(78% 0.14 40)' : (haveDust == null && haveCandy == null ? 'oklch(60% 0.02 260)' : 'oklch(78% 0.14 150)')
+      });
+    };
+    const capLevel = key => {
+      const cap = m.LEAGUE_CAPS[key];
+      const lv = m.maxLevelUnderCap(base, ivs, cap);
+      return lv;
+    };
+    const greatLv = capLevel('great'), ultraLv = capLevel('ultra');
+    push('GREAT LEAGUE CAP', greatLv, 'highest level still under 1500 CP');
+    push('ULTRA LEAGUE CAP', ultraLv, 'highest level still under 2500 CP');
+    push('LEVEL 40', 40, 'last level before XL Candy is required');
+    push('LEVEL 50', 50, 'maximum');
+
+    return {
+      levelLine: levelKnown ? 'Currently Lv ' + level : 'Currently Lv ' + p.lvlMin + '\u2013' + p.lvlMax + ' (level not pinned)',
+      levelKnown,
+      luckyNote: p.lucky ? 'Lucky \u2014 stardust costs are halved' : (opts.shadow ? 'Shadow \u2014 costs are 20% higher' : (opts.purified ? 'Purified \u2014 costs are 10% lower' : '')),
+      inventoryLine: [
+        haveDust != null ? '\u2727 ' + haveDust.toLocaleString() : null,
+        haveCandy != null ? haveCandy + ' candy' : null,
+        haveXL != null ? haveXL + ' XL' : null
+      ].filter(Boolean).join('  \u00b7  ') || 'No candy or stardust logged for this species yet',
+      targets: targets.length ? targets : null
+    };
+  }
+
+  // Best attackers by type. No move data exists in this app, so this ranks on
+  // raw stats only \u2014 the copy in the UI says so rather than implying a DPS
+  // ranking it cannot compute.
+  // Best DPS this Pokemon can reach at level 50 across its known charge moves.
+  // Returns null when the move database can't cover it, which is the signal to
+  // fall back to the stat-only score rather than invent a number.
+  bestDpsFor(p) {
+    const m = this.mechanics;
+    if (!m || !m.cycleDps) return null;
+    const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+    if (!base || !ivs) return null;
+    const fast = this.lookupMove(p.quickMove);
+    if (!fast || fast.kind !== 'fast') return null;
+    const ownTypes = this.typeOf(p).split('/').map(s => s.trim()).filter(Boolean)
+      .map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+    let best = null, bestMove = null;
+    [p.chargeMove, p.chargeMove2].forEach(name => {
+      const ch = this.lookupMove(name);
+      if (!ch || ch.kind !== 'charged') return;
+      const dps = m.cycleDps(base, ivs, 50, fast, ch, { ownTypes });
+      if (dps != null && (best == null || dps > best)) { best = dps; bestMove = name; }
+    });
+    return best == null ? null : { dps: best, fast: p.quickMove, charged: bestMove };
+  }
+
+  attackerBoard(roster) {
+    const m = this.mechanics;
+    if (!m || !m.attackerScore) return [];
+    const buckets = {};
+    roster.forEach(p => {
+      const type = this.primaryTypeOf(p);
+      if (!type) return;
+      const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+      if (!base || !ivs) return;
+      const dps = this.bestDpsFor(p);
+      // Stat score and DPS are different units, so they cannot be sorted in one
+      // list. Rank on DPS wherever it exists and keep the stat score only as the
+      // fallback ordering for Pokemon whose moves aren't in the database.
+      (buckets[type] = buckets[type] || []).push({
+        p, dps: dps ? dps.dps : null, moveLine: dps ? dps.fast + ' / ' + dps.charged : null,
+        ceiling: m.attackerScore(base, ivs, 50)
+      });
+    });
+    return Object.keys(buckets).sort().map(type => {
+      const all = buckets[type];
+      const withDps = all.filter(x => x.dps != null).sort((a, b) => b.dps - a.dps);
+      const withoutDps = all.filter(x => x.dps == null).sort((a, b) => b.ceiling - a.ceiling);
+      const list = [...withDps, ...withoutDps].slice(0, 4);
+      const topDps = withDps.length ? withDps[0].dps : 0;
+      const topStat = withoutDps.length ? withoutDps[0].ceiling : 1;
+      return {
+        type,
+        typeColor: `oklch(72% 0.14 ${this.hueFor((type.charCodeAt(0) * 37 + type.length * 11) % 360)})`,
+        count: all.length,
+        basisLabel: withDps.length ? (withDps.length === all.length ? 'DPS' : 'DPS + stats') : 'stats only',
+        members: list.map((x, i) => ({
+          displayName: x.p.name + (x.p.form ? ' (' + x.p.form + ')' : ''),
+          spriteRef: this.makeSpriteRefByDex(x.p.dex, x.p.form),
+          badgeColor: `oklch(70% 0.15 ${this.hueFor(x.p.dex || 0)})`,
+          initial: (x.p.name || '?').charAt(0),
+          rankLabel: '#' + (i + 1),
+          cpLine: (x.p.cp || '\u2014') + ' CP \u00b7 Lv ' + (x.p.lvlMin != null ? x.p.lvlMin : '?'),
+          ivLine: Number.isFinite(x.p.ivAvg) ? x.p.ivAvg.toFixed(0) + '% IV' : 'IV unknown',
+          dpsLine: x.dps != null ? x.dps.toFixed(1) + ' DPS \u00b7 ' + x.moveLine : 'no move data \u2014 ranked on stats',
+          dpsColor: x.dps != null ? 'oklch(80% 0.13 150)' : 'oklch(58% 0.02 260)',
+          barWidth: (x.dps != null ? Math.round(x.dps / (topDps || 1) * 100) : Math.round(x.ceiling / topStat * 100)) + '%',
+          measured: !!x.p.ivMeasured,
+          onClick: () => this.openDetail(x.p)
+        }))
+      };
+    });
+  }
+
+  // Duplicates that lose on every axis at once: same species and form, every IV
+  // equal or lower, level no higher, and none of the flags that make a Pokemon
+  // worth keeping regardless. Anything that wins on even one axis is left out \u2014
+  // this list is meant to be safe to act on without thinking.
+  dominatedDuplicates(roster) {
+    const groups = {};
+    roster.forEach(p => {
+      if (p.dex == null || !this.ivsOf(p)) return;
+      const key = p.dex + '|' + (p.form || '');
+      (groups[key] = groups[key] || []).push(p);
+    });
+    const out = [];
+    Object.values(groups).forEach(g => {
+      if (g.length < 2) return;
+      g.forEach(p => {
+        if (p.lucky || p.favorite || this.isShadow(p)) return;
+        const a = this.ivsOf(p);
+        const lv = Number.isFinite(p.lvlMin) ? p.lvlMin : 0;
+        const beater = g.find(q => {
+          if (q === p) return false;
+          const b = this.ivsOf(q);
+          if (!b) return false;
+          const qlv = Number.isFinite(q.lvlMin) ? q.lvlMin : 0;
+          const strictlyBetter = b[0] > a[0] || b[1] > a[1] || b[2] > a[2] || qlv > lv;
+          return b[0] >= a[0] && b[1] >= a[1] && b[2] >= a[2] && qlv >= lv && strictlyBetter;
+        });
+        if (beater) out.push({ loser: p, winner: beater });
+      });
+    });
+    return out.sort((x, y) => (x.loser.ivAvg || 0) - (y.loser.ivAvg || 0));
   }
 
   onResourceChange(field, value) {
@@ -4422,6 +4889,7 @@ class Component extends DCLogic {
     const candyInv = { ...this.state.candyInventory };
     const types = { ...this.state.typeTable };
     const added = [...this.state.addedPokemon];
+    const changeLog = [];
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
     let updated = 0, inserted = 0, solved = 0;
@@ -4575,6 +5043,18 @@ class Component extends DCLogic {
         };
       }
       if (match) {
+        // Re-imports used to overwrite silently, so a mis-read CP looked
+        // identical to a real power-up. Record what each update actually
+        // changed so the receipt can show it rather than just a count.
+        const before = { ...match, ...(overrides[match.idx] || {}) };
+        const changes = [];
+        if (item.cp != null && before.cp != null && item.cp !== before.cp) changes.push('CP ' + before.cp + ' \u2192 ' + item.cp);
+        if (item.hp != null && before.hp != null && item.hp !== before.hp) changes.push('HP ' + before.hp + ' \u2192 ' + item.hp);
+        if (ivPatch.atkIV != null && Number.isFinite(before.atkIV)
+          && (before.atkIV !== ivPatch.atkIV || before.defIV !== ivPatch.defIV || before.staIV !== ivPatch.staIV)) {
+          changes.push('IV ' + [before.atkIV, before.defIV, before.staIV].join('/') + ' \u2192 ' + [ivPatch.atkIV, ivPatch.defIV, ivPatch.staIV].join('/'));
+        }
+        if (changes.length) changeLog.push({ name: match.name, changes: changes.join('  \u00b7  ') });
         overrides[match.idx] = {
           ...overrides[match.idx], cp: item.cp,
           hp: item.hp != null ? item.hp : match.hp,
@@ -4646,7 +5126,7 @@ class Component extends DCLogic {
       localStorage.setItem('scout_types_v1', JSON.stringify(types));
     } catch (e) {}
     const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
-    return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded };
+    return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
   }
 
   setImportScreenMode(mode) {
@@ -5315,15 +5795,38 @@ class Component extends DCLogic {
     const density = this.props.density || 'comfortable';
     const isCompact = density === 'compact';
 
+    const rosterFilter = this.state.rosterFilter || 'all';
     let filtered = roster.filter(p => {
-      if (!search) return true;
-      const s = search.toLowerCase();
-      return (p.name || '').toLowerCase().includes(s) || (p.quickMove || '').toLowerCase().includes(s) || (p.chargeMove || '').toLowerCase().includes(s);
+      // Search now also covers type, so "fire" or "steel" finds a raid squad the
+      // same way a name does.
+      if (search) {
+        const s = search.toLowerCase();
+        const hit = (p.name || '').toLowerCase().includes(s)
+          || (p.quickMove || '').toLowerCase().includes(s)
+          || (p.chargeMove || '').toLowerCase().includes(s)
+          || this.typeOf(p).toLowerCase().includes(s);
+        if (!hit) return false;
+      }
+      if (rosterFilter === 'measured') return !!p.ivMeasured;
+      if (rosterFilter === 'needsAppraisal') return this.needsAppraisal(p);
+      if (rosterFilter === 'lucky') return !!p.lucky;
+      if (rosterFilter === 'shadow') return this.isShadow(p) || this.isPurified(p);
+      if (rosterFilter === 'pvp') return this.bestRank(p) >= 90;
+      return true;
     });
     filtered = filtered.slice().sort((a, b) => {
       if (sortField === 'name') return (a.name || '').localeCompare(b.name || '');
       if (sortField === 'ivAvg') return (b.ivAvg || 0) - (a.ivAvg || 0);
       if (sortField === 'dex') return (a.dex || 0) - (b.dex || 0);
+      // Lowest floor first: in a CP-capped league a 0-attack spread is the prize,
+      // so this sort ascends where every other one descends.
+      if (sortField === 'ivFloor') {
+        const fa = this.ivFloorOf(a), fb = this.ivFloorOf(b);
+        if (fa == null) return 1;
+        if (fb == null) return -1;
+        return fa - fb;
+      }
+      if (sortField === 'rank') return this.bestRank(b) - this.bestRank(a);
       return (b.cp || 0) - (a.cp || 0);
     });
 
@@ -5751,6 +6254,11 @@ class Component extends DCLogic {
           return chips.length ? chips : null;
         })(),
         hasBodyStats: !!(p.weight || p.height || p.sizeClass),
+        powerPlan: this.powerUpPlan(p),
+        ivFloorLine: (() => {
+          const f = this.ivFloorOf(p);
+          return f == null ? null : 'IV floor ' + f + ' \u00b7 ' + (f <= 3 ? 'low floor helps under a CP cap' : f >= 13 ? 'strong across the board' : 'middling');
+        })(),
         recommendation: this.computeRecommendation(p)
       };
     }
@@ -5780,12 +6288,50 @@ class Component extends DCLogic {
       duplicateGroups: duplicateGroups.length ? duplicateGroups : null
     };
 
+    // How much of the roster is measured versus guessed. This is the number that
+    // says whether the rest of the app can be trusted, so it is stated plainly
+    // instead of being implied by per-card badges.
+    const measuredCount = roster.filter(p => p.ivMeasured).length;
+    const needsAppraisalList = roster.filter(p => this.needsAppraisal(p));
+    const confidence = {
+      measured: measuredCount,
+      needsAppraisal: needsAppraisalList.length,
+      pct: roster.length ? (measuredCount / roster.length * 100).toFixed(0) + '%' : '\u2014',
+      barWidth: roster.length ? Math.round(measuredCount / roster.length * 100) + '%' : '0%',
+      preview: needsAppraisalList.slice(0, 12).map(p => p.name).join(', ')
+        + (needsAppraisalList.length > 12 ? ', +' + (needsAppraisalList.length - 12) + ' more' : ''),
+      goToList: () => this.setState({ tab: 'roster', rosterFilter: 'needsAppraisal', visibleCount: 30 })
+    };
+
+    const flagCounts = {
+      lucky: roster.filter(p => p.lucky).length,
+      shadow: roster.filter(p => this.isShadow(p)).length,
+      purified: roster.filter(p => this.isPurified(p)).length,
+      favorite: roster.filter(p => p.favorite).length,
+      hundo: hundoList.length,
+      nundo: nundoList.length
+    };
+
+    const attackerGroups = this.attackerBoard(roster);
+    const dominatedRaw = this.dominatedDuplicates(roster);
+    const dominatedList = dominatedRaw.slice(0, 20).map(({ loser, winner }) => ({
+      displayName: loser.name + (loser.form ? ' (' + loser.form + ')' : ''),
+      spriteRef: this.makeSpriteRefByDex(loser.dex, loser.form),
+      badgeColor: `oklch(70% 0.15 ${this.hueFor(loser.dex || 0)})`,
+      initial: (loser.name || '?').charAt(0),
+      loserLine: (loser.cp || '?') + ' CP \u00b7 ' + this.spreadText(loser),
+      winnerLine: 'beaten on every stat by your ' + (winner.cp || '?') + ' CP ' + this.spreadText(winner),
+      onClick: () => this.openDetail(loser),
+      markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.removePokemon(loser.idx); }
+    }));
+
     const isMobile = (this.state.viewportWidth || 1200) < 640;
 
     const tabDefs = [
       { key: 'home', label: 'HOME' },
       { key: 'roster', label: 'ROSTER' },
       { key: 'pvp', label: 'PVP RANKINGS' },
+      { key: 'attackers', label: 'ATTACKERS' },
       { key: 'recommend', label: 'RECOMMENDATIONS' },
       { key: 'intel', label: 'COLLECTION INTEL' },
       { key: 'progress', label: 'PROGRESS LOG' }
@@ -5838,6 +6384,7 @@ class Component extends DCLogic {
       isHome: tab === 'home',
       isRoster: tab === 'roster',
       isPvp: tab === 'pvp',
+      isAttackers: tab === 'attackers',
       isRecommend: tab === 'recommend',
       isIntel: tab === 'intel',
       isProgress: tab === 'progress',
@@ -5847,6 +6394,43 @@ class Component extends DCLogic {
       onSearchChange: (e) => this.setState({ search: e.target.value, visibleCount: 30 }),
       sortField,
       onSortChange: (e) => this.setState({ sortField: e.target.value, visibleCount: 30 }),
+      confidence,
+      flagCounts,
+      attackerGroups: attackerGroups.length ? attackerGroups : null,
+      attackerEmpty: !attackerGroups.length,
+      moveData: (() => {
+        const total = this.distinctMoveNames().length;
+        const known = total - this.missingMoveNames().length;
+        return {
+          total, known, missing: total - known,
+          pct: total ? Math.round(known / total * 100) + '%' : '\u2014',
+          barWidth: total ? Math.round(known / total * 100) + '%' : '0%',
+          busy: !!this.state.moveFetchBusy,
+          buttonLabel: this.state.moveFetchBusy ? 'LOOKING UP\u2026' : (total && known < total ? 'LOOK UP ' + (total - known) + ' MOVES' : 'ALL MOVES COVERED'),
+          buttonDisabled: !!this.state.moveFetchBusy || known >= total,
+          status: this.state.moveFetchStatus || '',
+          error: this.state.moveFetchError || '',
+          onFetch: () => this.fetchMoveData(),
+          onClear: () => this.clearMoveData()
+        };
+      })(),
+      dominatedList: dominatedList.length ? dominatedList : null,
+      dominatedCount: dominatedRaw.length,
+      rosterFilterChips: [
+        { key: 'all', label: 'ALL' },
+        { key: 'measured', label: 'MEASURED \u2713' },
+        { key: 'needsAppraisal', label: 'NEEDS APPRAISAL' },
+        { key: 'pvp', label: 'PVP 90%+' },
+        { key: 'lucky', label: 'LUCKY' },
+        { key: 'shadow', label: 'SHADOW / PURIFIED' }
+      ].map(c => ({
+        label: c.label,
+        active: rosterFilter === c.key,
+        color: rosterFilter === c.key ? 'oklch(15% 0.02 260)' : 'oklch(72% 0.02 260)',
+        bg: rosterFilter === c.key ? accent(78, 0.13) : 'oklch(24% 0.03 260)',
+        border: rosterFilter === c.key ? accent(78, 0.13) : 'oklch(34% 0.03 260)',
+        onClick: () => this.setState({ rosterFilter: c.key, visibleCount: 30 })
+      })),
       rosterCountLabel: `${filteredRoster.length} of ${totalFiltered} shown`,
       filteredRoster,
       hasMore: visibleCount < totalFiltered,
@@ -6129,6 +6713,11 @@ class Component extends DCLogic {
           onSkip: () => this.skipAppraisalCollision(r._rid)
         };
       }),
+      importChanges: (() => {
+        const log = (this.state.videoImport && this.state.videoImport.summary && this.state.videoImport.summary.changeLog) || [];
+        return log.length ? log.slice(0, 25) : null;
+      })(),
+      importChangeCount: ((this.state.videoImport && this.state.videoImport.summary && this.state.videoImport.summary.changeLog) || []).length,
       videoReviewRows: ((this.state.videoImport && this.state.videoImport.review) || []).map(r => {
         const ivs = [r.atkIV, r.defIV, r.staIV];
         const haveIv = ivs.every(v => Number.isFinite(v));

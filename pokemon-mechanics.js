@@ -1188,7 +1188,153 @@ function rankPctForLeague(base, ivs, leagueKey) {
   return Math.min(100, (own / max) * 100);
 }
 
+// GENERATED BLOCK — do not hand-edit. Full Power-Up cost curve, run-length
+// encoded as [firstLevelOfRun, stardust, candy, xlCandy] where each run covers
+// consecutive half-levels until the next run starts. Pulled from pogoapi.net's
+// pokemon_powerup_requirements endpoint (republished from Niantic's
+// GAME_MASTER) — the same source _DUST_TIER_START_LEVEL above comes from, and
+// consistent with it. Level 40+ costs XL Candy instead of regular Candy, which
+// is why xlCandy is a separate column rather than a conversion.
+// The cost listed at level L is the cost to go from L to L+0.5. Level 50 is the
+// cap, so there is no run starting at 50.
+const _POWERUP_RUNS = [
+  [1, 200, 1, 0], [3, 400, 1, 0], [5, 600, 1, 0], [7, 800, 1, 0], [9, 1000, 1, 0],
+  [11, 1300, 2, 0], [13, 1600, 2, 0], [15, 1900, 2, 0], [17, 2200, 2, 0], [19, 2500, 2, 0],
+  [21, 3000, 3, 0], [23, 3500, 3, 0], [25, 4000, 3, 0], [26, 4000, 4, 0], [27, 4500, 4, 0],
+  [29, 5000, 4, 0], [31, 6000, 6, 0], [33, 7000, 8, 0], [35, 8000, 10, 0], [37, 9000, 12, 0],
+  [39, 10000, 15, 0], [40, 10000, 0, 10], [41, 11000, 0, 10], [42, 11000, 0, 12],
+  [43, 12000, 0, 12], [44, 12000, 0, 15], [45, 13000, 0, 15], [46, 13000, 0, 17],
+  [47, 14000, 0, 17], [48, 14000, 0, 20], [49, 15000, 0, 20]
+];
+const MAX_POKEMON_LEVEL = 50;
+
+// Cost of the single Power Up that takes a Pokemon from `level` to level+0.5.
+function powerUpStepCost(level) {
+  if (!(level >= 1) || level >= MAX_POKEMON_LEVEL) return null;
+  let run = null;
+  for (const r of _POWERUP_RUNS) { if (r[0] <= level) run = r; else break; }
+  if (!run) return null;
+  return { dust: run[1], candy: run[2], xlCandy: run[3] };
+}
+
+// Total cost to walk a Pokemon from one level to another, half-level by
+// half-level. Lucky halves Stardust, Shadow adds 20%, Purified takes 10% off —
+// the multipliers apply to Stardust and Candy, never to XL Candy.
+function powerUpCostBetween(fromLevel, toLevel, opts) {
+  opts = opts || {};
+  const out = { dust: 0, candy: 0, xlCandy: 0, steps: 0, reachable: true };
+  if (!(fromLevel >= 1) || !(toLevel >= 1)) { out.reachable = false; return out; }
+  if (toLevel <= fromLevel) return out;
+  let mult = 1;
+  if (opts.lucky) mult *= 0.5;
+  if (opts.shadow) mult *= 1.2;
+  if (opts.purified) mult *= 0.9;
+  for (let lv = fromLevel; lv < Math.min(toLevel, MAX_POKEMON_LEVEL); lv += 0.5) {
+    const step = powerUpStepCost(lv);
+    if (!step) { out.reachable = false; break; }
+    out.dust += Math.round(step.dust * mult);
+    out.candy += Math.round(step.candy * mult);
+    out.xlCandy += step.xlCandy;
+    out.steps++;
+  }
+  return out;
+}
+
+// Highest level this exact spread can reach without breaking a league's CP cap.
+// Returns null when even level 1 is already over the cap (common for fully
+// evolved Pokemon in Little Cup).
+function maxLevelUnderCap(base, ivs, capCP) {
+  if (!(capCP > 0) || !Number.isFinite(capCP)) return MAX_POKEMON_LEVEL;
+  const levels = Object.keys(CPM).map(Number).filter(l => l <= MAX_POKEMON_LEVEL).sort((a, b) => a - b);
+  for (let i = levels.length - 1; i >= 0; i--) {
+    if (cpFor(base, ivs, levels[i]) <= capCP) return levels[i];
+  }
+  return null;
+}
+
+// Raw-stat attacker score. There is no move data in this app, so this is
+// deliberately NOT a DPS figure: it is effective Attack at the given level,
+// lightly weighted by bulk so a glass cannon doesn't outrank a Pokemon that
+// survives long enough to use its charge move. Ranking within a type is what
+// this is for; the absolute number means nothing on its own.
+function attackerScore(base, ivs, level) {
+  const cpm = CPM[level != null ? level : 40];
+  if (!cpm) return 0;
+  const atk = (base[0] + ivs[0]) * cpm;
+  const def = (base[1] + ivs[1]) * cpm;
+  const sta = (base[2] + ivs[2]) * cpm;
+  return Math.pow(atk, 0.8) * Math.pow(def * sta, 0.2);
+}
+
+// Type effectiveness multipliers, attacker type -> defender type. Pokemon GO
+// uses its own numbers rather than the main-series ones: 1.6 for super
+// effective, 0.625 for not very effective, 0.390625 for double resisted.
+const TYPE_CHART = {
+  Normal:{Rock:.625,Ghost:.390625,Steel:.625},
+  Fire:{Fire:.625,Water:.625,Grass:1.6,Ice:1.6,Bug:1.6,Rock:.625,Dragon:.625,Steel:1.6},
+  Water:{Fire:1.6,Water:.625,Grass:.625,Ground:1.6,Rock:1.6,Dragon:.625},
+  Electric:{Water:1.6,Electric:.625,Grass:.625,Ground:.390625,Flying:1.6,Dragon:.625},
+  Grass:{Fire:.625,Water:1.6,Grass:.625,Poison:.625,Ground:1.6,Flying:.625,Bug:.625,Rock:1.6,Dragon:.625,Steel:.625},
+  Ice:{Fire:.625,Water:.625,Grass:1.6,Ice:.625,Ground:1.6,Flying:1.6,Dragon:1.6,Steel:.625},
+  Fighting:{Normal:1.6,Ice:1.6,Poison:.625,Flying:.625,Psychic:.625,Bug:.625,Rock:1.6,Ghost:.390625,Dark:1.6,Steel:1.6,Fairy:.625},
+  Poison:{Grass:1.6,Poison:.625,Ground:.625,Rock:.625,Ghost:.625,Steel:.390625,Fairy:1.6},
+  Ground:{Fire:1.6,Electric:1.6,Grass:.625,Poison:1.6,Flying:.390625,Bug:.625,Rock:1.6,Steel:1.6},
+  Flying:{Electric:.625,Grass:1.6,Fighting:1.6,Bug:1.6,Rock:.625,Steel:.625},
+  Psychic:{Fighting:1.6,Poison:1.6,Psychic:.625,Dark:.390625,Steel:.625},
+  Bug:{Fire:.625,Grass:1.6,Fighting:.625,Poison:.625,Flying:.625,Psychic:1.6,Ghost:.625,Dark:1.6,Steel:.625,Fairy:.625},
+  Rock:{Fire:1.6,Ice:1.6,Fighting:.625,Ground:.625,Flying:1.6,Bug:1.6,Steel:.625},
+  Ghost:{Normal:.390625,Psychic:1.6,Ghost:1.6,Dark:.625},
+  Dragon:{Dragon:1.6,Steel:.625,Fairy:.390625},
+  Dark:{Fighting:.625,Psychic:1.6,Ghost:1.6,Dark:.625,Fairy:.625},
+  Steel:{Fire:.625,Water:.625,Electric:.625,Ice:1.6,Rock:1.6,Steel:.625,Fairy:1.6},
+  Fairy:{Fire:.625,Fighting:1.6,Poison:.625,Dragon:1.6,Dark:1.6,Steel:.625}
+};
+const STAB_MULTIPLIER = 1.2;
+// Ranking DPS with no particular defender in mind still needs a defence number
+// to divide by. 200 is roughly a mid-tier raid boss; because it is the same
+// constant for every Pokemon it cancels out of the ordering entirely and only
+// affects the absolute figure.
+const REFERENCE_DEFENCE = 200;
+
+function typeMultiplier(attackType, defenderTypes) {
+  if (!attackType) return 1;
+  const row = TYPE_CHART[attackType];
+  if (!row || !Array.isArray(defenderTypes) || !defenderTypes.length) return 1;
+  return defenderTypes.reduce((m, t) => m * (row[t] != null ? row[t] : 1), 1);
+}
+
+// One hit's damage, using Niantic's formula. `move` is a record from the move
+// database: { type, power, energy, durationMs }.
+function moveDamage(move, attackStat, ownTypes, defenderTypes, defenceStat) {
+  if (!move || !(move.power > 0)) return 0;
+  const stab = Array.isArray(ownTypes) && ownTypes.indexOf(move.type) >= 0 ? STAB_MULTIPLIER : 1;
+  const eff = typeMultiplier(move.type, defenderTypes);
+  const def = defenceStat > 0 ? defenceStat : REFERENCE_DEFENCE;
+  return Math.floor(0.5 * move.power * (attackStat / def) * stab * eff) + 1;
+}
+
+// Sustained DPS over one full fast-move/charged-move cycle. Returns null when
+// either move is missing from the database — the caller must fall back to a
+// stat-only ranking rather than pretending a number exists.
+function cycleDps(base, ivs, level, fastMove, chargedMove, opts) {
+  opts = opts || {};
+  const cpm = CPM[level != null ? level : 40];
+  if (!cpm || !fastMove || !chargedMove) return null;
+  if (!(fastMove.durationMs > 0) || !(chargedMove.durationMs > 0)) return null;
+  if (!(fastMove.energy > 0) || !(chargedMove.energy > 0)) return null;
+  const atk = (base[0] + ivs[0]) * cpm;
+  const dmgFast = moveDamage(fastMove, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat);
+  const dmgCharged = moveDamage(chargedMove, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat);
+  const fastPerCharged = Math.ceil(chargedMove.energy / fastMove.energy);
+  const cycleMs = fastPerCharged * fastMove.durationMs + chargedMove.durationMs;
+  const cycleDmg = fastPerCharged * dmgFast + dmgCharged;
+  if (!(cycleMs > 0)) return null;
+  return (cycleDmg / cycleMs) * 1000;
+}
+
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust };
+  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust,
+    MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
+    TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

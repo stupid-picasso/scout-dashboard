@@ -800,7 +800,7 @@ APPRAISAL_PROMPT = (
 # fewer calls against the free tier's per-model daily request cap).
 MAX_FRAMES_PER_BATCH = 10
 BATCH_CHAR_BUDGET = 1600000
-REQUEST_TIMEOUT_S = 90
+REQUEST_TIMEOUT_S = 180
 BATCH_PACE_S = 1.5
 
 
@@ -1318,7 +1318,11 @@ def _frame_white_point(img):
 def _warm_runs(px, y, x_lo, x_hi, min_chroma, min_run):
     """Horizontal runs of bar-fill colour in one row.
 
-    The test is WARMTH (r - b) rather than darkness. The appraisal fill is a
+    The test is WARMTH rather than darkness. Red is measured against the LOWER
+    of green and blue: an earlier version required r >= g >= b, true of the gold
+    fill in a video frame (120,107,78) but false of the red Attack bar
+    (232,171,178) where blue sits above green, so red and pink bars were
+    rejected outright and a screenshot of them found nothing at all. The appraisal fill is a
     gold/red on a near-white card, so it is barely darker than its background
     but strongly warmer \u2014 42 counts of red-blue separation on a frame whose
     total luminance range is 8. Thresholding on luminance finds the dark
@@ -1327,7 +1331,7 @@ def _warm_runs(px, y, x_lo, x_hi, min_chroma, min_run):
     runs, start = [], None
     for x in range(x_lo, x_hi):
         r, g, b = px[x, y]
-        warm = (r - b) >= min_chroma and r >= g >= b
+        warm = (r - min(g, b)) >= min_chroma and r > g
         if warm and start is None:
             start = x
         elif not warm and start is not None:
@@ -1337,6 +1341,22 @@ def _warm_runs(px, y, x_lo, x_hi, min_chroma, min_run):
     if start is not None and x_hi - start >= min_run:
         runs.append((start, x_hi - 1))
     return runs
+
+
+def _one_bar(runs, max_gap):
+    """Trim a row's runs to the ones belonging to a single bar.
+
+    Walk left to right and stop at the first jump wider than a segment gap.
+    Otherwise the row's last run can be something else warm further right - the
+    trainer avatar's face sits level with the Attack bar - and the bar measures
+    as far as that, overshoots its own reconstructed width, and is discarded.
+    """
+    out = [runs[0]]
+    for r in runs[1:]:
+        if r[0] - out[-1][1] - 1 > max_gap:
+            break
+        out.append(r)
+    return out
 
 
 def measure_appraisal_bars_warm(image_path):
@@ -1369,10 +1389,11 @@ def measure_appraisal_bars_warm(image_path):
     # "bars", and reported confident nonsense. It is why high-IV Pokemon read
     # correctly for weeks while low ones came out as garbage.
     rows = []
+    max_gap = int(round(W * 0.02))
     for y in range(int(H * 0.30), H):
         runs = _warm_runs(px, y, x_lo, x_hi, min_chroma, min_run)
         if runs:
-            rows.append((y, runs))
+            rows.append((y, _one_bar(runs, max_gap)))
     if not rows:
         return None
 
@@ -1423,7 +1444,7 @@ def measure_appraisal_bars_warm(image_path):
             for i in range(len(rs) - 1):
                 w = rs[i][1] - rs[i][0] + 1
                 g = rs[i + 1][0] - rs[i][1] - 1
-                if 2 <= g <= int(round(W * 0.02)) and W * 0.06 < w < W * 0.20:
+                if 2 <= g <= max_gap and W * 0.06 < w < W * 0.20:
                     segs.append(w)
                     gaps.append(g)
         if not segs:
@@ -1549,7 +1570,7 @@ def _dump_bar_diagnostics(frames, out_dir="data/debug_bars", hits=None):
                     rows.append((y, runs, widths))
             if rows:
                 stepr = max(1, len(rows) // 24)
-                for y, runs, widths in rows[::stepr][:24]:
+                for y, runs, widths in rows[::stepr][:12]:
                     print(f"[Bars][debug]   y={y} n={len(runs)} runs={runs} widths={widths}")
                 print(f"[Bars][debug]   {len(rows)} candidate rows total "
                       f"(showing every {stepr})")
@@ -1578,7 +1599,12 @@ def run_appraisal_pipeline(frames):
     # Dump evidence whenever the read is WEAK, not only when it fails outright.
     # A run that measures 1 frame in 20 is just as broken as one that measures
     # none, and needs the same evidence to fix.
-    if len(hits) < max(3, len(frames) * 0.25):
+    # Calibration is done: the readers are verified against known frames, so a
+    # normal run has nothing to learn from a row dump. Dump only on TOTAL
+    # failure, where the geometry really is unknown again. The 0.25 threshold
+    # fired on healthy runs and wrote a hundred PNGs plus thousands of debug
+    # lines per import.
+    if not hits:
         _dump_bar_diagnostics(frames, hits=hits)
     if not hits:
         print("[Bars] No appraisal bars found \u2014 falling back to the model-read prompt.")
@@ -1804,10 +1830,12 @@ def _resolve_duplicate_sightings(items, out_dir="data/debug_bars"):
 
 
 class GeminiError(Exception):
-    def __init__(self, message, status=None, daily=False):
+    def __init__(self, message, status=None, daily=False, transient=False):
         super().__init__(message)
         self.status = status
         self.daily = daily
+        # transient = network/transport failure rather than an API verdict.
+        self.transient = transient
 
 
 def get_gemini_keys():
@@ -1917,10 +1945,22 @@ def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
             cfg["thinkingConfig"] = {"thinkingBudget": 0}
         return {"contents": [{"role": "user", "parts": parts}], "generationConfig": cfg}
 
-    resp = requests.post(url, json=build_body(False), timeout=REQUEST_TIMEOUT_S)
+    def post(extras):
+        # A read timeout or dropped connection is a TRANSPORT failure, not a
+        # bad request: it says nothing about this model or key, and the next
+        # attempt may well succeed. Previously these escaped as raw
+        # requests exceptions and killed the whole run mid-batch, throwing away
+        # every batch already read. Convert to GeminiError so the caller's
+        # existing rotate-and-retry path handles them like any other failure.
+        try:
+            return requests.post(url, json=build_body(extras), timeout=REQUEST_TIMEOUT_S)
+        except requests.exceptions.RequestException as exc:
+            raise GeminiError(f"Gemini transport error: {type(exc).__name__}", transient=True)
+
+    resp = post(False)
     if resp.status_code == 400:
         # Some models need the JSON mime type to return parseable output.
-        resp = requests.post(url, json=build_body(True), timeout=REQUEST_TIMEOUT_S)
+        resp = post(True)
 
     if resp.ok:
         data = resp.json()
@@ -2076,8 +2116,21 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                           f"rotation for the rest of this run")
                 elif e.status == 429:
                     pair_cooldowns[(model, key)] = now + (86400 if e.daily else 60)
+                elif e.transient:
+                    # Short cooldown only: the endpoint was slow or the socket
+                    # dropped, so give this pair a moment and let the rotation
+                    # try another model/key immediately rather than hammering
+                    # the one that just timed out.
+                    pair_cooldowns[(model, key)] = now + 15
                 attempts += 1
-        if not succeeded:
+            except Exception as e:  # noqa: BLE001 — last-resort net
+                # Nothing unexpected should reach here, but if it does it must
+                # not take the whole run down: 70-odd batches of already-read
+                # Pokemon are worth far more than this one batch.
+                print(f"[Gemini] batch {b_i + 1}/{len(batches)} hit an unexpected "
+                      f"{type(e).__name__}: {e} — skipping this batch")
+                attempts += 1
+                model_idx = idx + 1
             print(f"[Gemini] batch {b_i + 1}/{len(batches)} exhausted all retries \u2014 skipping")
         time.sleep(BATCH_PACE_S)
 
