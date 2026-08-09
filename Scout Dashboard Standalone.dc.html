@@ -1187,7 +1187,7 @@ window.__spriteUrl = function (file) {
     </div>
   </div>
 
-  <div class="om-scroll" style="position:fixed;left:0;right:0;bottom:0;z-index:40;box-shadow:0 40px 0 0 oklch(19% 0.016 50 / .94);display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:oklch(19% 0.016 50 / .94);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);border-top:1px solid oklch(32% 0.0165 50);padding:8px 10px calc(8px + env(safe-area-inset-bottom))">
+  <div class="om-scroll" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:oklch(26% 0.019 50 / .97);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);border-top:1px solid oklch(38% 0.02 50);box-shadow:0 -6px 18px rgba(0,0,0,.45);padding:8px 10px max(8px, env(safe-area-inset-bottom))">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="8">
       <div onClick="{{ t.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 13px;border-radius:11px;background:{{ t.navBg }};min-width:58px">
         <div style="font-size:16px;line-height:1;color:{{ t.color }}">{{ t.icon }}</div>
