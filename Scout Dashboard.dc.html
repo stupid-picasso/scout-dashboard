@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script src="./support.js"></script>
 </head>
 <body>
@@ -37,6 +37,8 @@
   @keyframes shimmerSlide{0%{background-position:-460px 0}100%{background-position:460px 0}}
   @keyframes ambientDrift{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(3%,-2.5%,0) scale(1.06)}66%{transform:translate3d(-2.5%,2%,0) scale(1.03)}}
   @keyframes sheetRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+  /* Phone-width sheets come up from the bottom edge the way an iOS sheet does. */
+  @keyframes sheetUp{from{opacity:.4;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
   @keyframes scrimIn{from{opacity:0}to{opacity:1}}
   /* Entrance stagger: --i is set per card so lists cascade instead of popping
      in all at once. Capped so a 200-row roster never waits seconds. */
@@ -44,6 +46,27 @@
   /* Loading placeholders: a moving highlight band over a flat card. */
   .om-skel{background:linear-gradient(100deg, oklch(24% 0.025 260) 28%, oklch(31% 0.03 260) 46%, oklch(24% 0.025 260) 64%);background-size:460px 100%;animation:shimmerSlide 1.25s linear infinite}
   :focus-visible{outline:2px solid oklch(80% 0.14 220);outline-offset:2px;border-radius:4px}
+  /* ---- iPhone PWA touch layer ----
+     Installed to the home screen this runs with no browser chrome, so the
+     things that make it feel native are the ones the browser normally hides:
+     press feedback, no tap flash, no rubber-band, and real safe-area padding. */
+  html{-webkit-text-size-adjust:100%;background:oklch(18% 0.025 260);height:100%}
+  body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+  /* Chrome should not long-press-select or show the callout menu; body text
+     stays selectable so numbers can still be copied. */
+  button,label,summary,[role="button"],.om-press,.om-tap{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  /* iOS responds on touch-DOWN, not on release — that is most of why a web app
+     feels a beat slower than a native one even at the same frame rate. */
+  .om-press{transition:transform .18s cubic-bezier(.2,.8,.2,1),filter .18s ease}
+  .om-press:active{transform:scale(.96);filter:brightness(1.1)}
+  .om-tap{transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s ease,background .2s ease}
+  .om-tap:active{transform:scale(.985);border-color:oklch(46% 0.06 260)}
+  /* Momentum inside panels, and no scroll chaining to the page behind. */
+  .om-scroll{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  /* Ambient background is decorative; never let it cost a scroll frame. */
+  @media (hover:none){
+    .om-tap:active{transform:scale(.98)}
+  }
   @keyframes scanSweep{0%{top:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:100%;opacity:0}}
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
@@ -73,7 +96,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-basis:{{ headerActionsBasis }}">
       <div style="font:12px ui-monospace,monospace;color:oklch(60% 0.02 260);width:{{ syncLabelWidth }}">{{ syncLabel }}</div>
-      <label style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;box-sizing:border-box">
+      <label class="om-press" style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12.5px ui-monospace,monospace;padding:9px 16px;border-radius:5px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;box-sizing:border-box">
         SYNC CSV
         <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
       </label>
@@ -120,9 +143,9 @@
     </div>
   </div>
 
-  <div style="display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid oklch(32% 0.03 260);overflow-x:auto">
+  <div class="om-scroll" style="display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid oklch(32% 0.03 260);overflow-x:auto;scrollbar-width:none">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="4">
-      <div onClick="{{ t.onClick }}" style="cursor:pointer;padding:10px 14px;font:700 12.5px ui-monospace,monospace;letter-spacing:.03em;color:{{ t.color }};border-bottom:2px solid {{ t.border }};white-space:nowrap;flex-shrink:0">{{ t.label }}</div>
+      <div onClick="{{ t.onClick }}" class="om-press" style="cursor:pointer;padding:10px 14px;font:700 12.5px ui-monospace,monospace;letter-spacing:.03em;color:{{ t.color }};border-bottom:2px solid {{ t.border }};white-space:nowrap;flex-shrink:0">{{ t.label }}</div>
     </sc-for>
   </div>
 
@@ -274,7 +297,7 @@
         <details style="background:oklch(19% 0.025 300);border:1px solid oklch(34% 0.05 300);border-radius:6px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px ui-monospace,monospace;color:oklch(74% 0.09 300);list-style:none">SERVER-SIDE IV IMPORT &middot; FREE</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Step 2, after importing Pokemon above. Run the "Extract IV Ratings" workflow with your <b>appraisal</b> recording, then tap below. It reads star tier + full bars per Pokemon, matches to what you already imported by name + CP + HP, and pins the exact IV. It never adds new Pokemon.</div>
+            <div style="font:12px sans-serif;color:oklch(72% 0.02 260);line-height:1.55">Step 2, after importing Pokemon above. Run the &ldquo;Extract IV Ratings&rdquo; workflow with your <b>appraisal</b> recording, then tap below. It measures the three appraisal bars to get the exact IV, matches each reading to a Pokemon you already imported by name, CP and HP, and pins it. Nothing is guessed and no new Pokemon are added.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <div onClick="{{ importIvFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:5px;background:oklch(45% 0.13 300);color:white;font:700 11.5px ui-monospace,monospace">{{ ivServerLabel }}</div>
             </div>
@@ -304,15 +327,15 @@
           </div>
         </details>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <label style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
+          <label class="om-press" style="cursor:pointer;background:oklch(28% 0.03 260);border:1px solid oklch(40% 0.03 260);color:oklch(85% 0.01 260);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
             IMPORT SCREENSHOT
             <input type="file" accept="image/*" onChange="{{ onScreenshotUpload }}" style="display:none" />
           </label>
-          <label style="cursor:pointer;background:oklch(28% 0.05 200);border:1px solid oklch(42% 0.08 200);color:oklch(88% 0.03 200);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
+          <label class="om-press" style="cursor:pointer;background:oklch(28% 0.05 200);border:1px solid oklch(42% 0.08 200);color:oklch(88% 0.03 200);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
             {{ apprShotLabel }}
             <input type="file" accept="image/*" onChange="{{ onAppraisalUpload }}" style="display:none" />
           </label>
-          <label style="cursor:pointer;background:oklch(28% 0.05 280);border:1px solid oklch(42% 0.08 280);color:oklch(88% 0.03 280);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
+          <label class="om-press" style="cursor:pointer;background:oklch(28% 0.05 280);border:1px solid oklch(42% 0.08 280);color:oklch(88% 0.03 280);font:600 12px ui-monospace,monospace;padding:9px 16px;border-radius:5px;white-space:nowrap">
             IMPORT SCREEN RECORDING
             <input type="file" accept="video/*" onChange="{{ onVideoUpload }}" style="display:none" />
           </label>
@@ -815,7 +838,7 @@
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div onClick="{{ p.onClick }}" class="om-stagger" style="--i:{{ $index }};cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:{{ cardPadding }};content-visibility:auto;contain-intrinsic-size:0 168px;transition:transform .16s cubic-bezier(.22,1,.36,1),border-color .16s ease,box-shadow .16s ease" style-hover="transform:translateY(-4px);border-color:oklch(50% 0.1 220);box-shadow:0 8px 20px rgba(0,0,0,.35)">
+        <div onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;background:oklch(23% 0.03 260);border:1px solid oklch(33% 0.03 260);border-radius:10px;padding:{{ cardPadding }};content-visibility:auto;contain-intrinsic-size:0 168px;transition:transform .16s cubic-bezier(.22,1,.36,1),border-color .16s ease,box-shadow .16s ease" style-hover="transform:translateY(-4px);border-color:oklch(50% 0.1 220);box-shadow:0 8px 20px rgba(0,0,0,.35)">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:38px;height:38px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 16px ui-monospace,monospace;color:oklch(15% 0.02 260);flex-shrink:0;overflow:hidden;position:relative">
@@ -839,7 +862,7 @@
             </div>
             <div style="flex:1">
               <div style="font:800 20px ui-monospace,monospace">{{ p.cp }}<span style="font:11px ui-monospace,monospace;color:oklch(55% 0.02 260);font-weight:400"> CP</span></div>
-              <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.02 260)">{{ p.spread }}</div>
+              <div style="font:11.5px ui-monospace,monospace;color:oklch(74% 0.02 260);font-variant-numeric:tabular-nums;letter-spacing:.02em">{{ p.spread }}</div>
               <div style="font:700 11.5px ui-monospace,monospace;color:{{ p.bestLeagueColor }};margin-top:2px">{{ p.bestLeagueLabel }}</div>
               <sc-if value="{{ p.stardustLine }}" hint-placeholder-val="{{ true }}">
                 <div style="font:11px ui-monospace,monospace;color:oklch(65% 0.13 220);margin-top:3px">{{ p.stardustLine }}</div>
@@ -856,8 +879,8 @@
   </sc-if>
 
   <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
-  <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:center;justify-content:center;z-index:50;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif">
-    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" style="touch-action:pan-y;background:oklch(21% 0.022 260);border-radius:28px;width:400px;max-width:92vw;max-height:90vh;overflow-y:auto;animation:sheetRise .44s cubic-bezier(.22,1,.36,1) both;box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
+  <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif">
+    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:oklch(21% 0.022 260);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
 
       <div style="position:relative;height:248px;background:{{ detail.headerGradient }};border-radius:28px 28px 0 0;overflow:hidden">
         <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14), transparent 60%)"></div>
@@ -910,6 +933,9 @@
               </div>
             </sc-for>
           </div>
+          <sc-if value="{{ detail.ivSourceLine }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:16px;padding-top:12px;border-top:1px solid oklch(31% 0.02 260);font:600 10.5px ui-monospace,monospace;color:{{ detail.ivSourceColor }};letter-spacing:.04em;text-align:center">{{ detail.ivSourceLine }}</div>
+          </sc-if>
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
@@ -4113,7 +4139,12 @@ class Component extends DCLogic {
       const runs = []; let start = null;
       for (let x = xLo; x < xHi; x++) {
         const p = px(x, y);
-        const warm = (p[0] - p[2]) >= minChroma && p[0] >= p[1] && p[1] >= p[2];
+        // Warm = red clearly above the LOWER of green/blue. The old test was
+        // r >= g >= b, which holds for the gold bars in a video frame
+        // (120,107,78) but rejects the red and pink fills outright: an Attack
+        // bar reads (232,171,178), where blue sits ABOVE green. That is why a
+        // screenshot with red bars found nothing at all.
+        const warm = (p[0] - Math.min(p[1], p[2])) >= minChroma && p[0] > p[1];
         if (warm && start === null) start = x;
         else if (!warm && start !== null) { if (x - start >= minRun) runs.push([start, x - 1]); start = null; }
       }
@@ -4121,8 +4152,22 @@ class Component extends DCLogic {
       return runs;
     };
 
+    // Keep only the runs that belong to ONE bar: walk left to right and stop at
+    // the first jump wider than a segment gap. Without this the row's last run
+    // can be something else warm further right - the trainer avatar's face sits
+    // level with the Attack bar - and the bar then measures as far as that,
+    // overshoots its own width, and is thrown out as invalid.
+    const maxGap = Math.round(W * 0.02);
+    const barRuns = (runs) => {
+      const out = [runs[0]];
+      for (let i = 1; i < runs.length; i++) {
+        if (runs[i][0] - out[out.length - 1][1] - 1 > maxGap) break;
+        out.push(runs[i]);
+      }
+      return out;
+    };
     const rows = [];
-    for (let y = Math.floor(H * 0.30); y < H; y++) { const r = rowRuns(y); if (r.length) rows.push([y, r]); }
+    for (let y = Math.floor(H * 0.30); y < H; y++) { const r = rowRuns(y); if (r.length) rows.push([y, barRuns(r)]); }
     if (!rows.length) return null;
 
     const bands = []; let cur = [];
@@ -4151,7 +4196,7 @@ class Component extends DCLogic {
       const segs = [], gaps = [];
       for (const b of cl) for (let i = 0; i < b.runs.length - 1; i++) {
         const w = b.runs[i][1] - b.runs[i][0] + 1, g = b.runs[i + 1][0] - b.runs[i][1] - 1;
-        if (g >= 2 && g <= Math.round(W * 0.02) && w > W * 0.06 && w < W * 0.20) { segs.push(w); gaps.push(g); }
+        if (g >= 2 && g <= maxGap && w > W * 0.06 && w < W * 0.20) { segs.push(w); gaps.push(g); }
       }
       if (!segs.length) continue;
       const segW = med(segs), gap = med(gaps), width = 3 * segW + 2 * gap;
@@ -5004,8 +5049,8 @@ class Component extends DCLogic {
         return `Living Dex: ${owned.size}/${total} species (${(owned.size / (total || 1) * 100).toFixed(1)}%). Kanto Dex: ${kantoOwned}/${kanto.length}. Hundo: ${hundo}. Nundo: ${nundo}. `
           + `Resources on hand: Rare Candy ${r.rareCandy ?? 'unknown'}, Rare Candy XL ${r.rareCandyXL ?? 'unknown'}, Elite Fast TM ${r.eliteFastTM ?? 'unknown'}, Elite Charged TM ${r.eliteChargedTM ?? 'unknown'}, Stardust ${this.state.stardustBalance ?? 'unknown'}.`;
       })(),
-      `Full roster (name, dex, form, cp, hp, ivAvg, atkIV/defIV/staIV, lucky, shadow, greatRank%, ultraRank%, littleRank%): ` +
-        roster.slice(0, 200).map(p => `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${(p.shadowPurified === '1' || p.shadowPurified === 1) ? 'S' : ''} G${p.great.rankPct ?? '-'} U${p.ultra.rankPct ?? '-'} LC${p.little.rankPct ?? '-'}`).join('; ')
+      `Roster (best 90 by league rank; ${roster.length} total. name, dex, form, cp, hp, ivAvg, atkIV/defIV/staIV, lucky, shadow, greatRank%, ultraRank%, littleRank%): ` +
+        [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 90).map(p => `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${(p.shadowPurified === '1' || p.shadowPurified === 1) ? 'S' : ''} G${p.great.rankPct ?? '-'} U${p.ultra.rankPct ?? '-'} LC${p.little.rankPct ?? '-'}`).join('; ')
     ].join('\n');
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
@@ -5016,7 +5061,23 @@ class Component extends DCLogic {
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false });
     } catch (e) {
-      this.setState({ chatMessages: [...messages, { role: 'assistant', content: 'Chat failed to reach the model. Try again.' }], chatBusy: false });
+      // The engine chain already knows WHY it failed - quota, missing key,
+      // rejected key, network. Throwing that away and printing "try again"
+      // told the user to repeat the one thing guaranteed not to work.
+      const raw = (e && e.message) || String(e);
+      let msg;
+      if (/No AI engine available/i.test(raw)) {
+        msg = 'No AI engine connected. Paste a free Google Gemini key under AI ENGINE - no card, 1,500 requests a day.';
+      } else if (/quota|429|RESOURCE_EXHAUSTED/i.test(raw)) {
+        msg = "Today's Gemini quota is used up. It resets at midnight Pacific, or add a second key under AI ENGINE.";
+      } else if (/key was rejected|API_KEY_INVALID|refused the key/i.test(raw)) {
+        msg = 'That Gemini key was rejected. Check it under AI ENGINE.';
+      } else if (/Failed to fetch|NetworkError|Load failed|network connection/i.test(raw)) {
+        msg = 'Could not reach the model - looks like a connection problem. Try again in a moment.';
+      } else {
+        msg = 'Chat failed: ' + raw;
+      }
+      this.setState({ chatMessages: [...messages, { role: 'assistant', content: msg }], chatBusy: false });
     }
   }
   // Eases the header stat cards toward their real values. Driven by rAF and
@@ -5642,6 +5703,19 @@ class Component extends DCLogic {
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         dex: p.dex, cp: p.cp, hp: p.hp,
         statRings, leagues,
+        // Where these three numbers came from. A measured spread is a fact read
+        // off the bar fill; a solved one is the middle of however many spreads
+        // fit this CP and HP, and saying which is which stops a guess from
+        // being read as a measurement.
+        ivSourceLine: (() => {
+          if (p.ivMeasured) return 'MEASURED FROM APPRAISAL BARS';
+          if (!Number.isFinite(p.atkIV)) return 'NO IV YET \u2014 APPRAISE AND RE-IMPORT';
+          if (p.ivSolved && p.ivCandidates > 1) return 'SOLVED FROM CP + HP \u00b7 ' + p.ivCandidates + ' SPREADS FIT';
+          if (p.ivSolved) return 'SOLVED FROM CP + HP';
+          return 'IMPORTED FROM CSV';
+        })(),
+        ivSourceColor: p.ivMeasured ? 'oklch(72% 0.14 150)'
+          : (!Number.isFinite(p.atkIV) ? 'oklch(60% 0.02 260)' : 'oklch(72% 0.12 85)'),
         flags: flags || 'No special flags',
         flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
         dust: p.dust != null ? p.dust : '—',
@@ -5722,6 +5796,15 @@ class Component extends DCLogic {
       headerSentinelRef: (el) => this.headerSentinelRef(el),
       sheetRef: (el) => this.sheetRef(el),
       isMobile,
+      // A phone sheet rises from the bottom edge and keeps its bottom corners
+      // square against it; a desktop dialog stays centred and fully rounded.
+      sheetAlign: isMobile ? 'flex-end' : 'center',
+      sheetRadius: isMobile ? '26px 26px 0 0' : '28px',
+      sheetMaxW: isMobile ? '100vw' : '92vw',
+      sheetMaxH: isMobile ? '92vh' : '90vh',
+      sheetAnim: isMobile
+        ? 'sheetUp .42s cubic-bezier(.32,.72,0,1) both'
+        : 'sheetRise .44s cubic-bezier(.22,1,.36,1) both',
       rootPadding: isMobile ? 'max(54px, env(safe-area-inset-top)) 14px 40px' : '28px 40px 60px',
       rootPadX: isMobile ? '14px' : '40px',
       statGridCols: isMobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)',
