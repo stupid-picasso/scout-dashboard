@@ -2131,6 +2131,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                       f"{type(e).__name__}: {e} — skipping this batch")
                 attempts += 1
                 model_idx = idx + 1
+        if not succeeded:
             print(f"[Gemini] batch {b_i + 1}/{len(batches)} exhausted all retries \u2014 skipping")
         time.sleep(BATCH_PACE_S)
 
