@@ -63,6 +63,14 @@
   .om-tap:active{transform:scale(.985);border-color:oklch(46% 0.06 260)}
   /* Momentum inside panels, and no scroll chaining to the page behind. */
   .om-scroll{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  /* iOS zooms the whole page in whenever a focused field is under 16px, and
+     never zooms back out. Every field in here is 11-13px by design, so on
+     touch devices they are forced to 16px at focus size only. !important is
+     required: these sizes are set inline. */
+  @media (hover:none){
+    input,textarea,select{font-size:16px !important}
+  }
+
   /* Ambient background is decorative; never let it cost a scroll frame. */
   @media (hover:none){
     .om-tap:active{transform:scale(.98)}
