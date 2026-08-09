@@ -24,8 +24,7 @@
      unbroken string, a wide grid, the negative-margin sticky header) used to
      drag the whole layout off-centre on the phone, which reads as the frame
      wobbling as you scroll. Clipping at the document level pins it. */
-  html,body{max-width:100%;overflow-x:hidden}
-  body{margin:0;background:oklch(18% 0.0138 50);}
+  body{max-width:100%;overflow-x:clip;margin:0;background:oklch(18% 0.0138 50);}
   ::selection{background:oklch(72% 0.14 62);color:oklch(18% 0.02 50)}
   a{color:oklch(78% 0.13 62);}
   a:hover{color:oklch(86% 0.12 62);}
@@ -102,7 +101,7 @@
     <div ref="{{ headerRef }}" style="transition:box-shadow .24s ease,background .24s ease;padding:10px {{ rootPadX }};background:oklch(18% 0.0138 50 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v31</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v32</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
