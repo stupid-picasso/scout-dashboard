@@ -2207,9 +2207,53 @@ def main():
         if out_path.endswith(".csv"):
             out_path = "data/pokemon_import.json"
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        # MERGE, never overwrite. A collection recorded in parts means one run
+        # per part, and a plain write meant each part silently destroyed the
+        # one before it — four runs left only the last part's Pokemon. Identity
+        # here is the same triple the client matches on (name + CP + HP); a
+        # repeat of that triple is the same Pokemon re-read, so the NEW record
+        # wins and the count stays flat. Anything else is additive.
+        merged, seen = [], {}
+        existing = []
+        if os.path.exists(out_path):
+            try:
+                with open(out_path) as f:
+                    prev = json.load(f)
+                if isinstance(prev, list):
+                    existing = prev
+            except Exception as exc:
+                print(f"[Main] Could not read existing {out_path} ({exc}) — treating as empty")
+
+        def key_of(rec):
+            return (
+                str(rec.get("name") or "").strip().lower(),
+                rec.get("cp"),
+                rec.get("hp"),
+            )
+
+        for rec in existing:
+            k = key_of(rec)
+            if k in seen:
+                continue
+            seen[k] = len(merged)
+            merged.append(rec)
+        added = updated = 0
+        for rec in items:
+            k = key_of(rec)
+            if k in seen:
+                merged[seen[k]] = rec
+                updated += 1
+            else:
+                seen[k] = len(merged)
+                merged.append(rec)
+                added += 1
+
         with open(out_path, "w") as f:
-            json.dump(items, f, indent=2)
-        print(f"[Main] Wrote {len(items)} Pokemon to {out_path}")
+            json.dump(merged, f, indent=2)
+        print(
+            f"[Main] Wrote {len(merged)} Pokemon to {out_path} "
+            f"({added} new, {updated} refreshed, {len(existing)} already on file)"
+        )
         return
 
     # --image goes through the same Gemini reader as --video. It used to run
