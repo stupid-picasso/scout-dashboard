@@ -2,6 +2,63 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
+date: 2026-08-09T00:00:00Z
+
+### Updated in this project
+- **Move database + real DPS ranking.** The app read move NAMES off the detail screen but had no damage numbers, so the attacker board could only rank on raw stats. New on-demand AI lookup collects every distinct move name on the roster, fetches raid stats (type/power/energy/duration) in batches of 40, and stores them in `moveDB` — localStorage, `SYNC_KEYS` and the cloud blob. It is manual and one-time on purpose: move stats change only when Niantic rebalances. The prompt instructs the model to OMIT moves it is not confident about rather than guess, so coverage legitimately stops short of 100%, and a record missing any of kind/power/energy/duration is rejected rather than stored half-filled. `CLEAR ROSTER` no longer wipes it — it is game reference data, not roster data.
+- **`pokemon-mechanics.js` gained the damage layer:** GO's own type chart (1.6 / 0.625 / 0.390625, not the main-series numbers), `STAB_MULTIPLIER`, `typeMultiplier`, `moveDamage` (Niantic's formula) and `cycleDps` — one full fast-move/charge-move cycle at level 50, best of the two charge moves, STAB applied, against a constant reference defence that cancels out of the ordering. Returns null rather than a number when either move is missing, which is the signal to fall back to the stat score. The type chart is unused so far; it is what a raid-counters feature would need.
+- **Eight roster features.** New ATTACKERS tab (best 4 per type, labelled DPS / DPS + stats / stats only per type so the basis is never implied); power-up cost panel in the detail sheet (stardust/candy/XL to the Great cap, Ultra cap, L40 and L50, with lucky/shadow/purified multipliers and an affordability check against logged inventory); dominated-duplicates list on Recommendations (same species+form, every IV equal or lower, no higher level, not lucky/shadow/favorited — safe to act on without weighing anything); DATA CONFIDENCE panel on Collection Intel (measured vs solver-guessed, with a jump to the roster filtered to those needing appraisal, plus lucky/shadow/purified/favorite/hundo/nundo counts); WHAT CHANGED receipt after each import listing the CP/HP/IV values it overwrote; roster filter chips; type-aware search; and sorts by best league rank and by IV floor (ascending — a low floor is the prize under a CP cap).
+- **Full power-up cost curve** added to `pokemon-mechanics.js` as a GENERATED BLOCK, run-length encoded from pogoapi's `pokemon_powerup_requirements` — the same source `_DUST_TIER_START_LEVEL` comes from. Levels 40+ bill XL Candy, kept as its own column rather than converted.
+- **`pogo_extract.py`: a read timeout was killing whole runs.** A `requests.ReadTimeout` on batch 10 of 74 escaped uncaught and took the process down, discarding the nine batches already read. `call_gemini` now wraps both POSTs and converts any transport failure into `GeminiError(transient=True)`, which flows into the existing rotate-and-retry path; transient failures cool that model/key pair for 15s only (not the 60s/daily treatment a 429 gets) so the rotation moves on rather than hammering the endpoint that just timed out. Added a last-resort per-batch `except Exception` — nothing should reach it, but a single bad batch must never cost 70 good ones. `REQUEST_TIMEOUT_S` 90 → 180; ten tone-mapped 1080px frames plausibly exceeded the old ceiling.
+- Mirrored into `Scout Dashboard Standalone.dc.html`, rebuilt `index.html` + `Scout Dashboard.html`, `sw.js` cache `scout-v22`.
+- **Open, not yet fixed:** scene-detect returned 0 frames at threshold 0.3 and fell back to 8fps sampling — 1500 frames, only 526 after dedup, 74 batches, draining both keys' daily quota. The dedup is the weak link (a strong reduction is expected on mostly-static footage); tone-mapped HDR frames differ slightly frame to frame even on a static screen. Candidate fixes: loosen the dedup threshold, lower fallback fps to 3–4, or drop scene-threshold to 0.1.
+
+## Previous sync
+date: 2026-08-08T15:10:00Z
+
+### Updated in this project
+- **iPhone PWA motion + touch layer.** `viewport-fit=cover` was missing from the viewport meta, so every `env(safe-area-inset-*)` in the app resolved to 0 — with `apple-mobile-web-app-status-bar-style: black-translucent` that put content under the notch. Fixed, and the detail sheet now pads for the home indicator. Added the touch behaviours a home-screen app needs and a browser normally hides: no tap-highlight flash, no long-press callout or text selection on chrome, `touch-action: manipulation` (removes the 300ms tap delay), press-down feedback on cards/tabs/import buttons, momentum + contained scrolling on the tab strip and detail sheet, and no page rubber-band. On phone widths the detail sheet now rises from the bottom edge with square bottom corners on an iOS spring curve, instead of fading in centred.
+- Existing motion (stagger-in, shimmer skeletons, sheet rise, reduced-motion guard) was already in place and kept; this pass added the touch/press layer around it.
+
+## Previous sync
+date: 2026-08-08T14:30:00Z
+
+### Updated in this project
+- **Screenshot appraisal import.** New IMPORT APPRAISAL button runs the same bar measurement in the browser, at the image's full resolution (the vision-model copy is downscaled, which is fine for reading digits and fatal for measuring a bar edge). Matches on name+CP+HP like the server path and never creates Pokemon.
+- **Two colour bugs found by testing against a real screenshot.** The warm test required `r >= g >= b`, true of the gold fill in a tone-mapped video frame (120,107,78) but false of the red Attack bar (232,171,178) where blue sits above green - so red and pink bars were rejected outright and a screenshot of them measured nothing at all. Now measured against the lower of green and blue. Separately, the trainer avatar's face sits level with the Attack bar, so that row's last warm run landed far to the right, the bar overshot its own reconstructed width and was discarded; rows are now trimmed at the first jump wider than a segment gap. Both fixes applied to `pogo_extract.py` as well, where the video path had been avoiding them by luck.
+- **Scale.** 211 Pokemon imported from the collection recording; 159 appraisal readings, all with exact measured IVs. Identification batching holds (142 batched calls for 1013 frames).
+- Conflicting duplicate sightings are arbitrated client-side: the server emits every measured spread as `ivCandidateSets`, and `applyMeasuredIv` pins whichever reproduces the recorded CP and HP, falling back to the picker only when more than one fits.
+
+## Previous sync
+date: 2026-08-08T13:45:00Z
+
+### Updated in this project
+- **Measured IVs now reach the roster cards.** Four separate bugs sat between a correct measurement and a correct card, each masking the next: (1) `Scout Dashboard Standalone.dc.html` — the only file the phone runs — was missing `applyMeasuredIv`, `measuredSpreadOrder` and the `ivSource === 'bar-measure'` branch, so the import JSON was read and the measured spread discarded in favour of the CP/HP solver; (2) `ivOverrides` were applied to `roster` but `addedPokemon` was spread in raw, so Pokemon created by the video import could be written to and never read back; (3) the cloud listener replaced `ivOverrides` wholesale, letting a snapshot written before the import undo it — now merged, with a measured entry outranking an unmeasured remote one; (4) the post-import `pushCloud()` ran on the line after `setState`, uploading pre-import state and pulling it straight back — now fired from the setState callback. Verified: Absol 14/15/15 · 98%, all 50 rows measured.
+- **Card spreads carry a ✓ when the value came from a bar measurement** rather than the CP/HP solver, so a failed pin is visible on the phone instead of inferred from the numbers.
+- **CP and HP cannot validate an IV read.** Absol at CP 1438 / HP 106 has 11 legal spreads, including both the correct 14/15/15 and the wrong 14/10/13 the solver defaults to. Only the bar measurement separates them — which is why a measured spread must be pinned, never re-derived.
+
+## Previous sync
+date: 2026-08-08T13:05:00Z
+
+### Updated in this project
+- **The measured IVs were correct for two runs before this; the app was throwing them away.** `Scout Dashboard Standalone.dc.html` — the file `index.html` is bundled from, and the only one the phone runs — had `normalizeAppraisalItems` but was missing `applyMeasuredIv`, `measuredSpreadOrder` and the `ivSource === 'bar-measure'` branch. It read the import JSON, dropped the measured spread, and fell back to the CP/HP solver, which for Absol at CP 1438 / HP 106 has 11 legal spreads and simply picks the median: 14/15/15 came back out as 12/12/13. Every review row saying "no stars · no full bars" was the giveaway — the hint path running with no hint. The three methods were ported verbatim from the maintained `Scout Dashboard.dc.html`, `index.html` was rebuilt, and `sw.js` moved to `scout-v10` so the PWA picks the new bundle up. Result: 50 read, 50 pinned, all `· measured`.
+- **Fixed the low-IV read at source.** `measure_appraisal_bars_warm` had a span filter (`> W*0.08`) that discarded any bar shorter than about 3.4/15; with the real bars gone the trio search matched the Pokemon sprite and the animating UI instead and reported confident nonsense — which is why high-IV Pokemon read correctly for weeks while low ones did not. Aron went from a reported 15/3/3 to a measured 2/7/1 (one frame reads 2.000/7.000/1.000). Bands are now clustered by left edge before any structure search, width comes from segment geometry alone (the old `max(observed fill)` floor turned the longest visible bar into a false 15/15 reference), and the drift ceiling tightened 0.45 → 0.35.
+- **Duplicate sightings resolve by drift.** Where two frames of one individual disagree, the lower-drift frame wins when it is near-exact and clearly better; otherwise both spreads are carried as candidates and flagged `ivConflict` for the client picker, with the frames written to `data/debug_bars/`.
+- **Identification batched 81 calls → ~11.** Name/CP/HP was one Gemini request per sighting carrying a single image, which burned the per-minute cap in seconds and then the daily one. Frames now go up 8 at a time and come back indexed, with per-frame fallback for any batch that fails or returns the wrong count.
+- Verified against the 51-Pokemon recording: Absol 14/15/15 (matches known truth), Aron 2/7/1, Charmander 14/15/15, Cleffa 14/15/14, Chimecho 7/0/11, Cranidos 6/10/0.
+
+## Previous sync
+date: 2026-08-08T03:41:06Z
+
+### Updated in this project
+- **The appraisal recording is HDR, and that was the whole bug.** The video is tagged `bt2020nc / smpte2084 / bt2020`; ffmpeg was decoding PQ code values straight to PNG, so every frame arrived crushed into 0-137 — white card at 129, gold bar fill at (120,107,78). Both bar readers threshold on ratios of a 255 white point with the 255 baked in, so the fill missed `mx > 120` by one count and `chroma > 45` by three. Months of threshold tuning were aimed at a signal that had already been destroyed upstream. `extract_frames` now probes the colour transfer with ffprobe and runs a zscale/tonemap HDR→BT.709 chain when the source is PQ or HLG, falling back cleanly if libzimg is absent, and `_warn_if_crushed` reports peak luminance so this is visible immediately rather than surfacing as a threshold failure. Peak went 137 → 255; measurement went 0/20 frames → 36/36.
+- **New primary reader `measure_appraisal_bars_warm`.** Finds bars by fill WARMTH (r − b) instead of luminance darkness — the fill is barely darker than its card but strongly warmer, and darkness-thresholding locked onto the team-leader avatar sharing the row. All thresholds now scale by `_frame_white_point`, so one set of constants fits a clean screenshot and a crushed frame. Bar width comes from segment geometry (3 segments + 2 gaps) with the widest observed fill as a floor.
+- **Fixed a 2.5× width error in the structural reader.** `_bar_groups` accepted 2-run groups and treated each run as one segment; when encoding blurred a segment gap away, `seg_w` doubled and a true 15 read as 6. Scale is now taken only from rows showing all three segments, and a fill extending past the reconstructed width rejects the frame instead of returning a confident wrong answer.
+- **Duplicate sightings no longer resolve silently.** `_resolve_duplicate_sightings` collapses agreeing repeats but merges disagreeing ones into a single entry carrying every measured value as a candidate, flagged `ivConflict` for the client picker, with the conflicting frames written to `data/debug_bars/`.
+- Verified end-to-end on the reference recording, reproduced identically at fps 6 and fps 8: Absol 14/15/15 (matches known truth), Aipom 13/11/6, Arbok 10/9/9, Arcanine 10/14/13, Abra 4/11/5 and 8/12/13. Every raw value within 0.18 of an integer.
+- `.github/workflows/extract-iv.yml` now commits `data/debug_bars/` alongside the import JSON.
+
+## Previous sync
 date: 2026-08-07T00:00:00Z
 
 ### Updated in this project
@@ -112,15 +169,21 @@ commit: 711a5c4c20a4
 ### 2026-07-31T23:52:32Z
 - `index.html` rewritten as a real DC page; `sw.js` hardened; PWA icons generated; README rewritten for the flat layout.
 
+- Any app change must go into `Scout Dashboard Standalone.dc.html` and be re-bundled to `index.html`, with `sw.js`'s cache name bumped — editing `Scout Dashboard.dc.html` alone does nothing on the phone. Keep both files in step; they drifted once and cost a full debugging session.
+
 ## Screen map
 | Screen / file | Built from |
 | --- | --- |
 | `index.html` (PWA entry) | `index.html`, `support.js`, `src/sample-data.js` |
 | Scout Dashboard | `Scout Dashboard.dc.html`, `pokemon-mechanics.js` |
+| Attackers / DPS ranking + move database | `Scout Dashboard.dc.html` (`fetchMoveData`, `bestDpsFor`, `attackerBoard`), `pokemon-mechanics.js` (`cycleDps`, `moveDamage`, `TYPE_CHART`) |
+| Power-up cost planning | `pokemon-mechanics.js` (`_POWERUP_RUNS`, `powerUpCostBetween`, `maxLevelUnderCap`), `Scout Dashboard.dc.html` (`powerUpPlan`) |
 | IV / CP / HP reference | `IV CP HP Guide.dc.html` |
 | Desktop device preview | `Scout PWA Simulator.dc.html`, `ios-frame.jsx` |
 | Diagnostic log | `src/scout-log.js`, `logs/` |
 | Roster import payload | `data/pokemon_import.json` |
 | Weekly base-stat + mechanics-table refresh | `scripts/update_pokemon_data.py`, `.github/workflows/update-pokemon-data.yml` |
 | Video → CSV pipeline | `.github/workflows/extract.yml`, `pogo_extract.py`, `requirements.txt` |
+| Appraisal video → measured IVs | `.github/workflows/extract-iv.yml`, `pogo_extract.py`, `data/appraisal_import.json`, `data/debug_bars/` |
+| IV import into the roster (phone) | `Scout Dashboard Standalone.dc.html` → bundled to `index.html`; `sw.js` cache name must be bumped per deploy |
 | Offline shell | `sw.js`, `manifest.json`, `icons/` |
