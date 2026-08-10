@@ -1,5 +1,11 @@
 name: Extract Pokemon Data
 
+# Shares a queue with Extract IV Ratings — concurrent pushes of the same
+# generated files are what caused the unresolvable rebase conflict.
+concurrency:
+  group: pogo-data-commit
+  cancel-in-progress: false
+
 on:
   push:
     paths:
@@ -112,19 +118,30 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Auto-extract Pokemon data from video [skip ci]"
-            # main can move while this job runs (e.g. a manual upload), so
-            # rebase onto the latest remote and retry a few times instead of
-            # failing outright on a non-fast-forward push.
+            # main can move while this job runs (e.g. a manual upload or the
+            # appraisal workflow), so re-apply this run's generated output onto
+            # the latest remote rather than rebasing generated JSON, which can
+            # only conflict.
             for attempt in 1 2 3 4 5; do
               if git push; then
                 break
               fi
-              echo "Push rejected (attempt $attempt), fetching and rebasing..."
-              git fetch origin main
-              git rebase origin/main
               if [ "$attempt" = "5" ]; then
                 echo "::error::Failed to push extracted data after $attempt attempts"
                 exit 1
               fi
+              echo "Push rejected (attempt $attempt), re-applying output onto latest main..."
+              STAGE=$(mktemp -d)
+              cp -r data "$STAGE/data"
+              git fetch origin main
+              git reset --hard origin/main
+              cp -r "$STAGE/data/." data/
+              rm -rf "$STAGE"
+              git add data/
+              if git diff --cached --quiet; then
+                echo "Remote already has this output"
+                break
+              fi
+              git commit -m "Auto-extract Pokemon data from video [skip ci]"
             done
           fi

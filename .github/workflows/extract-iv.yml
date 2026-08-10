@@ -1,5 +1,11 @@
 name: Extract IV Ratings
 
+# Two extraction runs pushing generated files at the same time is what
+# produced the unresolvable rebase conflict; serialise them instead.
+concurrency:
+  group: pogo-data-commit
+  cancel-in-progress: false
+
 on:
   push:
     paths:
@@ -124,12 +130,30 @@ jobs:
               if git push; then
                 break
               fi
-              echo "Push rejected (attempt $attempt), fetching and rebasing..."
-              git fetch origin main
-              git rebase origin/main
               if [ "$attempt" = "5" ]; then
                 echo "::error::Failed to push extracted IV ratings after $attempt attempts"
                 exit 1
               fi
+              # These are generated artefacts, so a textual rebase of them can
+              # only conflict. Park this run's output, hard-reset onto the
+              # latest remote (keeping whatever else landed there), lay our
+              # files back down and recommit.
+              echo "Push rejected (attempt $attempt), re-applying output onto latest main..."
+              STAGE=$(mktemp -d)
+              mkdir -p "$STAGE/data"
+              cp data/appraisal_import.json "$STAGE/data/"
+              [ -d data/debug_bars ] && cp -r data/debug_bars "$STAGE/data/"
+              git fetch origin main
+              git reset --hard origin/main
+              rm -rf data/debug_bars
+              cp -r "$STAGE/data/." data/
+              rm -rf "$STAGE"
+              git add -f data/appraisal_import.json
+              git add -f data/debug_bars || true
+              if git diff --cached --quiet; then
+                echo "Remote already has this output"
+                break
+              fi
+              git commit -m "Auto-extract IV ratings from appraisal video [skip ci]"
             done
           fi
