@@ -101,16 +101,16 @@
     <div ref="{{ headerRef }}" style="transition:box-shadow .24s ease,background .24s ease;padding:10px {{ rootPadX }};background:oklch(18% 0.0138 50 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v34</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v44</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
-      <label class="om-press" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;box-sizing:border-box;display:flex;align-items:center;justify-content:center">
+      <label class="om-press" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;flex:0 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;box-sizing:border-box;display:flex;align-items:center;justify-content:center">
         SYNC CSV
         <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
       </label>
-      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center" style-hover="background:oklch(34% 0.022 50);border-color:oklch(50% 0.0275 50)">{{ exportCsvLabel }}</div>
-      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid oklch(45% 0.1 62);color:oklch(96% 0.01 62);font:700 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;animation:{{ micAnim }};flex:1 1 0;min-width:0;box-sizing:border-box;white-space:nowrap">
+      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:oklch(28% 0.0165 50);border:1px solid oklch(40% 0.0165 50);color:oklch(85% 0.0055 50);font:600 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;flex:0 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;display:flex;align-items:center;justify-content:center" style-hover="background:oklch(34% 0.022 50);border-color:oklch(50% 0.0275 50)">{{ exportCsvLabel }}</div>
+      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid oklch(45% 0.1 62);color:oklch(96% 0.01 62);font:700 11.5px ui-monospace,monospace;padding:9px 10px;border-radius:6px;animation:{{ micAnim }};flex:0 1 auto;min-width:0;box-sizing:border-box;white-space:nowrap;overflow:hidden">
         <span>&#127908;</span>{{ micLabel }}
       </div>
     </div>
@@ -160,6 +160,226 @@
       </div>
     </sc-for>
   </div>
+
+  <sc-if value="{{ fileFallback }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:60;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:14px;padding-bottom:max(14px, env(safe-area-inset-bottom));animation:scrimIn .2s ease">
+    <div style="width:100%;max-width:560px;background:oklch(21% 0.0154 50);border:1px solid oklch(38% 0.0165 50);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;animation:sheetUp .28s cubic-bezier(.22,1,.36,1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="font:700 11.5px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fileFallback.filename }}</div>
+        <div onClick="{{ closeFileFallback }}" class="om-press" style="cursor:pointer;flex-shrink:0;font:600 11.5px ui-monospace,monospace;color:oklch(65% 0.011 50)">&times; CLOSE</div>
+      </div>
+      <div style="font:12.5px/1.5 sans-serif;color:oklch(70% 0.011 50);text-wrap:pretty">This device blocked the download. Copy the text, or open it in a tab and use Share &rarr; Save to Files.</div>
+      <div class="om-scroll" style="max-height:34vh;overflow:auto;background:oklch(17% 0.011 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:10px;font:10.5px/1.5 ui-monospace,monospace;color:oklch(78% 0.0055 50);white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text">{{ fileFallback.preview }}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div onClick="{{ copyFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:oklch(42% 0.1 150);color:white;font:700 11.5px ui-monospace,monospace">{{ fileFallbackCopyLabel }}</div>
+        <div onClick="{{ openFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:oklch(30% 0.0165 50);color:oklch(85% 0.0055 50);font:700 11.5px ui-monospace,monospace">OPEN IN NEW TAB</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isToday }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:14px;animation:fadeSlideIn .35s ease">
+
+    <div class="om-scroll" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;margin-bottom:2px">
+      <sc-for list="{{ todayChips }}" as="c" hint-placeholder-count="4">
+        <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;align-items:baseline;gap:7px;padding:9px 14px;border-radius:999px;background:{{ c.bg }};border:1px solid {{ c.border }};white-space:nowrap">
+          <div style="font:800 15px ui-monospace,monospace;color:{{ c.color }}">{{ c.count }}</div>
+          <div style="font:700 10px ui-monospace,monospace;color:oklch(70% 0.011 50);letter-spacing:.06em">{{ c.label }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ evoNeedsLookup }}" hint-placeholder-val="{{ false }}">
+      <div style="background:oklch(24% 0.04 62);border:1px solid oklch(40% 0.08 62);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:12.5px/1.5 sans-serif;color:oklch(85% 0.03 62);text-wrap:pretty">{{ evoNeedsLookup }}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div onClick="{{ fetchEvoData }}" class="om-press" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:oklch(45% 0.11 62);color:white;font:700 11.5px ui-monospace,monospace;white-space:nowrap">{{ evoFetchLabel }}</div>
+          <sc-if value="{{ evoCanDismiss }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ markNoEvolution }}" class="om-press" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:oklch(30% 0.0165 50);color:oklch(82% 0.0055 50);font:700 11.5px ui-monospace,monospace;white-space:nowrap">NO EVOLUTION</div>
+          </sc-if>
+          <div style="font:11.5px ui-monospace,monospace;color:oklch(70% 0.011 50)">{{ evoFetchStatus }}</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ triageCard }}" hint-placeholder-val="{{ true }}">
+      <div data-today-section="review" style="background:oklch(19% 0.025 40);border:1px solid oklch(33% 0.045 40);border-radius:14px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+          <div style="font:800 12px ui-monospace,monospace;color:oklch(82% 0.14 40);letter-spacing:.06em;white-space:nowrap">KEEP OR TRANSFER?</div>
+          <div style="font:11.5px ui-monospace,monospace;color:oklch(68% 0.011 50);white-space:nowrap">{{ triageHeadline }}</div>
+        </div>
+        <div ref="{{ triageCardRef }}" style="background:linear-gradient(160deg, oklch(26% 0.05 40) 0%, oklch(17% 0.02 40) 70%);border:1px solid oklch(36% 0.05 40);border-radius:12px;padding:16px;touch-action:pan-y;user-select:none;-webkit-user-select:none;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px">
+          <div style="width:104px;height:104px;border-radius:50%;background:{{ triageCard.badgeColor }};position:relative;overflow:hidden;flex-shrink:0;box-shadow:0 8px 22px rgba(0,0,0,.4)">
+            <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 34px ui-monospace,monospace;color:oklch(20% 0.011 50)">{{ triageCard.initial }}</span>
+            <img ref="{{ triageCard.spriteRef }}" alt="" style="position:relative;width:100%;height:100%;object-fit:contain" />
+          </div>
+          <div style="font:800 22px sans-serif;color:oklch(96% 0.0055 50);margin-top:8px">{{ triageCard.name }}</div>
+          <div style="display:flex;gap:14px;margin-top:6px">
+            <div><div style="font:800 17px ui-monospace,monospace;color:oklch(88% 0.0055 50)">{{ triageCard.cp }}</div><div style="font:9.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.06em">CP</div></div>
+            <div><div style="font:800 17px ui-monospace,monospace;color:{{ triageCard.ivColor }}">{{ triageCard.iv }}</div><div style="font:9.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.06em">IV</div></div>
+            <div><div style="font:800 17px ui-monospace,monospace;color:oklch(80% 0.011 50)">{{ triageCard.rank }}</div><div style="font:9.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.06em">RANK</div></div>
+          </div>
+          <div style="font:12px/1.4 sans-serif;color:oklch(76% 0.05 40);margin-top:10px;text-wrap:pretty">{{ triageCard.reason }}</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div onClick="{{ triageTransfer }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:10px;background:oklch(42% 0.14 30);color:white;font:800 13px ui-monospace,monospace">TRANSFER</div>
+          <div onClick="{{ triageKeep }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:10px;background:oklch(34% 0.06 150);color:oklch(92% 0.04 150);font:800 13px ui-monospace,monospace">KEEP</div>
+        </div>
+        <div style="font:10.5px ui-monospace,monospace;color:oklch(52% 0.011 50);text-align:center;margin-top:8px">or swipe the card</div>
+      </div>
+    </sc-if>
+
+    <div data-today-section="evolve" style="background:oklch(20% 0.026 150);border:1px solid oklch(33% 0.045 150);border-radius:14px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div style="font:800 12px ui-monospace,monospace;color:oklch(80% 0.14 150);letter-spacing:.06em;white-space:nowrap">EVOLVE NOW</div>
+        <div style="font:11.5px ui-monospace,monospace;color:oklch(68% 0.011 50);white-space:nowrap">{{ todayEvolveCount }}</div>
+      </div>
+      <sc-if value="{{ todayEvolveEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12.5px sans-serif;color:oklch(62% 0.011 50)">Nothing ready to evolve.</div>
+      </sc-if>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <sc-for list="{{ todayEvolve }}" as="row" hint-placeholder-count="5">
+          <div style="background:oklch(16% 0.018 150);border:1px solid oklch(28% 0.028 150);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:11px">
+            <div onClick="{{ row.onClick }}" style="cursor:pointer;width:44px;height:44px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+              <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px ui-monospace,monospace;color:oklch(20% 0.011 50)">{{ row.initial }}</span>
+              <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+            </div>
+            <div onClick="{{ row.onClick }}" style="cursor:pointer;flex:1;min-width:0">
+              <div style="font:700 14px sans-serif;color:oklch(94% 0.0055 50);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }}</div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(70% 0.011 50);margin-top:2px">{{ row.arrow }}</div>
+              <div style="display:flex;align-items:center;gap:7px;margin-top:5px">
+                <div style="flex:1;height:5px;border-radius:3px;background:oklch(28% 0.011 50);overflow:hidden;min-width:40px">
+                  <div style="height:100%;width:{{ row.candyPct }};background:{{ row.candyColor }};border-radius:3px"></div>
+                </div>
+                <div style="font:700 10.5px ui-monospace,monospace;color:{{ row.candyColor }};white-space:nowrap">{{ row.candyLabel }}</div>
+              </div>
+            </div>
+            <div onClick="{{ row.onDone }}" class="om-press" style="cursor:pointer;flex-shrink:0;width:40px;height:40px;border-radius:50%;background:{{ row.doneBg }};border:1px solid {{ row.doneBorder }};display:flex;align-items:center;justify-content:center;font:800 15px ui-monospace,monospace;color:{{ row.doneColor }}">&#10003;</div>
+          </div>
+          <sc-if value="{{ row.risk }}" hint-placeholder-val="{{ false }}">
+            <div style="font:11px/1.4 ui-monospace,monospace;color:oklch(82% 0.14 40);background:oklch(24% 0.05 40);border-radius:7px;padding:7px 10px;margin-top:-3px">{{ row.riskNote }}</div>
+          </sc-if>
+        </sc-for>
+      </div>
+      <sc-if value="{{ todayEvolveMore }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ toggleEvolveAll }}" class="om-press" style="cursor:pointer;margin-top:10px;text-align:center;padding:9px;border-radius:8px;background:oklch(26% 0.03 150);font:700 11px ui-monospace,monospace;color:oklch(82% 0.13 150)">{{ todayEvolveMore }}</div>
+      </sc-if>
+    </div>
+
+    <div style="background:oklch(20% 0.026 62);border:1px solid oklch(34% 0.05 62);border-radius:14px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
+        <div style="font:800 12px ui-monospace,monospace;color:oklch(84% 0.13 62);letter-spacing:.06em;white-space:nowrap">STARDUST SPEND</div>
+        <div style="font:11.5px ui-monospace,monospace;color:oklch(68% 0.011 50);white-space:nowrap">{{ dustPlanHeadline }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="flex:1;height:6px;border-radius:3px;background:oklch(28% 0.011 50);overflow:hidden">
+          <div style="height:100%;width:{{ dustSpendPct }};background:oklch(78% 0.14 62);border-radius:3px"></div>
+        </div>
+        <div style="font:10.5px ui-monospace,monospace;color:oklch(66% 0.011 50);white-space:nowrap">{{ dustBudgetShort }}</div>
+      </div>
+      <sc-if value="{{ dustPlanEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12.5px/1.5 sans-serif;color:oklch(62% 0.011 50);text-wrap:pretty">{{ dustPlanEmpty }}</div>
+      </sc-if>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <sc-for list="{{ dustPlanRows }}" as="row" hint-placeholder-count="4">
+          <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:oklch(16% 0.018 62);border:1px solid oklch(28% 0.03 62);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:11px">
+            <div style="width:44px;height:44px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+              <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px ui-monospace,monospace;color:oklch(20% 0.011 50)">{{ row.initial }}</span>
+              <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font:700 14px sans-serif;color:oklch(94% 0.0055 50);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }}</div>
+              <div style="font:11px ui-monospace,monospace;color:oklch(70% 0.011 50);margin-top:2px">{{ row.levelLine }}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font:800 13px ui-monospace,monospace;color:oklch(86% 0.13 62);white-space:nowrap">{{ row.costNow }}</div>
+              <div style="font:10px ui-monospace,monospace;color:oklch(56% 0.011 50);margin-top:2px;white-space:nowrap">{{ row.costAt40 }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div data-today-section="queued" style="background:oklch(20% 0.024 30);border:1px solid oklch(33% 0.045 30);border-radius:14px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div style="font:800 12px ui-monospace,monospace;color:oklch(82% 0.14 30);letter-spacing:.06em;white-space:nowrap">TRANSFER LIST</div>
+        <sc-if value="{{ transferQueueCount }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ clearTransferQueue }}" class="om-press" style="cursor:pointer;font:700 10.5px ui-monospace,monospace;color:oklch(66% 0.011 50);white-space:nowrap">CLEAR ALL</div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ transferQueueCount }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px">
+          <sc-for list="{{ transferQueueList }}" as="row" hint-placeholder-count="3">
+            <div onClick="{{ row.onRemove }}" class="om-press" style="cursor:pointer;display:flex;align-items:center;gap:7px;background:oklch(26% 0.055 30);border:1px solid oklch(40% 0.08 30);border-radius:999px;padding:5px 11px 5px 5px">
+              <div style="width:26px;height:26px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="font:700 11.5px ui-monospace,monospace;color:oklch(92% 0.03 30);white-space:nowrap">{{ row.short }}</div>
+              <div style="font:13px ui-monospace,monospace;color:oklch(72% 0.08 30)">&times;</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <input type="text" placeholder="Search any Pokemon to transfer..." value="{{ transferSearch }}" onChange="{{ onTransferSearch }}" style="flex:1;min-width:0;box-sizing:border-box;background:oklch(15% 0.014 30);border:1px solid oklch(32% 0.035 30);color:oklch(92% 0.0055 50);padding:11px 13px;border-radius:9px;font:12.5px sans-serif" />
+      </div>
+
+      <sc-if value="{{ transferPickHint }}" hint-placeholder-val="{{ true }}">
+        <div style="font:11.5px/1.5 sans-serif;color:oklch(60% 0.011 50);text-wrap:pretty">{{ transferPickHint }}</div>
+      </sc-if>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <sc-for list="{{ transferPickList }}" as="row" hint-placeholder-count="0">
+          <div style="background:oklch(15% 0.014 30);border:1px solid oklch(27% 0.028 30);border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:10px">
+            <div onClick="{{ row.onOpen }}" style="cursor:pointer;width:38px;height:38px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+              <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 14px ui-monospace,monospace;color:oklch(20% 0.011 50)">{{ row.initial }}</span>
+              <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+            </div>
+            <div onClick="{{ row.onOpen }}" style="cursor:pointer;flex:1;min-width:0">
+              <div style="font:700 13.5px sans-serif;color:oklch(93% 0.0055 50);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }}</div>
+              <div style="font:10.5px ui-monospace,monospace;color:oklch(68% 0.011 50);margin-top:2px">{{ row.sub }}</div>
+            </div>
+            <sc-if value="{{ row.warn }}" hint-placeholder-val="{{ false }}">
+              <div style="font:9.5px ui-monospace,monospace;color:oklch(82% 0.13 85);background:oklch(26% 0.05 85);border-radius:5px;padding:4px 7px;white-space:nowrap;flex-shrink:0">{{ row.warn }}</div>
+            </sc-if>
+            <div onClick="{{ row.onQueue }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:9px 13px;border-radius:8px;background:oklch(38% 0.12 30);color:white;font:800 10.5px ui-monospace,monospace;white-space:nowrap">{{ row.queueLabel }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ transferPickMore }}" hint-placeholder-val="{{ false }}">
+        <div style="font:10.5px ui-monospace,monospace;color:oklch(56% 0.011 50);margin-top:9px">{{ transferPickMore }}</div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ dexGapHasAny }}" hint-placeholder-val="{{ false }}">
+      <div data-today-section="dex" style="background:oklch(20% 0.026 290);border:1px solid oklch(33% 0.045 290);border-radius:14px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+          <div style="font:800 12px ui-monospace,monospace;color:oklch(80% 0.13 290);letter-spacing:.06em;white-space:nowrap">NEW DEX ENTRIES</div>
+          <div style="font:11.5px ui-monospace,monospace;color:oklch(68% 0.011 50);white-space:nowrap">{{ dexGapCount }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px">
+          <sc-for list="{{ dexGapList }}" as="row" hint-placeholder-count="6">
+            <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:oklch(16% 0.018 290);border:1px solid oklch(28% 0.03 290);border-radius:10px;padding:11px;display:flex;align-items:center;gap:9px">
+              <div style="width:36px;height:36px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="min-width:0;flex:1">
+                <div style="font:700 12.5px sans-serif;color:oklch(93% 0.0055 50);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.target }}</div>
+                <div style="font:10px ui-monospace,monospace;color:{{ row.candyColor }};margin-top:2px;white-space:nowrap">{{ row.candyLabel }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ dexGapMore }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ toggleDexGapAll }}" class="om-press" style="cursor:pointer;margin-top:10px;text-align:center;padding:9px;border-radius:8px;background:oklch(26% 0.03 290);font:700 11px ui-monospace,monospace;color:oklch(82% 0.13 290)">{{ dexGapMore }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
 
   <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
   <div style="animation:fadeSlideIn .35s ease;display:flex;flex-direction:column;gap:20px">
@@ -215,6 +435,35 @@
             <div onClick="{{ signOutCloud }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;background:oklch(30% 0.0165 50);color:oklch(80% 0.0055 50);font:700 11px ui-monospace,monospace">SIGN OUT</div>
           </div>
         </div>
+        <div style="border-top:1px solid oklch(35% 0.05 200);padding-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 200);letter-spacing:.05em">BACKUP &amp; RESTORE</div>
+          <div style="font:12px/1.5 sans-serif;color:oklch(65% 0.011 50);text-wrap:pretty">Downloads your whole cloud document &mdash; roster, measured IVs, candy, stardust, history &mdash; as one JSON file. Take one before any import or CLEAR ROSTER.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <div onClick="{{ backupCloud }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:oklch(38% 0.09 200);color:oklch(95% 0.03 200);font:700 11.5px ui-monospace,monospace">{{ backupButtonLabel }}</div>
+            <label class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:oklch(30% 0.0165 50);color:oklch(85% 0.0055 50);font:700 11.5px ui-monospace,monospace">
+              RESTORE FROM FILE
+              <input type="file" accept=".json,application/json" onChange="{{ onRestoreFile }}" style="display:none" />
+            </label>
+          </div>
+          <sc-if value="{{ backupReadyDisplay }}" hint-placeholder-val="{{ false }}">
+            <div style="background:oklch(22% 0.045 150);border:1px solid oklch(38% 0.06 150);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
+              <div style="font:12.5px sans-serif;color:oklch(86% 0.03 150)">{{ backupReadyDisplay.summary }}</div>
+              <div onClick="{{ saveBackupFile }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:9px 15px;border-radius:5px;background:oklch(42% 0.1 150);color:white;font:700 11.5px ui-monospace,monospace">SAVE BACKUP FILE</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ restorePendingDisplay }}" hint-placeholder-val="{{ false }}">
+            <div style="background:oklch(24% 0.05 30);border:1px solid oklch(42% 0.07 30);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
+              <div style="font:12.5px/1.5 sans-serif;color:oklch(90% 0.03 30);text-wrap:pretty">{{ restorePendingDisplay.summary }}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div onClick="{{ confirmRestore }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:oklch(48% 0.15 30);color:white;font:700 11.5px ui-monospace,monospace">OVERWRITE WITH BACKUP</div>
+                <div onClick="{{ cancelRestore }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:oklch(30% 0.0165 50);color:oklch(80% 0.0055 50);font:700 11.5px ui-monospace,monospace">CANCEL</div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ backupError }}" hint-placeholder-val="{{ false }}">
+            <div style="font:12px ui-monospace,monospace;color:oklch(75% 0.15 30);text-wrap:pretty">{{ backupError }}</div>
+          </sc-if>
+        </div>
         <sc-if value="{{ isAdminUser }}" hint-placeholder-val="{{ false }}">
           <div style="border-top:1px solid oklch(35% 0.05 200);padding-top:10px;display:flex;flex-direction:column;gap:8px">
             <sc-if value="{{ showMigrateButton }}" hint-placeholder-val="{{ false }}">
@@ -235,6 +484,23 @@
           </div>
         </sc-if>
       </sc-if>
+    </div>
+
+    <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 200);letter-spacing:.05em">PLANNING</div>
+      <div style="font:12px/1.5 sans-serif;color:oklch(65% 0.011 50);text-wrap:pretty">Your trainer level caps every power-up at two levels above it, and the reserve is stardust the TODAY planner will never spend.</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        <div>
+          <div style="font:10.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.04em;margin-bottom:6px">TRAINER LEVEL</div>
+          <input type="number" min="1" max="50" value="{{ trainerLevelValue }}" onChange="{{ onTrainerLevelChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid oklch(40% 0.0165 50);color:oklch(88% 0.0055 50);font:800 20px ui-monospace,monospace;padding:4px 0;width:90px" />
+          <div style="font:11px ui-monospace,monospace;color:oklch(58% 0.011 50);margin-top:5px">{{ levelCeilingNote }}</div>
+        </div>
+        <div>
+          <div style="font:10.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.04em;margin-bottom:6px">STARDUST RESERVE</div>
+          <input type="text" value="{{ dustReserveValue }}" onChange="{{ onDustReserveChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid oklch(40% 0.0165 50);color:oklch(80% 0.15 62);font:800 20px ui-monospace,monospace;padding:4px 0;width:150px" />
+          <div style="font:11px ui-monospace,monospace;color:oklch(58% 0.011 50);margin-top:5px">{{ dustBudgetNote }}</div>
+        </div>
+      </div>
     </div>
 
     <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
@@ -847,12 +1113,12 @@
         <option value="name">Sort: Name</option>
         <option value="dex">Sort: Dex #</option>
       </select>
-      <div style="font:12px ui-monospace,monospace;color:oklch(55% 0.011 50)">{{ rosterCountLabel }}</div>
+      <div style="font:12px ui-monospace,monospace;color:oklch(55% 0.011 50);white-space:nowrap">{{ rosterCountLabel }}</div>
     </div>
     <sc-if value="{{ typeData.missing }}" hint-placeholder-val="{{ false }}">
       <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(33% 0.0165 50);border-radius:10px;padding:14px 16px;margin-bottom:16px">
         <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-          <div style="font:700 11px ui-monospace,monospace;letter-spacing:.05em;color:oklch(72% 0.011 50)">TYPE DATA</div>
+          <div style="font:700 11px ui-monospace,monospace;letter-spacing:.05em;color:oklch(72% 0.011 50);white-space:nowrap">TYPE DATA</div>
           <div style="font:12px ui-monospace,monospace;color:oklch(80% 0.13 62)">{{ typeData.pct }}</div>
           <div style="font:11.5px sans-serif;color:oklch(64% 0.011 50)">{{ typeData.known }} of {{ typeData.total }} typed &mdash; the rest show a neutral card</div>
         </div>
@@ -860,7 +1126,7 @@
           <div style="height:100%;width:{{ typeData.barWidth }};background:oklch(78% 0.13 62);border-radius:3px"></div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <div onClick="{{ typeData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:oklch(32% 0.06 62);color:oklch(92% 0.08 62);font:700 11px ui-monospace,monospace;letter-spacing:.04em">{{ typeData.buttonLabel }}</div>
+          <div onClick="{{ typeData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:oklch(32% 0.06 62);color:oklch(92% 0.08 62);font:700 11px ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap">{{ typeData.buttonLabel }}</div>
           <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.011 50)">{{ typeData.status }}</div>
           <div style="font:11.5px ui-monospace,monospace;color:oklch(78% 0.14 40)">{{ typeData.error }}</div>
         </div>
@@ -963,6 +1229,15 @@
           <div style="font:600 11.5px ui-monospace,monospace;color:oklch(52% 0.011 50);letter-spacing:.04em;margin-top:2px">#{{ detail.dex }}</div>
           <sc-if value="{{ detail.scanLine }}" hint-placeholder-val="{{ false }}">
             <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 10px;border-radius:999px;background:{{ detail.scanBg }};font:600 10.5px ui-monospace,monospace;color:{{ detail.scanColor }};letter-spacing:.03em">{{ detail.scanLine }}</div>
+          </sc-if>
+          <sc-if value="{{ detail.verdict }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:14px;background:{{ detail.verdict.bg }};border:1px solid {{ detail.verdict.border }};border-radius:12px;padding:12px 14px;text-align:left">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                <div style="font:800 13px ui-monospace,monospace;color:{{ detail.verdict.color }};letter-spacing:.05em">{{ detail.verdict.verdict }}</div>
+                <div style="font:600 11.5px ui-monospace,monospace;color:oklch(70% 0.011 50)">{{ detail.verdict.number }}</div>
+              </div>
+              <div style="font:12.5px/1.45 sans-serif;color:oklch(82% 0.0055 50);margin-top:5px;text-wrap:pretty">{{ detail.verdict.reason }}</div>
+            </div>
           </sc-if>
         </div>
 
@@ -1078,9 +1353,9 @@
 
   <sc-if value="{{ isPvp }}" hint-placeholder-val="{{ false }}">
   <div style="animation:fadeSlideIn .35s ease">
-    <div style="display:flex;gap:8px;margin-bottom:18px">
+    <div class="om-scroll" style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px">
       <sc-for list="{{ leagueList }}" as="lg" hint-placeholder-count="3">
-        <div onClick="{{ lg.onClick }}" style="cursor:pointer;padding:8px 16px;border-radius:6px;font:700 12px ui-monospace,monospace;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
+        <div onClick="{{ lg.onClick }}" style="cursor:pointer;flex-shrink:0;padding:8px 16px;border-radius:6px;font:700 12px ui-monospace,monospace;white-space:nowrap;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
       </sc-for>
     </div>
     <div style="background:oklch(21% 0.0154 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;overflow:hidden">
@@ -1126,7 +1401,7 @@
       <div style="font:12.5px sans-serif;color:oklch(70% 0.011 50);max-width:70ch;text-wrap:pretty">Ranked by damage per second at level 50 once move data is stored &mdash; a full cycle of the fast move charging the better of the two charge moves, with STAB applied and no particular defender in mind. Anything whose moves aren&rsquo;t in the database falls back to a raw-stat ranking and says so.</div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid oklch(30% 0.011 50)">
         <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-          <div style="font:700 11px ui-monospace,monospace;letter-spacing:.05em;color:oklch(70% 0.011 50)">MOVE DATABASE</div>
+          <div style="font:700 11px ui-monospace,monospace;letter-spacing:.05em;color:oklch(70% 0.011 50);white-space:nowrap">MOVE DATABASE</div>
           <div style="font:12px ui-monospace,monospace;color:oklch(80% 0.12 150)">{{ moveData.pct }}</div>
           <div style="font:11.5px sans-serif;color:oklch(62% 0.011 50)">{{ moveData.known }} of {{ moveData.total }} of your moves have damage numbers</div>
         </div>
@@ -1135,7 +1410,7 @@
         </div>
         <div style="font:11.5px sans-serif;color:oklch(62% 0.011 50);margin-bottom:12px;max-width:70ch;text-wrap:pretty">Looked up once by AI and stored, not re-fetched on every import. Moves it isn&rsquo;t confident about are left out rather than guessed, so the coverage number can stop short of 100%.</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <div onClick="{{ moveData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:oklch(30% 0.05 150);color:oklch(90% 0.08 150);font:700 11px ui-monospace,monospace;letter-spacing:.04em">{{ moveData.buttonLabel }}</div>
+          <div onClick="{{ moveData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:oklch(30% 0.05 150);color:oklch(90% 0.08 150);font:700 11px ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap">{{ moveData.buttonLabel }}</div>
           <div onClick="{{ moveData.onClear }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:oklch(26% 0.011 50);color:oklch(70% 0.011 50);font:700 11px ui-monospace,monospace;letter-spacing:.04em">CLEAR</div>
           <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.011 50)">{{ moveData.status }}</div>
           <div style="font:11.5px ui-monospace,monospace;color:oklch(78% 0.14 40)">{{ moveData.error }}</div>
@@ -1243,7 +1518,7 @@
   </sc-if>
 
   <sc-if value="{{ isIntel }}" hint-placeholder-val="{{ false }}">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;animation:fadeSlideIn .35s ease">
+  <div style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;align-content:start;gap:16px;animation:fadeSlideIn .35s ease">
     <div style="grid-column:1 / -1;background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:18px">
       <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em;margin-bottom:6px">DATA CONFIDENCE</div>
       <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
@@ -1254,7 +1529,7 @@
         <div style="height:100%;width:{{ confidence.barWidth }};background:oklch(78% 0.14 150);border-radius:3px"></div>
       </div>
       <div style="font:11.5px sans-serif;color:oklch(60% 0.011 50);margin-bottom:12px;text-wrap:pretty">Next to appraise: {{ confidence.preview }}</div>
-      <div onClick="{{ confidence.goToList }}" class="om-press" style="cursor:pointer;display:inline-block;padding:7px 13px;border-radius:6px;background:oklch(28% 0.04 150);color:oklch(88% 0.08 150);font:700 11px ui-monospace,monospace;letter-spacing:.04em">SHOW THEM IN ROSTER</div>
+      <div onClick="{{ confidence.goToList }}" class="om-press" style="cursor:pointer;display:inline-block;padding:7px 13px;border-radius:6px;background:oklch(28% 0.04 150);color:oklch(88% 0.08 150);font:700 11px ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap">SHOW THEM IN ROSTER</div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid oklch(30% 0.011 50);font:11.5px ui-monospace,monospace;color:oklch(72% 0.011 50)">
         <span>&#9733; Lucky {{ flagCounts.lucky }}</span>
         <span>&#9670; Shadow {{ flagCounts.shadow }}</span>
@@ -1345,7 +1620,7 @@ class Component extends DCLogic {
   state = {
     roster: [],
     loaded: false,
-    tab: 'roster',
+    tab: 'today',
     search: '',
     rosterFilter: 'all',
     typeFetchBusy: false,
@@ -1370,6 +1645,22 @@ class Component extends DCLogic {
     storageWarning: '',
     csvNotice: '',
     csvError: '',
+    backupBusy: false,
+    backupError: '',
+    backupReady: null,
+    restorePending: null,
+    fileFallback: null,
+    fileFallbackCopied: false,
+    evoTable: {},
+    evoFetchBusy: false,
+    evoFetchStatus: '',
+    evoFetchError: '',
+    trainerLevel: 36,
+    dustReserve: 100000,
+    triageKeep: {},
+    transferQueue: [],
+    transferSearch: '',
+    todayExpand: {},
     ocrBusy: false,
     ocrError: '',
     ocrPreview: null,
@@ -1535,6 +1826,19 @@ class Component extends DCLogic {
       if (rawAdded) this.setState({ addedPokemon: JSON.parse(rawAdded) });
       const rawRes = localStorage.getItem('scout_resources_v1');
       if (rawRes) this.setState({ resources: JSON.parse(rawRes) });
+      const rawEvo = localStorage.getItem('scout_evo_v1');
+      if (rawEvo) this.setState({ evoTable: JSON.parse(rawEvo) });
+      const rawTriage = localStorage.getItem('scout_triage_v1');
+      if (rawTriage) {
+        const t = JSON.parse(rawTriage);
+        this.setState({ triageKeep: t.keep || {}, transferQueue: t.queue || [] });
+      }
+      const rawPrefs = localStorage.getItem('scout_prefs_v1');
+      if (rawPrefs) {
+        const pr = JSON.parse(rawPrefs);
+        if (pr.trainerLevel != null) this.setState({ trainerLevel: pr.trainerLevel });
+        if (pr.dustReserve != null) this.setState({ dustReserve: pr.dustReserve });
+      }
       const rawMega = localStorage.getItem('scout_megaenergy_v1');
       if (rawMega) this.setState({ megaEnergyInventory: JSON.parse(rawMega) });
     } catch (e) {}
@@ -1606,7 +1910,8 @@ class Component extends DCLogic {
   }
 
   SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
+      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -1908,6 +2213,51 @@ class Component extends DCLogic {
     this.pushCloud();
   }
 
+  // Tabs are separate pages that happen to share one scroll container. Without
+  // this, switching from a 300-row roster lands you deep inside a short tab —
+  // which reads as a huge empty gap above content that is actually there.
+  goToTab(key) {
+    this.setState({ tab: key }, () => {
+      try { window.scrollTo(0, 0); } catch (e) {}
+    });
+  }
+
+  saveTriage() {
+    try {
+      localStorage.setItem('scout_triage_v1', JSON.stringify({ keep: this.state.triageKeep, queue: this.state.transferQueue }));
+    } catch (e) {}
+  }
+
+  savePrefs() {
+    try {
+      localStorage.setItem('scout_prefs_v1', JSON.stringify({ trainerLevel: this.state.trainerLevel, dustReserve: this.state.dustReserve }));
+    } catch (e) {}
+  }
+
+  // Chip -> section. scrollIntoView is off-limits here, so this offsets by the
+  // sticky header height manually.
+  jumpToSection(key) {
+    const el = document.querySelector('[data-today-section="' + key + '"]');
+    if (!el) return;
+    this.haptic('light');
+    const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 76);
+    // Ask for a smooth scroll, but do not trust it: some webviews ignore
+    // behavior:'smooth' silently (and requestAnimationFrame can be throttled to
+    // never firing), which is what made these chips look inert. The follow-up
+    // check guarantees arrival either way.
+    try { window.scrollTo({ top: target, behavior: 'smooth' }); } catch (e) {}
+    clearTimeout(this._jumpTimer);
+    this._jumpTimer = setTimeout(() => {
+      if (Math.abs(window.scrollY - target) > 8) window.scrollTo(0, target);
+    }, 240);
+  }
+
+  toggleTodayBlock(key) {
+    const ex = { ...(this.state.todayExpand || {}) };
+    ex[key] = !ex[key];
+    this.setState({ todayExpand: ex });
+  }
+
   ADMIN_EMAILS() {
     return ['abhi.patel@gmail.com', 'admin@scout.app'];
   }
@@ -2201,7 +2551,7 @@ class Component extends DCLogic {
       }
     }
     this.setState({ moveDB: db, moveFetchBusy: false,
-      moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushToCloud());
+      moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
     try { localStorage.setItem('scout_moves_v1', JSON.stringify(db)); } catch (e) {}
   }
 
@@ -2220,7 +2570,7 @@ class Component extends DCLogic {
   }
 
   clearMoveData() {
-    this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushToCloud());
+    this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushCloud());
     try { localStorage.removeItem('scout_moves_v1'); } catch (e) {}
   }
 
@@ -2326,7 +2676,7 @@ class Component extends DCLogic {
       }
     }
     this.setState({ typeTable: table, typeFetchBusy: false,
-      typeFetchStatus: got + ' species typed' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushToCloud());
+      typeFetchStatus: got + ' species typed' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
     try { localStorage.setItem('scout_types_v1', JSON.stringify(table)); } catch (e) {}
   }
 
@@ -3353,9 +3703,181 @@ class Component extends DCLogic {
     this._stardustSavedTimer = setTimeout(() => this.setState({ stardustJustSaved: false }), 1800);
   }
 
+  // ---- Saving a file from an installed PWA ----
+  // An <a download> click is a silent no-op inside an iOS home-screen app:
+  // there is no browser chrome for a download to land in, so EXPORT CSV looked
+  // like a dead button. The share sheet is the only route to Files/Mail there,
+  // and it has to be invoked from the same tap that produced the text, so this
+  // stays synchronous up to the share() call.
+  saveTextFile(filename, text, mime) {
+    const type = mime || 'text/plain';
+    let file = null;
+    try { file = new File([text], filename, { type }); } catch (e) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      return navigator.share({ files: [file], title: filename })
+        .then(() => 'shared')
+        .catch(err => (err && err.name === 'AbortError')
+          ? 'cancelled'
+          : this.fallbackSave(filename, text, type));
+    }
+    return Promise.resolve(this.fallbackSave(filename, text, type));
+  }
+
+  fallbackSave(filename, text, type) {
+    const standalone = navigator.standalone === true ||
+      !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    // In standalone mode the anchor click cannot work, so go straight to a
+    // copyable panel rather than appearing to do nothing.
+    if (standalone) {
+      this.setState({ fileFallback: { filename, text, preview: text }, fileFallbackCopied: false });
+      return 'panel';
+    }
+    try {
+      const blob = new Blob([text], { type: type + ';charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 8000);
+      return 'downloaded';
+    } catch (e) {
+      this.setState({ fileFallback: { filename, text, preview: text }, fileFallbackCopied: false });
+      return 'panel';
+    }
+  }
+
+  closeFileFallback() {
+    this.setState({ fileFallback: null, fileFallbackCopied: false });
+  }
+
+  copyFileFallback() {
+    const f = this.state.fileFallback;
+    if (!f) return;
+    const done = () => {
+      this.setState({ fileFallbackCopied: true });
+      clearTimeout(this._fileCopyTimer);
+      this._fileCopyTimer = setTimeout(() => this.setState({ fileFallbackCopied: false }), 2200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(f.text).then(done).catch(() => {});
+    }
+  }
+
+  openFileFallback() {
+    const f = this.state.fileFallback;
+    if (!f) return;
+    try {
+      const blob = new Blob([f.text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {}
+  }
+
+  // ---- Cloud backup ----
+  // Two steps on purpose: the fetch is async, which spends the tap that would
+  // have authorised the share sheet. SAVE BACKUP FILE is a fresh tap.
+  backupCloud() {
+    if (!this.db || !this.state.cloudUser) {
+      this.setState({ backupError: 'Sign in first \u2014 the backup is read from your cloud document.' });
+      return;
+    }
+    this.setState({ backupBusy: true, backupError: '', backupReady: null });
+    this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).get()
+      .then(snap => {
+        if (!snap.exists) throw new Error('No cloud document exists yet for this account.');
+        const data = snap.data() || {};
+        // Imports land in addedPokemon; roster is only the CSV baseline and is
+        // usually empty, so counting roster alone reported "0 Pokemon".
+        const count = (Array.isArray(data.roster) ? data.roster.length : 0) +
+          (Array.isArray(data.addedPokemon) ? data.addedPokemon.length : 0);
+        const payload = {
+          _backup: {
+            app: 'Professor', build: 'v44',
+            uid: this.state.cloudUser.uid, email: this.state.cloudUser.email,
+            takenAt: new Date().toISOString()
+          },
+          data
+        };
+        const text = JSON.stringify(payload, null, 2);
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        this.setState({
+          backupBusy: false,
+          backupReady: {
+            filename: 'professor-cloud-backup-' + stamp + '.json',
+            text,
+            count,
+            kb: Math.max(1, Math.round(text.length / 1024))
+          }
+        });
+      })
+      .catch(err => this.setState({ backupBusy: false, backupError: 'Backup failed: ' + ((err && err.message) || err) }));
+  }
+
+  saveBackupFile() {
+    const b = this.state.backupReady;
+    if (!b) return;
+    this.saveTextFile(b.filename, b.text, 'application/json');
+  }
+
+  onRestoreFile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        const data = parsed && parsed.data ? parsed.data : parsed;
+        const count = (Array.isArray(data && data.roster) ? data.roster.length : 0) +
+          (Array.isArray(data && data.addedPokemon) ? data.addedPokemon.length : 0);
+        if (!data || (!Array.isArray(data.roster) && !Array.isArray(data.addedPokemon))) throw new Error('no roster or addedPokemon array in that file');
+        this.setState({ restorePending: { data, count, filename: file.name }, backupError: '' });
+      } catch (err) {
+        this.setState({ backupError: 'Could not read that backup: ' + ((err && err.message) || err) });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  cancelRestore() {
+    this.setState({ restorePending: null });
+  }
+
+  confirmRestore() {
+    const p = this.state.restorePending;
+    if (!p) return;
+    const d = p.data;
+    const next = { restorePending: null, backupError: '' };
+    ['ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance',
+      'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
+      'megaEnergyInventory'].forEach(k => { if (d[k] !== undefined) next[k] = d[k]; });
+    next.roster = this.sanitizeRoster(d.roster || []);
+    next.csvNotice = 'Restored ' + p.count + ' Pokemon from ' + p.filename + '.';
+    // A CLEAR ROSTER marker would make applyRemote discard the restored roster
+    // as "written before the clear", so the restore retires it.
+    this._clearedAt = null;
+    try { localStorage.removeItem('scout_cleared_at_v1'); } catch (e) {}
+    this.setState(next, () => {
+      try { this.saveRoster(next.roster); } catch (e) {}
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+    clearTimeout(this._csvNoticeTimer);
+    this._csvNoticeTimer = setTimeout(() => this.setState({ csvNotice: '' }), 7000);
+  }
+
   exportCsv() {
     const roster = this.state.roster || [];
-    if (!roster.length) return;
+    if (!roster.length) {
+      this.setState({ csvError: 'Nothing to export \u2014 no Pokemon are loaded on this device yet.' });
+      clearTimeout(this._csvNoticeTimer);
+      this._csvNoticeTimer = setTimeout(() => this.setState({ csvError: '' }), 6000);
+      return;
+    }
     const cols = ['Index', 'Name', 'Form', 'Pokemon Number', 'Gender', 'CP', 'HP',
       'Atk IV', 'Def IV', 'Sta IV', 'IV Avg', 'Level Min', 'Level Max',
       'Quick Move', 'Charge Move', 'Charge Move 2', 'Scan Date', 'Catch Date',
@@ -3383,18 +3905,15 @@ class Component extends DCLogic {
     ].map(cell).join(','));
     // BOM so Excel opens UTF-8 names (Farfetch'd, Flabébé) correctly.
     const csv = '\ufeff' + cols.join(',') + '\r\n' + rows.join('\r\n') + '\r\n';
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'scout-roster-' + new Date().toISOString().split('T')[0] + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    const filename = 'scout-roster-' + new Date().toISOString().split('T')[0] + '.csv';
     this.setState({ csvExported: true });
     clearTimeout(this._csvExportTimer);
     this._csvExportTimer = setTimeout(() => this.setState({ csvExported: false }), 2400);
+    this.saveTextFile(filename, csv, 'text/csv').catch(err => {
+      this.setState({ csvError: 'Export failed: ' + ((err && err.message) || err) });
+      clearTimeout(this._csvNoticeTimer);
+      this._csvNoticeTimer = setTimeout(() => this.setState({ csvError: '' }), 6000);
+    });
   }
 
   resetAppraisalHint() {
@@ -3426,9 +3945,22 @@ class Component extends DCLogic {
     const keys = this.activeGeminiKeys();
     if (!keys.length) {
       const total = (this.state.geminiKeys || []).length;
-      throw new Error(total
-        ? 'All ' + total + ' Gemini keys are rate-limited or out of quota right now.'
-        : 'No Gemini key set.');
+      if (!total) throw new Error('No Gemini key set.');
+      // "Rate-limited" reads the same whether the wait is 40 seconds or until
+      // tomorrow. Say which, so a per-minute stall isn't mistaken for a dead day.
+      const cd = this._keyCooldown || {};
+      const waits = (this.state.geminiKeys || []).map(k => (cd[k] || 0) - Date.now()).filter(ms => ms > 0);
+      const soonest = waits.length ? Math.min.apply(null, waits) : 0;
+      let when = '';
+      if (soonest > 0 && soonest < 5 * 60000) {
+        when = ' Try again in ~' + Math.ceil(soonest / 1000) + 's.';
+      } else if (soonest > 0) {
+        const mins = Math.round(soonest / 60000);
+        when = mins >= 90
+          ? ' Daily quota is spent \u2014 it resets at midnight (' + Math.round(mins / 60) + 'h away).'
+          : ' Try again in ~' + mins + ' min.';
+      }
+      throw new Error('All ' + total + ' Gemini keys are rate-limited or out of quota right now.' + when);
     }
     let lastErr = null;
     for (let ki = 0; ki < keys.length; ki++) {
@@ -5029,7 +5561,7 @@ class Component extends DCLogic {
       const item = { name, cp: rec.cp, hp: rec.hp, atkIV: bars.atk, defIV: bars.def, staIV: bars.sta,
                      ivSource: 'bar-measure', barDrift: bars.drift, barConfidence: bars.drift < 0.2 ? 'high' : 'low' };
       const clean = this.normalizeAppraisalItems([item]);
-      if (!clean.length) throw new Error('Read ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP but it did not normalize to a usable reading.');
+      if (!clean.length) throw new Error('Read ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP, but no Pokemon called "' + name + '" is in your roster and no single entry matches that CP/HP \u2014 import its detail screen first, or check the name was read correctly.');
       const summary = this.mergeAppraisalImport(clean);
       const line = summary.applied ? 'Pinned ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' to ' + name
         : (summary.contradiction ? 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but it cannot produce CP ' + rec.cp + ' at ' + rec.hp + ' HP - check the screenshot is one Pokemon'
@@ -5045,11 +5577,46 @@ class Component extends DCLogic {
     const m = this.mechanics;
     const num = v => (v == null || v === '' ? null : (Number.isFinite(+v) ? +v : null));
     const barFull = v => v === true || v === 'full' || v === 15 || v === '15' || v === 1 || v === '1';
+    const key = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Must be the merged list: video-imported Pokemon live in addedPokemon, so
+    // matching against state.roster alone found nothing to fall back on.
+    const roster = this.effectiveRosterForMatch();
+    // The bundled dex-name table does not cover every species/form the reader
+    // can see (mythicals and parenthesised forms especially). A name the table
+    // rejects is still usable when the Pokemon is already in the roster, so
+    // fall back to the roster's own dex number before giving up on a reading.
+    const dexFromRoster = (nm) => {
+      const k = key(nm);
+      if (!k) return null;
+      const hit = roster.find(p => key(p.name) === k);
+      return hit && hit.dex != null ? hit.dex : null;
+    };
+    const resolveDex = (nm, cp, hp) => {
+      const direct = m && m.resolveDexByName ? m.resolveDexByName(nm) : null;
+      if (direct != null) return direct;
+      const fromRoster = dexFromRoster(nm);
+      if (fromRoster != null) return fromRoster;
+      // "Shaymin (Land)" / "Shaymin - Sky" -> retry on the bare species name.
+      const base = String(nm).replace(/\s*[\(\-\u2013].*$/, '').trim();
+      if (base && base !== nm) {
+        const b = m && m.resolveDexByName ? m.resolveDexByName(base) : null;
+        if (b != null) return b;
+        const br = dexFromRoster(base);
+        if (br != null) return br;
+      }
+      // Last resort: a unique CP+HP match in the roster identifies the exact
+      // Pokemon regardless of how its name was transcribed.
+      if (cp != null && hp != null) {
+        const exact = roster.filter(p => +p.cp === +cp && +p.hp === +hp);
+        if (exact.length === 1 && exact[0].dex != null) return exact[0].dex;
+      }
+      return null;
+    };
     return (items || []).map(it => {
       if (!it) return null;
       const name = String(it.name || it.pokemon_name || '').trim();
       if (!name) return null;
-      const dex = m && m.resolveDexByName ? m.resolveDexByName(name) : null;
+      const dex = resolveDex(name, num(it.cp), num(it.hp));
       if (dex == null) return null;
       let maxed = Array.isArray(it.maxed)
         ? it.maxed.map(s => String(s).toLowerCase()).filter(s => ['atk', 'def', 'sta'].includes(s))
@@ -5781,7 +6348,7 @@ class Component extends DCLogic {
 
   computeRecommendation(p) {
     const bestRank = this.bestRank(p);
-    const notFullyEvolved = p.great && p.great.evolvesTo && p.great.evolvesTo !== p.name;
+    const notFullyEvolved = !!this.evolvesToName(p);
     const isShadow = p.shadowPurified === '1' || p.shadowPurified === 1;
     if (p.lucky && bestRank >= 90) return 'Lucky and elite-rank — power up now, cheap dust cost.';
     if (bestRank >= 95) return 'Top-tier league pick. Power up immediately.';
@@ -5792,12 +6359,414 @@ class Component extends DCLogic {
     return 'No urgent action. Keep as roster depth.';
   }
 
+  // ---- Evolution data ----
+  // Nothing in the bundled tables knows what a species evolves into or what it
+  // costs, and a video-imported Pokemon arrives with evolvesTo set to its own
+  // name. Same one-off cached AI lookup as types and moves: unknown species are
+  // omitted rather than guessed, so the queue never invents a candy cost.
+  missingEvoNames() {
+    const table = this.state.evoTable || {};
+    const seen = new Set();
+    this.effectiveRosterForMatch().forEach(p => {
+      const k = String(p.name || '').toLowerCase();
+      if (k && !table[k]) seen.add(k);
+    });
+    return [...seen];
+  }
+
+  // Display spelling for the banner, taken from the roster rather than the
+  // lowercased lookup key.
+  missingEvoDisplayNames() {
+    const keys = new Set(this.missingEvoNames());
+    const out = [];
+    const seen = new Set();
+    this.effectiveRosterForMatch().forEach(p => {
+      const k = String(p.name || '').toLowerCase();
+      if (keys.has(k) && !seen.has(k)) { seen.add(k); out.push(p.name); }
+    });
+    return out;
+  }
+
+  // The prompt tells the model to omit anything it is unsure of, so a species
+  // it never returns will never resolve on a retry. Recording them as having no
+  // known evolution stops the banner nagging forever, and is reversible by
+  // running the lookup again after a name is corrected.
+  markRemainingNoEvolution() {
+    const table = { ...(this.state.evoTable || {}) };
+    this.missingEvoNames().forEach(k => { table[k] = { to: null, candy: null, item: null, assumed: true }; });
+    this.setState({ evoTable: table, evoFetchStatus: 'Marked as having no known evolution.' }, () => this.pushCloud());
+    try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
+  }
+
+  async fetchEvoData() {
+    if (this.state.evoFetchBusy) return;
+    const missing = this.missingEvoNames();
+    if (!missing.length) {
+      this.setState({ evoFetchStatus: 'Every species on your roster already has evolution data.' });
+      return;
+    }
+    this.setState({ evoFetchBusy: true, evoFetchStatus: 'Looking up ' + missing.length + ' species\u2026', evoFetchError: '' });
+    const table = { ...(this.state.evoTable || {}) };
+    // Each object here is longer than a type lookup's, and the newer Gemini
+    // models spend part of the output budget on internal reasoning before
+    // emitting any JSON, so a large batch gets truncated rather than refused.
+    const BATCH = 20;
+    let got = 0, failed = 0;
+    for (let i = 0; i < missing.length; i += BATCH) {
+      const batch = missing.slice(i, i + BATCH);
+      this.setState({ evoFetchStatus: 'Species ' + (i + 1) + '\u2013' + Math.min(i + BATCH, missing.length) + ' of ' + missing.length + '\u2026' });
+      // The free tier allows 10 requests/minute per key, and firing batches
+      // back-to-back exhausts that long before the roster is done. Pace to stay
+      // inside the window, scaled by how many keys are actually configured.
+      if (i > 0) {
+        const keyCount = Math.max(1, (this.state.geminiKeys || []).length || 1);
+        await new Promise(r => setTimeout(r, Math.round(7000 / keyCount)));
+      }
+      const resolved = await this.fetchEvoBatch(batch);
+      if (!resolved) {
+        failed += batch.length;
+        // A rate-limit stop is not a data problem: everything resolved so far is
+        // already cached, so say so rather than looking like a total failure.
+        if (/rate-limited|out of quota|429/i.test(this.state.evoFetchError || '')) {
+          this.setState({ evoFetchBusy: false, evoFetchStatus: got + ' species resolved and saved \u2014 daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.' });
+          this.setState({ evoTable: table }, () => this.pushCloud());
+          try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
+          return;
+        }
+        continue;
+      }
+      resolved.forEach(o => {
+        if (!o || !o.name) return;
+        const key = String(o.name).toLowerCase();
+        if (o.evolvesTo === null || o.evolvesTo === 'none' || !o.evolvesTo) {
+          table[key] = { to: null, candy: null, item: null };
+          got++;
+          return;
+        }
+        const candy = Number(o.candy);
+        table[key] = {
+          to: String(o.evolvesTo),
+          candy: Number.isFinite(candy) && candy > 0 ? candy : null,
+          item: o.item ? String(o.item) : null
+        };
+        got++;
+      });
+      // Cache as we go, so a failure halfway through does not throw away the
+      // species already paid for.
+      this.setState({ evoTable: { ...table } });
+      try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
+    }
+    this.setState({ evoTable: table, evoFetchBusy: false,
+      evoFetchStatus: got + ' species resolved' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
+    try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
+  }
+
+  // A truncated reply is a budget problem, so the batch is halved and retried
+  // rather than counted as a failure. Recurses down to a single species.
+  async fetchEvoBatch(batch, depth) {
+    depth = depth || 0;
+    try {
+      const reply = await this.completeWithRetry({
+        messages: [{ role: 'user', content: this.evoPrompt(batch) }],
+        max_tokens: 8000
+      });
+      const arr = this.extractJsonArray(reply);
+      if (Array.isArray(arr)) return arr;
+      throw new Error('Reply was not a JSON array.');
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      const truncated = /MAX_TOKENS|cut off|not a JSON array/i.test(msg);
+      if (truncated && batch.length > 1 && depth < 4) {
+        const mid = Math.ceil(batch.length / 2);
+        this.setState({ evoFetchStatus: 'Reply was too long \u2014 retrying in smaller batches\u2026' });
+        const a = await this.fetchEvoBatch(batch.slice(0, mid), depth + 1);
+        const c = await this.fetchEvoBatch(batch.slice(mid), depth + 1);
+        if (!a && !c) return null;
+        return [...(a || []), ...(c || [])];
+      }
+      this.setState({ evoFetchError: msg });
+      return null;
+    }
+  }
+
+  evoPrompt(names) {
+    return 'For each Pokemon name below, return its next Pokemon GO evolution and the candy that evolution costs.\\n\\n'
+      + 'Respond with ONLY a JSON array. No markdown fences, no commentary, no explanation before or after. One object per Pokemon:\\n'
+      + '{"name":string,"evolvesTo":string or null,"candy":number or null,"item":string or null}\\n\\n'
+      + '- Be terse. Do not explain your reasoning. Output the array immediately.\\n'
+      + '- evolvesTo is the IMMEDIATE next stage only, not the final one.\\n'
+      + '- Use null for evolvesTo if the Pokemon cannot evolve any further.\\n'
+      + '- candy is the Pokemon GO candy cost (commonly 12, 25, 50, 100, 400).\\n'
+      + '- item is any required special item (e.g. "Sinnoh Stone", "Sun Stone") or null.\\n'
+      + '- If a name is unfamiliar or you are unsure of the cost, OMIT that object entirely rather than guessing.\\n\\n'
+      + names.join('\\n');
+  }
+
+  candyStockFor(p) {
+    const inv = this.state.candyInventory || {};
+    const byDex = inv[p.dex] || inv[String(p.dex)];
+    if (byDex && byDex.candy != null) return { candy: byDex.candy, xlCandy: byDex.xlCandy != null ? byDex.xlCandy : null };
+    // Per-Pokemon candy columns from a CSV import are a fallback when no
+    // family-level inventory has been recorded yet.
+    if (p.candy != null) return { candy: Number(p.candy), xlCandy: p.xlCandy != null ? Number(p.xlCandy) : null };
+    return { candy: null, xlCandy: null };
+  }
+
+  // The CSV and the video importers both write the Pokemon's OWN name into
+  // league.evolvesTo as a placeholder, which is why the PVP table read
+  // "Castform -> Castform". The looked-up table is the real answer; the
+  // placeholder is only trusted when it names something else.
+  evolvesToName(p) {
+    const rec = (this.state.evoTable || {})[String(p.name || '').toLowerCase()];
+    if (rec) return rec.to || null;
+    const legacy = p.great && p.great.evolvesTo;
+    if (legacy && String(legacy).toLowerCase() !== String(p.name || '').toLowerCase()) return legacy;
+    return null;
+  }
+
+  evoInfoFor(p) {
+    const table = this.state.evoTable || {};
+    const rec = table[String(p.name || '').toLowerCase()];
+    if (!rec || !rec.to) return null;
+    const stock = this.candyStockFor(p);
+    const need = rec.candy;
+    const have = stock.candy;
+    return {
+      to: rec.to,
+      item: rec.item || null,
+      need,
+      have,
+      // Unknown stock is not the same as insufficient stock, so it reads as
+      // "candy unknown" rather than silently blocking the evolution.
+      ready: need != null && have != null ? have >= need : null,
+      short: need != null && have != null ? Math.max(0, need - have) : null
+    };
+  }
+
+  // Evolving past 500 CP removes a Pokemon from the only league this trainer
+  // plays, so a strong Little Cup pick is flagged rather than hidden.
+  littleCupRisk(p) {
+    const pct = p.little && p.little.rankPct;
+    return Number.isFinite(pct) && pct >= 85 && (p.cp == null || p.cp <= 500);
+  }
+
+  evolveQueue() {
+    const done = new Set(this.state.completedIds || []);
+    const out = [];
+    this.effectiveRosterForMatch().forEach(p => {
+      if (done.has(p.idx)) return;
+      const evo = this.evoInfoFor(p);
+      if (!evo) return;
+      // A known candy shortfall means it can't be evolved right now regardless
+      // of rank, so it's dropped from the queue rather than listed unusable.
+      // Unknown stock (no candy import yet) still shows, same as before.
+      if (evo.ready === false) return;
+      const rank = this.bestRank(p);
+      const risk = this.littleCupRisk(p);
+      // Score favours what the evolution is worth: league rank first, then IV,
+      // and a ready candy stock outranks one that still needs collecting.
+      const score = (Number.isFinite(rank) ? rank : 0) + (p.ivAvg || 0) * 0.4 + (evo.ready ? 25 : 0) - (risk ? 40 : 0);
+      out.push({ p, evo, rank, risk, score });
+    });
+    return out.sort((a, b) => b.score - a.score);
+  }
+
+  // ---- Stardust planning ----
+  // A trainer can only power up to two levels above their own, so the honest
+  // ceiling is trainerLevel + 2. Level 40 is shown alongside it as the cost
+  // once that ceiling moves.
+  levelCeiling() {
+    const lv = Number(this.state.trainerLevel) || 36;
+    return Math.min(40, lv + 2);
+  }
+
+  dustPlan() {
+    const m = this.mechanics;
+    if (!m || !m.powerUpCostBetween) return { rows: [], spend: 0, reserve: 0, budget: 0 };
+    const reserve = Number(this.state.dustReserve) || 0;
+    const balance = Number(this.state.stardustBalance) || 0;
+    const budget = Math.max(0, balance - reserve);
+    const ceiling = this.levelCeiling();
+    const done = new Set(this.state.completedIds || []);
+    const rows = [];
+    this.effectiveRosterForMatch().forEach(p => {
+      if (done.has(p.idx)) return;
+      const level = Number.isFinite(p.lvlMin) ? p.lvlMin : null;
+      if (level == null || level >= ceiling) return;
+      const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+      if (!base || !ivs) return;
+      // Raid value, which is what the dust is being spent on here.
+      const score = m.attackerScore ? m.attackerScore(base, ivs, ceiling) : 0;
+      if (!score) return;
+      const opts = { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) };
+      const now = m.powerUpCostBetween(level, ceiling, opts);
+      const at40 = ceiling < 40 ? m.powerUpCostBetween(level, 40, opts) : null;
+      if (!now || !now.steps) return;
+      rows.push({ p, level, score, now, at40, ceiling });
+    });
+    rows.sort((a, b) => (b.score / Math.max(1, b.now.dust)) - (a.score / Math.max(1, a.now.dust)));
+    // Greedily fill the budget, so the list is a plan rather than a ranking.
+    let spend = 0, xl = 0;
+    const picked = [];
+    rows.forEach(r => {
+      if (spend + r.now.dust > budget) return;
+      spend += r.now.dust;
+      xl += r.now.xlCandy || 0;
+      picked.push({ ...r, affordable: true });
+    });
+    const rest = rows.filter(r => picked.indexOf(r) < 0 && !picked.some(x => x.p.idx === r.p.idx)).slice(0, 10);
+    return { rows: picked, blocked: rest, spend, xl, reserve, budget, balance, ceiling };
+  }
+
+  // ---- Triage ----
+  // Cautious by request: a Pokemon is only offered for transfer when a strictly
+  // better one of the same species is already owned. Nothing unique, lucky,
+  // shadow, favourited or high-ranked is ever suggested.
+  triageSignature(p) {
+    const evo = this.state.evoTable || {};
+    const rec = evo[String(p.name || '').toLowerCase()];
+    return [p.idx, p.atkIV, p.defIV, p.staIV, p.cp, rec && rec.to ? rec.to : ''].join('|');
+  }
+
+  triageQueue() {
+    const roster = this.effectiveRosterForMatch();
+    const kept = this.state.triageKeep || {};
+    const queued = new Set(this.state.transferQueue || []);
+    const byDex = {};
+    roster.forEach(p => { (byDex[p.dex] = byDex[p.dex] || []).push(p); });
+    const out = [];
+    roster.forEach(p => {
+      if (queued.has(p.idx)) return;
+      if (p.favorite || p.lucky || this.isShadow(p) || this.isPurified(p)) return;
+      const rank = this.bestRank(p);
+      if (Number.isFinite(rank) && rank >= 70) return;
+      if ((p.ivAvg || 0) >= 70) return;
+      if (p.chargeMove2) return;
+      const siblings = byDex[p.dex] || [];
+      if (siblings.length < 2) return;
+      const better = siblings.find(q => q.idx !== p.idx
+        && (q.ivAvg || 0) >= (p.ivAvg || 0)
+        && (q.cp || 0) >= (p.cp || 0)
+        && !(q.ivAvg === p.ivAvg && q.cp === p.cp && String(q.idx) > String(p.idx)));
+      if (!better) return;
+      // Dismissals stick until the Pokemon itself changes.
+      if (kept[this.triageSignature(p)]) return;
+      out.push({ p, rank, better, reason: 'Beaten by your ' + better.cp + ' CP ' + (better.ivAvg != null ? Number(better.ivAvg).toFixed(1) + '% ' : '') + better.name });
+    });
+    return out.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
+  }
+
+  triageKeepCurrent() {
+    const list = this.triageQueue();
+    if (!list.length) return;
+    const keep = { ...(this.state.triageKeep || {}) };
+    keep[this.triageSignature(list[0].p)] = true;
+    this.setState({ triageKeep: keep }, () => { this.saveTriage(); this.pushCloud(); });
+  }
+
+  triageTransferCurrent() {
+    const list = this.triageQueue();
+    if (!list.length) return;
+    const q = [...(this.state.transferQueue || []), list[0].p.idx];
+    this.setState({ transferQueue: q }, () => { this.saveTriage(); this.pushCloud(); });
+  }
+
+  // Queue any Pokemon, not just one triage surfaced.
+  queueTransfer(idx) {
+    if ((this.state.transferQueue || []).indexOf(idx) > -1) return;
+    this.haptic('medium');
+    this.setState({ transferQueue: [...(this.state.transferQueue || []), idx] },
+      () => { this.saveTriage(); this.pushCloud(); });
+  }
+
+  // Ticking a row off the evolve queue reuses the existing completed list, so
+  // it stays done across reloads and devices.
+  markEvolveDone(p) {
+    this.haptic('medium');
+    const done = [...(this.state.completedIds || [])];
+    if (done.indexOf(p.idx) < 0) done.push(p.idx);
+    this.setState({ completedIds: done }, () => {
+      try { localStorage.setItem('scout_recommend_done_v1', JSON.stringify(done)); } catch (e) {}
+      this.pushCloud();
+    });
+  }
+
+  unqueueTransfer(idx) {
+    const q = (this.state.transferQueue || []).filter(i => i !== idx);
+    this.setState({ transferQueue: q }, () => { this.saveTriage(); this.pushCloud(); });
+  }
+
+  clearTransferQueue() {
+    this.setState({ transferQueue: [] }, () => { this.saveTriage(); this.pushCloud(); });
+  }
+
+  // ---- Verdict ----
+  // Weighted in the order the trainer ranked them: Little Cup rank, raid DPS,
+  // last-of-species, legacy move, then shiny/lucky/shadow status.
+  verdictFor(p) {
+    const little = p.little && p.little.rankPct;
+    const rank = this.bestRank(p);
+    const roster = this.effectiveRosterForMatch();
+    const sameDex = roster.filter(q => q.dex === p.dex).length;
+    const evo = this.evoInfoFor(p);
+    if (Number.isFinite(little) && little >= 95) {
+      return { verdict: 'KEEP', reason: 'Elite Little Cup rank \u2014 the league you play', number: little.toFixed(1) + '% LC' };
+    }
+    if (Number.isFinite(little) && little >= 85) {
+      return { verdict: 'KEEP', reason: 'Strong Little Cup pick; do not evolve it', number: little.toFixed(1) + '% LC' };
+    }
+    if (p.lucky && Number.isFinite(rank) && rank >= 85) {
+      return { verdict: 'POWER UP', reason: 'Lucky, so half the dust cost', number: rank.toFixed(0) + '% rank' };
+    }
+    if (evo && evo.ready) {
+      return { verdict: 'EVOLVE', reason: 'Enough candy for ' + evo.to + ' right now', number: evo.have + '/' + evo.need + ' candy' };
+    }
+    if (sameDex === 1) {
+      return { verdict: 'KEEP', reason: 'Only one you own of this species', number: '1 of 1' };
+    }
+    if (evo && evo.short != null && evo.short > 0) {
+      return { verdict: 'COLLECT CANDY', reason: evo.short + ' more candy to reach ' + evo.to, number: evo.have + '/' + evo.need + ' candy' };
+    }
+    if (Number.isFinite(rank) && rank >= 80) {
+      return { verdict: 'KEEP', reason: 'Top-tier spread worth holding', number: rank.toFixed(0) + '% rank' };
+    }
+    if (this.isShadow(p)) {
+      return { verdict: 'KEEP', reason: 'Shadow Pokemon hit harder in raids', number: rank != null && Number.isFinite(rank) ? rank.toFixed(0) + '% rank' : 'shadow' };
+    }
+    const tri = this.triageQueue().find(t => t.p.idx === p.idx);
+    if (tri) {
+      return { verdict: 'TRANSFER', reason: tri.reason, number: (p.ivAvg != null ? Number(p.ivAvg).toFixed(1) + '% IV' : 'unmeasured') };
+    }
+    if (this.needsAppraisal(p)) {
+      return { verdict: 'APPRAISE', reason: 'IVs are still a guess from CP and HP', number: p.ivRange || 'unmeasured' };
+    }
+    return { verdict: 'KEEP', reason: 'Nothing better to do with it yet', number: (p.ivAvg != null ? Number(p.ivAvg).toFixed(1) + '% IV' : 'unmeasured') };
+  }
+
+  // ---- Dex gaps you can close today ----
+  actionableDexGaps() {
+    const roster = this.effectiveRosterForMatch();
+    const ownedNames = new Set(roster.map(p => String(p.name || '').toLowerCase()));
+    const out = [];
+    const seen = new Set();
+    roster.forEach(p => {
+      const evo = this.evoInfoFor(p);
+      if (!evo || !evo.to) return;
+      const target = evo.to.toLowerCase();
+      if (ownedNames.has(target)) return;
+      if (seen.has(target)) return;
+      seen.add(target);
+      out.push({ p, evo, target: evo.to });
+    });
+    return out.sort((a, b) => (b.evo.ready ? 1 : 0) - (a.evo.ready ? 1 : 0));
+  }
+
   buildOptimizePlan(roster) {
     const completedSet = new Set(this.state.completedIds || []);
     const notDone = (p) => !completedSet.has(p.idx);
     const withRank = roster.map(p => ({ p, rank: this.bestRank(p) }));
     const powerUp = withRank.filter(x => x.rank >= 90 && !x.p.favorite && notDone(x.p)).sort((a, b) => b.rank - a.rank).slice(0, 5).map(x => x.p);
-    const evolveSoon = roster.filter(p => p.great && p.great.evolvesTo && p.great.evolvesTo !== p.name && (p.ivAvg || 0) >= 60 && notDone(p))
+    const evolveSoon = roster.filter(p => this.evolvesToName(p) && (p.ivAvg || 0) >= 60 && notDone(p))
       .sort((a, b) => (b.ivAvg || 0) - (a.ivAvg || 0)).slice(0, 5);
     const transferSafe = roster.filter(p => (p.ivAvg == null || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
       .slice(0, 10);
@@ -5819,14 +6788,17 @@ class Component extends DCLogic {
   async sendChat() {
     const text = this.state.chatInput.trim();
     if (!text || this.state.chatBusy) return;
-    const roster = this.state.roster;
+    // The video/appraisal imports put Pokemon in addedPokemon, not roster, so
+    // reading state.roster here described an empty collection to the model and
+    // it answered accordingly. Use the same merged list the roster renders.
+    const roster = this.effectiveRosterForMatch();
     const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
     const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length).toFixed(1) : 'n/a';
     const plan = this.buildOptimizePlan(roster);
     const contextLines = [
       `Roster size: ${roster.length}. Average IV: ${avgIV}%. Lucky: ${roster.filter(p => p.lucky).length}. Shadow: ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length}.`,
       `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
-      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${p.great && p.great.evolvesTo ? p.great.evolvesTo : '?'}`).join(', ') || 'none'}.`,
+      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${this.evolvesToName(p) || '?'}`).join(', ') || 'none'}.`,
       `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
       `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.quickMove || '?'} / ${p.chargeMove || '?'})`).join(', ') || 'none'}.`,
       (() => {
@@ -5842,7 +6814,7 @@ class Component extends DCLogic {
           + `Resources on hand: Rare Candy ${r.rareCandy ?? 'unknown'}, Rare Candy XL ${r.rareCandyXL ?? 'unknown'}, Elite Fast TM ${r.eliteFastTM ?? 'unknown'}, Elite Charged TM ${r.eliteChargedTM ?? 'unknown'}, Stardust ${this.state.stardustBalance ?? 'unknown'}.`;
       })(),
       `Roster (best 90 by league rank; ${roster.length} total. name, dex, form, cp, hp, ivAvg, atkIV/defIV/staIV, lucky, shadow, greatRank%, ultraRank%, littleRank%): ` +
-        [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 90).map(p => `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${(p.shadowPurified === '1' || p.shadowPurified === 1) ? 'S' : ''} G${p.great.rankPct ?? '-'} U${p.ultra.rankPct ?? '-'} LC${p.little.rankPct ?? '-'}`).join('; ')
+        [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 90).map(p => `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${(p.shadowPurified === '1' || p.shadowPurified === 1) ? 'S' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'}`).join('; ')
     ].join('\n');
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
@@ -5963,6 +6935,76 @@ class Component extends DCLogic {
       } else {
         el.style.transform = 'translateY(0)';
         el.style.opacity = '1';
+      }
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+  }
+
+  // Triage card swipe. Mirrors the detail sheet's gesture but on the X axis:
+  // left commits a transfer, right keeps. The card animates out and the next
+  // one takes its place, so the element is reused rather than remounted.
+  triageSwipeRef(el) {
+    if (!el || el.dataset.triageBound) return;
+    el.dataset.triageBound = '1';
+    let startX = 0, startY = 0, lastX = 0, startT = 0, dragging = false, axisLocked = false;
+    const reset = () => {
+      el.style.transition = 'transform .28s cubic-bezier(.22,1,.36,1), opacity .24s ease';
+      el.style.transform = 'translateX(0) rotate(0deg)';
+      el.style.opacity = '1';
+    };
+    const fling = (dir, commit) => {
+      el.style.transition = 'transform .22s ease-out, opacity .2s ease-out';
+      el.style.transform = 'translateX(' + (dir * 130) + '%) rotate(' + (dir * 8) + 'deg)';
+      el.style.opacity = '0';
+      this.haptic('medium');
+      setTimeout(() => {
+        commit();
+        // The next card reuses this element, so the transform has to be cleared
+        // without animating or it slides in from off-screen.
+        el.style.transition = 'none';
+        el.style.transform = 'translateX(0) rotate(0deg)';
+        el.style.opacity = '1';
+      }, 180);
+    };
+    const onStart = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      startX = lastX = t.clientX;
+      startY = t.clientY;
+      startT = Date.now();
+      dragging = true;
+      axisLocked = false;
+      el.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const t = e.touches ? e.touches[0] : e;
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      // Don't hijack a vertical scroll through a long TODAY page.
+      if (!axisLocked) {
+        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { dragging = false; reset(); return; }
+        if (Math.abs(dx) < 8) return;
+        axisLocked = true;
+      }
+      lastX = t.clientX;
+      if (e.cancelable) e.preventDefault();
+      el.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 26) + 'deg)';
+      el.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 460));
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      const dx = lastX - startX;
+      const velocity = Math.abs(dx) / Math.max(1, Date.now() - startT);
+      if (dx < -90 || (dx < -30 && velocity > 0.6)) {
+        fling(-1, () => this.triageTransferCurrent());
+      } else if (dx > 90 || (dx > 30 && velocity > 0.6)) {
+        fling(1, () => this.triageKeepCurrent());
+      } else {
+        reset();
       }
     };
     el.addEventListener('touchstart', onStart, { passive: true });
@@ -6206,7 +7248,7 @@ class Component extends DCLogic {
       rankNum: Number.isFinite(p[leagueKey].rankNum) ? '#' + p[leagueKey].rankNum : '—',
       rankPctDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(1) + '%' : '—',
       statProdDisplay: Number.isFinite(p[leagueKey].statProd) ? p[leagueKey].statProd.toFixed(1) + '%' : '—',
-      evolvesTo: p[leagueKey].evolvesTo || '—'
+      evolvesTo: this.evolvesToName(p) || '—'
     }));
 
     const leagueDefs = [
@@ -6311,7 +7353,7 @@ class Component extends DCLogic {
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
         initial: (p.name || '?').charAt(0),
-        sub: 'evolves to ' + p.great.evolvesTo,
+        sub: 'evolves to ' + (this.evolvesToName(p) || '?'),
         cp: p.cp,
         onClick: () => this.openDetail(p),
         markDone: () => this.toggleDone(p.idx)
@@ -6510,7 +7552,18 @@ class Component extends DCLogic {
       }));
       const hue = this.hueFor(p.dex || 0);
       const age = this.scanAgeDays(p);
+      const vd = this.verdictFor(p);
+      const vdColors = {
+        'KEEP': ['oklch(80% 0.14 150)', 'oklch(23% 0.05 150)', 'oklch(36% 0.06 150)'],
+        'EVOLVE': ['oklch(82% 0.14 150)', 'oklch(24% 0.055 150)', 'oklch(38% 0.07 150)'],
+        'POWER UP': ['oklch(84% 0.14 62)', 'oklch(25% 0.055 62)', 'oklch(40% 0.08 62)'],
+        'COLLECT CANDY': ['oklch(82% 0.13 85)', 'oklch(24% 0.05 85)', 'oklch(38% 0.07 85)'],
+        'APPRAISE': ['oklch(80% 0.12 250)', 'oklch(23% 0.045 250)', 'oklch(36% 0.06 250)'],
+        'TRANSFER': ['oklch(80% 0.14 30)', 'oklch(24% 0.05 30)', 'oklch(40% 0.08 30)']
+      };
+      const vdc = vdColors[vd.verdict] || vdColors.KEEP;
       detail = {
+        verdict: { verdict: vd.verdict, reason: vd.reason, number: vd.number, color: vdc[0], bg: vdc[1], border: vdc[2] },
         // Stale scans matter because powering a Pokemon up changes its CP, and
         // nothing in the app can know that happened until it is re-scanned.
         scanLine: age == null ? '' : (age === 0 ? 'SCANNED TODAY' : age === 1 ? 'SCANNED YESTERDAY' : 'SCANNED ' + age + ' DAYS AGO'),
@@ -6632,7 +7685,78 @@ class Component extends DCLogic {
 
     const isMobile = (this.state.viewportWidth || 1200) < 640;
 
+    // ---- TODAY tab ----
+    // All four blocks read the same merged roster, so each list is built once
+    // here rather than per key.
+    const evoQueueAll = this.evolveQueue();
+    const triageAll = this.triageQueue();
+    const dustPlan = this.dustPlan();
+    const dexGapsAll = this.actionableDexGaps();
+    const expand = this.state.todayExpand || {};
+    const BLOCK = 10;
+    const evoShown = expand.evolve ? evoQueueAll : evoQueueAll.slice(0, BLOCK);
+    const gapsShown = expand.gaps ? dexGapsAll : dexGapsAll.slice(0, BLOCK);
+    const missingEvo = this.missingEvoNames().length;
+    const fmt = n => Number(n || 0).toLocaleString('en-US');
+    const candyLabelFor = evo => {
+      if (evo.need == null) return 'candy cost unknown';
+      if (evo.have == null) return evo.need + ' candy needed';
+      return evo.have + '/' + evo.need + ' candy';
+    };
+    const candyColorFor = evo => evo.ready === true ? 'oklch(80% 0.15 150)'
+      : evo.ready === false ? 'oklch(78% 0.13 40)' : 'oklch(62% 0.011 50)';
+    const triageTop = triageAll[0] || null;
+    const queueIdx = this.state.transferQueue || [];
+    const rosterByIdx = {};
+    roster.forEach(p => { rosterByIdx[p.idx] = p; });
+
+    // Manual transfer picker. Deliberately search-first: listing 300 rows would
+    // be unusable, and the point is to reach a Pokemon triage never suggested.
+    const transferPick = (() => {
+      const q = String(this.state.transferSearch || '').trim().toLowerCase();
+      const queued = new Set(this.state.transferQueue || []);
+      if (!q) {
+        return { rows: [], more: null,
+          hint: 'Type a name to queue anything for transfer \u2014 including Pokemon the review above will never suggest.' };
+      }
+      const hits = roster.filter(p => String(p.name || '').toLowerCase().includes(q)
+        || String(p.form || '').toLowerCase().includes(q));
+      if (!hits.length) return { rows: [], more: null, hint: 'No Pokemon matching "' + q + '".' };
+      hits.sort((a, b) => (a.cp || 0) - (b.cp || 0));
+      const shown = hits.slice(0, 12);
+      return {
+        hint: null,
+        more: hits.length > 12 ? hits.length - 12 + ' more match \u2014 narrow the search.' : null,
+        rows: shown.map(p => {
+          const rank = this.bestRank(p);
+          // Queuing a good Pokemon is allowed, but never silently: the warning
+          // says what would be lost.
+          const warn = p.lucky ? 'LUCKY'
+            : this.isShadow(p) ? 'SHADOW'
+            : p.favorite ? 'FAVORITE'
+            : (Number.isFinite(rank) && rank >= 90) ? 'TOP ' + rank.toFixed(0) + '%'
+            : (p.ivAvg != null && p.ivAvg >= 90) ? 'HIGH IV'
+            : null;
+          const isQueued = queued.has(p.idx);
+          return {
+            name: p.name + (p.form ? ' \u00b7 ' + p.form : ''),
+            spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+            badgeColor: `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})`,
+            initial: (p.name || '?').charAt(0),
+            sub: (p.cp != null ? p.cp + ' CP' : 'CP ?')
+              + '  \u00b7  ' + (p.ivAvg != null ? Number(p.ivAvg).toFixed(0) + '% IV' : 'unmeasured')
+              + (Number.isFinite(rank) ? '  \u00b7  ' + rank.toFixed(0) + '% rank' : ''),
+            warn,
+            queueLabel: isQueued ? 'QUEUED' : 'TRANSFER',
+            onQueue: () => (isQueued ? this.unqueueTransfer(p.idx) : this.queueTransfer(p.idx)),
+            onOpen: () => this.openDetail(p)
+          };
+        })
+      };
+    })();
+
     const tabDefs = [
+      { key: 'today', label: 'TODAY', navLabel: 'TODAY', icon: '\u2739' },
       { key: 'home', label: 'HOME', navLabel: 'HOME', icon: '\u25c8' },
       { key: 'roster', label: 'ROSTER', navLabel: 'ROSTER', icon: '\u25a4' },
       { key: 'pvp', label: 'PVP RANKINGS', navLabel: 'PVP', icon: '\u2694' },
@@ -6649,7 +7773,7 @@ class Component extends DCLogic {
       color: t.key === tab ? 'oklch(92% 0.0055 50)' : 'oklch(58% 0.011 50)',
       navBg: t.key === tab ? `oklch(70% 0.13 ${accentHue} / .18)` : 'transparent',
       border: t.key === tab ? accent(78, 0.13) : 'transparent',
-      onClick: () => this.setState({ tab: t.key })
+      onClick: () => this.goToTab(t.key)
     }));
 
     return {
@@ -6676,7 +7800,7 @@ class Component extends DCLogic {
         : 'sheetRise .44s cubic-bezier(.22,1,.36,1) both',
       rootPadding: isMobile ? 'max(54px, env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom))' : '28px 40px calc(96px + env(safe-area-inset-bottom))',
       rootPadX: isMobile ? '14px' : '40px',
-      statGridCols: isMobile ? 'repeat(3,1fr)' : 'repeat(5,1fr)',
+      statGridCols: isMobile ? 'repeat(auto-fit,minmax(88px,1fr))' : 'repeat(5,minmax(0,1fr))',
       rosterGridCols: isMobile ? '1fr' : 'repeat(auto-fill,minmax(380px,1fr))',
       cardPadding: isCompact ? '10px' : '16px',
       cardGap: isCompact ? '9px' : '10px',
@@ -6695,9 +7819,10 @@ class Component extends DCLogic {
       isAttackers: tab === 'attackers',
       isRecommend: tab === 'recommend',
       isIntel: tab === 'intel',
+      isToday: tab === 'today',
       isProgress: tab === 'progress',
       tabList,
-      setTab: (t) => this.setState({ tab: t }),
+      setTab: (t) => this.goToTab(t),
       search,
       onSearchChange: (e) => this.setState({ search: e.target.value, visibleCount: 30 }),
       sortField,
@@ -7116,6 +8241,160 @@ class Component extends DCLogic {
       dismissVideoImport: () => this.dismissVideoImport(),
       canRetryVideo: !!((this._failedFrames && this._failedFrames.length) || this._lastVideoFrames),
       retryVideoImport: () => this.retryVideoImport(),
+      evoNeedsLookup: missingEvo
+        ? (missingEvo <= 8
+          ? missingEvo + ' species still have no evolution data: ' + this.missingEvoDisplayNames().join(', ')
+            + '. The lookup skips anything it is not sure about, so these may never resolve \u2014 dismiss them if they have no evolution.'
+          : missingEvo + ' species have no evolution data yet, so the lists below are incomplete. One-off lookup, cached to your account.')
+        : null,
+      fetchEvoData: () => this.fetchEvoData(),
+      evoCanDismiss: missingEvo > 0 && missingEvo <= 8,
+      markNoEvolution: () => this.markRemainingNoEvolution(),
+      evoFetchLabel: this.state.evoFetchBusy ? 'LOOKING UP\u2026' : 'RUN EVOLUTION DATA',
+      evoFetchStatus: this.state.evoFetchError || this.state.evoFetchStatus,
+
+      // Counts as tappable chips, so the top of the page reads as a scoreboard
+      // rather than a paragraph.
+      todayChips: [
+        { label: 'TO EVOLVE', count: evoQueueAll.length, hue: 150, key: 'evolve' },
+        { label: 'TO REVIEW', count: triageAll.length, hue: 40, key: 'review' },
+        { label: 'QUEUED', count: (this.state.transferQueue || []).length, hue: 30, key: 'queued' },
+        { label: 'NEW DEX', count: dexGapsAll.length, hue: 290, key: 'dex' }
+      ]
+        // The dex section only renders when it has entries, and the review card
+        // only when there is something to review, so a zero chip would point at
+        // markup that is not there. TRANSFER LIST is always present.
+        .filter(c => c.count > 0 || c.key === 'queued')
+        .map(c => ({
+          label: c.label,
+          count: c.count,
+          color: `oklch(84% 0.14 ${c.hue})`,
+          bg: `oklch(22% 0.035 ${c.hue})`,
+          border: `oklch(34% 0.05 ${c.hue})`,
+          onClick: () => this.jumpToSection(c.key)
+        })),
+
+      todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' : '',
+      todayEvolveEmpty: evoQueueAll.length ? null : true,
+      todayEvolve: evoShown.map(row => ({
+        name: row.p.name + (row.p.form ? ' \u00b7 ' + row.p.form : ''),
+        spriteRef: this.makeSpriteRefByDex(row.p.dex, row.p.form),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(row.p.dex || 0)})`,
+        initial: (row.p.name || '?').charAt(0),
+        arrow: (row.p.cp != null ? row.p.cp + ' CP' : '') + '  \u2192  ' + row.evo.to + (row.evo.item ? ' + ' + row.evo.item : ''),
+        candyLabel: candyLabelFor(row.evo),
+        candyColor: candyColorFor(row.evo),
+        // A bar reads as progress toward the evolution at a glance; the raw
+        // "12/25 candy" needs parsing.
+        candyPct: (row.evo.need && row.evo.have != null)
+          ? Math.min(100, Math.round(row.evo.have / row.evo.need * 100)) + '%'
+          : (row.evo.ready ? '100%' : '0%'),
+        risk: row.risk,
+        riskNote: 'Strong Little Cup pick \u2014 evolving puts it over the 500 CP cap.',
+        doneBg: 'oklch(24% 0.03 150)',
+        doneBorder: 'oklch(38% 0.06 150)',
+        doneColor: 'oklch(80% 0.14 150)',
+        onClick: () => this.openDetail(row.p),
+        onDone: () => this.markEvolveDone(row.p)
+      })),
+      todayEvolveMore: evoQueueAll.length > BLOCK
+        ? (expand.evolve ? 'SHOW TOP 10 ONLY' : 'SHOW ALL ' + evoQueueAll.length)
+        : null,
+      toggleEvolveAll: () => this.toggleTodayBlock('evolve'),
+
+      dustPlanHeadline: dustPlan.rows.length
+        ? fmt(dustPlan.spend) + ' of ' + fmt(dustPlan.budget)
+        : '',
+      dustSpendPct: dustPlan.budget > 0
+        ? Math.min(100, Math.round(dustPlan.spend / dustPlan.budget * 100)) + '%'
+        : '0%',
+      dustBudgetShort: 'lvl ' + dustPlan.ceiling + ' cap',
+      dustPlanEmpty: dustPlan.rows.length ? null
+        : (dustPlan.budget <= 0
+          ? 'Balance is at or below your ' + fmt(dustPlan.reserve) + ' reserve. Adjust it in Settings.'
+          : 'Nothing worth powering up in budget \u2014 most of your roster is already at the level cap.'),
+      dustPlanRows: dustPlan.rows.map(r => ({
+        name: r.p.name + (r.p.form ? ' \u00b7 ' + r.p.form : ''),
+        spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(r.p.dex || 0)})`,
+        initial: (r.p.name || '?').charAt(0),
+        levelLine: 'Lv ' + r.level + ' \u2192 ' + r.ceiling + (r.now.xlCandy ? '  \u00b7  ' + r.now.xlCandy + ' XL' : ''),
+        costNow: fmt(r.now.dust),
+        costAt40: r.at40 ? fmt(r.at40.dust) + ' to 40' : 'at cap',
+        onClick: () => this.openDetail(r.p)
+      })),
+
+      triageHeadline: triageAll.length ? triageAll.length + ' left' : '',
+      triageCard: triageTop ? {
+        name: triageTop.p.name + (triageTop.p.form ? ' \u00b7 ' + triageTop.p.form : ''),
+        spriteRef: this.makeSpriteRefByDex(triageTop.p.dex, triageTop.p.form),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(triageTop.p.dex || 0)})`,
+        initial: (triageTop.p.name || '?').charAt(0),
+        cp: triageTop.p.cp != null ? triageTop.p.cp : '\u2014',
+        iv: triageTop.p.ivAvg != null ? Number(triageTop.p.ivAvg).toFixed(0) + '%' : '\u2014',
+        ivColor: triageTop.p.ivAvg == null ? 'oklch(60% 0.011 50)'
+          : (triageTop.p.ivAvg >= 80 ? 'oklch(80% 0.14 150)' : triageTop.p.ivAvg >= 60 ? 'oklch(84% 0.13 85)' : 'oklch(78% 0.12 30)'),
+        rank: Number.isFinite(triageTop.rank) ? triageTop.rank.toFixed(0) + '%' : '\u2014',
+        reason: triageTop.reason
+      } : null,
+      triageCardRef: (el) => this.triageSwipeRef(el),
+      triageTransfer: () => this.triageTransferCurrent(),
+      triageKeep: () => this.triageKeepCurrent(),
+
+      transferQueueCount: queueIdx.length || null,
+      transferQueueList: queueIdx.map(idx => {
+        const p = rosterByIdx[idx];
+        return {
+          short: p ? p.name + ' ' + (p.cp != null ? p.cp : '?') : String(idx),
+          spriteRef: p ? this.makeSpriteRefByDex(p.dex, p.form) : (() => {}),
+          badgeColor: p ? `oklch(70% 0.15 ${this.hueFor(p.dex || 0)})` : 'oklch(40% 0.011 50)',
+          onRemove: () => this.unqueueTransfer(idx)
+        };
+      }),
+      clearTransferQueue: () => this.clearTransferQueue(),
+
+      // Manual picker: any Pokemon can be queued, not only the ones triage
+      // suggested. Searching is required rather than listing 300 rows.
+      transferSearch: this.state.transferSearch || '',
+      onTransferSearch: (e) => this.setState({ transferSearch: e.target.value }),
+      transferPickHint: transferPick.hint,
+      transferPickList: transferPick.rows,
+      transferPickMore: transferPick.more,
+
+      dexGapHasAny: dexGapsAll.length ? true : null,
+      dexGapCount: dexGapsAll.length ? dexGapsAll.length + ' reachable' : '',
+      dexGapList: gapsShown.map(g => ({
+        target: g.target,
+        spriteRef: this.makeSpriteRefByDex(g.p.dex, g.p.form),
+        badgeColor: `oklch(70% 0.15 ${this.hueFor(g.p.dex || 0)})`,
+        candyLabel: candyLabelFor(g.evo),
+        candyColor: candyColorFor(g.evo),
+        onClick: () => this.openDetail(g.p)
+      })),
+      dexGapMore: dexGapsAll.length > BLOCK
+        ? (expand.gaps ? 'SHOW TOP 10 ONLY' : 'SHOW ALL ' + dexGapsAll.length)
+        : null,
+      toggleDexGapAll: () => this.toggleTodayBlock('gaps'),
+
+      backupCloud: () => this.backupCloud(),
+      backupButtonLabel: this.state.backupBusy ? 'READING CLOUD\u2026' : 'BACK UP CLOUD DATA',
+      backupError: this.state.backupError,
+      backupReadyDisplay: this.state.backupReady ? {
+        summary: this.state.backupReady.count + ' Pokemon \u00b7 ' + this.state.backupReady.kb + ' KB ready as ' + this.state.backupReady.filename
+      } : null,
+      saveBackupFile: () => this.saveBackupFile(),
+      onRestoreFile: (e) => this.onRestoreFile(e),
+      restorePendingDisplay: this.state.restorePending ? {
+        summary: 'Restore ' + this.state.restorePending.count + ' Pokemon from ' + this.state.restorePending.filename +
+          '? This replaces the roster, IVs, candy and history on every synced device.'
+      } : null,
+      confirmRestore: () => this.confirmRestore(),
+      cancelRestore: () => this.cancelRestore(),
+      fileFallback: this.state.fileFallback,
+      fileFallbackCopyLabel: this.state.fileFallbackCopied ? 'COPIED \u2713' : 'COPY ALL',
+      closeFileFallback: () => this.closeFileFallback(),
+      copyFileFallback: () => this.copyFileFallback(),
+      openFileFallback: () => this.openFileFallback(),
       needsFirebaseConfig: !this.state.firebaseConfigured,
       firebaseConfigDraft: this.state.firebaseConfigDraft,
       onFirebaseConfigChange: (e) => this.onFirebaseConfigChange(e),

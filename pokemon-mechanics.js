@@ -968,12 +968,26 @@ function normalizeSpeciesName(s) {
 }
 const NAME_TO_DEX = {};
 Object.keys(DEX_NAMES).forEach(dex => { NAME_TO_DEX[normalizeSpeciesName(DEX_NAMES[dex])] = Number(dex); });
+// Default-form suffix a bare species name should resolve to when the table
+// only has a hyphenated form name (e.g. "Shaymin" -> "shaymin-land", not
+// "shaymin-sky"). Order is priority: first suffix found among the candidates wins.
+const DEFAULT_FORM_SUFFIXES = ['land', 'normal', 'incarnate', 'standard', 'altered', 'average', 'red-striped', 'aria', 'ordinary', 'shield', 'disguised', 'plant', 'male', 'baile', 'midday', 'solo', 'z'];
 function resolveDexByName(name) {
   const norm = normalizeSpeciesName(name);
   if (NAME_TO_DEX[norm] != null) return NAME_TO_DEX[norm];
   const loose = norm.replace(/-/g, '');
   for (const key in NAME_TO_DEX) {
     if (key.replace(/-/g, '') === loose) return NAME_TO_DEX[key];
+  }
+  // Bare species name against a table that only has "name-form" entries
+  // (Shaymin, Giratina, etc. are stored under their default form's key).
+  const prefixMatches = Object.keys(NAME_TO_DEX).filter(key => key.startsWith(norm + '-'));
+  if (prefixMatches.length) {
+    for (const suf of DEFAULT_FORM_SUFFIXES) {
+      const hit = prefixMatches.find(key => key === norm + '-' + suf);
+      if (hit) return NAME_TO_DEX[hit];
+    }
+    if (prefixMatches.length === 1) return NAME_TO_DEX[prefixMatches[0]];
   }
   return null;
 }
