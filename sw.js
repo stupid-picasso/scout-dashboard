@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scout-v49';
+const CACHE_NAME = 'scout-v50';
 
 // App shell — code that changes on every deploy. NETWORK-FIRST.
 // Cache-first here is what caused the "I pushed the fix but still see the old
