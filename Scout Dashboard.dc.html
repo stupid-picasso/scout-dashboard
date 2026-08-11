@@ -1185,6 +1185,15 @@
                   <div style="font:700 9.5px ui-monospace,monospace;letter-spacing:.06em;padding:2.5px 7px;border-radius:4px;color:{{ t.fg }};background:{{ t.bg }}">{{ t.label }}</div>
                 </sc-for>
               </div>
+              <div onClick="{{ stopProp }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+                <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
+                  <input type="text" inputmode="numeric" placeholder="Atk" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:36px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <input type="text" inputmode="numeric" placeholder="Def" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:36px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:36px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:oklch(45% 0.1 62);color:white;font:700 10.5px ui-monospace,monospace">SAVE</div>
+                </sc-if>
+                <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:oklch(28% 0.0165 50);color:oklch(82% 0.0055 50);font:700 10.5px ui-monospace,monospace">TRANSFERRED (+1 CANDY)</div>
+              </div>
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font:800 23px ui-monospace,monospace;line-height:1;letter-spacing:-.02em;color:{{ p.typeAccent }}">{{ p.cp }}</div>
@@ -1679,6 +1688,7 @@ class Component extends DCLogic {
     clearArmed: false,
     rosterCleared: false,
     ivOverrides: {},
+    ivManualDraft: {},
     apprShotBusy: false,
     apprShotError: '',
     apprShotSummary: '',
@@ -6357,8 +6367,76 @@ class Component extends DCLogic {
     const hit = all.find(p => p.idx === idx);
     if (hit) set.add(this.pokeSig(hit));
     const arr = [...set];
-    this.setState({ removedIds: arr });
+    this.setState({ removedIds: arr }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
     try { localStorage.setItem('scout_removed_v1', JSON.stringify(arr)); } catch (e) {}
+  }
+
+  // A transfer earns exactly 1 regular candy for that species (Niantic's
+  // fixed rate) — recorded here so a transferred-away Pokemon's candy isn't
+  // silently lost from the evolve/power-up math.
+  transferPokemon(p) {
+    this.removePokemon(p.idx);
+    const key = String(p.name || '').toLowerCase();
+    const inv = { ...(this.state.candyInventory || {}) };
+    const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
+    inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1 };
+    this.setState({ candyInventory: inv }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+    try { localStorage.setItem('scout_candy_v1', JSON.stringify(inv)); } catch (e) {}
+  }
+
+  setManualIvDraft(idx, field, val) {
+    const clean = val.replace(/[^0-9]/g, '').slice(0, 2);
+    const num = clean === '' ? '' : Math.min(15, Number(clean));
+    const draft = { ...(this.state.ivManualDraft || {}) };
+    draft[idx] = { ...(draft[idx] || {}), [field]: String(num) };
+    this.setState({ ivManualDraft: draft });
+  }
+
+  // Manual entry has no bar measurement to trust, only the CP/HP the player
+  // typed alongside it — so the level is solved the same way the rest of the
+  // app pins a spread: find the level whose CP/HP this exact IV triple
+  // reproduces, rather than trusting a guessed level.
+  saveManualIv(p) {
+    const draft = (this.state.ivManualDraft || {})[p.idx];
+    if (!draft) return;
+    const atk = Number(draft.atk), def = Number(draft.def), sta = Number(draft.sta);
+    if (![atk, def, sta].every(n => Number.isFinite(n) && n >= 0 && n <= 15)) return;
+    const m = this.mechanics, base = this.baseStatsOf(p);
+    if (!m || !base) return;
+    const ivs = [atk, def, sta];
+    const levels = Object.keys(m.CPM).map(Number).sort((a, b) => a - b);
+    let level = null, bestDiff = Infinity;
+    levels.forEach(lv => {
+      const cp = m.cpFor(base, ivs, lv);
+      if (cp == null) return;
+      const diff = Math.abs(cp - (p.cp || 0));
+      if (diff < bestDiff) { bestDiff = diff; level = lv; }
+      if (diff === 0 && p.hp != null) {
+        const hp = m.hpFor(base, sta, lv);
+        if (hp === p.hp) bestDiff = -1; // exact CP+HP match, stop preferring anything else
+      }
+    });
+    const ivAvg = (atk + def + sta) / 45 * 100;
+    const overrides = { ...this.state.ivOverrides };
+    overrides[p.idx] = {
+      ...overrides[p.idx],
+      atkIV: atk, defIV: def, staIV: sta, ivAvg,
+      lvlMin: level, lvlMax: level,
+      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true, ivManual: true,
+      great: { rankPct: m.rankPctForLeague(base, ivs, 'great'), evolvesTo: p.name },
+      ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: p.name },
+      little: { rankPct: m.rankPctForLeague(base, ivs, 'little'), evolvesTo: p.name }
+    };
+    const draftAll = { ...this.state.ivManualDraft };
+    delete draftAll[p.idx];
+    this.setState({ ivOverrides: overrides, ivManualDraft: draftAll }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+    try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
   }
 
   toggleChecklist(id) {
@@ -7329,7 +7407,16 @@ class Component extends DCLogic {
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'oklch(55% 0.011 50)',
         flags: flags,
-        stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : ''
+        stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : '',
+        showManualIv: !this.rowSpread(p).measured,
+        manualAtk: (this.state.ivManualDraft[p.idx] || {}).atk || '',
+        manualDef: (this.state.ivManualDraft[p.idx] || {}).def || '',
+        manualSta: (this.state.ivManualDraft[p.idx] || {}).sta || '',
+        onManualAtkChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'atk', e.target.value); },
+        onManualDefChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'def', e.target.value); },
+        onManualStaChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'sta', e.target.value); },
+        saveManualIv: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.saveManualIv(p); },
+        markTransferredCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.transferPokemon(p); }
       };
     });
 
