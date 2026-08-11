@@ -281,6 +281,12 @@
       <sc-if value="{{ dustPlanEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12.5px/1.5 sans-serif;color:oklch(62% 0.011 50);text-wrap:pretty">{{ dustPlanEmpty }}</div>
       </sc-if>
+      <sc-if value="{{ candyAiNote }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11.5px/1.45 sans-serif;color:oklch(76% 0.1 62);background:oklch(24% 0.04 62);border:1px solid oklch(36% 0.06 62);border-radius:7px;padding:8px 10px;margin-bottom:10px;text-wrap:pretty">{{ candyAiNote }}</div>
+      </sc-if>
+      <sc-if value="{{ candyAiBusy }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);margin-bottom:10px">Asking AI whether to evolve or power up on shared candy&hellip;</div>
+      </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px">
         <sc-for list="{{ dustPlanRows }}" as="row" hint-placeholder-count="4">
           <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:oklch(16% 0.018 62);border:1px solid oklch(28% 0.03 62);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:11px">
@@ -1652,6 +1658,9 @@ class Component extends DCLogic {
     fileFallback: null,
     fileFallbackCopied: false,
     evoTable: {},
+    candyAiDecisions: {},
+    candyAiBusy: false,
+    candyAiNote: '',
     evoFetchBusy: false,
     evoFetchStatus: '',
     evoFetchError: '',
@@ -1911,7 +1920,7 @@ class Component extends DCLogic {
 
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
-      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
+      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -6620,17 +6629,116 @@ class Component extends DCLogic {
       rows.push({ p, level, score, now, at40, ceiling });
     });
     rows.sort((a, b) => (b.score / Math.max(1, b.now.dust)) - (a.score / Math.max(1, a.now.dust)));
+    // Regular candy is a pool shared with evolving that same species — a
+    // power-up plan that ignores it can recommend spending candy an evolve
+    // is also waiting on. Which one should actually win isn't a fixed rule
+    // (a mediocre evolution can be worse than maxing a great IV spread) —
+    // it's judgment, so contested species get sent to the AI rather than
+    // decided by a hardcoded priority order.
+    const speciesKey = p => String(p.name || '').toLowerCase();
+    const evoByKey = {};
+    this.evolveQueue().forEach(r => { evoByKey[speciesKey(r.p)] = r; });
+    const puByKey = {};
+    rows.forEach(r => { if (!puByKey[speciesKey(r.p)]) puByKey[speciesKey(r.p)] = r; });
+    const contested = [];
+    Object.keys(evoByKey).forEach(k => {
+      const evoRow = evoByKey[k], puRow = puByKey[k];
+      if (!puRow || evoRow.evo.need == null) return;
+      const stock = this.candyStockFor(evoRow.p).candy;
+      const puCandy = puRow.now.candy || 0;
+      if (stock != null && stock < evoRow.evo.need + puCandy) {
+        contested.push({ key: k, evoRow, puRow, stock, puCandy });
+      }
+    });
+    this.ensureCandyAiDecisions(contested);
+    const decisions = this.state.candyAiDecisions || {};
+    const candyLeft = {};
+    Object.keys(evoByKey).forEach(k => {
+      const r = evoByKey[k];
+      const isContested = contested.some(c => c.key === k);
+      const decision = decisions[k] && decisions[k].choice;
+      // Uncontested, or the AI hasn't weighed in yet: default to reserving for
+      // the evolution, same as before. Contested + AI said "powerup": the
+      // evolve claim yields so the power-up plan can spend the candy.
+      if (isContested && decision === 'powerup') return;
+      candyLeft[k] = this.candyStockFor(r.p).candy;
+      if (candyLeft[k] != null && r.evo.need != null) candyLeft[k] = Math.max(0, candyLeft[k] - r.evo.need);
+    });
     // Greedily fill the budget, so the list is a plan rather than a ranking.
     let spend = 0, xl = 0;
     const picked = [];
     rows.forEach(r => {
       if (spend + r.now.dust > budget) return;
+      const k = speciesKey(r.p);
+      if (!(k in candyLeft)) candyLeft[k] = this.candyStockFor(r.p).candy;
+      const candyCost = r.now.candy || 0;
+      if (candyCost > 0 && candyLeft[k] != null && candyCost > candyLeft[k]) return;
       spend += r.now.dust;
       xl += r.now.xlCandy || 0;
-      picked.push({ ...r, affordable: true });
+      if (candyCost > 0 && candyLeft[k] != null) candyLeft[k] -= candyCost;
+      const c = contested.find(x => x.key === k);
+      picked.push({ ...r, affordable: true, aiNote: c && decisions[k] ? decisions[k].reason : null });
     });
     const rest = rows.filter(r => picked.indexOf(r) < 0 && !picked.some(x => x.p.idx === r.p.idx)).slice(0, 10);
     return { rows: picked, blocked: rest, spend, xl, reserve, budget, balance, ceiling };
+  }
+
+  // Builds a stable fingerprint of the contested set so a decision is only
+  // re-requested when the actual tradeoff changes (candy collected, ranks
+  // shifting, roster edits) — not on every render.
+  candyContestSignature(contested) {
+    return contested.map(c => c.key + ':' + c.stock + ':' + c.evoRow.evo.need + ':' + c.puCandy
+      + ':' + (Number.isFinite(c.evoRow.rank) ? Math.round(c.evoRow.rank) : '-')
+      + ':' + Math.round(c.puRow.score || 0)).sort().join('|');
+  }
+
+  ensureCandyAiDecisions(contested) {
+    if (!contested.length) return;
+    const sig = this.candyContestSignature(contested);
+    if (this._candyAiSig === sig || this.state.candyAiBusy) return;
+    this._candyAiSig = sig;
+    this.requestCandyAiDecisions(contested, sig);
+  }
+
+  async requestCandyAiDecisions(contested, sig) {
+    this.setState({ candyAiBusy: true });
+    try {
+      const lines = contested.map(c => {
+        const p = c.evoRow.p;
+        const evolvesInto = this.evolvesToName ? this.evolvesToName(p) : null;
+        return '- ' + (p.name || 'Unknown') + ': has ' + c.stock + ' candy. Evolving costs ' + c.evoRow.evo.need
+          + ' candy' + (evolvesInto ? (' (becomes ' + evolvesInto + ')') : '') + '. Its current best league rank is '
+          + (Number.isFinite(c.evoRow.rank) ? c.evoRow.rank : 'unranked') + '. Powering up this Pokémon to the level cap instead costs '
+          + c.puCandy + ' candy and ' + (c.puRow.now.dust || 0) + ' stardust, raising its raid attacker score from '
+          + Math.round(c.puRow.score || 0) + '. It does not have enough candy to do both.';
+      }).join('\n');
+      const prompt = 'You are helping a Pokémon GO player decide, for each Pokémon below, whether to spend its limited candy '
+        + 'on EVOLVING it or on POWERING UP the current form instead — the two options compete for the same candy. '
+        + 'Evolving is usually better when the evolved form is meaningfully stronger for leagues/raids or is needed for a Pokédex/task goal; '
+        + 'powering up the current form is usually better when the current IVs/rank are already excellent and evolving would reset useful moves, '
+        + 'or when the evolved form offers little advantage. Weigh each case on its own merits.\n\n' + lines
+        + '\n\nRespond with ONLY a JSON array, one object per Pokémon, no prose: '
+        + '[{"species":"name","choice":"evolve"|"powerup","reason":"one short sentence"}]';
+      const out = await this.completeWithRetry({ messages: [{ role: 'user', content: prompt }], max_tokens: 1024 });
+      const text = typeof out === 'string' ? out : (out && out.content) || '';
+      const match = String(text).match(/\[[\s\S]*\]/);
+      const arr = match ? JSON.parse(match[0]) : [];
+      const patch = { ...(this.state.candyAiDecisions || {}) };
+      const notes = [];
+      arr.forEach(item => {
+        const k = String(item.species || '').toLowerCase();
+        const row = contested.find(c => c.key === k || c.evoRow.p.name.toLowerCase() === k);
+        if (!row) return;
+        const choice = item.choice === 'powerup' ? 'powerup' : 'evolve';
+        patch[row.key] = { choice, reason: item.reason || '' };
+        notes.push(row.evoRow.p.name + ': ' + (choice === 'powerup' ? 'power up first' : 'evolve first') + (item.reason ? ' — ' + item.reason : ''));
+      });
+      this.setState({ candyAiDecisions: patch, candyAiBusy: false, candyAiNote: notes.join('  •  ') });
+    } catch (e) {
+      // AI unavailable: fall back to the safe default (reserve for evolution)
+      // already baked into dustPlan, just without a stated reason.
+      this.setState({ candyAiBusy: false, candyAiNote: '' });
+    }
   }
 
   // ---- Triage ----
@@ -7709,6 +7817,8 @@ class Component extends DCLogic {
     const evoQueueAll = this.evolveQueue();
     const triageAll = this.triageQueue();
     const dustPlan = this.dustPlan();
+    const candyAiBusy = this.state.candyAiBusy;
+    const candyAiNote = this.state.candyAiNote || '';
     const dexGapsAll = this.actionableDexGaps();
     const expand = this.state.todayExpand || {};
     const BLOCK = 10;
@@ -8327,6 +8437,8 @@ class Component extends DCLogic {
         ? Math.min(100, Math.round(dustPlan.spend / dustPlan.budget * 100)) + '%'
         : '0%',
       dustBudgetShort: 'lvl ' + dustPlan.ceiling + ' cap',
+      candyAiBusy: candyAiBusy,
+      candyAiNote: candyAiNote,
       dustPlanEmpty: dustPlan.rows.length ? null
         : (dustPlan.budget <= 0
           ? 'Balance is at or below your ' + fmt(dustPlan.reserve) + ' reserve. Adjust it in Settings.'
