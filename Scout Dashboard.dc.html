@@ -1361,6 +1361,8 @@
           <div style="font:700 10.5px ui-monospace,monospace;color:oklch(75% 0.13 62);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
           <div style="font:13.5px/1.45 sans-serif;color:oklch(93% 0.0055 50)">{{ detail.recommendation }}</div>
         </div>
+
+        <div onClick="{{ detail.markTransferred }}" class="om-tap" style="cursor:pointer;text-align:center;margin-top:14px;padding:12px;border-radius:12px;background:oklch(28% 0.0165 50);color:oklch(82% 0.0055 50);font:700 12px ui-monospace,monospace;letter-spacing:.03em">TRANSFERRED (+1 CANDY)</div>
       </div>
     </div>
   </div>
@@ -6381,7 +6383,12 @@ class Component extends DCLogic {
     const key = String(p.name || '').toLowerCase();
     const inv = { ...(this.state.candyInventory || {}) };
     const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
-    inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1 };
+    // XL candy from a transfer is a random chance (Niantic requires trainer
+    // level 31+ and never publishes the odds) — it can't be predicted, only
+    // confirmed from the in-game transfer toast, so ask rather than guess.
+    let gotXl = false;
+    try { gotXl = window.confirm('Did the transfer also award an XL Candy? (check the in-game toast)'); } catch (e) {}
+    inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1, xlCandy: gotXl ? (Number(cur.xlCandy) || 0) + 1 : cur.xlCandy };
     this.setState({ candyInventory: inv }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
@@ -7830,7 +7837,8 @@ class Component extends DCLogic {
           const f = this.ivFloorOf(p);
           return f == null ? null : 'IV floor ' + f + ' \u00b7 ' + (f <= 3 ? 'low floor helps under a CP cap' : f >= 13 ? 'strong across the board' : 'middling');
         })(),
-        recommendation: this.computeRecommendation(p)
+        recommendation: this.computeRecommendation(p),
+        markTransferred: () => { this.transferPokemon(p); this.closeDetail(); }
       };
     }
 
