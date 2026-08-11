@@ -4850,7 +4850,7 @@ class Component extends DCLogic {
   }
 
   exportCsv() {
-    const roster = this.state.roster || [];
+    const roster = this.effectiveRosterForMatch();
     if (!roster.length) {
       this.setState({ csvError: 'Nothing to export \u2014 no Pokemon are loaded on this device yet.' });
       clearTimeout(this._csvNoticeTimer);
@@ -7017,7 +7017,10 @@ class Component extends DCLogic {
     // alone meant a measured IV was written to ivOverrides[idx] and then never
     // read back — the card kept rendering the CP/HP-solved spread it was
     // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
-    const withOverrides = p => (overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const mech = this.mechanics;
+    const withDex = p => (p.dex == null && p.name && mech && mech.resolveDexByName)
+      ? { ...p, dex: mech.resolveDexByName(p.name) } : p;
+    const withOverrides = p => withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
     const baseRoster = (this.state.roster || []).map(withOverrides);
     return [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !removedSet.has(p.idx));
   }
@@ -7335,8 +7338,8 @@ class Component extends DCLogic {
 
   candyStockFor(p) {
     const inv = this.state.candyInventory || {};
-    const byDex = inv[p.dex] || inv[String(p.dex)];
-    if (byDex && byDex.candy != null) return { candy: byDex.candy, xlCandy: byDex.xlCandy != null ? byDex.xlCandy : null };
+    const byName = inv[String(p.name || '').toLowerCase()];
+    if (byName && byName.candy != null) return { candy: byName.candy, xlCandy: byName.xlCandy != null ? byName.xlCandy : null };
     // Per-Pokemon candy columns from a CSV import are a fallback when no
     // family-level inventory has been recorded yet.
     if (p.candy != null) return { candy: Number(p.candy), xlCandy: p.xlCandy != null ? Number(p.xlCandy) : null };
@@ -7945,7 +7948,10 @@ class Component extends DCLogic {
     // alone meant a measured IV was written to ivOverrides[idx] and then never
     // read back — the card kept rendering the CP/HP-solved spread it was
     // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
-    const withOverrides = p => (overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const mech = this.mechanics;
+    const withDex = p => (p.dex == null && p.name && mech && mech.resolveDexByName)
+      ? { ...p, dex: mech.resolveDexByName(p.name) } : p;
+    const withOverrides = p => withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
     const baseRoster = (this.state.roster || []).map(withOverrides);
     const roster = [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !removedSet.has(p.idx));
     const tab = this.state.tab;
