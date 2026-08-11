@@ -2,6 +2,12 @@ repo: stupid-picasso/scout-dashboard
 branch: main
 
 ## Last sync
+date: 2026-08-11T00:00:00Z
+
+### Updated in this project
+- **Roster TRANSFERRED button + manual IV entry**, already mirrored into `Scout Dashboard Standalone.dc.html` from an earlier pass. This pass: `transferPokemon` now asks (matching the in-game toast) whether the transfer also awarded an XL Candy, logging it to `candyInventory` when confirmed — XL odds are unpublished and level-31+-gated, so it can't be predicted, only recorded. Fixed a sign-in data-loss bug: `saveRoster` left `state.rosterCleared` stuck `true` after any import path except video import, so the first cloud snapshot after signing in was treated as authoritative and wiped a real local roster; it now clears the flag whenever the saved roster is non-empty. Rebuilt `index.html` from `Scout Dashboard Standalone.dc.html`; `sw.js` cache bumped to `scout-v48`.
+
+## Previous sync
 date: 2026-08-09T00:00:00Z
 
 ### Updated in this project

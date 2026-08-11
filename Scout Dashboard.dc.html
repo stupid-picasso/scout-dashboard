@@ -3244,6 +3244,12 @@ class Component extends DCLogic {
         localStorage.removeItem('scout_roster_cleared_v1');
         localStorage.removeItem('scout_cleared_at_v1');
         this._clearedAt = null;
+        // rosterCleared in STATE also has to drop here, not just the localStorage
+        // flags — otherwise it stays stuck true for the rest of the session on
+        // every import path except video import, and applyRemote() then treats
+        // the next empty/stale cloud snapshot (e.g. right after signing in) as
+        // authoritative and wipes this real, non-empty local roster.
+        if (this.state.rosterCleared) this.setState({ rosterCleared: false });
       }
       if (this.state.storageWarning) this.setState({ storageWarning: '' });
     } catch (e) {

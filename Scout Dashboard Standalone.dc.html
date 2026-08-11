@@ -1066,8 +1066,7 @@
   @keyframes shimmerSlide{0%{background-position:-460px 0}100%{background-position:460px 0}}
   @keyframes ambientDrift{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(3%,-2.5%,0) scale(1.06)}66%{transform:translate3d(-2.5%,2%,0) scale(1.03)}}
   @keyframes sheetRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-  /* Phone-width sheets come up from the bottom edge the way an iOS sheet does,
-     rather than fading in place. */
+  /* Phone-width sheets come up from the bottom edge the way an iOS sheet does. */
   @keyframes sheetUp{from{opacity:.4;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
   @keyframes scrimIn{from{opacity:0}to{opacity:1}}
   /* Entrance stagger: --i is set per card so lists cascade instead of popping
@@ -1076,7 +1075,6 @@
   /* Loading placeholders: a moving highlight band over a flat card. */
   .om-skel{background:linear-gradient(100deg, oklch(24% 0.0138 50) 28%, oklch(31% 0.0165 50) 46%, oklch(24% 0.0138 50) 64%);background-size:460px 100%;animation:shimmerSlide 1.25s linear infinite}
   :focus-visible{outline:2px solid oklch(80% 0.14 62);outline-offset:2px;border-radius:4px}
-
   /* ---- iPhone PWA touch layer ----
      Installed to the home screen this runs with no browser chrome, so the
      things that make it feel native are the ones the browser normally hides:
@@ -1112,13 +1110,6 @@
   }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
-<script>window.SCOUT_BUILD = '2026-08-10-chip-nav';
-window.__spriteUrl = function (file) {
-  var r = window.__resources || {};
-  var id = 'spr_' + String(file).replace(/^sprites\//, '').replace(/\.png$/, '').replace(/-/g, '_');
-  return r[id] || file;
-};</script>
-<script src="./src/scout-log.js"></script>
 <script type="module" src="./pokemon-data.js"></script>
 <script type="module" src="./pokemon-mechanics.js"></script>
 </helmet>
@@ -1314,6 +1305,12 @@ window.__spriteUrl = function (file) {
       </div>
       <sc-if value="{{ dustPlanEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12.5px/1.5 sans-serif;color:oklch(62% 0.011 50);text-wrap:pretty">{{ dustPlanEmpty }}</div>
+      </sc-if>
+      <sc-if value="{{ candyAiNote }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11.5px/1.45 sans-serif;color:oklch(76% 0.1 62);background:oklch(24% 0.04 62);border:1px solid oklch(36% 0.06 62);border-radius:7px;padding:8px 10px;margin-bottom:10px;text-wrap:pretty">{{ candyAiNote }}</div>
+      </sc-if>
+      <sc-if value="{{ candyAiBusy }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);margin-bottom:10px">Asking AI whether to evolve or power up on shared candy&hellip;</div>
       </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px">
         <sc-for list="{{ dustPlanRows }}" as="row" hint-placeholder-count="4">
@@ -1563,6 +1560,7 @@ window.__spriteUrl = function (file) {
             <sc-if value="{{ geminiStatusLine }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ geminiStatusLine }}</div>
             </sc-if>
+
             <div style="border-top:1px solid oklch(30% 0.0165 50);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:6px">
               <div style="font:10.5px ui-monospace,monospace;color:oklch(55% 0.011 50);letter-spacing:.04em">TODAY'S USAGE</div>
               <sc-for list="{{ aiUsageRows }}" as="u" hint-placeholder-count="3">
@@ -1652,13 +1650,7 @@ window.__spriteUrl = function (file) {
           </label>
         </div>
       </div>
-      <sc-if value="{{ apprShotSummary }}" hint-placeholder-val="{{ false }}">
-        <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.13 150)">{{ apprShotSummary }}</div>
-      </sc-if>
-      <sc-if value="{{ apprShotError }}" hint-placeholder-val="{{ false }}">
-        <div style="font:11.5px ui-monospace,monospace;color:oklch(70% 0.15 25)">{{ apprShotError }}</div>
-      </sc-if>
-      <div style="font:11.5px sans-serif;color:oklch(55% 0.011 50)">Detail screenshot updates Stardust, that species' candy/XL candy, and its type. Appraisal screenshot measures the three bars and pins the exact IV on a Pokemon you already imported. A screen recording does either in bulk.</div>
+      <div style="font:11.5px sans-serif;color:oklch(55% 0.011 50)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
       <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:oklch(20% 0.03 150);border:1px solid oklch(33% 0.05 150);border-radius:7px;padding:9px 12px">
           <div style="font:700 10.5px ui-monospace,monospace;color:oklch(72% 0.13 150);letter-spacing:.05em">IMPORT PROGRESS</div>
@@ -1917,7 +1909,9 @@ window.__spriteUrl = function (file) {
                   <sc-if value="{{ solvedIvResult.ambiguous }}" hint-placeholder-val="{{ false }}">
                     <div style="font:11px sans-serif;color:oklch(70% 0.011 50)">{{ solvedIvResult.ambiguous }}</div>
                   </sc-if>
-                  <div onClick="{{ applySolvedIv }}" style="cursor:pointer;margin-top:4px;text-align:center;padding:8px;border-radius:5px;background:oklch(50% 0.13 150);color:white;font:700 11.5px ui-monospace,monospace">ADD/UPDATE IN ROSTER</div>
+                  <sc-if value="{{ solvedIvResult.canApply }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ applySolvedIv }}" style="cursor:pointer;margin-top:4px;text-align:center;padding:8px;border-radius:5px;background:oklch(50% 0.13 150);color:white;font:700 11.5px ui-monospace,monospace">ADD/UPDATE IN ROSTER</div>
+                  </sc-if>
                 </div>
               </sc-if>
             </sc-if>
@@ -2216,6 +2210,15 @@ window.__spriteUrl = function (file) {
                   <div style="font:700 9.5px ui-monospace,monospace;letter-spacing:.06em;padding:2.5px 7px;border-radius:4px;color:{{ t.fg }};background:{{ t.bg }}">{{ t.label }}</div>
                 </sc-for>
               </div>
+              <div onClick="{{ stopProp }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+                <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
+                  <input type="text" inputmode="numeric" placeholder="Atk" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:36px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <input type="text" inputmode="numeric" placeholder="Def" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:36px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:36px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:oklch(45% 0.1 62);color:white;font:700 10.5px ui-monospace,monospace">SAVE</div>
+                </sc-if>
+                <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:oklch(28% 0.0165 50);color:oklch(82% 0.0055 50);font:700 10.5px ui-monospace,monospace">TRANSFERRED (+1 CANDY)</div>
+              </div>
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font:800 23px ui-monospace,monospace;line-height:1;letter-spacing:-.02em;color:{{ p.typeAccent }}">{{ p.cp }}</div>
@@ -2383,6 +2386,8 @@ window.__spriteUrl = function (file) {
           <div style="font:700 10.5px ui-monospace,monospace;color:oklch(75% 0.13 62);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
           <div style="font:13.5px/1.45 sans-serif;color:oklch(93% 0.0055 50)">{{ detail.recommendation }}</div>
         </div>
+
+        <div onClick="{{ detail.markTransferred }}" class="om-tap" style="cursor:pointer;text-align:center;margin-top:14px;padding:12px;border-radius:12px;background:oklch(28% 0.0165 50);color:oklch(82% 0.0055 50);font:700 12px ui-monospace,monospace;letter-spacing:.03em">TRANSFERRED (+1 CANDY)</div>
       </div>
     </div>
   </div>
@@ -2453,7 +2458,6 @@ window.__spriteUrl = function (file) {
           <div style="font:11.5px ui-monospace,monospace;color:oklch(78% 0.14 40)">{{ moveData.error }}</div>
         </div>
       </div>
-    </div>
     </div>
     <sc-if value="{{ attackerEmpty }}" hint-placeholder-val="{{ false }}">
       <div style="background:oklch(21% 0.0121 50);border:1px solid oklch(33% 0.0165 50);border-radius:8px;padding:24px;font:13px sans-serif;color:oklch(70% 0.011 50)">No types logged yet. Import detail screens &mdash; they carry the type line &mdash; and this fills in.</div>
@@ -2690,6 +2694,9 @@ class Component extends DCLogic {
     fileFallback: null,
     fileFallbackCopied: false,
     evoTable: {},
+    candyAiDecisions: {},
+    candyAiBusy: false,
+    candyAiNote: '',
     evoFetchBusy: false,
     evoFetchStatus: '',
     evoFetchError: '',
@@ -2708,6 +2715,7 @@ class Component extends DCLogic {
     clearArmed: false,
     rosterCleared: false,
     ivOverrides: {},
+    ivManualDraft: {},
     apprShotBusy: false,
     apprShotError: '',
     apprShotSummary: '',
@@ -2793,7 +2801,11 @@ class Component extends DCLogic {
       const savedRoster = this.loadRoster();
       const wasCleared = localStorage.getItem('scout_roster_cleared_v1') === '1';
       if (wasCleared) this.setState({ rosterCleared: true });
-      this.setState({ roster: this.sanitizeRoster(savedRoster || (wasCleared ? [] : data) || []), loaded: true });
+      // `savedRoster` is null ONLY when nothing was ever saved. An empty array
+      // must win over the bundled demo export, so this tests for null rather
+      // than falsiness — `[] || data` would hand back the demo Pokemon.
+      const seed = savedRoster !== null ? savedRoster : (wasCleared ? [] : (data || []));
+      this.setState({ roster: this.sanitizeRoster(seed), loaded: true });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
@@ -2944,7 +2956,8 @@ class Component extends DCLogic {
   }
 
   SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'megaEnergyInventory', 'geminiKey', 'geminiKeys'];
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
+      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -3156,6 +3169,8 @@ class Component extends DCLogic {
       addedPokemon: keepCleared ? this.state.addedPokemon : (remote.addedPokemon || []),
       candyInventory: keepCleared ? this.state.candyInventory : (remote.candyInventory || {}),
       typeTable: keepCleared ? this.state.typeTable : (remote.typeTable || {}),
+      // Move data is game reference data, not roster data — a CLEAR ROSTER
+      // should not throw away a lookup that cost API calls.
       moveDB: remote.moveDB && Object.keys(remote.moveDB).length ? remote.moveDB : (this.state.moveDB || {}),
       stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
       history: remote.history || [],
@@ -3505,6 +3520,8 @@ class Component extends DCLogic {
     return { rankPct, rankNum: null, statProd, evolvesTo: (p.great && p.great.evolvesTo) || p.name };
   }
 
+  // Base stats for a specific Pokemon, honouring its regional form. Same lookup
+  // masterRankFor does; pulled out so every new feature agrees with it.
   // ---- Move database -------------------------------------------------------
   // The app reads move NAMES off the detail screen but has no damage numbers,
   // which is why the attacker board could only rank on raw stats. This fills
@@ -3580,7 +3597,7 @@ class Component extends DCLogic {
       }
     }
     this.setState({ moveDB: db, moveFetchBusy: false,
-      moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushToCloud());
+      moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
     try { localStorage.setItem('scout_moves_v1', JSON.stringify(db)); } catch (e) {}
   }
 
@@ -3599,7 +3616,7 @@ class Component extends DCLogic {
   }
 
   clearMoveData() {
-    this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushToCloud());
+    this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushCloud());
     try { localStorage.removeItem('scout_moves_v1'); } catch (e) {}
   }
 
@@ -3705,7 +3722,7 @@ class Component extends DCLogic {
       }
     }
     this.setState({ typeTable: table, typeFetchBusy: false,
-      typeFetchStatus: got + ' species typed' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushToCloud());
+      typeFetchStatus: got + ' species typed' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
     try { localStorage.setItem('scout_types_v1', JSON.stringify(table)); } catch (e) {}
   }
 
@@ -3732,11 +3749,15 @@ class Component extends DCLogic {
     return [p.atkIV, p.defIV, p.staIV];
   }
 
+  // The worst of the three IVs. In PvP a low Attack is often a FEATURE (it buys
+  // levels under the CP cap), so this is a genuinely different sort from IV%.
   ivFloorOf(p) {
     const ivs = this.ivsOf(p);
     return ivs ? Math.min(ivs[0], ivs[1], ivs[2]) : null;
   }
 
+  // A spread the app measured off appraisal bars is a fact. Anything else is
+  // the solver's best guess from CP and HP, and this is what separates them.
   needsAppraisal(p) {
     if (!p) return false;
     if (p.ivMeasured) return false;
@@ -3759,6 +3780,10 @@ class Component extends DCLogic {
   isShadow(p) { return p && (p.shadowPurified === '1' || p.shadowPurified === 1); }
   isPurified(p) { return p && (p.shadowPurified === '2' || p.shadowPurified === 2); }
 
+  // What it actually costs to take this Pokemon somewhere useful, and whether
+  // the roster's own candy/stardust counts can pay for it today. Levels 41+
+  // need XL Candy, which is the real wall most trainers hit \u2014 it gets its own
+  // line rather than being folded into the candy total.
   powerUpPlan(p) {
     const m = this.mechanics;
     if (!m || !m.powerUpCostBetween) return null;
@@ -3792,9 +3817,14 @@ class Component extends DCLogic {
         statusColor: short.length ? 'oklch(78% 0.14 40)' : (haveDust == null && haveCandy == null ? 'oklch(60% 0.011 50)' : 'oklch(78% 0.14 150)')
       });
     };
-    const capLevel = key => m.maxLevelUnderCap(base, ivs, m.LEAGUE_CAPS[key]);
-    push('GREAT LEAGUE CAP', capLevel('great'), 'highest level still under 1500 CP');
-    push('ULTRA LEAGUE CAP', capLevel('ultra'), 'highest level still under 2500 CP');
+    const capLevel = key => {
+      const cap = m.LEAGUE_CAPS[key];
+      const lv = m.maxLevelUnderCap(base, ivs, cap);
+      return lv;
+    };
+    const greatLv = capLevel('great'), ultraLv = capLevel('ultra');
+    push('GREAT LEAGUE CAP', greatLv, 'highest level still under 1500 CP');
+    push('ULTRA LEAGUE CAP', ultraLv, 'highest level still under 2500 CP');
     push('LEVEL 40', 40, 'last level before XL Candy is required');
     push('LEVEL 50', 50, 'maximum');
 
@@ -3811,6 +3841,9 @@ class Component extends DCLogic {
     };
   }
 
+  // Best attackers by type. No move data exists in this app, so this ranks on
+  // raw stats only \u2014 the copy in the UI says so rather than implying a DPS
+  // ranking it cannot compute.
   // Best DPS this Pokemon can reach at level 50 across its known charge moves.
   // Returns null when the move database can't cover it, which is the signal to
   // fall back to the stat-only score rather than invent a number.
@@ -3881,12 +3914,19 @@ class Component extends DCLogic {
     });
   }
 
+  // Self-contained spread label for the duplicates list. The maintained build
+  // has spreadText/rangeText and the Standalone build does not, and reaching
+  // for one that only exists in one file is what broke this list on the phone.
   dupSpread(p) {
     const ivs = this.ivsOf(p);
     if (!ivs) return 'IV unknown';
     return ivs.join('/') + (p.ivMeasured ? ' \u2713' : '');
   }
 
+  // Duplicates that lose on every axis at once: same species and form, every IV
+  // equal or lower, level no higher, and none of the flags that make a Pokemon
+  // worth keeping regardless. Anything that wins on even one axis is left out \u2014
+  // this list is meant to be safe to act on without thinking.
   dominatedDuplicates(roster) {
     const groups = {};
     roster.forEach(p => {
@@ -4229,6 +4269,12 @@ class Component extends DCLogic {
         localStorage.removeItem('scout_roster_cleared_v1');
         localStorage.removeItem('scout_cleared_at_v1');
         this._clearedAt = null;
+        // rosterCleared in STATE also has to drop here, not just the localStorage
+        // flags — otherwise it stays stuck true for the rest of the session on
+        // every import path except video import, and applyRemote() then treats
+        // the next empty/stale cloud snapshot (e.g. right after signing in) as
+        // authoritative and wipes this real, non-empty local roster.
+        if (this.state.rosterCleared) this.setState({ rosterCleared: false });
       }
       if (this.state.storageWarning) this.setState({ storageWarning: '' });
     } catch (e) {
@@ -4284,7 +4330,12 @@ class Component extends DCLogic {
       const saved = localStorage.getItem('scout_roster_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
+        // An EMPTY saved roster is a real state ("I deleted everything"), not
+        // "nothing saved". Returning null for it made it indistinguishable from
+        // a fresh install, so componentDidMount re-seeded the bundled demo
+        // export from pokemon-data.js — five Pokemon with hardcoded IVs
+        // reappearing on their own. Only a missing/corrupt key is null now.
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
     return null;
@@ -4385,7 +4436,8 @@ class Component extends DCLogic {
 
       // Vision only. On-device OCR used to sit behind this as a fallback and was
       // removed: it could not read the stylized CP badge or the type chips, and
-      // its numeric misreads landed stardust digits in CP.
+      // its numeric misreads landed stardust digits in CP. A wrong record is
+      // worse than no record, so a failed read now surfaces as an error.
       const rec0 = await this.readScreenshotWithVision(file);
       let rec = rec0;
       const text = '[read by ' + (this._lastEngine || 'AI vision') + ']';
@@ -4524,7 +4576,28 @@ class Component extends DCLogic {
       this.setState({ solvedIvResult: { error: 'No IV combo matches that CP/HP exactly — double-check the numbers.' } });
       return;
     }
-    const c = this.pickCandidate(candidates);
+    // Same rule as the import and appraisal paths: an exact spread only when
+    // exactly one fits. Otherwise report the range and how many still fit, and
+    // leave APPLY disabled — the appraisal is what narrows it.
+    if (candidates.length > 1) {
+      const rangeOf = k => {
+        let lo = 15, hi = 0;
+        for (const cc of candidates) { if (cc[k] < lo) lo = cc[k]; if (cc[k] > hi) hi = cc[k]; }
+        return [lo, hi];
+      };
+      const lv = candidates.map(cc => cc.level);
+      this.setState({
+        solvedIvResult: {
+          ambiguousRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+          lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
+          candidateCount: candidates.length, hintMismatch,
+          dustUsed: !!levelFilter && !dustIgnored, dustIgnored,
+          form: usedForm && usedForm !== 'normal' ? usedForm : null
+        }
+      });
+      return;
+    }
+    const c = candidates[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
     const great = this.mechanics.rankPctForLeague(base, ivs, 'great');
@@ -4834,7 +4907,7 @@ class Component extends DCLogic {
     const next = { restorePending: null, backupError: '' };
     ['ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance',
       'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
-      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory'].forEach(k => { if (d[k] !== undefined) next[k] = d[k]; });
+      'megaEnergyInventory'].forEach(k => { if (d[k] !== undefined) next[k] = d[k]; });
     next.roster = this.sanitizeRoster(d.roster || []);
     next.csvNotice = 'Restored ' + p.count + ' Pokemon from ' + p.filename + '.';
     // A CLEAR ROSTER marker would make applyRemote discard the restored roster
@@ -4850,6 +4923,10 @@ class Component extends DCLogic {
   }
 
   exportCsv() {
+    // Must be the merged/synced list (state.roster + addedPokemon, minus
+    // removed) — the same one the header count and cards render from.
+    // Reading state.roster alone exported empty whenever the roster came in
+    // via video import (lives in addedPokemon) even though 314 were "loaded".
     const roster = this.effectiveRosterForMatch();
     if (!roster.length) {
       this.setState({ csvError: 'Nothing to export \u2014 no Pokemon are loaded on this device yet.' });
@@ -4925,6 +5002,8 @@ class Component extends DCLogic {
     if (!keys.length) {
       const total = (this.state.geminiKeys || []).length;
       if (!total) throw new Error('No Gemini key set.');
+      // "Rate-limited" reads the same whether the wait is 40 seconds or until
+      // tomorrow. Say which, so a per-minute stall isn't mistaken for a dead day.
       const cd = this._keyCooldown || {};
       const waits = (this.state.geminiKeys || []).map(k => (cd[k] || 0) - Date.now()).filter(ms => ms > 0);
       const soonest = waits.length ? Math.min.apply(null, waits) : 0;
@@ -5215,7 +5294,10 @@ class Component extends DCLogic {
           try { return await this.callGemini(body); }
           catch (gErr) {
             const gm = (gErr && gErr.message) || '';
-            // A rejected key is terminal — nothing sits behind Gemini now.
+            // A rejected key is terminal — there is nothing behind Gemini now.
+            // Everything else (rate limit, truncation, safety block, 5xx,
+            // network) falls through so a transient failure does not hard-fail
+            // a whole recording import.
             const terminal = /key was rejected|API_KEY_INVALID|refused the key/i.test(gm);
             this._lastAiError = gm;
             if (terminal) throw gErr;
@@ -6247,68 +6329,10 @@ class Component extends DCLogic {
     }
   }
 
-  // Pin an exact spread measured from the appraisal bars. No solving — but the
-  // spread is still checked against the record's CP and HP, because a spread
-  // that cannot reproduce them means the frame was matched to the wrong
-  // Pokemon (or a bar was occluded), and that is worth surfacing.
-  applyMeasuredIv(rec, item, overrides) {
-    const mechanics = this.mechanics;
-    const bases = this.baseStatCandidates({ name: rec.name, dex: rec.dex, form: rec.form });
-    // The measurer's first choice, then its ranked alternates (emitted only when
-    // the whole-bar and per-segment reads disagreed, or the fill sat near a
-    // boundary). CP/HP is the arbiter: the alternate that reproduces both IS the
-    // answer, and if none does, nothing is written.
-    const spreads = this.measuredSpreadOrder(item);
-    let usedBase = null, level = null, ivs = null, arbitrated = false;
-    outer:
-    for (let i = 0; i < spreads.length; i++) {
-      const s = spreads[i];
-      for (const cand of bases) {
-        const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
-        const exact = (hit || []).find(c => c.atkIV === s[0] && c.defIV === s[1] && c.staIV === s[2]);
-        if (exact) { usedBase = cand; level = exact.level; ivs = s; arbitrated = i > 0; break outer; }
-      }
-    }
-    if (!usedBase) {
-      const first = spreads[0] || [item.atkIV, item.defIV, item.staIV];
-      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-        iv: first.join('/') + ' \u2014 does not fit this CP/HP', ivCount: 0 } };
-    }
-    const base = usedBase.base;
-    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-    overrides[rec.idx] = {
-      ...overrides[rec.idx],
-      atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
-      lvlMin: level, lvlMax: level,
-      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
-      ivArbitrated: arbitrated || undefined,
-      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
-      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
-      little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
-    };
-    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-      iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
-  }
-
-  // Expand the measurer's per-stat alternates into whole spreads to try, best
-  // first. Capped so a triple-ambiguous read cannot explode the search.
-  measuredSpreadOrder(item) {
-    const first = [item.atkIV, item.defIV, item.staIV];
-    const c = item.ivCandidateSets;
-    if (!Array.isArray(c) || c.length !== 3) return [first];
-    const lists = c.map((l, i) => (Array.isArray(l) && l.length ? l : [first[i]]));
-    const out = [];
-    for (const a of lists[0]) for (const d of lists[1]) for (const s of lists[2]) {
-      out.push([a, d, s]);
-      if (out.length >= 27) break;
-    }
-    // Nearest-first: the measurement's own pick leads, then spreads that differ
-    // from it in the fewest stats.
-    const dist = s => (s[0] !== first[0]) + (s[1] !== first[1]) + (s[2] !== first[2]);
-    out.sort((x, y) => dist(x) - dist(y));
-    return out;
-  }
-
+  // Normalizes the appraisal-JSON the server workflow produces into the shape
+  // mergeAppraisalImport wants: {name, dex, cp, hp, stars, perfect, maxed[]}.
+  // Tolerant of field-name variants so the Python side can emit either an
+  // explicit maxed[] array or per-bar booleans.
   // Measure the three appraisal bars from a still screenshot, in the browser.
   // Same algorithm as the server-side reader in pogo_extract.py: find the fill
   // by WARMTH (r-b) rather than darkness (the fill is barely darker than its
@@ -6653,6 +6677,7 @@ class Component extends DCLogic {
       let maxed = Array.isArray(it.maxed)
         ? it.maxed.map(s => String(s).toLowerCase()).filter(s => ['atk', 'def', 'sta'].includes(s))
         : [];
+      // Per-bar fallback (booleans or full/15 markers) if no maxed[] was given.
       if (!maxed.length) {
         if (barFull(it.atkFull) || barFull(it.appraisal_attack_bar) || barFull(it.attack_bar)) maxed.push('atk');
         if (barFull(it.defFull) || barFull(it.appraisal_defense_bar) || barFull(it.defense_bar)) maxed.push('def');
@@ -6661,9 +6686,7 @@ class Component extends DCLogic {
       const rawStars = it.stars != null ? it.stars : (it.appraisal_stars != null ? it.appraisal_stars : null);
       // Exact IVs measured off the bar fill server-side (ivSource 'bar-measure').
       // These are measurements, not model output, so they are carried through
-      // and pinned directly instead of being re-derived from CP/HP. Dropping
-      // them here is what made a measured 14/15/15 come back out of the solver
-      // as 12/12/13: the numbers arrived correct and were then thrown away.
+      // and pinned directly instead of being re-derived from CP/HP.
       const iv = [num(it.atkIV), num(it.defIV), num(it.staIV)];
       const measured = iv.every(v => Number.isInteger(v) && v >= 0 && v <= 15);
       return {
@@ -6678,6 +6701,9 @@ class Component extends DCLogic {
     }).filter(Boolean);
   }
 
+  // Step 2 of the server flow: pulls the appraisal readings the "Extract IV
+  // Ratings" workflow committed, then runs them through the same matcher/solver
+  // the (now removed) in-app appraisal reader used. Existing records only.
   importIvFromServer() {
     const url = 'https://raw.githubusercontent.com/stupid-picasso/scout-dashboard/main/data/appraisal_import.json?t=' + Date.now();
     this.setState({ ivServerBusy: true, ivServerError: '', ivServerSummary: '' });
@@ -6877,13 +6903,28 @@ class Component extends DCLogic {
               if (fits.length > 1) item._formChoices = fits.map(c => c.form || 'default');
             }
             if (cands && cands.length) {
-              const c = this.pickCandidate(cands);
-              item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
-              item.level = c.level;
-              solvedFrom = cands.length;
-              // Written back onto the item so the import receipt can mark which
-              // spreads were solved rather than read.
               item._solvedCount = cands.length;
+              // A CP/HP pair almost always fits many spreads. Committing the
+              // median one wrote a GUESS into the roster that was indistinguishable
+              // from a read value — which is why the pinned IVs disagreed with the
+              // appraisal bars. Only a UNIQUE solve is pinned now; anything else
+              // keeps the candidate range and stays visibly unsolved until the
+              // appraisal collapses it in mergeAppraisalImport.
+              const rng = k => {
+                let lo = 15, hi = 0;
+                for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
+                return [lo, hi];
+              };
+              if (cands.length === 1) {
+                const c = cands[0];
+                item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
+                item.level = c.level;
+                solvedFrom = 1;
+              } else {
+                item._ivRange = { atk: rng('atkIV'), def: rng('defIV'), sta: rng('staIV') };
+                const lv = cands.map(c => c.level);
+                item._lvlRange = [Math.min.apply(null, lv), Math.max.apply(null, lv)];
+              }
             }
           } catch (e) { /* unsolvable — leave IVs null */ }
         }
@@ -6907,7 +6948,24 @@ class Component extends DCLogic {
           };
         }
       }
+      // Ambiguous solve: store the range, and actively null out any previously
+      // guessed spread + PvP rank rather than leaving a stale fabricated value.
+      // Only fill a range into records that have NO spread yet. If one is
+      // already recorded (an older trusted export or an exact solve), an
+      // ambiguous re-solve is weaker evidence and is left to the appraisal path,
+      // which checks membership properly before flagging a contradiction.
+      if (item._ivRange && !(match && this.knownSpread(match, overrides))) {
+        ivPatch = {
+          atkIV: null, defIV: null, staIV: null, ivAvg: null,
+          ivRange: item._ivRange, ivCandidates: item._solvedCount, ivSolved: false,
+          lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1],
+          great: null, ultra: null, little: null
+        };
+      }
       if (match) {
+        // Re-imports used to overwrite silently, so a mis-read CP looked
+        // identical to a real power-up. Record what each update actually
+        // changed so the receipt can show it rather than just a count.
         const before = { ...match, ...(overrides[match.idx] || {}) };
         const changes = [];
         if (item.cp != null && before.cp != null && item.cp !== before.cp) changes.push('CP ' + before.cp + ' \u2192 ' + item.cp);
@@ -6995,6 +7053,11 @@ class Component extends DCLogic {
     this.setState({ importScreenMode: mode });
   }
 
+  // The prompt for an APPRAISAL recording. Unlike the detail prompt (which
+  // forbids turning bars/stars into numbers), this deliberately reads the star
+  // tier and which bars are FULL — those are exactly what the solver needs to
+  // collapse a CP/HP candidate list to one spread. It never invents 0-15 IV
+  // numbers; it reports the tier and the maxed bars, and the solver does the math.
   appraisalPrompt() {
     return 'These are frames from a Pokemon GO APPRAISAL screen recording. Each Pokemon is shown on its appraisal view: a team-leader badge with a star rating, and three labelled stat bars (Attack, Defense, HP). '
       + 'Identify every distinct Pokemon. Merge repeat frames of the same Pokemon into one entry using the most complete data. '
@@ -7009,6 +7072,8 @@ class Component extends DCLogic {
       + '- Report every Pokemon whose name you can read, even if other fields are null.';
   }
 
+  // Merged view used for matching: base roster with IV overrides applied, plus
+  // added Pokemon, minus removed — i.e. the same list the roster renders.
   effectiveRosterForMatch() {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
@@ -7017,18 +7082,27 @@ class Component extends DCLogic {
     // alone meant a measured IV was written to ivOverrides[idx] and then never
     // read back — the card kept rendering the CP/HP-solved spread it was
     // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
+    // Some records never got a dex number at import time (a name the mechanics
+    // table didn't resolve then, since fixed) and show a blank "#" on their
+    // card. Backfilling here — not in storage — means every consumer (evolve
+    // queue, stardust plan, appraisal matching) sees a usable dex without a
+    // migration step.
     const mech = this.mechanics;
     const withDex = p => (p.dex == null && p.name && mech && mech.resolveDexByName)
       ? { ...p, dex: mech.resolveDexByName(p.name) } : p;
     const withOverrides = p => withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
     const baseRoster = (this.state.roster || []).map(withOverrides);
-    return [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !removedSet.has(p.idx));
+    return [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !this.isRemoved(p, removedSet));
   }
 
+  // Build a solveIVs hint from an appraisal item. When all three bars are maxed
+  // (or the model flagged perfect), the total is pinned to 45 — the star band
+  // must be the perfect band or it would contradict the maxed filter.
   // Star tier + full-bar flags read by the model are a GUESS, not a measurement.
-  // A wrong guess plus CP/HP can still collapse to exactly one spread \u2014 a
-  // confident, pinned, WRONG IV. So an unmeasured item's hint is discarded and
-  // the solve runs on CP/HP alone.
+  // A wrong guess plus CP/HP can still collapse to exactly one spread, which is
+  // the worst case: a confident, pinned, wrong IV (Absol pinned 14/10/13 against
+  // a true 14/15/15 this way). So an unmeasured item's hint is discarded and the
+  // solve runs on CP/HP alone — unique there is real, anything else stays a range.
   appraisalHintFromItem(item) {
     if (!item) return null;
     if (item.ivSource === 'model-guess') return { stars: null, maxed: null, maxedKnown: false };
@@ -7038,11 +7112,15 @@ class Component extends DCLogic {
     let stars = Number.isInteger(item.stars) ? item.stars : null;
     if (item.perfect || allMaxed) stars = 4;
     if (stars != null) hint.stars = stars;
+    // The appraisal screen always shows all three bars, so "which are full" is
+    // known information — an empty maxed list is a real constraint (all < 15),
+    // not "unknown".
     hint.maxed = maxed;
     hint.maxedKnown = true;
     return hint;
   }
 
+  // Short label to tell two same-name/CP/HP records apart in the collision picker.
   recordDistinguisher(m) {
     const bits = [];
     if (m.lvlMin != null) bits.push('Lv ' + m.lvlMin);
@@ -7054,6 +7132,70 @@ class Component extends DCLogic {
     return bits.length ? bits.join(' \u00b7 ') : 'idx ' + m.idx;
   }
 
+  // Pin an exact spread measured from the appraisal bars. No solving — but the
+  // spread is still checked against the record's CP and HP, because a spread
+  // that cannot reproduce them means the frame was matched to the wrong
+  // Pokemon (or a bar was occluded), and that is worth surfacing.
+  applyMeasuredIv(rec, item, overrides) {
+    const mechanics = this.mechanics;
+    const bases = this.baseStatCandidates({ name: rec.name, dex: rec.dex, form: rec.form });
+    // The measurer's first choice, then its ranked alternates (emitted only when
+    // the whole-bar and per-segment reads disagreed, or the fill sat near a
+    // boundary). CP/HP is the arbiter: the alternate that reproduces both IS the
+    // answer, and if none does, nothing is written.
+    const spreads = this.measuredSpreadOrder(item);
+    let usedBase = null, level = null, ivs = null, arbitrated = false;
+    outer:
+    for (let i = 0; i < spreads.length; i++) {
+      const s = spreads[i];
+      for (const cand of bases) {
+        const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
+        const exact = (hit || []).find(c => c.atkIV === s[0] && c.defIV === s[1] && c.staIV === s[2]);
+        if (exact) { usedBase = cand; level = exact.level; ivs = s; arbitrated = i > 0; break outer; }
+      }
+    }
+    if (!usedBase) {
+      const first = spreads[0] || [item.atkIV, item.defIV, item.staIV];
+      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+        iv: first.join('/') + ' \u2014 does not fit this CP/HP', ivCount: 0 } };
+    }
+    const base = usedBase.base;
+    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+    overrides[rec.idx] = {
+      ...overrides[rec.idx],
+      atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
+      lvlMin: level, lvlMax: level,
+      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
+      ivArbitrated: arbitrated || undefined,
+      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
+      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
+      little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
+    };
+    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+      iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
+  }
+
+  // Expand the measurer's per-stat alternates into whole spreads to try, best
+  // first. Capped so a triple-ambiguous read cannot explode the search.
+  measuredSpreadOrder(item) {
+    const first = [item.atkIV, item.defIV, item.staIV];
+    const c = item.ivCandidateSets;
+    if (!Array.isArray(c) || c.length !== 3) return [first];
+    const lists = c.map((l, i) => (Array.isArray(l) && l.length ? l : [first[i]]));
+    const out = [];
+    for (const a of lists[0]) for (const d of lists[1]) for (const s of lists[2]) {
+      out.push([a, d, s]);
+      if (out.length >= 27) break;
+    }
+    // Nearest-first: the measurement's own pick leads, then spreads that differ
+    // from it in the fewest stats.
+    const dist = s => (s[0] !== first[0]) + (s[1] !== first[1]) + (s[2] !== first[2]);
+    out.sort((x, y) => dist(x) - dist(y));
+    return out;
+  }
+
+  // Solve one appraisal item against a specific record and write the narrowed
+  // spread + PvP ranks into overrides. Returns {review, contradiction}.
   solveAndApplyAppraisal(rec, item, hint, overrides) {
     const mechanics = this.mechanics;
     const bases = this.baseStatCandidates({ name: rec.name, dex: rec.dex, form: rec.form });
@@ -7062,6 +7204,8 @@ class Component extends DCLogic {
       const hit = mechanics.solveIVs(cand.base, item.cp, item.hp, hint);
       if (hit && hit.length) { cands = hit; usedBase = cand; break; }
     }
+    // Empty with a hint but non-empty without = the appraisal contradicts the
+    // CP/HP (a bar or star was misread). Report it rather than applying garbage.
     if (!cands || !cands.length) {
       let raw = null;
       for (const cand of bases) {
@@ -7070,23 +7214,65 @@ class Component extends DCLogic {
       }
       return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: null, ivCount: raw ? raw.length : 0 } };
     }
-    const c = this.pickCandidate(cands);
     const base = usedBase.base;
+    // The appraisal narrows the candidates; it does not always collapse them to
+    // one. Pinning a guess HERE is the worst version of the bug — this is the
+    // code path whose whole job is to make the roster agree with the bars.
+    if (cands.length > 1) {
+      const rangeOf = k => {
+        let lo = 15, hi = 0;
+        for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
+        return [lo, hi];
+      };
+      const lv = cands.map(c => c.level);
+      // A record can already carry a spread from a trusted earlier source (a
+      // Poke Genie/CSV export, a previous exact solve). An ambiguous solve is
+      // WEAKER evidence, not newer evidence — if the known spread is still one
+      // of the candidates, the appraisal has merely failed to narrow further
+      // and must not overwrite it with a range.
+      const known = this.knownSpread(rec, overrides);
+      if (known) {
+        if (cands.some(c => c.atkIV === known[0] && c.defIV === known[1] && c.staIV === known[2])) {
+          overrides[rec.idx] = { ...overrides[rec.idx], apprStars: hint.stars, apprMaxed: hint.maxed, ivConfirmed: true };
+          return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+            iv: known.join('/') + ' (kept \u00b7 consistent)', ivCount: cands.length } };
+        }
+        // Genuinely contradicted: the stored spread is not among the spreads
+        // that fit this CP/HP + appraisal. Report it, never silently replace.
+        return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+          iv: known.join('/') + ' \u2260 ' + this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+      }
+      overrides[rec.idx] = {
+        ...overrides[rec.idx],
+        atkIV: null, defIV: null, staIV: null, ivAvg: null,
+        ivRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+        ivCandidates: cands.length, ivSolved: false,
+        lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
+        apprStars: hint.stars, apprMaxed: hint.maxed,
+        great: null, ultra: null, little: null
+      };
+      return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
+        iv: this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+    }
+    const c = cands[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
       atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV, ivAvg,
       lvlMin: c.level, lvlMax: c.level,
-      ivSolved: true, ivCandidates: cands.length,
+      ivRange: null, ivSolved: true, ivCandidates: 1,
       apprStars: hint.stars, apprMaxed: hint.maxed,
       great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
       ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
       little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
     };
-    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: cands.length } };
+    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: 1 } };
   }
 
+  // Match each appraisal reading to an existing record by name(+dex) + exact
+  // CP + exact HP. One match → solve & apply. Several → flag for a manual pick
+  // (option B). None → report so the user knows to import the detail screen first.
   mergeAppraisalImport(rawItems) {
     const items = (rawItems || []).filter(it => it && it.name && it.cp != null && it.hp != null);
     const overrides = { ...this.state.ivOverrides };
@@ -7115,11 +7301,11 @@ class Component extends DCLogic {
           _choices: matches.map(m => ({ idx: m.idx, label: this.recordDistinguisher(m) })) });
         return;
       }
-      // A measured spread needs no solving at all - pin it and move on.
+      // A measured spread needs no solving at all — pin it and move on.
       if (item.ivSource === 'bar-measure') {
-        const mres = this.applyMeasuredIv(matches[0], item, overrides);
-        if (mres.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...mres.review }); }
-        else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...mres.review }); }
+        const res = this.applyMeasuredIv(matches[0], item, overrides);
+        if (res.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...res.review }); }
+        else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...res.review }); }
         return;
       }
       const hint = this.appraisalHintFromItem(item);
@@ -7137,9 +7323,12 @@ class Component extends DCLogic {
     try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
     const measuredCount = Object.keys(overrides).filter(k => overrides[k] && overrides[k].ivMeasured).length;
     console.log('[Scout] appraisal import: ' + applied + ' applied, ' + measuredCount + ' measured pins now held locally');
+    // updated/inserted/total keys keep bumpImportProgress happy.
     return { applied, collided, unmatched, contradiction, total: items.length, updated: applied, inserted: 0, solved: applied, _review: review };
   }
 
+  // Resolve a flagged collision: apply the held appraisal reading to the record
+  // the user tapped, then mark the review row done.
   applyAppraisalPick(rid, idx) {
     const vi = this.state.videoImport;
     if (!vi || !vi.review) return;
@@ -7165,13 +7354,127 @@ class Component extends DCLogic {
     this.setState(s => ({ videoImport: { ...s.videoImport, review } }));
   }
 
+  // Stable identity for a removal. `idx` is POSITIONAL for imported records, so
+  // a re-import renumbers everything and every previous removal silently points
+  // at a different Pokemon — which is how transferred Pokemon "came back out of
+  // nowhere". Removals are recorded by identity as well as index.
+  // An exact spread only when the solve was unique. Otherwise the honest answer
+  // is the candidate range plus how many spreads still fit — never one of them
+  // dressed up as the answer.
+  spreadText(p) {
+    if ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite)) return p.atkIV + '/' + p.defIV + '/' + p.staIV + (p.ivMeasured ? ' \u2713' : '');
+    if (!p.ivRange) return '—';
+    return this.rangeText(p.ivRange)
+      + (p.ivCandidates ? '  (' + p.ivCandidates + ' fit \u00b7 appraise)' : '');
+  }
+
+  // The spread already recorded for a record (override wins over the base
+  // record), or null when it has never been pinned.
+  knownSpread(rec, overrides) {
+    const o = (overrides && overrides[rec.idx]) || {};
+    const a = o.atkIV != null ? o.atkIV : rec.atkIV;
+    const d = o.defIV != null ? o.defIV : rec.defIV;
+    const s = o.staIV != null ? o.staIV : rec.staIV;
+    return [a, d, s].every(Number.isFinite) ? [a, d, s] : null;
+  }
+
+  rangeText(r) {
+    const part = a => (a[0] === a[1] ? String(a[0]) : a[0] + '-' + a[1]);
+    return part(r.atk) + '/' + part(r.def) + '/' + part(r.sta);
+  }
+
+  pokeSig(p) {
+    if (!p) return '';
+    return 'sig:' + String(p.name || '').toLowerCase() + '|' + p.cp + '|' + p.hp;
+  }
+
+  isRemoved(p, removedSet) {
+    return removedSet.has(p.idx) || removedSet.has(this.pokeSig(p));
+  }
+
   removePokemon(idx) {
     this.haptic('heavy');
     const set = new Set(this.state.removedIds);
     set.add(idx);
+    const all = [...(this.state.roster || []), ...(this.state.addedPokemon || [])];
+    const hit = all.find(p => p.idx === idx);
+    if (hit) set.add(this.pokeSig(hit));
     const arr = [...set];
-    this.setState({ removedIds: arr });
+    this.setState({ removedIds: arr }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
     try { localStorage.setItem('scout_removed_v1', JSON.stringify(arr)); } catch (e) {}
+  }
+
+  // A transfer earns exactly 1 regular candy for that species (Niantic's
+  // fixed rate) — recorded here so a transferred-away Pokemon's candy isn't
+  // silently lost from the evolve/power-up math.
+  transferPokemon(p) {
+    this.removePokemon(p.idx);
+    const key = String(p.name || '').toLowerCase();
+    const inv = { ...(this.state.candyInventory || {}) };
+    const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
+    // XL candy from a transfer is a random chance (Niantic requires trainer
+    // level 31+ and never publishes the odds) — it can't be predicted, only
+    // confirmed from the in-game transfer toast, so ask rather than guess.
+    let gotXl = false;
+    try { gotXl = window.confirm('Did the transfer also award an XL Candy? (check the in-game toast)'); } catch (e) {}
+    inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1, xlCandy: gotXl ? (Number(cur.xlCandy) || 0) + 1 : cur.xlCandy };
+    this.setState({ candyInventory: inv }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+    try { localStorage.setItem('scout_candy_v1', JSON.stringify(inv)); } catch (e) {}
+  }
+
+  setManualIvDraft(idx, field, val) {
+    const clean = val.replace(/[^0-9]/g, '').slice(0, 2);
+    const num = clean === '' ? '' : Math.min(15, Number(clean));
+    const draft = { ...(this.state.ivManualDraft || {}) };
+    draft[idx] = { ...(draft[idx] || {}), [field]: String(num) };
+    this.setState({ ivManualDraft: draft });
+  }
+
+  // Manual entry has no bar measurement to trust, only the CP/HP the player
+  // typed alongside it — so the level is solved the same way the rest of the
+  // app pins a spread: find the level whose CP/HP this exact IV triple
+  // reproduces, rather than trusting a guessed level.
+  saveManualIv(p) {
+    const draft = (this.state.ivManualDraft || {})[p.idx];
+    if (!draft) return;
+    const atk = Number(draft.atk), def = Number(draft.def), sta = Number(draft.sta);
+    if (![atk, def, sta].every(n => Number.isFinite(n) && n >= 0 && n <= 15)) return;
+    const m = this.mechanics, base = this.baseStatsOf(p);
+    if (!m || !base) return;
+    const ivs = [atk, def, sta];
+    const levels = Object.keys(m.CPM).map(Number).sort((a, b) => a - b);
+    let level = null, bestDiff = Infinity;
+    levels.forEach(lv => {
+      const cp = m.cpFor(base, ivs, lv);
+      if (cp == null) return;
+      const diff = Math.abs(cp - (p.cp || 0));
+      if (diff < bestDiff) { bestDiff = diff; level = lv; }
+      if (diff === 0 && p.hp != null) {
+        const hp = m.hpFor(base, sta, lv);
+        if (hp === p.hp) bestDiff = -1; // exact CP+HP match, stop preferring anything else
+      }
+    });
+    const ivAvg = (atk + def + sta) / 45 * 100;
+    const overrides = { ...this.state.ivOverrides };
+    overrides[p.idx] = {
+      ...overrides[p.idx],
+      atkIV: atk, defIV: def, staIV: sta, ivAvg,
+      lvlMin: level, lvlMax: level,
+      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true, ivManual: true,
+      great: { rankPct: m.rankPctForLeague(base, ivs, 'great'), evolvesTo: p.name },
+      ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: p.name },
+      little: { rankPct: m.rankPctForLeague(base, ivs, 'little'), evolvesTo: p.name }
+    };
+    const draftAll = { ...this.state.ivManualDraft };
+    delete draftAll[p.idx];
+    this.setState({ ivOverrides: overrides, ivManualDraft: draftAll }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+    try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
   }
 
   toggleChecklist(id) {
@@ -7338,6 +7641,9 @@ class Component extends DCLogic {
 
   candyStockFor(p) {
     const inv = this.state.candyInventory || {};
+    // candyInventory is keyed by lowercase species name everywhere it's written
+    // (OCR import, appraisal merge) — a dex-number lookup here never hit,
+    // which is why every evolve candidate fell through to "candy unknown".
     const byName = inv[String(p.name || '').toLowerCase()];
     if (byName && byName.candy != null) return { candy: byName.candy, xlCandy: byName.xlCandy != null ? byName.xlCandy : null };
     // Per-Pokemon candy columns from a CSV import are a fallback when no
@@ -7391,6 +7697,9 @@ class Component extends DCLogic {
       if (done.has(p.idx)) return;
       const evo = this.evoInfoFor(p);
       if (!evo) return;
+      // A known candy shortfall means it can't be evolved right now regardless
+      // of rank, so it's dropped from the queue rather than listed unusable.
+      // Unknown stock (no candy import yet) still shows, same as before.
       if (evo.ready === false) return;
       const rank = this.bestRank(p);
       const risk = this.littleCupRisk(p);
@@ -7436,17 +7745,116 @@ class Component extends DCLogic {
       rows.push({ p, level, score, now, at40, ceiling });
     });
     rows.sort((a, b) => (b.score / Math.max(1, b.now.dust)) - (a.score / Math.max(1, a.now.dust)));
+    // Regular candy is a pool shared with evolving that same species — a
+    // power-up plan that ignores it can recommend spending candy an evolve
+    // is also waiting on. Which one should actually win isn't a fixed rule
+    // (a mediocre evolution can be worse than maxing a great IV spread) —
+    // it's judgment, so contested species get sent to the AI rather than
+    // decided by a hardcoded priority order.
+    const speciesKey = p => String(p.name || '').toLowerCase();
+    const evoByKey = {};
+    this.evolveQueue().forEach(r => { evoByKey[speciesKey(r.p)] = r; });
+    const puByKey = {};
+    rows.forEach(r => { if (!puByKey[speciesKey(r.p)]) puByKey[speciesKey(r.p)] = r; });
+    const contested = [];
+    Object.keys(evoByKey).forEach(k => {
+      const evoRow = evoByKey[k], puRow = puByKey[k];
+      if (!puRow || evoRow.evo.need == null) return;
+      const stock = this.candyStockFor(evoRow.p).candy;
+      const puCandy = puRow.now.candy || 0;
+      if (stock != null && stock < evoRow.evo.need + puCandy) {
+        contested.push({ key: k, evoRow, puRow, stock, puCandy });
+      }
+    });
+    this.ensureCandyAiDecisions(contested);
+    const decisions = this.state.candyAiDecisions || {};
+    const candyLeft = {};
+    Object.keys(evoByKey).forEach(k => {
+      const r = evoByKey[k];
+      const isContested = contested.some(c => c.key === k);
+      const decision = decisions[k] && decisions[k].choice;
+      // Uncontested, or the AI hasn't weighed in yet: default to reserving for
+      // the evolution, same as before. Contested + AI said "powerup": the
+      // evolve claim yields so the power-up plan can spend the candy.
+      if (isContested && decision === 'powerup') return;
+      candyLeft[k] = this.candyStockFor(r.p).candy;
+      if (candyLeft[k] != null && r.evo.need != null) candyLeft[k] = Math.max(0, candyLeft[k] - r.evo.need);
+    });
     // Greedily fill the budget, so the list is a plan rather than a ranking.
     let spend = 0, xl = 0;
     const picked = [];
     rows.forEach(r => {
       if (spend + r.now.dust > budget) return;
+      const k = speciesKey(r.p);
+      if (!(k in candyLeft)) candyLeft[k] = this.candyStockFor(r.p).candy;
+      const candyCost = r.now.candy || 0;
+      if (candyCost > 0 && candyLeft[k] != null && candyCost > candyLeft[k]) return;
       spend += r.now.dust;
       xl += r.now.xlCandy || 0;
-      picked.push({ ...r, affordable: true });
+      if (candyCost > 0 && candyLeft[k] != null) candyLeft[k] -= candyCost;
+      const c = contested.find(x => x.key === k);
+      picked.push({ ...r, affordable: true, aiNote: c && decisions[k] ? decisions[k].reason : null });
     });
     const rest = rows.filter(r => picked.indexOf(r) < 0 && !picked.some(x => x.p.idx === r.p.idx)).slice(0, 10);
     return { rows: picked, blocked: rest, spend, xl, reserve, budget, balance, ceiling };
+  }
+
+  // Builds a stable fingerprint of the contested set so a decision is only
+  // re-requested when the actual tradeoff changes (candy collected, ranks
+  // shifting, roster edits) — not on every render.
+  candyContestSignature(contested) {
+    return contested.map(c => c.key + ':' + c.stock + ':' + c.evoRow.evo.need + ':' + c.puCandy
+      + ':' + (Number.isFinite(c.evoRow.rank) ? Math.round(c.evoRow.rank) : '-')
+      + ':' + Math.round(c.puRow.score || 0)).sort().join('|');
+  }
+
+  ensureCandyAiDecisions(contested) {
+    if (!contested.length) return;
+    const sig = this.candyContestSignature(contested);
+    if (this._candyAiSig === sig || this.state.candyAiBusy) return;
+    this._candyAiSig = sig;
+    this.requestCandyAiDecisions(contested, sig);
+  }
+
+  async requestCandyAiDecisions(contested, sig) {
+    this.setState({ candyAiBusy: true });
+    try {
+      const lines = contested.map(c => {
+        const p = c.evoRow.p;
+        const evolvesInto = this.evolvesToName ? this.evolvesToName(p) : null;
+        return '- ' + (p.name || 'Unknown') + ': has ' + c.stock + ' candy. Evolving costs ' + c.evoRow.evo.need
+          + ' candy' + (evolvesInto ? (' (becomes ' + evolvesInto + ')') : '') + '. Its current best league rank is '
+          + (Number.isFinite(c.evoRow.rank) ? c.evoRow.rank : 'unranked') + '. Powering up this Pokémon to the level cap instead costs '
+          + c.puCandy + ' candy and ' + (c.puRow.now.dust || 0) + ' stardust, raising its raid attacker score from '
+          + Math.round(c.puRow.score || 0) + '. It does not have enough candy to do both.';
+      }).join('\n');
+      const prompt = 'You are helping a Pokémon GO player decide, for each Pokémon below, whether to spend its limited candy '
+        + 'on EVOLVING it or on POWERING UP the current form instead — the two options compete for the same candy. '
+        + 'Evolving is usually better when the evolved form is meaningfully stronger for leagues/raids or is needed for a Pokédex/task goal; '
+        + 'powering up the current form is usually better when the current IVs/rank are already excellent and evolving would reset useful moves, '
+        + 'or when the evolved form offers little advantage. Weigh each case on its own merits.\n\n' + lines
+        + '\n\nRespond with ONLY a JSON array, one object per Pokémon, no prose: '
+        + '[{"species":"name","choice":"evolve"|"powerup","reason":"one short sentence"}]';
+      const out = await this.completeWithRetry({ messages: [{ role: 'user', content: prompt }], max_tokens: 1024 });
+      const text = typeof out === 'string' ? out : (out && out.content) || '';
+      const match = String(text).match(/\[[\s\S]*\]/);
+      const arr = match ? JSON.parse(match[0]) : [];
+      const patch = { ...(this.state.candyAiDecisions || {}) };
+      const notes = [];
+      arr.forEach(item => {
+        const k = String(item.species || '').toLowerCase();
+        const row = contested.find(c => c.key === k || c.evoRow.p.name.toLowerCase() === k);
+        if (!row) return;
+        const choice = item.choice === 'powerup' ? 'powerup' : 'evolve';
+        patch[row.key] = { choice, reason: item.reason || '' };
+        notes.push(row.evoRow.p.name + ': ' + (choice === 'powerup' ? 'power up first' : 'evolve first') + (item.reason ? ' — ' + item.reason : ''));
+      });
+      this.setState({ candyAiDecisions: patch, candyAiBusy: false, candyAiNote: notes.join('  •  ') });
+    } catch (e) {
+      // AI unavailable: fall back to the safe default (reserve for evolution)
+      // already baked into dustPlan, just without a stated reason.
+      this.setState({ candyAiBusy: false, candyAiNote: '' });
+    }
   }
 
   // ---- Triage ----
@@ -7953,7 +8361,7 @@ class Component extends DCLogic {
       ? { ...p, dex: mech.resolveDexByName(p.name) } : p;
     const withOverrides = p => withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
     const baseRoster = (this.state.roster || []).map(withOverrides);
-    const roster = [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !removedSet.has(p.idx));
+    const roster = [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !this.isRemoved(p, removedSet));
     const tab = this.state.tab;
     const search = this.state.search;
     const sortField = this.state.sortField;
@@ -7970,6 +8378,8 @@ class Component extends DCLogic {
 
     const rosterFilter = this.state.rosterFilter || 'all';
     let filtered = roster.filter(p => {
+      // Search now also covers type, so "fire" or "steel" finds a raid squad the
+      // same way a name does.
       if (search) {
         const s = search.toLowerCase();
         const hit = (p.name || '').toLowerCase().includes(s)
@@ -7989,6 +8399,8 @@ class Component extends DCLogic {
       if (sortField === 'name') return (a.name || '').localeCompare(b.name || '');
       if (sortField === 'ivAvg') return (b.ivAvg || 0) - (a.ivAvg || 0);
       if (sortField === 'dex') return (a.dex || 0) - (b.dex || 0);
+      // Lowest floor first: in a CP-capped league a 0-attack spread is the prize,
+      // so this sort ascends where every other one descends.
       if (sortField === 'ivFloor') {
         const fa = this.ivFloorOf(a), fb = this.ivFloorOf(b);
         if (fa == null) return 1;
@@ -8017,11 +8429,11 @@ class Component extends DCLogic {
         delay: Math.min(i, 24) * 15,
         cp: p.cp,
         hp: p.hp,
-        ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '%' : '—',
+        ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '%' : (p.ivRange ? '?' : '—'),
         ivColor: ivColor(p.ivAvg),
         ringDasharray: ring.dasharray,
         ringDashoffset: ring.dashoffset,
-        spread: ([p.atkIV, p.defIV, p.staIV].every(Number.isFinite) ? p.atkIV + '/' + p.defIV + '/' + p.staIV + (p.ivMeasured ? ' ✓' : '') : '—'),
+        spread: this.spreadText(p),
         rowSpread: this.rowSpread(p).text,
         rowSpreadMeasured: this.rowSpread(p).measured,
         rowSpreadColor: this.rowSpread(p).measured ? 'oklch(92% 0.011 50)' : 'oklch(66% 0.013 50)',
@@ -8033,7 +8445,16 @@ class Component extends DCLogic {
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'oklch(55% 0.011 50)',
         flags: flags,
-        stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : ''
+        stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : '',
+        showManualIv: !this.rowSpread(p).measured,
+        manualAtk: (this.state.ivManualDraft[p.idx] || {}).atk || '',
+        manualDef: (this.state.ivManualDraft[p.idx] || {}).def || '',
+        manualSta: (this.state.ivManualDraft[p.idx] || {}).sta || '',
+        onManualAtkChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'atk', e.target.value); },
+        onManualDefChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'def', e.target.value); },
+        onManualStaChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'sta', e.target.value); },
+        saveManualIv: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.saveManualIv(p); },
+        markTransferredCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.transferPokemon(p); }
       };
     });
 
@@ -8287,21 +8708,28 @@ class Component extends DCLogic {
       rawText: this.state.ocrParsed.rawText || ''
     } : null;
     const solvedIvResult = this.state.solvedIvResult ? (this.state.solvedIvResult.error ? { error: this.state.solvedIvResult.error } : {
-      level: this.state.solvedIvResult.level,
-      spread: `${this.state.solvedIvResult.atkIV}/${this.state.solvedIvResult.defIV}/${this.state.solvedIvResult.staIV}`,
-      ivAvg: this.state.solvedIvResult.ivAvg.toFixed(1) + '%',
+      level: this.state.solvedIvResult.ambiguousRange
+        ? (this.state.solvedIvResult.lvlMin === this.state.solvedIvResult.lvlMax
+            ? this.state.solvedIvResult.lvlMin
+            : this.state.solvedIvResult.lvlMin + '\u2013' + this.state.solvedIvResult.lvlMax)
+        : this.state.solvedIvResult.level,
+      spread: this.state.solvedIvResult.ambiguousRange
+        ? this.rangeText(this.state.solvedIvResult.ambiguousRange)
+        : `${this.state.solvedIvResult.atkIV}/${this.state.solvedIvResult.defIV}/${this.state.solvedIvResult.staIV}`,
+      ivAvg: this.state.solvedIvResult.ivAvg != null ? this.state.solvedIvResult.ivAvg.toFixed(1) + '%' : 'not pinned',
       great: this.state.solvedIvResult.great != null ? this.state.solvedIvResult.great.toFixed(1) + '%' : '—',
       ultra: this.state.solvedIvResult.ultra != null ? this.state.solvedIvResult.ultra.toFixed(1) + '%' : '—',
       little: this.state.solvedIvResult.little != null ? this.state.solvedIvResult.little.toFixed(1) + '%' : '—',
+      canApply: !this.state.solvedIvResult.ambiguousRange,
       ambiguous: (() => {
         const r = this.state.solvedIvResult;
         if (r.hintMismatch) return `That appraisal doesn't fit this CP and HP \u2014 no spread matches both, so the hint was ignored. Re-check the star tier, or the HP reading. (${r.candidateCount} spreads match CP/HP alone.)`;
-        if (r.dustIgnored) return `That Power Up cost rules out every spread that fits this CP and HP, so it was ignored. Re-check the cost (and the lucky/shadow/purified toggles). ${r.candidateCount} spreads match CP/HP alone \u2014 showing the middle one.`;
+        if (r.dustIgnored) return `That Power Up cost rules out every spread that fits this CP and HP, so it was ignored. Re-check the cost (and the lucky/shadow/purified toggles). ${r.candidateCount} spreads still match CP/HP alone.`;
         const narrowed = r.dustUsed || this.appraisalHint();
         if (r.candidateCount > 1) {
           return narrowed
-            ? `${r.candidateCount} spreads still match \u2014 showing the middle one. ${r.dustUsed ? 'Mark the appraisal bars to narrow further.' : 'Enter the Power Up stardust cost to narrow further.'}`
-            : `${r.candidateCount} possible spreads matched \u2014 showing the middle one. Enter the Power Up stardust cost above to pin the level down.`;
+            ? `${r.candidateCount} spreads still fit \u2014 the range above is everything that's possible, not an answer. ${r.dustUsed ? 'Mark the appraisal bars to narrow further.' : 'Enter the Power Up stardust cost to narrow further.'}`
+            : `${r.candidateCount} spreads fit \u2014 the range above is everything that's possible, not an answer. Enter the Power Up stardust cost above to pin the level down.`;
         }
         if (r.dustUsed) return 'Exact match \u2014 CP, HP and the Power Up cost pin this to one spread.';
         return this.appraisalHint() ? 'Exact match \u2014 appraisal hint pinned it to one spread.' : 'Exact match \u2014 only one spread fits this CP and HP.';
@@ -8440,7 +8868,8 @@ class Component extends DCLogic {
           const f = this.ivFloorOf(p);
           return f == null ? null : 'IV floor ' + f + ' \u00b7 ' + (f <= 3 ? 'low floor helps under a CP cap' : f >= 13 ? 'strong across the board' : 'middling');
         })(),
-        recommendation: this.computeRecommendation(p)
+        recommendation: this.computeRecommendation(p),
+        markTransferred: () => { this.transferPokemon(p); this.closeDetail(); }
       };
     }
 
@@ -8469,6 +8898,9 @@ class Component extends DCLogic {
       duplicateGroups: duplicateGroups.length ? duplicateGroups : null
     };
 
+    // How much of the roster is measured versus guessed. This is the number that
+    // says whether the rest of the app can be trusted, so it is stated plainly
+    // instead of being implied by per-card badges.
     const measuredCount = roster.filter(p => p.ivMeasured).length;
     const needsAppraisalList = roster.filter(p => this.needsAppraisal(p));
     const confidence = {
@@ -8480,6 +8912,7 @@ class Component extends DCLogic {
         + (needsAppraisalList.length > 12 ? ', +' + (needsAppraisalList.length - 12) + ' more' : ''),
       goToList: () => this.setState({ tab: 'roster', rosterFilter: 'needsAppraisal', visibleCount: 30 })
     };
+
     const flagCounts = {
       lucky: roster.filter(p => p.lucky).length,
       shadow: roster.filter(p => this.isShadow(p)).length,
@@ -8488,6 +8921,7 @@ class Component extends DCLogic {
       hundo: hundoList.length,
       nundo: nundoList.length
     };
+
     const attackerGroups = this.attackerBoard(roster);
     const dominatedRaw = this.dominatedDuplicates(roster);
     const dominatedList = dominatedRaw.slice(0, 20).map(({ loser, winner }) => ({
@@ -8509,6 +8943,8 @@ class Component extends DCLogic {
     const evoQueueAll = this.evolveQueue();
     const triageAll = this.triageQueue();
     const dustPlan = this.dustPlan();
+    const candyAiBusy = this.state.candyAiBusy;
+    const candyAiNote = this.state.candyAiNote || '';
     const dexGapsAll = this.actionableDexGaps();
     const expand = this.state.todayExpand || {};
     const BLOCK = 10;
@@ -9059,7 +9495,7 @@ class Component extends DCLogic {
       dismissVideoImport: () => this.dismissVideoImport(),
       canRetryVideo: !!((this._failedFrames && this._failedFrames.length) || this._lastVideoFrames),
       retryVideoImport: () => this.retryVideoImport(),
-            evoNeedsLookup: missingEvo
+      evoNeedsLookup: missingEvo
         ? (missingEvo <= 8
           ? missingEvo + ' species still have no evolution data: ' + this.missingEvoDisplayNames().join(', ')
             + '. The lookup skips anything it is not sure about, so these may never resolve \u2014 dismiss them if they have no evolution.'
@@ -9127,6 +9563,8 @@ class Component extends DCLogic {
         ? Math.min(100, Math.round(dustPlan.spend / dustPlan.budget * 100)) + '%'
         : '0%',
       dustBudgetShort: 'lvl ' + dustPlan.ceiling + ' cap',
+      candyAiBusy: candyAiBusy,
+      candyAiNote: candyAiNote,
       dustPlanEmpty: dustPlan.rows.length ? null
         : (dustPlan.budget <= 0
           ? 'Balance is at or below your ' + fmt(dustPlan.reserve) + ' reserve. Adjust it in Settings.'
