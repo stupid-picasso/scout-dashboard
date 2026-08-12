@@ -1109,9 +1109,9 @@
 
   <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ true }}">
   <div>
-    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
-      <input type="text" placeholder="Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(35% 0.0165 50);color:oklch(92% 0.0055 50);font:14px ui-monospace,monospace;padding:9px 14px;border-radius:6px;width:280px" />
-      <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(35% 0.0165 50);color:oklch(92% 0.0055 50);font:13px ui-monospace,monospace;padding:9px 12px;border-radius:6px">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center">
+      <input type="text" placeholder="Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(35% 0.0165 50);color:oklch(92% 0.0055 50);font:14px ui-monospace,monospace;padding:9px 14px;border-radius:6px;flex:1 1 160px;min-width:140px" />
+      <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(35% 0.0165 50);color:oklch(92% 0.0055 50);font:13px ui-monospace,monospace;padding:9px 12px;border-radius:6px;flex:0 1 150px;min-width:0;max-width:150px">
         <option value="cp">Sort: CP</option>
         <option value="ivAvg">Sort: IV%</option>
         <option value="rank">Sort: Best league rank</option>
@@ -1650,7 +1650,7 @@ class Component extends DCLogic {
     sortField: 'cp',
     league: 'great',
     history: [],
-    syncedFrom: 'bundled export',
+    syncedFrom: '',
     detailPoke: null,
     visibleCount: 30,
     completedIds: [],
@@ -1688,7 +1688,6 @@ class Component extends DCLogic {
     aiUsage: { day: '' },
     importProgress: { day: '', clips: 0, added: 0, updated: 0 },
     clearArmed: false,
-    rosterCleared: false,
     ivOverrides: {},
     ivManualDraft: {},
     apprShotBusy: false,
@@ -1764,115 +1763,15 @@ class Component extends DCLogic {
   async componentDidMount() {
     this.bindNetworkStatus();
     try {
-      // POKEMON_DATA comes from pokemon-data.js, a deferred module. If it never
-      // arrives (missing file — it's gitignored), fall back to the demo sample
-      // so a fresh clone isn't an empty screen.
-      const realData = await this.waitForGlobal('POKEMON_DATA', 'scout-data-ready');
-      const data = (realData && realData.length) ? realData : (window.SAMPLE_POKEMON || []);
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
       this.mechanics = mechanics;
-      // Cloud base-stats overlay is applied from onAuthChange (auth isn't ready yet here).
-      // A locally-saved roster (OCR/CSV edits) wins over the bundled export.
-      const savedRoster = this.loadRoster();
-      const wasCleared = localStorage.getItem('scout_roster_cleared_v1') === '1';
-      if (wasCleared) this.setState({ rosterCleared: true });
-      // `savedRoster` is null ONLY when nothing was ever saved. An empty array
-      // must win over the bundled demo export, so this tests for null rather
-      // than falsiness — `[] || data` would hand back the demo Pokemon.
-      const seed = savedRoster !== null ? savedRoster : (wasCleared ? [] : (data || []));
-      this.setState({ roster: this.sanitizeRoster(seed), loaded: true });
+      // Nothing is cached on this device. The roster and every counter start
+      // empty; signing in and getting the first Firestore snapshot is the only
+      // way any of this ever gets filled in (see onAuthChange/applyRemote).
+      this.setState({ roster: [], loaded: true, checklistDate: new Date().toISOString().slice(0, 10), checklistDone: {} });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
     }
-    try {
-      const rawEndpoint = localStorage.getItem('scout_api_endpoint_v1');
-      if (rawEndpoint) this.setState({ apiEndpoint: rawEndpoint, apiEndpointDraft: rawEndpoint });
-    } catch (e) {}
-    try {
-      const multi = localStorage.getItem('scout_gemini_keys_v1');
-      const gk = localStorage.getItem('scout_gemini_key_v1');
-      if (multi) {
-        const arr = JSON.parse(multi);
-        if (Array.isArray(arr) && arr.length) {
-          this.setState({ geminiKeys: arr, geminiKey: arr[0], geminiKeyDraft: arr.join('\n') });
-        }
-      } else if (gk) {
-        // Migrate the old single-key storage.
-        this.setState({ geminiKeys: [gk], geminiKey: gk, geminiKeyDraft: gk });
-      }
-    } catch (e) {}
-    try {
-      const cb = localStorage.getItem('scout_custom_base_v1');
-      const cm = localStorage.getItem('scout_custom_model_v1');
-      const ck = localStorage.getItem('scout_custom_key_v1');
-      if (cb) this.setState({ customBaseUrl: cb, customBaseDraft: cb });
-      if (cm) this.setState({ customModel: cm, customModelDraft: cm });
-      if (ck) this.setState({ customApiKey: ck, customKeyDraft: ck });
-    } catch (e) {}
-    try {
-      const raw = localStorage.getItem('scout_history_v1');
-      if (raw) this.setState({ history: JSON.parse(raw) });
-    } catch (e) {}
-    try {
-      const rawDone = localStorage.getItem('scout_recommend_done_v1');
-      if (rawDone) this.setState({ completedIds: JSON.parse(rawDone) });
-    } catch (e) {}
-    try {
-      const rawRemoved = localStorage.getItem('scout_removed_v1');
-      if (rawRemoved) this.setState({ removedIds: JSON.parse(rawRemoved) });
-    } catch (e) {}
-    try {
-      const rawDust = localStorage.getItem('scout_stardust_v1');
-      if (rawDust) this.setState({ stardustBalance: JSON.parse(rawDust) });
-      const rawCandy = localStorage.getItem('scout_candy_v1');
-      if (rawCandy) this.setState({ candyInventory: JSON.parse(rawCandy) });
-      const rawTypes = localStorage.getItem('scout_types_v1');
-      if (rawTypes) this.setState({ typeTable: JSON.parse(rawTypes) });
-      const rawMoves = localStorage.getItem('scout_moves_v1');
-      if (rawMoves) this.setState({ moveDB: JSON.parse(rawMoves) });
-      const rawOverrides = localStorage.getItem('scout_iv_overrides_v1');
-      if (rawOverrides) this.setState({ ivOverrides: JSON.parse(rawOverrides) });
-      const rawUsage = localStorage.getItem('scout_ai_usage_v1');
-      if (rawUsage) {
-        const u = JSON.parse(rawUsage);
-        // Counters are per-day; a stale day starts fresh.
-        if (u && u.day === this.todayKey()) this.setState({ aiUsage: u });
-      }
-      const rawProg = localStorage.getItem('scout_import_progress_v1');
-      if (rawProg) {
-        const p = JSON.parse(rawProg);
-        if (p && p.day === this.todayKey()) this.setState({ importProgress: p });
-      }
-      const rawAdded = localStorage.getItem('scout_added_v1');
-      if (rawAdded) this.setState({ addedPokemon: JSON.parse(rawAdded) });
-      const rawRes = localStorage.getItem('scout_resources_v1');
-      if (rawRes) this.setState({ resources: JSON.parse(rawRes) });
-      const rawEvo = localStorage.getItem('scout_evo_v1');
-      if (rawEvo) this.setState({ evoTable: JSON.parse(rawEvo) });
-      const rawTriage = localStorage.getItem('scout_triage_v1');
-      if (rawTriage) {
-        const t = JSON.parse(rawTriage);
-        this.setState({ triageKeep: t.keep || {}, transferQueue: t.queue || [] });
-      }
-      const rawPrefs = localStorage.getItem('scout_prefs_v1');
-      if (rawPrefs) {
-        const pr = JSON.parse(rawPrefs);
-        if (pr.trainerLevel != null) this.setState({ trainerLevel: pr.trainerLevel });
-        if (pr.dustReserve != null) this.setState({ dustReserve: pr.dustReserve });
-      }
-      const rawMega = localStorage.getItem('scout_megaenergy_v1');
-      if (rawMega) this.setState({ megaEnergyInventory: JSON.parse(rawMega) });
-    } catch (e) {}
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const rawChecklist = localStorage.getItem('scout_checklist_v1');
-      const saved = rawChecklist ? JSON.parse(rawChecklist) : null;
-      if (saved && saved.date === today) {
-        this.setState({ checklistDate: today, checklistDone: saved.done || {} });
-      } else {
-        this.setState({ checklistDate: today, checklistDone: {} });
-      }
-    } catch (e) {}
     this.updateWidth = () => this.setState({ viewportWidth: window.innerWidth });
     this.updateWidth();
     window.addEventListener('resize', this.updateWidth);
@@ -1932,23 +1831,14 @@ class Component extends DCLogic {
 
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
-      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions'];
+      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
+      'apiEndpoint', 'customBaseUrl', 'customModel', 'customApiKey'];
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // Persist the roster locally whenever it changes (OCR, CSV, video, transfers).
-    // Single choke point so every mutation path survives a reload.
-    // Identity check first: serialising 300+ Pokemon on every render (hover,
-    // filter keystroke, stat tick) was costing milliseconds per frame for a
-    // value that only changes on an actual mutation.
-    if (this.state.loaded && this.state.roster && this._lastRosterRef !== this.state.roster) {
-      this._lastRosterRef = this.state.roster;
-      const rosterSig = JSON.stringify(this.state.roster);
-      if (this._lastRosterSig !== undefined && rosterSig !== this._lastRosterSig) {
-        this.queueSaveRoster(this.state.roster);
-      }
-      this._lastRosterSig = rosterSig;
-    }
+    // Nothing is persisted to this device. The roster (and everything else in
+    // SYNC_KEYS) only ever goes to Firestore, and only when signed in — the
+    // block below is the single choke point for that.
     if (this._applyingRemote || !this.state.cloudUser) return;
     // The DC runtime calls componentDidUpdate(prevProps) only — prevState is never
     // passed, so the previous values are tracked on the instance instead.
@@ -1975,28 +1865,24 @@ class Component extends DCLogic {
     return window.__scoutFirebaseSdkPromise;
   }
 
+  // The Firebase project config has to be readable before anyone signs in, so
+  // it lives in the file itself — never in localStorage. It's not a secret,
+  // it's just the address of the Firestore project this build talks to.
+  FIREBASE_CONFIG() {
+    return {
+      apiKey: "AIzaSyAQcYNQtMwA4_0G6tII7K396mtvrA4hQY0",
+      authDomain: "pokemon-professor.firebaseapp.com",
+      projectId: "pokemon-professor",
+      storageBucket: "pokemon-professor.firebasestorage.app",
+      messagingSenderId: "1032287709425",
+      appId: "1:1032287709425:web:eed51d4675e24c8f8ba150",
+      measurementId: "G-257CDK9NJE"
+    };
+  }
+
   initFirebase() {
-    try {
-      const raw = localStorage.getItem('scout_firebase_config_v1');
-      if (raw) {
-        const config = JSON.parse(raw);
-        this.loadFirebaseSdk().then(() => this.setupFirebaseApp(config))
-          .catch(e => this.setState({ firebaseConfigError: e.message }));
-      } else {
-        const defaultConfig = {
-          apiKey: "AIzaSyAQcYNQtMwA4_0G6tII7K396mtvrA4hQY0",
-          authDomain: "pokemon-professor.firebaseapp.com",
-          projectId: "pokemon-professor",
-          storageBucket: "pokemon-professor.firebasestorage.app",
-          messagingSenderId: "1032287709425",
-          appId: "1:1032287709425:web:eed51d4675e24c8f8ba150",
-          measurementId: "G-257CDK9NJE"
-        };
-        localStorage.setItem('scout_firebase_config_v1', JSON.stringify(defaultConfig));
-        this.loadFirebaseSdk().then(() => this.setupFirebaseApp(defaultConfig))
-          .catch(e => this.setState({ firebaseConfigError: e.message }));
-      }
-    } catch (e) {}
+    this.loadFirebaseSdk().then(() => this.setupFirebaseApp(this.FIREBASE_CONFIG()))
+      .catch(e => this.setState({ firebaseConfigError: e.message }));
   }
 
   setupFirebaseApp(config) {
@@ -2036,7 +1922,7 @@ class Component extends DCLogic {
         .replace(/,(\s*[}\]])/g, '$1');
       const config = JSON.parse(normalised);
       if (!config || !config.apiKey || !config.projectId) throw new Error('missing apiKey/projectId');
-      localStorage.setItem('scout_firebase_config_v1', JSON.stringify(config));
+      // Session-only override — not persisted. Reload goes back to FIREBASE_CONFIG().
       this.setState({ firebaseConfigError: '' });
       this.loadFirebaseSdk().then(() => this.setupFirebaseApp(config))
         .catch(e => this.setState({ firebaseConfigError: e.message }));
@@ -2065,6 +1951,19 @@ class Component extends DCLogic {
     if (this.auth) this.auth.signOut();
   }
 
+  EMPTY_USER_DATA() {
+    return {
+      roster: [], ivOverrides: {}, addedPokemon: [], candyInventory: {}, typeTable: {},
+      stardustBalance: null, history: [], completedIds: [], removedIds: [],
+      checklistDate: this.state.checklistDate, checklistDone: {},
+      resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+      megaEnergyInventory: {}, triageKeep: {}, transferQueue: [],
+      geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
+      customBaseUrl: '', customModel: '', customApiKey: '', customBaseDraft: '', customModelDraft: '', customKeyDraft: '',
+      apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
+    };
+  }
+
   onAuthChange(user) {
     if (user) {
       this.setState({ cloudUser: { uid: user.uid, email: user.email }, authError: '', authPassword: '' });
@@ -2072,7 +1971,10 @@ class Component extends DCLogic {
       this.checkMigrationStatus();
       this.loadMechanicsFromCloud();
     } else {
-      this.setState({ cloudUser: null, syncStatus: '' });
+      // Signed out means nothing is displayed — this device holds no
+      // Pokémon data of its own, so there is nothing left to fall back to.
+      if (this._unsubDoc) { this._unsubDoc(); this._unsubDoc = null; }
+      this.setState({ cloudUser: null, syncStatus: '', loaded: true, ...this.EMPTY_USER_DATA() });
     }
   }
 
@@ -2080,73 +1982,29 @@ class Component extends DCLogic {
     if (!this.db) return;
     if (this._unsubDoc) this._unsubDoc();
     this._unsubDoc = this.db.collection('scoutUsers').doc(uid).onSnapshot(snap => {
-      if (!snap.exists) { this.queueCloudPush(); return; }
-      this.applyRemote(snap.data());
+      // A doc that doesn't exist yet is a brand-new account: show empty state
+      // and wait for the user to actually add something, rather than pushing
+      // whatever happens to be sitting in memory (e.g. left over from a
+      // previous account on this device) up as if it belonged to this user.
+      this.applyRemote(snap.exists ? snap.data() : {});
     }, err => this.setState({ syncStatus: 'error: ' + err.message, authError: 'Sync read failed: ' + err.message + ' \u2014 check your Firestore rules allow this user.' }));
   }
 
+  // Firestore is the only source of truth — nothing on this device is ever
+  // treated as authoritative over what the cloud doc says, so this just
+  // mirrors `remote` into state field-for-field (defaulting missing fields to
+  // empty). The one exception is geminiKeyDraft/geminiKey while the user is
+  // actively typing a new key: a stale echo of the snapshot landing mid-edit
+  // must not overwrite what's on screen before the debounced push completes.
   applyRemote(remote) {
     this._applyingRemote = true;
-    // An empty remote roster normally means "first sync, push what we have".
-    // After an explicit CLEAR ROSTER it means the user deleted everything, so
-    // backfilling would resurrect the whole collection on the next snapshot.
-    let needsRosterBackfill = (!remote.roster || !remote.roster.length) && !this.state.rosterCleared;
-    // Applies to EVERY field confirmClearRoster resets, not just roster.
-    let keepCleared = false;
-    // A snapshot that still carries the pre-clear roster can land just after
-    // CLEAR ROSTER (the listener fires before the write round-trips). Adopting
-    // it undoes the delete, so non-empty remote rosters are ignored for a few
-    // seconds after an explicit clear.
-    const localClearedAt = this._clearedAt || Number(localStorage.getItem('scout_cleared_at_v1')) || 0;
-    const remoteClearedAt = Number(remote.clearedAt) || 0;
-    const localRosterTs = Number(localStorage.getItem('scout_roster_v1_ts')) || 0;
-
-    // Someone cleared the roster (possibly on another device) AFTER this device
-    // last saved its own. This device's copy is therefore obsolete: drop it and
-    // do NOT push it back. Without this the stale device re-seeds the cloud on
-    // its next state change and the collection reappears everywhere.
-    const cloudClearBeatsLocal = !!(remoteClearedAt && localRosterTs && remoteClearedAt > localRosterTs
-      && remoteClearedAt !== this._clearedAt);
-    if (cloudClearBeatsLocal && (this.state.roster || []).length) {
-      console.warn('[Scout] roster was cleared on another device after this one last saved \u2014 dropping ' + this.state.roster.length + ' local Pokemon instead of re-uploading them.');
-      this.saveRoster([]);
-      try {
-        localStorage.setItem('scout_cleared_at_v1', String(remoteClearedAt));
-        localStorage.setItem('scout_roster_cleared_v1', '1');
-        localStorage.removeItem('scout_candy_v1');
-        localStorage.removeItem('scout_types_v1');
-        localStorage.removeItem('scout_iv_overrides_v1');
-        localStorage.removeItem('scout_added_v1');
-      } catch (e) {}
-      this.setState({ candyInventory: {}, typeTable: {}, ivOverrides: {}, addedPokemon: [] });
-      this._clearedAt = remoteClearedAt;
-      needsRosterBackfill = false;
-    }
-
-    // Our own clear vs a snapshot that still carries the old roster (the
-    // listener fires before the delete round-trips).
-    const staleAfterOwnClear = !!(localClearedAt && remote.roster && remote.roster.length
-      && !remoteClearedAt);
-    if (staleAfterOwnClear) {
-      console.warn('[Scout] ignoring ' + remote.roster.length + ' Pokemon from a cloud copy written before CLEAR ROSTER; re-pushing the empty roster.');
-      clearTimeout(this._pushTimer);
-      this._pushTimer = setTimeout(() => this.pushCloud(), 400);
-    }
-    // Computed here because staleAfterOwnClear is declared above this point.
-    // NOTE: keepCleared is deliberately FALSE on the cloudClearBeatsLocal path —
-    // that branch has already emptied local roster/candy/types/overrides, and the
-    // remote doc it is adopting is itself empty. Do not extend the guard to that
-    // path or it will pin stale local data instead of taking the cleared remote.
-    keepCleared = needsRosterBackfill || staleAfterOwnClear;
     const patch = {
-      roster: keepCleared ? this.state.roster : this.sanitizeRoster(remote.roster),
-      ivOverrides: keepCleared ? this.state.ivOverrides : this.mergeIvOverrides(this.state.ivOverrides, remote.ivOverrides),
-      addedPokemon: keepCleared ? this.state.addedPokemon : (remote.addedPokemon || []),
-      candyInventory: keepCleared ? this.state.candyInventory : (remote.candyInventory || {}),
-      typeTable: keepCleared ? this.state.typeTable : (remote.typeTable || {}),
-      // Move data is game reference data, not roster data — a CLEAR ROSTER
-      // should not throw away a lookup that cost API calls.
-      moveDB: remote.moveDB && Object.keys(remote.moveDB).length ? remote.moveDB : (this.state.moveDB || {}),
+      roster: this.sanitizeRoster(remote.roster || []),
+      ivOverrides: this.mergeIvOverrides(this.state.ivOverrides, remote.ivOverrides),
+      addedPokemon: remote.addedPokemon || [],
+      candyInventory: remote.candyInventory || {},
+      typeTable: remote.typeTable || {},
+      moveDB: remote.moveDB || {},
       stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
       history: remote.history || [],
       completedIds: remote.completedIds || [],
@@ -2155,38 +2013,24 @@ class Component extends DCLogic {
       checklistDone: remote.checklistDone || {},
       resources: remote.resources || { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
       megaEnergyInventory: remote.megaEnergyInventory || {},
-      // Only adopt a remote key when this device has none — a device that just
-      // had its storage cleared gets the key back, but a locally-entered key is
-      // never clobbered by a stale one from another device.
-      geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length)
-        ? this.state.geminiKeys
-        : (remote.geminiKeys && remote.geminiKeys.length ? remote.geminiKeys : (remote.geminiKey ? [remote.geminiKey] : [])),
+      triageKeep: remote.triageKeep || {},
+      transferQueue: remote.transferQueue || [],
+      trainerLevel: remote.trainerLevel != null ? remote.trainerLevel : this.state.trainerLevel,
+      dustReserve: remote.dustReserve != null ? remote.dustReserve : this.state.dustReserve,
+      apiEndpoint: remote.apiEndpoint || '',
+      customBaseUrl: remote.customBaseUrl || '',
+      customModel: remote.customModel || '',
+      customApiKey: remote.customApiKey || '',
+      geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys : (remote.geminiKeys || (remote.geminiKey ? [remote.geminiKey] : [])),
       geminiKey: this.state.geminiKey || (remote.geminiKeys && remote.geminiKeys[0]) || remote.geminiKey || '',
-      geminiKeyDraft: this.state.geminiKeyDraft
-        || ((this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys.join('\n') : '')
-        || ((remote.geminiKeys && remote.geminiKeys.length) ? remote.geminiKeys.join('\n') : (remote.geminiKey || '')),
-      ...(cloudClearBeatsLocal ? { rosterCleared: true } : {})
     };
+    patch.apiEndpointDraft = this.state.apiEndpointDraft || patch.apiEndpoint;
+    patch.customBaseDraft = this.state.customBaseDraft || patch.customBaseUrl;
+    patch.customModelDraft = this.state.customModelDraft || patch.customModel;
+    patch.customKeyDraft = this.state.customKeyDraft || patch.customApiKey;
+    patch.geminiKeyDraft = this.state.geminiKeyDraft || (patch.geminiKeys.length ? patch.geminiKeys.join('\n') : '');
     this.setState(patch, () => { this._applyingRemote = false; });
-    try {
-      if (patch.geminiKey) localStorage.setItem('scout_gemini_key_v1', patch.geminiKey);
-      if (patch.geminiKeys && patch.geminiKeys.length) localStorage.setItem('scout_gemini_keys_v1', JSON.stringify(patch.geminiKeys));
-      localStorage.setItem('scout_roster_v1', JSON.stringify(patch.roster));
-      localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(patch.ivOverrides));
-      localStorage.setItem('scout_added_v1', JSON.stringify(patch.addedPokemon));
-      localStorage.setItem('scout_candy_v1', JSON.stringify(patch.candyInventory));
-      localStorage.setItem('scout_types_v1', JSON.stringify(patch.typeTable));
-      localStorage.setItem('scout_moves_v1', JSON.stringify(patch.moveDB || {}));
-      localStorage.setItem('scout_stardust_v1', JSON.stringify(patch.stardustBalance));
-      localStorage.setItem('scout_history_v1', JSON.stringify(patch.history));
-      localStorage.setItem('scout_recommend_done_v1', JSON.stringify(patch.completedIds));
-      localStorage.setItem('scout_removed_v1', JSON.stringify(patch.removedIds));
-      localStorage.setItem('scout_checklist_v1', JSON.stringify({ date: patch.checklistDate, done: patch.checklistDone }));
-      localStorage.setItem('scout_resources_v1', JSON.stringify(patch.resources));
-      localStorage.setItem('scout_megaenergy_v1', JSON.stringify(patch.megaEnergyInventory));
-    } catch (e) {}
     this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() });
-    if (needsRosterBackfill && patch.roster && patch.roster.length) this.queueCloudPush();
   }
 
   queueCloudPush() {
@@ -2203,10 +2047,11 @@ class Component extends DCLogic {
       roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
       typeTable: s.typeTable, moveDB: s.moveDB, stardustBalance: s.stardustBalance, history: s.history,
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
-      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory, updatedAt: Date.now(),
-      // Carried on every push so the marker cannot be dropped by a later write
-      // from any device. Null until a clear has happened.
-      clearedAt: this._clearedAt || Number(localStorage.getItem('scout_cleared_at_v1')) || null
+      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory,
+      triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
+      geminiKey: s.geminiKey, geminiKeys: s.geminiKeys,
+      apiEndpoint: s.apiEndpoint, customBaseUrl: s.customBaseUrl, customModel: s.customModel, customApiKey: s.customApiKey,
+      updatedAt: Date.now()
     };
     // Drop literal `undefined`s (JSON.stringify silently omits them) before
     // Firestore ever sees the blob \u2014 e.g. a video-imported Pokemon missing
@@ -2244,15 +2089,9 @@ class Component extends DCLogic {
   }
 
   saveTriage() {
-    try {
-      localStorage.setItem('scout_triage_v1', JSON.stringify({ keep: this.state.triageKeep, queue: this.state.transferQueue }));
-    } catch (e) {}
   }
 
   savePrefs() {
-    try {
-      localStorage.setItem('scout_prefs_v1', JSON.stringify({ trainerLevel: this.state.trainerLevel, dustReserve: this.state.dustReserve }));
-    } catch (e) {}
   }
 
   // Chip -> section. scrollIntoView is off-limits here, so this offsets by the
@@ -2403,28 +2242,12 @@ class Component extends DCLogic {
 
   confirmClearRoster() {
     clearTimeout(this._clearArmTimer);
-    // Stamp the clear BEFORE saveRoster, which writes scout_roster_v1_ts —
-    // otherwise clearedAt > rosterTs on our own echo snapshot and this device
-    // logs a false "cleared on another device".
-    this._clearedAt = Date.now();
-    try { localStorage.setItem('scout_cleared_at_v1', String(this._clearedAt)); } catch (e) {}
-    this.saveRoster([]);
-    try {
-      localStorage.removeItem('scout_iv_overrides_v1');
-      // loadRoster() treats an empty array as "nothing saved" and falls back to
-      // the bundled pokemon-data.js export, which would repopulate on reload.
-      localStorage.setItem('scout_roster_cleared_v1', '1');
-    } catch (e) {}
-    try {
-      localStorage.removeItem('scout_candy_v1');
-      localStorage.removeItem('scout_types_v1');
-    } catch (e) {}
     this.setState({
       roster: [],
       ivOverrides: {},
-    apprShotBusy: false,
-    apprShotError: '',
-    apprShotSummary: '',
+      apprShotBusy: false,
+      apprShotError: '',
+      apprShotSummary: '',
       candyInventory: {},
       typeTable: {},
       addedPokemon: [],
@@ -2432,10 +2255,7 @@ class Component extends DCLogic {
       completedIds: [],
       detailPoke: null,
       solvedIvResult: null,
-      clearArmed: false,
-      // Empty roster is a real state, not a backfill trigger — otherwise the
-      // next cloud snapshot would restore everything that was just deleted.
-      rosterCleared: true
+      clearArmed: false
     });
     // Push the empty roster up IMMEDIATELY, not via the debounced queue. The
     // Firestore listener is live, so a snapshot carrying the old 300-entry doc
@@ -2573,7 +2393,6 @@ class Component extends DCLogic {
     }
     this.setState({ moveDB: db, moveFetchBusy: false,
       moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
-    try { localStorage.setItem('scout_moves_v1', JSON.stringify(db)); } catch (e) {}
   }
 
   movePrompt(names) {
@@ -2592,7 +2411,6 @@ class Component extends DCLogic {
 
   clearMoveData() {
     this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushCloud());
-    try { localStorage.removeItem('scout_moves_v1'); } catch (e) {}
   }
 
   // Pokemon GO type palette, used for the sprite well and the type chips. These
@@ -2698,7 +2516,6 @@ class Component extends DCLogic {
     }
     this.setState({ typeTable: table, typeFetchBusy: false,
       typeFetchStatus: got + ' species typed' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
-    try { localStorage.setItem('scout_types_v1', JSON.stringify(table)); } catch (e) {}
   }
 
   typePrompt(names) {
@@ -2940,7 +2757,6 @@ class Component extends DCLogic {
     const n = v => { const x = v === '' ? null : parseInt(String(v).replace(/,/g, ''), 10); return Number.isNaN(x) ? null : x; };
     const resources = { rareCandy: n(d.rareCandy), rareCandyXL: n(d.rareCandyXL), eliteFastTM: n(d.eliteFastTM), eliteChargedTM: n(d.eliteChargedTM) };
     this.setState({ resources });
-    try { localStorage.setItem('scout_resources_v1', JSON.stringify(resources)); } catch (e) {}
   }
 
   onMegaNameChange(e) { this.setState({ megaNameDraft: e.target.value }); }
@@ -2952,14 +2768,12 @@ class Component extends DCLogic {
     if (!name || Number.isNaN(amount)) return;
     const inv = { ...this.state.megaEnergyInventory, [name.toLowerCase()]: { name, amount } };
     this.setState({ megaEnergyInventory: inv, megaNameDraft: '', megaAmountDraft: '' });
-    try { localStorage.setItem('scout_megaenergy_v1', JSON.stringify(inv)); } catch (e) {}
   }
 
   removeMegaEnergy(key) {
     const inv = { ...this.state.megaEnergyInventory };
     delete inv[key];
     this.setState({ megaEnergyInventory: inv });
-    try { localStorage.setItem('scout_megaenergy_v1', JSON.stringify(inv)); } catch (e) {}
   }
 
   hueFor(dex) { return (dex * 37) % 360; }
@@ -3124,7 +2938,6 @@ class Component extends DCLogic {
     if (set.has(idx)) set.delete(idx); else set.add(idx);
     const arr = [...set];
     this.setState({ completedIds: arr });
-    try { localStorage.setItem('scout_recommend_done_v1', JSON.stringify(arr)); } catch (e) {}
   }
 
   // Mild contrast only. Hard binarization (gray > 150 ? 255 : 0) destroys the
@@ -3230,41 +3043,10 @@ class Component extends DCLogic {
 
   // Debounced so a burst of mutations (a video import writing 200 Pokemon one
   // merge at a time) performs one write instead of two hundred.
-  queueSaveRoster(roster) {
-    clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => this.saveRoster(roster), 400);
-  }
-
-  saveRoster(roster) {
-    try {
-      localStorage.setItem('scout_roster_v1', JSON.stringify(roster));
-      localStorage.setItem('scout_roster_v1_ts', Date.now().toString());
-      // Once anything is imported again, the cleared state no longer applies.
-      if (roster && roster.length) {
-        localStorage.removeItem('scout_roster_cleared_v1');
-        localStorage.removeItem('scout_cleared_at_v1');
-        this._clearedAt = null;
-        // rosterCleared in STATE also has to drop here, not just the localStorage
-        // flags — otherwise it stays stuck true for the rest of the session on
-        // every import path except video import, and applyRemote() then treats
-        // the next empty/stale cloud snapshot (e.g. right after signing in) as
-        // authoritative and wipes this real, non-empty local roster.
-        if (this.state.rosterCleared) this.setState({ rosterCleared: false });
-      }
-      if (this.state.storageWarning) this.setState({ storageWarning: '' });
-    } catch (e) {
-      console.error('[Scout] saveRoster failed:', e);
-      // Safari private mode throws on every write; quota is hit around 800-1000
-      // Pokemon. Either way the roster is still live in memory and in Firestore
-      // if signed in — warn rather than fail silently.
-      const quota = e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014);
-      this.setState({
-        storageWarning: quota
-          ? 'This device\u2019s local storage is full, so changes are not being saved offline. Sign in to sync, or transfer some Pokemon.'
-          : 'Changes can\u2019t be saved on this device (private browsing blocks storage). Sign in to sync instead.'
-      });
-    }
-  }
+  // Nothing is written to this device — the roster only lives in memory
+  // (state) and in Firestore. Kept as a no-op so old call sites don't need
+  // updating; state + cloud push (componentDidUpdate/SYNC_KEYS) do the work.
+  saveRoster(roster) {}
 
   // NaN sanitizer at the import boundary. A malformed CSV cell parses to NaN,
   // which is NOT null — so every downstream `!= null` check admits it and it
@@ -3300,21 +3082,6 @@ class Component extends DCLogic {
     });
   }
 
-  loadRoster() {
-    try {
-      const saved = localStorage.getItem('scout_roster_v1');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // An EMPTY saved roster is a real state ("I deleted everything"), not
-        // "nothing saved". Returning null for it made it indistinguishable from
-        // a fresh install, so componentDidMount re-seeded the bundled demo
-        // export from pokemon-data.js — five Pokemon with hardcoded IVs
-        // reappearing on their own. Only a missing/corrupt key is null now.
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch (e) {}
-    return null;
-  }
 
   // Downscale + JPEG-encode for the vision request (full color — the model reads
   // the stylized CP badge and type chips far better than any thresholded bitmap).
@@ -3489,7 +3256,6 @@ class Component extends DCLogic {
     if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
     const mon = this.buildPokemonRecord(rec);
     const nextRoster = [...(this.state.roster || []), mon];
-    this.saveRoster(nextRoster);
     this.setState({ roster: nextRoster, ocrParsed: null, ocrPreview: null, ocrError: '' });
     this.resetAppraisalHint();
   }
@@ -3655,7 +3421,6 @@ class Component extends DCLogic {
     if (p.matchedIdx != null) {
       overrides[p.matchedIdx] = patch;
       this.setState({ ivOverrides: overrides });
-      try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
     } else {
       const newIdx = 'new-' + Date.now();
       const added = [...this.state.addedPokemon, {
@@ -3666,7 +3431,6 @@ class Component extends DCLogic {
         great: patch.great, ultra: patch.ultra, little: patch.little
       }];
       this.setState({ addedPokemon: added });
-      try { localStorage.setItem('scout_added_v1', JSON.stringify(added)); } catch (e) {}
     }
   }
 
@@ -3703,7 +3467,6 @@ class Component extends DCLogic {
       if (touched) {
         overrides[p.matchedIdx] = patch;
         this.setState({ ivOverrides: overrides });
-        try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
       }
     }
     this.setState({ candyInventory: candyInv, typeTable: types, ocrParsed: null, ocrPreview: null });
@@ -3711,16 +3474,11 @@ class Component extends DCLogic {
     // Stardust is the first thing the importer promises to update — it was being
     // read off the screenshot, held in state, then dropped on save.
     if (p.stardust != null) this.setStardust(p.stardust);
-    try {
-      localStorage.setItem('scout_candy_v1', JSON.stringify(candyInv));
-      localStorage.setItem('scout_types_v1', JSON.stringify(types));
-    } catch (e) {}
   }
 
   setStardust(value) {
     const n = value === '' ? null : parseInt(String(value).replace(/,/g, ''), 10);
     this.setState({ stardustBalance: Number.isNaN(n) ? null : n });
-    try { localStorage.setItem('scout_stardust_v1', JSON.stringify(Number.isNaN(n) ? null : n)); } catch (e) {}
   }
 
   saveStardustDraft() {
@@ -3887,10 +3645,7 @@ class Component extends DCLogic {
     next.csvNotice = 'Restored ' + p.count + ' Pokemon from ' + p.filename + '.';
     // A CLEAR ROSTER marker would make applyRemote discard the restored roster
     // as "written before the clear", so the restore retires it.
-    this._clearedAt = null;
-    try { localStorage.removeItem('scout_cleared_at_v1'); } catch (e) {}
     this.setState(next, () => {
-      try { this.saveRoster(next.roster); } catch (e) {}
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
     clearTimeout(this._csvNoticeTimer);
@@ -3964,7 +3719,7 @@ class Component extends DCLogic {
   saveApiEndpoint() {
     const url = (this.state.apiEndpointDraft || '').trim();
     this.setState({ apiEndpoint: url });
-    try { localStorage.setItem('scout_api_endpoint_v1', url); } catch (e) {}
+    this.queueCloudPush();
   }
 
   // Google AI Studio free tier. Key is stored locally on this device only.
@@ -4199,11 +3954,7 @@ class Component extends DCLogic {
     const m = String(model || '').trim();
     const k = String(apiKey || '').trim();
     this.setState({ customBaseUrl: b, customModel: m, customApiKey: k, aiOutOfCredit: false });
-    try {
-      if (b) localStorage.setItem('scout_custom_base_v1', b); else localStorage.removeItem('scout_custom_base_v1');
-      if (m) localStorage.setItem('scout_custom_model_v1', m); else localStorage.removeItem('scout_custom_model_v1');
-      if (k) localStorage.setItem('scout_custom_key_v1', k); else localStorage.removeItem('scout_custom_key_v1');
-    } catch (e) {}
+    this.queueCloudPush();
   }
 
   // Per-day call counters, so the free-tier budgets are visible before they run out.
@@ -4216,7 +3967,6 @@ class Component extends DCLogic {
     usage[engine] = (usage[engine] || 0) + 1;
     usage.day = day;
     this.setState({ aiUsage: usage });
-    try { localStorage.setItem('scout_ai_usage_v1', JSON.stringify(usage)); } catch (e) {}
   }
 
   // Accepts one key or many (newline, comma, or space separated). Rotation is
@@ -4231,15 +3981,7 @@ class Component extends DCLogic {
     this.setState({ geminiKeys: uniq, geminiKey: uniq[0] || '', aiOutOfCredit: false });
     this._keyCooldown = {};
     this._geminiKeyIdx = 0;
-    try {
-      if (uniq.length) {
-        localStorage.setItem('scout_gemini_keys_v1', JSON.stringify(uniq));
-        localStorage.setItem('scout_gemini_key_v1', uniq[0]);
-      } else {
-        localStorage.removeItem('scout_gemini_keys_v1');
-        localStorage.removeItem('scout_gemini_key_v1');
-      }
-    } catch (e) {}
+    this.queueCloudPush();
   }
 
   async completeWithRetry(body, attempts) {
@@ -5715,12 +5457,10 @@ class Component extends DCLogic {
     p.added = (p.added || 0) + (summary.inserted || 0);
     p.updated = (p.updated || 0) + (summary.updated || 0);
     this.setState({ importProgress: p });
-    try { localStorage.setItem('scout_import_progress_v1', JSON.stringify(p)); } catch (e) {}
   }
 
   resetImportProgress() {
     this.setState({ importProgress: { day: this.todayKey(), clips: 0, added: 0, updated: 0 } });
-    try { localStorage.removeItem('scout_import_progress_v1'); } catch (e) {}
   }
 
   // Every base-stat spread this dex could legitimately have, default form
@@ -5996,30 +5736,8 @@ class Component extends DCLogic {
       }
       if (item.type) types[nameLower] = item.type;
     });
-    // A prior CLEAR ROSTER sets rosterCleared=true, which makes applyRemote()
-    // treat an empty/stale cloud roster as authoritative (so a delete on one
-    // device doesn't get undone by another). But that guard only ever gets
-    // reset by saveRoster() on state.roster changes \u2014 a video import only
-    // touches addedPokemon, so rosterCleared stayed stuck true forever after
-    // one CLEAR ROSTER, and a later stale/failed cloud push could silently
-    // wipe every video-imported Pokemon back to empty on the next refresh.
-    // Newly added Pokemon here means the cleared state no longer applies.
-    if (added.length && (this.state.rosterCleared || localStorage.getItem('scout_roster_cleared_v1') === '1')) {
-      try {
-        localStorage.removeItem('scout_roster_cleared_v1');
-        localStorage.removeItem('scout_cleared_at_v1');
-      } catch (e) {}
-      this._clearedAt = null;
-      this.setState({ rosterCleared: false });
-    }
     this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types });
     if (seenStardust != null) this.setStardust(seenStardust);
-    try {
-      localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides));
-      localStorage.setItem('scout_added_v1', JSON.stringify(added));
-      localStorage.setItem('scout_candy_v1', JSON.stringify(candyInv));
-      localStorage.setItem('scout_types_v1', JSON.stringify(types));
-    } catch (e) {}
     const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
     return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
   }
@@ -6295,7 +6013,6 @@ class Component extends DCLogic {
     this.setState({ ivOverrides: overrides }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
-    try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
     const measuredCount = Object.keys(overrides).filter(k => overrides[k] && overrides[k].ivMeasured).length;
     console.log('[Scout] appraisal import: ' + applied + ' applied, ' + measuredCount + ' measured pins now held locally');
     // updated/inserted/total keys keep bumpImportProgress happy.
@@ -6315,7 +6032,6 @@ class Component extends DCLogic {
     const hint = this.appraisalHintFromItem(row._item);
     const res = this.solveAndApplyAppraisal(rec, row._item, hint, overrides);
     this.setState({ ivOverrides: overrides });
-    try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
     const review = vi.review.map(r => r._rid === rid
       ? { ...r, _status: res.contradiction ? 'contradiction' : 'applied', matchName: rec.name, iv: res.review.iv, ivCount: res.review.ivCount, _item: null, _choices: null }
       : r);
@@ -6378,7 +6094,6 @@ class Component extends DCLogic {
     this.setState({ removedIds: arr }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
-    try { localStorage.setItem('scout_removed_v1', JSON.stringify(arr)); } catch (e) {}
   }
 
   // A transfer earns exactly 1 regular candy for that species (Niantic's
@@ -6398,7 +6113,6 @@ class Component extends DCLogic {
     this.setState({ candyInventory: inv }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
-    try { localStorage.setItem('scout_candy_v1', JSON.stringify(inv)); } catch (e) {}
   }
 
   setManualIvDraft(idx, field, val) {
@@ -6449,13 +6163,11 @@ class Component extends DCLogic {
     this.setState({ ivOverrides: overrides, ivManualDraft: draftAll }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
-    try { localStorage.setItem('scout_iv_overrides_v1', JSON.stringify(overrides)); } catch (e) {}
   }
 
   toggleChecklist(id) {
     const done = { ...this.state.checklistDone, [id]: !this.state.checklistDone[id] };
     this.setState({ checklistDone: done });
-    try { localStorage.setItem('scout_checklist_v1', JSON.stringify({ date: this.state.checklistDate, done })); } catch (e) {}
   }
 
   computeRecommendation(p) {
@@ -6507,7 +6219,6 @@ class Component extends DCLogic {
     const table = { ...(this.state.evoTable || {}) };
     this.missingEvoNames().forEach(k => { table[k] = { to: null, candy: null, item: null, assumed: true }; });
     this.setState({ evoTable: table, evoFetchStatus: 'Marked as having no known evolution.' }, () => this.pushCloud());
-    try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
   }
 
   async fetchEvoData() {
@@ -6542,7 +6253,6 @@ class Component extends DCLogic {
         if (/rate-limited|out of quota|429/i.test(this.state.evoFetchError || '')) {
           this.setState({ evoFetchBusy: false, evoFetchStatus: got + ' species resolved and saved \u2014 daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.' });
           this.setState({ evoTable: table }, () => this.pushCloud());
-          try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
           return;
         }
         continue;
@@ -6566,11 +6276,9 @@ class Component extends DCLogic {
       // Cache as we go, so a failure halfway through does not throw away the
       // species already paid for.
       this.setState({ evoTable: { ...table } });
-      try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
     }
     this.setState({ evoTable: table, evoFetchBusy: false,
       evoFetchStatus: got + ' species resolved' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
-    try { localStorage.setItem('scout_evo_v1', JSON.stringify(table)); } catch (e) {}
   }
 
   // A truncated reply is a budget problem, so the batch is halved and retried
@@ -6900,7 +6608,6 @@ class Component extends DCLogic {
     const done = [...(this.state.completedIds || [])];
     if (done.indexOf(p.idx) < 0) done.push(p.idx);
     this.setState({ completedIds: done }, () => {
-      try { localStorage.setItem('scout_recommend_done_v1', JSON.stringify(done)); } catch (e) {}
       this.pushCloud();
     });
   }
@@ -7320,7 +7027,6 @@ class Component extends DCLogic {
     };
     const history = [entry, ...this.state.history];
     this.setState({ history });
-    try { localStorage.setItem('scout_history_v1', JSON.stringify(history)); } catch (e) {}
   }
 
   renderVals() {
@@ -7458,8 +7164,8 @@ class Component extends DCLogic {
     const callouts = [];
     if (pvpReady > 0) callouts.push(`${pvpReady} Pokemon are sitting at 90%+ rank in at least one league — check PVP RANKINGS.`);
     if (statTargets.lucky > 0) callouts.push(`You're holding ${statTargets.lucky} Lucky Pokemon — cheap power-ups, guaranteed 12+ IV floor.`);
-    callouts.push(`Roster synced from ${this.state.syncedFrom}. Drop a new CSV anytime via SYNC CSV.`);
-    const rawCallout = callouts[0] || 'Standing by. Sync a roster export to get started.';
+    if (this.state.syncedFrom) callouts.push(`Roster synced from ${this.state.syncedFrom}. Drop a new CSV anytime via SYNC CSV.`);
+    const rawCallout = callouts[0] || (this.state.cloudUser ? 'Standing by. Sync a roster export to get started.' : 'Standing by. Sign in to load your roster from the cloud.');
     const calloutLine = personality === 'hype' ? rawCallout.replace(/\.$/, '!').toUpperCase()
       : personality === 'deadpan' ? rawCallout.replace(/[!.]+$/, '.').replace(/^You're/, 'You are')
       : rawCallout;
