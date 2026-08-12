@@ -1127,7 +1127,7 @@
     <div ref="{{ headerRef }}" style="transition:box-shadow .24s ease,background .24s ease;padding:10px {{ rootPadX }};background:oklch(18% 0.0138 50 / .72);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.0</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.1</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1572,32 +1572,7 @@
               </sc-for>
               <div style="font:10.5px sans-serif;color:oklch(50% 0.011 50)">Counts reset at midnight, this device only.</div>
             </div>
-            <div style="border-top:1px solid oklch(30% 0.0165 50);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
-              <div style="font:600 10.5px ui-monospace,monospace;color:oklch(62% 0.011 50)">OR A SELF-HOSTED GATEWAY {{ customBadge }}</div>
-              <div style="font:12px sans-serif;color:oklch(70% 0.011 50);line-height:1.55">Any OpenAI-compatible endpoint — OmniRoute, OpenRouter. Must be reachable over HTTPS from this device (localhost will not work on your phone).</div>
-              <input type="text" placeholder="https://your-gateway.example.com/v1" value="{{ customBaseDraft }}" onChange="{{ onCustomBaseChange }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(38% 0.0165 50);color:oklch(92% 0.0055 50);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input type="text" placeholder="model (e.g. auto)" value="{{ customModelDraft }}" onChange="{{ onCustomModelChange }}" style="flex:1 1 130px;background:oklch(23% 0.0165 50);border:1px solid oklch(38% 0.0165 50);color:oklch(92% 0.0055 50);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
-                <input type="password" placeholder="key (optional)" value="{{ customKeyDraft }}" onChange="{{ onCustomKeyChange }}" style="flex:1 1 130px;background:oklch(23% 0.0165 50);border:1px solid oklch(38% 0.0165 50);color:oklch(92% 0.0055 50);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
-              </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <div onClick="{{ saveCustomEndpoint }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 62);color:white;font:700 11.5px ui-monospace,monospace">SAVE GATEWAY</div>
-                <sc-if value="{{ hasCustomEndpoint }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ clearCustomEndpoint }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.0165 50);color:oklch(80% 0.0055 50);font:700 11.5px ui-monospace,monospace">REMOVE</div>
-                </sc-if>
-              </div>
-            </div>
-            <div style="border-top:1px solid oklch(30% 0.0165 50);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
-              <div style="font:600 10.5px ui-monospace,monospace;color:oklch(62% 0.011 50)">OR CLAUDE {{ claudeBadge }}</div>
-              <div style="font:12px sans-serif;color:oklch(70% 0.011 50);line-height:1.55">Used for chat/evolve/candy-AI only \u2014 video and screenshot reading stay on Gemini. Tried before the gateway above when set.</div>
-              <input type="text" placeholder="model, e.g. claude-haiku-4-5-20251001 (comma-separate for fallback)" value="{{ claudeModelDraft }}" onChange="{{ onClaudeModelChange }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(38% 0.0165 50);color:oklch(92% 0.0055 50);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
-              <input type="password" placeholder="Claude API key" value="{{ claudeKeyDraft }}" onChange="{{ onClaudeKeyChange }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(38% 0.0165 50);color:oklch(92% 0.0055 50);padding:8px 10px;border-radius:5px;font:11.5px ui-monospace,monospace" />
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <div onClick="{{ saveClaudeConfig }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:oklch(45% 0.1 62);color:white;font:700 11.5px ui-monospace,monospace">SAVE CLAUDE</div>
-                <sc-if value="{{ hasClaudeKey }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ clearClaudeConfig }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:oklch(28% 0.0165 50);color:oklch(80% 0.0055 50);font:700 11.5px ui-monospace,monospace">REMOVE</div>
-                </sc-if>
-              </div>
+
             </div>
           </div>
         </details>
@@ -2747,16 +2722,7 @@ class Component extends DCLogic {
     geminiKey: '',
     geminiKeys: [],
     geminiKeyDraft: '',
-    customBaseUrl: '',
-    customModel: '',
-    customApiKey: '',
-    claudeApiKey: '',
-    claudeModel: '',
-    claudeModelDraft: '',
-    claudeKeyDraft: '',
-    customBaseDraft: '',
-    customModelDraft: '',
-    customKeyDraft: '',
+
     pasteDraft: '',
     pasteError: '',
     pasteSummary: '',
@@ -2874,7 +2840,7 @@ class Component extends DCLogic {
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
-      'apiEndpoint', 'customBaseUrl', 'customModel', 'customApiKey', 'claudeApiKey', 'claudeModel'];
+      'apiEndpoint'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -3001,8 +2967,6 @@ class Component extends DCLogic {
       resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
       megaEnergyInventory: {}, triageKeep: {}, transferQueue: [],
       geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
-      customBaseUrl: '', customModel: '', customApiKey: '', customBaseDraft: '', customModelDraft: '', customKeyDraft: '',
-      claudeApiKey: '', claudeModel: '', claudeModelDraft: '', claudeKeyDraft: '',
       apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
     };
   }
@@ -3061,20 +3025,10 @@ class Component extends DCLogic {
       trainerLevel: remote.trainerLevel != null ? remote.trainerLevel : this.state.trainerLevel,
       dustReserve: remote.dustReserve != null ? remote.dustReserve : this.state.dustReserve,
       apiEndpoint: remote.apiEndpoint || '',
-      customBaseUrl: remote.customBaseUrl || '',
-      customModel: remote.customModel || '',
-      customApiKey: remote.customApiKey || '',
-      claudeApiKey: remote.claudeApiKey || '',
-      claudeModel: remote.claudeModel || '',
       geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys : (remote.geminiKeys || (remote.geminiKey ? [remote.geminiKey] : [])),
       geminiKey: this.state.geminiKey || (remote.geminiKeys && remote.geminiKeys[0]) || remote.geminiKey || '',
     };
     patch.apiEndpointDraft = this.state.apiEndpointDraft || patch.apiEndpoint;
-    patch.customBaseDraft = this.state.customBaseDraft || patch.customBaseUrl;
-    patch.customModelDraft = this.state.customModelDraft || patch.customModel;
-    patch.customKeyDraft = this.state.customKeyDraft || patch.customApiKey;
-    patch.claudeModelDraft = this.state.claudeModelDraft || patch.claudeModel;
-    patch.claudeKeyDraft = this.state.claudeKeyDraft || patch.claudeApiKey;
     patch.geminiKeyDraft = this.state.geminiKeyDraft || (patch.geminiKeys.length ? patch.geminiKeys.join('\n') : '');
     this.setState(patch, () => { this._applyingRemote = false; });
     this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() });
@@ -3097,8 +3051,7 @@ class Component extends DCLogic {
       checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
       geminiKey: s.geminiKey, geminiKeys: s.geminiKeys,
-      apiEndpoint: s.apiEndpoint, customBaseUrl: s.customBaseUrl, customModel: s.customModel, customApiKey: s.customApiKey,
-      claudeApiKey: s.claudeApiKey, claudeModel: s.claudeModel,
+      apiEndpoint: s.apiEndpoint,
       updatedAt: Date.now()
     };
     // Drop literal `undefined`s (JSON.stringify silently omits them) before
@@ -4862,12 +4815,18 @@ class Component extends DCLogic {
       });
     });
     if (body.system) parts.unshift({ text: body.system });
-    // Model rotation: cycle through top 5 models for best accuracy + quota spread.
-    // (3.5 Flash is best, then 2.5 Flash, then lite variants)
-    const modelRotation = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'];
+    // Two separate rotations, kept apart on purpose: vision calls (video/
+    // screenshot appraisal reading) use the same 3 models as the pogo_extract.py
+    // pipeline; text-only calls (chat/evolve/moves/types/candy-ai) use a
+    // different 3 so the two workloads don't compete for the same daily quota.
+    const hasImage = parts.some(p => p.inline_data);
+    const visionRotation = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+    const textRotation = ['gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    const modelRotation = hasImage ? visionRotation : textRotation;
+    const idxKey = hasImage ? '_geminiModelIdxVision' : '_geminiModelIdxText';
     const candidates = this._geminiModel
       ? [this._geminiModel]
-      : [modelRotation[this._geminiModelIdx ? this._geminiModelIdx % modelRotation.length : 0], 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      : [modelRotation[this[idxKey] ? this[idxKey] % modelRotation.length : 0]].concat(modelRotation.filter((m, i) => i !== (this[idxKey] || 0) % modelRotation.length));
     let lastErr = null;
     for (const model of candidates) {
       const buildConfig = (extras) => {
@@ -4911,9 +4870,8 @@ class Component extends DCLogic {
         }
         this._geminiModel = model;
         this._lastEngine = 'Gemini (' + model + ')';
-        // Advance model index for next batch (round-robin rotation)
-        const modelRotation = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'];
-        this._geminiModelIdx = ((this._geminiModelIdx || 0) + 1) % modelRotation.length;
+        // Advance this workload's rotation index for next batch (round-robin)
+        this[idxKey] = ((this[idxKey] || 0) + 1) % modelRotation.length;
         this.bumpAiUsage('gemini');
         return text;
       }
@@ -4952,138 +4910,6 @@ class Component extends DCLogic {
   // is identifiable from the error text alone.
   get GEMINI_REQ_VERSION() { return 'g3'; }
 
-  // OpenAI-compatible chat/completions with vision. Works with OmniRoute,
-  // OpenRouter, LM Studio, or any gateway exposing /v1/chat/completions.
-  // customModel may list several models (comma/newline separated) for a
-  // fallback chain — e.g. Groq's "openai/gpt-oss-120b, llama-3.3-70b-versatile"
-  // so a rate limit or 5xx on the first candidate degrades to the next instead
-  // of failing the whole call.
-  gatewayModelCandidates() {
-    return String(this.state.customModel || '')
-      .split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-  }
-
-  async callOpenAICompatible(body) {
-    const base = String(this.state.customBaseUrl || '').trim().replace(/\/+$/, '');
-    if (!base) throw new Error('No base URL set');
-    const url = /\/chat\/completions$/.test(base) ? base : base + '/chat/completions';
-    const messages = (body.messages || []).map(m => {
-      const c = m.content;
-      if (typeof c === 'string') return { role: m.role, content: c };
-      const parts = (c || []).map(item => {
-        if (item.type === 'text') return { type: 'text', text: item.text };
-        if (item.type === 'image' && item.source && item.source.data) {
-          return { type: 'image_url', image_url: { url: 'data:' + (item.source.media_type || 'image/jpeg') + ';base64,' + item.source.data } };
-        }
-        return null;
-      }).filter(Boolean);
-      return { role: m.role, content: parts };
-    });
-    if (body.system) messages.unshift({ role: 'system', content: body.system });
-    const headers = { 'Content-Type': 'application/json' };
-    if (this.state.customApiKey) headers['Authorization'] = 'Bearer ' + this.state.customApiKey;
-    const models = this.gatewayModelCandidates();
-    const tryModels = models.length ? models : ['auto'];
-    let lastErr = null;
-    for (const model of tryModels) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify({ model, messages: messages, max_tokens: body.max_tokens || 2048, temperature: 0 })
-        });
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '');
-          throw new Error('Gateway error ' + res.status + ' (' + model + '): ' + errText.slice(0, 180));
-        }
-        const data = await res.json();
-        const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-        if (!text) throw new Error('Gateway returned no text (' + model + ')');
-        this._lastEngine = 'Gateway (' + model + ')';
-        this.bumpAiUsage('gateway');
-        return typeof text === 'string' ? text : JSON.stringify(text);
-      } catch (e) {
-        lastErr = e;
-        const m = (e && e.message) || '';
-        // A 4xx that isn't rate-limit/quota (e.g. bad request, model doesn't
-        // support vision) won't be fixed by trying a different model in the
-        // SAME family either, but IS worth trying the next candidate for —
-        // only a rejected/invalid key is truly terminal for the whole gateway.
-        if (/API_KEY_INVALID|Incorrect API key|invalid_api_key|401/i.test(m)) throw e;
-      }
-    }
-    throw lastErr || new Error('Gateway: no models configured');
-  }
-
-  setCustomEndpoint(baseUrl, model, apiKey) {
-    const b = String(baseUrl || '').trim();
-    const m = String(model || '').trim();
-    const k = String(apiKey || '').trim();
-    this.setState({ customBaseUrl: b, customModel: m, customApiKey: k, aiOutOfCredit: false });
-    this.queueCloudPush();
-  }
-
-  setClaudeConfig(model, apiKey) {
-    this.setState({ claudeModel: String(model || '').trim(), claudeApiKey: String(apiKey || '').trim(), aiOutOfCredit: false });
-    this.queueCloudPush();
-  }
-
-  claudeModelCandidates() {
-    return String(this.state.claudeModel || '').split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-  }
-
-  // Anthropic's Messages API — NOT OpenAI-schema, so it needs its own request/
-  // response shape rather than reusing callOpenAICompatible. Direct browser
-  // calls are blocked by CORS everywhere else (OpenAI, Groq); Anthropic is the
-  // one provider that allows it, gated behind this explicit opt-in header.
-  async callClaude(body) {
-    const key = String(this.state.claudeApiKey || '').trim();
-    if (!key) throw new Error('No Claude key set');
-    const models = this.claudeModelCandidates();
-    if (!models.length) throw new Error('No Claude model set');
-    // body.messages already uses Anthropic's own content-block shape
-    // ({type:'text'}/{type:'image',source:{...}}) elsewhere in this file, so
-    // no translation is needed beyond stripping any string-content messages
-    // into the block form Anthropic expects.
-    const messages = (body.messages || []).map(m => ({
-      role: m.role,
-      content: typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content
-    }));
-    let lastErr = null;
-    for (const model of models) {
-      try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true'
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: body.max_tokens || 2048,
-            system: body.system || undefined,
-            messages
-          })
-        });
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '');
-          throw new Error('Claude error ' + res.status + ' (' + model + '): ' + errText.slice(0, 180));
-        }
-        const data = await res.json();
-        const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
-        if (!text) throw new Error('Claude returned no text (' + model + ')');
-        this._lastEngine = 'Claude (' + model + ')';
-        this.bumpAiUsage('claude');
-        return text;
-      } catch (e) {
-        lastErr = e;
-        const m = (e && e.message) || '';
-        if (/authentication_error|invalid x-api-key|401/i.test(m)) throw e;
-      }
-    }
-    throw lastErr || new Error('Claude: no models configured');
   }
 
   // Per-day call counters — in-memory only, resets on reload.
@@ -5124,36 +4950,8 @@ class Component extends DCLogic {
         // it's verified against real appraisal cards and is the one engine
         // guaranteed to accept image parts. The custom text gateway (Groq,
         // OmniRoute, OpenRouter…) is for chat/evolve/move-lookup/candy-AI only.
-        const hasVision = (body.messages || []).some(m => Array.isArray(m.content) && m.content.some(p => p.type === 'image'));
-        // Claude, when configured, wins for TEXT calls — tried ahead of the
-        // generic gateway since it's the one directly-callable engine most
-        // likely to actually be reachable from a browser (see callClaude).
-        if (this.state.claudeApiKey && !hasVision) {
-          try { return await this.callClaude(body); }
-          catch (clErr) {
-            const clm = (clErr && clErr.message) || '';
-            const transient = /429|rate|quota|overloaded|timeout|Failed to fetch|NetworkError|Load failed|Access-Control-Allow-Origin|CORS|cancelled|The network connection was lost|5\d\d/i.test(clm)
-              || clErr instanceof TypeError;
-            this._lastAiError = 'Claude: ' + clm;
-            if (!transient) throw clErr;
-          }
-        }
-        // A self-hosted OpenAI-compatible gateway wins for TEXT calls when
-        // configured — the user chose it explicitly.
-        if (this.state.customBaseUrl && !hasVision) {
-          try { return await this.callOpenAICompatible(body); }
-          catch (cErr) {
-            const cm = (cErr && cErr.message) || '';
-            // Safari throws "TypeError: Load failed" for network/CORS failures,
-            // not "Failed to fetch" — without these, an unreachable gateway on
-            // iOS would skip Gemini instead of degrading to it.
-            const transient = /429|rate|quota|timeout|Failed to fetch|NetworkError|Load failed|Access-Control-Allow-Origin|CORS|cancelled|The network connection was lost/i.test(cm)
-              || cErr instanceof TypeError;
-            this._lastAiError = 'Gateway: ' + cm;
-            if (!transient) throw cErr;
-          }
-        }
-        // Gemini first when a key is set: free tier is 1500 req/day, 10 rpm, and
+        // Gemini only now (Claude/gateway paths removed) — free tier is 1500
+        // req/day, 10 rpm, and
         // includes vision — far past what this app needs, and no card required.
         if (this.state.geminiKey) {
           try { return await this.callGemini(body); }
@@ -5170,7 +4968,7 @@ class Component extends DCLogic {
         }
         if (!this.state.apiEndpoint) {
           const why = this._lastAiError ? ' Last engine said: ' + this._lastAiError : '';
-          throw new Error((this.state.geminiKey || this.state.claudeApiKey || this.state.customBaseUrl)
+          throw new Error(this.state.geminiKey
             ? 'Every AI engine failed for this batch.' + why
             : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
         }
@@ -9054,10 +8852,8 @@ class Component extends DCLogic {
           + (cooled ? ' ' + cooled + ' cooling down right now.' : '')
           + (this.state.cloudUser ? ' Synced to your account, so they survive a cache clear.' : '');
       })(),
-      geminiBadge: this.state.claudeApiKey ? '· CLAUDE'
-        : (this.state.customBaseUrl ? '· GATEWAY'
-        : ((this.state.geminiKeys || []).length > 1 ? '· GEMINI ×' + this.state.geminiKeys.length
-        : (this.state.geminiKey ? '· GEMINI' : '· NO KEY'))),
+      geminiBadge: (this.state.geminiKeys || []).length > 1 ? '· GEMINI ×' + this.state.geminiKeys.length
+        : (this.state.geminiKey ? '· GEMINI' : '· NO KEY'),
       aiUsageRows: (() => {
         const u = (this.state.aiUsage && this.state.aiUsage.day === this.todayKey()) ? this.state.aiUsage : {};
         const g = u.gemini || 0;
@@ -9071,27 +8867,8 @@ class Component extends DCLogic {
             color: g >= cap ? 'oklch(75% 0.15 30)' : (g >= cap * 0.8 ? 'oklch(78% 0.15 70)' : 'oklch(72% 0.13 150)')
           });
         }
-        if (this.state.customBaseUrl) rows.push({ label: 'Gateway', value: String(u.gateway || 0), color: 'oklch(72% 0.011 50)' });
         return rows;
       })(),
-      customBaseDraft: this.state.customBaseDraft || '',
-      customModelDraft: this.state.customModelDraft || '',
-      customKeyDraft: this.state.customKeyDraft || '',
-      hasCustomEndpoint: !!this.state.customBaseUrl,
-      customBadge: this.state.customBaseUrl ? '✓ ACTIVE' : '',
-      onCustomBaseChange: (e) => this.setState({ customBaseDraft: e.target.value }),
-      onCustomModelChange: (e) => this.setState({ customModelDraft: e.target.value }),
-      onCustomKeyChange: (e) => this.setState({ customKeyDraft: e.target.value }),
-      saveCustomEndpoint: () => this.setCustomEndpoint(this.state.customBaseDraft, this.state.customModelDraft, this.state.customKeyDraft),
-      clearCustomEndpoint: () => { this.setState({ customBaseDraft: '', customModelDraft: '', customKeyDraft: '' }); this.setCustomEndpoint('', '', ''); },
-      hasClaudeKey: !!this.state.claudeApiKey,
-      claudeBadge: this.state.claudeApiKey ? '✓ ACTIVE' : '',
-      claudeModelDraft: this.state.claudeModelDraft || '',
-      claudeKeyDraft: this.state.claudeKeyDraft || '',
-      onClaudeModelChange: (e) => this.setState({ claudeModelDraft: e.target.value }),
-      onClaudeKeyChange: (e) => this.setState({ claudeKeyDraft: e.target.value }),
-      saveClaudeConfig: () => this.setClaudeConfig(this.state.claudeModelDraft, this.state.claudeKeyDraft),
-      clearClaudeConfig: () => { this.setState({ claudeModelDraft: '', claudeKeyDraft: '' }); this.setClaudeConfig('', ''); },
       pasteDraft: this.state.pasteDraft || '',
       pasteError: this.state.pasteError || '',
       pasteSummary: this.state.pasteSummary || '',
