@@ -3908,6 +3908,15 @@ class Component extends DCLogic {
 
   // OpenAI-compatible chat/completions with vision. Works with OmniRoute,
   // OpenRouter, LM Studio, or any gateway exposing /v1/chat/completions.
+  // customModel may list several models (comma/newline separated) for a
+  // fallback chain — e.g. Groq's "openai/gpt-oss-120b, llama-3.3-70b-versatile"
+  // so a rate limit or 5xx on the first candidate degrades to the next instead
+  // of failing the whole call.
+  gatewayModelCandidates() {
+    return String(this.state.customModel || '')
+      .split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  }
+
   async callOpenAICompatible(body) {
     const base = String(this.state.customBaseUrl || '').trim().replace(/\/+$/, '');
     if (!base) throw new Error('No base URL set');
@@ -3927,26 +3936,33 @@ class Component extends DCLogic {
     if (body.system) messages.unshift({ role: 'system', content: body.system });
     const headers = { 'Content-Type': 'application/json' };
     if (this.state.customApiKey) headers['Authorization'] = 'Bearer ' + this.state.customApiKey;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({
-        model: this.state.customModel || 'auto',
-        messages: messages,
-        max_tokens: body.max_tokens || 2048,
-        temperature: 0
-      })
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      throw new Error('Gateway error ' + res.status + ': ' + errText.slice(0, 180));
+    const models = this.gatewayModelCandidates();
+    const tryModels = models.length ? models : ['auto'];
+    let lastErr = null;
+    for (const model of tryModels) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ model, messages: messages, max_tokens: body.max_tokens || 2048, temperature: 0 })
+        });
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          throw new Error('Gateway error ' + res.status + ' (' + model + '): ' + errText.slice(0, 180));
+        }
+        const data = await res.json();
+        const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (!text) throw new Error('Gateway returned no text (' + model + ')');
+        this._lastEngine = 'Gateway (' + model + ')';
+        this.bumpAiUsage('gateway');
+        return typeof text === 'string' ? text : JSON.stringify(text);
+      } catch (e) {
+        lastErr = e;
+        const m = (e && e.message) || '';
+        if (/API_KEY_INVALID|Incorrect API key|invalid_api_key|401/i.test(m)) throw e;
+      }
     }
-    const data = await res.json();
-    const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!text) throw new Error('Gateway returned no text');
-    this._lastEngine = 'Gateway';
-    this.bumpAiUsage('gateway');
-    return typeof text === 'string' ? text : JSON.stringify(text);
+    throw lastErr || new Error('Gateway: no models configured');
   }
 
   setCustomEndpoint(baseUrl, model, apiKey) {
@@ -3990,9 +4006,14 @@ class Component extends DCLogic {
     for (let i = 0; i < attempts; i++) {
       try {
         if (window.claude && window.claude.complete) return await window.claude.complete(body);
-        // A self-hosted OpenAI-compatible gateway (OmniRoute, OpenRouter…)
-        // wins when configured — the user chose it explicitly.
-        if (this.state.customBaseUrl) {
+        // Vision calls (screenshot/video frame reading) always go to Gemini —
+        // it's verified against real appraisal cards and is the one engine
+        // guaranteed to accept image parts. The custom text gateway (Groq,
+        // OmniRoute, OpenRouter…) is for chat/evolve/move-lookup/candy-AI only.
+        const hasVision = (body.messages || []).some(m => Array.isArray(m.content) && m.content.some(p => p.type === 'image'));
+        // A self-hosted OpenAI-compatible gateway wins for TEXT calls when
+        // configured — the user chose it explicitly.
+        if (this.state.customBaseUrl && !hasVision) {
           try { return await this.callOpenAICompatible(body); }
           catch (cErr) {
             const cm = (cErr && cErr.message) || '';
