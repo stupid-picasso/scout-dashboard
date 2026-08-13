@@ -32,6 +32,9 @@
   ::-webkit-scrollbar{width:9px;height:9px}
   ::-webkit-scrollbar-thumb{background:oklch(35% 0.0165 50);border-radius:5px}
   @keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes evoFlash{0%{opacity:0;transform:scale(.2)}18%{opacity:1;transform:scale(1)}55%{opacity:1;transform:scale(1.06)}100%{opacity:0;transform:scale(1.9)}}
+  @keyframes evoRing{0%{opacity:.9;transform:scale(.3)}100%{opacity:0;transform:scale(2.4)}}
+  @keyframes evoName{0%{opacity:0;transform:translateY(10px) scale(.9)}30%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:1}100%{opacity:0}}
   @keyframes flipIn{from{opacity:0;transform:rotateY(90deg) scale(.9)}to{opacity:1;transform:rotateY(0deg) scale(1)}}
   @keyframes cardPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
   @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 oklch(70% 0.15 62 / 0.5)}50%{box-shadow:0 0 0 8px oklch(70% 0.15 62 / 0)}}
@@ -101,7 +104,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v50.2</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v51.0</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -117,6 +120,18 @@
   </div>
 
   </div>
+
+  <sc-if value="{{ evoFlash }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:90;pointer-events:none;display:flex;align-items:center;justify-content:center;background:oklch(98% 0.02 90 / .1)">
+      <div style="position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,oklch(99% 0.06 95) 0%,oklch(92% 0.16 95 / .75) 45%,transparent 72%);animation:evoFlash .95s cubic-bezier(.3,0,.5,1) forwards"></div>
+      <div style="position:absolute;width:200px;height:200px;border-radius:50%;border:3px solid oklch(95% 0.12 95 / .8);animation:evoRing .95s ease-out forwards"></div>
+      <div style="position:relative;text-align:center;animation:evoName 1.4s ease forwards">
+        <div style="font:700 10.5px ui-monospace,monospace;letter-spacing:.16em;color:oklch(30% 0.05 95)">EVOLVED INTO</div>
+        <div style="font:800 30px ui-monospace,monospace;letter-spacing:-.01em;color:oklch(22% 0.04 95);margin-top:6px">{{ evoFlashName }}</div>
+        <div style="font:700 13px ui-monospace,monospace;color:oklch(35% 0.06 95);margin-top:6px">{{ evoFlashStats }}</div>
+      </div>
+    </div>
+  </sc-if>
 
   <sc-if value="{{ ptrVisible }}" hint-placeholder-val="{{ false }}">
     <div style="height:{{ ptrHeight }};display:flex;align-items:center;justify-content:center;overflow:hidden;transition:height .18s ease">
@@ -484,6 +499,33 @@
               <div onClick="{{ saveBackupFile }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:9px 15px;border-radius:5px;background:oklch(42% 0.1 150);color:white;font:700 11.5px ui-monospace,monospace">SAVE BACKUP FILE</div>
             </div>
           </sc-if>
+          <div style="border-top:1px solid oklch(35% 0.05 200);padding-top:12px;display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 200);letter-spacing:.05em">AUTOMATIC SNAPSHOTS</div>
+              <div onClick="{{ takeSnapshotNow }}" class="om-press" style="cursor:pointer;padding:6px 12px;border-radius:5px;background:oklch(32% 0.0165 50);color:oklch(85% 0.0055 50);font:700 10.5px ui-monospace,monospace">SNAPSHOT NOW</div>
+            </div>
+            <div style="font:12px/1.5 sans-serif;color:oklch(65% 0.011 50);text-wrap:pretty">Taken automatically before every import, restore and CLEAR ROSTER, plus periodically. The five most recent are kept.</div>
+            <sc-if value="{{ snapshotError }}" hint-placeholder-val="{{ false }}">
+              <div style="font:12px sans-serif;color:oklch(78% 0.14 30)">{{ snapshotError }}</div>
+            </sc-if>
+            <sc-if value="{{ hasSnapshots }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ snapshotRows }}" as="s" hint-placeholder-count="3">
+                  <div style="background:oklch(21% 0.014 50);border:1px solid oklch(31% 0.0165 50);border-radius:7px;padding:9px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                    <div style="min-width:0">
+                      <div style="font:700 12px ui-monospace,monospace;color:oklch(90% 0.011 50)">{{ s.when }}</div>
+                      <div style="font:11px sans-serif;color:oklch(64% 0.011 50);margin-top:2px">{{ s.detail }}</div>
+                    </div>
+                    <div onClick="{{ s.onRestore }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:7px 12px;border-radius:5px;background:oklch(36% 0.08 200);color:oklch(94% 0.03 200);font:700 10.5px ui-monospace,monospace">RESTORE</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noSnapshots }}" hint-placeholder-val="{{ false }}">
+              <div style="font:12px sans-serif;color:oklch(60% 0.011 50)">No snapshots yet.</div>
+            </sc-if>
+          </div>
+
           <sc-if value="{{ restorePendingDisplay }}" hint-placeholder-val="{{ false }}">
             <div style="background:oklch(24% 0.05 30);border:1px solid oklch(42% 0.07 30);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
               <div style="font:12.5px/1.5 sans-serif;color:oklch(90% 0.03 30);text-wrap:pretty">{{ restorePendingDisplay.summary }}</div>
@@ -1204,6 +1246,13 @@
                   <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:36px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
                   <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:oklch(45% 0.1 62);color:white;font:700 10.5px ui-monospace,monospace">SAVE</div>
                 </sc-if>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <div style="font:700 9.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.06em">CANDY</div>
+                  <input type="text" inputmode="numeric" placeholder="0" value="{{ p.candyDraft }}" onChange="{{ p.onCandyChange }}" onClick="{{ stopProp }}" style="width:44px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <div style="font:700 9.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.06em">XL</div>
+                  <input type="text" inputmode="numeric" placeholder="0" value="{{ p.xlDraft }}" onChange="{{ p.onXlChange }}" onClick="{{ stopProp }}" style="width:40px;background:oklch(17% 0.011 50);border:1px solid oklch(34% 0.0165 50);border-radius:5px;color:oklch(90% 0.011 50);font:700 11px ui-monospace,monospace;text-align:center;padding:4px 2px" />
+                  <div onClick="{{ p.saveCandy }}" class="om-tap" style="cursor:pointer;padding:5px 9px;border-radius:5px;background:oklch(45% 0.1 62);color:white;font:700 10.5px ui-monospace,monospace">SET</div>
+                </div>
                 <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:oklch(28% 0.0165 50);color:oklch(82% 0.0055 50);font:700 10.5px ui-monospace,monospace">TRANSFERRED (+1 CANDY)</div>
               </div>
             </div>
@@ -1355,6 +1404,46 @@
           </sc-for>
         </div>
 
+        <div style="background:oklch(25% 0.0138 50);border-radius:16px;padding:16px;margin-bottom:14px">
+          <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.05em;margin-bottom:4px">INVESTMENT</div>
+          <sc-if value="{{ detail.plan.known }}" hint-placeholder-val="{{ false }}">
+            <div style="font:11.5px ui-monospace,monospace;color:oklch(72% 0.011 50);margin-bottom:12px">{{ detail.plan.levelLine }}</div>
+            <sc-if value="{{ detail.plan.hasTargets }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+                <sc-for list="{{ detail.plan.targets }}" as="t" hint-placeholder-count="2">
+                  <div style="background:oklch(21% 0.012 50);border-radius:9px;padding:10px 12px">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+                      <div style="font:700 11px ui-monospace,monospace;color:oklch(84% 0.11 62);letter-spacing:.05em">{{ t.label }}</div>
+                      <div style="font:700 12px ui-monospace,monospace;color:oklch(90% 0.011 50)">{{ t.cpLine }}</div>
+                    </div>
+                    <div style="font:11.5px ui-monospace,monospace;color:oklch(74% 0.011 50);margin-top:5px">{{ t.costLine }}</div>
+                    <sc-if value="{{ t.afford }}" hint-placeholder-val="{{ false }}">
+                      <div style="font:11px sans-serif;color:{{ t.affordColor }};margin-top:4px">{{ t.afford }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ detail.plan.maxedNote }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px sans-serif;color:oklch(70% 0.011 50);margin-bottom:12px">{{ detail.plan.maxedNote }}</div>
+            </sc-if>
+            <div style="border-top:1px solid oklch(31% 0.011 50);padding-top:12px">
+              <div style="font:650 10.5px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.05em;margin-bottom:8px">PVP LEVEL TARGET</div>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <sc-for list="{{ detail.plan.caps }}" as="c" hint-placeholder-count="2">
+                  <div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap">
+                    <div style="font:700 10.5px ui-monospace,monospace;color:oklch(70% 0.011 50);letter-spacing:.05em;min-width:44px">{{ c.label }}</div>
+                    <div style="flex:1;min-width:0;font:11.5px sans-serif;color:{{ c.color }};text-wrap:pretty">{{ c.line }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ detail.plan.note }}" hint-placeholder-val="{{ false }}">
+            <div style="font:12px/1.55 sans-serif;color:oklch(70% 0.011 50);text-wrap:pretty">{{ detail.plan.note }}</div>
+          </sc-if>
+        </div>
+
         <sc-if value="{{ detail.hasMoveset }}" hint-placeholder-val="{{ false }}">
           <div style="margin-bottom:14px">
             <div style="font:650 11px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.05em;margin-bottom:9px">MOVES</div>
@@ -1419,6 +1508,59 @@
           </sc-for>
         </div>
       </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isRaid }}" hint-placeholder-val="{{ false }}">
+  <div style="animation:fadeSlideIn .35s ease">
+    <div style="background:oklch(21% 0.0121 50);border:1px solid oklch(33% 0.0165 50);border-radius:8px;padding:16px 20px;margin-bottom:20px">
+      <div style="font:700 11px ui-monospace,monospace;color:oklch(78% 0.13 62);letter-spacing:.06em">RAID COUNTERS</div>
+      <div style="font:12.5px/1.6 sans-serif;color:oklch(72% 0.011 50);margin-top:8px;text-wrap:pretty">Name the boss or pick its types, and this ranks your own Pokemon by real damage per second against it &mdash; type effectiveness and STAB included, at each one&rsquo;s current level. Anything whose moves aren&rsquo;t in the move database is left out rather than guessed.</div>
+    </div>
+
+    <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:11px">
+      <input type="text" placeholder="Boss name, e.g. Mega Gardevoir" value="{{ raidBossName }}" onChange="{{ onRaidBossName }}" style="background:oklch(17% 0.011 50);border:1px solid oklch(36% 0.0165 50);border-radius:6px;color:oklch(92% 0.011 50);font:13px sans-serif;padding:9px 11px" />
+      <div style="font:700 10px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em">BOSS TYPES (PICK UP TO 2)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <sc-for list="{{ raidTypeChips }}" as="c" hint-placeholder-count="18">
+          <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 9.5px ui-monospace,monospace;letter-spacing:.05em;padding:5px 9px;border-radius:5px;background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <sc-if value="{{ raidHasBoss }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ raidRows }}" as="r" hint-placeholder-count="6">
+          <div onClick="{{ r.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:stretch;overflow:hidden;background:oklch(21% 0.014 50);border:1px solid oklch(31% 0.0165 50);border-radius:12px">
+            <div style="flex-shrink:0;width:70px;background:{{ r.rail }};display:flex;align-items:center;justify-content:center;position:relative">
+              <span style="position:absolute;font:800 18px ui-monospace,monospace;color:oklch(20% 0.02 50 / .55)">{{ r.initial }}</span>
+              <img ref="{{ r.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5)) drop-shadow(0 0 10px {{ r.railGlow }})" />
+            </div>
+            <div style="flex:1;min-width:0;padding:11px 13px;display:flex;align-items:center;gap:12px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap">
+                  <div style="font:700 11px ui-monospace,monospace;color:oklch(60% 0.011 50)">{{ r.rank }}</div>
+                  <div style="font:600 14.5px sans-serif;color:oklch(93% 0.0055 50)">{{ r.name }}</div>
+                  <div style="font:700 9.5px ui-monospace,monospace;letter-spacing:.05em;color:{{ r.effColor }}">{{ r.effLabel }}</div>
+                </div>
+                <div style="font:11.5px ui-monospace,monospace;color:oklch(70% 0.011 50);margin-top:4px">{{ r.moveLine }}</div>
+                <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);margin-top:3px">{{ r.levelLine }}</div>
+                <sc-if value="{{ r.upside }}" hint-placeholder-val="{{ false }}">
+                  <div style="font:11px sans-serif;color:oklch(72% 0.09 200);margin-top:5px;text-wrap:pretty">{{ r.upside }}</div>
+                </sc-if>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font:800 20px ui-monospace,monospace;line-height:1;color:oklch(82% 0.14 62)">{{ r.dps }}</div>
+                <div style="font:700 9px ui-monospace,monospace;color:oklch(58% 0.011 50);letter-spacing:.1em;margin-top:3px">DPS</div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ raidEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:10px;padding:16px;font:12.5px/1.6 sans-serif;color:oklch(70% 0.011 50);text-wrap:pretty">No counters to rank yet. This needs move damage numbers &mdash; run MOVE DATABASE on the Attackers tab first.</div>
+      </sc-if>
     </sc-if>
   </div>
   </sc-if>
@@ -1548,6 +1690,71 @@
 
   <sc-if value="{{ isIntel }}" hint-placeholder-val="{{ false }}">
   <div style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;align-content:start;gap:16px;animation:fadeSlideIn .35s ease">
+    <div style="grid-column:1 / -1;background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:18px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em;margin-bottom:6px">WHAT IS INCOMPLETE</div>
+      <div style="font:12px/1.55 sans-serif;color:oklch(68% 0.011 50);margin-bottom:14px;text-wrap:pretty">Each gap below disables something specific. Listed by consequence, with the fix.</div>
+      <sc-if value="{{ dataQualityClean }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12.5px sans-serif;color:oklch(80% 0.14 150)">Nothing missing &mdash; every Pokemon has IVs, a level, moves, a type and an evolution on file.</div>
+      </sc-if>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <sc-for list="{{ dataQualityRows }}" as="q" hint-placeholder-count="4">
+          <div style="background:oklch(21% 0.014 50);border:1px solid oklch(30% 0.0165 50);border-radius:9px;padding:11px 13px">
+            <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+              <div style="font:800 17px ui-monospace,monospace;color:oklch(82% 0.13 70);line-height:1">{{ q.count }}</div>
+              <div style="font:700 12.5px sans-serif;color:oklch(92% 0.0055 50)">{{ q.label }}</div>
+            </div>
+            <div style="font:11.5px/1.5 sans-serif;color:oklch(70% 0.011 50);margin-top:5px;text-wrap:pretty">{{ q.why }}</div>
+            <div style="font:11.5px/1.5 sans-serif;color:oklch(76% 0.09 200);margin-top:4px;text-wrap:pretty">{{ q.fix }}</div>
+            <div style="font:11px ui-monospace,monospace;color:oklch(58% 0.011 50);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ q.names }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="grid-column:1 / -1;background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:18px">
+      <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em;margin-bottom:6px">TRADE ADVISOR</div>
+      <div style="font:12px/1.55 sans-serif;color:oklch(68% 0.011 50);margin-bottom:14px;text-wrap:pretty">A lucky trade re-rolls both Pokemon with every IV at 12 or above, so it can only improve one whose lowest IV is under 12. A regular trade re-rolls from 1, which is a gamble worth taking only on a duplicate you would otherwise transfer.</div>
+
+      <div style="font:700 10.5px ui-monospace,monospace;color:oklch(80% 0.13 70);letter-spacing:.05em;margin-bottom:8px">WORTH A LUCKY TRADE</div>
+      <sc-if value="{{ tradeLuckyEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12px sans-serif;color:oklch(64% 0.011 50);margin-bottom:14px">Nothing to suggest &mdash; your league-viable Pokemon already have a floor of 12 or better, or are already lucky.</div>
+      </sc-if>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px">
+        <sc-for list="{{ tradeLuckyRows }}" as="t" hint-placeholder-count="3">
+          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:oklch(21% 0.03 70);border:1px solid oklch(34% 0.05 70);border-radius:9px;padding:9px 11px">
+            <div style="flex-shrink:0;width:40px;height:40px;border-radius:8px;background:{{ t.rail }};display:flex;align-items:center;justify-content:center;position:relative">
+              <span style="position:absolute;font:800 14px ui-monospace,monospace;color:oklch(20% 0.02 50 / .55)">{{ t.initial }}</span>
+              <img ref="{{ t.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:34px;height:34px;object-fit:contain" />
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font:600 13px sans-serif;color:oklch(93% 0.0055 50)">{{ t.name }}</div>
+              <div style="font:11px sans-serif;color:oklch(72% 0.011 50);margin-top:2px;text-wrap:pretty">{{ t.line }}</div>
+            </div>
+            <div style="flex-shrink:0;font:700 11px ui-monospace,monospace;color:oklch(80% 0.12 70)">{{ t.rankLine }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="font:700 10.5px ui-monospace,monospace;color:oklch(78% 0.12 30);letter-spacing:.05em;margin-bottom:8px">TRADE AWAY INSTEAD OF TRANSFERRING</div>
+      <sc-if value="{{ tradeDupeEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12px sans-serif;color:oklch(64% 0.011 50)">No clear duplicates &mdash; nothing is beaten outright by another of its species.</div>
+      </sc-if>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <sc-for list="{{ tradeDupeRows }}" as="t" hint-placeholder-count="3">
+          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:oklch(21% 0.014 50);border:1px solid oklch(30% 0.0165 50);border-radius:9px;padding:9px 11px">
+            <div style="flex-shrink:0;width:40px;height:40px;border-radius:8px;background:{{ t.rail }};display:flex;align-items:center;justify-content:center;position:relative">
+              <span style="position:absolute;font:800 14px ui-monospace,monospace;color:oklch(20% 0.02 50 / .55)">{{ t.initial }}</span>
+              <img ref="{{ t.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:34px;height:34px;object-fit:contain" />
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font:600 13px sans-serif;color:oklch(93% 0.0055 50)">{{ t.loserName }}</div>
+              <div style="font:11px sans-serif;color:oklch(70% 0.011 50);margin-top:2px;text-wrap:pretty">{{ t.line }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
     <div style="grid-column:1 / -1;background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:8px;padding:18px">
       <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.05em;margin-bottom:6px">DATA CONFIDENCE</div>
       <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
@@ -1753,6 +1960,14 @@ class Component extends DCLogic {
     authError: '',
     cloudUser: null,
     syncStatus: '',
+    raidBossName: '',
+    raidBossTypes: [],
+    snapshots: [],
+    snapshotBusy: false,
+    snapshotError: '',
+    candyDraft: {},
+    evoFlashName: '',
+    evoFlashStats: '',
     ptrPull: 0,
     ptrArmed: false,
     ptrRefreshing: false
@@ -1796,7 +2011,8 @@ class Component extends DCLogic {
   bindPullToRefresh() {
     if (this._ptrBound) return;
     this._ptrBound = true;
-    const THRESHOLD = 78;
+    const THRESHOLD = 150;
+    const DEADZONE = 32;
     let startY = 0, pulling = false;
     this._onTouchStart = (e) => {
       if (this.state.ptrRefreshing) return;
@@ -1809,9 +2025,11 @@ class Component extends DCLogic {
     this._onTouchMove = (e) => {
       if (!pulling || this.state.ptrRefreshing) return;
       const dy = e.touches[0].clientY - startY;
-      if (dy <= 0) { if (this.state.ptrPull) this.setState({ ptrPull: 0 }); return; }
+      // Nothing happens at all for the first DEADZONE pixels, so ordinary
+      // scroll-up flicks at the top of the page never start a pull.
+      if (dy <= DEADZONE) { if (this.state.ptrPull) this.setState({ ptrPull: 0, ptrArmed: false }); return; }
       // Rubber-band: the pull slows as it stretches.
-      const eased = Math.min(THRESHOLD * 1.5, dy * 0.55);
+      const eased = Math.min(THRESHOLD * 1.2, (dy - DEADZONE) * 0.42);
       this.setState({ ptrPull: eased, ptrArmed: eased >= THRESHOLD });
     };
     this._onTouchEnd = () => {
@@ -2078,7 +2296,17 @@ class Component extends DCLogic {
     };
     patch.apiEndpointDraft = this.state.apiEndpointDraft || patch.apiEndpoint;
     patch.geminiKeyDraft = this.state.geminiKeyDraft || (patch.geminiKeys.length ? patch.geminiKeys.join('\n') : '');
-    this.setState(patch, () => { this._applyingRemote = false; this._hydrated = true; });
+    this.setState(patch, () => {
+      this._applyingRemote = false;
+      const firstHydrate = !this._hydrated;
+      this._hydrated = true;
+      if (firstHydrate) {
+        this.loadSnapshots();
+        // Periodic protection: gated by SNAPSHOT_MIN_GAP_MS, so opening the app
+        // repeatedly does not spam writes.
+        this.autoSnapshot('periodic');
+      }
+    });
     const sizeNote = this._lastBlobBytes ? ' · ' + Math.round(this._lastBlobBytes / 1024) + 'kB' : '';
     this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() + sizeNote });
   }
@@ -2090,13 +2318,104 @@ class Component extends DCLogic {
     this._pushTimer = setTimeout(() => this.pushCloud(), 1200);
   }
 
-  pushCloud() {
-    if (!this.db || !this.state.cloudUser) return;
-    if (!this._hydrated) return;
-    // A snapshot echo arriving mid-apply must not bounce straight back up.
-    if (this._applyingRemote) return;
+  // ---- Automatic rolling snapshots ---------------------------------------
+  // Manual BACKUP only helps if you remember it before the thing that eats your
+  // data. These write themselves: one before every destructive operation, plus
+  // a periodic one, keeping the newest MAX_SNAPSHOTS. Each lives in its own
+  // document because a single Firestore doc is capped at 1 MiB and one roster
+  // blob already runs to a few hundred kB.
+  get MAX_SNAPSHOTS() { return 5; }
+  get SNAPSHOT_MIN_GAP_MS() { return 6 * 60 * 60 * 1000; }
+
+  snapshotsRef() {
+    if (!this.db || !this.state.cloudUser) return null;
+    return this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).collection('snapshots');
+  }
+
+  async autoSnapshot(reason, opts) {
+    const ref = this.snapshotsRef();
+    if (!ref || !this._hydrated) return false;
+    const force = !!(opts && opts.force);
+    const roster = [...(this.state.roster || []), ...(this.state.addedPokemon || [])];
+    // Never snapshot an empty roster over a good one — that is the exact
+    // failure mode these are meant to protect against.
+    if (!force && roster.length === 0) return false;
+    const now = Date.now();
+    if (!force && this._lastSnapshotAt && (now - this._lastSnapshotAt) < this.SNAPSHOT_MIN_GAP_MS) return false;
+    try {
+      const blob = JSON.parse(JSON.stringify(this.buildCloudBlob()));
+      const id = String(now);
+      await ref.doc(id).set({
+        reason: reason || 'periodic',
+        createdAt: now,
+        pokemonCount: roster.length,
+        data: blob
+      });
+      this._lastSnapshotAt = now;
+      await this.pruneSnapshots();
+      this.loadSnapshots();
+      return true;
+    } catch (e) {
+      // A failed snapshot must never block the operation it was protecting.
+      return false;
+    }
+  }
+
+  async pruneSnapshots() {
+    const ref = this.snapshotsRef();
+    if (!ref) return;
+    try {
+      const snap = await ref.orderBy('createdAt', 'desc').get();
+      const docs = snap.docs || [];
+      for (let i = this.MAX_SNAPSHOTS; i < docs.length; i++) {
+        try { await docs[i].ref.delete(); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  async loadSnapshots() {
+    const ref = this.snapshotsRef();
+    if (!ref) { this.setState({ snapshots: [] }); return; }
+    try {
+      // Metadata only for the list; the payload is fetched on restore.
+      const snap = await ref.orderBy('createdAt', 'desc').limit(this.MAX_SNAPSHOTS).get();
+      const rows = (snap.docs || []).map(d => {
+        const v = d.data() || {};
+        return { id: d.id, reason: v.reason || 'periodic', createdAt: v.createdAt || 0, pokemonCount: v.pokemonCount || 0 };
+      });
+      this.setState({ snapshots: rows });
+    } catch (e) {
+      this.setState({ snapshots: [] });
+    }
+  }
+
+  async restoreSnapshot(id) {
+    const ref = this.snapshotsRef();
+    if (!ref) return;
+    this.setState({ snapshotBusy: true, snapshotError: '' });
+    try {
+      const doc = await ref.doc(id).get();
+      if (!doc.exists) throw new Error('That snapshot no longer exists.');
+      const v = doc.data() || {};
+      if (!v.data) throw new Error('That snapshot holds no data.');
+      // Route through the same confirm gate a file restore uses, so restoring
+      // is never a single unguarded tap.
+      this.setState({
+        snapshotBusy: false,
+        restorePending: {
+          data: v.data,
+          count: v.pokemonCount || 0,
+          filename: 'automatic snapshot of ' + new Date(v.createdAt).toLocaleString()
+        }
+      });
+    } catch (e) {
+      this.setState({ snapshotBusy: false, snapshotError: (e && e.message) || 'Could not read that snapshot.' });
+    }
+  }
+
+  buildCloudBlob() {
     const s = this.state;
-    const blob = {
+    return {
       roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
       typeTable: s.typeTable, moveDB: s.moveDB, evoTable: s.evoTable, candyAiDecisions: s.candyAiDecisions,
       stardustBalance: s.stardustBalance, history: s.history,
@@ -2107,6 +2426,14 @@ class Component extends DCLogic {
       apiEndpoint: s.apiEndpoint,
       updatedAt: Date.now()
     };
+  }
+
+  pushCloud() {
+    if (!this.db || !this.state.cloudUser) return;
+    if (!this._hydrated) return;
+    // A snapshot echo arriving mid-apply must not bounce straight back up.
+    if (this._applyingRemote) return;
+    const blob = this.buildCloudBlob();
     // Drop literal `undefined`s (JSON.stringify silently omits them) before
     // Firestore ever sees the blob \u2014 e.g. a video-imported Pokemon missing
     // a field the SDK isn't tolerant of. The try/catch below is a backstop,
@@ -2324,6 +2651,7 @@ class Component extends DCLogic {
 
   confirmClearRoster() {
     clearTimeout(this._clearArmTimer);
+    this.autoSnapshot('before CLEAR ROSTER', { force: true });
     this.setState({
       roster: [],
       ivOverrides: {},
@@ -2740,6 +3068,167 @@ class Component extends DCLogic {
       if (dps != null && (best == null || dps > best)) { best = dps; bestMove = name; }
     });
     return best == null ? null : { dps: best, fast: p.quickMove, charged: bestMove };
+  }
+
+  // ---- Raid counters ------------------------------------------------------
+  // Ranks YOUR roster against a specific boss. cycleDps already takes the
+  // defender's types, so this is the real damage number against that boss —
+  // type effectiveness and STAB included — not a generic DPS list.
+  allTypes() {
+    const m = this.mechanics;
+    return m && m.TYPE_CHART ? Object.keys(m.TYPE_CHART) : [];
+  }
+
+  // Level to evaluate at: the pinned level when known, otherwise the midpoint
+  // of the solved range, flagged as approximate rather than presented as fact.
+  evalLevelOf(p) {
+    if (Number.isFinite(p.lvlMin) && p.lvlMin === p.lvlMax) return { level: p.lvlMin, exact: true };
+    if (Number.isFinite(p.lvlMin) && Number.isFinite(p.lvlMax)) {
+      const mid = Math.round(((p.lvlMin + p.lvlMax) / 2) * 2) / 2;
+      return { level: mid, exact: false };
+    }
+    return { level: null, exact: false };
+  }
+
+  setRaidBossName(val) {
+    const name = String(val || '');
+    const patch = { raidBossName: name };
+    // Auto-fill the boss's types when this species is already in the type table.
+    const known = (this.state.typeTable || {})[name.trim().toLowerCase()];
+    if (known) {
+      patch.raidBossTypes = String(known).split('/').map(s => s.trim())
+        .filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+    }
+    this.setState(patch);
+  }
+
+  toggleRaidType(type) {
+    const cur = [...(this.state.raidBossTypes || [])];
+    const i = cur.indexOf(type);
+    if (i >= 0) cur.splice(i, 1);
+    else if (cur.length < 2) cur.push(type); // a Pokemon never has more than two
+    this.setState({ raidBossTypes: cur });
+  }
+
+  raidCounters() {
+    const m = this.mechanics;
+    const defenderTypes = this.state.raidBossTypes || [];
+    if (!m || !m.cycleDps || !defenderTypes.length) return [];
+    const rows = [];
+    this.effectiveRosterForMatch().forEach(p => {
+      const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+      if (!base || !ivs) return;
+      const lv = this.evalLevelOf(p);
+      if (lv.level == null) return;
+      const fast = this.lookupMove(p.quickMove);
+      if (!fast || fast.kind !== 'fast') return;
+      const ownTypes = this.typeOf(p).split('/').map(s => s.trim()).filter(Boolean)
+        .map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+      let best = null;
+      [p.chargeMove, p.chargeMove2].forEach(name => {
+        const ch = this.lookupMove(name);
+        if (!ch || ch.kind !== 'charged') return;
+        const r = m.cycleDps(base, ivs, lv.level, fast, ch, { ownTypes, defenderTypes });
+        if (r != null && (best == null || r > best.dps)) best = { dps: r, charged: name };
+      });
+      if (!best) return;
+      // What the same team would do if powered to 50 — the upside the dust buys.
+      let dps50 = null;
+      if (lv.level < m.MAX_POKEMON_LEVEL) {
+        const ch = this.lookupMove(best.charged);
+        dps50 = m.cycleDps(base, ivs, m.MAX_POKEMON_LEVEL, fast, ch, { ownTypes, defenderTypes });
+      }
+      const cost = m.powerUpCostBetween(lv.level, m.MAX_POKEMON_LEVEL, {
+        lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p)
+      });
+      rows.push({
+        p, dps: best.dps, charged: best.charged, fast: p.quickMove,
+        level: lv.level, exact: lv.exact, dps50, cost,
+        eff: m.typeMultiplier(this.lookupMove(best.charged).type, defenderTypes)
+      });
+    });
+    return rows.sort((a, b) => b.dps - a.dps).slice(0, 12);
+  }
+
+  // ---- Data-quality triage ------------------------------------------------
+  // Every feature in this app degrades in a specific way when a specific field
+  // is missing, so this reports the gaps by CONSEQUENCE rather than as a flat
+  // list of nulls: what is broken, and what fixes it.
+  dataQualityIssues() {
+    const roster = this.effectiveRosterForMatch();
+    const mk = (key, label, why, fix, test) => {
+      const hits = roster.filter(test);
+      return hits.length ? { key, label, why, fix, count: hits.length, names: hits.slice(0, 8).map(p => p.name || '?').join(', ') } : null;
+    };
+    return [
+      mk('noiv', 'No IVs at all', 'These are excluded from every ranking, the evolve queue and raid counters.',
+        'Appraise in game, then run the IV import.',
+        p => !Number.isFinite(p.atkIV)),
+      mk('guessed', 'IVs guessed from CP/HP', 'Ranks and PvP targets are estimates, not facts.',
+        'Record an appraisal video and run the IV import.',
+        p => Number.isFinite(p.atkIV) && !p.ivMeasured),
+      mk('level', 'Level not pinned', 'Power-up costs and PvP level targets cannot be calculated.',
+        'Import the appraisal so the level solves to one value.',
+        p => !(Number.isFinite(p.lvlMin) && p.lvlMin === p.lvlMax)),
+      mk('moves', 'Moves missing', 'Left out of attacker rankings and raid counters entirely.',
+        'Capture the detail screen so moves are read in.',
+        p => !p.quickMove || !p.chargeMove),
+      mk('movedb', 'Moves not in the damage database', 'Falls back to a raw-stat ranking instead of real DPS.',
+        'Run MOVE DATABASE on the Attackers tab.',
+        p => !!(p.quickMove && p.chargeMove) && !this.lookupMove(p.quickMove)),
+      mk('type', 'Type unknown', 'No type effectiveness, so raid counters skip it.',
+        'Run the type lookup on the Attackers tab.',
+        p => !this.typeOf(p)),
+      mk('dex', 'No dex number', 'Cannot find base stats, so nothing can be computed.',
+        'Rename to the exact species name, or re-import.',
+        p => p.dex == null),
+      mk('evo', 'Evolution unknown', 'Missing from the evolve queue even when candy is ready.',
+        'Run the evolution lookup on the Today tab.',
+        p => !(this.state.evoTable || {})[String(p.name || '').toLowerCase()])
+    ].filter(Boolean);
+  }
+
+  // ---- Trade advisor ------------------------------------------------------
+  // Two genuinely different trades, kept apart because the mechanics differ:
+  // a LUCKY trade re-rolls both IVs with a 12/12/12 floor, so it can only help
+  // a Pokemon whose current floor is below 12. A regular trade re-rolls with a
+  // 1/1/1 floor, which is a gamble, so it is only advised for duplicates you
+  // would otherwise transfer.
+  tradeAdvice() {
+    const roster = this.effectiveRosterForMatch();
+    const LUCKY_FLOOR = 12;
+    const dexCounts = {};
+    roster.forEach(p => { if (p.dex != null) dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
+
+    const lucky = roster.filter(p => {
+      if (p.lucky) return false; // already lucky: a second lucky trade is impossible
+      const floor = this.ivFloorOf(p);
+      if (floor == null || floor >= LUCKY_FLOOR) return false;
+      // Only worth the lucky trade if the species is actually worth investing in.
+      return this.bestRank(p) >= 70;
+    }).map(p => ({
+      p, floor: this.ivFloorOf(p), rank: this.bestRank(p)
+    })).sort((a, b) => b.rank - a.rank).slice(0, 8);
+
+    // Duplicates where one individual is beaten outright — trade the loser away
+    // instead of transferring it, since a trade at least re-rolls its IVs.
+    const byDex = {};
+    roster.forEach(p => { if (p.dex != null) (byDex[p.dex] = byDex[p.dex] || []).push(p); });
+    const dupes = [];
+    Object.keys(byDex).forEach(dex => {
+      const group = byDex[dex];
+      if (group.length < 2) return;
+      const ranked = group.map(p => ({ p, rank: this.bestRank(p), iv: p.ivAvg || 0 }))
+        .sort((a, b) => (b.rank - a.rank) || (b.iv - a.iv));
+      const winner = ranked[0];
+      ranked.slice(1).forEach(loser => {
+        if (loser.p.lucky || loser.p.favorite) return; // never advise trading these away
+        if (loser.rank >= winner.rank) return;
+        dupes.push({ loser: loser.p, winner: winner.p, loserRank: loser.rank, winnerRank: winner.rank });
+      });
+    });
+    dupes.sort((a, b) => (b.winnerRank - b.loserRank) - (a.winnerRank - a.loserRank));
+    return { lucky, dupes: dupes.slice(0, 10) };
   }
 
   attackerBoard(roster) {
@@ -3720,6 +4209,8 @@ class Component extends DCLogic {
   confirmRestore() {
     const p = this.state.restorePending;
     if (!p) return;
+    // Snapshot what is about to be replaced, so a wrong restore is undoable.
+    this.autoSnapshot('before restore', { force: true });
     const d = p.data;
     const next = { restorePending: null, backupError: '' };
     ['ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance',
@@ -4877,6 +5368,7 @@ class Component extends DCLogic {
       // Merge FIRST: it solves IVs from CP/HP and writes them back onto each
       // item, so the receipt below reports the solved spread rather than the
       // nulls the model returned.
+      this.autoSnapshot('before ' + importMode + ' import', { force: true });
       let summary, receipt;
       if (importMode === 'appraisal') {
         summary = this.mergeAppraisalImport(validated);
@@ -6174,6 +6666,42 @@ class Component extends DCLogic {
     });
   }
 
+  candyKeyFor(p) { return String((p && p.name) || '').toLowerCase(); }
+
+  candyDraftFor(p, field) {
+    const key = this.candyKeyFor(p);
+    const draft = (this.state.candyDraft || {})[key];
+    if (draft && draft[field] != null) return draft[field];
+    const rec = (this.state.candyInventory || {})[key];
+    const cur = rec ? rec[field] : null;
+    return cur == null ? '' : String(cur);
+  }
+
+  setCandyDraft(p, field, val) {
+    const key = this.candyKeyFor(p);
+    const clean = String(val).replace(/[^0-9]/g, '').slice(0, 5);
+    const all = { ...(this.state.candyDraft || {}) };
+    all[key] = { ...(all[key] || {}), [field]: clean };
+    this.setState({ candyDraft: all });
+  }
+
+  saveCandyEdit(p) {
+    this.haptic('light');
+    const key = this.candyKeyFor(p);
+    const draft = (this.state.candyDraft || {})[key] || {};
+    const inv = { ...(this.state.candyInventory || {}) };
+    const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
+    const next = { ...cur, name: cur.name || p.name };
+    if (draft.candy != null) next.candy = draft.candy === '' ? 0 : Number(draft.candy);
+    if (draft.xlCandy != null) next.xlCandy = draft.xlCandy === '' ? null : Number(draft.xlCandy);
+    inv[key] = next;
+    const all = { ...(this.state.candyDraft || {}) };
+    delete all[key];
+    this.setState({ candyInventory: inv, candyDraft: all }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+  }
+
   setManualIvDraft(idx, field, val) {
     const clean = val.replace(/[^0-9]/g, '').slice(0, 2);
     const num = clean === '' ? '' : Math.min(15, Number(clean));
@@ -6706,11 +7234,83 @@ class Component extends DCLogic {
   // it stays done across reloads and devices.
   markEvolveDone(p) {
     this.haptic('medium');
+    // Evolving in Pokemon GO does NOT create a new Pokemon: the same individual
+    // transforms, keeping its IVs and its level exactly. Only the species, CP,
+    // HP and league ranks change (CP/HP because they are derived from the new
+    // species' base stats at the SAME level). So this transforms the record in
+    // place rather than removing one Pokemon and adding another — and no fresh
+    // appraisal is needed, because the spread cannot have changed.
+    const applied = this.evolvePokemon(p);
+    if (applied) return;
+    // Could not resolve the evolved species or its stats — fall back to just
+    // ticking the row off so the queue still behaves.
     const done = [...(this.state.completedIds || [])];
     if (done.indexOf(p.idx) < 0) done.push(p.idx);
     this.setState({ completedIds: done }, () => {
       this.pushCloud();
     });
+  }
+
+  // Returns true when the roster was actually transformed.
+  evolvePokemon(p) {
+    const m = this.mechanics;
+    const toName = this.evolvesToName(p);
+    if (!m || !toName || !p) return false;
+
+    const newDex = m.resolveDexByName ? m.resolveDexByName(toName) : null;
+    let newBase = null;
+    if (newDex != null) {
+      if (p.form) newBase = m.BASE_STATS_BY_FORM[newDex + '_' + String(p.form).toLowerCase()];
+      if (!newBase) newBase = m.BASE_STATS[newDex];
+    }
+    if (!newBase) return false;
+
+    const patch = { name: toName, dex: newDex, evolvedFrom: p.name };
+    const ivs = this.ivsOf(p);
+    // The level carries over untouched; a solved single level is required to
+    // recompute CP/HP honestly, so a fuzzy range leaves the numbers alone
+    // rather than inventing them.
+    const level = (Number.isFinite(p.lvlMin) && p.lvlMin === p.lvlMax) ? p.lvlMin : null;
+    if (ivs && Number.isFinite(level)) {
+      const cp = m.cpFor(newBase, ivs, level);
+      const hp = m.hpFor(newBase, ivs[2], level);
+      if (cp != null) patch.cp = cp;
+      if (hp != null) patch.hp = hp;
+      patch.great = { rankPct: m.rankPctForLeague(newBase, ivs, 'great'), evolvesTo: toName };
+      patch.ultra = { rankPct: m.rankPctForLeague(newBase, ivs, 'ultra'), evolvesTo: toName };
+      patch.little = { rankPct: m.rankPctForLeague(newBase, ivs, 'little'), evolvesTo: toName };
+    }
+
+    // Spend the candy this evolution actually cost.
+    const evo = this.evoInfoFor(p);
+    const need = (evo && Number(evo.need)) || 0;
+    const fromKey = String(p.name || '').toLowerCase();
+    const inv = { ...(this.state.candyInventory || {}) };
+    if (need > 0 && inv[fromKey]) {
+      const cur = inv[fromKey];
+      inv[fromKey] = { ...cur, candy: Math.max(0, (Number(cur.candy) || 0) - need) };
+    }
+
+    // A stale override would otherwise re-apply the pre-evolution species and
+    // ranks straight back over the transformed record.
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    if (overrides[p.idx]) overrides[p.idx] = { ...overrides[p.idx], ...patch };
+
+    const apply = list => (list || []).map(r => r.idx === p.idx ? { ...r, ...patch } : r);
+    const roster = apply(this.state.roster);
+    const addedPokemon = apply(this.state.addedPokemon);
+
+    const statLine = [patch.cp != null ? patch.cp + ' CP' : null, patch.hp != null ? patch.hp + ' HP' : null]
+      .filter(Boolean).join(' \u00b7 ') || 'stats unchanged';
+    this.setState({
+      roster, addedPokemon, ivOverrides: overrides, candyInventory: inv,
+      evoFlashName: toName, evoFlashStats: statLine
+    }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+    try { clearTimeout(this._evoFlashTimer); } catch (e) {}
+    this._evoFlashTimer = setTimeout(() => this.setState({ evoFlashName: '', evoFlashStats: '' }), 1400);
+    return true;
   }
 
   unqueueTransfer(idx) {
@@ -7236,6 +7836,11 @@ class Component extends DCLogic {
         onManualDefChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'def', e.target.value); },
         onManualStaChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setManualIvDraft(p.idx, 'sta', e.target.value); },
         saveManualIv: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.saveManualIv(p); },
+        candyDraft: this.candyDraftFor(p, 'candy'),
+        xlDraft: this.candyDraftFor(p, 'xlCandy'),
+        onCandyChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setCandyDraft(p, 'candy', e.target.value); },
+        onXlChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setCandyDraft(p, 'xlCandy', e.target.value); },
+        saveCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.saveCandyEdit(p); },
         markTransferredCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.transferPokemon(p); }
       };
     });
@@ -7566,6 +8171,10 @@ class Component extends DCLogic {
       return { date: h.date, count: h.count, avgIV: h.avgIV + '%', lucky: h.lucky, delta, deltaColor, stardustDisplay: h.stardust != null ? h.stardust.toLocaleString() : '—', dustDelta };
     });
 
+    // Each of these walks the whole roster, so compute once per render.
+    const dataQuality = this.dataQualityIssues();
+    const tradeAdv = this.tradeAdvice();
+    const raidRowsRaw = this.raidCounters();
     const detailPoke = this.state.detailPoke;
     let detail = null;
     if (detailPoke) {
@@ -7612,6 +8221,61 @@ class Component extends DCLogic {
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         dex: p.dex, cp: p.cp, hp: p.hp,
         statRings, leagues,
+        // ---- Power-up planner + PvP level targets ----
+        // Both read from the same two facts: this Pokemon's real level and the
+        // cost table in the mechanics module. Lucky halves dust, Shadow adds
+        // 20%, Purified takes 10% off — passed through so the number quoted is
+        // the number the game will charge for THIS Pokemon.
+        plan: (() => {
+          const m = this.mechanics;
+          const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+          const lv = this.evalLevelOf(p);
+          if (!m || !base || !ivs || lv.level == null) {
+            return { known: false, note: Number.isFinite(p.atkIV)
+              ? 'Pin this Pokemon\u2019s level first \u2014 run the IV import so costs can be calculated.'
+              : 'Appraise this Pokemon first \u2014 costs need its IVs and level.' };
+          }
+          const opts = { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) };
+          const dust = this.state.stardustBalance;
+          const fmt = n => Number(n || 0).toLocaleString('en-US');
+          const targets = [40, 50].filter(t => t > lv.level).map(t => {
+            const c = m.powerUpCostBetween(lv.level, t, opts);
+            if (!c || !c.reachable) return null;
+            const cp = m.cpFor(base, ivs, t);
+            return {
+              label: 'TO L' + t,
+              cpLine: cp != null ? cp + ' CP' : '',
+              costLine: fmt(c.dust) + ' dust \u00b7 ' + c.candy + ' candy' + (c.xlCandy ? ' \u00b7 ' + c.xlCandy + ' XL' : ''),
+              // Whether the dust you actually have covers it.
+              afford: dust == null ? '' : (dust >= c.dust ? 'covered by your ' + fmt(dust) + ' dust' : 'short ' + fmt(c.dust - dust) + ' dust'),
+              affordColor: dust == null ? 'oklch(60% 0.011 50)' : (dust >= c.dust ? 'oklch(80% 0.14 150)' : 'oklch(78% 0.13 30)')
+            };
+          }).filter(Boolean);
+          // The level to STOP at so CP stays under each league cap. Overshooting
+          // the cap is the most common way players waste dust in PvP.
+          const caps = [['GREAT', 1500], ['ULTRA', 2500]].map(([label, cap]) => {
+            const target = m.maxLevelUnderCap(base, ivs, cap);
+            if (target == null) return { label, line: 'already over the ' + cap + ' cap at level 1' , color: 'oklch(70% 0.011 50)' };
+            const cp = m.cpFor(base, ivs, target);
+            if (target <= lv.level) {
+              return { label, line: 'stop at L' + target + ' (' + cp + ' CP) \u2014 already there or past it', color: 'oklch(70% 0.011 50)' };
+            }
+            const c = m.powerUpCostBetween(lv.level, target, opts);
+            return {
+              label,
+              line: 'stop at L' + target + ' for ' + cp + ' CP \u00b7 ' + fmt(c.dust) + ' dust, ' + c.candy + ' candy'
+                + (c.xlCandy ? ', ' + c.xlCandy + ' XL' : ''),
+              color: 'oklch(84% 0.11 150)'
+            };
+          });
+          return {
+            known: true,
+            levelLine: 'Currently L' + lv.level + (lv.exact ? '' : ' (approx)'),
+            targets, caps,
+            hasTargets: targets.length > 0,
+            maxedNote: targets.length ? '' : 'Already at the level 50 cap.'
+          };
+        })(),
         // Where these three numbers came from. A measured spread is a fact read
         // off the bar fill; a solved one is the middle of however many spreads
         // fit this CP and HP, and saying which is which stops a guess from
@@ -7797,6 +8461,7 @@ class Component extends DCLogic {
       { key: 'roster', label: 'ROSTER', navLabel: 'ROSTER', icon: '\u25a4' },
       { key: 'pvp', label: 'PVP RANKINGS', navLabel: 'PVP', icon: '\u2694' },
       { key: 'attackers', label: 'ATTACKERS', navLabel: 'ATTACK', icon: '\u25b2' },
+      { key: 'raid', label: 'RAID COUNTERS', navLabel: 'RAID', icon: '\u2726' },
       { key: 'recommend', label: 'RECOMMENDATIONS', navLabel: 'RECS', icon: '\u2605' },
       { key: 'intel', label: 'COLLECTION INTEL', navLabel: 'INTEL', icon: '\u25cf' },
       { key: 'progress', label: 'PROGRESS LOG', navLabel: 'LOG', icon: '\u2261' }
@@ -7857,6 +8522,7 @@ class Component extends DCLogic {
       isIntel: tab === 'intel',
       isToday: tab === 'today',
       isProgress: tab === 'progress',
+      isRaid: tab === 'raid',
       tabList,
       setTab: (t) => this.goToTab(t),
       search,
@@ -8416,6 +9082,78 @@ class Component extends DCLogic {
         summary: 'Restore ' + this.state.restorePending.count + ' Pokemon from ' + this.state.restorePending.filename +
           '? This replaces the roster, IVs, candy and history on every synced device.'
       } : null,
+      dataQualityRows: dataQuality.map(i => ({
+        label: i.label, why: i.why, fix: i.fix,
+        count: String(i.count),
+        names: i.names,
+        onShow: () => this.goToTab('roster')
+      })),
+      dataQualityClean: dataQuality.length === 0,
+      tradeLuckyRows: tradeAdv.lucky.map(r => ({
+        name: r.p.name || '?',
+        spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form),
+        initial: (r.p.name || '?').charAt(0),
+        rail: this.typeLook(r.p).rail,
+        line: 'lowest IV is ' + r.floor + ' \u00b7 a lucky trade floors all three at 12',
+        rankLine: r.rank.toFixed(0) + '% rank',
+        onClick: () => this.openDetail(r.p)
+      })),
+      tradeLuckyEmpty: tradeAdv.lucky.length === 0,
+      tradeDupeRows: tradeAdv.dupes.map(r => ({
+        loserName: r.loser.name || '?',
+        spriteRef: this.makeSpriteRefByDex(r.loser.dex, r.loser.form),
+        initial: (r.loser.name || '?').charAt(0),
+        rail: this.typeLook(r.loser).rail,
+        line: 'beaten by your ' + (r.winner.cp || '?') + ' CP ' + (r.winner.name || '?')
+          + ' (' + r.winnerRank.toFixed(0) + '% vs ' + r.loserRank.toFixed(0) + '%)',
+        onClick: () => this.openDetail(r.loser)
+      })),
+      tradeDupeEmpty: tradeAdv.dupes.length === 0,
+      raidBossName: this.state.raidBossName || '',
+      onRaidBossName: (e) => this.setRaidBossName(e.target.value),
+      raidTypeChips: this.allTypes().map(t => {
+        const on = (this.state.raidBossTypes || []).indexOf(t) >= 0;
+        return {
+          label: t.toUpperCase(),
+          bg: on ? 'oklch(48% 0.14 62)' : 'oklch(24% 0.0165 50)',
+          fg: on ? 'white' : 'oklch(72% 0.011 50)',
+          onClick: () => this.toggleRaidType(t)
+        };
+      }),
+      raidHasBoss: (this.state.raidBossTypes || []).length > 0,
+      raidBossLine: (this.state.raidBossTypes || []).join(' / '),
+      raidRows: raidRowsRaw.map((r, i) => ({
+        rank: '#' + (i + 1),
+        name: r.p.name || '?',
+        spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form),
+        initial: (r.p.name || '?').charAt(0),
+        rail: this.typeLook(r.p).rail,
+        railGlow: this.typeLook(r.p).glow,
+        dps: r.dps.toFixed(1),
+        moveLine: r.fast + ' / ' + r.charged,
+        levelLine: 'L' + r.level + (r.exact ? '' : ' (approx)'),
+        // 1.6 per super-effective stage; call it out because it is the single
+        // biggest lever in counter choice.
+        effLabel: r.eff >= 2.5 ? 'DOUBLE SUPER' : r.eff >= 1.55 ? 'SUPER EFFECTIVE'
+          : r.eff <= 0.4 ? 'DOUBLE RESISTED' : r.eff <= 0.65 ? 'RESISTED' : 'NEUTRAL',
+        effColor: r.eff >= 1.55 ? 'oklch(82% 0.15 145)' : r.eff <= 0.65 ? 'oklch(76% 0.13 30)' : 'oklch(62% 0.011 50)',
+        upside: (r.dps50 != null && r.cost && r.cost.reachable && r.cost.steps > 0)
+          ? r.dps50.toFixed(1) + ' DPS at L50 for ' + r.cost.dust.toLocaleString() + ' dust \u00b7 ' + r.cost.candy + ' candy'
+            + (r.cost.xlCandy ? ' \u00b7 ' + r.cost.xlCandy + ' XL' : '')
+          : '',
+        onClick: () => this.openDetail(r.p)
+      })),
+      raidEmpty: raidRowsRaw.length === 0,
+      snapshotError: this.state.snapshotError || '',
+      hasSnapshots: (this.state.snapshots || []).length > 0,
+      noSnapshots: (this.state.snapshots || []).length === 0,
+      snapshotRows: (this.state.snapshots || []).map(s => ({
+        id: s.id,
+        when: new Date(s.createdAt).toLocaleString(),
+        detail: s.pokemonCount + ' Pokemon \u00b7 ' + s.reason,
+        onRestore: () => this.restoreSnapshot(s.id)
+      })),
+      takeSnapshotNow: () => this.autoSnapshot('manual', { force: true }),
       confirmRestore: () => this.confirmRestore(),
       cancelRestore: () => this.cancelRestore(),
       fileFallback: this.state.fileFallback,
@@ -8439,6 +9177,9 @@ class Component extends DCLogic {
       hasCloudUser: !!this.state.cloudUser,
       cloudUserEmail: this.state.cloudUser && this.state.cloudUser.email,
       syncStatusLabel: this.state.syncStatus || 'idle',
+      evoFlash: !!this.state.evoFlashName,
+      evoFlashName: this.state.evoFlashName || '',
+      evoFlashStats: this.state.evoFlashStats || '',
       ptrHeight: Math.round(this.state.ptrPull || 0) + 'px',
       ptrVisible: (this.state.ptrPull || 0) > 4,
       ptrLabel: this.state.ptrRefreshing ? 'Reloading…' : (this.state.ptrArmed ? 'Release to reload' : 'Pull to reload'),
