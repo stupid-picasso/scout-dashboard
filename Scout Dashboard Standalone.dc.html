@@ -1127,7 +1127,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.9</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v50.0</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1143,6 +1143,19 @@
   </div>
 
   </div>
+
+  <sc-if value="{{ ptrVisible }}" hint-placeholder-val="{{ false }}">
+    <div style="height:{{ ptrHeight }};display:flex;align-items:center;justify-content:center;overflow:hidden;transition:height .18s ease">
+      <div style="font:700 10.5px ui-monospace,monospace;letter-spacing:.08em;color:{{ ptrColor }}">{{ ptrLabel }}</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ syncAlert }}" hint-placeholder-val="{{ false }}">
+    <div style="background:oklch(26% 0.09 25);border:1px solid oklch(45% 0.15 25);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:5px">
+      <div style="font:700 10.5px ui-monospace,monospace;color:oklch(80% 0.16 25);letter-spacing:.06em">CLOUD SAVE FAILED</div>
+      <div style="font:12px/1.5 sans-serif;color:oklch(90% 0.03 25);text-wrap:pretty">{{ syncAlert }}</div>
+    </div>
+  </sc-if>
 
   <div style="background:oklch(23% 0.0165 50);border:1px solid oklch(32% 0.0165 50);border-radius:10px;padding:14px 16px;margin-bottom:20px;display:flex;flex-direction:column;gap:6px">
     <div style="font:700 10.5px ui-monospace,monospace;color:oklch(78% 0.15 70);letter-spacing:.06em">PROFESSOR SAYS</div>
@@ -2766,7 +2779,10 @@ class Component extends DCLogic {
     authPassword: '',
     authError: '',
     cloudUser: null,
-    syncStatus: ''
+    syncStatus: '',
+    ptrPull: 0,
+    ptrArmed: false,
+    ptrRefreshing: false
   };
 
   waitForGlobal(prop, evt) {
@@ -2798,6 +2814,48 @@ class Component extends DCLogic {
     window.addEventListener('resize', this.updateWidth);
     this.initFirebase();
     this.checkPendingImport();
+    this.bindPullToRefresh();
+  }
+
+  // Safari-style pull-to-refresh. An installed PWA has no address bar and no
+  // reload gesture of its own, so without this the only way to pick up a new
+  // build is to delete and reinstall.
+  bindPullToRefresh() {
+    if (this._ptrBound) return;
+    this._ptrBound = true;
+    const THRESHOLD = 78;
+    let startY = 0, pulling = false;
+    this._onTouchStart = (e) => {
+      if (this.state.ptrRefreshing) return;
+      // Only arm the gesture at the very top, so it never fights a normal scroll.
+      const top = window.scrollY || document.documentElement.scrollTop || 0;
+      if (top > 2 || !e.touches || e.touches.length !== 1) { pulling = false; return; }
+      startY = e.touches[0].clientY;
+      pulling = true;
+    };
+    this._onTouchMove = (e) => {
+      if (!pulling || this.state.ptrRefreshing) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy <= 0) { if (this.state.ptrPull) this.setState({ ptrPull: 0 }); return; }
+      // Rubber-band: the pull slows as it stretches.
+      const eased = Math.min(THRESHOLD * 1.5, dy * 0.55);
+      this.setState({ ptrPull: eased, ptrArmed: eased >= THRESHOLD });
+    };
+    this._onTouchEnd = () => {
+      if (!pulling) return;
+      pulling = false;
+      if (this.state.ptrArmed && !this.state.ptrRefreshing) {
+        this.setState({ ptrRefreshing: true, ptrPull: THRESHOLD });
+        try { window.location.reload(); } catch (e) { this.setState({ ptrRefreshing: false, ptrPull: 0, ptrArmed: false }); }
+        return;
+      }
+      this.setState({ ptrPull: 0, ptrArmed: false });
+    };
+    const opts = { passive: true };
+    window.addEventListener('touchstart', this._onTouchStart, opts);
+    window.addEventListener('touchmove', this._onTouchMove, opts);
+    window.addEventListener('touchend', this._onTouchEnd, opts);
+    window.addEventListener('touchcancel', this._onTouchEnd, opts);
   }
 
   bindNetworkStatus() {
@@ -9397,6 +9455,14 @@ class Component extends DCLogic {
       hasCloudUser: !!this.state.cloudUser,
       cloudUserEmail: this.state.cloudUser && this.state.cloudUser.email,
       syncStatusLabel: this.state.syncStatus || 'idle',
+      ptrHeight: Math.round(this.state.ptrPull || 0) + 'px',
+      ptrVisible: (this.state.ptrPull || 0) > 4,
+      ptrLabel: this.state.ptrRefreshing ? 'Reloading…' : (this.state.ptrArmed ? 'Release to reload' : 'Pull to reload'),
+      ptrColor: this.state.ptrArmed ? 'oklch(82% 0.15 145)' : 'oklch(62% 0.011 50)',
+      // A failed save used to be legible only in the Data tab's small sync line,
+      // which is why "it didn't stick" kept reading as a mystery instead of an
+      // error. Surface it on every page.
+      syncAlert: /^(TOO BIG|error:)/.test(this.state.syncStatus || '') ? this.state.syncStatus : '',
       syncNow: () => this.syncNow(),
       signOutCloud: () => this.signOutCloud(),
       migrateStatsAndSprites: () => this.migrateStatsAndSprites(),
