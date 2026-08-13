@@ -101,7 +101,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.4</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.7</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -255,6 +255,9 @@
                 </div>
                 <div style="font:700 10.5px ui-monospace,monospace;color:{{ row.candyColor }};white-space:nowrap">{{ row.candyLabel }}</div>
               </div>
+              <sc-if value="{{ row.dupNote }}" hint-placeholder-val="{{ false }}">
+                <div style="font:10.5px ui-monospace,monospace;color:oklch(72% 0.10 150);margin-top:5px">{{ row.dupNote }}</div>
+              </sc-if>
             </div>
             <div onClick="{{ row.onDone }}" class="om-press" style="cursor:pointer;flex-shrink:0;width:40px;height:40px;border-radius:50%;background:{{ row.doneBg }};border:1px solid {{ row.doneBorder }};display:flex;align-items:center;justify-content:center;font:800 15px ui-monospace,monospace;color:{{ row.doneColor }}">&#10003;</div>
           </div>
@@ -1091,10 +1094,9 @@
         <div onClick="{{ sendChat }}" style="cursor:pointer;background:oklch(45% 0.1 62);color:white;padding:10px 16px;border-radius:6px;font:700 12px ui-monospace,monospace;white-space:nowrap">SEND</div>
       </div>
     </div>
-  </div>
   </sc-if>
 
-  <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ true }}">
+  <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ false }}">
   <div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center">
       <input type="text" placeholder="Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:oklch(23% 0.0165 50);border:1px solid oklch(35% 0.0165 50);color:oklch(92% 0.0055 50);font:14px ui-monospace,monospace;padding:9px 14px;border-radius:6px;flex:1 1 160px;min-width:140px" />
@@ -5686,6 +5688,27 @@ class Component extends DCLogic {
       + '- Report every Pokemon whose name you can read, even if other fields are null.';
   }
 
+  // Fold pending IV overrides into the records they belong to, so the spread
+  // lives on the Pokemon rather than in a positional side map. Entries that
+  // match no record are left in overrides untouched (a pick still pending).
+  bakeOverridesIntoRecords(overrides) {
+    const src = overrides || {};
+    const keys = Object.keys(src);
+    if (!keys.length) return { overrides: src, roster: this.state.roster || [], addedPokemon: this.state.addedPokemon || [] };
+    const used = new Set();
+    const apply = list => (list || []).map(p => {
+      const o = src[p.idx];
+      if (!o) return p;
+      used.add(String(p.idx));
+      return { ...p, ...o };
+    });
+    const roster = apply(this.state.roster);
+    const addedPokemon = apply(this.state.addedPokemon);
+    const rest = {};
+    keys.forEach(k => { if (!used.has(String(k))) rest[k] = src[k]; });
+    return { overrides: rest, roster, addedPokemon };
+  }
+
   // Merged view used for matching: base roster with IV overrides applied, plus
   // added Pokemon, minus removed — i.e. the same list the roster renders.
   effectiveRosterForMatch() {
@@ -5931,7 +5954,12 @@ class Component extends DCLogic {
     // calling pushCloud() on the next line uploads this.state as it was BEFORE
     // the import - the stale spreads - and the listener then hands them straight
     // back, which looks exactly like the import silently failing.
-    this.setState({ ivOverrides: overrides }, () => {
+    // Overrides alone are a side table keyed by POSITIONAL idx: CSV export reads
+    // the records, so a pinned IV never reached the export, and a re-import
+    // renumbered idx out from under every pin. Baking the spread onto the roster
+    // and addedPokemon records makes it survive both.
+    const baked = this.bakeOverridesIntoRecords(overrides);
+    this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
     const measuredCount = Object.keys(overrides).filter(k => overrides[k] && overrides[k].ivMeasured).length;
@@ -5952,7 +5980,10 @@ class Component extends DCLogic {
     const overrides = { ...this.state.ivOverrides };
     const hint = this.appraisalHintFromItem(row._item);
     const res = this.solveAndApplyAppraisal(rec, row._item, hint, overrides);
-    this.setState({ ivOverrides: overrides });
+    const baked = this.bakeOverridesIntoRecords(overrides);
+    this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
     const review = vi.review.map(r => r._rid === rid
       ? { ...r, _status: res.contradiction ? 'contradiction' : 'applied', matchName: rec.name, iv: res.review.iv, ivCount: res.review.ivCount, _item: null, _choices: null }
       : r);
@@ -6294,25 +6325,62 @@ class Component extends DCLogic {
     return Number.isFinite(pct) && pct >= 85 && (p.cp == null || p.cp <= 500);
   }
 
+  // Duplicates of one species all draw on the SAME candy pool, so listing five
+  // ready Pidgey when 62 candy only funds two is a lie of omission. Candidates
+  // are grouped by species, ranked within the group, and only the number the
+  // candy actually funds is surfaced — the rest are held back with a note
+  // saying how many more candy the next one needs.
   evolveQueue() {
     const done = new Set(this.state.completedIds || []);
-    const out = [];
+    const groups = {};
     this.effectiveRosterForMatch().forEach(p => {
       if (done.has(p.idx)) return;
       const evo = this.evoInfoFor(p);
       if (!evo) return;
-      // A known candy shortfall means it can't be evolved right now regardless
-      // of rank, so it's dropped from the queue rather than listed unusable.
-      // Unknown stock (no candy import yet) still shows, same as before.
       if (evo.ready === false) return;
       const rank = this.bestRank(p);
       const risk = this.littleCupRisk(p);
       // Score favours what the evolution is worth: league rank first, then IV,
       // and a ready candy stock outranks one that still needs collecting.
       const score = (Number.isFinite(rank) ? rank : 0) + (p.ivAvg || 0) * 0.4 + (evo.ready ? 25 : 0) - (risk ? 40 : 0);
-      out.push({ p, evo, rank, risk, score });
+      const key = String(p.name || '').toLowerCase() + '|' + String(p.form || '');
+      (groups[key] = groups[key] || []).push({ p, evo, rank, risk, score });
+    });
+    const out = [];
+    Object.keys(groups).forEach(key => {
+      const group = groups[key].sort((a, b) => b.score - a.score);
+      const need = group[0].evo.need;
+      const have = group[0].evo.have;
+      // Unknown candy stock is not zero — show the single best pick and say so
+      // rather than pretending the whole group is fundable.
+      const affordable = (need != null && have != null && need > 0)
+        ? Math.max(0, Math.floor(have / need))
+        : null;
+      const shown = affordable == null ? 1 : Math.min(affordable, group.length);
+      group.slice(0, Math.max(1, shown)).forEach((r, i) => {
+        r.dupTotal = group.length;
+        r.dupRank = i + 1;
+        r.affordable = affordable;
+        r.candyPool = have;
+        // Candy left once the picks above this one in the group are paid for.
+        r.candyAfter = (have != null && need != null) ? have - need * (i + 1) : null;
+        r.fundable = affordable == null ? null : i < affordable;
+        out.push(r);
+      });
     });
     return out.sort((a, b) => b.score - a.score);
+  }
+
+  // One line explaining why THIS individual is the pick, and what the shared
+  // candy pool does or doesn't cover for the rest of its species.
+  evolveDupNote(row) {
+    if (!row || row.dupTotal == null || row.dupTotal < 2) return null;
+    const species = row.p.name || 'this species';
+    const parts = ['best of ' + row.dupTotal + ' ' + species];
+    if (row.affordable == null) parts.push('candy stock unknown');
+    else if (row.affordable >= row.dupTotal) parts.push('candy funds all ' + row.dupTotal);
+    else parts.push('candy funds ' + row.affordable + ' of ' + row.dupTotal);
+    return parts.join(' \u00b7 ');
   }
 
   // ---- Stardust planning ----
@@ -8133,6 +8201,7 @@ class Component extends DCLogic {
         candyPct: (row.evo.need && row.evo.have != null)
           ? Math.min(100, Math.round(row.evo.have / row.evo.need * 100)) + '%'
           : (row.evo.ready ? '100%' : '0%'),
+        dupNote: this.evolveDupNote(row),
         risk: row.risk,
         riskNote: 'Strong Little Cup pick \u2014 evolving puts it over the 500 CP cap.',
         doneBg: 'oklch(24% 0.03 150)',
