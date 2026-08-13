@@ -101,7 +101,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.7</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.8</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1988,6 +1988,8 @@ class Component extends DCLogic {
       candyInventory: remote.candyInventory || {},
       typeTable: remote.typeTable || {},
       moveDB: remote.moveDB || {},
+      evoTable: remote.evoTable || {},
+      candyAiDecisions: remote.candyAiDecisions || {},
       stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
       history: remote.history || [],
       completedIds: remote.completedIds || [],
@@ -2022,7 +2024,8 @@ class Component extends DCLogic {
     const s = this.state;
     const blob = {
       roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
-      typeTable: s.typeTable, moveDB: s.moveDB, stardustBalance: s.stardustBalance, history: s.history,
+      typeTable: s.typeTable, moveDB: s.moveDB, evoTable: s.evoTable, candyAiDecisions: s.candyAiDecisions,
+      stardustBalance: s.stardustBalance, history: s.history,
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
       checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
@@ -2367,6 +2370,8 @@ class Component extends DCLogic {
         failed += batch.length;
         this.setState({ moveFetchError: (e && e.message) || 'Move lookup failed.' });
       }
+      // Persist after every batch, not just at the end.
+      this.setState({ moveDB: { ...db } }, () => this.pushCloud());
     }
     this.setState({ moveDB: db, moveFetchBusy: false,
       moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
@@ -6227,7 +6232,7 @@ class Component extends DCLogic {
       });
       // Cache as we go, so a failure halfway through does not throw away the
       // species already paid for.
-      this.setState({ evoTable: { ...table } });
+      this.setState({ evoTable: { ...table } }, () => this.pushCloud());
     }
     this.setState({ evoTable: table, evoFetchBusy: false,
       evoFetchStatus: got + ' species resolved' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
