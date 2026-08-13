@@ -101,7 +101,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v50.0</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v50.2</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2025,6 +2025,8 @@ class Component extends DCLogic {
       // Signed out means nothing is displayed — this device holds no
       // Pokémon data of its own, so there is nothing left to fall back to.
       if (this._unsubDoc) { this._unsubDoc(); this._unsubDoc = null; }
+      this._hydrated = false;
+      this._lastBlobBytes = 0;
       this.setState({ cloudUser: null, syncStatus: '', loaded: true, ...this.EMPTY_USER_DATA() });
     }
   }
@@ -2076,12 +2078,13 @@ class Component extends DCLogic {
     };
     patch.apiEndpointDraft = this.state.apiEndpointDraft || patch.apiEndpoint;
     patch.geminiKeyDraft = this.state.geminiKeyDraft || (patch.geminiKeys.length ? patch.geminiKeys.join('\n') : '');
-    this.setState(patch, () => { this._applyingRemote = false; });
-    this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() });
+    this.setState(patch, () => { this._applyingRemote = false; this._hydrated = true; });
+    const sizeNote = this._lastBlobBytes ? ' · ' + Math.round(this._lastBlobBytes / 1024) + 'kB' : '';
+    this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() + sizeNote });
   }
 
   queueCloudPush() {
-    if (!this.state.cloudUser) return;
+    if (!this.state.cloudUser || !this._hydrated) return;
     this.setState({ syncStatus: 'syncing\u2026' });
     clearTimeout(this._pushTimer);
     this._pushTimer = setTimeout(() => this.pushCloud(), 1200);
@@ -2089,6 +2092,9 @@ class Component extends DCLogic {
 
   pushCloud() {
     if (!this.db || !this.state.cloudUser) return;
+    if (!this._hydrated) return;
+    // A snapshot echo arriving mid-apply must not bounce straight back up.
+    if (this._applyingRemote) return;
     const s = this.state;
     const blob = {
       roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
@@ -2148,6 +2154,10 @@ class Component extends DCLogic {
   }
 
   syncNow() {
+    if (!this._hydrated) {
+      this.setState({ syncStatus: 'waiting for the cloud copy to load first — try again in a moment' });
+      return;
+    }
     this.pushCloud();
   }
 
