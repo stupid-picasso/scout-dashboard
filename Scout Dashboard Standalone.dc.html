@@ -1130,7 +1130,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v51.2</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v51.3</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -8470,16 +8470,22 @@ class Component extends DCLogic {
         const bySpecies = {};
         roster.forEach(p => {
           const key = `${p.name || '?'}${p.form ? '/' + p.form : ''}`;
-          if (!bySpecies[key]) bySpecies[key] = { n: 0, cps: [] };
+          if (!bySpecies[key]) bySpecies[key] = { n: 0, cps: [], noCp: 0 };
           bySpecies[key].n++;
-          if (Number.isFinite(Number(p.cp))) bySpecies[key].cps.push(Number(p.cp));
+          // Test p.cp RAW. Number(null) is 0 and passes Number.isFinite, which
+          // would report a Pokemon whose CP was never read as genuinely having
+          // 0 CP — null is the canonical "unknown" from every import path here.
+          if (Number.isFinite(p.cp)) bySpecies[key].cps.push(p.cp);
+          else bySpecies[key].noCp++;
         });
         const entries = Object.keys(bySpecies).sort().map(k => {
           const v = bySpecies[k];
           const cps = v.cps.sort((a, b) => b - a);
-          return v.n > 1
-            ? `${k} x${v.n} (CP ${cps.join('/')})`
-            : `${k}${cps.length ? ' cp' + cps[0] : ''}`;
+          // Say so when CP is unknown, otherwise the count and the CP list
+          // disagree with no explanation and the model fills the gap itself.
+          const unknown = v.noCp ? `${cps.length ? ', ' : ''}${v.noCp} with CP not yet read` : '';
+          if (v.n > 1) return `${k} x${v.n} (${cps.length ? 'CP ' + cps.join('/') : ''}${unknown})`;
+          return cps.length ? `${k} cp${cps[0]}` : `${k} (CP not yet read)`;
         });
         return `COMPLETE species census — every one of the ${roster.length} Pokemon owned, counts authoritative (use THIS for "how many X do I have"): `
           + entries.join('; ');
