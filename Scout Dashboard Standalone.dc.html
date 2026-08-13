@@ -1127,7 +1127,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.8</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v49.9</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1311,8 +1311,18 @@
       <sc-if value="{{ dustPlanEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12.5px/1.5 sans-serif;color:oklch(62% 0.011 50);text-wrap:pretty">{{ dustPlanEmpty }}</div>
       </sc-if>
-      <sc-if value="{{ candyAiNote }}" hint-placeholder-val="{{ false }}">
-        <div style="font:11.5px/1.45 sans-serif;color:oklch(76% 0.1 62);background:oklch(24% 0.04 62);border:1px solid oklch(36% 0.06 62);border-radius:7px;padding:8px 10px;margin-bottom:10px;text-wrap:pretty">{{ candyAiNote }}</div>
+      <sc-if value="{{ hasCandyAiNotes }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+          <sc-for list="{{ candyAiNotes }}" as="note" hint-placeholder-count="2">
+            <div style="background:oklch(24% 0.04 62);border:1px solid oklch(36% 0.06 62);border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                <div style="font:800 12.5px ui-monospace,monospace;color:oklch(93% 0.0055 50)">{{ note.name }}</div>
+                <div style="font:700 9.5px ui-monospace,monospace;letter-spacing:.07em;color:{{ note.verdictColor }}">{{ note.verdict }}</div>
+              </div>
+              <div style="font:11.5px/1.5 sans-serif;color:oklch(78% 0.011 50);text-wrap:pretty">{{ note.reason }}</div>
+            </div>
+          </sc-for>
+        </div>
       </sc-if>
       <sc-if value="{{ candyAiBusy }}" hint-placeholder-val="{{ false }}">
         <div style="font:11px ui-monospace,monospace;color:oklch(60% 0.011 50);margin-bottom:10px">Asking AI whether to evolve or power up on shared candy&hellip;</div>
@@ -2687,7 +2697,7 @@ class Component extends DCLogic {
     evoTable: {},
     candyAiDecisions: {},
     candyAiBusy: false,
-    candyAiNote: '',
+    candyAiNotes: [],
     evoFetchBusy: false,
     evoFetchStatus: '',
     evoFetchError: '',
@@ -3066,6 +3076,30 @@ class Component extends DCLogic {
     // not the primary fix.
     let safeBlob = blob;
     try { safeBlob = JSON.parse(JSON.stringify(blob)); } catch (e) { /* fall back to raw blob */ }
+    // A Firestore document is hard-capped at 1 MiB. Past that the write is
+    // REJECTED WHOLESALE — which looked exactly like "the move database and
+    // evolution table won't stick": they were fetched, set in state, pushed,
+    // and silently thrown away by the server every time. History grows without
+    // bound so it is trimmed first; the remaining sizes are reported so this is
+    // visible instead of guessed at.
+    const sizeOf = (o) => { try { return new TextEncoder().encode(JSON.stringify(o)).length; } catch (e) { return 0; } };
+    let bytes = sizeOf(safeBlob);
+    const LIMIT = 1000000;
+    if (bytes > LIMIT && Array.isArray(safeBlob.history) && safeBlob.history.length > 60) {
+      safeBlob.history = safeBlob.history.slice(-60);
+      bytes = sizeOf(safeBlob);
+    }
+    this._lastBlobBytes = bytes;
+    if (bytes > LIMIT) {
+      const parts = Object.entries({
+        roster: sizeOf(safeBlob.roster), moveDB: sizeOf(safeBlob.moveDB),
+        evoTable: sizeOf(safeBlob.evoTable), typeTable: sizeOf(safeBlob.typeTable),
+        history: sizeOf(safeBlob.history), ivOverrides: sizeOf(safeBlob.ivOverrides)
+      }).sort((a, b) => b[1] - a[1]).slice(0, 3)
+        .map(([k, v]) => k + ' ' + Math.round(v / 1024) + 'kB').join(', ');
+      this.setState({ syncStatus: 'TOO BIG to save: ' + Math.round(bytes / 1024) + 'kB of 1024kB limit — biggest: ' + parts });
+      return;
+    }
     // Firestore's compat SDK validates the payload SYNCHRONOUSLY and THROWS
     // (rather than rejecting) on bad field shapes (e.g. a literal `undefined`
     // anywhere in the object graph). This fires from a bare setTimeout with no
@@ -3075,7 +3109,7 @@ class Component extends DCLogic {
     // users \u2014 nothing about the .catch() below could ever see it.
     try {
       this.db.collection('scoutUsers').doc(s.cloudUser.uid).set(safeBlob, { merge: true })
-        .then(() => this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() }))
+        .then(() => this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() + ' · ' + Math.round((this._lastBlobBytes || 0) / 1024) + 'kB' }))
         .catch(err => this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) }));
     } catch (err) {
       this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) });
@@ -7550,13 +7584,18 @@ class Component extends DCLogic {
         if (!row) return;
         const choice = item.choice === 'powerup' ? 'powerup' : 'evolve';
         patch[row.key] = { choice, reason: item.reason || '' };
-        notes.push(row.evoRow.p.name + ': ' + (choice === 'powerup' ? 'power up first' : 'evolve first') + (item.reason ? ' — ' + item.reason : ''));
+        notes.push({
+          name: row.evoRow.p.name,
+          verdict: choice === 'powerup' ? 'POWER UP FIRST' : 'EVOLVE FIRST',
+          verdictColor: choice === 'powerup' ? 'oklch(80% 0.13 230)' : 'oklch(82% 0.15 145)',
+          reason: item.reason || ''
+        });
       });
-      this.setState({ candyAiDecisions: patch, candyAiBusy: false, candyAiNote: notes.join('  •  ') });
+      this.setState({ candyAiDecisions: patch, candyAiBusy: false, candyAiNotes: notes });
     } catch (e) {
       // AI unavailable: fall back to the safe default (reserve for evolution)
       // already baked into dustPlan, just without a stated reason.
-      this.setState({ candyAiBusy: false, candyAiNote: '' });
+      this.setState({ candyAiBusy: false, candyAiNotes: [] });
     }
   }
 
@@ -8645,7 +8684,7 @@ class Component extends DCLogic {
     const triageAll = this.triageQueue();
     const dustPlan = this.dustPlan();
     const candyAiBusy = this.state.candyAiBusy;
-    const candyAiNote = this.state.candyAiNote || '';
+    const candyAiNotes = this.state.candyAiNotes || [];
     const dexGapsAll = this.actionableDexGaps();
     const expand = this.state.todayExpand || {};
     const BLOCK = 10;
@@ -9254,7 +9293,8 @@ class Component extends DCLogic {
         : '0%',
       dustBudgetShort: 'lvl ' + dustPlan.ceiling + ' cap',
       candyAiBusy: candyAiBusy,
-      candyAiNote: candyAiNote,
+      candyAiNotes: candyAiNotes,
+      hasCandyAiNotes: candyAiNotes.length > 0,
       dustPlanEmpty: dustPlan.rows.length ? null
         : (dustPlan.budget <= 0
           ? 'Balance is at or below your ' + fmt(dustPlan.reserve) + ' reserve. Adjust it in Settings.'
