@@ -104,7 +104,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v51.1</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v51.2</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -7435,14 +7435,37 @@ class Component extends DCLogic {
         return `Living Dex: ${owned.size}/${total} species (${(owned.size / (total || 1) * 100).toFixed(1)}%). Kanto Dex: ${kantoOwned}/${kanto.length}. Hundo: ${hundo}. Nundo: ${nundo}. `
           + `Resources on hand: Rare Candy ${r.rareCandy ?? 'unknown'}, Rare Candy XL ${r.rareCandyXL ?? 'unknown'}, Elite Fast TM ${r.eliteFastTM ?? 'unknown'}, Elite Charged TM ${r.eliteChargedTM ?? 'unknown'}, Stardust ${this.state.stardustBalance ?? 'unknown'}.`;
       })(),
-      `Roster (best 90 by league rank; ${roster.length} total. name, dex, form, cp, hp, ivAvg, atkIV/defIV/staIV, lucky, shadow, greatRank%, ultraRank%, littleRank%): ` +
+      // COMPLETE species census. The detailed list below is capped for token
+      // reasons, which meant "how many Eevee do I have?" was answered from a
+      // rank-filtered subset — 1 of 8, because the other seven ranked too low
+      // to make the cut. This census covers every Pokemon owned, so counting
+      // questions are always answerable even when detail is truncated.
+      (() => {
+        const bySpecies = {};
+        roster.forEach(p => {
+          const key = `${p.name || '?'}${p.form ? '/' + p.form : ''}`;
+          if (!bySpecies[key]) bySpecies[key] = { n: 0, cps: [] };
+          bySpecies[key].n++;
+          if (Number.isFinite(Number(p.cp))) bySpecies[key].cps.push(Number(p.cp));
+        });
+        const entries = Object.keys(bySpecies).sort().map(k => {
+          const v = bySpecies[k];
+          const cps = v.cps.sort((a, b) => b - a);
+          return v.n > 1
+            ? `${k} x${v.n} (CP ${cps.join('/')})`
+            : `${k}${cps.length ? ' cp' + cps[0] : ''}`;
+        });
+        return `COMPLETE species census — every one of the ${roster.length} Pokemon owned, counts authoritative (use THIS for "how many X do I have"): `
+          + entries.join('; ');
+      })(),
+      `Detailed stats for the best 90 by league rank ONLY (${roster.length} owned in total — this list is truncated, so absence here does NOT mean the Pokemon is not owned; consult the census above for counts). Fields: name, dex, form, cp, hp, ivAvg, atkIV/defIV/staIV, lucky, shadow, greatRank%, ultraRank%, littleRank%: ` +
         [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 90).map(p => `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${(p.shadowPurified === '1' || p.shadowPurified === 1) ? 'S' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'}`).join('; ')
     ].join('\n');
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app. It was not pasted into a chat by them, so never describe it that way, and never say you lack access to their data. For "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The detailed stats list is truncated to the top 90 by rank, so never treat a Pokemon's absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false });
