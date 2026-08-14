@@ -1130,7 +1130,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v52.1</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v52.9</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1504,6 +1504,7 @@
       <sc-if value="{{ hasCloudUser }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <div style="font:12.5px sans-serif;color:oklch(85% 0.011 50)">Synced as <strong>{{ cloudUserEmail }}</strong> &middot; {{ syncStatusLabel }}</div>
+          <div style="flex:1 1 100%;font:11.5px ui-monospace,monospace;color:oklch(72% 0.011 50)">{{ measuredIvLine }}</div>
           <div style="display:flex;gap:8px">
             <div onClick="{{ syncNow }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;background:oklch(45% 0.1 62);color:white;font:700 11px ui-monospace,monospace">SYNC NOW</div>
             <div onClick="{{ signOutCloud }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;background:oklch(30% 0.0165 50);color:oklch(80% 0.0055 50);font:700 11px ui-monospace,monospace">SIGN OUT</div>
@@ -3301,7 +3302,8 @@ class Component extends DCLogic {
   // empty). The one exception is geminiKeyDraft/geminiKey while the user is
   // actively typing a new key: a stale echo of the snapshot landing mid-edit
   // must not overwrite what's on screen before the debounced push completes.
-  applyRemote(remote) {
+  applyRemote(rawRemote) {
+    const remote = this.unpackCloudBlob(rawRemote);
     // Unsaved local work wins over a settled remote snapshot: during the 1200ms
     // debounce the server copy is by definition older than what is on screen.
     // Applying it here reverted a just-baked appraisal import, and the pending
@@ -3320,12 +3322,13 @@ class Component extends DCLogic {
     const patch = {
       roster: this.sanitizeRoster(remote.roster || []),
       ivOverrides: this.mergeIvOverrides(this.state.ivOverrides, remote.ivOverrides),
-      addedPokemon: remote.addedPokemon || [],
+      addedPokemon: this.sanitizeRoster(remote.addedPokemon || []),
       candyInventory: remote.candyInventory || {},
       typeTable: remote.typeTable || {},
       moveDB: remote.moveDB || {},
       evoTable: remote.evoTable || {},
       candyAiDecisions: remote.candyAiDecisions || {},
+      chatMessages: Array.isArray(remote.chatMessages) ? remote.chatMessages : [],
       stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
       history: remote.history || [],
       completedIds: remote.completedIds || [],
@@ -3455,12 +3458,14 @@ class Component extends DCLogic {
       if (!doc.exists) throw new Error('That snapshot no longer exists.');
       const v = doc.data() || {};
       if (!v.data) throw new Error('That snapshot holds no data.');
+      // Snapshots are stored in the packed shape; confirmRestore expects arrays.
+      const unpacked = this.unpackCloudBlob(v.data);
       // Route through the same confirm gate a file restore uses, so restoring
       // is never a single unguarded tap.
       this.setState({
         snapshotBusy: false,
         restorePending: {
-          data: v.data,
+          data: unpacked,
           count: v.pokemonCount || 0,
           filename: 'automatic snapshot of ' + new Date(v.createdAt).toLocaleString()
         }
@@ -3470,19 +3475,122 @@ class Component extends DCLogic {
     }
   }
 
+  // Firestore indexes EVERY field of EVERY object inside a stored array, and
+  // caps a document at 40,000 index entries. A 300-Pokemon roster whose records
+  // carry ~30 fields each (plus three nested league objects) blows straight past
+  // that, and the whole write is rejected: "too many index entries for entity".
+  // Packing each heavy collection into a single JSON string costs ONE index
+  // entry instead of tens of thousands. Nothing here is ever queried
+  // server-side — the document is only ever read back whole — so indexing it
+  // buys nothing and was the only thing standing between the roster and a save.
+  // Every key buildCloudBlob writes. confirmRestore derives its list from THIS
+  // rather than repeating it: the two lists had already drifted, so a restore
+  // silently dropped evoTable (hundreds of AI-resolved species), candyAiDecisions,
+  // triageKeep, transferQueue, trainerLevel and dustReserve — then immediately
+  // pushed the gaps over the good cloud copy.
+  get SYNCED_STATE_KEYS() {
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable',
+      'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
+      'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
+      'megaEnergyInventory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
+      'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint'];
+  }
+
+  // Credentials are excluded from a restore by NAME, not by being forgotten, so
+  // adding a key to the list above can never silently start overwriting keys.
+  get RESTORE_EXCLUDED_KEYS() {
+    return ['geminiKey', 'geminiKeys', 'apiEndpoint'];
+  }
+
+  get PACKED_KEYS() {
+    return ['roster', 'addedPokemon', 'ivOverrides', 'candyInventory', 'typeTable',
+      'moveDB', 'evoTable', 'candyAiDecisions', 'history', 'completedIds', 'removedIds',
+      'checklistDone', 'resources', 'megaEnergyInventory', 'triageKeep', 'transferQueue',
+      'chatMessages', 'geminiKeys'];
+  }
+
+  // Split on ENCODED BYTES, not string length. slice() counts UTF-16 code units,
+  // so a fixed character budget silently blows past Firestore's 7.5 KiB
+  // index-entry cap as soon as real content appears: names like Flabébé and
+  // Nidoran♀, and the ★ · — characters this app writes into records, took a
+  // 7000-character chunk to 7619 bytes — 0.8% under the cap, i.e. one accented
+  // name away from another rejected save.
+  chunkString(str) {
+    const s = String(str == null ? 'null' : str);
+    const MAX_BYTES = 6000; // well under 7680, no reliance on content staying ASCII
+    const enc = new TextEncoder();
+    const out = [];
+    let start = 0;
+    while (start < s.length) {
+      // Optimistic guess (1 byte/char), then shrink until it encodes small
+      // enough. Cheap because it only re-encodes when the guess is too big.
+      let end = Math.min(s.length, start + MAX_BYTES);
+      while (end > start + 1 && enc.encode(s.slice(start, end)).length > MAX_BYTES) {
+        const over = enc.encode(s.slice(start, end)).length - MAX_BYTES;
+        end -= Math.max(1, Math.ceil(over / 3));
+      }
+      // Never cut between a surrogate pair: the halves would land in separate
+      // fields as lone surrogates.
+      if (end < s.length && end > start + 1) {
+        const code = s.charCodeAt(end - 1);
+        if (code >= 0xD800 && code <= 0xDBFF) end -= 1;
+      }
+      out.push(s.slice(start, end));
+      start = end;
+    }
+    return out.length ? out : ['null'];
+  }
+
   buildCloudBlob() {
     const s = this.state;
-    return {
+    const raw = {
       roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
       typeTable: s.typeTable, moveDB: s.moveDB, evoTable: s.evoTable, candyAiDecisions: s.candyAiDecisions,
       stardustBalance: s.stardustBalance, history: s.history,
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
       checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
+      // Trimmed on write: an unbounded transcript would eventually crowd out the
+      // roster, which is the data that actually matters.
+      chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
       geminiKey: s.geminiKey, geminiKeys: s.geminiKeys,
       apiEndpoint: s.apiEndpoint,
       updatedAt: Date.now()
     };
+    const out = {};
+    Object.keys(raw).forEach(k => {
+      if (this.PACKED_KEYS.indexOf(k) >= 0) {
+        // Suffixed so an old client reading this document does not mistake a
+        // packed value for the array it expects.
+        try { out[k + 'Json'] = this.chunkString(JSON.stringify(raw[k] == null ? null : raw[k])); }
+        catch (e) { out[k + 'Json'] = ['null']; }
+      } else {
+        out[k] = raw[k];
+      }
+    });
+    out.packedVersion = 2;
+    return out;
+  }
+
+  // Accepts both shapes: the packed JSON strings written above, and the legacy
+  // nested arrays already sitting in existing documents and backup files.
+  unpackCloudBlob(remote) {
+    const src = remote || {};
+    const out = { ...src };
+    this.PACKED_KEYS.forEach(k => {
+      const packed = src[k + 'Json'];
+      // Accepts a chunk array (current), a single string (v52.2-52.4), or
+      // nothing at all (legacy documents keep their plain nested key).
+      const text = Array.isArray(packed) ? packed.join('') : (typeof packed === 'string' ? packed : null);
+      if (text != null) {
+        try {
+          const v = JSON.parse(text);
+          if (v != null) out[k] = v;
+        } catch (e) { /* leave the legacy value in place */ }
+      }
+      delete out[k + 'Json'];
+    });
+    return out;
   }
 
   pushCloud() {
@@ -3517,7 +3625,24 @@ class Component extends DCLogic {
     // bound so it is trimmed first; the remaining sizes are reported so this is
     // visible instead of guessed at.
     const sizeOf = (o) => { try { return new TextEncoder().encode(JSON.stringify(o)).length; } catch (e) { return 0; } };
-    let bytes = sizeOf(safeBlob);
+    // Stringifying the wrapper escapes every quote inside the packed JSON, which
+    // over-reported the document by ~16%. Measure each packed string as stored.
+    const blobBytes = (b) => {
+      try {
+        const enc = new TextEncoder();
+        let total = 0;
+        Object.keys(b).forEach(k => {
+          const v = b[k];
+          if (typeof v === 'string') total += enc.encode(v).length + k.length + 1;
+          else if (Array.isArray(v) && v.every(x => typeof x === 'string')) {
+            v.forEach(x => { total += enc.encode(x).length; });
+            total += k.length + 1;
+          } else total += enc.encode(JSON.stringify(v) || '').length + k.length + 1;
+        });
+        return total;
+      } catch (e) { return sizeOf(b); }
+    };
+    let bytes = blobBytes(safeBlob);
     const LIMIT = 1000000;
     // Shed recomputable data rather than refusing the write. Giving up here was
     // silent data loss with a precise signature: importing appraisals ADDS
@@ -3527,10 +3652,26 @@ class Component extends DCLogic {
     // every Pokemon back in "needs appraisal". Measured IVs are irreplaceable;
     // rank numbers, stat products and dust/candy costs are all derived from them
     // and are recomputed on load, so they go first.
+    // Heavy collections are stored packed (see PACKED_KEYS), so read and write
+    // them through these helpers rather than touching the string directly.
+    const getPacked = (key) => {
+      const raw = safeBlob[key + 'Json'];
+      const text = Array.isArray(raw) ? raw.join('') : (typeof raw === 'string' ? raw : null);
+      if (text == null) return safeBlob[key];
+      try { return JSON.parse(text); } catch (e) { return null; }
+    };
+    const setPacked = (key, val) => {
+      if (safeBlob[key + 'Json'] !== undefined) {
+        try { safeBlob[key + 'Json'] = this.chunkString(JSON.stringify(val == null ? null : val)); } catch (e) {}
+      } else {
+        safeBlob[key] = val;
+      }
+    };
     const shed = [];
-    if (bytes > LIMIT && Array.isArray(safeBlob.history) && safeBlob.history.length > 40) {
-      safeBlob.history = safeBlob.history.slice(-40);
-      bytes = sizeOf(safeBlob);
+    const hist = getPacked('history');
+    if (bytes > LIMIT && Array.isArray(hist) && hist.length > 40) {
+      setPacked('history', hist.slice(-40));
+      bytes = blobBytes(safeBlob);
       shed.push('older history');
     }
     if (bytes > LIMIT) {
@@ -3542,23 +3683,25 @@ class Component extends DCLogic {
           if (out[lg] && typeof out[lg] === 'object') {
             const o = { ...out[lg] };
             DROP.forEach(k => { delete o[k]; });
-            if (o[KEEP] == null && o.evolvesTo == null) delete out[lg];
-            else out[lg] = o;
+            // Never delete the key: the render path dereferences p.great.rankPct
+            // directly, so an absent league object is a white screen. An empty
+            // object costs a few bytes and keeps the shed safe by construction.
+            out[lg] = o;
           }
         });
         return out;
       });
-      safeBlob.roster = slim(safeBlob.roster);
-      safeBlob.addedPokemon = slim(safeBlob.addedPokemon);
-      bytes = sizeOf(safeBlob);
+      setPacked('roster', slim(getPacked('roster')));
+      setPacked('addedPokemon', slim(getPacked('addedPokemon')));
+      bytes = blobBytes(safeBlob);
       shed.push('derived league numbers');
     }
     this._lastBlobBytes = bytes;
     if (bytes > LIMIT) {
       const parts = Object.entries({
-        roster: sizeOf(safeBlob.roster), moveDB: sizeOf(safeBlob.moveDB),
-        evoTable: sizeOf(safeBlob.evoTable), typeTable: sizeOf(safeBlob.typeTable),
-        history: sizeOf(safeBlob.history), ivOverrides: sizeOf(safeBlob.ivOverrides)
+        roster: sizeOf(getPacked('roster')), moveDB: sizeOf(getPacked('moveDB')),
+        evoTable: sizeOf(getPacked('evoTable')), typeTable: sizeOf(getPacked('typeTable')),
+        history: sizeOf(getPacked('history')), ivOverrides: sizeOf(getPacked('ivOverrides'))
       }).sort((a, b) => b[1] - a[1]).slice(0, 3)
         .map(([k, v]) => k + ' ' + Math.round(v / 1024) + 'kB').join(', ');
       this._dirtyUntilPush = true;
@@ -3566,6 +3709,10 @@ class Component extends DCLogic {
       return;
     }
     this._lastShed = shed.length ? shed.join(' + ') : '';
+    try {
+      const FV = firebase.firestore.FieldValue;
+      this.PACKED_KEYS.forEach(k => { safeBlob[k] = FV.delete(); });
+    } catch (e) { /* older SDK without sentinels: packed keys still save */ }
     // Firestore's compat SDK validates the payload SYNCHRONOUSLY and THROWS
     // (rather than rejecting) on bad field shapes (e.g. a literal `undefined`
     // anywhere in the object graph). This fires from a bare setTimeout with no
@@ -5269,14 +5416,17 @@ class Component extends DCLogic {
     this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).get()
       .then(snap => {
         if (!snap.exists) throw new Error('No cloud document exists yet for this account.');
-        const data = snap.data() || {};
+        // Unpack before writing the file: the stored document keeps its heavy
+        // collections as JSON strings (Firestore index limit), but a backup
+        // should be plain readable JSON and restore expects real arrays.
+        const data = this.unpackCloudBlob(snap.data() || {});
         // Imports land in addedPokemon; roster is only the CSV baseline and is
         // usually empty, so counting roster alone reported "0 Pokemon".
         const count = (Array.isArray(data.roster) ? data.roster.length : 0) +
           (Array.isArray(data.addedPokemon) ? data.addedPokemon.length : 0);
         const payload = {
           _backup: {
-            app: 'Professor', build: 'v44',
+            app: 'Professor', build: 'v52.9',
             uid: this.state.cloudUser.uid, email: this.state.cloudUser.email,
             takenAt: new Date().toISOString()
           },
@@ -5310,7 +5460,7 @@ class Component extends DCLogic {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result);
-        const data = parsed && parsed.data ? parsed.data : parsed;
+        const data = this.unpackCloudBlob(parsed && parsed.data ? parsed.data : parsed);
         const count = (Array.isArray(data && data.roster) ? data.roster.length : 0) +
           (Array.isArray(data && data.addedPokemon) ? data.addedPokemon.length : 0);
         if (!data || (!Array.isArray(data.roster) && !Array.isArray(data.addedPokemon))) throw new Error('no roster or addedPokemon array in that file');
@@ -5334,10 +5484,15 @@ class Component extends DCLogic {
     this.autoSnapshot('before restore', { force: true });
     const d = p.data;
     const next = { restorePending: null, backupError: '' };
-    ['ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance',
-      'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
-      'megaEnergyInventory'].forEach(k => { if (d[k] !== undefined) next[k] = d[k]; });
+    this.SYNCED_STATE_KEYS.forEach(k => {
+      if (k === 'roster') return; // sanitized below
+      if (this.RESTORE_EXCLUDED_KEYS.indexOf(k) >= 0) return;
+      if (d[k] !== undefined) next[k] = d[k];
+    });
     next.roster = this.sanitizeRoster(d.roster || []);
+    // Identical gap: a backup or snapshot holding bare records crashes the
+    // render exactly as an unsanitized cloud read did.
+    next.addedPokemon = this.sanitizeRoster(d.addedPokemon || []);
     next.csvNotice = 'Restored ' + p.count + ' Pokemon from ' + p.filename + '.';
     this.setState(next, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
@@ -8605,7 +8760,7 @@ class Component extends DCLogic {
         system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app. It was not pasted into a chat by them, so never describe it that way, and never say you lack access to their data. For "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The detailed stats list is truncated to the top 90 by rank, so never treat a Pokemon's absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
-      this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false });
+      this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false }, () => this.queueCloudPush());
     } catch (e) {
       // The engine chain already knows WHY it failed - quota, missing key,
       // rejected key, network. Throwing that away and printing "try again"
@@ -8623,7 +8778,7 @@ class Component extends DCLogic {
       } else {
         msg = 'Chat failed: ' + raw;
       }
-      this.setState({ chatMessages: [...messages, { role: 'assistant', content: msg }], chatBusy: false });
+      this.setState({ chatMessages: [...messages, { role: 'assistant', content: msg }], chatBusy: false }, () => this.queueCloudPush());
     }
   }
   // Eases the header stat cards toward their real values. Driven by rAF and
@@ -9332,6 +9487,7 @@ class Component extends DCLogic {
     });
 
     // Each of these walks the whole roster, so compute once per render.
+    const mergedForCounts = this.effectiveRosterForMatch();
     const dataQuality = this.dataQualityIssues();
     const tradeAdv = this.tradeAdvice();
     const raidRowsRaw = this.raidCounters();
@@ -10337,6 +10493,21 @@ class Component extends DCLogic {
       hasCloudUser: !!this.state.cloudUser,
       cloudUserEmail: this.state.cloudUser && this.state.cloudUser.email,
       syncStatusLabel: this.state.syncStatus || 'idle',
+      // One-glance check that measured spreads actually persisted: reload and
+      // compare this count. Reading it off the roster (not a flag) means it
+      // reflects what is really stored, not what an import claimed to do.
+      // Counted in one pass over the already-computed merged roster.
+      measuredIvLine: (() => {
+        let measured = 0, solved = 0;
+        mergedForCounts.forEach(p => {
+          if (!p) return;
+          if (p.ivMeasured) measured++;
+          else if (Number.isFinite(p.atkIV)) solved++;
+        });
+        const total = mergedForCounts.length;
+        if (!total) return 'No Pokemon loaded.';
+        return measured + ' appraised \u00b7 ' + solved + ' estimated \u00b7 ' + (total - measured - solved) + ' no IVs \u2014 of ' + total;
+      })(),
       evoFlash: !!this.state.evoFlashName,
       evoFlashName: this.state.evoFlashName || '',
       evoFlashStats: this.state.evoFlashStats || '',
