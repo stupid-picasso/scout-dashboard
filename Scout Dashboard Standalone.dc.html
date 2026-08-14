@@ -1130,7 +1130,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:oklch(78% 0.16 150);box-shadow:0 0 12px oklch(78% 0.16 150);flex-shrink:0"></div>
-      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v51.4</span></div>
+      <div style="font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px ui-monospace,monospace;color:oklch(60% 0.011 50);letter-spacing:.06em;margin-left:6px;vertical-align:super">v52.1</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:oklch(80% 0.15 150);box-shadow:0 0 8px oklch(80% 0.15 150);flex-shrink:0"></div><div style="font:600 10px ui-monospace,monospace;color:oklch(82% 0.09 150);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -3284,6 +3284,13 @@ class Component extends DCLogic {
       // and wait for the user to actually add something, rather than pushing
       // whatever happens to be sitting in memory (e.g. left over from a
       // previous account on this device) up as if it belonged to this user.
+      // Firestore fires a latency-compensated snapshot from cache the instant
+      // .set() is called, long before the server acknowledges it. That echo is
+      // this device's own write coming back, and treating it as remote news is
+      // what made a just-imported appraisal look like it had been reverted.
+      // Skipping it is also what keeps the flush-pending logic below from
+      // re-arming itself into a write loop.
+      if (snap.metadata && snap.metadata.hasPendingWrites) return;
       this.applyRemote(snap.exists ? snap.data() : {});
     }, err => this.setState({ syncStatus: 'error: ' + err.message, authError: 'Sync read failed: ' + err.message + ' \u2014 check your Firestore rules allow this user.' }));
   }
@@ -3295,6 +3302,20 @@ class Component extends DCLogic {
   // actively typing a new key: a stale echo of the snapshot landing mid-edit
   // must not overwrite what's on screen before the debounced push completes.
   applyRemote(remote) {
+    // Unsaved local work wins over a settled remote snapshot: during the 1200ms
+    // debounce the server copy is by definition older than what is on screen.
+    // Applying it here reverted a just-baked appraisal import, and the pending
+    // push then uploaded the reverted roster. Flush local instead.
+    if (this._dirtyUntilPush && this._hydrated) {
+      // Only flush when nothing is already on the wire. With a write in flight
+      // this snapshot is either that write settling (nothing to flush) or
+      // another device's, which our in-flight merge write supersedes anyway.
+      if (!this._writeInFlight) {
+        clearTimeout(this._pushTimer);
+        this._pushTimer = setTimeout(() => this.pushCloud(), 150);
+      }
+      return;
+    }
     this._applyingRemote = true;
     const patch = {
       roster: this.sanitizeRoster(remote.roster || []),
@@ -3327,6 +3348,10 @@ class Component extends DCLogic {
       this._applyingRemote = false;
       const firstHydrate = !this._hydrated;
       this._hydrated = true;
+      if (this._dirtyUntilPush) {
+        clearTimeout(this._pushTimer);
+        this._pushTimer = setTimeout(() => this.pushCloud(), 150);
+      }
       if (firstHydrate) {
         this.loadSnapshots();
         // Periodic protection: gated by SNAPSHOT_MIN_GAP_MS, so opening the app
@@ -3335,11 +3360,16 @@ class Component extends DCLogic {
       }
     });
     const sizeNote = this._lastBlobBytes ? ' · ' + Math.round(this._lastBlobBytes / 1024) + 'kB' : '';
-    this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() + sizeNote });
+    if (!this._dirtyUntilPush) this.setState({ syncStatus: 'loaded ' + new Date().toLocaleTimeString() + sizeNote });
   }
 
   queueCloudPush() {
-    if (!this.state.cloudUser || !this._hydrated) return;
+    if (!this.state.cloudUser) return;
+    // Mark dirty even before hydration: the flag is what stops the first
+    // snapshot from discarding work done while the cloud copy was still loading.
+    this._dirtyUntilPush = true;
+    this._writeGen = (this._writeGen || 0) + 1;
+    if (!this._hydrated) return;
     this.setState({ syncStatus: 'syncing\u2026' });
     clearTimeout(this._pushTimer);
     this._pushTimer = setTimeout(() => this.pushCloud(), 1200);
@@ -3457,7 +3487,20 @@ class Component extends DCLogic {
 
   pushCloud() {
     if (!this.db || !this.state.cloudUser) return;
-    if (!this._hydrated) return;
+    if (!this._hydrated) {
+      // Do not drop the write. An import done before the first snapshot landed
+      // would otherwise be lost outright, since nothing persists on device.
+      // Only real content is worth remembering — an empty roster here is the
+      // pre-hydration default, and pushing THAT is what wiped accounts before.
+      const n = (this.state.roster || []).length + (this.state.addedPokemon || []).length;
+      if (n > 0) this._dirtyUntilPush = true;
+      return;
+    }
+    // Mark pending BEFORE the _applyingRemote bail: the direct call sites all
+    // clear the debounce timer before calling, so returning without either
+    // writing or flagging would strand that mutation with no retry pending —
+    // and nothing persists on device, so a reload would lose it.
+    this._dirtyUntilPush = true;
     // A snapshot echo arriving mid-apply must not bounce straight back up.
     if (this._applyingRemote) return;
     const blob = this.buildCloudBlob();
@@ -3476,9 +3519,39 @@ class Component extends DCLogic {
     const sizeOf = (o) => { try { return new TextEncoder().encode(JSON.stringify(o)).length; } catch (e) { return 0; } };
     let bytes = sizeOf(safeBlob);
     const LIMIT = 1000000;
-    if (bytes > LIMIT && Array.isArray(safeBlob.history) && safeBlob.history.length > 60) {
-      safeBlob.history = safeBlob.history.slice(-60);
+    // Shed recomputable data rather than refusing the write. Giving up here was
+    // silent data loss with a precise signature: importing appraisals ADDS
+    // fields to every matched record (three IVs, average, two levels, flags,
+    // three league objects), so a roster already near the cap crossed it, the
+    // write was skipped, and reloading restored the pre-appraisal document —
+    // every Pokemon back in "needs appraisal". Measured IVs are irreplaceable;
+    // rank numbers, stat products and dust/candy costs are all derived from them
+    // and are recomputed on load, so they go first.
+    const shed = [];
+    if (bytes > LIMIT && Array.isArray(safeBlob.history) && safeBlob.history.length > 40) {
+      safeBlob.history = safeBlob.history.slice(-40);
       bytes = sizeOf(safeBlob);
+      shed.push('older history');
+    }
+    if (bytes > LIMIT) {
+      const KEEP = 'rankPct', DROP = ['rankNum', 'statProd', 'dustCost', 'candyCost'];
+      const slim = list => (list || []).map(p => {
+        if (!p || typeof p !== 'object') return p;
+        const out = { ...p };
+        ['great', 'ultra', 'little', 'master'].forEach(lg => {
+          if (out[lg] && typeof out[lg] === 'object') {
+            const o = { ...out[lg] };
+            DROP.forEach(k => { delete o[k]; });
+            if (o[KEEP] == null && o.evolvesTo == null) delete out[lg];
+            else out[lg] = o;
+          }
+        });
+        return out;
+      });
+      safeBlob.roster = slim(safeBlob.roster);
+      safeBlob.addedPokemon = slim(safeBlob.addedPokemon);
+      bytes = sizeOf(safeBlob);
+      shed.push('derived league numbers');
     }
     this._lastBlobBytes = bytes;
     if (bytes > LIMIT) {
@@ -3488,9 +3561,11 @@ class Component extends DCLogic {
         history: sizeOf(safeBlob.history), ivOverrides: sizeOf(safeBlob.ivOverrides)
       }).sort((a, b) => b[1] - a[1]).slice(0, 3)
         .map(([k, v]) => k + ' ' + Math.round(v / 1024) + 'kB').join(', ');
+      this._dirtyUntilPush = true;
       this.setState({ syncStatus: 'TOO BIG to save: ' + Math.round(bytes / 1024) + 'kB of 1024kB limit — biggest: ' + parts });
       return;
     }
+    this._lastShed = shed.length ? shed.join(' + ') : '';
     // Firestore's compat SDK validates the payload SYNCHRONOUSLY and THROWS
     // (rather than rejecting) on bad field shapes (e.g. a literal `undefined`
     // anywhere in the object graph). This fires from a bare setTimeout with no
@@ -3498,11 +3573,30 @@ class Component extends DCLogic {
     // to the window-level error handler as an opaque "[bundle] script error"
     // ~1.2s after any roster mutation (import, edit, etc.) for cloud-synced
     // users \u2014 nothing about the .catch() below could ever see it.
+    // The write ack and the settled snapshot arrive on two independent SDK
+    // streams with no ordering guarantee. If the snapshot wins, applyRemote saw
+    // the dirty flag still set and rescheduled another push — which wrote again,
+    // producing another snapshot, indefinitely. Tracking the in-flight write
+    // lets applyRemote tell "our write is settling" from "there is unsaved work
+    // to flush". The generation counter stops an ack from marking a mutation
+    // that landed mid-flight (and so was not in the uploaded blob) as saved.
+    const gen = (this._writeGen = (this._writeGen || 0) + 1);
+    this._writeInFlight = true;
     try {
       this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).set(safeBlob, { merge: true })
-        .then(() => this.setState({ syncStatus: 'synced ' + new Date().toLocaleTimeString() + ' · ' + Math.round((this._lastBlobBytes || 0) / 1024) + 'kB' }))
-        .catch(err => this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) }));
+        .then(() => {
+          this._writeInFlight = false;
+          if (this._writeGen === gen) this._dirtyUntilPush = false;
+          this.setState({ syncStatus: 'saved ' + new Date().toLocaleTimeString() + ' · ' + Math.round((this._lastBlobBytes || 0) / 1024) + 'kB' + (this._lastShed ? ' · trimmed ' + this._lastShed + ' to fit' : '') });
+        })
+        .catch(err => {
+          this._writeInFlight = false;
+          this._dirtyUntilPush = true;
+          this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) });
+        });
     } catch (err) {
+      this._writeInFlight = false;
+      this._dirtyUntilPush = true;
       this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) });
     }
   }
@@ -5265,7 +5359,7 @@ class Component extends DCLogic {
       return;
     }
     const cols = ['Index', 'Name', 'Form', 'Pokemon Number', 'Gender', 'CP', 'HP',
-      'Atk IV', 'Def IV', 'Sta IV', 'IV Avg', 'Level Min', 'Level Max',
+      'Atk IV', 'Def IV', 'Sta IV', 'IV Avg', 'IV Source', 'Level Min', 'Level Max',
       'Quick Move', 'Charge Move', 'Charge Move 2', 'Scan Date', 'Catch Date',
       'Weight', 'Height', 'Lucky', 'Shadow/Purified', 'Favorite', 'Dust',
       'Candy', 'XL Candy', 'Type 1', 'Type 2',
@@ -5281,7 +5375,9 @@ class Component extends DCLogic {
     const lg = (p, k, f) => (p[k] && p[k][f] != null ? p[k][f] : '');
     const rows = roster.map((p, i) => [
       i + 1, p.name, p.form || '', p.dex, p.gender || '', p.cp, p.hp,
-      p.atkIV, p.defIV, p.staIV, p.ivAvg, p.lvlMin, p.lvlMax,
+      p.atkIV, p.defIV, p.staIV, p.ivAvg,
+      (!Number.isFinite(p.atkIV) ? '' : (p.ivManual ? 'manual' : (p.ivMeasured ? 'appraisal' : 'estimated from CP/HP'))),
+      p.lvlMin, p.lvlMax,
       p.quickMove || '', p.chargeMove || '', p.chargeMove2 || '', p.scanDate || '', p.catchDate || '',
       p.weight || '', p.height || '', p.lucky ? 'Y' : '', p.shadowPurified || '0', p.favorite ? 'Y' : '', p.dust,
       p.candy, p.xlCandy, p.type1 || '', p.type2 || '',
