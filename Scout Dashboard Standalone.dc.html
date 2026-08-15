@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.3</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.7</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1140,8 +1140,8 @@
         SYNC CSV
         <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
       </label>
-      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-700);font:600 11.5px var(--font-display);padding:9px 10px;border-radius:6px;flex:0 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;display:flex;align-items:center;justify-content:center" style-hover="background:var(--line-200);border-color:var(--ink-300)">{{ exportCsvLabel }}</div>
-      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid var(--brand-primary-strong);color:var(--ink-900);font:700 11.5px var(--font-display);padding:9px 10px;border-radius:6px;animation:{{ micAnim }};flex:0 1 auto;min-width:0;box-sizing:border-box;white-space:nowrap;overflow:hidden">
+      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-700);font:600 11.5px var(--font-display);padding:9px 10px;border-radius:var(--r-pill);flex:0 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;display:flex;align-items:center;justify-content:center" style-hover="background:var(--line-200);border-color:var(--ink-300)">{{ exportCsvLabel }}</div>
+      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid var(--brand-primary-strong);color:var(--ink-900);font:700 11.5px var(--font-display);padding:9px 10px;border-radius:var(--r-pill);animation:{{ micAnim }};flex:0 1 auto;min-width:0;box-sizing:border-box;white-space:nowrap;overflow:hidden">
         <span>&#127908;</span>{{ micLabel }}
       </div>
     </div>
@@ -1211,7 +1211,7 @@
 
   <div data-navbar="1" class="om-scroll" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:var(--surface-page);border-top:1px solid var(--line-300);box-shadow:0 -6px 18px rgba(0,0,0,.45);padding:8px 10px max(8px, env(safe-area-inset-bottom))">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="8">
-      <div onClick="{{ t.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 13px;border-radius:11px;background:{{ t.navBg }};min-width:58px">
+      <div onClick="{{ t.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 13px;border-radius:var(--r-pill);background:{{ t.navBg }};min-width:58px">
         <div style="font-size:16px;line-height:1;color:{{ t.color }}">{{ t.icon }}</div>
         <div style="font:700 9.5px var(--font-display);letter-spacing:.03em;color:{{ t.color }};white-space:nowrap">{{ t.navLabel }}</div>
       </div>
@@ -1228,8 +1228,8 @@
       <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">This device blocked the download. Copy the text, or open it in a tab and use Share &rarr; Save to Files.</div>
       <div class="om-scroll" style="max-height:34vh;overflow:auto;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;padding:10px;font:10.5px/1.5 var(--font-display);color:var(--ink-600);white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text">{{ fileFallback.preview }}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div onClick="{{ copyFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">{{ fileFallbackCopyLabel }}</div>
-        <div onClick="{{ openFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">OPEN IN NEW TAB</div>
+        <div onClick="{{ copyFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">{{ fileFallbackCopyLabel }}</div>
+        <div onClick="{{ openFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">OPEN IN NEW TAB</div>
       </div>
     </div>
   </div>
@@ -1251,9 +1251,9 @@
       <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
         <div style="font:12.5px/1.5 var(--font-body);color:var(--type-electric);text-wrap:pretty">{{ evoNeedsLookup }}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <div onClick="{{ fetchEvoData }}" class="om-press" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);white-space:nowrap">{{ evoFetchLabel }}</div>
+          <div onClick="{{ fetchEvoData }}" class="om-press" style="cursor:pointer;padding:10px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);white-space:nowrap">{{ evoFetchLabel }}</div>
           <sc-if value="{{ evoCanDismiss }}" hint-placeholder-val="{{ false }}">
-            <div onClick="{{ markNoEvolution }}" class="om-press" style="cursor:pointer;padding:10px 16px;border-radius:8px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display);white-space:nowrap">NO EVOLUTION</div>
+            <div onClick="{{ markNoEvolution }}" class="om-press" style="cursor:pointer;padding:10px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display);white-space:nowrap">NO EVOLUTION</div>
           </sc-if>
           <div style="font:11.5px var(--font-display);color:var(--ink-500)">{{ evoFetchStatus }}</div>
         </div>
@@ -1280,8 +1280,8 @@
           <div style="font:12px/1.4 var(--font-body);color:var(--type-fighting);margin-top:10px;text-wrap:pretty">{{ triageCard.reason }}</div>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <div onClick="{{ triageTransfer }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:10px;background:var(--type-fighting);color:white;font:800 13px var(--font-display)">TRANSFER</div>
-          <div onClick="{{ triageKeep }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:10px;background:var(--grass-500);color:var(--grass-700);font:800 13px var(--font-display)">KEEP</div>
+          <div onClick="{{ triageTransfer }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:800 13px var(--font-display)">TRANSFER</div>
+          <div onClick="{{ triageKeep }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--grass-700);font:800 13px var(--font-display)">KEEP</div>
         </div>
         <div style="font:10.5px var(--font-display);color:var(--ink-300);text-align:center;margin-top:8px">or swipe the card</div>
       </div>
@@ -1323,7 +1323,7 @@
         </sc-for>
       </div>
       <sc-if value="{{ todayEvolveMore }}" hint-placeholder-val="{{ false }}">
-        <div onClick="{{ toggleEvolveAll }}" class="om-press" style="cursor:pointer;margin-top:10px;text-align:center;padding:9px;border-radius:8px;background:var(--grass-500);font:700 11px var(--font-display);color:var(--grass-700)">{{ todayEvolveMore }}</div>
+        <div onClick="{{ toggleEvolveAll }}" class="om-press" style="cursor:pointer;margin-top:10px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--grass-500);font:700 11px var(--font-display);color:var(--grass-700)">{{ todayEvolveMore }}</div>
       </sc-if>
     </div>
 
@@ -1359,7 +1359,7 @@
       </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px">
         <sc-for list="{{ dustPlanRows }}" as="row" hint-placeholder-count="4">
-          <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border:1px solid var(--brand-primary-strong);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:11px">
+          <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border:1px solid var(--brand-primary-strong);border-radius:var(--r-pill);padding:10px 12px;display:flex;align-items:center;gap:11px">
             <div style="width:44px;height:44px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
               <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--font-display);color:var(--surface-page)">{{ row.initial }}</span>
               <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
@@ -1421,7 +1421,7 @@
             <sc-if value="{{ row.warn }}" hint-placeholder-val="{{ false }}">
               <div style="font:9.5px var(--font-display);color:var(--type-electric);background:var(--surface-muted);border-radius:5px;padding:4px 7px;white-space:nowrap;flex-shrink:0">{{ row.warn }}</div>
             </sc-if>
-            <div onClick="{{ row.onQueue }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:9px 13px;border-radius:8px;background:var(--type-fighting);color:white;font:800 10.5px var(--font-display);white-space:nowrap">{{ row.queueLabel }}</div>
+            <div onClick="{{ row.onQueue }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:9px 13px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:800 10.5px var(--font-display);white-space:nowrap">{{ row.queueLabel }}</div>
           </div>
         </sc-for>
       </div>
@@ -1438,7 +1438,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px">
           <sc-for list="{{ dexGapList }}" as="row" hint-placeholder-count="6">
-            <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border:1px solid var(--type-ghost);border-radius:10px;padding:11px;display:flex;align-items:center;gap:9px">
+            <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border:1px solid var(--type-ghost);border-radius:var(--r-pill);padding:11px;display:flex;align-items:center;gap:9px">
               <div style="width:36px;height:36px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
                 <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
               </div>
@@ -1450,7 +1450,7 @@
           </sc-for>
         </div>
         <sc-if value="{{ dexGapMore }}" hint-placeholder-val="{{ false }}">
-          <div onClick="{{ toggleDexGapAll }}" class="om-press" style="cursor:pointer;margin-top:10px;text-align:center;padding:9px;border-radius:8px;background:color-mix(in oklab, var(--type-ghost) 18%, var(--surface-card));font:700 11px var(--font-display);color:var(--type-ghost)">{{ dexGapMore }}</div>
+          <div onClick="{{ toggleDexGapAll }}" class="om-press" style="cursor:pointer;margin-top:10px;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-ghost) 18%, var(--surface-card));font:700 11px var(--font-display);color:var(--type-ghost)">{{ dexGapMore }}</div>
         </sc-if>
       </div>
     </sc-if>
@@ -1483,8 +1483,8 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <input type="text" placeholder="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:6px;font:12.5px var(--font-body);width:180px" />
           <input type="password" placeholder="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:6px;font:12.5px var(--font-body);width:150px" />
-          <div onClick="{{ signIn }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SIGN IN</div>
-          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CREATE ACCOUNT</div>
+          <div onClick="{{ signIn }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SIGN IN</div>
+          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CREATE ACCOUNT</div>
         </div>
         <div style="font:11.5px var(--font-body);color:var(--ink-300);margin-top:8px">Use same email/password on every device to sync.</div>
         <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
@@ -1495,8 +1495,8 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <input type="text" placeholder="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:6px;font:12.5px var(--font-body);width:180px" />
           <input type="password" placeholder="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:6px;font:12.5px var(--font-body);width:150px" />
-          <div onClick="{{ signIn }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SIGN IN</div>
-          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CREATE ACCOUNT</div>
+          <div onClick="{{ signIn }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SIGN IN</div>
+          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CREATE ACCOUNT</div>
         </div>
         <div style="font:11.5px var(--font-body);color:var(--ink-300)">Use the same email/password on every device to sync the same data.</div>
         <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
@@ -1508,15 +1508,15 @@
           <div style="font:12.5px var(--font-body);color:var(--ink-700)">Synced as <strong>{{ cloudUserEmail }}</strong> &middot; {{ syncStatusLabel }}</div>
           <div style="flex:1 1 100%;font:11.5px var(--font-display);color:var(--ink-500)">{{ measuredIvLine }}</div>
           <div style="display:flex;gap:8px">
-            <div onClick="{{ syncNow }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SYNC NOW</div>
-            <div onClick="{{ signOutCloud }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;background:var(--surface-muted);color:var(--ink-600);font:700 11px var(--font-display)">SIGN OUT</div>
+            <div onClick="{{ syncNow }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SYNC NOW</div>
+            <div onClick="{{ signOutCloud }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 11px var(--font-display)">SIGN OUT</div>
           </div>
         </div>
         <div style="border-top:1px solid var(--type-water);padding-top:12px;display:flex;flex-direction:column;gap:10px">
           <div style="font:700 11px var(--font-display);color:var(--type-water);letter-spacing:.05em">BACKUP &amp; RESTORE</div>
           <div style="font:12px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">Downloads your whole cloud document &mdash; roster, measured IVs, candy, stardust, history &mdash; as one JSON file. Take one before any import or CLEAR ROSTER.</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <div onClick="{{ backupCloud }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:color-mix(in oklab, var(--type-water) 18%, var(--surface-card));color:var(--type-water);font:700 11.5px var(--font-display)">{{ backupButtonLabel }}</div>
+            <div onClick="{{ backupCloud }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-water) 18%, var(--surface-card));color:var(--type-water);font:700 11.5px var(--font-display)">{{ backupButtonLabel }}</div>
             <label class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">
               RESTORE FROM FILE
               <input type="file" accept=".json,application/json" onChange="{{ onRestoreFile }}" style="display:none" />
@@ -1525,13 +1525,13 @@
           <sc-if value="{{ backupReadyDisplay }}" hint-placeholder-val="{{ false }}">
             <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
               <div style="font:12.5px var(--font-body);color:var(--grass-700)">{{ backupReadyDisplay.summary }}</div>
-              <div onClick="{{ saveBackupFile }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:9px 15px;border-radius:5px;background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">SAVE BACKUP FILE</div>
+              <div onClick="{{ saveBackupFile }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:9px 15px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">SAVE BACKUP FILE</div>
             </div>
           </sc-if>
           <div style="border-top:1px solid var(--type-water);padding-top:12px;display:flex;flex-direction:column;gap:9px">
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
               <div style="font:700 11px var(--font-display);color:var(--type-water);letter-spacing:.05em">AUTOMATIC SNAPSHOTS</div>
-              <div onClick="{{ takeSnapshotNow }}" class="om-press" style="cursor:pointer;padding:6px 12px;border-radius:5px;background:var(--line-200);color:var(--ink-700);font:700 10.5px var(--font-display)">SNAPSHOT NOW</div>
+              <div onClick="{{ takeSnapshotNow }}" class="om-press" style="cursor:pointer;padding:6px 12px;border-radius:var(--r-pill);background:var(--line-200);color:var(--ink-700);font:700 10.5px var(--font-display)">SNAPSHOT NOW</div>
             </div>
             <div style="font:12px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">Taken automatically before every import, restore and CLEAR ROSTER, plus periodically. The five most recent are kept.</div>
             <sc-if value="{{ snapshotError }}" hint-placeholder-val="{{ false }}">
@@ -1545,7 +1545,7 @@
                       <div style="font:700 12px var(--font-display);color:var(--ink-900)">{{ s.when }}</div>
                       <div style="font:11px var(--font-body);color:var(--ink-500);margin-top:2px">{{ s.detail }}</div>
                     </div>
-                    <div onClick="{{ s.onRestore }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:7px 12px;border-radius:5px;background:color-mix(in oklab, var(--type-water) 18%, var(--surface-card));color:var(--type-water);font:700 10.5px var(--font-display)">RESTORE</div>
+                    <div onClick="{{ s.onRestore }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:7px 12px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-water) 18%, var(--surface-card));color:var(--type-water);font:700 10.5px var(--font-display)">RESTORE</div>
                   </div>
                 </sc-for>
               </div>
@@ -1559,8 +1559,8 @@
             <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
               <div style="font:12.5px/1.5 var(--font-body);color:var(--type-fighting);text-wrap:pretty">{{ restorePendingDisplay.summary }}</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <div onClick="{{ confirmRestore }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:var(--type-fighting);color:white;font:700 11.5px var(--font-display)">OVERWRITE WITH BACKUP</div>
-                <div onClick="{{ cancelRestore }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:5px;background:var(--surface-muted);color:var(--ink-600);font:700 11.5px var(--font-display)">CANCEL</div>
+                <div onClick="{{ confirmRestore }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:700 11.5px var(--font-display)">OVERWRITE WITH BACKUP</div>
+                <div onClick="{{ cancelRestore }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 11.5px var(--font-display)">CANCEL</div>
               </div>
             </div>
           </sc-if>
@@ -1572,10 +1572,10 @@
           <div style="border-top:1px solid var(--type-water);padding-top:10px;display:flex;flex-direction:column;gap:8px">
             <sc-if value="{{ showMigrateButton }}" hint-placeholder-val="{{ false }}">
               <div style="font:12px var(--font-body);color:var(--ink-500)">Move the base-stats table and all 1025 sprites into this Firebase project too &mdash; everything as Firestore documents (sprites stored as base64, one doc per dex), so no paid Storage/Blaze plan needed. Admin-only. One-time, ~1025 writes.</div>
-              <div onClick="{{ migrateStatsAndSprites }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">MIGRATE STATS + SPRITES TO CLOUD</div>
+              <div onClick="{{ migrateStatsAndSprites }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">MIGRATE STATS + SPRITES TO CLOUD</div>
             </sc-if>
             <div style="font:12px var(--font-body);color:var(--ink-500)">Republish this build&rsquo;s base-stats tables over the cloud copy. Use this when the synced tables disagree with the shipped ones &mdash; the shipped table is regenerated weekly from the game&rsquo;s own data and is the authority.</div>
-            <div onClick="{{ refreshCloudGameData }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">REPUBLISH BASE STATS TO CLOUD</div>
+            <div onClick="{{ refreshCloudGameData }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">REPUBLISH BASE STATS TO CLOUD</div>
             <sc-if value="{{ cloudDataRefreshLabel }}" hint-placeholder-val="{{ false }}">
               <div style="font:12px var(--font-display);color:var(--ink-600)">{{ cloudDataRefreshLabel }}</div>
             </sc-if>
@@ -1613,7 +1613,7 @@
           <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:8px">STARDUST BALANCE (enter manually)</div>
           <div style="display:flex;align-items:center;gap:10px">
             <input type="text" placeholder="e.g. 1480000" value="{{ stardustDraft }}" onChange="{{ onStardustDraftChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid var(--line-300);color:var(--type-electric);font:800 20px var(--font-display);padding:4px 0;width:180px" />
-            <div onClick="{{ onStardustSave }}" style="cursor:pointer;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);padding:8px 14px;border-radius:5px;white-space:nowrap">SAVE</div>
+            <div onClick="{{ onStardustSave }}" style="cursor:pointer;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);padding:8px 14px;border-radius:var(--r-pill);white-space:nowrap">SAVE</div>
             <sc-if value="{{ stardustJustSaved }}" hint-placeholder-val="{{ false }}">
               <div style="font:11px var(--font-display);color:var(--grass-700)">&#10003; Saved</div>
             </sc-if>
@@ -1625,9 +1625,9 @@
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Screenshot and screen-recording reading use AI vision. Get free keys at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--type-electric)">aistudio.google.com/apikey</a> — no credit card. <strong style="color:var(--ink-700)">Paste several, one per line.</strong> Limits are per key, so each one adds 1,500 requests/day and 10 more per minute — with a handful of keys a long recording imports without pausing.</div>
             <textarea placeholder="AIza…&#10;AIza…&#10;AIza…" value="{{ geminiKeyDraft }}" onChange="{{ onGeminiKeyDraftChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;min-height:72px;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:5px;font:12px var(--font-display);resize:vertical"></textarea>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <div onClick="{{ saveGeminiKey }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE KEYS</div>
+              <div onClick="{{ saveGeminiKey }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE KEYS</div>
               <sc-if value="{{ hasGeminiKey }}" hint-placeholder-val="{{ false }}">
-                <div onClick="{{ clearGeminiKey }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:var(--surface-muted);color:var(--ink-600);font:700 11.5px var(--font-display)">REMOVE ALL</div>
+                <div onClick="{{ clearGeminiKey }}" style="cursor:pointer;padding:8px 12px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 11.5px var(--font-display)">REMOVE ALL</div>
               </sc-if>
             </div>
             <sc-if value="{{ geminiStatusLine }}" hint-placeholder-val="{{ false }}">
@@ -1653,7 +1653,7 @@
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Run the "Extract Pokemon Data" GitHub Actions workflow with your recording's Google Drive link, then tap below to pull the result straight in \u2014 no copy/paste needed.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <div onClick="{{ importFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:5px;background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">{{ serverImportLabel }}</div>
+              <div onClick="{{ importFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">{{ serverImportLabel }}</div>
             </div>
             <sc-if value="{{ serverImportError }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ serverImportError }}</div>
@@ -1668,7 +1668,7 @@
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Step 2, after importing Pokemon above. Run the &ldquo;Extract IV Ratings&rdquo; workflow with your <b>appraisal</b> recording, then tap below. It measures the three appraisal bars to get the exact IV, matches each reading to a Pokemon you already imported by name, CP and HP, and pins it. Nothing is guessed and no new Pokemon are added.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <div onClick="{{ importIvFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:5px;background:var(--type-ghost);color:white;font:700 11.5px var(--font-display)">{{ ivServerLabel }}</div>
+              <div onClick="{{ importIvFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:var(--r-pill);background:var(--type-ghost);color:white;font:700 11.5px var(--font-display)">{{ ivServerLabel }}</div>
             </div>
             <sc-if value="{{ ivServerError }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ ivServerError }}</div>
@@ -1683,10 +1683,10 @@
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">No API key, no limits. Copy the prompt, drop it plus your screenshots into any AI chat (Kimi, Claude, ChatGPT, Gemini), then paste the JSON it returns back here.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <div onClick="{{ copyImportPrompt }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">{{ copyPromptLabel }}</div>
+              <div onClick="{{ copyImportPrompt }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">{{ copyPromptLabel }}</div>
             </div>
             <textarea placeholder="Paste the JSON array here…" value="{{ pasteDraft }}" onChange="{{ onPasteDraftChange }}" style="width:100%;box-sizing:border-box;min-height:90px;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:5px;font:11.5px var(--font-display);resize:vertical"></textarea>
-            <div onClick="{{ applyPastedImport }}" style="cursor:pointer;align-self:flex-start;padding:9px 16px;border-radius:5px;background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">IMPORT PASTED DATA</div>
+            <div onClick="{{ applyPastedImport }}" style="cursor:pointer;align-self:flex-start;padding:9px 16px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">IMPORT PASTED DATA</div>
             <sc-if value="{{ pasteError }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ pasteError }}</div>
             </sc-if>
@@ -1723,8 +1723,8 @@
           <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.04em">UNFINISHED IMPORT</div>
           <div style="font:13px var(--font-body);color:var(--ink-900);line-height:1.55;text-wrap:pretty">{{ pendingImport.line }}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <div onClick="{{ resumePendingImport }}" style="cursor:pointer;padding:9px 16px;border-radius:6px;background:var(--brand-primary-strong);color:var(--surface-sunken);font:700 11.5px var(--font-display)">RESUME READING</div>
-            <div onClick="{{ discardPendingImport }}" style="cursor:pointer;padding:9px 14px;border-radius:6px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">DISCARD</div>
+            <div onClick="{{ resumePendingImport }}" style="cursor:pointer;padding:9px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:var(--surface-sunken);font:700 11.5px var(--font-display)">RESUME READING</div>
+            <div onClick="{{ discardPendingImport }}" style="cursor:pointer;padding:9px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">DISCARD</div>
           </div>
         </div>
       </sc-if>
@@ -1734,8 +1734,8 @@
           <div style="font:13px var(--font-body);color:var(--ink-900);line-height:1.55;text-wrap:pretty">{{ videoEstimate.line }}</div>
           <div style="font:11.5px var(--font-body);color:var(--ink-500);line-height:1.5">{{ videoEstimate.hint }}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <div onClick="{{ confirmVideoImport }}" style="cursor:pointer;padding:9px 16px;border-radius:6px;background:var(--type-flying);color:white;font:700 11.5px var(--font-display)">START IMPORT</div>
-            <div onClick="{{ cancelVideoEstimate }}" style="cursor:pointer;padding:9px 14px;border-radius:6px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CANCEL</div>
+            <div onClick="{{ confirmVideoImport }}" style="cursor:pointer;padding:9px 16px;border-radius:var(--r-pill);background:var(--type-flying);color:white;font:700 11.5px var(--font-display)">START IMPORT</div>
+            <div onClick="{{ cancelVideoEstimate }}" style="cursor:pointer;padding:9px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CANCEL</div>
           </div>
         </div>
       </sc-if>
@@ -1763,11 +1763,11 @@
       <div style="border-top:1px solid var(--surface-muted);margin-top:2px;padding-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px">
         <sc-if value="{{ clearArmed }}" hint-placeholder-val="{{ false }}">
           <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ clearWarning }}</div>
-          <div onClick="{{ confirmClearRoster }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:var(--type-fighting);color:white;font:700 11.5px var(--font-display)">YES, DELETE ALL</div>
-          <div onClick="{{ cancelClearRoster }}" style="cursor:pointer;padding:8px 12px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CANCEL</div>
+          <div onClick="{{ confirmClearRoster }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:700 11.5px var(--font-display)">YES, DELETE ALL</div>
+          <div onClick="{{ cancelClearRoster }}" style="cursor:pointer;padding:8px 12px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">CANCEL</div>
         </sc-if>
         <sc-if value="{{ clearNotArmed }}" hint-placeholder-val="{{ true }}">
-          <div onClick="{{ armClearRoster }}" style="cursor:pointer;padding:8px 14px;border-radius:5px;background:transparent;border:1px solid var(--type-fighting);color:var(--type-fighting);font:700 11.5px var(--font-display)" style-hover="background:var(--type-fighting);color:var(--type-fighting)">CLEAR ROSTER</div>
+          <div onClick="{{ armClearRoster }}" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:transparent;border:1px solid var(--type-fighting);color:var(--type-fighting);font:700 11.5px var(--font-display)" style-hover="background:var(--type-fighting);color:var(--type-fighting)">CLEAR ROSTER</div>
           <div style="font:11px var(--font-body);color:var(--ink-300)">Wipes every Pokemon and all candy/XL counts before a fresh import. Stardust, resources and settings are kept.</div>
         </sc-if>
       </div>
@@ -1790,7 +1790,7 @@
           </sc-for>
           <sc-if value="{{ videoImportError }}" hint-placeholder-val="{{ false }}">
             <div style="font:12px var(--font-display);color:var(--type-fighting)">{{ videoImportError }}</div>
-            <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">RETRY</div>
+            <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">RETRY</div>
           </sc-if>
           <sc-if value="{{ importChanges }}" hint-placeholder-val="{{ false }}">
             <div style="border:1px solid var(--brand-primary-strong);background:var(--brand-primary-strong);border-radius:7px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:7px">
@@ -1848,9 +1848,9 @@
                       <div style="font:10.5px var(--font-body);color:var(--type-electric)">{{ r.choicePrompt }}</div>
                       <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <sc-for list="{{ r.choices }}" as="c" hint-placeholder-count="2">
-                          <div onClick="{{ c.onClick }}" style="cursor:pointer;padding:7px 12px;border-radius:6px;background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));color:var(--type-ghost);font:600 11px var(--font-display)">{{ c.label }}</div>
+                          <div onClick="{{ c.onClick }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));color:var(--type-ghost);font:600 11px var(--font-display)">{{ c.label }}</div>
                         </sc-for>
-                        <div onClick="{{ r.onSkip }}" style="cursor:pointer;padding:7px 12px;border-radius:6px;background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-500);font:600 11px var(--font-display)">SKIP</div>
+                        <div onClick="{{ r.onSkip }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-500);font:600 11px var(--font-display)">SKIP</div>
                       </div>
                     </div>
                   </sc-if>
@@ -1865,7 +1865,7 @@
               <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:7px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:8px">
                 <div style="font:12px var(--font-display);color:var(--type-electric);line-height:1.5;text-wrap:pretty">{{ videoPartialWarning }}</div>
                 <sc-if value="{{ canRetryVideo }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:5px;background:var(--brand-primary-strong);color:var(--surface-sunken);font:700 11.5px var(--font-display)" style-hover="background:var(--brand-primary-strong)">RETRY FAILED BATCHES</div>
+                  <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:var(--surface-sunken);font:700 11.5px var(--font-display)" style-hover="background:var(--brand-primary-strong)">RETRY FAILED BATCHES</div>
                 </sc-if>
               </div>
             </sc-if>
@@ -1923,9 +1923,9 @@
             <div style="grid-column:1 / -1"><div style="font:10.5px var(--font-display);color:var(--ink-300)">CHARGE MOVE 2 <span style="color:var(--ink-300)">(optional)</span></div><input type="text" value="{{ ocrParsedDisplay.chargeMove2 }}" onChange="{{ onOcrChargeMove2 }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
           </div>
           <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-            <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:6px;background:var(--brand-primary-strong);color:white;font:700 12px var(--font-display)">SAVE CANDY/TYPE</div>
-            <div onClick="{{ addOcrAsNew }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:6px;background:var(--grass-500);color:white;font:700 12px var(--font-display)">ADD AS NEW POKEMON</div>
-            <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1 1 90px;text-align:center;padding:9px;border-radius:6px;background:var(--surface-muted);color:var(--ink-600);font:700 12px var(--font-display)">CANCEL</div>
+            <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 12px var(--font-display)">SAVE CANDY/TYPE</div>
+            <div onClick="{{ addOcrAsNew }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 12px var(--font-display)">ADD AS NEW POKEMON</div>
+            <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1 1 90px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 12px var(--font-display)">CANCEL</div>
           </div>
           <details style="margin-top:2px">
             <summary style="cursor:pointer;font:10.5px var(--font-display);color:var(--ink-300)">Raw read (debug)</summary>
@@ -1941,20 +1941,20 @@
             <div style="font:10.5px var(--font-body);color:var(--ink-300)">Which bars are completely full?</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <sc-for list="{{ maxedOptions }}" as="m" hint-placeholder-count="4">
-                <div onClick="{{ m.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:6px;background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.color }};font:600 11px var(--font-display);transition:background .12s ease,border-color .12s ease">{{ m.label }}</div>
+                <div onClick="{{ m.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:var(--r-pill);background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.color }};font:600 11px var(--font-display);transition:background .12s ease,border-color .12s ease">{{ m.label }}</div>
               </sc-for>
             </div>
             <div style="font:10.5px var(--font-body);color:var(--ink-300)">Stardust cost of the next Power Up (narrows the level)</div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <input type="text" inputmode="numeric" placeholder="e.g. 3500" value="{{ apprDust }}" onChange="{{ onApprDustChange }}" style="width:110px;background:transparent;border:none;border-bottom:1px solid var(--line-300);color:var(--ink-900);font:13px var(--font-display);padding:5px 2px;outline:none" />
               <sc-for list="{{ dustModOptions }}" as="d" hint-placeholder-count="3">
-                <div onClick="{{ d.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:6px;background:{{ d.bg }};border:1px solid {{ d.border }};color:{{ d.color }};font:600 11px var(--font-display);transition:background .12s ease,border-color .12s ease">{{ d.label }}</div>
+                <div onClick="{{ d.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:var(--r-pill);background:{{ d.bg }};border:1px solid {{ d.border }};color:{{ d.color }};font:600 11px var(--font-display);transition:background .12s ease,border-color .12s ease">{{ d.label }}</div>
               </sc-for>
             </div>
             <sc-if value="{{ dustLevelHint }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px var(--font-display);color:var(--type-electric)">{{ dustLevelHint }}</div>
             </sc-if>
-            <div onClick="{{ solveIv }}" style="cursor:pointer;text-align:center;padding:9px;border-radius:6px;background:var(--grass-500);color:white;font:700 12px var(--font-display)">SOLVE IV &amp; PVP RANK</div>
+            <div onClick="{{ solveIv }}" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 12px var(--font-display)">SOLVE IV &amp; PVP RANK</div>
             <sc-if value="{{ hasSolvedIv }}" hint-placeholder-val="{{ false }}">
               <sc-if value="{{ solvedIvResult.error }}" hint-placeholder-val="{{ false }}">
                 <div style="font:12px var(--font-display);color:var(--type-fighting)">{{ solvedIvResult.error }}</div>
@@ -1970,7 +1970,7 @@
                     <div style="font:11px var(--font-body);color:var(--ink-500)">{{ solvedIvResult.ambiguous }}</div>
                   </sc-if>
                   <sc-if value="{{ solvedIvResult.canApply }}" hint-placeholder-val="{{ true }}">
-                    <div onClick="{{ applySolvedIv }}" style="cursor:pointer;margin-top:4px;text-align:center;padding:8px;border-radius:5px;background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">ADD/UPDATE IN ROSTER</div>
+                    <div onClick="{{ applySolvedIv }}" style="cursor:pointer;margin-top:4px;text-align:center;padding:8px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">ADD/UPDATE IN ROSTER</div>
                   </sc-if>
                 </div>
               </sc-if>
@@ -2005,14 +2005,14 @@
         <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE FAST TM</div><input type="text" value="{{ resourcesDraft.eliteFastTM }}" onChange="{{ onResourceEliteFast }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
         <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE CHARGED TM</div><input type="text" value="{{ resourcesDraft.eliteChargedTM }}" onChange="{{ onResourceEliteCharged }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
       </div>
-      <div onClick="{{ saveResources }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE RESOURCES</div>
+      <div onClick="{{ saveResources }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE RESOURCES</div>
 
       <div style="border-top:1px solid var(--surface-muted);padding-top:12px;display:flex;flex-direction:column;gap:8px">
         <div style="font:10.5px var(--font-display);color:var(--ink-300)">MEGA ENERGY (per species)</div>
         <div style="display:flex;gap:8px">
           <input type="text" placeholder="species" value="{{ megaNameDraft }}" onChange="{{ onMegaNameChange }}" style="flex:1;min-width:0;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:12.5px var(--font-body)" />
           <input type="text" placeholder="amount" value="{{ megaAmountDraft }}" onChange="{{ onMegaAmountChange }}" style="width:80px;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:12.5px var(--font-display)" />
-          <div onClick="{{ addMegaEnergy }}" style="cursor:pointer;padding:7px 14px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display);white-space:nowrap">ADD</div>
+          <div onClick="{{ addMegaEnergy }}" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display);white-space:nowrap">ADD</div>
         </div>
         <sc-if value="{{ megaEnergyEntries }}" hint-placeholder-val="{{ false }}">
           <sc-for list="{{ megaEnergyEntries }}" as="m" hint-placeholder-count="0">
@@ -2040,7 +2040,7 @@
       <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:8px;padding:16px">
         <div style="font:700 11px var(--font-display);color:var(--grass-700);letter-spacing:.05em;margin-bottom:8px">STARDUST PRIORITY</div>
         <sc-for list="{{ digest.dustPriority }}" as="d" hint-placeholder-count="3">
-          <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:6px;transition:background .12s ease" style-hover="background:var(--grass-500)">
+          <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:var(--r-pill);transition:background .12s ease" style-hover="background:var(--grass-500)">
             <div style="width:24px;height:24px;border-radius:50%;background:{{ d.badgeColor }};overflow:hidden;flex-shrink:0"><img ref="{{ d.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
             <div style="font:13px var(--font-body)">{{ d.name }}</div>
           </div>
@@ -2049,7 +2049,7 @@
       <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:16px">
         <div style="font:700 11px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:8px">DON'T SPEND DUST ON</div>
         <sc-for list="{{ digest.avoidList }}" as="d" hint-placeholder-count="3">
-          <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:6px;transition:background .12s ease" style-hover="background:var(--type-fighting)">
+          <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:var(--r-pill);transition:background .12s ease" style-hover="background:var(--type-fighting)">
             <div style="width:24px;height:24px;border-radius:50%;background:{{ d.badgeColor }};overflow:hidden;flex-shrink:0"><img ref="{{ d.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
             <div style="font:13px var(--font-body)">{{ d.name }}</div>
           </div>
@@ -2057,7 +2057,7 @@
       </div>
     </div>
 
-    <div onClick="{{ toggleOptimizePlan }}" style="cursor:pointer;background:var(--brand-primary-strong);color:var(--ink-900);text-align:center;padding:14px;border-radius:8px;font:800 13px var(--font-display);letter-spacing:.04em">
+    <div onClick="{{ toggleOptimizePlan }}" style="cursor:pointer;background:var(--brand-primary-strong);color:var(--ink-900);text-align:center;padding:14px;border-radius:var(--r-pill);font:800 13px var(--font-display);letter-spacing:.04em">
       {{ showOptimizePlan }} OPTIMIZE MY ACCOUNT
     </div>
 
@@ -2070,7 +2070,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.powerUp }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--grass-600);background:var(--grass-500);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--grass-600);background:var(--grass-500);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2087,7 +2087,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.evolveSoon }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2104,13 +2104,13 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.transferSafe }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-fighting);background:var(--type-fighting);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-fighting);background:var(--type-fighting);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px var(--font-display);color:var(--ink-500)">{{ p.sub }}</div>
-              <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:5px;border-radius:4px;background:var(--type-fighting);color:var(--ink-900);font:700 10px var(--font-display)" style-hover="background:var(--type-fighting)">TRANSFERRED &mdash; REMOVE</div>
+              <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:5px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 10px var(--font-display)" style-hover="background:var(--type-fighting)">TRANSFERRED &mdash; REMOVE</div>
             </div>
           </sc-for>
         </div>
@@ -2122,7 +2122,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.luckyTrade }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2140,7 +2140,7 @@
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
             <sc-for list="{{ optimizePlanDisplay.needsSecondMove }}" as="p" hint-placeholder-count="3">
-              <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-ghost);background:var(--type-ghost);transform:translateY(-1px)" style-active="transform:translateY(0)">
+              <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-ghost);background:var(--type-ghost);transform:translateY(-1px)" style-active="transform:translateY(0)">
                 <div style="display:flex;align-items:center;gap:8px">
                   <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
                   <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2153,7 +2153,7 @@
         </div>
       </sc-if>
       <sc-if value="{{ optimizePlanDisplay.buddySuggestion }}" hint-placeholder-val="{{ false }}">
-        <div onClick="{{ optimizePlanDisplay.buddySuggestion.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;transition:border-color .12s ease,background .12s ease" style-hover="border-color:var(--ink-300);background:var(--surface-muted)">
+        <div onClick="{{ optimizePlanDisplay.buddySuggestion.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:12px 16px;display:flex;align-items:center;gap:12px;transition:border-color .12s ease,background .12s ease" style-hover="border-color:var(--ink-300);background:var(--surface-muted)">
           <div style="font:700 11px var(--font-display);color:var(--ink-400)">6. SET AS BUDDY NEXT</div>
           <div style="width:32px;height:32px;border-radius:50%;background:{{ optimizePlanDisplay.buddySuggestion.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ optimizePlanDisplay.buddySuggestion.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
           <div style="font:600 13px var(--font-body)">{{ optimizePlanDisplay.buddySuggestion.displayName }}</div>
@@ -2186,7 +2186,7 @@
       </div>
       <div style="display:flex;gap:8px">
         <input type="text" placeholder="e.g. Should I power up my Gible?" value="{{ chatInput }}" onChange="{{ onChatInputChange }}" onKeyDown="{{ onChatKeyDown }}" style="flex:1;min-width:0;background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:10px 12px;border-radius:6px" />
-        <div onClick="{{ sendChat }}" style="cursor:pointer;background:var(--brand-primary-strong);color:white;padding:10px 16px;border-radius:6px;font:700 12px var(--font-display);white-space:nowrap">SEND</div>
+        <div onClick="{{ sendChat }}" style="cursor:pointer;background:var(--brand-primary-strong);color:white;padding:10px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
   </sc-if>
@@ -2216,7 +2216,7 @@
           <div style="height:100%;width:{{ typeData.barWidth }};background:var(--type-electric);border-radius:3px"></div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <div onClick="{{ typeData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:var(--brand-primary-strong);color:var(--type-electric);font:700 11px var(--font-display);letter-spacing:.04em;white-space:nowrap">{{ typeData.buttonLabel }}</div>
+          <div onClick="{{ typeData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:var(--type-electric);font:700 11px var(--font-display);letter-spacing:.04em;white-space:nowrap">{{ typeData.buttonLabel }}</div>
           <div style="font:11.5px var(--font-display);color:var(--ink-500)">{{ typeData.status }}</div>
           <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ typeData.error }}</div>
         </div>
@@ -2275,16 +2275,16 @@
                   <input type="text" inputmode="numeric" placeholder="Atk" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:36px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
                   <input type="text" inputmode="numeric" placeholder="Def" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:36px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
                   <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:36px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                  <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SAVE</div>
+                  <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SAVE</div>
                 </sc-if>
                 <div style="display:flex;align-items:center;gap:4px">
                   <div style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">CANDY</div>
                   <input type="text" inputmode="numeric" placeholder="0" value="{{ p.candyDraft }}" onChange="{{ p.onCandyChange }}" onClick="{{ stopProp }}" style="width:44px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
                   <div style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">XL</div>
                   <input type="text" inputmode="numeric" placeholder="0" value="{{ p.xlDraft }}" onChange="{{ p.onXlChange }}" onClick="{{ stopProp }}" style="width:40px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                  <div onClick="{{ p.saveCandy }}" class="om-tap" style="cursor:pointer;padding:5px 9px;border-radius:5px;background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SET</div>
+                  <div onClick="{{ p.saveCandy }}" class="om-tap" style="cursor:pointer;padding:5px 9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SET</div>
                 </div>
-                <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:5px;background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">TRANSFERRED (+1 CANDY)</div>
+                <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">TRANSFERRED (+1 CANDY)</div>
               </div>
             </div>
             <div style="text-align:right;flex-shrink:0">
@@ -2297,57 +2297,59 @@
       </sc-for>
     </div>
     <sc-if value="{{ hasMore }}" hint-placeholder-val="{{ true }}">
-      <div onClick="{{ loadMore }}" style="cursor:pointer;text-align:center;margin-top:20px;padding:12px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;font:700 12.5px var(--font-display);color:var(--type-electric)">LOAD 30 MORE</div>
+      <div onClick="{{ loadMore }}" style="cursor:pointer;text-align:center;margin-top:20px;padding:12px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);font:700 12.5px var(--font-display);color:var(--type-electric)">LOAD 30 MORE</div>
     </sc-if>
   </div>
   </sc-if>
 
   <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
-  <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px) saturate(160%);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
-    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:var(--surface-card);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:0 30px 70px rgba(0,0,0,.55),0 2px 0 rgba(255,255,255,.04) inset">
+  <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
+    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
-      <div style="position:relative;height:calc(282px + env(safe-area-inset-top));background:{{ detail.headerGradient }};border-radius:28px 28px 0 0;overflow:hidden">
-        <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14), transparent 60%)"></div>
-        <div style="position:absolute;top:14px;left:0;right:0;display:flex;justify-content:center">
-          <div style="width:36px;height:5px;border-radius:3px;background:rgba(255,255,255,.35)"></div>
+      <div style="position:relative;height:calc(230px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:hidden;display:flex;flex-direction:column">
+        <div style="position:absolute;top:-46px;right:-56px;transform:rotate(18deg);width:220px;height:220px;background:rgba(255,255,255,.14);border-radius:62% 8% 62% 8%"></div>
+        <div style="position:absolute;bottom:-26px;left:-30px;transform:rotate(-24deg);width:140px;height:140px;background:rgba(255,255,255,.10);border-radius:62% 8% 62% 8%"></div>
+        <div style="position:relative;display:flex;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 10px 10px">
+          <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
+          <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
-        <div onClick="{{ closeDetail }}" style="position:absolute;top:26px;right:18px;cursor:pointer;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.28);backdrop-filter:blur(6px);color:white;display:flex;align-items:center;justify-content:center;font:600 15px var(--font-body);transition:background .15s ease;z-index:2" style-hover="background:rgba(0,0,0,.42)">&times;</div>
-        <div style="position:absolute;top:calc(26px + env(safe-area-inset-top));left:22px;color:white;font:800 30px var(--font-display);letter-spacing:-.5px;text-shadow:0 1px 6px rgba(0,0,0,.35);z-index:2;max-width:200px">{{ detail.cp }}<span style="font-size:12px;font-weight:600;opacity:.75;letter-spacing:.03em"> CP</span></div>
-        <div style="position:absolute;top:calc(66px + env(safe-area-inset-top));left:22px;display:flex;gap:6px;z-index:2">
-          <sc-for list="{{ detail.typeChips }}" as="tc" hint-placeholder-count="2">
-            <div style="font:700 9.5px var(--font-display);letter-spacing:.07em;padding:3px 8px;border-radius:5px;color:white;background:rgba(0,0,0,.3);backdrop-filter:blur(6px)">{{ tc.label }}</div>
-          </sc-for>
-        </div>
-        <div style="position:absolute;top:78px;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:1">
-          <svg width="176" height="176" viewBox="0 0 176 176" style="position:absolute;filter:drop-shadow(0 4px 14px rgba(0,0,0,.25))">
-            <circle cx="88" cy="88" r="78" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="4"></circle>
-            <circle cx="88" cy="88" r="78" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" transform="rotate(-90 88 88)" style="transition:stroke-dashoffset 1s ease"></circle>
-          </svg>
-          <div style="--aura:{{ detail.auraColor }};width:124px;height:124px;position:relative;display:flex;align-items:center;justify-content:center" style-before="content:'';position:absolute;inset:-26%;border-radius:50%;background:radial-gradient(circle, var(--aura) 0%, transparent 68%);animation:auraBreathe 4.2s ease-in-out infinite;pointer-events:none">
-            <span style="position:absolute;font:800 40px var(--font-display);color:rgba(255,255,255,.45)">{{ detail.initial }}</span>
-            <img ref="{{ detail.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.45)) drop-shadow(0 0 16px rgba(255,255,255,.22))" />
-          </div>
+        <div style="position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding-bottom:8px">
+          <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="max-height:100%;max-width:58%;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
         </div>
       </div>
 
-      <div style="background:var(--surface-card);border-radius:24px 24px 0 0;margin-top:-14px;position:relative;padding:24px 22px 26px">
-        <div style="text-align:center;margin-bottom:22px">
-          <div style="font:750 21px var(--font-body);letter-spacing:-.3px;color:var(--ink-900)">{{ detail.displayName }}</div>
-          <div style="font:600 11.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em;margin-top:2px">#{{ detail.dex }}</div>
+      <div style="padding:18px 20px 26px;display:flex;flex-direction:column;gap:16px">
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="font-family:var(--font-display);font-size:24px;font-weight:800;letter-spacing:-.3px;color:var(--ink-900)">{{ detail.displayName }}</div>
+            <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font-family:var(--font-display);font-weight:700;font-size:11px;line-height:1;white-space:nowrap">#{{ detail.dex }}</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <sc-for list="{{ detail.dsTypeBadges }}" as="tb" hint-placeholder-count="2">
+              <span style="display:inline-flex;align-items:center;gap:7px;background:{{ tb.fill }};color:{{ tb.ink }};border-radius:var(--r-pill);padding:4px 12px 4px 4px;font-family:var(--font-display);font-weight:700;font-size:11px;line-height:1">
+                <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.3)"></span>{{ tb.name }}</span>
+            </sc-for>
+            <span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font-family:var(--font-display);font-weight:700;font-size:11px;line-height:1">{{ detail.cp }} CP</span>
+          </div>
           <sc-if value="{{ detail.scanLine }}" hint-placeholder-val="{{ false }}">
-            <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 10px;border-radius:999px;background:{{ detail.scanBg }};font:600 10.5px var(--font-display);color:{{ detail.scanColor }};letter-spacing:.03em">{{ detail.scanLine }}</div>
+            <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);background:{{ detail.scanBg }};font:600 10.5px var(--font-display);color:{{ detail.scanColor }};letter-spacing:.03em">{{ detail.scanLine }}</div>
           </sc-if>
           <sc-if value="{{ detail.verdict }}" hint-placeholder-val="{{ false }}">
-            <div style="margin-top:14px;background:{{ detail.verdict.bg }};border:1px solid {{ detail.verdict.border }};border-radius:12px;padding:12px 14px;text-align:left">
-              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
-                <div style="font:800 13px var(--font-display);color:{{ detail.verdict.color }};letter-spacing:.05em">{{ detail.verdict.verdict }}</div>
-                <div style="font:600 11.5px var(--font-display);color:var(--ink-500)">{{ detail.verdict.number }}</div>
-              </div>
-              <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-700);margin-top:5px;text-wrap:pretty">{{ detail.verdict.reason }}</div>
+            <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:7px;padding:5px 12px;border-radius:var(--r-pill);background:{{ detail.verdict.bg }};border:1px solid {{ detail.verdict.border }}">
+              <span style="font:800 11.5px var(--font-display);color:{{ detail.verdict.color }};letter-spacing:.04em">{{ detail.verdict.verdict }}</span>
+              <span style="font:600 11px var(--font-display);color:var(--ink-500)">{{ detail.verdict.number }}</span>
             </div>
           </sc-if>
         </div>
 
+        <div style="display:flex;gap:24px;border-bottom:1px solid var(--line-200)">
+          <button onClick="{{ detail.showAppraisal }}" style="background:none;border:none;padding:0 0 10px;cursor:pointer;font-family:var(--font-display);font-size:13px;margin-bottom:-1px;transition:color .15s ease;font-weight:{{ detail.tabAppraisalWeight }};color:{{ detail.tabAppraisalColor }};border-bottom:2.5px solid {{ detail.tabAppraisalRule }}">APPRAISAL</button>
+          <button onClick="{{ detail.showInvestment }}" style="background:none;border:none;padding:0 0 10px;cursor:pointer;font-family:var(--font-display);font-size:13px;margin-bottom:-1px;transition:color .15s ease;font-weight:{{ detail.tabInvestWeight }};color:{{ detail.tabInvestColor }};border-bottom:2.5px solid {{ detail.tabInvestRule }}">INVESTMENT</button>
+          <button onClick="{{ detail.showEvolution }}" style="background:none;border:none;padding:0 0 10px;cursor:pointer;font-family:var(--font-display);font-size:13px;margin-bottom:-1px;transition:color .15s ease;font-weight:{{ detail.tabEvoWeight }};color:{{ detail.tabEvoColor }};border-bottom:2.5px solid {{ detail.tabEvoRule }}">EVOLUTION</button>
+        </div>
+
+        <sc-if value="{{ detail.onAppraisal }}" hint-placeholder-val="{{ true }}">
         <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
             <span style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">HP</span>
@@ -2392,7 +2394,9 @@
             </sc-for>
           </div>
         </sc-if>
+        </sc-if>
 
+        <sc-if value="{{ detail.onInvestment }}" hint-placeholder-val="{{ false }}">
         <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">COST TO POWER UP</div>
@@ -2474,7 +2478,9 @@
             <div style="font:12px/1.55 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ detail.plan.note }}</div>
           </sc-if>
         </div>
+        </sc-if>
 
+        <sc-if value="{{ detail.onEvolution }}" hint-placeholder-val="{{ false }}">
         <sc-if value="{{ detail.hasMoveset }}" hint-placeholder-val="{{ false }}">
           <div style="margin-bottom:14px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:9px">MOVES</div>
@@ -2489,12 +2495,24 @@
           </div>
         </sc-if>
 
+        <sc-if value="{{ detail.evo.hasEvo }}" hint-placeholder-val="{{ false }}">
+          <div style="background:color-mix(in oklab, var(--grass-600) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-600) 42%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+              <div style="font:700 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">EVOLVES TO {{ detail.evo.toName }}</div>
+              <div style="font:700 10px var(--font-display);letter-spacing:.05em;color:{{ detail.evo.statusColor }}">{{ detail.evo.statusLabel }}</div>
+            </div>
+            <div style="font:12px var(--font-display);color:var(--ink-500);margin-bottom:12px">{{ detail.evo.candyLine }}</div>
+            <button onClick="{{ detail.evo.onEvolve }}" class="om-press" style="display:block;width:100%;cursor:pointer;text-align:center;padding:13px 24px;border:none;border-radius:var(--r-pill);background:var(--grad-primary);color:#fff;font:700 13px var(--font-display);letter-spacing:.03em">{{ detail.evo.buttonLabel }}</button>
+          </div>
+        </sc-if>
+
         <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:16px;padding:14px 16px">
           <div style="font:700 10.5px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
           <div style="font:13.5px/1.45 var(--font-body);color:var(--ink-900)">{{ detail.recommendation }}</div>
         </div>
 
-        <div onClick="{{ detail.markTransferred }}" class="om-tap" style="cursor:pointer;text-align:center;margin-top:14px;padding:12px;border-radius:12px;background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">TRANSFERRED (+1 CANDY)</div>
+        <div onClick="{{ detail.markTransferred }}" class="om-press" style="cursor:pointer;text-align:center;margin-top:14px;padding:13px 24px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">TRANSFERRED (+1 CANDY)</div>
+        </sc-if>
       </div>
     </div>
   </div>
@@ -2504,7 +2522,7 @@
   <div style="animation:fadeSlideIn .35s ease">
     <div class="om-scroll" style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px">
       <sc-for list="{{ leagueList }}" as="lg" hint-placeholder-count="3">
-        <div onClick="{{ lg.onClick }}" style="cursor:pointer;flex-shrink:0;padding:8px 16px;border-radius:6px;font:700 12px var(--font-display);white-space:nowrap;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
+        <div onClick="{{ lg.onClick }}" style="cursor:pointer;flex-shrink:0;padding:8px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
       </sc-for>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
@@ -2555,7 +2573,7 @@
       <div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em">BOSS TYPES (PICK UP TO 2)</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
         <sc-for list="{{ raidTypeChips }}" as="c" hint-placeholder-count="18">
-          <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 9.5px var(--font-display);letter-spacing:.05em;padding:5px 9px;border-radius:5px;background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
+          <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 9.5px var(--font-display);letter-spacing:.05em;padding:5px 9px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
         </sc-for>
       </div>
     </div>
@@ -2563,7 +2581,7 @@
     <sc-if value="{{ raidHasBoss }}" hint-placeholder-val="{{ false }}">
       <div style="display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{ raidRows }}" as="r" hint-placeholder-count="6">
-          <div onClick="{{ r.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:stretch;overflow:hidden;background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px">
+          <div onClick="{{ r.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:stretch;overflow:hidden;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill)">
             <div style="flex-shrink:0;width:70px;background:{{ r.rail }};display:flex;align-items:center;justify-content:center;position:relative">
               <span style="position:absolute;font:800 18px var(--font-display);color:oklch(20% 0.02 50 / .55)">{{ r.initial }}</span>
               <img ref="{{ r.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5)) drop-shadow(0 0 10px {{ r.railGlow }})" />
@@ -2612,8 +2630,8 @@
         </div>
         <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:12px;max-width:70ch;text-wrap:pretty">Looked up once by AI and stored, not re-fetched on every import. Moves it isn&rsquo;t confident about are left out rather than guessed, so the coverage number can stop short of 100%.</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <div onClick="{{ moveData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:var(--grass-500);color:var(--grass-700);font:700 11px var(--font-display);letter-spacing:.04em;white-space:nowrap">{{ moveData.buttonLabel }}</div>
-          <div onClick="{{ moveData.onClear }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:6px;background:var(--surface-muted);color:var(--ink-500);font:700 11px var(--font-display);letter-spacing:.04em">CLEAR</div>
+          <div onClick="{{ moveData.onFetch }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--grass-700);font:700 11px var(--font-display);letter-spacing:.04em;white-space:nowrap">{{ moveData.buttonLabel }}</div>
+          <div onClick="{{ moveData.onClear }}" class="om-press" style="cursor:pointer;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 11px var(--font-display);letter-spacing:.04em">CLEAR</div>
           <div style="font:11.5px var(--font-display);color:var(--ink-500)">{{ moveData.status }}</div>
           <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ moveData.error }}</div>
         </div>
@@ -2662,7 +2680,7 @@
       <sc-if value="{{ dominatedList }}" hint-placeholder-val="{{ true }}">
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
           <sc-for list="{{ dominatedList }}" as="d" hint-placeholder-count="6">
-            <div onClick="{{ d.onClick }}" class="om-tap" style="cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div onClick="{{ d.onClick }}" class="om-tap" style="cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-pill);padding:12px;display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:30px;height:30px;border-radius:50%;background:{{ d.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
                   <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken)">{{ d.initial }}</span>
@@ -2672,7 +2690,7 @@
               </div>
               <div style="font:11px var(--font-display);color:var(--ink-600)">{{ d.loserLine }}</div>
               <div style="font:11px var(--font-body);color:var(--ink-400);text-wrap:pretty">{{ d.winnerLine }}</div>
-              <div onClick="{{ d.markTransferred }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:5px 10px;border-radius:5px;background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 10.5px var(--font-display);letter-spacing:.04em">MARK TRANSFERRED</div>
+              <div onClick="{{ d.markTransferred }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:5px 10px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 10.5px var(--font-display);letter-spacing:.04em">MARK TRANSFERRED</div>
             </div>
           </sc-for>
         </div>
@@ -2692,7 +2710,7 @@
               <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
             </div>
             <div style="font:var(--font-display);font-size:11.5px;color:var(--grass-700)">{{ p.bestLeagueLabel }} &middot; {{ p.bestRankDisplay }} &middot; {{ p.cp }} CP</div>
-            <div onClick="{{ p.markDone }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:5px;background:var(--grass-500);color:var(--ink-900);font:700 11px var(--font-display)">MARK DONE</div>
+            <div onClick="{{ p.markDone }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11px var(--font-display)">MARK DONE</div>
           </div>
         </sc-for>
       </div>
@@ -2711,7 +2729,7 @@
               <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
             </div>
             <div style="font:var(--font-display);font-size:11.5px;color:var(--type-fighting)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
-            <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:5px;background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
+            <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
           </div>
         </sc-for>
       </div>
@@ -2752,7 +2770,7 @@
       </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px">
         <sc-for list="{{ tradeLuckyRows }}" as="t" hint-placeholder-count="3">
-          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:9px;padding:9px 11px">
+          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:var(--r-pill);padding:9px 11px">
             <div style="flex-shrink:0;width:40px;height:40px;border-radius:8px;background:{{ t.rail }};display:flex;align-items:center;justify-content:center;position:relative">
               <span style="position:absolute;font:800 14px var(--font-display);color:oklch(20% 0.02 50 / .55)">{{ t.initial }}</span>
               <img ref="{{ t.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:34px;height:34px;object-fit:contain" />
@@ -2772,7 +2790,7 @@
       </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px">
         <sc-for list="{{ tradeDupeRows }}" as="t" hint-placeholder-count="3">
-          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:var(--surface-card);border:1px solid var(--surface-muted);border-radius:9px;padding:9px 11px">
+          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:var(--surface-card);border:1px solid var(--surface-muted);border-radius:var(--r-pill);padding:9px 11px">
             <div style="flex-shrink:0;width:40px;height:40px;border-radius:8px;background:{{ t.rail }};display:flex;align-items:center;justify-content:center;position:relative">
               <span style="position:absolute;font:800 14px var(--font-display);color:oklch(20% 0.02 50 / .55)">{{ t.initial }}</span>
               <img ref="{{ t.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:34px;height:34px;object-fit:contain" />
@@ -2796,7 +2814,7 @@
         <div style="height:100%;width:{{ confidence.barWidth }};background:var(--grass-700);border-radius:3px"></div>
       </div>
       <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:12px;text-wrap:pretty">Next to appraise: {{ confidence.preview }}</div>
-      <div onClick="{{ confidence.goToList }}" class="om-press" style="cursor:pointer;display:inline-block;padding:7px 13px;border-radius:6px;background:var(--grass-500);color:var(--grass-700);font:700 11px var(--font-display);letter-spacing:.04em;white-space:nowrap">SHOW THEM IN ROSTER</div>
+      <div onClick="{{ confidence.goToList }}" class="om-press" style="cursor:pointer;display:inline-block;padding:7px 13px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--grass-700);font:700 11px var(--font-display);letter-spacing:.04em;white-space:nowrap">SHOW THEM IN ROSTER</div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--surface-muted);font:11.5px var(--font-display);color:var(--ink-500)">
         <span>&#9733; Lucky {{ flagCounts.lucky }}</span>
         <span>&#9670; Shadow {{ flagCounts.shadow }}</span>
@@ -2852,7 +2870,7 @@
   <div style="animation:fadeSlideIn .35s ease">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="font:13.5px/1.5 var(--font-body);color:var(--ink-500);max-width:560px">Log a snapshot of your current roster to track growth over time. Re-sync a fresh CSV export whenever you want to update the numbers above.</div>
-      <div onClick="{{ logSnapshot }}" style="cursor:pointer;background:var(--brand-primary-strong);color:var(--ink-900);font:700 13px var(--font-display);padding:11px 20px;border-radius:6px;white-space:nowrap">+ LOG SNAPSHOT</div>
+      <div onClick="{{ logSnapshot }}" style="cursor:pointer;background:var(--brand-primary-strong);color:var(--ink-900);font:700 13px var(--font-display);padding:11px 20px;border-radius:var(--r-pill);white-space:nowrap">+ LOG SNAPSHOT</div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
       <div style="display:grid;grid-template-columns:1.2fr 0.8fr 1fr 0.8fr 1fr 1fr;padding:10px 16px;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
@@ -4293,7 +4311,7 @@ class Component extends DCLogic {
     return String(raw);
   }
 
-  primaryTypeOf(p) {
+  primaryTypeLabel(p) {
     const t = this.typeOf(p).split('/')[0].trim();
     return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
   }
@@ -4553,7 +4571,7 @@ class Component extends DCLogic {
     if (!m || !m.attackerScore) return [];
     const buckets = {};
     roster.forEach(p => {
-      const type = this.primaryTypeOf(p);
+      const type = this.primaryTypeLabel(p);
       if (!type) return;
       const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
       if (!base || !ivs) return;
@@ -9092,7 +9110,9 @@ class Component extends DCLogic {
     const opts = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]];
     let best = null;
     for (const [label, obj] of opts) {
-      if (Number.isFinite(obj.rankPct) && (!best || obj.rankPct > best.rankPct)) best = { label, rankPct: obj.rankPct };
+      // A fully-evolved Pokemon has little: null (ineligible for Little Cup) —
+      // the normal case for most of a real roster, not an edge case.
+      if (obj && Number.isFinite(obj.rankPct) && (!best || obj.rankPct > best.rankPct)) best = { label, rankPct: obj.rankPct };
     }
     return best;
   }
@@ -9571,13 +9591,16 @@ class Component extends DCLogic {
         { label: 'DEF', value: Number.isFinite(p.defIV) ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((Number.isFinite(p.defIV) ? p.defIV : 0) / 15 * 100, 27) },
         { label: 'STA', value: Number.isFinite(p.staIV) ? p.staIV : '—', color: 'var(--grass-700)', ...this.ringGeom((Number.isFinite(p.staIV) ? p.staIV : 0) / 15 * 100, 27) }
       ];
-      const leagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].map(([label, o]) => ({
-        label,
-        color: leagueColor(label),
-        pctDisplay: Number.isFinite(o.rankPct) ? o.rankPct.toFixed(1) + '%' : '—',
-        rankDisplay: Number.isFinite(o.rankNum) ? '#' + o.rankNum : '—',
-        barWidth: (Number.isFinite(o.rankPct) ? o.rankPct : 0) + '%'
-      }));
+      const leagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].map(([label, o]) => {
+        o = o || {};
+        return {
+          label,
+          color: leagueColor(label),
+          pctDisplay: Number.isFinite(o.rankPct) ? o.rankPct.toFixed(1) + '%' : '—',
+          rankDisplay: Number.isFinite(o.rankNum) ? '#' + o.rankNum : '—',
+          barWidth: (Number.isFinite(o.rankPct) ? o.rankPct : 0) + '%'
+        };
+      });
 
       const age = this.scanAgeDays(p);
       const vd = this.verdictFor(p);
@@ -9703,6 +9726,43 @@ class Component extends DCLogic {
         recommendation: this.computeRecommendation(p),
         markTransferred: () => { this.transferPokemon(p); this.closeDetail(); }
       };
+      const dTab = this.state.detailTab || 'appraisal';
+      const evoInfo = this.evoInfoFor(p);
+      const tabOn = k => dTab === k;
+      Object.assign(detail, {
+        onAppraisal: tabOn('appraisal'), onInvestment: tabOn('investment'), onEvolution: tabOn('evolution'),
+        tabAppraisalWeight: tabOn('appraisal') ? 700 : 500,
+        tabAppraisalColor: tabOn('appraisal') ? 'var(--ink-900)' : 'var(--ink-400)',
+        tabAppraisalRule: tabOn('appraisal') ? 'var(--grass-500)' : 'transparent',
+        tabInvestWeight: tabOn('investment') ? 700 : 500,
+        tabInvestColor: tabOn('investment') ? 'var(--ink-900)' : 'var(--ink-400)',
+        tabInvestRule: tabOn('investment') ? 'var(--grass-500)' : 'transparent',
+        tabEvoWeight: tabOn('evolution') ? 700 : 500,
+        tabEvoColor: tabOn('evolution') ? 'var(--ink-900)' : 'var(--ink-400)',
+        tabEvoRule: tabOn('evolution') ? 'var(--grass-500)' : 'transparent',
+        showAppraisal: () => this.setState({ detailTab: 'appraisal' }),
+        showInvestment: () => this.setState({ detailTab: 'investment' }),
+        showEvolution: () => this.setState({ detailTab: 'evolution' }),
+        dsTypeBadges: this.typeOf(p).split('/').map(s => s.trim()).filter(Boolean).slice(0, 2).map(t => {
+          const b = this.dsBadge(t);
+          return { name: t.charAt(0).toUpperCase() + t.slice(1), fill: b.fill, ink: b.ink };
+        }),
+        favoriteFilled: p.favorite ? '#ff5f7a' : 'rgba(255,255,255,.55)',
+        evo: evoInfo ? {
+          hasEvo: true,
+          toName: evoInfo.to,
+          canAfford: evoInfo.ready === true,
+          statusLabel: evoInfo.ready === true ? 'READY TO EVOLVE'
+            : evoInfo.ready === false ? 'NEEDS ' + Math.max(0, (evoInfo.need || 0) - (evoInfo.have || 0)) + ' MORE CANDY'
+            : 'CANDY UNKNOWN',
+          statusColor: evoInfo.ready === true ? 'var(--grass-700)' : evoInfo.ready === false ? 'var(--type-fighting)' : 'var(--ink-400)',
+          candyLine: (evoInfo.need != null ? evoInfo.need + ' candy needed' : 'candy cost unknown')
+            + (evoInfo.have != null ? ' \u00b7 you have ' + evoInfo.have : '')
+            + (evoInfo.item ? ' \u00b7 needs ' + evoInfo.item : ''),
+          buttonLabel: 'EVOLVE TO ' + String(evoInfo.to || '?').toUpperCase(),
+          onEvolve: () => { this.markEvolveDone(p); this.closeDetail(); }
+        } : { hasEvo: false }
+      });
     }
 
     const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
