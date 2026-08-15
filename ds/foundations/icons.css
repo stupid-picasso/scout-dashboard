@@ -1,0 +1,17 @@
+/* Iconography — Material Symbols Rounded.
+   SUBSTITUTION: the source mockups use a monochrome rounded glyph set inside
+   colored circles. Material Symbols Rounded is the closest freely-hosted match
+   (rounded terminals, single-weight, fills cleanly white on color). Rendered as
+   a webfont so glyphs paint instantly and survive React re-renders. */
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,0');
+
+.ppd-icon{
+  font-family:'Material Symbols Rounded';
+  font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;
+  text-transform:none;display:inline-flex;align-items:center;justify-content:center;
+  white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;
+  font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;
+  -webkit-font-feature-settings:'liga';font-feature-settings:'liga';
+  user-select:none;
+}
+.ppd-icon[data-fill="0"]{font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24;}
