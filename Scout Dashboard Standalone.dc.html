@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.12</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.15</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2028,11 +2028,36 @@
         <div style="border-top:1px solid var(--surface-muted);padding-top:12px">
           <div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:6px">ELITE CHARGED TM CANDIDATES (high rank, missing 2nd move)</div>
           <sc-for list="{{ eliteTmCandidates }}" as="e" hint-placeholder-count="0">
-            <div style="display:flex;justify-content:space-between;font:12.5px var(--font-body);color:var(--ink-600);padding:3px 0">
-              <span>{{ e.name }}</span><span style="font:var(--font-display);color:var(--grass-700)">{{ e.rankDisplay }}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;font:12.5px var(--font-body);color:var(--ink-600);padding:3px 0">
+              <span>{{ e.name }}</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="font:var(--font-display);color:var(--grass-700)">{{ e.rankDisplay }}</span>
+                <span onClick="{{ e.markUsed }}" class="om-press" style="cursor:pointer;padding:3px 8px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 9.5px var(--font-display);letter-spacing:.03em">USED</span>
+              </span>
             </div>
           </sc-for>
         </div>
+      </sc-if>
+    </div>
+
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">POKÉMON STORAGE</div>
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <div style="flex:1">
+          <div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">BAG SIZE</div>
+          <input type="text" inputmode="numeric" placeholder="e.g. 1500" value="{{ bagCapacityDraft }}" onChange="{{ onBagCapacityChange }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" />
+        </div>
+        <div onClick="{{ saveBagCapacity }}" style="cursor:pointer;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);white-space:nowrap">SAVE</div>
+      </div>
+      <sc-if value="{{ storageInfo }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font:800 20px var(--font-display);color:{{ storageInfo.color }}">{{ storageInfo.used }} / {{ storageInfo.capacity }}</div>
+          <div style="font:12px var(--font-display);color:{{ storageInfo.color }}">{{ storageInfo.freeLabel }}</div>
+        </div>
+        <div style="height:8px;border-radius:4px;background:var(--surface-sunken);overflow:hidden">
+          <div style="height:100%;width:{{ storageInfo.pct }}%;background:{{ storageInfo.color }};border-radius:4px"></div>
+        </div>
+        <div style="font:12.5px var(--font-body);color:var(--ink-500);line-height:1.4">{{ storageInfo.tip }}</div>
       </sc-if>
     </div>
 
@@ -2192,7 +2217,7 @@
   </sc-if>
 
   <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ false }}">
-  <div>
+  <div style="animation:fadeSlideIn .35s ease">
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center">
       <input type="text" placeholder="Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:14px var(--font-display);padding:9px 14px;border-radius:6px;flex:1 1 160px;min-width:140px" />
       <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-display);padding:9px 12px;border-radius:6px;flex:0 1 150px;min-width:0;max-width:150px">
@@ -2682,7 +2707,7 @@
       <sc-if value="{{ dominatedList }}" hint-placeholder-val="{{ true }}">
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
           <sc-for list="{{ dominatedList }}" as="d" hint-placeholder-count="6">
-            <div onClick="{{ d.onClick }}" class="om-tap" style="cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-pill);padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div onClick="{{ d.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-pill);padding:12px;display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:30px;height:30px;border-radius:50%;background:{{ d.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
                   <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken)">{{ d.initial }}</span>
@@ -2703,7 +2728,7 @@
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px">High league rank, not yet favorited &mdash; invest stardust here first. Mark done once handled.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
         <sc-for list="{{ powerUpList }}" as="p" hint-placeholder-count="4">
-          <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+          <div class="om-stagger" style="--i:{{ $index }};background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
                 <span style="position:absolute">{{ p.initial }}</span>
@@ -2722,7 +2747,7 @@
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px">Low IV, no PvP rank, no raid role, not Lucky/Shadow/Favorite. Mark done once transferred.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
         <sc-for list="{{ transferList }}" as="p" hint-placeholder-count="4">
-          <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+          <div class="om-stagger" style="--i:{{ $index }};background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
                 <span style="position:absolute">{{ p.initial }}</span>
@@ -2735,6 +2760,25 @@
           </div>
         </sc-for>
       </div>
+      <sc-if value="{{ borderlineList }}" hint-placeholder-val="{{ false }}">
+        <details style="margin-top:16px;border-top:1px solid color-mix(in oklab, var(--type-fighting) 30%, var(--surface-card));padding-top:12px">
+          <summary class="om-press" style="cursor:pointer;list-style:none;font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.05em">BORDERLINE &middot; {{ borderlineCount }} &mdash; close, but not quite a clear cut</summary>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px">
+            <sc-for list="{{ borderlineList }}" as="p" hint-placeholder-count="4">
+              <div onClick="{{ p.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-muted);border:1px solid var(--line-200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
+                    <span style="position:absolute">{{ p.initial }}</span>
+                    <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                  </div>
+                  <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
+                </div>
+                <div style="font:var(--font-display);font-size:11.5px;color:var(--ink-500)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
+              </div>
+            </sc-for>
+          </div>
+        </details>
+      </sc-if>
     </div>
   </div>
   </sc-if>
@@ -2998,6 +3042,9 @@ class Component extends DCLogic {
     importScreenMode: 'detail',
     resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
     resourcesDraft: { rareCandy: '', rareCandyXL: '', eliteFastTM: '', eliteChargedTM: '' },
+    bagCapacity: null,
+    bagCapacityDraft: '',
+    eliteTmDone: [],
     megaEnergyInventory: {},
     megaNameDraft: '',
     megaAmountDraft: '',
@@ -3278,6 +3325,8 @@ class Component extends DCLogic {
       stardustBalance: null, history: [], completedIds: [], removedIds: [],
       checklistDate: this.state.checklistDate, checklistDone: {},
       resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+      bagCapacity: null,
+      eliteTmDone: [],
       megaEnergyInventory: {}, triageKeep: {}, transferQueue: [],
       geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
       apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
@@ -3359,6 +3408,8 @@ class Component extends DCLogic {
       checklistDate: remote.checklistDate || this.state.checklistDate,
       checklistDone: remote.checklistDone || {},
       resources: remote.resources || { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+      bagCapacity: remote.bagCapacity != null ? remote.bagCapacity : null,
+      eliteTmDone: remote.eliteTmDone || [],
       megaEnergyInventory: remote.megaEnergyInventory || {},
       triageKeep: remote.triageKeep || {},
       transferQueue: remote.transferQueue || [],
@@ -3882,7 +3933,7 @@ class Component extends DCLogic {
     const lines = text.split('\n').filter(l => l.trim().length > 0);
     const rows = lines.slice(1).map(l => l.split(','));
     const pct = v => (v && v.trim() !== '') ? parseFloat(v.replace('%', '')) : null;
-    const num = v => (v === '' || v === undefined) ? null : parseFloat(v);
+    const num = v => { if (v === '' || v === undefined) return null; const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
     return rows.map(cols => {
       const g = i => (cols[i] !== undefined && cols[i] !== '') ? cols[i] : null;
       return {
@@ -4667,6 +4718,22 @@ class Component extends DCLogic {
     const n = v => { const x = v === '' ? null : parseInt(String(v).replace(/,/g, ''), 10); return Number.isNaN(x) ? null : x; };
     const resources = { rareCandy: n(d.rareCandy), rareCandyXL: n(d.rareCandyXL), eliteFastTM: n(d.eliteFastTM), eliteChargedTM: n(d.eliteChargedTM) };
     this.setState({ resources });
+  }
+
+  onBagCapacityChange(value) {
+    this.setState({ bagCapacityDraft: value });
+  }
+
+  saveBagCapacity() {
+    const raw = this.state.bagCapacityDraft;
+    const x = raw === '' ? null : parseInt(String(raw).replace(/,/g, ''), 10);
+    this.setState({ bagCapacity: Number.isNaN(x) ? null : x });
+  }
+
+  toggleEliteTmDone(idx) {
+    const done = this.state.eliteTmDone || [];
+    const next = done.includes(idx) ? done.filter(x => x !== idx) : [...done, idx];
+    this.setState({ eliteTmDone: next });
   }
 
   onMegaNameChange(e) { this.setState({ megaNameDraft: e.target.value }); }
@@ -8140,7 +8207,7 @@ class Component extends DCLogic {
     if (bestRank >= 85) return 'Strong league contender. Worth the investment.';
     if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
     if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
-    if ((p.ivAvg == null || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
+    if ((!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
     return 'No urgent action. Keep as roster depth.';
   }
 
@@ -8764,7 +8831,7 @@ class Component extends DCLogic {
     const powerUp = withRank.filter(x => x.rank >= 90 && !x.p.favorite && notDone(x.p)).sort((a, b) => b.rank - a.rank).slice(0, 5).map(x => x.p);
     const evolveSoon = roster.filter(p => this.evolvesToName(p) && (p.ivAvg || 0) >= 60 && notDone(p))
       .sort((a, b) => (b.ivAvg || 0) - (a.ivAvg || 0)).slice(0, 5);
-    const transferSafe = roster.filter(p => (p.ivAvg == null || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
+    const transferSafe = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
       .slice(0, 10);
     const dexCounts = {};
     roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
@@ -9097,7 +9164,7 @@ class Component extends DCLogic {
       const top = roster.slice().sort((a, b) => (b.cp || 0) - (a.cp || 0))[0];
       answer = top ? `Your highest CP Pokemon is ${top.name} at ${top.cp} CP.` : 'No CP data.';
     } else if (q.includes('transfer')) {
-      const count = roster.filter(p => (p.ivAvg == null || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
+      const count = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
       answer = `I count ${count} transfer candidates on the Recommendations tab.`;
     } else if (q.includes('how many') || q.includes('total')) {
       answer = `You have ${roster.length} Pokemon logged.`;
@@ -9353,7 +9420,7 @@ class Component extends DCLogic {
       };
     });
 
-    const transferPool = roster.filter(p => (p.ivAvg == null || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
+    const transferPool = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
     transferPool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const transferList = transferPool.slice(0, 12).map(p => ({
       idx: p.idx,
@@ -9365,6 +9432,24 @@ class Component extends DCLogic {
       cp: p.cp,
       markTransferred: () => this.removePokemon(p.idx)
     }));
+
+    // Borderline: fails the strict transfer bar but only just — worth a human
+    // glance rather than an auto-flag, so this opens the detail sheet instead
+    // of offering a one-tap remove.
+    const transferIdxSet = new Set(transferPool.map(p => p.idx));
+    const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && (!Number.isFinite(p.ivAvg) || p.ivAvg < 58) && this.bestRank(p) < 78 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
+    borderlinePool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
+    const borderlineList = borderlinePool.slice(0, 10).map(p => ({
+      idx: p.idx,
+      displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+      spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+      badgeColor: this.dsTypeColor(p),
+      initial: (p.name || '?').charAt(0),
+      ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '—',
+      cp: p.cp,
+      onClick: () => this.openDetail(p)
+    }));
+    const borderlineCount = borderlinePool.length;
 
     const doneCount = completedSet.size;
 
@@ -10055,9 +10140,56 @@ class Component extends DCLogic {
       onResourceEliteFast: (e) => this.onResourceChange('eliteFastTM', e.target.value),
       onResourceEliteCharged: (e) => this.onResourceChange('eliteChargedTM', e.target.value),
       saveResources: () => this.saveResources(),
+      bagCapacityDraft: this.state.bagCapacityDraft || (this.state.bagCapacity != null ? String(this.state.bagCapacity) : ''),
+      onBagCapacityChange: (e) => this.onBagCapacityChange(e.target.value),
+      saveBagCapacity: () => this.saveBagCapacity(),
+      storageInfo: (() => {
+        const capacity = this.state.bagCapacity;
+        if (!Number.isFinite(capacity) || capacity <= 0) return null;
+        const used = roster.length;
+        const free = capacity - used;
+        const pct = Math.min(100, Math.max(0, (used / capacity) * 100));
+
+        // Prefer a buffer sized to actual catch rate over a flat guess. Each
+        // TODAY-tab visit logs a snapshot (date + roster count), so the delta
+        // between the newest and oldest snapshot gives a real days-to-count
+        // rate. Falls back to a flat 50 until there's enough history to trust.
+        const hist = this.state.history || [];
+        let REC_BUFFER = 50;
+        let rateNote = '';
+        if (hist.length >= 2) {
+          const parsed = hist.map(h => ({ count: h.count, t: new Date(String(h.date).replace(' ', 'T')).getTime() }))
+            .filter(h => Number.isFinite(h.count) && Number.isFinite(h.t));
+          if (parsed.length >= 2) {
+            const newest = parsed[0], oldest = parsed[parsed.length - 1];
+            const days = (newest.t - oldest.t) / 86400000;
+            const delta = newest.count - oldest.count;
+            if (days >= 1 && delta > 0) {
+              const perWeek = (delta / days) * 7;
+              REC_BUFFER = Math.max(20, Math.round(perWeek));
+              rateNote = ' (based on your last ~' + Math.round(days) + ' days, about ' + Math.round(perWeek) + '/week)';
+            }
+          }
+        }
+
+        let color, tip;
+        if (free < 0) {
+          color = 'var(--type-fighting)';
+          tip = 'Over capacity by ' + Math.abs(free) + ' — new catches may be blocked or force an immediate transfer. Clear space now.';
+        } else if (free < REC_BUFFER) {
+          color = 'var(--type-electric)';
+          tip = 'Keep at least ~' + REC_BUFFER + ' spots open for spontaneous catches and events' + rateNote + '. ' +
+                (transferPool.length ? ('You have ' + transferPool.length + ' Transfer Candidates below — clearing even some of those covers it.') : 'No Transfer Candidates queued right now — appraise more of your low-IV mons to surface some.');
+        } else {
+          color = 'var(--grass-700)';
+          tip = 'Comfortable buffer — ' + free + ' spots open, above the ~' + REC_BUFFER + ' we would recommend keeping free' + rateNote + '.';
+        }
+        return { used, capacity, free, freeLabel: (free >= 0 ? (free + ' free') : (Math.abs(free) + ' over')), pct: pct.toFixed(0), color, tip };
+      })(),
       eliteTmCandidates: (() => {
-        const list = roster.filter(p => !p.chargeMove2 && this.bestRank(p) >= 85).sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 5)
-          .map(p => ({ idx: p.idx, name: p.name + (p.form ? ' (' + p.form + ')' : ''), rankDisplay: this.bestRank(p).toFixed(0) + '%' }));
+        const doneSet = new Set(this.state.eliteTmDone || []);
+        const list = roster.filter(p => !p.chargeMove2 && this.bestRank(p) >= 85 && !doneSet.has(p.idx)).sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 5)
+          .map(p => ({ idx: p.idx, name: p.name + (p.form ? ' (' + p.form + ')' : ''), rankDisplay: this.bestRank(p).toFixed(0) + '%', markUsed: () => this.toggleEliteTmDone(p.idx) }));
         return list.length ? list : null;
       })(),
       megaEnergyEntries: Object.keys(this.state.megaEnergyInventory).length ? Object.keys(this.state.megaEnergyInventory).map(k => ({
@@ -10481,7 +10613,7 @@ class Component extends DCLogic {
         initial: (triageTop.p.name || '?').charAt(0),
         cp: triageTop.p.cp != null ? triageTop.p.cp : '\u2014',
         iv: triageTop.p.ivAvg != null ? Number(triageTop.p.ivAvg).toFixed(0) + '%' : '\u2014',
-        ivColor: triageTop.p.ivAvg == null ? 'var(--ink-400)'
+        ivColor: triageTop.!Number.isFinite(p.ivAvg) ? 'var(--ink-400)'
           : (triageTop.p.ivAvg >= 80 ? 'var(--grass-700)' : triageTop.p.ivAvg >= 60 ? 'var(--type-electric)' : 'var(--type-fighting)'),
         rank: Number.isFinite(triageTop.rank) ? triageTop.rank.toFixed(0) + '%' : '\u2014',
         reason: triageTop.reason
