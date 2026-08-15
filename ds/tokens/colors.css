@@ -1,0 +1,77 @@
+:root{
+  /* ---- Grass / brand ramp (header + primary) ---- */
+  --grass-50:#eef7e9;
+  --grass-100:#d8edca;
+  --grass-200:#bde3a8;
+  --grass-300:#93d283;
+  --grass-400:#72c46b;
+  --grass-500:#5dbb63;   /* primary badge green */
+  --grass-600:#4ea856;
+  --grass-700:#3f8f47;
+  --grass-header-top:#7cc96f;    /* detail hero gradient top */
+  --grass-header-bottom:#54a95a; /* detail hero gradient bottom */
+  --grass-leaf:#8ed07e;          /* translucent leaf motif */
+
+  /* ---- Pokémon type palette (badge fills) ---- */
+  --type-grass:#5dbb63;
+  --type-poison:#9b5fc0;
+  --type-fire:#f5a25d;
+  --type-psychic:#f76d6d;
+  --type-flying:#8fa8dd;
+  --type-ice:#77cfc8;
+  --type-water:#5aa9e6;
+  --type-electric:#f2c94c;
+  --type-ground:#d5a45b;
+  --type-rock:#b7a878;
+  --type-bug:#96c04d;
+  --type-ghost:#7a6bb0;
+  --type-dragon:#6d5fe0;
+  --type-dark:#5a5566;
+  --type-steel:#8fa1b3;
+  --type-fairy:#f19bd0;
+  --type-fighting:#e0674f;
+  --type-normal:#9099a1;
+
+  /* ---- Neutrals / ink ---- */
+  --ink-900:#23303e;   /* headings */
+  --ink-700:#3c4a59;
+  --ink-600:#556472;
+  --ink-500:#6c7a8a;   /* body copy */
+  --ink-400:#8d99a6;   /* muted / captions */
+  --ink-300:#b3bdc7;
+  --line-100:#f2f4f6;
+  --line-200:#edeff2;  /* card divider */
+  --line-300:#e2e6ea;  /* field border */
+  --surface:#ffffff;
+  --surface-muted:#f6f8fa;
+  --surface-sunken:#eef1f4;
+  --page:#ffffff;
+
+  /* ---- Accents ---- */
+  --link-blue:#2e63d6;   /* evolution level link */
+  --gender-male:#4c6fd6;
+  --gender-female:#fb6c99;
+  --favorite:#ff5a7a;
+  --focus-ring:#5dbb6355;
+
+  /* ---- Semantic aliases ---- */
+  --brand-primary:var(--grass-500);
+  --brand-primary-strong:var(--grass-600);
+  --text-heading:var(--ink-900);
+  --text-body:var(--ink-500);
+  --text-muted:var(--ink-400);
+  --text-caption:var(--ink-400);
+  --text-link:var(--link-blue);
+  --text-on-fill:#ffffff;
+  --surface-card:var(--surface);
+  --surface-field:var(--surface);
+  --surface-page:var(--page);
+  --border-card:var(--line-200);
+  --border-field:var(--line-300);
+  --divider:var(--line-200);
+
+  /* ---- Gradients ---- */
+  --grad-hero:linear-gradient(180deg,var(--grass-header-top) 0%,var(--grass-header-bottom) 100%);
+  --grad-primary:linear-gradient(180deg,#6fc47a 0%,var(--grass-600) 100%);
+  --grad-transfer:linear-gradient(90deg,#8fd6a8 0%,#63c7b0 100%); /* @kind color */
+}

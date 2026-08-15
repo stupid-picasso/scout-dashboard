@@ -1,0 +1,40 @@
+:root{
+  --font-display:'Poppins',system-ui,-apple-system,sans-serif;
+  --font-body:'Poppins',system-ui,-apple-system,sans-serif;
+
+  /* weights */
+  --fw-regular:400; /* @kind font */
+  --fw-medium:500; /* @kind font */
+  --fw-semibold:600; /* @kind font */
+  --fw-bold:700; /* @kind font */
+  --fw-heavy:800; /* @kind font */
+
+  /* type scale (px) */
+  --fs-display-lg:34px;  /* screen title — "Pokémons" */
+  --fs-display:28px;     /* creature name — "Bulbasaur" */
+  --fs-h2:18px;          /* section header — "Fraquezas" */
+  --fs-h3:16px;
+  --fs-body:14px;        /* description copy */
+  --fs-value:15px;       /* field values — "6,9 kg" */
+  --fs-badge:13px;       /* type badge label */
+  --fs-caption:12px;
+  --fs-label:11px;       /* field labels — "PESO" */
+
+  /* line heights */
+  --lh-tight:1.1; /* @kind font */
+  --lh-snug:1.25; /* @kind font */
+  --lh-normal:1.5; /* @kind font */
+
+  /* letter spacing */
+  --ls-label:0.08em; /* @kind other */
+  --ls-tight:-0.01em; /* @kind other */
+
+  /* semantic text roles */
+  --title-font:var(--font-display);
+  --title-weight:var(--fw-bold); /* @kind font */
+  --title-size:var(--fs-display);
+  --body-font:var(--font-body);
+  --body-weight:var(--fw-regular); /* @kind font */
+  --body-size:var(--fs-body);
+  --label-transform:uppercase; /* @kind other */
+}
