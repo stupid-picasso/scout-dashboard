@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.7</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.8</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2251,9 +2251,9 @@
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
         <div onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;display:flex;align-items:stretch;overflow:hidden;background:{{ p.cardTint }};border:1px solid {{ p.cardEdge }};border-radius:var(--r-card);transition:transform .16s cubic-bezier(.22,1,.36,1),border-color .16s ease,box-shadow .16s ease" style-hover="transform:translateY(-3px);border-color:var(--grass-300);box-shadow:var(--shadow-pop)">
           <div style="flex-shrink:0;width:6px;background:{{ p.typeAccent }}"></div>
-          <div style="flex-shrink:0;width:78px;display:flex;align-items:center;justify-content:center;position:relative">
-            <span style="position:absolute;font:800 20px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
-            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:62px;height:62px;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5)) drop-shadow(0 0 10px {{ p.railGlow }})" />
+          <div style="flex-shrink:0;width:92px;display:flex;align-items:center;justify-content:center;position:relative">
+            <span style="position:absolute;font:800 24px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
+            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:78px;height:78px;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5)) drop-shadow(0 0 10px {{ p.railGlow }})" />
           </div>
           <div style="flex:1;min-width:0;padding:12px 14px;display:flex;align-items:center;gap:12px">
             <div style="flex:1;min-width:0">
@@ -2277,13 +2277,6 @@
                   <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:36px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
                   <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SAVE</div>
                 </sc-if>
-                <div style="display:flex;align-items:center;gap:4px">
-                  <div style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">CANDY</div>
-                  <input type="text" inputmode="numeric" placeholder="0" value="{{ p.candyDraft }}" onChange="{{ p.onCandyChange }}" onClick="{{ stopProp }}" style="width:44px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                  <div style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">XL</div>
-                  <input type="text" inputmode="numeric" placeholder="0" value="{{ p.xlDraft }}" onChange="{{ p.onXlChange }}" onClick="{{ stopProp }}" style="width:40px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                  <div onClick="{{ p.saveCandy }}" class="om-tap" style="cursor:pointer;padding:5px 9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SET</div>
-                </div>
                 <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">TRANSFERRED (+1 CANDY)</div>
               </div>
             </div>
@@ -2350,6 +2343,14 @@
         </div>
 
         <sc-if value="{{ detail.onAppraisal }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--surface-card);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap">
+          <span style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">CANDY</span>
+          <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.candyDraft }}" onChange="{{ detail.onCandyChange }}" style="width:48px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
+          <span style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">XL</span>
+          <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.xlDraft }}" onChange="{{ detail.onXlChange }}" style="width:44px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
+          <div onClick="{{ detail.saveCandy }}" class="om-tap" style="cursor:pointer;flex-shrink:0;padding:6px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SET</div>
+          <span style="flex:1;min-width:0;text-align:right;font:700 11px var(--font-display);color:{{ detail.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.bestLeagueLabel }}</span>
+        </div>
         <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
             <span style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">HP</span>
@@ -9743,6 +9744,13 @@ class Component extends DCLogic {
         showAppraisal: () => this.setState({ detailTab: 'appraisal' }),
         showInvestment: () => this.setState({ detailTab: 'investment' }),
         showEvolution: () => this.setState({ detailTab: 'evolution' }),
+        candyDraft: this.candyDraftFor(p, 'candy'),
+        xlDraft: this.candyDraftFor(p, 'xlCandy'),
+        onCandyChange: (e) => this.setCandyDraft(p, 'candy', e.target.value),
+        onXlChange: (e) => this.setCandyDraft(p, 'xlCandy', e.target.value),
+        saveCandy: () => this.saveCandyEdit(p),
+        bestLeagueLabel: (() => { const b = this.bestLeagueInfo(p); return (b && Number.isFinite(b.rankPct)) ? b.label + ' ' + b.rankPct.toFixed(0) + '%' : ''; })(),
+        bestLeagueColor: (() => { const b = this.bestLeagueInfo(p); return b ? leagueColor(b.label) : 'var(--ink-300)'; })(),
         dsTypeBadges: this.typeOf(p).split('/').map(s => s.trim()).filter(Boolean).slice(0, 2).map(t => {
           const b = this.dsBadge(t);
           return { name: t.charAt(0).toUpperCase() + t.slice(1), fill: b.fill, ink: b.ink };
