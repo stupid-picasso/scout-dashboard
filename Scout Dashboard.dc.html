@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.16</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.18</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1032,6 +1032,36 @@
         </div>
         <div style="font:12.5px var(--font-body);color:var(--ink-500);line-height:1.4">{{ storageInfo.tip }}</div>
       </sc-if>
+      <div style="border-top:1px solid var(--surface-muted);padding-top:12px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font:10.5px var(--font-display);color:var(--ink-300)">KEEP BEST</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" inputmode="numeric" value="{{ cutTargetDraft }}" onChange="{{ onCutTargetChange }}" style="width:70px;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-display);text-align:center" />
+            <div onClick="{{ saveCutTarget }}" style="cursor:pointer;padding:7px 13px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">SET</div>
+          </div>
+        </div>
+        <div style="font:12.5px var(--font-body);color:var(--ink-500);line-height:1.4">{{ cutPlan.headline }}</div>
+        <sc-if value="{{ cutPlan.overBy }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ toggleCutList }}" class="om-press" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">{{ cutListRevealed }} REEVALUATE &mdash; SHOW BOTTOM {{ cutPlan.overBy }}</div>
+        </sc-if>
+        <sc-if value="{{ cutList }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+            <sc-for list="{{ cutList }}" as="p" hint-placeholder-count="6">
+              <div class="om-stagger" style="--i:{{ $index }};background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
+                    <span style="position:absolute">{{ p.initial }}</span>
+                    <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                  </div>
+                  <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
+                </div>
+                <div style="font:var(--font-display);font-size:11.5px;color:var(--type-fighting)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
+                <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -1733,6 +1763,24 @@
           </div>
         </sc-for>
       </div>
+      <sc-if value="{{ showClosestMissButton }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:16px;border-top:1px solid color-mix(in oklab, var(--type-fighting) 30%, var(--surface-card));padding-top:12px">
+          <div onClick="{{ toggleClosestMiss }}" class="om-press" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">{{ closestMissRevealed }} REFRESH \u2014 SHOW CLOSEST CANDIDATE</div>
+          <sc-if value="{{ closestMissCard }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ closestMissCard.onClick }}" class="om-tap" style="cursor:pointer;margin-top:10px;background:var(--surface-muted);border:1px solid var(--line-200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:30px;height:30px;border-radius:50%;background:{{ closestMissCard.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
+                  <span style="position:absolute">{{ closestMissCard.initial }}</span>
+                  <img ref="{{ closestMissCard.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                </div>
+                <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ closestMissCard.displayName }}</div>
+              </div>
+              <div style="font:var(--font-display);font-size:11.5px;color:var(--ink-500)">IV {{ closestMissCard.ivDisplay }} &middot; {{ closestMissCard.cp }} CP</div>
+              <div style="font:11.5px var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ closestMissCard.whyLine }}</div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
       <sc-if value="{{ borderlineList }}" hint-placeholder-val="{{ false }}">
         <details style="margin-top:16px;border-top:1px solid color-mix(in oklab, var(--type-fighting) 30%, var(--surface-card));padding-top:12px">
           <summary class="om-press" style="cursor:pointer;list-style:none;font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.05em">BORDERLINE &middot; {{ borderlineCount }} &mdash; close, but not quite a clear cut</summary>
@@ -2017,6 +2065,10 @@ class Component extends DCLogic {
     resourcesDraft: { rareCandy: '', rareCandyXL: '', eliteFastTM: '', eliteChargedTM: '' },
     bagCapacity: null,
     bagCapacityDraft: '',
+    closestMissRevealed: false,
+    cutTarget: 300,
+    cutTargetDraft: '300',
+    cutListRevealed: false,
     eliteTmDone: [],
     megaEnergyInventory: {},
     megaNameDraft: '',
@@ -2173,7 +2225,7 @@ class Component extends DCLogic {
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
-      'apiEndpoint'];
+      'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -2300,6 +2352,7 @@ class Component extends DCLogic {
       resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
       bagCapacity: null,
       eliteTmDone: [],
+      cutTarget: 300, cutTargetDraft: '300',
       megaEnergyInventory: {}, triageKeep: {}, transferQueue: [],
       geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
       apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
@@ -2383,6 +2436,7 @@ class Component extends DCLogic {
       resources: remote.resources || { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
       bagCapacity: remote.bagCapacity != null ? remote.bagCapacity : null,
       eliteTmDone: remote.eliteTmDone || [],
+      cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
       megaEnergyInventory: remote.megaEnergyInventory || {},
       triageKeep: remote.triageKeep || {},
       transferQueue: remote.transferQueue || [],
@@ -2392,6 +2446,7 @@ class Component extends DCLogic {
       geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys : (remote.geminiKeys || (remote.geminiKey ? [remote.geminiKey] : [])),
       geminiKey: this.state.geminiKey || (remote.geminiKeys && remote.geminiKeys[0]) || remote.geminiKey || '',
     };
+    patch.cutTargetDraft = this.state.cutTargetDraft || String(patch.cutTarget);
     patch.apiEndpointDraft = this.state.apiEndpointDraft || patch.apiEndpoint;
     patch.geminiKeyDraft = this.state.geminiKeyDraft || (patch.geminiKeys.length ? patch.geminiKeys.join('\n') : '');
     this.setState(patch, () => {
@@ -2597,6 +2652,7 @@ class Component extends DCLogic {
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
       checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
+      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget,
       // Trimmed on write: an unbounded transcript would eventually crowd out the
       // roster, which is the data that actually matters.
       chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
@@ -3701,6 +3757,24 @@ class Component extends DCLogic {
     const raw = this.state.bagCapacityDraft;
     const x = raw === '' ? null : parseInt(String(raw).replace(/,/g, ''), 10);
     this.setState({ bagCapacity: Number.isNaN(x) ? null : x });
+  }
+
+  toggleClosestMiss() {
+    this.setState({ closestMissRevealed: !this.state.closestMissRevealed });
+  }
+
+  onCutTargetChange(value) {
+    this.setState({ cutTargetDraft: value });
+  }
+
+  saveCutTarget() {
+    const raw = this.state.cutTargetDraft;
+    const x = raw === '' ? NaN : parseInt(String(raw).replace(/,/g, ''), 10);
+    this.setState({ cutTarget: Number.isFinite(x) ? x : 300, cutListRevealed: false });
+  }
+
+  toggleCutList() {
+    this.setState({ cutListRevealed: !this.state.cutListRevealed });
   }
 
   toggleEliteTmDone(idx) {
@@ -8425,6 +8499,27 @@ class Component extends DCLogic {
     }));
     const borderlineCount = borderlinePool.length;
 
+    let closestMiss = null;
+    if (!transferPool.length && !borderlinePool.length) {
+      const cmPool = roster.filter(p => !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p) && Number.isFinite(p.ivAvg));
+      cmPool.sort((a, b) => a.ivAvg - b.ivAvg);
+      const cm = cmPool[0];
+      if (cm) {
+        const cmRank = this.bestRank(cm);
+        closestMiss = {
+          idx: cm.idx,
+          displayName: cm.name + (cm.form ? ' (' + cm.form + ')' : ''),
+          spriteRef: this.makeSpriteRefByDex(cm.dex, cm.form),
+          badgeColor: this.dsTypeColor(cm),
+          initial: (cm.name || '?').charAt(0),
+          ivDisplay: cm.ivAvg.toFixed(1) + '%',
+          cp: cm.cp,
+          whyLine: 'IV ' + cm.ivAvg.toFixed(1) + '% (cutoff 51%) \u00b7 best rank ' + cmRank.toFixed(0) + '% (cutoff 70%) \u2014 misses on both.',
+          onClick: () => this.openDetail(cm)
+        };
+      }
+    }
+
     const doneCount = completedSet.size;
 
     const plan = this.buildOptimizePlan(roster);
@@ -9163,6 +9258,54 @@ class Component extends DCLogic {
         }
         return { used, capacity, free, freeLabel: (free >= 0 ? (free + ' free') : (Math.abs(free) + ' over')), pct: pct.toFixed(0), color, tip };
       })(),
+      cutTargetDraft: this.state.cutTargetDraft,
+      onCutTargetChange: (v) => this.onCutTargetChange(v),
+      saveCutTarget: () => this.saveCutTarget(),
+      toggleCutList: () => this.toggleCutList(),
+      cutListRevealed: this.state.cutListRevealed,
+      cutPlan: (() => {
+        const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
+        const overBy = Math.max(0, roster.length - target);
+        const headline = overBy > 0
+          ? 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 ' + overBy + ' over \u2014 reevaluate to see the bottom ' + overBy + ' to transfer.'
+          : 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 within target, nothing needs cutting.';
+        return { target, overBy, headline };
+      })(),
+      cutList: (() => {
+        if (!this.state.cutListRevealed) return null;
+        const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
+        const overBy = Math.max(0, roster.length - target);
+        if (!overBy) return null;
+        // Keep score: protected flags dominate, then PvP rank and IV, with a
+        // bonus for being the only copy of a species (so living-dex coverage
+        // isn't accidentally cut ahead of a redundant duplicate).
+        const speciesCountMap = {};
+        roster.forEach(p => {
+          const key = p.dex + '_' + (p.form || '');
+          speciesCountMap[key] = (speciesCountMap[key] || 0) + 1;
+        });
+        const scored = roster.map(p => {
+          const key = p.dex + '_' + (p.form || '');
+          const onlyCopy = speciesCountMap[key] === 1;
+          const rank = this.bestRank(p);
+          const iv = Number.isFinite(p.ivAvg) ? p.ivAvg : 0;
+          const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0)
+            + (this.isShadow(p) ? 20000 : 0) + (this.isPurified(p) ? 10000 : 0)
+            + (onlyCopy ? 5000 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01;
+          return { p, score };
+        });
+        scored.sort((a, b) => a.score - b.score);
+        return scored.slice(0, overBy).map(({ p }) => ({
+          idx: p.idx,
+          displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+          spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+          badgeColor: this.dsTypeColor(p),
+          initial: (p.name || '?').charAt(0),
+          ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '\u2014',
+          cp: p.cp,
+          markTransferred: () => this.removePokemon(p.idx)
+        }));
+      })(),
       eliteTmCandidates: (() => {
         const doneSet = new Set(this.state.eliteTmDone || []);
         const list = roster.filter(p => !p.chargeMove2 && this.bestRank(p) >= 85 && !doneSet.has(p.idx)).sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 5)
@@ -9179,6 +9322,10 @@ class Component extends DCLogic {
       addMegaEnergy: () => this.addMegaEnergy(),
       powerUpList,
       transferList,
+      showClosestMissButton: !transferPool.length && !borderlinePool.length && !!closestMiss,
+      closestMissRevealed: this.state.closestMissRevealed,
+      closestMissCard: this.state.closestMissRevealed ? closestMiss : null,
+      toggleClosestMiss: () => this.toggleClosestMiss(),
       doneCount,
       digest,
       stardustDisplay,
