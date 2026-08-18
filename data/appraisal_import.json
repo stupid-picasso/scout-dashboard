@@ -1,19 +1,87 @@
 [
   {
     "i": 0,
-    "name": "Oddish",
-    "cp": 1006,
-    "hp": 104,
-    "atkIV": 10,
+    "name": "Psyduck",
+    "cp": 241,
+    "hp": 56,
+    "atkIV": 0,
+    "defIV": 14,
+    "staIV": 4,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      0.036,
+      14.033,
+      3.993
+    ],
+    "barDrift": 0.049,
+    "barSegmentRaw": [
+      0.0,
+      14.065,
+      3.993
+    ],
+    "barConfidence": "high",
+    "barMethod": "colour",
+    "ivCandidateSets": [
+      [
+        0
+      ],
+      [
+        14
+      ],
+      [
+        4
+      ]
+    ]
+  },
+  {
+    "i": 2,
+    "name": "Pawmi",
+    "cp": 264,
+    "hp": 76,
+    "atkIV": 0,
     "defIV": 6,
+    "staIV": 4,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      0.036,
+      6.014,
+      3.993
+    ],
+    "barDrift": 0.018,
+    "barSegmentRaw": [
+      0.0,
+      6.014,
+      3.993
+    ],
+    "barConfidence": "high",
+    "barMethod": "colour",
+    "ivCandidateSets": [
+      [
+        0
+      ],
+      [
+        6
+      ],
+      [
+        4
+      ]
+    ]
+  },
+  {
+    "i": 4,
+    "name": "Zigzagoon",
+    "cp": 281,
+    "hp": 77,
+    "atkIV": 14,
+    "defIV": 13,
     "staIV": 13,
     "ivSource": "bar-measure",
     "barRaw": [
-      9.858,
-      5.957,
+      13.901,
+      12.908,
       12.908
     ],
-    "barDrift": 0.142,
+    "barDrift": 0.099,
     "barSegmentRaw": [
       null,
       null,
@@ -23,10 +91,10 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        10
+        14
       ],
       [
-        6
+        13
       ],
       [
         13
@@ -34,20 +102,19 @@
     ]
   },
   {
-    "i": 1,
-    "name": "Clauncher",
-    "cp": 773,
-    "hp": 100,
-    "atkIV": 2,
-    "defIV": 9,
+    "name": "Wooloo",
+    "cp": 328,
+    "hp": 75,
+    "atkIV": 3,
+    "defIV": 10,
     "staIV": 4,
     "ivSource": "bar-measure",
     "barRaw": [
-      2.0,
-      9.0,
-      4.0
+      2.979,
+      9.858,
+      3.972
     ],
-    "barDrift": 0.0,
+    "barDrift": 0.142,
     "barSegmentRaw": [
       null,
       null,
@@ -57,31 +124,201 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        2
+        3,
+        5
       ],
       [
-        9
+        8,
+        10
       ],
       [
-        0,
+        2,
         4
       ]
     ],
     "ivConflict": true
   },
   {
-    "i": 3,
-    "name": "Magmar",
-    "cp": 2110,
-    "hp": 130,
-    "atkIV": 10,
-    "defIV": 11,
-    "staIV": 9,
+    "i": 0,
+    "name": "Rhyhorn",
+    "cp": 334,
+    "hp": 71,
+    "atkIV": 12,
+    "defIV": 1,
+    "staIV": 1,
     "ivSource": "bar-measure",
     "barRaw": [
+      11.915,
+      0.993,
+      1.028
+    ],
+    "barDrift": 0.085,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        12
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ]
+  },
+  {
+    "i": 1,
+    "name": "Totodile",
+    "cp": 339,
+    "hp": 63,
+    "atkIV": 12,
+    "defIV": 1,
+    "staIV": 0,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      12.015,
+      1.005,
+      0.036
+    ],
+    "barDrift": 0.032,
+    "barSegmentRaw": [
+      12.05,
+      1.005,
+      0.0
+    ],
+    "barConfidence": "high",
+    "barMethod": "colour",
+    "ivCandidateSets": [
+      [
+        12
+      ],
+      [
+        1
+      ],
+      [
+        0
+      ]
+    ]
+  },
+  {
+    "i": 3,
+    "name": "Mankey",
+    "cp": 356,
+    "hp": 59,
+    "atkIV": 3,
+    "defIV": 2,
+    "staIV": 3,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      2.986,
+      2.005,
+      2.986
+    ],
+    "barDrift": 0.014,
+    "barSegmentRaw": [
+      2.986,
+      2.005,
+      2.986
+    ],
+    "barConfidence": "high",
+    "barMethod": "colour",
+    "ivCandidateSets": [
+      [
+        3
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ]
+    ]
+  },
+  {
+    "i": 5,
+    "name": "Tandemaus",
+    "cp": 368,
+    "hp": 76,
+    "atkIV": 15,
+    "defIV": 10,
+    "staIV": 11,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      14.929,
+      9.893,
+      10.964
+    ],
+    "barDrift": 0.107,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        15
+      ],
+      [
+        10
+      ],
+      [
+        11
+      ]
+    ]
+  },
+  {
+    "name": "Furfrou",
+    "cp": 400,
+    "hp": 66,
+    "atkIV": 14,
+    "defIV": 11,
+    "staIV": 10,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      14.0,
+      11.0,
+      9.929
+    ],
+    "barDrift": 0.071,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        14
+      ],
+      [
+        11
+      ],
+      [
+        10
+      ]
+    ]
+  },
+  {
+    "name": "Quaxly",
+    "cp": 440,
+    "hp": 81,
+    "atkIV": 14,
+    "defIV": 10,
+    "staIV": 11,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      13.901,
       9.858,
-      10.922,
-      8.936
+      10.922
     ],
     "barDrift": 0.142,
     "barSegmentRaw": [
@@ -93,231 +330,66 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        10
-      ],
-      [
-        11
-      ],
-      [
-        9
-      ]
-    ]
-  },
-  {
-    "i": 4,
-    "name": "Lickitung",
-    "cp": 760,
-    "hp": 130,
-    "atkIV": 11,
-    "defIV": 10,
-    "staIV": 11,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      11.0,
-      9.929,
-      11.0
-    ],
-    "barDrift": 0.071,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        11
-      ],
-      [
-        10
-      ],
-      [
-        11
-      ]
-    ]
-  },
-  {
-    "name": "Mankey",
-    "cp": 233,
-    "hp": 48,
-    "atkIV": 14,
-    "defIV": 0,
-    "staIV": 8,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      14.029,
-      0.036,
-      8.019
-    ],
-    "barDrift": 0.031,
-    "barSegmentRaw": [
-      14.033,
-      0.0,
-      8.019
-    ],
-    "barConfidence": "high",
-    "barMethod": "colour",
-    "ivCandidateSets": [
-      [
         14
       ],
       [
-        0
+        10
       ],
       [
-        8
+        11
       ]
     ]
   },
   {
     "i": 0,
-    "name": "Zweilous",
-    "cp": 768,
-    "hp": 98,
-    "atkIV": 13,
-    "defIV": 11,
+    "name": "Eevee",
+    "cp": 447,
+    "hp": 83,
+    "atkIV": 12,
+    "defIV": 15,
     "staIV": 15,
     "ivSource": "bar-measure",
     "barRaw": [
-      13.0,
-      11.0,
-      14.964
+      11.915,
+      14.858,
+      14.858
     ],
-    "barDrift": 0.036,
+    "barDrift": 0.142,
     "barSegmentRaw": [
       null,
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        13
-      ],
-      [
-        11
+        10,
+        12
       ],
       [
         15
-      ]
-    ]
-  },
-  {
-    "name": "Ponyta",
-    "cp": 1437,
-    "hp": 110,
-    "atkIV": 7,
-    "defIV": 14,
-    "staIV": 11,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      7.0,
-      14.0,
-      11.0
-    ],
-    "barDrift": 0.0,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        7
       ],
       [
-        14
-      ],
-      [
-        11
+        13,
+        15
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
     "i": 2,
-    "name": "Sudowoodo",
-    "cp": 1718,
-    "hp": 134,
-    "atkIV": 6,
-    "defIV": 11,
+    "name": "Bulbasaur",
+    "cp": 455,
+    "hp": 72,
+    "atkIV": 10,
+    "defIV": 15,
     "staIV": 12,
     "ivSource": "bar-measure",
     "barRaw": [
-      6.0,
-      11.0,
-      12.0
-    ],
-    "barDrift": 0.0,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        6
-      ],
-      [
-        11
-      ],
-      [
-        12
-      ]
-    ]
-  },
-  {
-    "i": 3,
-    "name": "Dewott",
-    "cp": 964,
-    "hp": 114,
-    "atkIV": 12,
-    "defIV": 14,
-    "staIV": 11,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      12.0,
-      14.0,
-      11.0
-    ],
-    "barDrift": 0.0,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        12
-      ],
-      [
-        14
-      ],
-      [
-        11
-      ]
-    ]
-  },
-  {
-    "i": 4,
-    "name": "Hippopotas",
-    "cp": 761,
-    "hp": 107,
-    "atkIV": 15,
-    "defIV": 13,
-    "staIV": 11,
-    "ivSource": "bar-measure",
-    "barRaw": [
+      9.929,
       14.929,
-      12.964,
-      10.964
+      12.0
     ],
     "barDrift": 0.071,
     "barSegmentRaw": [
@@ -329,11 +401,12 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        14,
-        15
+        10,
+        11
       ],
       [
-        13
+        14,
+        15
       ],
       [
         11,
@@ -343,19 +416,87 @@
     "ivConflict": true
   },
   {
-    "name": "Totodile",
-    "cp": 690,
-    "hp": 93,
+    "i": 4,
+    "name": "Morelull",
+    "cp": 456,
+    "hp": 70,
+    "atkIV": 13,
+    "defIV": 14,
+    "staIV": 11,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      13.0,
+      14.0,
+      11.0
+    ],
+    "barDrift": 0.0,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        14
+      ],
+      [
+        11
+      ]
+    ]
+  },
+  {
+    "i": 5,
+    "name": "Togepi",
+    "cp": 467,
+    "hp": 83,
+    "atkIV": 13,
+    "defIV": 10,
+    "staIV": 10,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      12.908,
+      9.858,
+      9.858
+    ],
+    "barDrift": 0.142,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        10
+      ],
+      [
+        10
+      ]
+    ]
+  },
+  {
+    "name": "Tinkatink",
+    "cp": 486,
+    "hp": 90,
     "atkIV": 13,
     "defIV": 13,
     "staIV": 13,
     "ivSource": "bar-measure",
     "barRaw": [
-      12.908,
-      12.908,
-      12.908
+      13.0,
+      13.0,
+      13.0
     ],
-    "barDrift": 0.092,
+    "barDrift": 0.0,
     "barSegmentRaw": [
       null,
       null,
@@ -376,7 +517,276 @@
     ]
   },
   {
+    "name": "Growlithe",
+    "cp": 529,
+    "hp": 85,
+    "atkIV": 10,
+    "defIV": 10,
+    "staIV": 11,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      9.858,
+      9.858,
+      10.922
+    ],
+    "barDrift": 0.142,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        10
+      ],
+      [
+        10
+      ],
+      [
+        11
+      ]
+    ]
+  },
+  {
     "i": 0,
+    "name": "Treecko",
+    "cp": 569,
+    "hp": 78,
+    "atkIV": 12,
+    "defIV": 11,
+    "staIV": 11,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      12.0,
+      11.0,
+      11.0
+    ],
+    "barDrift": 0.0,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        12
+      ],
+      [
+        11
+      ],
+      [
+        11
+      ]
+    ]
+  },
+  {
+    "i": 1,
+    "name": "Honedge",
+    "cp": 581,
+    "hp": 71,
+    "atkIV": 15,
+    "defIV": 12,
+    "staIV": 11,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      15.036,
+      12.05,
+      11.043
+    ],
+    "barDrift": 0.05,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        15
+      ],
+      [
+        12
+      ],
+      [
+        11
+      ]
+    ]
+  },
+  {
+    "i": 3,
+    "name": "Gastly",
+    "cp": 597,
+    "hp": 62,
+    "atkIV": 8,
+    "defIV": 10,
+    "staIV": 5,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      7.943,
+      9.858,
+      4.858
+    ],
+    "barDrift": 0.142,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        8
+      ],
+      [
+        10
+      ],
+      [
+        5
+      ]
+    ]
+  },
+  {
+    "i": 4,
+    "name": "Squawkabilly",
+    "cp": 614,
+    "hp": 92,
+    "atkIV": 13,
+    "defIV": 15,
+    "staIV": 15,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      13.0,
+      14.929,
+      14.964
+    ],
+    "barDrift": 0.071,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        15
+      ],
+      [
+        15
+      ]
+    ]
+  },
+  {
+    "name": "Bulbasaur",
+    "cp": 632,
+    "hp": 85,
+    "atkIV": 15,
+    "defIV": 13,
+    "staIV": 15,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      14.929,
+      12.964,
+      14.929
+    ],
+    "barDrift": 0.071,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        15
+      ],
+      [
+        13
+      ],
+      [
+        15
+      ]
+    ]
+  },
+  {
+    "name": "Rhyhorn",
+    "cp": 651,
+    "hp": 99,
+    "atkIV": 13,
+    "defIV": 12,
+    "staIV": 5,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      13.0,
+      11.964,
+      4.893
+    ],
+    "barDrift": 0.107,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        12
+      ],
+      [
+        5
+      ]
+    ]
+  },
+  {
+    "i": 1,
+    "name": "Zorua",
+    "cp": 695,
+    "hp": 83,
+    "atkIV": 15,
+    "defIV": 5,
+    "staIV": 14,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      14.858,
+      4.858,
+      13.901
+    ],
+    "barDrift": 0.142,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        15
+      ],
+      [
+        5
+      ],
+      [
+        14
+      ]
+    ]
+  },
+  {
+    "i": 2,
     "name": "Geodude",
     "cp": 711,
     "hp": 80,
@@ -410,20 +820,87 @@
     ]
   },
   {
-    "i": 2,
-    "name": "Sandshrew",
-    "cp": 256,
-    "hp": 55,
-    "atkIV": 3,
-    "defIV": 8,
+    "i": 4,
+    "name": "Pikipek",
+    "cp": 716,
+    "hp": 92,
+    "atkIV": 9,
+    "defIV": 7,
+    "staIV": 14,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      8.936,
+      6.95,
+      13.901
+    ],
+    "barDrift": 0.099,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        9
+      ],
+      [
+        7
+      ],
+      [
+        14
+      ]
+    ]
+  },
+  {
+    "i": 5,
+    "name": "Tinkatuff",
+    "cp": 719,
+    "hp": 103,
+    "atkIV": 13,
+    "defIV": 12,
     "staIV": 11,
     "ivSource": "bar-measure",
     "barRaw": [
-      2.979,
-      7.943,
-      10.922
+      13.0,
+      11.964,
+      11.0
     ],
-    "barDrift": 0.078,
+    "barDrift": 0.036,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        12
+      ],
+      [
+        11
+      ]
+    ]
+  },
+  {
+    "name": "Oricorio",
+    "cp": 772,
+    "hp": 87,
+    "atkIV": 3,
+    "defIV": 9,
+    "staIV": 1,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      2.979,
+      8.936,
+      1.028
+    ],
+    "barDrift": 0.064,
     "barSegmentRaw": [
       null,
       null,
@@ -436,74 +913,7 @@
         3
       ],
       [
-        8
-      ],
-      [
-        11
-      ]
-    ]
-  },
-  {
-    "i": 4,
-    "name": "Fomantis",
-    "cp": 316,
-    "hp": 69,
-    "atkIV": 15,
-    "defIV": 15,
-    "staIV": 14,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      14.858,
-      14.858,
-      13.901
-    ],
-    "barDrift": 0.142,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        15
-      ],
-      [
-        15
-      ],
-      [
-        14
-      ]
-    ]
-  },
-  {
-    "name": "Grubbin",
-    "cp": 191,
-    "hp": 49,
-    "atkIV": 12,
-    "defIV": 1,
-    "staIV": 1,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      11.915,
-      1.028,
-      1.028
-    ],
-    "barDrift": 0.085,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        12
-      ],
-      [
-        1
+        9
       ],
       [
         1
@@ -512,123 +922,85 @@
   },
   {
     "i": 0,
-    "name": "Inkay",
-    "cp": 686,
-    "hp": 110,
-    "atkIV": 12,
-    "defIV": 0,
-    "staIV": 11,
+    "name": "Pumpkaboo",
+    "cp": 782,
+    "hp": 92,
+    "atkIV": 8,
+    "defIV": 15,
+    "staIV": 15,
     "ivSource": "bar-measure",
     "barRaw": [
-      12.015,
-      0.036,
-      11.026
+      8.0,
+      14.929,
+      14.964
     ],
-    "barDrift": 0.026,
+    "barDrift": 0.071,
     "barSegmentRaw": [
-      12.036,
-      0.0,
-      11.026
+      null,
+      null,
+      null
     ],
     "barConfidence": "high",
-    "barMethod": "colour",
+    "barMethod": "warm",
     "ivCandidateSets": [
       [
-        12
+        8
       ],
       [
-        0
+        15
       ],
       [
-        11
+        15
       ]
     ]
   },
   {
     "i": 2,
-    "name": "Meditite",
-    "cp": 279,
-    "hp": 60,
-    "atkIV": 11,
-    "defIV": 11,
-    "staIV": 15,
+    "name": "Phanpy",
+    "cp": 816,
+    "hp": 148,
+    "atkIV": 0,
+    "defIV": 7,
+    "staIV": 0,
     "ivSource": "bar-measure",
     "barRaw": [
-      10.922,
-      10.922,
-      14.858
+      0.036,
+      7.017,
+      0.036
     ],
-    "barDrift": 0.142,
+    "barDrift": 0.025,
     "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "low",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        11,
-        12
-      ],
-      [
-        11,
-        12
-      ],
-      [
-        14,
-        15
-      ]
-    ],
-    "ivConflict": true
-  },
-  {
-    "i": 4,
-    "name": "Cascoon",
-    "cp": 296,
-    "hp": 86,
-    "atkIV": 15,
-    "defIV": 14,
-    "staIV": 12,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      14.964,
-      14.0,
-      12.0
-    ],
-    "barDrift": 0.036,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
+      0.0,
+      7.033,
+      0.0
     ],
     "barConfidence": "high",
-    "barMethod": "warm",
+    "barMethod": "colour",
     "ivCandidateSets": [
       [
-        15
+        0
       ],
       [
-        14
+        7
       ],
       [
-        12
+        0
       ]
     ]
   },
   {
     "i": 5,
-    "name": "Carvanha",
-    "cp": 211,
-    "hp": 51,
-    "atkIV": 6,
-    "defIV": 14,
-    "staIV": 8,
+    "name": "Quilava",
+    "cp": 917,
+    "hp": 98,
+    "atkIV": 13,
+    "defIV": 11,
+    "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
-      5.957,
-      13.901,
-      7.943
+      12.908,
+      10.922,
+      13.901
     ],
     "barDrift": 0.099,
     "barSegmentRaw": [
@@ -640,30 +1012,30 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        6
+        13
+      ],
+      [
+        11
       ],
       [
         14
-      ],
-      [
-        8
       ]
     ]
   },
   {
-    "name": "Swablu",
-    "cp": 441,
-    "hp": 82,
-    "atkIV": 12,
-    "defIV": 11,
-    "staIV": 10,
+    "name": "Minun",
+    "cp": 965,
+    "hp": 95,
+    "atkIV": 15,
+    "defIV": 12,
+    "staIV": 1,
     "ivSource": "bar-measure",
     "barRaw": [
-      12.0,
-      11.0,
-      9.929
+      15.036,
+      12.05,
+      0.971
     ],
-    "barDrift": 0.071,
+    "barDrift": 0.05,
     "barSegmentRaw": [
       null,
       null,
@@ -673,10 +1045,44 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
+        15
+      ],
+      [
         12
       ],
       [
-        11
+        1
+      ]
+    ]
+  },
+  {
+    "i": 1,
+    "name": "Rapidash",
+    "cp": 1024,
+    "hp": 89,
+    "atkIV": 13,
+    "defIV": 13,
+    "staIV": 10,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      12.964,
+      12.964,
+      9.893
+    ],
+    "barDrift": 0.107,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        13
       ],
       [
         10
@@ -684,47 +1090,179 @@
     ]
   },
   {
-    "name": "Cyndaquil",
-    "cp": 542,
-    "hp": 76,
+    "i": 2,
+    "name": "Kecleon",
+    "cp": 1035,
+    "hp": 95,
     "atkIV": 14,
-    "defIV": 14,
-    "staIV": 10,
+    "defIV": 13,
+    "staIV": 13,
     "ivSource": "bar-measure",
     "barRaw": [
       14.0,
-      14.0,
-      9.929
+      13.0,
+      13.0
     ],
-    "barDrift": 0.071,
+    "barDrift": 0.0,
     "barSegmentRaw": [
       null,
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        13,
         14
       ],
       [
-        13,
-        14
+        13
       ],
       [
-        9,
-        10
+        13
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 2,
-    "name": "Duskull",
-    "cp": 316,
-    "hp": 51,
+    "i": 3,
+    "name": "Hitmonlee",
+    "cp": 1141,
+    "hp": 80,
+    "atkIV": 14,
+    "defIV": 6,
+    "staIV": 14,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      14.0,
+      6.0,
+      14.0
+    ],
+    "barDrift": 0.0,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        14
+      ],
+      [
+        6
+      ],
+      [
+        14
+      ]
+    ]
+  },
+  {
+    "i": 4,
+    "name": "Diancie",
+    "cp": 1156,
+    "hp": 76,
+    "atkIV": 15,
+    "defIV": 15,
+    "staIV": 11,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      15.036,
+      15.0,
+      11.043
+    ],
+    "barDrift": 0.043,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        15
+      ],
+      [
+        15
+      ],
+      [
+        11
+      ]
+    ]
+  },
+  {
+    "name": "Espeon",
+    "cp": 1320,
+    "hp": 90,
+    "atkIV": 11,
+    "defIV": 13,
+    "staIV": 12,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      11.0,
+      13.0,
+      12.0
+    ],
+    "barDrift": 0.0,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        11
+      ],
+      [
+        13
+      ],
+      [
+        12
+      ]
+    ]
+  },
+  {
+    "i": 0,
+    "name": "Unfezant",
+    "cp": 1321,
+    "hp": 109,
+    "atkIV": 9,
+    "defIV": 12,
+    "staIV": 4,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      8.901,
+      11.879,
+      3.936
+    ],
+    "barDrift": 0.121,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        9
+      ],
+      [
+        12
+      ],
+      [
+        4
+      ]
+    ]
+  },
+  {
+    "i": 1,
+    "name": "Stunfisk",
+    "cp": 1388,
+    "hp": 162,
     "atkIV": 7,
     "defIV": 3,
     "staIV": 4,
@@ -756,53 +1294,19 @@
   },
   {
     "i": 3,
-    "name": "Carbink",
-    "cp": 606,
-    "hp": 78,
-    "atkIV": 12,
-    "defIV": 12,
-    "staIV": 14,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      12.0,
-      12.0,
-      14.0
-    ],
-    "barDrift": 0.0,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        12
-      ],
-      [
-        12
-      ],
-      [
-        14
-      ]
-    ]
-  },
-  {
-    "i": 4,
-    "name": "Onix",
-    "cp": 461,
-    "hp": 62,
+    "name": "Raichu",
+    "cp": 1474,
+    "hp": 108,
     "atkIV": 15,
     "defIV": 14,
-    "staIV": 10,
+    "staIV": 11,
     "ivSource": "bar-measure",
     "barRaw": [
-      14.858,
-      13.901,
-      9.858
+      14.929,
+      13.964,
+      10.964
     ],
-    "barDrift": 0.142,
+    "barDrift": 0.071,
     "barSegmentRaw": [
       null,
       null,
@@ -818,41 +1322,41 @@
         14
       ],
       [
-        10
+        11
       ]
     ]
   },
   {
-    "i": 6,
-    "name": "Hoothoot",
-    "cp": 220,
-    "hp": 79,
-    "atkIV": 6,
-    "defIV": 15,
-    "staIV": 10,
+    "i": 5,
+    "name": "Stantler",
+    "cp": 1683,
+    "hp": 133,
+    "atkIV": 11,
+    "defIV": 7,
+    "staIV": 9,
     "ivSource": "bar-measure",
     "barRaw": [
-      6.007,
-      15.0,
-      9.928
+      10.922,
+      6.95,
+      8.936
     ],
-    "barDrift": 0.018,
+    "barDrift": 0.078,
     "barSegmentRaw": [
-      6.007,
-      15.0,
-      10.108
+      null,
+      null,
+      null
     ],
     "barConfidence": "high",
-    "barMethod": "colour",
+    "barMethod": "warm",
     "ivCandidateSets": [
       [
-        6
+        11
       ],
       [
-        15
+        7
       ],
       [
-        10
+        9
       ]
     ]
   }
