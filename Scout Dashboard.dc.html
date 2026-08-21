@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.18</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.20</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -622,12 +622,31 @@
           </div>
         </details>
         <details style="background:var(--surface-page);border:1px solid var(--line-200);border-radius:6px;padding:8px 12px">
+          <summary style="cursor:pointer;font:600 11px var(--font-display);color:var(--ink-500);list-style:none">GITHUB ACCESS {{ githubTokenBadge }}</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+            <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Needed only to trigger the import workflows below straight from this app instead of GitHub's Actions tab. Create a fine-grained token at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" style="color:var(--type-electric)">github.com/settings/personal-access-tokens/new</a> scoped to the <b>stupid-picasso/scout-dashboard</b> repo only, with <b>Actions: Read and write</b> permission.</div>
+            <input type="password" placeholder="github_pat_…" value="{{ githubToken }}" onChange="{{ onGithubTokenChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:5px;font:12px var(--font-display)" />
+          </div>
+        </details>
+        <details style="background:var(--surface-page);border:1px solid var(--line-200);border-radius:6px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px var(--font-display);color:var(--ink-500);list-style:none">SERVER-SIDE VIDEO IMPORT · FREE</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Run the "Extract Pokemon Data" GitHub Actions workflow with your recording's Google Drive link, then tap below to pull the result straight in \u2014 no copy/paste needed.</div>
+            <div style="border-top:1px solid var(--surface-muted);padding-top:8px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:10.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em">RUN IT FROM HERE (needs GitHub Access above)</div>
+              <div style="font:11.5px var(--font-body);color:var(--ink-500)">Drive link must be shared as "Anyone with the link".</div>
+              <input type="text" placeholder="https://drive.google.com/file/d/…" value="{{ driveVideoLink }}" onChange="{{ onDriveVideoLinkChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:5px;font:12px var(--font-display)" />
+              <div onClick="{{ runVideoWorkflow }}" style="cursor:pointer;align-self:flex-start;padding:9px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">{{ driveWorkflowVideoLabel }}</div>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <div onClick="{{ importFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">{{ serverImportLabel }}</div>
             </div>
+            <sc-if value="{{ driveWorkflowError }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ driveWorkflowError }}</div>
+            </sc-if>
+            <sc-if value="{{ driveWorkflowSummary }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px var(--font-display);color:var(--grass-700)">{{ driveWorkflowSummary }}</div>
+            </sc-if>
             <sc-if value="{{ serverImportError }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ serverImportError }}</div>
             </sc-if>
@@ -640,9 +659,21 @@
           <summary style="cursor:pointer;font:600 11px var(--font-display);color:var(--type-ghost);list-style:none">SERVER-SIDE IV IMPORT &middot; FREE</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Step 2, after importing Pokemon above. Run the &ldquo;Extract IV Ratings&rdquo; workflow with your <b>appraisal</b> recording, then tap below. It measures the three appraisal bars to get the exact IV, matches each reading to a Pokemon you already imported by name, CP and HP, and pins it. Nothing is guessed and no new Pokemon are added.</div>
+            <div style="border-top:1px solid color-mix(in oklab, var(--type-ghost) 30%, transparent);padding-top:8px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:10.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em">RUN IT FROM HERE (needs GitHub Access above)</div>
+              <div style="font:11.5px var(--font-body);color:var(--ink-500)">Drive link must be shared as "Anyone with the link".</div>
+              <input type="text" placeholder="https://drive.google.com/file/d/…" value="{{ driveAppraisalLink }}" onChange="{{ onDriveAppraisalLinkChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:5px;font:12px var(--font-display)" />
+              <div onClick="{{ runAppraisalWorkflow }}" style="cursor:pointer;align-self:flex-start;padding:9px 16px;border-radius:var(--r-pill);background:var(--type-ghost);color:white;font:700 11.5px var(--font-display)">{{ driveWorkflowAppraisalLabel }}</div>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <div onClick="{{ importIvFromServer }}" style="cursor:pointer;padding:9px 16px;border-radius:var(--r-pill);background:var(--type-ghost);color:white;font:700 11.5px var(--font-display)">{{ ivServerLabel }}</div>
             </div>
+            <sc-if value="{{ driveWorkflowAppraisalError }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ driveWorkflowAppraisalError }}</div>
+            </sc-if>
+            <sc-if value="{{ driveWorkflowAppraisalSummary }}" hint-placeholder-val="{{ false }}">
+              <div style="font:11.5px var(--font-display);color:var(--type-ghost)">{{ driveWorkflowAppraisalSummary }}</div>
+            </sc-if>
             <sc-if value="{{ ivServerError }}" hint-placeholder-val="{{ false }}">
               <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ ivServerError }}</div>
             </sc-if>
@@ -1041,9 +1072,7 @@
           </div>
         </div>
         <div style="font:12.5px var(--font-body);color:var(--ink-500);line-height:1.4">{{ cutPlan.headline }}</div>
-        <sc-if value="{{ cutPlan.overBy }}" hint-placeholder-val="{{ false }}">
-          <div onClick="{{ toggleCutList }}" class="om-press" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">{{ cutListRevealed }} REEVALUATE &mdash; SHOW BOTTOM {{ cutPlan.overBy }}</div>
-        </sc-if>
+        <div onClick="{{ toggleCutList }}" class="om-press" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">{{ cutPlan.buttonLabel }}</div>
         <sc-if value="{{ cutList }}" hint-placeholder-val="{{ false }}">
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
             <sc-for list="{{ cutList }}" as="p" hint-placeholder-count="6">
@@ -1203,7 +1232,10 @@
     </div>
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
-      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ASK THE PROFESSOR ANYTHING</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ASK THE PROFESSOR ANYTHING</div>
+        <div onClick="{{ clearChat }}" style="cursor:pointer;padding:5px 11px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 10px var(--font-display);letter-spacing:.03em;white-space:nowrap">NEW CHAT</div>
+      </div>
       <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{ chatMessagesDisplay }}" as="m" hint-placeholder-count="0">
           <div style="align-self:{{ m.alignSelf }};max-width:85%;background:{{ m.bg }};color:var(--ink-900);padding:9px 13px;border-radius:10px;font:13px/1.4 var(--font-body)">{{ m.content }}</div>
@@ -1230,6 +1262,8 @@
         <option value="ivFloor">Sort: IV floor (lowest first)</option>
         <option value="name">Sort: Name</option>
         <option value="dex">Sort: Dex #</option>
+        <option value="catchDate">Sort: Catch date (newest)</option>
+        <option value="scanDate">Sort: Scanned date (newest)</option>
       </select>
       <div style="font:12px var(--font-display);color:var(--ink-300);white-space:nowrap">{{ rosterCountLabel }}</div>
     </div>
@@ -2062,13 +2096,22 @@ class Component extends DCLogic {
     videoImport: null,
     importScreenMode: 'detail',
     resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
-    resourcesDraft: { rareCandy: '', rareCandyXL: '', eliteFastTM: '', eliteChargedTM: '' },
+    resourcesDraft: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
     bagCapacity: null,
-    bagCapacityDraft: '',
+    bagCapacityDraft: null,
     closestMissRevealed: false,
     cutTarget: 300,
     cutTargetDraft: '300',
     cutListRevealed: false,
+    githubToken: '',
+    driveVideoLink: '',
+    driveAppraisalLink: '',
+    driveWorkflowBusy: false,
+    driveWorkflowError: '',
+    driveWorkflowSummary: '',
+    driveWorkflowAppraisalBusy: false,
+    driveWorkflowAppraisalError: '',
+    driveWorkflowAppraisalSummary: '',
     eliteTmDone: [],
     megaEnergyInventory: {},
     megaNameDraft: '',
@@ -2225,7 +2268,7 @@ class Component extends DCLogic {
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
-      'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget'];
+      'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'githubToken'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -2353,6 +2396,7 @@ class Component extends DCLogic {
       bagCapacity: null,
       eliteTmDone: [],
       cutTarget: 300, cutTargetDraft: '300',
+      githubToken: '',
       megaEnergyInventory: {}, triageKeep: {}, transferQueue: [],
       geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
       apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
@@ -2437,6 +2481,7 @@ class Component extends DCLogic {
       bagCapacity: remote.bagCapacity != null ? remote.bagCapacity : null,
       eliteTmDone: remote.eliteTmDone || [],
       cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
+      githubToken: remote.githubToken || '',
       megaEnergyInventory: remote.megaEnergyInventory || {},
       triageKeep: remote.triageKeep || {},
       transferQueue: remote.transferQueue || [],
@@ -2652,7 +2697,7 @@ class Component extends DCLogic {
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
       checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
-      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget,
+      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, githubToken: s.githubToken,
       // Trimmed on write: an unbounded transcript would eventually crowd out the
       // roster, which is the data that actually matters.
       chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
@@ -3762,6 +3807,76 @@ class Component extends DCLogic {
   toggleClosestMiss() {
     this.setState({ closestMissRevealed: !this.state.closestMissRevealed });
   }
+
+  clearChat() {
+    this.setState({ chatMessages: [] }, () => this.queueCloudPush());
+  }
+
+  onGithubTokenChange(e) {
+    this.setState({ githubToken: e.target.value });
+  }
+
+  onDriveVideoLinkChange(e) {
+    this.setState({ driveVideoLink: e.target.value });
+  }
+
+  onDriveAppraisalLinkChange(e) {
+    this.setState({ driveAppraisalLink: e.target.value });
+  }
+
+  // Dispatches the "Extract Pokemon Data" or "Extract IV Ratings" GitHub
+  // Actions workflow directly via the REST API, with a Google Drive link, so
+  // a video never has to be manually uploaded to the repo or the Actions tab
+  // opened at all — the whole loop stays inside the PWA. Always passes
+  // fresh_import: true, matching this app's "clean import per session"
+  // default (see pogo_extract.py --fresh).
+  runGithubWorkflow(kind) {
+    const isAppraisal = kind === 'appraisal';
+    const link = ((isAppraisal ? this.state.driveAppraisalLink : this.state.driveVideoLink) || '').trim();
+    const token = (this.state.githubToken || '').trim();
+    const busyKey = isAppraisal ? 'driveWorkflowAppraisalBusy' : 'driveWorkflowBusy';
+    const errorKey = isAppraisal ? 'driveWorkflowAppraisalError' : 'driveWorkflowError';
+    const summaryKey = isAppraisal ? 'driveWorkflowAppraisalSummary' : 'driveWorkflowSummary';
+    const linkKey = isAppraisal ? 'driveAppraisalLink' : 'driveVideoLink';
+    if (!link) { this.setState({ [errorKey]: 'Paste a Google Drive share link first.' }); return; }
+    if (!token) { this.setState({ [errorKey]: 'Add a GitHub token under GITHUB ACCESS first.' }); return; }
+    const workflowFile = isAppraisal ? 'extract-iv.yml' : 'extract.yml';
+    this.setState({ [busyKey]: true, [errorKey]: '', [summaryKey]: '' });
+    fetch('https://api.github.com/repos/stupid-picasso/scout-dashboard/actions/workflows/' + workflowFile + '/dispatches', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify({ ref: 'main', inputs: { drive_link: link, fresh_import: 'true' } })
+    }).then(res => {
+      if (res.status === 204) {
+        this.setState({
+          [busyKey]: false,
+          [summaryKey]: (isAppraisal ? 'Appraisal IV' : 'Video') + ' workflow queued on GitHub \u2014 give it a minute or two to run, then tap ' + (isAppraisal ? 'IMPORT IVs FROM SERVER' : 'IMPORT FROM SERVER') + ' below.',
+          [linkKey]: ''
+        });
+        const timerProp = isAppraisal ? '_driveWorkflowAppraisalSummaryTimer' : '_driveWorkflowSummaryTimer';
+        clearTimeout(this[timerProp]);
+        this[timerProp] = setTimeout(() => this.setState({ [summaryKey]: '' }), 9000);
+        return;
+      }
+      return res.json().catch(() => ({})).then(body => {
+        throw new Error((body && body.message) || ('GitHub returned HTTP ' + res.status));
+      });
+    }).catch(err => {
+      let msg = (err && err.message) || 'Could not start the workflow.';
+      if (/Bad credentials/i.test(msg)) msg = 'That GitHub token was rejected \u2014 check it under GITHUB ACCESS.';
+      else if (/Not Found/i.test(msg)) msg = 'Workflow not found, or the token lacks Actions permission on this repo.';
+      else if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) msg = 'Could not reach GitHub \u2014 check your connection and try again.';
+      this.setState({ [busyKey]: false, [summaryKey]: '', [errorKey]: msg });
+    });
+  }
+
+  runVideoWorkflow() { this.runGithubWorkflow('video'); }
+  runAppraisalWorkflow() { this.runGithubWorkflow('appraisal'); }
 
   onCutTargetChange(value) {
     this.setState({ cutTargetDraft: value });
@@ -7456,6 +7571,25 @@ class Component extends DCLogic {
   // saying how many more candy the next one needs.
   evolveQueue() {
     const done = new Set(this.state.completedIds || []);
+    const table = this.state.evoTable || {};
+
+    // Every stage in a family shares ONE candy pool (Pichu/Pikachu/Raichu all
+    // spend Pikachu Candy), so ranking "Pichu ready to evolve" and "Pikachu
+    // ready to evolve" as separate groups double-counts the same stock. Walk
+    // the evo table backward from each species to find its family root, and
+    // group by that instead — the whole family competes for the one pool.
+    const prevOf = {};
+    Object.keys(table).forEach(name => {
+      const to = table[name] && table[name].to;
+      if (to) prevOf[String(to).toLowerCase()] = name;
+    });
+    const familyRoot = (name) => {
+      let cur = String(name || '').toLowerCase();
+      const seen = new Set();
+      while (prevOf[cur] && !seen.has(cur)) { seen.add(cur); cur = prevOf[cur]; }
+      return cur;
+    };
+
     const groups = {};
     this.effectiveRosterForMatch().forEach(p => {
       if (done.has(p.idx)) return;
@@ -7467,40 +7601,44 @@ class Component extends DCLogic {
       // Score favours what the evolution is worth: league rank first, then IV,
       // and a ready candy stock outranks one that still needs collecting.
       const score = (Number.isFinite(rank) ? rank : 0) + (p.ivAvg || 0) * 0.4 + (evo.ready ? 25 : 0) - (risk ? 40 : 0);
-      const key = String(p.name || '').toLowerCase() + '|' + String(p.form || '');
+      const key = familyRoot(p.name);
       (groups[key] = groups[key] || []).push({ p, evo, rank, risk, score });
     });
     const out = [];
     Object.keys(groups).forEach(key => {
       const group = groups[key].sort((a, b) => b.score - a.score);
-      const need = group[0].evo.need;
-      const have = group[0].evo.have;
-      // Unknown candy stock is not zero — show the single best pick and say so
-      // rather than pretending the whole group is fundable.
-      const affordable = (need != null && have != null && need > 0)
-        ? Math.max(0, Math.floor(have / need))
-        : null;
-      const shown = affordable == null ? 1 : Math.min(affordable, group.length);
-      group.slice(0, Math.max(1, shown)).forEach((r, i) => {
-        r.dupTotal = group.length;
-        r.dupRank = i + 1;
-        r.affordable = affordable;
-        r.candyPool = have;
-        // Candy left once the picks above this one in the group are paid for.
-        r.candyAfter = (have != null && need != null) ? have - need * (i + 1) : null;
-        r.fundable = affordable == null ? null : i < affordable;
-        out.push(r);
+      // The pool reading should agree across every stage of the family, but
+      // if one stage's row came back null (candy not logged under that exact
+      // name), a real number seen on a sibling stage shouldn't be discarded.
+      const knownHave = group.map(r => r.evo.have).filter(h => h != null);
+      const have = knownHave.length ? Math.max(...knownHave) : null;
+      let remaining = have;
+      // Greedily fund the highest-scoring member first, deducting its own
+      // stage's candy cost from the shared pool before moving to the next —
+      // this is the actual "which one should my candy go to" decision.
+      group.forEach(r => {
+        const need = r.evo.need;
+        if (remaining == null || need == null) { r.fundable = null; }
+        else if (remaining >= need) { r.fundable = true; remaining -= need; }
+        else { r.fundable = false; }
+        r.candyAfter = remaining;
       });
+      const fundedCount = group.filter(r => r.fundable === true).length;
+      group.forEach(r => { r.dupTotal = group.length; r.affordable = fundedCount; r.candyPool = have; });
+      // Show every fundable member, plus the single best pick even when
+      // nothing is currently affordable (so the reach is visible, not hidden).
+      const shown = fundedCount > 0 ? group.filter(r => r.fundable !== false) : group.slice(0, 1);
+      shown.forEach((r, i) => { r.dupRank = i + 1; out.push(r); });
     });
     return out.sort((a, b) => b.score - a.score);
   }
 
   // One line explaining why THIS individual is the pick, and what the shared
-  // candy pool does or doesn't cover for the rest of its species.
+  // candy pool does or doesn't cover for the rest of its family (which may
+  // span multiple evolution stages, not just duplicates of one species).
   evolveDupNote(row) {
     if (!row || row.dupTotal == null || row.dupTotal < 2) return null;
-    const species = row.p.name || 'this species';
-    const parts = ['best of ' + row.dupTotal + ' ' + species];
+    const parts = ['shares candy with ' + (row.dupTotal - 1) + ' other family member' + (row.dupTotal - 1 === 1 ? '' : 's')];
     if (row.affordable == null) parts.push('candy stock unknown');
     else if (row.affordable >= row.dupTotal) parts.push('candy funds all ' + row.dupTotal);
     else parts.push('candy funds ' + row.affordable + ' of ' + row.dupTotal);
@@ -7960,7 +8098,7 @@ class Component extends DCLogic {
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app. It was not pasted into a chat by them, so never describe it that way, and never say you lack access to their data. For "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The detailed stats list is truncated to the top 90 by rank, so never treat a Pokemon's absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The detailed stats list is truncated to the top 90 by rank, so never treat a Pokemon's absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false }, () => this.queueCloudPush());
@@ -8310,6 +8448,18 @@ class Component extends DCLogic {
         return fa - fb;
       }
       if (sortField === 'rank') return this.bestRank(b) - this.bestRank(a);
+      if (sortField === 'scanDate') {
+        const ta = a.scanDate ? Date.parse(a.scanDate) : NaN, tb = b.scanDate ? Date.parse(b.scanDate) : NaN;
+        if (Number.isNaN(ta)) return 1;
+        if (Number.isNaN(tb)) return -1;
+        return tb - ta;
+      }
+      if (sortField === 'catchDate') {
+        const ta = a.catchDate ? Date.parse(a.catchDate) : NaN, tb = b.catchDate ? Date.parse(b.catchDate) : NaN;
+        if (Number.isNaN(ta)) return 1;
+        if (Number.isNaN(tb)) return -1;
+        return tb - ta;
+      }
       return (b.cp || 0) - (a.cp || 0);
     });
 
@@ -9202,17 +9352,17 @@ class Component extends DCLogic {
       suggestedTeamDisplay,
       intelDisplay,
       resourcesDraft: {
-        rareCandy: this.state.resourcesDraft.rareCandy || (this.state.resources.rareCandy != null ? String(this.state.resources.rareCandy) : ''),
-        rareCandyXL: this.state.resourcesDraft.rareCandyXL || (this.state.resources.rareCandyXL != null ? String(this.state.resources.rareCandyXL) : ''),
-        eliteFastTM: this.state.resourcesDraft.eliteFastTM || (this.state.resources.eliteFastTM != null ? String(this.state.resources.eliteFastTM) : ''),
-        eliteChargedTM: this.state.resourcesDraft.eliteChargedTM || (this.state.resources.eliteChargedTM != null ? String(this.state.resources.eliteChargedTM) : '')
+        rareCandy: this.state.resourcesDraft.rareCandy != null ? this.state.resourcesDraft.rareCandy : (this.state.resources.rareCandy != null ? String(this.state.resources.rareCandy) : ''),
+        rareCandyXL: this.state.resourcesDraft.rareCandyXL != null ? this.state.resourcesDraft.rareCandyXL : (this.state.resources.rareCandyXL != null ? String(this.state.resources.rareCandyXL) : ''),
+        eliteFastTM: this.state.resourcesDraft.eliteFastTM != null ? this.state.resourcesDraft.eliteFastTM : (this.state.resources.eliteFastTM != null ? String(this.state.resources.eliteFastTM) : ''),
+        eliteChargedTM: this.state.resourcesDraft.eliteChargedTM != null ? this.state.resourcesDraft.eliteChargedTM : (this.state.resources.eliteChargedTM != null ? String(this.state.resources.eliteChargedTM) : '')
       },
       onResourceRareCandy: (e) => this.onResourceChange('rareCandy', e.target.value),
       onResourceRareCandyXL: (e) => this.onResourceChange('rareCandyXL', e.target.value),
       onResourceEliteFast: (e) => this.onResourceChange('eliteFastTM', e.target.value),
       onResourceEliteCharged: (e) => this.onResourceChange('eliteChargedTM', e.target.value),
       saveResources: () => this.saveResources(),
-      bagCapacityDraft: this.state.bagCapacityDraft || (this.state.bagCapacity != null ? String(this.state.bagCapacity) : ''),
+      bagCapacityDraft: this.state.bagCapacityDraft != null ? this.state.bagCapacityDraft : (this.state.bagCapacity != null ? String(this.state.bagCapacity) : ''),
       onBagCapacityChange: (e) => this.onBagCapacityChange(e.target.value),
       saveBagCapacity: () => this.saveBagCapacity(),
       storageInfo: (() => {
@@ -9269,7 +9419,8 @@ class Component extends DCLogic {
         const headline = overBy > 0
           ? 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 ' + overBy + ' over \u2014 reevaluate to see the bottom ' + overBy + ' to transfer.'
           : 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 within target, nothing needs cutting.';
-        return { target, overBy, headline };
+        const buttonLabel = overBy > 0 ? ('REEVALUATE \u2014 SHOW BOTTOM ' + overBy) : 'REEVALUATE ROSTER';
+        return { target, overBy, headline, buttonLabel };
       })(),
       cutList: (() => {
         if (!this.state.cutListRevealed) return null;
@@ -9386,6 +9537,21 @@ class Component extends DCLogic {
       })(),
       geminiBadge: (this.state.geminiKeys || []).length > 1 ? '· GEMINI ×' + this.state.geminiKeys.length
         : (this.state.geminiKey ? '· GEMINI' : '· NO KEY'),
+      githubToken: this.state.githubToken || '',
+      onGithubTokenChange: (e) => this.onGithubTokenChange(e),
+      githubTokenBadge: this.state.githubToken ? '· CONNECTED' : '· NOT SET',
+      driveVideoLink: this.state.driveVideoLink || '',
+      onDriveVideoLinkChange: (e) => this.onDriveVideoLinkChange(e),
+      driveAppraisalLink: this.state.driveAppraisalLink || '',
+      onDriveAppraisalLinkChange: (e) => this.onDriveAppraisalLinkChange(e),
+      runVideoWorkflow: () => this.runVideoWorkflow(),
+      runAppraisalWorkflow: () => this.runAppraisalWorkflow(),
+      driveWorkflowVideoLabel: this.state.driveWorkflowBusy ? 'QUEUING…' : 'RUN VIDEO IMPORT',
+      driveWorkflowAppraisalLabel: this.state.driveWorkflowAppraisalBusy ? 'QUEUING…' : 'RUN APPRAISAL IMPORT',
+      driveWorkflowError: this.state.driveWorkflowError || '',
+      driveWorkflowSummary: this.state.driveWorkflowSummary || '',
+      driveWorkflowAppraisalError: this.state.driveWorkflowAppraisalError || '',
+      driveWorkflowAppraisalSummary: this.state.driveWorkflowAppraisalSummary || '',
       aiUsageRows: (() => {
         const u = (this.state.aiUsage && this.state.aiUsage.day === this.todayKey()) ? this.state.aiUsage : {};
         const g = u.gemini || 0;
@@ -10003,6 +10169,7 @@ class Component extends DCLogic {
       toggleOptimizePlan: () => this.setState({ showOptimizePlan: !this.state.showOptimizePlan }),
       checklistItems,
       chatMessagesDisplay,
+      clearChat: () => this.clearChat(),
       chatInput: this.state.chatInput,
       onChatInputChange: (e) => this.setState({ chatInput: e.target.value }),
       chatBusy: this.state.chatBusy,
