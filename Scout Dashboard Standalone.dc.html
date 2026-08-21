@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.20</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.21</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2258,12 +2258,9 @@
       </div>
     </div>
 
-    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
         <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ASK THE PROFESSOR ANYTHING</div>
-        <div onClick="{{ clearChat }}" style="cursor:pointer;padding:5px 11px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 10px var(--font-display);letter-spacing:.03em;white-space:nowrap">NEW CHAT</div>
-      </div>
         <div onClick="{{ clearChat }}" style="cursor:pointer;padding:5px 11px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 10px var(--font-display);letter-spacing:.03em;white-space:nowrap">NEW CHAT</div>
       </div>
       <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
@@ -4832,6 +4829,72 @@ class Component extends DCLogic {
   clearChat() {
     this.setState({ chatMessages: [] }, () => this.queueCloudPush());
   }
+
+  onGithubTokenChange(e) {
+    this.setState({ githubToken: e.target.value });
+  }
+
+  onDriveVideoLinkChange(e) {
+    this.setState({ driveVideoLink: e.target.value });
+  }
+
+  onDriveAppraisalLinkChange(e) {
+    this.setState({ driveAppraisalLink: e.target.value });
+  }
+
+  // Dispatches the "Extract Pokemon Data" or "Extract IV Ratings" GitHub
+  // Actions workflow directly via the REST API, with a Google Drive link, so
+  // a video never has to be manually uploaded to the repo or the Actions tab
+  // opened at all — the whole loop stays inside the PWA. Always passes
+  // fresh_import: true, matching this app's "clean import per session"
+  // default (see pogo_extract.py --fresh).
+  runGithubWorkflow(kind) {
+    const isAppraisal = kind === 'appraisal';
+    const link = ((isAppraisal ? this.state.driveAppraisalLink : this.state.driveVideoLink) || '').trim();
+    const token = (this.state.githubToken || '').trim();
+    const busyKey = isAppraisal ? 'driveWorkflowAppraisalBusy' : 'driveWorkflowBusy';
+    const errorKey = isAppraisal ? 'driveWorkflowAppraisalError' : 'driveWorkflowError';
+    const summaryKey = isAppraisal ? 'driveWorkflowAppraisalSummary' : 'driveWorkflowSummary';
+    const linkKey = isAppraisal ? 'driveAppraisalLink' : 'driveVideoLink';
+    if (!link) { this.setState({ [errorKey]: 'Paste a Google Drive share link first.' }); return; }
+    if (!token) { this.setState({ [errorKey]: 'Add a GitHub token under GITHUB ACCESS first.' }); return; }
+    const workflowFile = isAppraisal ? 'extract-iv.yml' : 'extract.yml';
+    this.setState({ [busyKey]: true, [errorKey]: '', [summaryKey]: '' });
+    fetch('https://api.github.com/repos/stupid-picasso/scout-dashboard/actions/workflows/' + workflowFile + '/dispatches', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify({ ref: 'main', inputs: { drive_link: link, fresh_import: 'true' } })
+    }).then(res => {
+      if (res.status === 204) {
+        this.setState({
+          [busyKey]: false,
+          [summaryKey]: (isAppraisal ? 'Appraisal IV' : 'Video') + ' workflow queued on GitHub \u2014 give it a minute or two to run, then tap ' + (isAppraisal ? 'IMPORT IVs FROM SERVER' : 'IMPORT FROM SERVER') + ' below.',
+          [linkKey]: ''
+        });
+        const timerProp = isAppraisal ? '_driveWorkflowAppraisalSummaryTimer' : '_driveWorkflowSummaryTimer';
+        clearTimeout(this[timerProp]);
+        this[timerProp] = setTimeout(() => this.setState({ [summaryKey]: '' }), 9000);
+        return;
+      }
+      return res.json().catch(() => ({})).then(body => {
+        throw new Error((body && body.message) || ('GitHub returned HTTP ' + res.status));
+      });
+    }).catch(err => {
+      let msg = (err && err.message) || 'Could not start the workflow.';
+      if (/Bad credentials/i.test(msg)) msg = 'That GitHub token was rejected \u2014 check it under GITHUB ACCESS.';
+      else if (/Not Found/i.test(msg)) msg = 'Workflow not found, or the token lacks Actions permission on this repo.';
+      else if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) msg = 'Could not reach GitHub \u2014 check your connection and try again.';
+      this.setState({ [busyKey]: false, [summaryKey]: '', [errorKey]: msg });
+    });
+  }
+
+  runVideoWorkflow() { this.runGithubWorkflow('video'); }
+  runAppraisalWorkflow() { this.runGithubWorkflow('appraisal'); }
 
   onCutTargetChange(value) {
     this.setState({ cutTargetDraft: value });
@@ -9414,18 +9477,6 @@ class Component extends DCLogic {
         if (Number.isNaN(tb)) return -1;
         return tb - ta;
       }
-      if (sortField === 'scanDate') {
-        const ta = a.scanDate ? Date.parse(a.scanDate) : NaN, tb = b.scanDate ? Date.parse(b.scanDate) : NaN;
-        if (Number.isNaN(ta)) return 1;
-        if (Number.isNaN(tb)) return -1;
-        return tb - ta;
-      }
-      if (sortField === 'catchDate') {
-        const ta = a.catchDate ? Date.parse(a.catchDate) : NaN, tb = b.catchDate ? Date.parse(b.catchDate) : NaN;
-        if (Number.isNaN(ta)) return 1;
-        if (Number.isNaN(tb)) return -1;
-        return tb - ta;
-      }
       return (b.cp || 0) - (a.cp || 0);
     });
 
@@ -11129,7 +11180,6 @@ class Component extends DCLogic {
       toggleOptimizePlan: () => this.setState({ showOptimizePlan: !this.state.showOptimizePlan }),
       checklistItems,
       chatMessagesDisplay,
-      clearChat: () => this.clearChat(),
       clearChat: () => this.clearChat(),
       chatInput: this.state.chatInput,
       onChatInputChange: (e) => this.setState({ chatInput: e.target.value }),
