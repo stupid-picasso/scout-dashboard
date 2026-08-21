@@ -17,6 +17,10 @@ on:
         description: 'Google Drive share link to an APPRAISAL screen recording (must be set to "Anyone with the link")'
         required: false
         default: ''
+      fresh_import:
+        description: 'Start a clean import (reset old data/appraisal_import.json first). Set to false only to add more videos to a session already in progress.'
+        required: false
+        default: 'true'
       fps:
         description: 'Frames per second for extraction'
         required: false
@@ -71,6 +75,16 @@ jobs:
           if [ -n "$DRIVE_VIDEO_PATH" ]; then
             echo "Plus one Drive-downloaded video: $DRIVE_VIDEO_PATH"
           fi
+
+      # See extract.yml's matching step for the full rationale: wipe once,
+      # before any video in this session is processed, so old sessions never
+      # linger while videos within this one session still merge together.
+      - name: Reset import file for a clean session
+        if: github.event.inputs.fresh_import != 'false'
+        run: |
+          mkdir -p data
+          rm -f data/appraisal_import.json
+          echo "Cleared data/appraisal_import.json — this session starts clean."
 
       - name: Extract IV ratings (repo appraisal_videos/*)
         if: steps.check_videos.outputs.count > 0

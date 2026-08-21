@@ -17,6 +17,10 @@ on:
         description: 'Google Drive share link to a screen recording (must be set to "Anyone with the link")'
         required: false
         default: ''
+      fresh_import:
+        description: 'Start a clean import (reset old data/pokemon_import.json first). Set to false only to add more videos to a session already in progress.'
+        required: false
+        default: 'true'
       fps:
         description: 'Frames per second for extraction'
         required: false
@@ -71,6 +75,22 @@ jobs:
           if [ -n "$DRIVE_VIDEO_PATH" ]; then
             echo "Plus one Drive-downloaded video: $DRIVE_VIDEO_PATH"
           fi
+
+      # Wipes data/pokemon_import.json before this session's videos are
+      # processed, so old sessions never linger. Runs once per job, before
+      # any video is processed, so every video in THIS session (repo videos/
+      # and a Drive-link video alike, whether one or several) still merges
+      # together normally afterward — only past sessions get cleared.
+      # Skipped when fresh_import is explicitly 'false' (continuing a
+      # session already in progress across separate workflow runs). Missing
+      # on a push trigger (no `inputs` there) reads as unset, not 'false', so
+      # push-triggered runs default to fresh too.
+      - name: Reset import file for a clean session
+        if: github.event.inputs.fresh_import != 'false'
+        run: |
+          mkdir -p data
+          rm -f data/pokemon_import.json
+          echo "Cleared data/pokemon_import.json — this session starts clean."
 
       - name: Extract video data (repo videos/*.mp4)
         if: steps.check_videos.outputs.count > 0
