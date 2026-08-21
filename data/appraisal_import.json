@@ -1,9 +1,9 @@
 [
   {
     "i": 0,
-    "name": "Zigzagoon",
-    "cp": 141,
-    "hp": 53,
+    "name": "Dewpider",
+    "cp": 290,
+    "hp": 67,
     "atkIV": 14,
     "defIV": 15,
     "staIV": 11,
@@ -34,149 +34,6 @@
     ]
   },
   {
-    "i": 2,
-    "name": "Aerodactyl",
-    "cp": 1164,
-    "hp": 106,
-    "atkIV": 10,
-    "defIV": 14,
-    "staIV": 15,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      9.929,
-      14.0,
-      14.964
-    ],
-    "barDrift": 0.071,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        10
-      ],
-      [
-        14
-      ],
-      [
-        15
-      ]
-    ]
-  },
-  {
-    "i": 5,
-    "name": "Tatsugiri",
-    "cp": 1535,
-    "hp": 106,
-    "atkIV": 13,
-    "defIV": 15,
-    "staIV": 10,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      13.0,
-      14.929,
-      9.929
-    ],
-    "barDrift": 0.071,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        13
-      ],
-      [
-        15
-      ],
-      [
-        10
-      ]
-    ]
-  },
-  {
-    "name": "Ducklett",
-    "cp": 349,
-    "hp": 88,
-    "atkIV": 13,
-    "defIV": 10,
-    "staIV": 13,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      12.908,
-      9.858,
-      12.908
-    ],
-    "barDrift": 0.142,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "low",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        12,
-        13
-      ],
-      [
-        10
-      ],
-      [
-        13,
-        14
-      ]
-    ],
-    "ivConflict": true
-  },
-  {
-    "i": 1,
-    "name": "Dewpider",
-    "cp": 290,
-    "hp": 67,
-    "atkIV": 12,
-    "defIV": 10,
-    "staIV": 15,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      11.915,
-      9.858,
-      14.858
-    ],
-    "barDrift": 0.142,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "low",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        11,
-        12
-      ],
-      [
-        10,
-        11
-      ],
-      [
-        14,
-        15
-      ]
-    ],
-    "ivConflict": true
-  },
-  {
-    "i": 3,
     "name": "Turtwig",
     "cp": 644,
     "hp": 94,
@@ -210,7 +67,75 @@
     ]
   },
   {
+    "i": 3,
+    "name": "Tatsugiri",
+    "cp": 1535,
+    "hp": 106,
+    "atkIV": 13,
+    "defIV": 15,
+    "staIV": 10,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      13.0,
+      14.929,
+      9.929
+    ],
+    "barDrift": 0.071,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        15
+      ],
+      [
+        10
+      ]
+    ]
+  },
+  {
     "i": 5,
+    "name": "Ducklett",
+    "cp": 349,
+    "hp": 88,
+    "atkIV": 13,
+    "defIV": 10,
+    "staIV": 13,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      12.908,
+      9.858,
+      12.908
+    ],
+    "barDrift": 0.142,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        13
+      ],
+      [
+        10
+      ],
+      [
+        13
+      ]
+    ]
+  },
+  {
+    "i": 1,
     "name": "Arrokuda",
     "cp": 372,
     "hp": 68,
@@ -229,21 +154,26 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        12
+        12,
+        13
       ],
       [
+        14,
         15
       ],
       [
-        11
+        11,
+        12
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
+    "i": 3,
     "name": "Latias",
     "cp": 1960,
     "hp": 121,
@@ -277,7 +207,6 @@
     ]
   },
   {
-    "i": 3,
     "name": "Ducklett",
     "cp": 339,
     "hp": 87,
@@ -300,7 +229,8 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        10
+        10,
+        11
       ],
       [
         11,
@@ -313,7 +243,7 @@
     "ivConflict": true
   },
   {
-    "i": 4,
+    "i": 0,
     "name": "Jangmo-o",
     "cp": 393,
     "hp": 72,
@@ -347,6 +277,40 @@
     ]
   },
   {
+    "name": "Magneton",
+    "cp": 1052,
+    "hp": 77,
+    "atkIV": 15,
+    "defIV": 13,
+    "staIV": 13,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      14.964,
+      13.0,
+      13.0
+    ],
+    "barDrift": 0.036,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        15
+      ],
+      [
+        13
+      ],
+      [
+        13
+      ]
+    ]
+  },
+  {
+    "i": 2,
     "name": "Magikarp",
     "cp": 152,
     "hp": 57,
@@ -380,7 +344,7 @@
     ]
   },
   {
-    "i": 0,
+    "i": 4,
     "name": "Froakie",
     "cp": 545,
     "hp": 80,
@@ -415,39 +379,6 @@
   },
   {
     "i": 2,
-    "name": "Magneton",
-    "cp": 1052,
-    "hp": 77,
-    "atkIV": 15,
-    "defIV": 13,
-    "staIV": 13,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      14.964,
-      13.0,
-      13.0
-    ],
-    "barDrift": 0.036,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        15
-      ],
-      [
-        13
-      ],
-      [
-        13
-      ]
-    ]
-  },
-  {
     "name": "Sneasel",
     "cp": 862,
     "hp": 81,
@@ -481,7 +412,7 @@
     ]
   },
   {
-    "i": 0,
+    "i": 4,
     "name": "Wyrdeer",
     "cp": 1146,
     "hp": 126,
@@ -515,45 +446,41 @@
     ]
   },
   {
-    "i": 3,
     "name": "Rufflet",
     "cp": 1274,
     "hp": 136,
-    "atkIV": 9,
-    "defIV": 10,
-    "staIV": 8,
+    "atkIV": 8,
+    "defIV": 11,
+    "staIV": 12,
     "ivSource": "bar-measure",
     "barRaw": [
-      9.078,
-      9.787,
-      8.085
+      8.019,
+      11.026,
+      11.635
     ],
-    "barDrift": 0.213,
+    "barDrift": 0.347,
     "barSegmentRaw": [
-      null,
-      null,
-      null
+      8.022,
+      11.026,
+      11.671
     ],
     "barConfidence": "low",
-    "barMethod": "warm",
+    "barMethod": "colour",
     "ivCandidateSets": [
       [
-        8,
-        9
+        8
       ],
       [
-        10,
         11
       ],
       [
-        8,
-        12
+        12,
+        11
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 4,
+    "i": 0,
     "name": "Gyarados",
     "cp": 2531,
     "hp": 157,
@@ -587,40 +514,7 @@
     ]
   },
   {
-    "name": "Tentacruel",
-    "cp": 1624,
-    "hp": 134,
-    "atkIV": 11,
-    "defIV": 15,
-    "staIV": 15,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      11.0,
-      14.929,
-      14.964
-    ],
-    "barDrift": 0.071,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        11
-      ],
-      [
-        15
-      ],
-      [
-        15
-      ]
-    ]
-  },
-  {
-    "i": 1,
+    "i": 3,
     "name": "Fletchinder",
     "cp": 448,
     "hp": 75,
@@ -654,7 +548,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 4,
     "name": "Squirtle",
     "cp": 511,
     "hp": 84,
@@ -664,7 +558,7 @@
     "ivSource": "bar-measure",
     "barRaw": [
       9.929,
-      13.0,
+      12.964,
       14.964
     ],
     "barDrift": 0.071,
@@ -691,16 +585,16 @@
     "name": "Geodude",
     "cp": 711,
     "hp": 80,
-    "atkIV": 14,
-    "defIV": 10,
-    "staIV": 13,
+    "atkIV": 13,
+    "defIV": 9,
+    "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
-      14.0,
-      9.929,
-      13.0
+      13.0,
+      9.0,
+      14.0
     ],
-    "barDrift": 0.071,
+    "barDrift": 0.0,
     "barSegmentRaw": [
       null,
       null,
@@ -725,7 +619,7 @@
     "ivConflict": true
   },
   {
-    "i": 1,
+    "i": 2,
     "name": "Squawkabilly",
     "cp": 614,
     "hp": 92,
@@ -759,7 +653,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 4,
     "name": "Espeon",
     "cp": 1320,
     "hp": 90,
@@ -830,6 +724,7 @@
     "ivConflict": true
   },
   {
+    "i": 0,
     "name": "Bulbasaur",
     "cp": 455,
     "hp": 72,
@@ -863,7 +758,7 @@
     ]
   },
   {
-    "i": 1,
+    "i": 2,
     "name": "Rapidash",
     "cp": 1024,
     "hp": 89,
@@ -882,10 +777,11 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
+        8,
         13
       ],
       [
@@ -894,6 +790,7 @@
       [
         10
       ]
-    ]
+    ],
+    "ivConflict": true
   }
 ]
