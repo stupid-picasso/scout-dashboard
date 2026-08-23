@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.22</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.25</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -220,6 +220,17 @@
         </div>
       </sc-for>
     </div>
+
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.04em">PVP RANKS OUT OF DATE?</div>
+        <div style="font:11.5px var(--font-body);color:var(--ink-400)">Recalculates great/ultra/little for your whole roster with the current ranking logic \u2014 run after any ranking fix, no re-import needed.</div>
+      </div>
+      <div onClick="{{ recalculateAllRanks }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:10px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);white-space:nowrap">{{ recalcLabel }}</div>
+    </div>
+    <sc-if value="{{ recalcSummary }}" hint-placeholder-val="{{ false }}">
+      <div style="font:11.5px var(--font-display);color:var(--grass-700);margin-top:-8px">{{ recalcSummary }}</div>
+    </sc-if>
 
     <sc-if value="{{ evoNeedsLookup }}" hint-placeholder-val="{{ false }}">
       <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
@@ -2112,6 +2123,8 @@ class Component extends DCLogic {
     driveWorkflowAppraisalBusy: false,
     driveWorkflowAppraisalError: '',
     driveWorkflowAppraisalSummary: '',
+    recalcBusy: false,
+    recalcSummary: '',
     eliteTmDone: [],
     megaEnergyInventory: {},
     megaNameDraft: '',
@@ -3155,6 +3168,10 @@ class Component extends DCLogic {
   lookupMove(name) {
     const k = this.moveKey(name);
     if (!k) return null;
+    // Authoritative (GAME_MASTER-sourced) data first; the AI-fetched moveDB
+    // only fills gaps this table doesn't cover.
+    const auth = this.mechanics && this.mechanics.AUTHORITATIVE_MOVES && this.mechanics.AUTHORITATIVE_MOVES[k];
+    if (auth && auth.power > 0) return auth;
     const rec = (this.state.moveDB || {})[k];
     if (!rec || !(rec.power > 0)) return null;
     return rec;
@@ -3173,7 +3190,8 @@ class Component extends DCLogic {
 
   missingMoveNames() {
     const db = this.state.moveDB || {};
-    return this.distinctMoveNames().filter(k => !db[k]);
+    const auth = (this.mechanics && this.mechanics.AUTHORITATIVE_MOVES) || {};
+    return this.distinctMoveNames().filter(k => !auth[k] && !db[k]);
   }
 
   async fetchMoveData() {
@@ -3521,9 +3539,9 @@ class Component extends DCLogic {
     };
   }
 
-  // Best attackers by type. No move data exists in this app, so this ranks on
-  // raw stats only \u2014 the copy in the UI says so rather than implying a DPS
-  // ranking it cannot compute.
+  // Best attackers by type. Move data now comes from an embedded, GAME_MASTER-
+  // sourced table first (AUTHORITATIVE_MOVES), falling back to the AI-fetched
+  // moveDB only for anything that table doesn't cover.
   // Best DPS this Pokemon can reach at level 50 across its known charge moves.
   // Returns null when the move database can't cover it, which is the signal to
   // fall back to the stat-only score rather than invent a number.
@@ -3824,6 +3842,44 @@ class Component extends DCLogic {
 
   clearChat() {
     this.setState({ chatMessages: [] }, () => this.queueCloudPush());
+  }
+
+  // Great/ultra/little rank% are computed once and stored on each Pokemon at
+  // import/solve/evolve time, not recalculated live — so a fix to the
+  // ranking math (e.g. the shadow multiplier) only affects Pokemon touched
+  // AFTER the fix ships. This walks the whole roster and re-derives all
+  // three league ranks for everyone in one pass, using whatever the current
+  // mechanics logic is, without requiring a re-import.
+  recalculateAllRanks() {
+    if (!this.mechanics || this.state.recalcBusy) return;
+    this.setState({ recalcBusy: true, recalcSummary: '' });
+    setTimeout(() => {
+      const m = this.mechanics;
+      const roster = this.effectiveRosterForMatch();
+      const overrides = { ...this.state.ivOverrides };
+      let updated = 0, skipped = 0;
+      roster.forEach(p => {
+        if (!Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV) || p.dex == null) { skipped++; return; }
+        let base = null;
+        if (p.form) base = m.BASE_STATS_BY_FORM[p.dex + '_' + String(p.form).toLowerCase()];
+        if (!base) base = m.BASE_STATS[p.dex];
+        if (!base) { skipped++; return; }
+        const ivs = [p.atkIV, p.defIV, p.staIV];
+        const shadow = this.isShadow(p);
+        const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
+        overrides[p.idx] = {
+          ...overrides[p.idx],
+          great: { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name },
+          ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name },
+          little: { rankPct: littlePct, evolvesTo: p.name }
+        };
+        updated++;
+      });
+      const summary = updated + ' recalculated' + (skipped ? ' \u00b7 ' + skipped + ' skipped (no IVs on file)' : '');
+      this.setState({ ivOverrides: overrides, recalcBusy: false, recalcSummary: summary }, () => this.queueCloudPush());
+      clearTimeout(this._recalcSummaryTimer);
+      this._recalcSummaryTimer = setTimeout(() => this.setState({ recalcSummary: '' }), 9000);
+    }, 30); // let the busy label paint before the roster walk blocks the thread
   }
 
   onGithubTokenChange(e) {
@@ -9582,6 +9638,9 @@ class Component extends DCLogic {
       driveWorkflowSummary: this.state.driveWorkflowSummary || '',
       driveWorkflowAppraisalError: this.state.driveWorkflowAppraisalError || '',
       driveWorkflowAppraisalSummary: this.state.driveWorkflowAppraisalSummary || '',
+      recalculateAllRanks: () => this.recalculateAllRanks(),
+      recalcLabel: this.state.recalcBusy ? 'RECALCULATING\u2026' : 'RECALCULATE ALL RANKS',
+      recalcSummary: this.state.recalcSummary || '',
       aiUsageRows: (() => {
         const u = (this.state.aiUsage && this.state.aiUsage.day === this.todayKey()) ? this.state.aiUsage : {};
         const g = u.gemini || 0;
