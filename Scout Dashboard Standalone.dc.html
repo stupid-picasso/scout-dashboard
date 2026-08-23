@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.28</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.32</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1595,6 +1595,9 @@
               <div style="height:7px;background:var(--surface-muted);border-radius:4px;overflow:hidden">
                 <div style="height:100%;width:{{ migrationDisplay.pct }}%;background:var(--brand-primary-strong);transition:width .3s ease"></div>
               </div>
+            </sc-if>
+            <sc-if value="{{ syncKeyDriftWarning }}" hint-placeholder-val="{{ false }}">
+              <div style="border-top:1px solid var(--type-water);padding-top:10px;font:11.5px/1.5 var(--font-body);color:var(--type-fighting)">{{ syncKeyDriftWarning }}</div>
             </sc-if>
           </div>
         </sc-if>
@@ -3686,13 +3689,17 @@ class Component extends DCLogic {
       'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
       'megaEnergyInventory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
-      'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint'];
+      'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint',
+      'bagCapacity', 'eliteTmDone', 'cutTarget'];
   }
 
   // Credentials are excluded from a restore by NAME, not by being forgotten, so
   // adding a key to the list above can never silently start overwriting keys.
+  // githubToken is deliberately absent from SYNCED_STATE_KEYS entirely (an old
+  // backup should never resurrect a possibly-revoked PAT) — listed here too so
+  // a future edit that adds it to SYNCED_STATE_KEYS doesn't reintroduce that risk.
   get RESTORE_EXCLUDED_KEYS() {
-    return ['geminiKey', 'geminiKeys', 'apiEndpoint'];
+    return ['geminiKey', 'geminiKeys', 'apiEndpoint', 'githubToken'];
   }
 
   get PACKED_KEYS() {
@@ -4502,7 +4509,7 @@ class Component extends DCLogic {
     if (!m || !m.attackerScore) return null;
     const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
     if (!base || !ivs) return null;
-    return m.attackerScore(base, ivs, 50);
+    return m.attackerScore(base, ivs, 50, this.isShadow(p));
   }
 
   // Best attacker ceiling YOU OWN, per type — the reference point "has a raid
@@ -4647,7 +4654,7 @@ class Component extends DCLogic {
     [p.chargeMove, p.chargeMove2].forEach(name => {
       const ch = this.lookupMove(name);
       if (!ch || ch.kind !== 'charged') return;
-      const dps = m.cycleDps(base, ivs, 50, fast, ch, { ownTypes });
+      const dps = m.cycleDps(base, ivs, 50, fast, ch, { ownTypes, isShadow: this.isShadow(p) });
       if (dps != null && (best == null || dps > best)) { best = dps; bestMove = name; }
     });
     return best == null ? null : { dps: best, fast: p.quickMove, charged: bestMove };
@@ -4710,7 +4717,7 @@ class Component extends DCLogic {
       [p.chargeMove, p.chargeMove2].forEach(name => {
         const ch = this.lookupMove(name);
         if (!ch || ch.kind !== 'charged') return;
-        const r = m.cycleDps(base, ivs, lv.level, fast, ch, { ownTypes, defenderTypes });
+        const r = m.cycleDps(base, ivs, lv.level, fast, ch, { ownTypes, defenderTypes, isShadow: this.isShadow(p) });
         if (r != null && (best == null || r > best.dps)) best = { dps: r, charged: name };
       });
       if (!best) return;
@@ -4718,7 +4725,7 @@ class Component extends DCLogic {
       let dps50 = null;
       if (lv.level < m.MAX_POKEMON_LEVEL) {
         const ch = this.lookupMove(best.charged);
-        dps50 = m.cycleDps(base, ivs, m.MAX_POKEMON_LEVEL, fast, ch, { ownTypes, defenderTypes });
+        dps50 = m.cycleDps(base, ivs, m.MAX_POKEMON_LEVEL, fast, ch, { ownTypes, defenderTypes, isShadow: this.isShadow(p) });
       }
       const cost = m.powerUpCostBetween(lv.level, m.MAX_POKEMON_LEVEL, {
         lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p)
@@ -4828,7 +4835,7 @@ class Component extends DCLogic {
       // fallback ordering for Pokemon whose moves aren't in the database.
       (buckets[type] = buckets[type] || []).push({
         p, dps: dps ? dps.dps : null, moveLine: dps ? dps.fast + ' / ' + dps.charged : null,
-        ceiling: m.attackerScore(base, ivs, 50)
+        ceiling: m.attackerScore(base, ivs, 50, this.isShadow(p))
       });
     });
     return Object.keys(buckets).sort().map(type => {
@@ -5572,7 +5579,8 @@ class Component extends DCLogic {
     if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
     const mon = this.buildPokemonRecord(rec);
     const nextRoster = [...(this.state.roster || []), mon];
-    this.setState({ roster: nextRoster, ocrParsed: null, ocrPreview: null, ocrError: '' });
+    const removedIds = this.removedIdsWithout(mon);
+    this.setState({ roster: nextRoster, removedIds, ocrParsed: null, ocrPreview: null, ocrError: '' });
     this.resetAppraisalHint();
   }
 
@@ -5745,14 +5753,16 @@ class Component extends DCLogic {
       this.setState({ ivOverrides: overrides });
     } else {
       const newIdx = 'new-' + Date.now();
-      const added = [...this.state.addedPokemon, {
+      const newRec = {
         idx: newIdx, name: p.name, form: null, dex: p.dex, gender: null,
         cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
         lvlMin: r.level, lvlMax: r.level, quickMove: null, chargeMove: null, chargeMove2: null,
         catchDate: null, lucky: false, shadowPurified: '0', favorite: false, dust: null,
         great: patch.great, ultra: patch.ultra, little: patch.little
-      }];
-      this.setState({ addedPokemon: added });
+      };
+      const added = [...this.state.addedPokemon, newRec];
+      const removedIds = this.removedIdsWithout(newRec);
+      this.setState({ addedPokemon: added, removedIds });
     }
   }
 
@@ -7805,6 +7815,11 @@ class Component extends DCLogic {
     const changeLog = [];
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
+    // Re-scanning a Pokemon that was mistakenly (or since-corrected) marked
+    // TRANSFERRED must not silently vanish into the removed set — see
+    // removedIdsWithout for why this exists.
+    let removedIds = this.state.removedIds || [];
+    const removedSet = new Set(removedIds);
     let updated = 0, inserted = 0, solved = 0;
     const dupes = [];
     const today = new Date().toISOString().split('T')[0];
@@ -7831,8 +7846,8 @@ class Component extends DCLogic {
       // CP is part of a Pokemon's identity for import purposes: same species
       // + same CP is "the same catch seen again"; same species + different
       // CP is a different individual and must become its own entry.
-      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
-        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp);
+      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet))
+        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet));
       let ivPatch = {};
       let solvedFrom = null;
       // The detail screen never prints IVs, but CP + HP + base stats pin them
@@ -7986,7 +8001,7 @@ class Component extends DCLogic {
         };
         updated++;
       } else {
-        added.push({
+        const newRec = {
           idx: 'video-' + Date.now() + '-' + i, name: item.name, form: null, dex: item.dex,
           gender: item.gender || null,
           cp: item.cp, hp: item.hp != null ? item.hp : null,
@@ -8004,7 +8019,9 @@ class Component extends DCLogic {
           great: ivPatch.great || this.emptyLeague(),
           ultra: ivPatch.ultra || this.emptyLeague(),
           little: ivPatch.little || this.emptyLeague()
-        });
+        };
+        added.push(newRec);
+        removedIds = this.removedIdsWithout(newRec, removedIds);
         inserted++;
       }
       if (item.candy != null || item.xlCandy != null) {
@@ -8016,7 +8033,7 @@ class Component extends DCLogic {
       }
       if (item.type) types[nameLower] = item.type;
     });
-    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types });
+    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds });
     if (seenStardust != null) this.setStardust(seenStardust);
     const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
     return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
@@ -8385,6 +8402,22 @@ class Component extends DCLogic {
   rangeText(r) {
     const part = a => (a[0] === a[1] ? String(a[0]) : a[0] + '-' + a[1]);
     return part(r.atk) + '/' + part(r.def) + '/' + part(r.sta);
+  }
+
+  // A DELIBERATE re-add (OCR "ADD AS NEW POKEMON", a no-match solved-IV add,
+  // or a video-import insert) must never be silently swallowed by a stale
+  // TRANSFERRED mark left over from an earlier Pokemon with the same
+  // name/CP/HP. The sig-based hide in isRemoved() exists only to stop an
+  // ACCIDENTAL re-scan of the exact Pokemon already given away from
+  // reappearing on its own — it was never meant to block a genuine re-catch,
+  // a second individual with matching stats, or correcting a mistaken
+  // transfer. Returns the (possibly unchanged) array so callers can fold it
+  // into one setState alongside the new record instead of firing a second write.
+  removedIdsWithout(rec, removedIds) {
+    const sig = this.pokeSig(rec);
+    const src = removedIds || this.state.removedIds || [];
+    const next = src.filter(id => id !== rec.idx && id !== sig);
+    return next.length === src.length ? src : next;
   }
 
   pokeSig(p) {
@@ -8839,7 +8872,7 @@ class Component extends DCLogic {
       const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
       if (!base || !ivs) return;
       // Raid value, which is what the dust is being spent on here.
-      const score = m.attackerScore ? m.attackerScore(base, ivs, ceiling) : 0;
+      const score = m.attackerScore ? m.attackerScore(base, ivs, ceiling, this.isShadow(p)) : 0;
       if (!score) return;
       const opts = { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) };
       const now = m.powerUpCostBetween(level, ceiling, opts);
@@ -10379,6 +10412,10 @@ class Component extends DCLogic {
     const evoShown = expand.evolve ? evoQueueAll : evoQueueAll.slice(0, BLOCK);
     const gapsShown = expand.gaps ? dexGapsAll : dexGapsAll.slice(0, BLOCK);
     const missingEvo = this.missingEvoNames().length;
+    // How many distinct moves on the roster have no damage data on file yet —
+    // every one of them is a Pokemon whose raid DPS the app can't compute, so
+    // this doubles as "how much of Attackers/Raid Counters is unverified".
+    const unverifiedDpsCount = this.missingMoveNames().length;
     const fmt = n => Number(n || 0).toLocaleString('en-US');
     const candyLabelFor = evo => {
       if (evo.need == null) return 'candy cost unknown';
@@ -11070,7 +11107,17 @@ class Component extends DCLogic {
           bg: `color-mix(in oklab, var(${c.token}) 16%, var(--surface-card))`,
           border: `color-mix(in oklab, var(${c.token}) 42%, var(--surface-card))`,
           onClick: () => this.jumpToSection(c.key)
-        })),
+        }))
+        // Separate from the section-jump chips above: this one jumps tabs
+        // rather than scrolling, since move data lives on Attackers, not Today.
+        .concat(unverifiedDpsCount > 0 ? [{
+          label: 'UNVERIFIED DPS',
+          count: unverifiedDpsCount,
+          color: 'var(--type-electric)',
+          bg: 'color-mix(in oklab, var(--type-electric) 16%, var(--surface-card))',
+          border: 'color-mix(in oklab, var(--type-electric) 42%, var(--surface-card))',
+          onClick: () => this.goToTab('attackers')
+        }] : []),
 
       todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' : '',
       todayEvolveEmpty: evoQueueAll.length ? null : true,
@@ -11328,6 +11375,20 @@ class Component extends DCLogic {
           : 'Done \u2014 the cloud copy already matched this build.';
       })(),
       isAdminUser: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())),
+      // Fails loudly instead of the two silent-drift bugs already found in
+      // this file's history: any field kept live-synced (SYNC_KEYS) that a
+      // file/snapshot restore would silently skip because it never made it
+      // into SYNCED_STATE_KEYS, and isn't deliberately excluded on purpose
+      // (RESTORE_EXCLUDED_KEYS, for credentials that should never come back
+      // from an old backup). Admin-only \u2014 this is a maintenance signal
+      // about the codebase, not something a trainer using the app could act on.
+      syncKeyDriftWarning: (() => {
+        const drift = this.SYNC_KEYS().filter(k =>
+          this.SYNCED_STATE_KEYS.indexOf(k) < 0 && this.RESTORE_EXCLUDED_KEYS.indexOf(k) < 0);
+        return drift.length
+          ? `SYNC/RESTORE KEY DRIFT: ${drift.join(', ')} \\u2014 synced live but a file restore or snapshot restore silently skips ${drift.length === 1 ? 'it' : 'them'}. Add to SYNCED_STATE_KEYS (or RESTORE_EXCLUDED_KEYS if that's deliberate).`
+          : null;
+      })(),
       showMigrateButton: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())) && !this.state.migrationAlreadyDone && !this.state.migration,
       migrationDisplay: this.state.migration ? {
         stage: this.state.migration.stage,
