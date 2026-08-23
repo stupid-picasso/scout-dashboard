@@ -71,9 +71,14 @@ BUNDLE_FILES = [INDEX_HTML, BUNDLE_HTML]
 # ---------------------------------------------------------------------------
 NORMALIZATIONS = [
     (re.compile(r'\bonClick='), 'sc-camel-on-click='),
+    (re.compile(r'\bsc-camel-on-click='), 'onClick='),
     (re.compile(r'\bonChange='), 'sc-camel-on-change='),
+    (re.compile(r'\bsc-camel-on-change='), 'onChange='),
+    (re.compile(r'&ldquo;'), '\u201c'),
     (re.compile(r'\u201c'), '&ldquo;'),
+    (re.compile(r'&rdquo;'), '\u201d'),
     (re.compile(r'\u201d'), '&rdquo;'),
+    (re.compile(r'&hellip;'), '\u2026'),
     (re.compile(r'\u2026'), '&hellip;'),
 ]
 
@@ -89,26 +94,39 @@ def write(path, text):
 
 
 def normalized_variants(text):
-    """Yield the original text plus every combination of the known cosmetic
-    substitutions, most-likely-first. Small hunks only (this is exponential
-    in the number of distinct substitutions that actually appear)."""
-    variants = [text]
+    """Yield (variant_text, ops) pairs — the original plus every combination
+    of the known cosmetic substitutions, each paired with the exact sequence
+    of (pattern, repl) operations used to build it. Tracking the ops (not
+    just the resulting text) is what lets the caller replay the identical
+    transformation on new_hunk instead of guessing which direction to
+    translate it — text alone is ambiguous once substitutions can run in
+    either direction. Small hunks only (exponential in distinct substitutions
+    that actually appear)."""
+    variants = [(text, [])]
     for pattern, repl in NORMALIZATIONS:
-        if pattern.search(text):
-            new_variants = []
-            for v in variants:
-                new_variants.append(v)
-                new_variants.append(pattern.sub(repl, v))
-            variants = new_variants
+        if not pattern.search(text):
+            continue
+        new_variants = []
+        for v, ops in variants:
+            new_variants.append((v, ops))
+            if pattern.search(v):
+                new_variants.append((pattern.sub(repl, v), ops + [(pattern, repl)]))
+        variants = new_variants
         if len(variants) > 32:
             break  # bail out rather than blow up; caller will report no-match
     seen = set()
     out = []
-    for v in variants:
+    for v, ops in variants:
         if v not in seen:
             seen.add(v)
-            out.append(v)
+            out.append((v, ops))
     return out
+
+
+def apply_ops(text, ops):
+    for pattern, repl in ops:
+        text = pattern.sub(repl, text)
+    return text
 
 
 def find_unique(haystack, needle):
@@ -179,35 +197,17 @@ def apply_hunk_to_text(text, old_hunk, new_hunk, label):
     if count == 1:
         return text.replace(old_hunk, new_hunk), None
     if count == 0:
-        for variant in normalized_variants(old_hunk)[1:]:
+        for variant, ops in normalized_variants(old_hunk)[1:]:
             c2, _ = find_unique(text, variant)
             if c2 == 1:
-                # Translate new_hunk the same way so the replacement matches
-                # this file's own convention rather than dc.html's.
-                new_variant = new_hunk
-                for pattern, repl in NORMALIZATIONS:
-                    if pattern.search(variant) is None and pattern.search(old_hunk):
-                        continue
-                new_variant = translate_like(old_hunk, variant, new_hunk)
+                # Replay the SAME substitution sequence that turned old_hunk
+                # into this matching variant, applied to new_hunk instead —
+                # so the replacement lands in this file's own dialect rather
+                # than dc.html's.
+                new_variant = apply_ops(new_hunk, ops)
                 return text.replace(variant, new_variant), None
         return text, f"[{label}] NOT FOUND (0 matches, incl. normalized variants): {old_hunk[:90]!r}"
     return text, f"[{label}] AMBIGUOUS ({count} matches) — skipped, needs manual review: {old_hunk[:90]!r}"
-
-
-def translate_like(canonical_old, matched_variant, canonical_new):
-    """canonical_old -> matched_variant applied some substitution set; apply
-    the same substitutions to canonical_new so the replacement text matches
-    the target file's own dialect."""
-    if matched_variant == canonical_old:
-        return canonical_new
-    out = canonical_new
-    for pattern, repl in NORMALIZATIONS:
-        if pattern.sub(repl, canonical_old) == matched_variant or pattern.search(matched_variant):
-            # Heuristic: if this substitution's target string appears in the
-            # matched variant where the source doesn't, apply it forward.
-            if repl in matched_variant and pattern.search(canonical_old):
-                out = pattern.sub(repl, out)
-    return out
 
 
 def apply_hunks_to_plain_file(path, hunks):
@@ -307,20 +307,28 @@ def reembed_mechanics_js_if_changed(baseline_mechanics_path):
 # is new in dc.html's diff must appear the same number of times in every
 # other file), then a JS syntax check on all four.
 # ---------------------------------------------------------------------------
-def extract_markers(old_hunk, new_hunk):
-    """Tokens that are genuinely NEW in new_hunk — completely absent from
-    old_hunk, not merely used more often. A token that already existed
-    elsewhere (like `roster`, used 300+ times across the file) is a bad
-    uniqueness signal: its GLOBAL count can differ between files for reasons
-    that predate and have nothing to do with this specific edit, producing
-    false positives. Requiring zero prior occurrences keeps this check
-    targeted at exactly the failure mode it exists to catch — a new method,
-    template binding, or feature silently missing from one of the files."""
-    old_tokens = set(re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", old_hunk))
+def extract_markers(old_hunk, new_hunk, old_full_text):
+    """Tokens that are genuinely NEW in new_hunk — absent from the ENTIRE old
+    file, not merely absent from the hunk's own small context window. Common
+    words (border, padding, roster...) are used hundreds of times throughout
+    a file this size; checking only the 2-line hunk context for "already
+    existed" is too weak a filter — such a word can easily be absent from
+    that narrow window by chance while still being globally ubiquitous,
+    producing exactly the false-positive noise this function exists to
+    avoid. Requiring zero occurrences in the WHOLE old file is the actual
+    signal: something a marker for "this identifier/string never existed
+    anywhere before this edit," which is what should be verified everywhere."""
     new_tokens = re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", new_hunk)
     STOPWORDS = {'this', 'const', 'return', 'null', 'true', 'false', 'style', 'color',
                  'background', 'font', 'display', 'flex', 'value', 'name', 'state'}
-    markers = {t for t in new_tokens if t not in old_tokens and t not in STOPWORDS and len(t) > 4}
+    seen = set()
+    markers = []
+    for t in new_tokens:
+        if t in seen or t in STOPWORDS or len(t) <= 4:
+            continue
+        seen.add(t)
+        if old_full_text.count(t) == 0:
+            markers.append(t)
     return sorted(markers)[:40]
 
 
@@ -332,7 +340,7 @@ def get_decoded_bundle(path):
     return json.loads(src[tag_end:end])
 
 
-def verify_markers(hunks):
+def verify_markers(hunks, old_full_text):
     dc = read(DC_HTML)
     standalone = read(STANDALONE_HTML)
     bundles = {}
@@ -344,7 +352,7 @@ def verify_markers(hunks):
 
     all_markers = set()
     for old_hunk, new_hunk in hunks:
-        all_markers |= set(extract_markers(old_hunk, new_hunk))
+        all_markers |= set(extract_markers(old_hunk, new_hunk, old_full_text))
 
     problems = []
     for marker in sorted(all_markers):
@@ -397,6 +405,16 @@ def verify_syntax():
         problems.append(f"  pokemon-mechanics.js: SYNTAX ERROR\n{err}")
 
     return problems
+
+
+def run_ranking_tests():
+    test_path = os.path.join(REPO, 'scripts', 'test_ranking.js')
+    if not os.path.exists(test_path):
+        return []
+    result = subprocess.run(['node', test_path], capture_output=True, text=True, cwd=REPO)
+    if result.returncode != 0:
+        return [f"  test_ranking.js FAILED:\n{result.stdout}{result.stderr}"]
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -457,7 +475,7 @@ def cmd_apply(bump_version=True):
         print("  unchanged")
 
     print("\n--- Marker verification ---")
-    marker_problems = verify_markers(hunks) if hunks else []
+    marker_problems = verify_markers(hunks, old_dc_text) if hunks else []
     if marker_problems:
         print(f"{len(marker_problems)} marker mismatch(es):")
         for p in marker_problems:
@@ -473,6 +491,14 @@ def cmd_apply(bump_version=True):
     else:
         print("All files pass node --check.")
 
+    print("\n--- Ranking regression tests ---")
+    test_problems = run_ranking_tests()
+    if test_problems:
+        for p in test_problems:
+            print(p)
+    else:
+        print("test_ranking.js passes.")
+
     if all_errors:
         print(f"\n{len(all_errors)} hunk(s) could not be applied automatically:")
         for e in all_errors:
@@ -481,7 +507,7 @@ def cmd_apply(bump_version=True):
         print("Baseline was NOT updated. Fix the flagged spots by hand, then re-run.")
         sys.exit(2)
 
-    if marker_problems or syntax_problems:
+    if marker_problems or syntax_problems or test_problems:
         print("\nHunks applied but verification found problems above.")
         print("Baseline was NOT updated — investigate before shipping.")
         sys.exit(3)
@@ -502,19 +528,24 @@ def cmd_verify():
     baseline_dc = os.path.join(BASELINE_DIR, 'dc.html')
     if not os.path.exists(baseline_dc):
         print("No baseline to diff against — nothing to verify against a prior state.")
-        print("Running syntax check only.\n")
+        print("Running syntax + regression checks only.\n")
         problems = verify_syntax()
         print("All files pass node --check." if not problems else '\n'.join(problems))
+        test_problems = run_ranking_tests()
+        print("test_ranking.js passes." if not test_problems else '\n'.join(test_problems))
         return
     old_text = read(baseline_dc)
     new_text = read(DC_HTML)
     hunks = compute_hunks(old_text, new_text)
     print("--- Marker verification ---")
-    marker_problems = verify_markers(hunks)
+    marker_problems = verify_markers(hunks, old_text)
     print("All markers match." if not marker_problems else '\n'.join(marker_problems))
     print("\n--- Syntax verification ---")
     syntax_problems = verify_syntax()
     print("All files pass node --check." if not syntax_problems else '\n'.join(syntax_problems))
+    print("\n--- Ranking regression tests ---")
+    test_problems = run_ranking_tests()
+    print("test_ranking.js passes." if not test_problems else '\n'.join(test_problems))
 
 
 def bump_all_versions():
