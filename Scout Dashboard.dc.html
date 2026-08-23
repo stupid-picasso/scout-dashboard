@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.34</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.36</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -7416,17 +7416,21 @@ class Component extends DCLogic {
     return 'sig:' + String(p.name || '').toLowerCase() + '|' + p.cp + '|' + p.hp;
   }
 
+  // idx ONLY. A signature (name+CP+HP) check used to sit here too, meant to
+  // stop an old re-scan from resurrecting something genuinely transferred \u2014
+  // but ANY group of Pokemon sharing name+CP+HP (the norm for anything not
+  // yet appraised) shares one signature, so removing ONE of several identical
+  // Gyarados hid all of them, and re-adding one un-hid all of them. mergeVideoImport's
+  // match lookup already excludes removed idx's from its candidates, which
+  // covers the original scenario without this collision risk.
   isRemoved(p, removedSet) {
-    return removedSet.has(p.idx) || removedSet.has(this.pokeSig(p));
+    return removedSet.has(p.idx);
   }
 
   removePokemon(idx) {
     this.haptic('heavy');
     const set = new Set(this.state.removedIds);
     set.add(idx);
-    const all = [...(this.state.roster || []), ...(this.state.addedPokemon || [])];
-    const hit = all.find(p => p.idx === idx);
-    if (hit) set.add(this.pokeSig(hit));
     const arr = [...set];
     this.setState({ removedIds: arr }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
