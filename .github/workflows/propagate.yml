@@ -1,0 +1,100 @@
+name: Propagate Dashboard Edits
+
+# Runs on every push that touches the two source-of-truth files and
+# mechanically regenerates the three derived files (Standalone.dc.html,
+# index.html, Scout Dashboard.html) from them — see scripts/propagate_edits.py
+# for why this exists: hand-propagating these by find/replace across 4 files
+# produced two real shipped bugs in one session (a whole feature silently
+# missing from 2 of the 4 files, and a duplicated template block from a
+# self-referential replacement). This workflow makes that no longer possible
+# to forget, regardless of whether the edit came from a Claude session, a
+# manual web-UI edit, or anything else — the only thing that has to happen
+# correctly by hand from now on is editing Scout Dashboard.dc.html itself.
+concurrency:
+  group: propagate-dashboard
+  cancel-in-progress: false
+
+on:
+  push:
+    paths:
+      - 'Scout Dashboard.dc.html'
+      - 'pokemon-mechanics.js'
+
+jobs:
+  propagate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed so the auto-commit step can push its own results
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node (for the syntax-check step inside propagate_edits.py)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run propagate_edits.py
+        run: python3 scripts/propagate_edits.py apply
+
+      - name: Commit propagated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "Scout Dashboard.dc.html" "Scout Dashboard Standalone.dc.html" \
+            index.html "Scout Dashboard.html" sw.js pokemon-mechanics.js .propagate_baseline/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-propagate dashboard edits [skip ci]"
+            # main can move while this job runs (another workflow's commit
+            # landing in between); re-apply this run's output onto the
+            # latest remote rather than rebasing generated files, which can
+            # only conflict. A second dc.html push queues as its own job
+            # (concurrency group above), so this never has to merge two
+            # different sets of source edits — only ever its own output.
+            for attempt in 1 2 3 4 5; do
+              if git push; then
+                break
+              fi
+              if [ "$attempt" = "5" ]; then
+                echo "::error::Failed to push propagated files after $attempt attempts"
+                exit 1
+              fi
+              echo "Push rejected (attempt $attempt), re-applying output onto latest main..."
+              STAGE=$(mktemp -d)
+              cp "Scout Dashboard.dc.html" "Scout Dashboard Standalone.dc.html" \
+                index.html "Scout Dashboard.html" sw.js pokemon-mechanics.js "$STAGE/"
+              cp -r .propagate_baseline "$STAGE/"
+              git fetch origin main
+              git reset --hard origin/main
+              cp "$STAGE/Scout Dashboard.dc.html" "$STAGE/Scout Dashboard Standalone.dc.html" \
+                "$STAGE/index.html" "$STAGE/Scout Dashboard.html" "$STAGE/sw.js" "$STAGE/pokemon-mechanics.js" .
+              rm -rf .propagate_baseline
+              cp -r "$STAGE/.propagate_baseline" .propagate_baseline
+              rm -rf "$STAGE"
+              git add "Scout Dashboard.dc.html" "Scout Dashboard Standalone.dc.html" \
+                index.html "Scout Dashboard.html" sw.js pokemon-mechanics.js .propagate_baseline/
+              if git diff --cached --quiet; then
+                echo "Remote already has this output"
+                break
+              fi
+              git commit -m "Auto-propagate dashboard edits [skip ci]"
+            done
+          fi
+
+      - name: On failure
+        if: failure()
+        run: |
+          echo "::error::propagate_edits.py found something it couldn't resolve automatically \
+          (an ambiguous or missing match, a marker mismatch, or a syntax error). \
+          Scout Dashboard.dc.html was pushed but the other 3 files were NOT updated to match it \
+          \u2014 check the 'Run propagate_edits.py' step above for exactly what needs manual review, \
+          fix it directly in the affected file(s), then push again."
