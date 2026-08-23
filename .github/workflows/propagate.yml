@@ -44,6 +44,9 @@ jobs:
       - name: Run propagate_edits.py
         run: python3 scripts/propagate_edits.py apply
 
+      - name: Run ranking regression tests
+        run: node scripts/test_ranking.js
+
       - name: Commit propagated files
         run: |
           git config user.name "github-actions[bot]"
