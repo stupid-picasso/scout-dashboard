@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.21</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.22</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -4152,9 +4152,10 @@ class Component extends DCLogic {
     if (!base) base = this.mechanics.BASE_STATS[p.dex];
     if (!base) return null;
     const ivs = [p.atkIV, p.defIV, p.staIV];
-    const rankPct = this.mechanics.rankPctForLeague(base, ivs, 'master');
-    const ownProd = this.mechanics.ownBestStatProductUnderCap(base, ivs, Infinity);
-    const maxProd = this.mechanics.bestStatProductUnderCap(base, Infinity);
+    const shadow = this.isShadow(p);
+    const rankPct = this.mechanics.rankPctForLeague(base, ivs, 'master', shadow);
+    const ownProd = this.mechanics.ownBestStatProductUnderCap(base, ivs, Infinity, shadow);
+    const maxProd = this.mechanics.bestStatProductUnderCap(base, Infinity, shadow);
     const statProd = maxProd > 0 ? (ownProd / maxProd) * 100 : null;
     return { rankPct, rankNum: null, statProd, evolvesTo: (p.great && p.great.evolvesTo) || p.name };
   }
@@ -4463,6 +4464,19 @@ class Component extends DCLogic {
 
   isShadow(p) { return p && (p.shadowPurified === '1' || p.shadowPurified === 1); }
   isPurified(p) { return p && (p.shadowPurified === '2' || p.shadowPurified === 2); }
+
+  // Little Cup requires a Pokemon that has not reached its final evolution.
+  // evoTable only records a species once its evolution chain has actually
+  // been looked up, so a species with no entry yet is UNKNOWN, not
+  // \u201cconfirmed fully evolved\u201d \u2014 treat unknown as eligible rather than
+  // silently hiding a legitimately NFE Pokemon's Little rank because nobody
+  // has fetched its evolution data yet. Only a confirmed final stage (an
+  // entry whose `to` is explicitly null/falsy) is excluded.
+  littleCupEligible(p) {
+    const rec = (this.state.evoTable || {})[String(p.name || '').toLowerCase()];
+    if (!rec) return true;
+    return !!rec.to;
+  }
 
   // What it actually costs to take this Pokemon somewhere useful, and whether
   // the roster's own candy/stardust counts can pay for it today. Levels 41+
@@ -5517,9 +5531,15 @@ class Component extends DCLogic {
     const c = candidates[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-    const great = this.mechanics.rankPctForLeague(base, ivs, 'great');
-    const ultra = this.mechanics.rankPctForLeague(base, ivs, 'ultra');
-    const little = this.mechanics.rankPctForLeague(base, ivs, 'little');
+    // ocrParsed itself has no shadow field \u2014 if this screenshot was matched to
+    // an existing roster entry, that entry is the only place shadow status
+    // could come from; otherwise assume normal (a shadow OCR'd fresh has no
+    // way to signal it here yet).
+    const matchedForShadow = p.matchedIdx != null ? this.effectiveRosterForMatch().find(r => r.idx === p.matchedIdx) : null;
+    const shadow = this.isShadow(matchedForShadow || p);
+    const great = this.mechanics.rankPctForLeague(base, ivs, 'great', shadow);
+    const ultra = this.mechanics.rankPctForLeague(base, ivs, 'ultra', shadow);
+    const little = this.littleCupEligible(p) ? this.mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
     this.setState({
       solvedIvResult: {
         level: c.level, atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV,
@@ -7787,13 +7807,15 @@ class Component extends DCLogic {
         if (base) {
           const ivs = [item.atkIV, item.defIV, item.staIV];
           const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+          const shadow = this.isShadow(item);
+          const littlePct = this.littleCupEligible(item) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
           ivPatch = {
             atkIV: item.atkIV, defIV: item.defIV, staIV: item.staIV, ivAvg,
             ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level } : {}),
             ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {}),
-            great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: item.name },
-            ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: item.name },
-            little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: item.name }
+            great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: item.name },
+            ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: item.name },
+            little: { rankPct: littlePct, evolvesTo: item.name }
           };
         }
       }
@@ -8009,15 +8031,17 @@ class Component extends DCLogic {
     }
     const base = usedBase.base;
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+    const shadow = this.isShadow(rec);
+    const littlePct = this.littleCupEligible(rec) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
       atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
       lvlMin: level, lvlMax: level,
       ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
       ivArbitrated: arbitrated || undefined,
-      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
-      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
-      little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
+      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: rec.name },
+      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: rec.name },
+      little: { rankPct: littlePct, evolvesTo: rec.name }
     };
     return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
       iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
@@ -8105,15 +8129,17 @@ class Component extends DCLogic {
     const c = cands[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
+    const shadow = this.isShadow(rec);
+    const littlePct = this.littleCupEligible(rec) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
       atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV, ivAvg,
       lvlMin: c.level, lvlMax: c.level,
       ivRange: null, ivSolved: true, ivCandidates: 1,
       apprStars: hint.stars, apprMaxed: hint.maxed,
-      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great'), evolvesTo: rec.name },
-      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: rec.name },
-      little: { rankPct: mechanics.rankPctForLeague(base, ivs, 'little'), evolvesTo: rec.name }
+      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: rec.name },
+      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: rec.name },
+      little: { rankPct: littlePct, evolvesTo: rec.name }
     };
     return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: 1 } };
   }
@@ -8348,14 +8374,16 @@ class Component extends DCLogic {
     });
     const ivAvg = (atk + def + sta) / 45 * 100;
     const overrides = { ...this.state.ivOverrides };
+    const shadow = this.isShadow(p);
+    const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[p.idx] = {
       ...overrides[p.idx],
       atkIV: atk, defIV: def, staIV: sta, ivAvg,
       lvlMin: level, lvlMax: level,
       ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true, ivManual: true,
-      great: { rankPct: m.rankPctForLeague(base, ivs, 'great'), evolvesTo: p.name },
-      ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra'), evolvesTo: p.name },
-      little: { rankPct: m.rankPctForLeague(base, ivs, 'little'), evolvesTo: p.name }
+      great: { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name },
+      ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name },
+      little: { rankPct: littlePct, evolvesTo: p.name }
     };
     const draftAll = { ...this.state.ivManualDraft };
     delete draftAll[p.idx];
@@ -8918,11 +8946,13 @@ class Component extends DCLogic {
     if (ivs && Number.isFinite(level)) {
       const cp = m.cpFor(newBase, ivs, level);
       const hp = m.hpFor(newBase, ivs[2], level);
+      const shadow = this.isShadow(p);
+      const littlePct = this.littleCupEligible({ name: toName }) ? m.rankPctForLeague(newBase, ivs, 'little', shadow) : null;
       if (cp != null) patch.cp = cp;
       if (hp != null) patch.hp = hp;
-      patch.great = { rankPct: m.rankPctForLeague(newBase, ivs, 'great'), evolvesTo: toName };
-      patch.ultra = { rankPct: m.rankPctForLeague(newBase, ivs, 'ultra'), evolvesTo: toName };
-      patch.little = { rankPct: m.rankPctForLeague(newBase, ivs, 'little'), evolvesTo: toName };
+      patch.great = { rankPct: m.rankPctForLeague(newBase, ivs, 'great', shadow), evolvesTo: toName };
+      patch.ultra = { rankPct: m.rankPctForLeague(newBase, ivs, 'ultra', shadow), evolvesTo: toName };
+      patch.little = { rankPct: littlePct, evolvesTo: toName };
     }
 
     // Spend the candy this evolution actually cost.
@@ -10441,6 +10471,9 @@ class Component extends DCLogic {
         const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
         const overBy = Math.max(0, roster.length - target);
         if (!overBy) return null;
+        // Keep score: protected flags dominate, then PvP rank and IV, with a
+        // bonus for being the only copy of a species (so living-dex coverage
+        // isn't accidentally cut ahead of a redundant duplicate).
         const speciesCountMap = {};
         roster.forEach(p => {
           const key = p.dex + '_' + (p.form || '');

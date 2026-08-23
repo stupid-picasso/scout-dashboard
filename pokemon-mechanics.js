@@ -33,6 +33,19 @@ const CPM = {
 const LEAGUE_CAPS = { great: 1500, ultra: 2500, little: 500, master: Infinity };
 const MAX_LEVEL_SEARCH = 51;
 
+// Shadow Pokemon get a flat Attack/Defense adjustment applied at battle-damage
+// time — NOT to the CP shown on the summary screen, which stays computed from
+// the species' plain base stats. These are the community-verified exact
+// values (same ones PvPoke uses): +20% Attack, -16.667% Defense (5/6).
+const SHADOW_ATK_MULTIPLIER = 1.2;
+const SHADOW_DEF_MULTIPLIER = 0.83333326;
+
+function shadowAdjustedBase(base, isShadow) {
+  if (!isShadow) return base;
+  const arr = Array.isArray(base) ? base : [base.atk, base.def, base.sta];
+  return [arr[0] * SHADOW_ATK_MULTIPLIER, arr[1] * SHADOW_DEF_MULTIPLIER, arr[2]];
+}
+
 // Base stats (Pokemon GO scale: Attack/Defense/Stamina), sourced from user-provided authoritative in-game stats list (1025 entries, base forms).
 // BASE_STATS: dex -> [atk,def,sta] for the default/Normal form (backward compatible).
 // BASE_STATS_BY_FORM: "dex_form" (form lowercased, e.g. "492_sky") -> [atk,def,sta] for exact regional/forme lookups.
@@ -1157,12 +1170,20 @@ function filterByAppraisal(candidates, hint) {
 // across ALL 4096 IV spreads. Using 15/15/15 as the reference is wrong for
 // capped leagues: a lower-attack spread reaches a higher level under the cap and
 // produces a HIGHER stat product, which made real Pokemon rank above 100%.
+//
+// isShadow controls the STAT PRODUCT side only (the numerator/denominator of
+// the rank%), never the CP-cap eligibility test: Niantic does not change a
+// shadow's displayed/legal CP, only its battle damage, so which levels fit
+// under the cap is always computed from the real (unmodified) base stats.
+// Ranking a shadow against a shadow ceiling (not the normal-form ceiling)
+// keeps the comparison apples-to-apples, same as PvPoke's methodology.
 const _bestSPCache = new Map();
-function bestStatProductUnderCap(base, capCP) {
+function bestStatProductUnderCap(base, capCP, isShadow) {
   // base is an array [atk, def, sta] — an object-style key collides across species.
-  const key = (Array.isArray(base) ? base.join('_') : [base.atk, base.def, base.sta].join('_')) + '|' + capCP;
+  const key = (Array.isArray(base) ? base.join('_') : [base.atk, base.def, base.sta].join('_')) + '|' + capCP + '|' + (isShadow ? 's' : 'n');
   const hit = _bestSPCache.get(key);
   if (hit !== undefined) return hit;
+  const sBase = shadowAdjustedBase(base, isShadow);
   const levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
   let best = 0;
   for (let atkIV = 0; atkIV <= 15; atkIV++) {
@@ -1172,7 +1193,7 @@ function bestStatProductUnderCap(base, capCP) {
         // Levels ascend, so walk down from the top and take the first legal one.
         for (let i = levels.length - 1; i >= 0; i--) {
           if (cpFor(base, ivs, levels[i]) <= capCP) {
-            const sp = statProductFor(base, ivs, levels[i]);
+            const sp = statProductFor(sBase, ivs, levels[i]);
             if (sp > best) best = sp;
             break;
           }
@@ -1185,18 +1206,19 @@ function bestStatProductUnderCap(base, capCP) {
 }
 
 // This Pokemon's own best stat product at/under a league cap, searching all legal levels for its fixed IVs.
-function ownBestStatProductUnderCap(base, ivs, capCP) {
+function ownBestStatProductUnderCap(base, ivs, capCP, isShadow) {
+  const sBase = shadowAdjustedBase(base, isShadow);
   const levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
   for (let i = levels.length - 1; i >= 0; i--) {
-    if (cpFor(base, ivs, levels[i]) <= capCP) return statProductFor(base, ivs, levels[i]);
+    if (cpFor(base, ivs, levels[i]) <= capCP) return statProductFor(sBase, ivs, levels[i]);
   }
   return 0;
 }
 
-function rankPctForLeague(base, ivs, leagueKey) {
+function rankPctForLeague(base, ivs, leagueKey, isShadow) {
   const cap = LEAGUE_CAPS[leagueKey];
-  const own = ownBestStatProductUnderCap(base, ivs, cap);
-  const max = bestStatProductUnderCap(base, cap);
+  const own = ownBestStatProductUnderCap(base, ivs, cap, isShadow);
+  const max = bestStatProductUnderCap(base, cap, isShadow);
   if (!(max > 0)) return null;
   // Clamp: floating-point noise can nudge an optimal spread a hair over 100.
   return Math.min(100, (own / max) * 100);
@@ -1347,7 +1369,7 @@ function cycleDps(base, ivs, level, fastMove, chargedMove, opts) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust,
+  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
