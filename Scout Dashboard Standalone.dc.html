@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.32</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.34</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2384,6 +2384,7 @@
                   <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SAVE</div>
                 </sc-if>
                 <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">TRANSFERRED (+1 CANDY)</div>
+                <div onClick="{{ p.removeDuplicate }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:transparent;border:1px solid var(--line-300);color:var(--ink-400);font:700 10.5px var(--font-display)">REMOVE (mistake, no candy)</div>
               </div>
             </div>
             <div style="text-align:right;flex-shrink:0">
@@ -5578,6 +5579,20 @@ class Component extends DCLogic {
     }
     if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
     const mon = this.buildPokemonRecord(rec);
+    // A repeated tap here (e.g. retrying because a stale TRANSFERRED mark was
+    // hiding the first attempt) used to silently create another full, visible
+    // duplicate with no warning. Confirm once when an existing, VISIBLE
+    // Pokemon already matches on name+CP+HP \u2014 a real second individual with
+    // matching stats is possible and stays one Confirm away, but an accidental
+    // re-tap no longer piles up unnoticed.
+    const removedSetNow = new Set(this.state.removedIds || []);
+    const existingMatch = [...(this.state.roster || []), ...(this.state.addedPokemon || [])]
+      .find(p => !this.isRemoved(p, removedSetNow) && this.pokeSig(p) === this.pokeSig(mon));
+    if (existingMatch) {
+      let ok = true;
+      try { ok = window.confirm(`You already have a ${mon.name} at CP ${mon.cp} in your roster. Add this as another one anyway? Cancel if this is the same Pokemon you just added.`); } catch (e) {}
+      if (!ok) return;
+    }
     const nextRoster = [...(this.state.roster || []), mon];
     const removedIds = this.removedIdsWithout(mon);
     this.setState({ roster: nextRoster, removedIds, ocrParsed: null, ocrPreview: null, ocrError: '' });
@@ -9762,7 +9777,17 @@ class Component extends DCLogic {
         onCandyChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setCandyDraft(p, 'candy', e.target.value); },
         onXlChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setCandyDraft(p, 'xlCandy', e.target.value); },
         saveCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.saveCandyEdit(p); },
-        markTransferredCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.transferPokemon(p); }
+        markTransferredCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.transferPokemon(p); },
+        // For accidental duplicates (a repeated ADD AS NEW POKEMON tap, a bad
+        // import, etc.) — plain removePokemon(), NOT transferPokemon(), so no
+        // candy is granted for something that was never actually given away
+        // in-game. Confirmed inline since this permanently hides the entry.
+        removeDuplicate: (e) => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          let ok = true;
+          try { ok = window.confirm('Remove this entry? Use this only for a mistaken duplicate \u2014 it will NOT grant a transfer candy. For a real transfer, use TRANSFERRED (+1 CANDY) instead.'); } catch (err) {}
+          if (ok) this.removePokemon(p.idx);
+        }
       };
     });
 
