@@ -1293,12 +1293,16 @@ function maxLevelUnderCap(base, ivs, capCP) {
 // lightly weighted by bulk so a glass cannon doesn't outrank a Pokemon that
 // survives long enough to use its charge move. Ranking within a type is what
 // this is for; the absolute number means nothing on its own.
-function attackerScore(base, ivs, level) {
+// isShadow applies the same +20% ATK / -16.667% DEF adjustment rankPctForLeague
+// uses \u2014 without it, shadow Pokemon (which hit harder in real battle) were
+// silently under-ranked here and on every raid/attacker screen that reads it.
+function attackerScore(base, ivs, level, isShadow) {
   const cpm = CPM[level != null ? level : 40];
   if (!cpm) return 0;
-  const atk = (base[0] + ivs[0]) * cpm;
-  const def = (base[1] + ivs[1]) * cpm;
-  const sta = (base[2] + ivs[2]) * cpm;
+  const sBase = shadowAdjustedBase(base, isShadow);
+  const atk = (sBase[0] + ivs[0]) * cpm;
+  const def = (sBase[1] + ivs[1]) * cpm;
+  const sta = (sBase[2] + ivs[2]) * cpm;
   return Math.pow(atk, 0.8) * Math.pow(def * sta, 0.2);
 }
 
@@ -1710,13 +1714,17 @@ function moveDamage(move, attackStat, ownTypes, defenderTypes, defenceStat) {
 // Sustained DPS over one full fast-move/charged-move cycle. Returns null when
 // either move is missing from the database — the caller must fall back to a
 // stat-only ranking rather than pretending a number exists.
+// opts.isShadow applies the same +20% ATK adjustment attackerScore and
+// rankPctForLeague use \u2014 omitting it understated every shadow Pokemon's
+// real raid damage on the Attackers board and Raid Counters screen.
 function cycleDps(base, ivs, level, fastMove, chargedMove, opts) {
   opts = opts || {};
   const cpm = CPM[level != null ? level : 40];
   if (!cpm || !fastMove || !chargedMove) return null;
   if (!(fastMove.durationMs > 0) || !(chargedMove.durationMs > 0)) return null;
   if (!(fastMove.energy > 0) || !(chargedMove.energy > 0)) return null;
-  const atk = (base[0] + ivs[0]) * cpm;
+  const sBase = shadowAdjustedBase(base, opts.isShadow);
+  const atk = (sBase[0] + ivs[0]) * cpm;
   const dmgFast = moveDamage(fastMove, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat);
   const dmgCharged = moveDamage(chargedMove, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat);
   const fastPerCharged = Math.ceil(chargedMove.energy / fastMove.energy);
