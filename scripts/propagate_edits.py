@@ -408,13 +408,15 @@ def verify_syntax():
 
 
 def run_ranking_tests():
-    test_path = os.path.join(REPO, 'scripts', 'test_ranking.js')
-    if not os.path.exists(test_path):
-        return []
-    result = subprocess.run(['node', test_path], capture_output=True, text=True, cwd=REPO)
-    if result.returncode != 0:
-        return [f"  test_ranking.js FAILED:\n{result.stdout}{result.stderr}"]
-    return []
+    problems = []
+    for name in ('test_ranking.js', 'test_roster_logic.js'):
+        test_path = os.path.join(REPO, 'scripts', name)
+        if not os.path.exists(test_path):
+            continue
+        result = subprocess.run(['node', test_path], capture_output=True, text=True, cwd=REPO)
+        if result.returncode != 0:
+            problems.append(f"  {name} FAILED:\n{result.stdout}{result.stderr}")
+    return problems
 
 
 # ---------------------------------------------------------------------------
@@ -497,7 +499,7 @@ def cmd_apply(bump_version=True):
         for p in test_problems:
             print(p)
     else:
-        print("test_ranking.js passes.")
+        print("Regression tests (ranking + roster logic) pass.")
 
     if all_errors:
         print(f"\n{len(all_errors)} hunk(s) could not be applied automatically:")
@@ -532,7 +534,7 @@ def cmd_verify():
         problems = verify_syntax()
         print("All files pass node --check." if not problems else '\n'.join(problems))
         test_problems = run_ranking_tests()
-        print("test_ranking.js passes." if not test_problems else '\n'.join(test_problems))
+        print("Regression tests (ranking + roster logic) pass." if not test_problems else '\n'.join(test_problems))
         return
     old_text = read(baseline_dc)
     new_text = read(DC_HTML)
@@ -545,7 +547,7 @@ def cmd_verify():
     print("All files pass node --check." if not syntax_problems else '\n'.join(syntax_problems))
     print("\n--- Ranking regression tests ---")
     test_problems = run_ranking_tests()
-    print("test_ranking.js passes." if not test_problems else '\n'.join(test_problems))
+    print("Regression tests (ranking + roster logic) pass." if not test_problems else '\n'.join(test_problems))
 
 
 def bump_all_versions():
