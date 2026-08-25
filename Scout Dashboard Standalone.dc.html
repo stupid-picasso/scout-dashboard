@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.48</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.50</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2599,58 +2599,85 @@
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">FAST</span>
-                <select onChange="{{ detail.onQuickMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
-                  <option value="">— not set —</option>
-                  <sc-for list="{{ detail.fastMoveOptions }}" as="mv" hint-placeholder-count="2">
-                    <sc-if value="{{ mv.selected }}" hint-placeholder-val="{{ false }}">
-                      <option value="{{ mv.value }}" selected>{{ mv.label }}</option>
-                    </sc-if>
-                    <sc-if value="{{ mv.notSelected }}" hint-placeholder-val="{{ true }}">
-                      <option value="{{ mv.value }}">{{ mv.label }}</option>
-                    </sc-if>
-                  </sc-for>
-                </select>
+                <div onClick="{{ detail.openQuickMovePicker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.quickMoveLabel }}</span>
+                  <span style="color:var(--ink-400);flex-shrink:0">▾</span>
+                </div>
               </div>
               <sc-if value="{{ detail.quickMoveInfo }}" hint-placeholder-val="{{ false }}">
                 <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.quickMoveInfo }}</div>
+              </sc-if>
+              <sc-if value="{{ detail.movePickerOpenForQuick }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                  <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
+                  <div style="max-height:230px;overflow-y:auto">
+                    <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
+                      <div onClick="{{ mv.choose }}" class="om-tap" style="cursor:pointer;padding:9px 11px;font:12.5px var(--font-body);color:var(--ink-900);border-bottom:1px solid var(--line-100);display:flex;justify-content:space-between;align-items:center;gap:6px">
+                        <span>{{ mv.label }}</span>
+                        <sc-if value="{{ mv.isCurrent }}" hint-placeholder-val="{{ false }}">
+                          <span style="color:var(--brand-primary-strong)">✓</span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div onClick="{{ detail.closeMovePicker }}" class="om-tap" style="cursor:pointer;text-align:center;padding:8px;font:700 11px var(--font-display);color:var(--ink-400)">CLOSE</div>
+                </div>
               </sc-if>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE</span>
-                <select onChange="{{ detail.onChargeMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
-                  <option value="">— not set —</option>
-                  <sc-for list="{{ detail.chargedMoveOptionsForCharge }}" as="mv" hint-placeholder-count="2">
-                    <sc-if value="{{ mv.selected }}" hint-placeholder-val="{{ false }}">
-                      <option value="{{ mv.value }}" selected>{{ mv.label }}</option>
-                    </sc-if>
-                    <sc-if value="{{ mv.notSelected }}" hint-placeholder-val="{{ true }}">
-                      <option value="{{ mv.value }}">{{ mv.label }}</option>
-                    </sc-if>
-                  </sc-for>
-                </select>
+                <div onClick="{{ detail.openChargeMovePicker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.chargeMoveLabel }}</span>
+                  <span style="color:var(--ink-400);flex-shrink:0">▾</span>
+                </div>
               </div>
               <sc-if value="{{ detail.chargeMoveInfo }}" hint-placeholder-val="{{ false }}">
                 <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMoveInfo }}</div>
+              </sc-if>
+              <sc-if value="{{ detail.movePickerOpenForCharge }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                  <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
+                  <div style="max-height:230px;overflow-y:auto">
+                    <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
+                      <div onClick="{{ mv.choose }}" class="om-tap" style="cursor:pointer;padding:9px 11px;font:12.5px var(--font-body);color:var(--ink-900);border-bottom:1px solid var(--line-100);display:flex;justify-content:space-between;align-items:center;gap:6px">
+                        <span>{{ mv.label }}</span>
+                        <sc-if value="{{ mv.isCurrent }}" hint-placeholder-val="{{ false }}">
+                          <span style="color:var(--brand-primary-strong)">✓</span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div onClick="{{ detail.closeMovePicker }}" class="om-tap" style="cursor:pointer;text-align:center;padding:8px;font:700 11px var(--font-display);color:var(--ink-400)">CLOSE</div>
+                </div>
               </sc-if>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE 2</span>
-                <select onChange="{{ detail.onChargeMove2Change }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
-                  <option value="">— none learned —</option>
-                  <sc-for list="{{ detail.chargedMoveOptionsForCharge2 }}" as="mv" hint-placeholder-count="2">
-                    <sc-if value="{{ mv.selected }}" hint-placeholder-val="{{ false }}">
-                      <option value="{{ mv.value }}" selected>{{ mv.label }}</option>
-                    </sc-if>
-                    <sc-if value="{{ mv.notSelected }}" hint-placeholder-val="{{ true }}">
-                      <option value="{{ mv.value }}">{{ mv.label }}</option>
-                    </sc-if>
-                  </sc-for>
-                </select>
+                <div onClick="{{ detail.openChargeMove2Picker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.chargeMove2Label }}</span>
+                  <span style="color:var(--ink-400);flex-shrink:0">▾</span>
+                </div>
               </div>
               <sc-if value="{{ detail.chargeMove2Info }}" hint-placeholder-val="{{ false }}">
                 <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMove2Info }}</div>
+              </sc-if>
+              <sc-if value="{{ detail.movePickerOpenForCharge2 }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                  <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
+                  <div style="max-height:230px;overflow-y:auto">
+                    <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
+                      <div onClick="{{ mv.choose }}" class="om-tap" style="cursor:pointer;padding:9px 11px;font:12.5px var(--font-body);color:var(--ink-900);border-bottom:1px solid var(--line-100);display:flex;justify-content:space-between;align-items:center;gap:6px">
+                        <span>{{ mv.label }}</span>
+                        <sc-if value="{{ mv.isCurrent }}" hint-placeholder-val="{{ false }}">
+                          <span style="color:var(--brand-primary-strong)">✓</span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div onClick="{{ detail.closeMovePicker }}" class="om-tap" style="cursor:pointer;text-align:center;padding:8px;font:700 11px var(--font-display);color:var(--ink-400)">CLOSE</div>
+                </div>
               </sc-if>
             </div>
             <div onClick="{{ detail.saveMoves }}" class="om-tap" style="cursor:pointer;align-self:flex-end;margin-top:2px;padding:8px 18px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SAVE MOVES</div>
@@ -3236,6 +3263,8 @@ class Component extends DCLogic {
     snapshotError: '',
     candyDraft: {},
     moveDraft: {},
+    movePicker: null,
+    movePickerFilter: '',
     evoFlashName: '',
     evoFlashStats: '',
     ptrPull: 0,
@@ -8508,6 +8537,25 @@ class Component extends DCLogic {
     return legacy ? display + '+' : display;
   }
 
+  openMovePicker(p, field, kind) {
+    this.haptic('light');
+    this.setState({ movePicker: { pokeIdx: p.idx, field, kind }, movePickerFilter: '' });
+  }
+
+  closeMovePicker() {
+    this.setState({ movePicker: null, movePickerFilter: '' });
+  }
+
+  onMovePickerFilterChange(e) {
+    this.setState({ movePickerFilter: e.target.value });
+  }
+
+  chooseMoveFromPicker(p, field, value) {
+    this.haptic('light');
+    this.setMoveDraft(p, field, value);
+    this.setState({ movePicker: null, movePickerFilter: '' });
+  }
+
   moveDraftFor(p, field) {
     const draft = (this.state.moveDraft || {})[p.idx];
     if (draft && draft[field] !== undefined) return draft[field];
@@ -8602,19 +8650,6 @@ class Component extends DCLogic {
 
   formatMoveName(name) {
     return name ? String(name).replace(/\+$/, ' (Legacy)') : name;
-  }
-
-  // A <select>'s "value" attribute did not reliably pre-select the matching
-  // <option> in this app's template runtime \u2014 the picker opened with real
-  // options but nothing ever showed as chosen, even after canonicalMoveName()
-  // ruled out a string mismatch. Rather than keep guessing at undocumented
-  // runtime behavior, selection is decided here in JS (selected/notSelected
-  // booleans per option) and the template picks which literal <option> markup
-  // to render via sc-if \u2014 the one mechanism already proven throughout this
-  // file. Same base list is reused for both charge slots, each compared
-  // against its own current value.
-  annotateMoveOptions(options, current) {
-    return options.map(o => ({ ...o, selected: o.value === current, notSelected: o.value !== current }));
   }
 
   pokeSig(p) {
@@ -10479,20 +10514,42 @@ class Component extends DCLogic {
         flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
         dust: p.dust != null ? p.dust : '—',
         // Lets a Fast TM / Charged TM used in-game be reflected here without a
-        // full re-scan. '' (blank) option = "no charge move 2 learned yet",
-        // distinct from the fast/charge-1 slots which always have a value.
-        fastMoveOptions: this.annotateMoveOptions(this.moveOptionsByKind('fast'), this.moveDraftFor(p, 'quickMove')),
-        chargedMoveOptionsForCharge: this.annotateMoveOptions(this.moveOptionsByKind('charged'), this.moveDraftFor(p, 'chargeMove')),
-        chargedMoveOptionsForCharge2: this.annotateMoveOptions(this.moveOptionsByKind('charged'), this.moveDraftFor(p, 'chargeMove2')),
-        quickMoveDraft: this.moveDraftFor(p, 'quickMove'),
-        chargeMoveDraft: this.moveDraftFor(p, 'chargeMove'),
-        chargeMove2Draft: this.moveDraftFor(p, 'chargeMove2'),
+        // full re-scan. '' (blank) = "no charge move 2 learned yet", distinct
+        // from the fast/charge-1 slots which always have a value once known.
+        // Native <select> never reliably showed the current selection in this
+        // app's runtime (a browser's HTML parser only allows <option>/
+        // <optgroup> as direct <select> children \u2014 any templated conditional
+        // nested inside one gets silently relocated before app code even
+        // runs), so this is a plain button + onClick/sc-if picker instead,
+        // the same pattern already used everywhere else in this file.
+        quickMoveLabel: this.moveDraftFor(p, 'quickMove') ? this.formatMoveName(this.moveDraftFor(p, 'quickMove')) : '— not set —',
+        chargeMoveLabel: this.moveDraftFor(p, 'chargeMove') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove')) : '— not set —',
+        chargeMove2Label: this.moveDraftFor(p, 'chargeMove2') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove2')) : '— none learned —',
         quickMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'quickMove')),
         chargeMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove')),
         chargeMove2Info: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove2')),
-        onQuickMoveChange: (e) => this.setMoveDraft(p, 'quickMove', e.target.value),
-        onChargeMoveChange: (e) => this.setMoveDraft(p, 'chargeMove', e.target.value),
-        onChargeMove2Change: (e) => this.setMoveDraft(p, 'chargeMove2', e.target.value),
+        openQuickMovePicker: () => this.openMovePicker(p, 'quickMove', 'fast'),
+        openChargeMovePicker: () => this.openMovePicker(p, 'chargeMove', 'charged'),
+        openChargeMove2Picker: () => this.openMovePicker(p, 'chargeMove2', 'charged'),
+        movePickerOpenForQuick: !!(this.state.movePicker && this.state.movePicker.pokeIdx === p.idx && this.state.movePicker.field === 'quickMove'),
+        movePickerOpenForCharge: !!(this.state.movePicker && this.state.movePicker.pokeIdx === p.idx && this.state.movePicker.field === 'chargeMove'),
+        movePickerOpenForCharge2: !!(this.state.movePicker && this.state.movePicker.pokeIdx === p.idx && this.state.movePicker.field === 'chargeMove2'),
+        movePickerFilterValue: this.state.movePickerFilter || '',
+        onMovePickerFilterChange: (e) => this.onMovePickerFilterChange(e),
+        closeMovePicker: () => this.closeMovePicker(),
+        movePickerResults: (() => {
+          const mp = this.state.movePicker;
+          if (!mp || mp.pokeIdx !== p.idx) return [];
+          const filter = (this.state.movePickerFilter || '').trim().toLowerCase();
+          const current = this.moveDraftFor(p, mp.field);
+          const clearLabel = mp.field === 'chargeMove2' ? '— none learned —' : '— not set —';
+          const rows = this.moveOptionsByKind(mp.kind)
+            .filter(o => !filter || o.label.toLowerCase().indexOf(filter) >= 0)
+            .map(o => ({ value: o.value, label: o.label, isCurrent: o.value === current,
+              choose: () => this.chooseMoveFromPicker(p, mp.field, o.value) }));
+          return [{ value: '', label: clearLabel, isCurrent: current === '' || !current,
+            choose: () => this.chooseMoveFromPicker(p, mp.field, '') }, ...rows];
+        })(),
         saveMoves: () => this.saveMovesEdit(p),
         bodyChips: (() => {
           const chips = [];
