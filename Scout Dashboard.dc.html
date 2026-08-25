@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.46</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.48</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1572,10 +1572,15 @@
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">FAST</span>
-                <select value="{{ detail.quickMoveDraft }}" onChange="{{ detail.onQuickMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
+                <select onChange="{{ detail.onQuickMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
                   <option value="">— not set —</option>
                   <sc-for list="{{ detail.fastMoveOptions }}" as="mv" hint-placeholder-count="2">
-                    <option value="{{ mv.value }}">{{ mv.label }}</option>
+                    <sc-if value="{{ mv.selected }}" hint-placeholder-val="{{ false }}">
+                      <option value="{{ mv.value }}" selected>{{ mv.label }}</option>
+                    </sc-if>
+                    <sc-if value="{{ mv.notSelected }}" hint-placeholder-val="{{ true }}">
+                      <option value="{{ mv.value }}">{{ mv.label }}</option>
+                    </sc-if>
                   </sc-for>
                 </select>
               </div>
@@ -1586,10 +1591,15 @@
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE</span>
-                <select value="{{ detail.chargeMoveDraft }}" onChange="{{ detail.onChargeMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
+                <select onChange="{{ detail.onChargeMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
                   <option value="">— not set —</option>
-                  <sc-for list="{{ detail.chargedMoveOptions }}" as="mv" hint-placeholder-count="2">
-                    <option value="{{ mv.value }}">{{ mv.label }}</option>
+                  <sc-for list="{{ detail.chargedMoveOptionsForCharge }}" as="mv" hint-placeholder-count="2">
+                    <sc-if value="{{ mv.selected }}" hint-placeholder-val="{{ false }}">
+                      <option value="{{ mv.value }}" selected>{{ mv.label }}</option>
+                    </sc-if>
+                    <sc-if value="{{ mv.notSelected }}" hint-placeholder-val="{{ true }}">
+                      <option value="{{ mv.value }}">{{ mv.label }}</option>
+                    </sc-if>
                   </sc-for>
                 </select>
               </div>
@@ -1600,10 +1610,15 @@
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE 2</span>
-                <select value="{{ detail.chargeMove2Draft }}" onChange="{{ detail.onChargeMove2Change }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
+                <select onChange="{{ detail.onChargeMove2Change }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
                   <option value="">— none learned —</option>
-                  <sc-for list="{{ detail.chargedMoveOptions }}" as="mv" hint-placeholder-count="2">
-                    <option value="{{ mv.value }}">{{ mv.label }}</option>
+                  <sc-for list="{{ detail.chargedMoveOptionsForCharge2 }}" as="mv" hint-placeholder-count="2">
+                    <sc-if value="{{ mv.selected }}" hint-placeholder-val="{{ false }}">
+                      <option value="{{ mv.value }}" selected>{{ mv.label }}</option>
+                    </sc-if>
+                    <sc-if value="{{ mv.notSelected }}" hint-placeholder-val="{{ true }}">
+                      <option value="{{ mv.value }}">{{ mv.label }}</option>
+                    </sc-if>
                   </sc-for>
                 </select>
               </div>
@@ -7565,6 +7580,19 @@ class Component extends DCLogic {
     return name ? String(name).replace(/\+$/, ' (Legacy)') : name;
   }
 
+  // A <select>'s "value" attribute did not reliably pre-select the matching
+  // <option> in this app's template runtime \u2014 the picker opened with real
+  // options but nothing ever showed as chosen, even after canonicalMoveName()
+  // ruled out a string mismatch. Rather than keep guessing at undocumented
+  // runtime behavior, selection is decided here in JS (selected/notSelected
+  // booleans per option) and the template picks which literal <option> markup
+  // to render via sc-if \u2014 the one mechanism already proven throughout this
+  // file. Same base list is reused for both charge slots, each compared
+  // against its own current value.
+  annotateMoveOptions(options, current) {
+    return options.map(o => ({ ...o, selected: o.value === current, notSelected: o.value !== current }));
+  }
+
   pokeSig(p) {
     if (!p) return '';
     return 'sig:' + String(p.name || '').toLowerCase() + '|' + p.cp + '|' + p.hp;
@@ -9429,8 +9457,9 @@ class Component extends DCLogic {
         // Lets a Fast TM / Charged TM used in-game be reflected here without a
         // full re-scan. '' (blank) option = "no charge move 2 learned yet",
         // distinct from the fast/charge-1 slots which always have a value.
-        fastMoveOptions: this.moveOptionsByKind('fast'),
-        chargedMoveOptions: this.moveOptionsByKind('charged'),
+        fastMoveOptions: this.annotateMoveOptions(this.moveOptionsByKind('fast'), this.moveDraftFor(p, 'quickMove')),
+        chargedMoveOptionsForCharge: this.annotateMoveOptions(this.moveOptionsByKind('charged'), this.moveDraftFor(p, 'chargeMove')),
+        chargedMoveOptionsForCharge2: this.annotateMoveOptions(this.moveOptionsByKind('charged'), this.moveDraftFor(p, 'chargeMove2')),
         quickMoveDraft: this.moveDraftFor(p, 'quickMove'),
         chargeMoveDraft: this.moveDraftFor(p, 'chargeMove'),
         chargeMove2Draft: this.moveDraftFor(p, 'chargeMove2'),
