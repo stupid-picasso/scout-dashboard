@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.38</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.44</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1563,19 +1563,57 @@
         </sc-if>
 
         <sc-if value="{{ detail.onEvolution }}" hint-placeholder-val="{{ false }}">
-        <sc-if value="{{ detail.hasMoveset }}" hint-placeholder-val="{{ false }}">
-          <div style="margin-bottom:14px">
-            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:9px">MOVES</div>
-            <div style="display:flex;flex-direction:column;gap:7px">
-              <sc-for list="{{ detail.moveRows }}" as="mv" hint-placeholder-count="2">
-                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
-                  <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em">{{ mv.label }}</span>
-                  <span style="font:600 12.5px var(--font-body);color:var(--ink-900);text-align:right">{{ mv.value }}</span>
-                </div>
-              </sc-for>
-            </div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">MOVES</div>
+            <div style="font:11px var(--font-body);color:var(--ink-400)">Update after using a TM in-game</div>
           </div>
-        </sc-if>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">FAST</span>
+                <select value="{{ detail.quickMoveDraft }}" onChange="{{ detail.onQuickMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
+                  <option value="">— not set —</option>
+                  <sc-for list="{{ detail.fastMoveOptions }}" as="mv" hint-placeholder-count="2">
+                    <option value="{{ mv.value }}">{{ mv.label }}</option>
+                  </sc-for>
+                </select>
+              </div>
+              <sc-if value="{{ detail.quickMoveInfo }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.quickMoveInfo }}</div>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE</span>
+                <select value="{{ detail.chargeMoveDraft }}" onChange="{{ detail.onChargeMoveChange }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
+                  <option value="">— not set —</option>
+                  <sc-for list="{{ detail.chargedMoveOptions }}" as="mv" hint-placeholder-count="2">
+                    <option value="{{ mv.value }}">{{ mv.label }}</option>
+                  </sc-for>
+                </select>
+              </div>
+              <sc-if value="{{ detail.chargeMoveInfo }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMoveInfo }}</div>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE 2</span>
+                <select value="{{ detail.chargeMove2Draft }}" onChange="{{ detail.onChargeMove2Change }}" style="flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:6px 8px">
+                  <option value="">— none learned —</option>
+                  <sc-for list="{{ detail.chargedMoveOptions }}" as="mv" hint-placeholder-count="2">
+                    <option value="{{ mv.value }}">{{ mv.label }}</option>
+                  </sc-for>
+                </select>
+              </div>
+              <sc-if value="{{ detail.chargeMove2Info }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMove2Info }}</div>
+              </sc-if>
+            </div>
+            <div onClick="{{ detail.saveMoves }}" class="om-tap" style="cursor:pointer;align-self:flex-end;margin-top:2px;padding:8px 18px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SAVE MOVES</div>
+          </div>
+        </div>
 
         <sc-if value="{{ detail.evo.hasEvo }}" hint-placeholder-val="{{ false }}">
           <div style="background:color-mix(in oklab, var(--grass-600) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-600) 42%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
@@ -2155,6 +2193,7 @@ class Component extends DCLogic {
     snapshotBusy: false,
     snapshotError: '',
     candyDraft: {},
+    moveDraft: {},
     evoFlashName: '',
     evoFlashStats: '',
     ptrPull: 0,
@@ -7411,6 +7450,102 @@ class Component extends DCLogic {
     return next.length === src.length ? src : next;
   }
 
+  moveDraftFor(p, field) {
+    const draft = (this.state.moveDraft || {})[p.idx];
+    if (draft && draft[field] !== undefined) return draft[field];
+    const cur = p[field];
+    return cur == null ? '' : cur;
+  }
+
+  setMoveDraft(p, field, val) {
+    const all = { ...(this.state.moveDraft || {}) };
+    all[p.idx] = { ...(all[p.idx] || {}), [field]: val };
+    this.setState({ moveDraft: all });
+  }
+
+  // Lets a Fast TM / Charged TM used in-game be reflected here directly,
+  // without a full detail-screen re-scan just to update two fields. Writes
+  // into ivOverrides \u2014 the same generic per-idx patch store every other
+  // roster consumer (chat context, evolve queue, DPS) already reads through
+  // effectiveRosterForMatch(), so this needs no new sync plumbing.
+  saveMovesEdit(p) {
+    this.haptic('light');
+    const draft = (this.state.moveDraft || {})[p.idx] || {};
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    const patch = { ...(overrides[p.idx] || {}) };
+    ['quickMove', 'chargeMove', 'chargeMove2'].forEach(f => {
+      if (draft[f] !== undefined) patch[f] = draft[f] === '' ? null : draft[f];
+    });
+    overrides[p.idx] = patch;
+    const allDraft = { ...(this.state.moveDraft || {}) };
+    delete allDraft[p.idx];
+    this.setState({ ivOverrides: overrides, moveDraft: allDraft }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+  }
+
+  // AUTHORITATIVE_MOVES keys are lowercase move ids ("dragon breath", or
+  // "acid spray+" for the Elite/Community Day-exclusive variant). Stored
+  // moveKey()/lookupMove() only care about case-insensitive match, so the
+  // option VALUE is title-cased to match what an OCR scan would have written
+  // \u2014 editing a move manually and re-scanning later must agree on casing.
+  moveOptionsByKind(kind) {
+    const m = this.mechanics;
+    if (!m || !m.AUTHORITATIVE_MOVES) return [];
+    return Object.keys(m.AUTHORITATIVE_MOVES)
+      .filter(k => m.AUTHORITATIVE_MOVES[k].kind === kind)
+      .map(k => {
+        const mv = m.AUTHORITATIVE_MOVES[k];
+        const legacy = k.endsWith('+');
+        const base = legacy ? k.slice(0, -1) : k;
+        const display = base.replace(/\b\w/g, c => c.toUpperCase());
+        // The stored VALUE keeps the trailing "+" so lookupMove() resolves to
+        // the correct (different-power) legacy stats later — only the LABEL
+        // is cleaned up for humans. Legacy and current share power/energy in
+        // the label so the trainer can tell them apart even without
+        // remembering the word "legacy": the numbers are the tell.
+        return legacy
+          ? { value: display + '+', label: display + ' (Legacy) \u2014 ' + mv.type + ' \u00b7 ' + mv.power + '/' + mv.energy, sort: display + '\u007f' }
+          : { value: display, label: display + ' \u2014 ' + mv.type + ' \u00b7 ' + mv.power + '/' + mv.energy, sort: display };
+      })
+      .sort((a, b) => a.sort.localeCompare(b.sort));
+  }
+
+  // Real single-hit damage against a generic reference defender \u2014 the same
+  // REFERENCE_DEFENCE baseline attackerScore/raid DPS use elsewhere, so this
+  // number is comparable to those, not a made-up scale. Uses THIS Pokemon's
+  // own current level (not the level-50 ceiling raid numbers use), because
+  // the question here is "how hard does my Pokemon hit right now", not
+  // "how hard could it hit at max investment".
+  moveDamageFor(p, moveName) {
+    const m = this.mechanics;
+    const move = this.lookupMove(moveName);
+    if (!m || !move) return null;
+    const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+    if (!base || !ivs) return null;
+    const levelKnown = Number.isFinite(p.lvlMin);
+    const level = levelKnown ? p.lvlMin : 40;
+    const cpm = m.CPM[level];
+    if (!cpm) return null;
+    const sBase = m.shadowAdjustedBase(base, this.isShadow(p));
+    const atk = (sBase[0] + ivs[0]) * cpm;
+    const damage = m.moveDamage(move, atk, this.typesOf(p));
+    return { damage, type: move.type, power: move.power, energy: move.energy, kind: move.kind, level, levelKnown };
+  }
+
+  moveDamageLine(p, name) {
+    const info = this.moveDamageFor(p, name);
+    if (!info) return null;
+    const lvlNote = info.levelKnown ? '' : ' (level not pinned \u2014 using Lv ' + info.level + ')';
+    return info.kind === 'fast'
+      ? info.type + ' \u00b7 ' + info.damage + ' dmg/hit \u00b7 +' + info.energy + '\u26a1 energy' + lvlNote
+      : info.type + ' \u00b7 ' + info.damage + ' dmg \u00b7 ' + info.energy + '\u26a1 cost' + lvlNote;
+  }
+
+  formatMoveName(name) {
+    return name ? String(name).replace(/\+$/, ' (Legacy)') : name;
+  }
+
   pokeSig(p) {
     if (!p) return '';
     return 'sig:' + String(p.name || '').toLowerCase() + '|' + p.cp + '|' + p.hp;
@@ -8248,7 +8383,7 @@ class Component extends DCLogic {
       `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
       `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${this.evolvesToName(p) || '?'}`).join(', ') || 'none'}.`,
       `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
-      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.quickMove || '?'} / ${p.chargeMove || '?'})`).join(', ') || 'none'}.`,
+      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${this.formatMoveName(p.quickMove) || '?'} / ${this.formatMoveName(p.chargeMove) || '?'})`).join(', ') || 'none'}.`,
       (() => {
         const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
         const total = Object.keys(dexNames).length;
@@ -8310,7 +8445,7 @@ class Component extends DCLogic {
         const chatLine = p => {
           const dps = this.bestDpsFor(p);
           const note = this.movesetDataNote(p);
-          const moves = [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).join(' / ') || 'not on file';
+          const moves = [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.formatMoveName(n)).join(' / ') || 'not on file';
           // Never state a damage number the move database can't back —
           // "dps unknown" plus the reason beats a confident-sounding guess.
           const dpsText = dps ? `DPS ${dps.dps.toFixed(1)} (${dps.fast}/${dps.charged})` : `dps unknown${note ? ' (' + note + ')' : ''}`;
@@ -8743,7 +8878,7 @@ class Component extends DCLogic {
         cardTint: this.dsTypeTint(p),
         cardEdge: this.dsTypeEdge(p),
         typeChips: this.typeLook(p).chips,
-        moves: [p.quickMove, p.chargeMove].filter(Boolean).join(' / ') || '—',
+        moves: [p.quickMove, p.chargeMove].filter(Boolean).map(n => this.formatMoveName(n)).join(' / ') || '—',
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'var(--ink-300)',
         flags: flags,
@@ -8990,7 +9125,7 @@ class Component extends DCLogic {
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         badgeColor: this.dsTypeColor(p),
-        moveLine: (p.quickMove || '?') + ' / ' + (p.chargeMove || '?'),
+        moveLine: this.formatMoveName(p.quickMove || '?') + ' / ' + this.formatMoveName(p.chargeMove || '?'),
         rankLine: Number.isFinite(this.bestRank(p)) ? this.bestRank(p).toFixed(0) + '% rank' : '',
         onClick: () => this.openDetail(p),
         markDone: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleDone(p.idx); }
@@ -9272,15 +9407,21 @@ class Component extends DCLogic {
         flags: flags || 'No special flags',
         flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
         dust: p.dust != null ? p.dust : '—',
-        moveRows: (() => {
-          const rows = [
-            { label: 'FAST', value: p.quickMove },
-            { label: 'CHARGE', value: p.chargeMove },
-            { label: 'CHARGE 2', value: p.chargeMove2 }
-          ].filter(r => r.value);
-          return rows.length ? rows : null;
-        })(),
-        hasMoveset: !!(p.quickMove || p.chargeMove || p.chargeMove2),
+        // Lets a Fast TM / Charged TM used in-game be reflected here without a
+        // full re-scan. '' (blank) option = "no charge move 2 learned yet",
+        // distinct from the fast/charge-1 slots which always have a value.
+        fastMoveOptions: this.moveOptionsByKind('fast'),
+        chargedMoveOptions: this.moveOptionsByKind('charged'),
+        quickMoveDraft: this.moveDraftFor(p, 'quickMove'),
+        chargeMoveDraft: this.moveDraftFor(p, 'chargeMove'),
+        chargeMove2Draft: this.moveDraftFor(p, 'chargeMove2'),
+        quickMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'quickMove')),
+        chargeMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove')),
+        chargeMove2Info: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove2')),
+        onQuickMoveChange: (e) => this.setMoveDraft(p, 'quickMove', e.target.value),
+        onChargeMoveChange: (e) => this.setMoveDraft(p, 'chargeMove', e.target.value),
+        onChargeMove2Change: (e) => this.setMoveDraft(p, 'chargeMove2', e.target.value),
+        saveMoves: () => this.saveMovesEdit(p),
         bodyChips: (() => {
           const chips = [];
           if (p.weight) chips.push({ label: 'Weight', value: p.weight + (/kg/i.test(String(p.weight)) ? '' : ' kg') });
