@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.44</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.46</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -8474,11 +8474,30 @@ class Component extends DCLogic {
     return next.length === src.length ? src : next;
   }
 
+  // A <select>'s bound value must match an <option> value EXACTLY \u2014 unlike
+  // lookupMove(), which is case-insensitive on purpose. Without this, any
+  // casing/whitespace difference between what OCR transcribed and this
+  // table's canonical key (e.g. from the AI move-fetch fallback, or just
+  // inconsistent transcription) left the dropdown showing "not set" even
+  // though the stored move \u2014 and the damage number computed from it \u2014
+  // were both completely valid.
+  canonicalMoveName(name) {
+    const m = this.mechanics;
+    const k = this.moveKey(name);
+    if (!k || !m || !m.AUTHORITATIVE_MOVES) return name;
+    const key = m.AUTHORITATIVE_MOVES[k] ? k : (m.AUTHORITATIVE_MOVES[k + '+'] ? k + '+' : null);
+    if (!key) return name;
+    const legacy = key.endsWith('+');
+    const base = legacy ? key.slice(0, -1) : key;
+    const display = base.replace(/\b\w/g, c => c.toUpperCase());
+    return legacy ? display + '+' : display;
+  }
+
   moveDraftFor(p, field) {
     const draft = (this.state.moveDraft || {})[p.idx];
     if (draft && draft[field] !== undefined) return draft[field];
     const cur = p[field];
-    return cur == null ? '' : cur;
+    return cur == null ? '' : this.canonicalMoveName(cur);
   }
 
   setMoveDraft(p, field, val) {
