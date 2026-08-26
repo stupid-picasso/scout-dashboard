@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.26</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.54</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -569,6 +569,9 @@
               <div style="height:7px;background:var(--surface-muted);border-radius:4px;overflow:hidden">
                 <div style="height:100%;width:{{ migrationDisplay.pct }}%;background:var(--brand-primary-strong);transition:width .3s ease"></div>
               </div>
+            </sc-if>
+            <sc-if value="{{ syncKeyDriftWarning }}" hint-placeholder-val="{{ false }}">
+              <div style="border-top:1px solid var(--type-water);padding-top:10px;font:11.5px/1.5 var(--font-body);color:var(--type-fighting)">{{ syncKeyDriftWarning }}</div>
             </sc-if>
           </div>
         </sc-if>
@@ -1354,6 +1357,7 @@
                   <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SAVE</div>
                 </sc-if>
                 <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">TRANSFERRED (+1 CANDY)</div>
+                <div onClick="{{ p.removeDuplicate }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:transparent;border:1px solid var(--line-300);color:var(--ink-400);font:700 10.5px var(--font-display)">REMOVE (mistake, no candy)</div>
               </div>
             </div>
             <div style="text-align:right;flex-shrink:0">
@@ -1559,19 +1563,99 @@
         </sc-if>
 
         <sc-if value="{{ detail.onEvolution }}" hint-placeholder-val="{{ false }}">
-        <sc-if value="{{ detail.hasMoveset }}" hint-placeholder-val="{{ false }}">
-          <div style="margin-bottom:14px">
-            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:9px">MOVES</div>
-            <div style="display:flex;flex-direction:column;gap:7px">
-              <sc-for list="{{ detail.moveRows }}" as="mv" hint-placeholder-count="2">
-                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
-                  <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em">{{ mv.label }}</span>
-                  <span style="font:600 12.5px var(--font-body);color:var(--ink-900);text-align:right">{{ mv.value }}</span>
-                </div>
-              </sc-for>
-            </div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">MOVES</div>
+            <div style="font:11px var(--font-body);color:var(--ink-400)">Update after using a TM in-game</div>
           </div>
-        </sc-if>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">FAST</span>
+                <div onClick="{{ detail.openQuickMovePicker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.quickMoveLabel }}</span>
+                  <span style="color:var(--ink-400);flex-shrink:0">▾</span>
+                </div>
+              </div>
+              <sc-if value="{{ detail.quickMoveInfo }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.quickMoveInfo }}</div>
+              </sc-if>
+              <sc-if value="{{ detail.movePickerOpenForQuick }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                  <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
+                  <div style="max-height:230px;overflow-y:auto">
+                    <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
+                      <div onClick="{{ mv.choose }}" class="om-tap" style="cursor:pointer;padding:9px 11px;font:12.5px var(--font-body);color:var(--ink-900);border-bottom:1px solid var(--line-100);display:flex;justify-content:space-between;align-items:center;gap:6px">
+                        <span>{{ mv.label }}</span>
+                        <sc-if value="{{ mv.isCurrent }}" hint-placeholder-val="{{ false }}">
+                          <span style="color:var(--brand-primary-strong)">✓</span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div onClick="{{ detail.closeMovePicker }}" class="om-tap" style="cursor:pointer;text-align:center;padding:8px;font:700 11px var(--font-display);color:var(--ink-400)">CLOSE</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE</span>
+                <div onClick="{{ detail.openChargeMovePicker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.chargeMoveLabel }}</span>
+                  <span style="color:var(--ink-400);flex-shrink:0">▾</span>
+                </div>
+              </div>
+              <sc-if value="{{ detail.chargeMoveInfo }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMoveInfo }}</div>
+              </sc-if>
+              <sc-if value="{{ detail.movePickerOpenForCharge }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                  <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
+                  <div style="max-height:230px;overflow-y:auto">
+                    <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
+                      <div onClick="{{ mv.choose }}" class="om-tap" style="cursor:pointer;padding:9px 11px;font:12.5px var(--font-body);color:var(--ink-900);border-bottom:1px solid var(--line-100);display:flex;justify-content:space-between;align-items:center;gap:6px">
+                        <span>{{ mv.label }}</span>
+                        <sc-if value="{{ mv.isCurrent }}" hint-placeholder-val="{{ false }}">
+                          <span style="color:var(--brand-primary-strong)">✓</span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div onClick="{{ detail.closeMovePicker }}" class="om-tap" style="cursor:pointer;text-align:center;padding:8px;font:700 11px var(--font-display);color:var(--ink-400)">CLOSE</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE 2</span>
+                <div onClick="{{ detail.openChargeMove2Picker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.chargeMove2Label }}</span>
+                  <span style="color:var(--ink-400);flex-shrink:0">▾</span>
+                </div>
+              </div>
+              <sc-if value="{{ detail.chargeMove2Info }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMove2Info }}</div>
+              </sc-if>
+              <sc-if value="{{ detail.movePickerOpenForCharge2 }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                  <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
+                  <div style="max-height:230px;overflow-y:auto">
+                    <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
+                      <div onClick="{{ mv.choose }}" class="om-tap" style="cursor:pointer;padding:9px 11px;font:12.5px var(--font-body);color:var(--ink-900);border-bottom:1px solid var(--line-100);display:flex;justify-content:space-between;align-items:center;gap:6px">
+                        <span>{{ mv.label }}</span>
+                        <sc-if value="{{ mv.isCurrent }}" hint-placeholder-val="{{ false }}">
+                          <span style="color:var(--brand-primary-strong)">✓</span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div onClick="{{ detail.closeMovePicker }}" class="om-tap" style="cursor:pointer;text-align:center;padding:8px;font:700 11px var(--font-display);color:var(--ink-400)">CLOSE</div>
+                </div>
+              </sc-if>
+            </div>
+            <div onClick="{{ detail.saveMoves }}" class="om-tap" style="cursor:pointer;align-self:flex-end;margin-top:2px;padding:8px 18px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SAVE MOVES</div>
+          </div>
+        </div>
 
         <sc-if value="{{ detail.evo.hasEvo }}" hint-placeholder-val="{{ false }}">
           <div style="background:color-mix(in oklab, var(--grass-600) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-600) 42%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
@@ -2151,6 +2235,9 @@ class Component extends DCLogic {
     snapshotBusy: false,
     snapshotError: '',
     candyDraft: {},
+    moveDraft: {},
+    movePicker: null,
+    movePickerFilter: '',
     evoFlashName: '',
     evoFlashStats: '',
     ptrPull: 0,
@@ -2659,13 +2746,17 @@ class Component extends DCLogic {
       'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
       'megaEnergyInventory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
-      'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint'];
+      'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint',
+      'bagCapacity', 'eliteTmDone', 'cutTarget'];
   }
 
   // Credentials are excluded from a restore by NAME, not by being forgotten, so
   // adding a key to the list above can never silently start overwriting keys.
+  // githubToken is deliberately absent from SYNCED_STATE_KEYS entirely (an old
+  // backup should never resurrect a possibly-revoked PAT) — listed here too so
+  // a future edit that adds it to SYNCED_STATE_KEYS doesn't reintroduce that risk.
   get RESTORE_EXCLUDED_KEYS() {
-    return ['geminiKey', 'geminiKeys', 'apiEndpoint'];
+    return ['geminiKey', 'geminiKeys', 'apiEndpoint', 'githubToken'];
   }
 
   get PACKED_KEYS() {
@@ -3475,7 +3566,7 @@ class Component extends DCLogic {
     if (!m || !m.attackerScore) return null;
     const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
     if (!base || !ivs) return null;
-    return m.attackerScore(base, ivs, 50);
+    return m.attackerScore(base, ivs, 50, this.isShadow(p));
   }
 
   // Best attacker ceiling YOU OWN, per type — the reference point "has a raid
@@ -3620,7 +3711,7 @@ class Component extends DCLogic {
     [p.chargeMove, p.chargeMove2].forEach(name => {
       const ch = this.lookupMove(name);
       if (!ch || ch.kind !== 'charged') return;
-      const dps = m.cycleDps(base, ivs, 50, fast, ch, { ownTypes });
+      const dps = m.cycleDps(base, ivs, 50, fast, ch, { ownTypes, isShadow: this.isShadow(p) });
       if (dps != null && (best == null || dps > best)) { best = dps; bestMove = name; }
     });
     return best == null ? null : { dps: best, fast: p.quickMove, charged: bestMove };
@@ -3683,7 +3774,7 @@ class Component extends DCLogic {
       [p.chargeMove, p.chargeMove2].forEach(name => {
         const ch = this.lookupMove(name);
         if (!ch || ch.kind !== 'charged') return;
-        const r = m.cycleDps(base, ivs, lv.level, fast, ch, { ownTypes, defenderTypes });
+        const r = m.cycleDps(base, ivs, lv.level, fast, ch, { ownTypes, defenderTypes, isShadow: this.isShadow(p) });
         if (r != null && (best == null || r > best.dps)) best = { dps: r, charged: name };
       });
       if (!best) return;
@@ -3691,7 +3782,7 @@ class Component extends DCLogic {
       let dps50 = null;
       if (lv.level < m.MAX_POKEMON_LEVEL) {
         const ch = this.lookupMove(best.charged);
-        dps50 = m.cycleDps(base, ivs, m.MAX_POKEMON_LEVEL, fast, ch, { ownTypes, defenderTypes });
+        dps50 = m.cycleDps(base, ivs, m.MAX_POKEMON_LEVEL, fast, ch, { ownTypes, defenderTypes, isShadow: this.isShadow(p) });
       }
       const cost = m.powerUpCostBetween(lv.level, m.MAX_POKEMON_LEVEL, {
         lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p)
@@ -3801,7 +3892,7 @@ class Component extends DCLogic {
       // fallback ordering for Pokemon whose moves aren't in the database.
       (buckets[type] = buckets[type] || []).push({
         p, dps: dps ? dps.dps : null, moveLine: dps ? dps.fast + ' / ' + dps.charged : null,
-        ceiling: m.attackerScore(base, ivs, 50)
+        ceiling: m.attackerScore(base, ivs, 50, this.isShadow(p))
       });
     });
     return Object.keys(buckets).sort().map(type => {
@@ -4544,8 +4635,23 @@ class Component extends DCLogic {
     }
     if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
     const mon = this.buildPokemonRecord(rec);
+    // A repeated tap here (e.g. retrying because a stale TRANSFERRED mark was
+    // hiding the first attempt) used to silently create another full, visible
+    // duplicate with no warning. Confirm once when an existing, VISIBLE
+    // Pokemon already matches on name+CP+HP \u2014 a real second individual with
+    // matching stats is possible and stays one Confirm away, but an accidental
+    // re-tap no longer piles up unnoticed.
+    const removedSetNow = new Set(this.state.removedIds || []);
+    const existingMatch = [...(this.state.roster || []), ...(this.state.addedPokemon || [])]
+      .find(p => !this.isRemoved(p, removedSetNow) && this.pokeSig(p) === this.pokeSig(mon));
+    if (existingMatch) {
+      let ok = true;
+      try { ok = window.confirm(`You already have a ${mon.name} at CP ${mon.cp} in your roster. Add this as another one anyway? Cancel if this is the same Pokemon you just added.`); } catch (e) {}
+      if (!ok) return;
+    }
     const nextRoster = [...(this.state.roster || []), mon];
-    this.setState({ roster: nextRoster, ocrParsed: null, ocrPreview: null, ocrError: '' });
+    const removedIds = this.removedIdsWithout(mon);
+    this.setState({ roster: nextRoster, removedIds, ocrParsed: null, ocrPreview: null, ocrError: '' });
     this.resetAppraisalHint();
   }
 
@@ -4718,14 +4824,16 @@ class Component extends DCLogic {
       this.setState({ ivOverrides: overrides });
     } else {
       const newIdx = 'new-' + Date.now();
-      const added = [...this.state.addedPokemon, {
+      const newRec = {
         idx: newIdx, name: p.name, form: null, dex: p.dex, gender: null,
         cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
         lvlMin: r.level, lvlMax: r.level, quickMove: null, chargeMove: null, chargeMove2: null,
         catchDate: null, lucky: false, shadowPurified: '0', favorite: false, dust: null,
         great: patch.great, ultra: patch.ultra, little: patch.little
-      }];
-      this.setState({ addedPokemon: added });
+      };
+      const added = [...this.state.addedPokemon, newRec];
+      const removedIds = this.removedIdsWithout(newRec);
+      this.setState({ addedPokemon: added, removedIds });
     }
   }
 
@@ -6781,6 +6889,11 @@ class Component extends DCLogic {
     const changeLog = [];
     const roster = this.state.roster || [];
     const mechanics = this.mechanics;
+    // Re-scanning a Pokemon that was mistakenly (or since-corrected) marked
+    // TRANSFERRED must not silently vanish into the removed set — see
+    // removedIdsWithout for why this exists.
+    let removedIds = this.state.removedIds || [];
+    const removedSet = new Set(removedIds);
     let updated = 0, inserted = 0, solved = 0;
     const dupes = [];
     const today = new Date().toISOString().split('T')[0];
@@ -6807,8 +6920,8 @@ class Component extends DCLogic {
       // CP is part of a Pokemon's identity for import purposes: same species
       // + same CP is "the same catch seen again"; same species + different
       // CP is a different individual and must become its own entry.
-      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp)
-        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp);
+      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet))
+        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet));
       let ivPatch = {};
       let solvedFrom = null;
       // The detail screen never prints IVs, but CP + HP + base stats pin them
@@ -6962,7 +7075,7 @@ class Component extends DCLogic {
         };
         updated++;
       } else {
-        added.push({
+        const newRec = {
           idx: 'video-' + Date.now() + '-' + i, name: item.name, form: null, dex: item.dex,
           gender: item.gender || null,
           cp: item.cp, hp: item.hp != null ? item.hp : null,
@@ -6980,7 +7093,9 @@ class Component extends DCLogic {
           great: ivPatch.great || this.emptyLeague(),
           ultra: ivPatch.ultra || this.emptyLeague(),
           little: ivPatch.little || this.emptyLeague()
-        });
+        };
+        added.push(newRec);
+        removedIds = this.removedIdsWithout(newRec, removedIds);
         inserted++;
       }
       if (item.candy != null || item.xlCandy != null) {
@@ -6992,7 +7107,7 @@ class Component extends DCLogic {
       }
       if (item.type) types[nameLower] = item.type;
     });
-    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types });
+    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds });
     if (seenStardust != null) this.setStardust(seenStardust);
     const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
     return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
@@ -7363,22 +7478,176 @@ class Component extends DCLogic {
     return part(r.atk) + '/' + part(r.def) + '/' + part(r.sta);
   }
 
+  // A DELIBERATE re-add (OCR "ADD AS NEW POKEMON", a no-match solved-IV add,
+  // or a video-import insert) must never be silently swallowed by a stale
+  // TRANSFERRED mark left over from an earlier Pokemon with the same
+  // name/CP/HP. The sig-based hide in isRemoved() exists only to stop an
+  // ACCIDENTAL re-scan of the exact Pokemon already given away from
+  // reappearing on its own — it was never meant to block a genuine re-catch,
+  // a second individual with matching stats, or correcting a mistaken
+  // transfer. Returns the (possibly unchanged) array so callers can fold it
+  // into one setState alongside the new record instead of firing a second write.
+  removedIdsWithout(rec, removedIds) {
+    const sig = this.pokeSig(rec);
+    const src = removedIds || this.state.removedIds || [];
+    const next = src.filter(id => id !== rec.idx && id !== sig);
+    return next.length === src.length ? src : next;
+  }
+
+  // A <select>'s bound value must match an <option> value EXACTLY \u2014 unlike
+  // lookupMove(), which is case-insensitive on purpose. Without this, any
+  // casing/whitespace difference between what OCR transcribed and this
+  // table's canonical key (e.g. from the AI move-fetch fallback, or just
+  // inconsistent transcription) left the dropdown showing "not set" even
+  // though the stored move \u2014 and the damage number computed from it \u2014
+  // were both completely valid.
+  canonicalMoveName(name) {
+    const m = this.mechanics;
+    const k = this.moveKey(name);
+    if (!k || !m || !m.AUTHORITATIVE_MOVES) return name;
+    const key = m.AUTHORITATIVE_MOVES[k] ? k : (m.AUTHORITATIVE_MOVES[k + '+'] ? k + '+' : null);
+    if (!key) return name;
+    const legacy = key.endsWith('+');
+    const base = legacy ? key.slice(0, -1) : key;
+    const display = base.replace(/\b\w/g, c => c.toUpperCase());
+    return legacy ? display + '+' : display;
+  }
+
+  openMovePicker(p, field, kind) {
+    this.haptic('light');
+    this.setState({ movePicker: { pokeIdx: p.idx, field, kind }, movePickerFilter: '' });
+  }
+
+  closeMovePicker() {
+    this.setState({ movePicker: null, movePickerFilter: '' });
+  }
+
+  onMovePickerFilterChange(e) {
+    this.setState({ movePickerFilter: e.target.value });
+  }
+
+  chooseMoveFromPicker(p, field, value) {
+    this.haptic('light');
+    this.setMoveDraft(p, field, value);
+    this.setState({ movePicker: null, movePickerFilter: '' });
+  }
+
+  moveDraftFor(p, field) {
+    const draft = (this.state.moveDraft || {})[p.idx];
+    if (draft && draft[field] !== undefined) return draft[field];
+    const cur = p[field];
+    return cur == null ? '' : this.canonicalMoveName(cur);
+  }
+
+  setMoveDraft(p, field, val) {
+    const all = { ...(this.state.moveDraft || {}) };
+    all[p.idx] = { ...(all[p.idx] || {}), [field]: val };
+    this.setState({ moveDraft: all });
+  }
+
+  // Lets a Fast TM / Charged TM used in-game be reflected here directly,
+  // without a full detail-screen re-scan just to update two fields. Writes
+  // into ivOverrides \u2014 the same generic per-idx patch store every other
+  // roster consumer (chat context, evolve queue, DPS) already reads through
+  // effectiveRosterForMatch(), so this needs no new sync plumbing.
+  saveMovesEdit(p) {
+    this.haptic('light');
+    const draft = (this.state.moveDraft || {})[p.idx] || {};
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    const patch = { ...(overrides[p.idx] || {}) };
+    ['quickMove', 'chargeMove', 'chargeMove2'].forEach(f => {
+      if (draft[f] !== undefined) patch[f] = draft[f] === '' ? null : draft[f];
+    });
+    overrides[p.idx] = patch;
+    const allDraft = { ...(this.state.moveDraft || {}) };
+    delete allDraft[p.idx];
+    this.setState({ ivOverrides: overrides, moveDraft: allDraft }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+  }
+
+  // AUTHORITATIVE_MOVES keys are lowercase move ids ("dragon breath", or
+  // "acid spray+" for the Elite/Community Day-exclusive variant). Stored
+  // moveKey()/lookupMove() only care about case-insensitive match, so the
+  // option VALUE is title-cased to match what an OCR scan would have written
+  // \u2014 editing a move manually and re-scanning later must agree on casing.
+  moveOptionsByKind(kind) {
+    const m = this.mechanics;
+    if (!m || !m.AUTHORITATIVE_MOVES) return [];
+    return Object.keys(m.AUTHORITATIVE_MOVES)
+      .filter(k => m.AUTHORITATIVE_MOVES[k].kind === kind)
+      .map(k => {
+        const mv = m.AUTHORITATIVE_MOVES[k];
+        const legacy = k.endsWith('+');
+        const base = legacy ? k.slice(0, -1) : k;
+        const display = base.replace(/\b\w/g, c => c.toUpperCase());
+        // The stored VALUE keeps the trailing "+" so lookupMove() resolves to
+        // the correct (different-power) legacy stats later — only the LABEL
+        // is cleaned up for humans. Legacy and current share power/energy in
+        // the label so the trainer can tell them apart even without
+        // remembering the word "legacy": the numbers are the tell.
+        return legacy
+          ? { value: display + '+', label: display + ' (Legacy) \u2014 ' + mv.type + ' \u00b7 ' + mv.power + '/' + mv.energy, sort: display + '\u007f' }
+          : { value: display, label: display + ' \u2014 ' + mv.type + ' \u00b7 ' + mv.power + '/' + mv.energy, sort: display };
+      })
+      .sort((a, b) => a.sort.localeCompare(b.sort));
+  }
+
+  // Real single-hit damage against a generic reference defender \u2014 the same
+  // REFERENCE_DEFENCE baseline attackerScore/raid DPS use elsewhere, so this
+  // number is comparable to those, not a made-up scale. Uses THIS Pokemon's
+  // own current level (not the level-50 ceiling raid numbers use), because
+  // the question here is "how hard does my Pokemon hit right now", not
+  // "how hard could it hit at max investment".
+  // Raw move stats only \u2014 see moveDamageLine for why this deliberately
+  // doesn't compute a per-Pokemon damage figure. No base stats/IVs needed
+  // means an un-appraised Pokemon still shows move info here, unlike before.
+  moveDamageFor(moveName) {
+    const move = this.lookupMove(moveName);
+    if (!move) return null;
+    return { type: move.type, power: move.power, energy: move.energy, durationMs: move.durationMs, kind: move.kind };
+  }
+
+  // Raw move stats \u2014 Power/Energy/Duration \u2014 the same numbers every generic
+  // move-reference tool (PokeGenie, GamePress's move list, etc.) shows,
+  // deliberately NOT a per-Pokemon computed damage figure. A computed number
+  // depends on this Pokemon's specific Attack stat plus a chosen reference
+  // defense, which will never byte-for-byte match a generic move list no
+  // matter how correct the underlying data is \u2014 showing the raw numbers
+  // directly removes that whole class of "why doesn't this match" confusion.
+  moveDamageLine(p, name) {
+    const info = this.moveDamageFor(name);
+    if (!info) return null;
+    const durationS = (info.durationMs / 1000).toFixed(1) + 's';
+    return info.kind === 'fast'
+      ? info.type + ' \u00b7 Power ' + info.power + ' \u00b7 CD ' + durationS + ' \u00b7 +' + info.energy + '\u26a1 energy'
+      : info.type + ' \u00b7 Power ' + info.power + ' \u00b7 CD ' + durationS + ' \u00b7 ' + info.energy + '\u26a1 cost';
+  }
+
+  formatMoveName(name) {
+    return name ? String(name).replace(/\+$/, ' (Legacy)') : name;
+  }
+
   pokeSig(p) {
     if (!p) return '';
     return 'sig:' + String(p.name || '').toLowerCase() + '|' + p.cp + '|' + p.hp;
   }
 
+  // idx ONLY. A signature (name+CP+HP) check used to sit here too, meant to
+  // stop an old re-scan from resurrecting something genuinely transferred \u2014
+  // but ANY group of Pokemon sharing name+CP+HP (the norm for anything not
+  // yet appraised) shares one signature, so removing ONE of several identical
+  // Gyarados hid all of them, and re-adding one un-hid all of them. mergeVideoImport's
+  // match lookup already excludes removed idx's from its candidates, which
+  // covers the original scenario without this collision risk.
   isRemoved(p, removedSet) {
-    return removedSet.has(p.idx) || removedSet.has(this.pokeSig(p));
+    return removedSet.has(p.idx);
   }
 
   removePokemon(idx) {
     this.haptic('heavy');
     const set = new Set(this.state.removedIds);
     set.add(idx);
-    const all = [...(this.state.roster || []), ...(this.state.addedPokemon || [])];
-    const hit = all.find(p => p.idx === idx);
-    if (hit) set.add(this.pokeSig(hit));
     const arr = [...set];
     this.setState({ removedIds: arr }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
@@ -7815,7 +8084,7 @@ class Component extends DCLogic {
       const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
       if (!base || !ivs) return;
       // Raid value, which is what the dust is being spent on here.
-      const score = m.attackerScore ? m.attackerScore(base, ivs, ceiling) : 0;
+      const score = m.attackerScore ? m.attackerScore(base, ivs, ceiling, this.isShadow(p)) : 0;
       if (!score) return;
       const opts = { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) };
       const now = m.powerUpCostBetween(level, ceiling, opts);
@@ -8196,7 +8465,7 @@ class Component extends DCLogic {
       `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
       `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${this.evolvesToName(p) || '?'}`).join(', ') || 'none'}.`,
       `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
-      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.quickMove || '?'} / ${p.chargeMove || '?'})`).join(', ') || 'none'}.`,
+      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${this.formatMoveName(p.quickMove) || '?'} / ${this.formatMoveName(p.chargeMove) || '?'})`).join(', ') || 'none'}.`,
       (() => {
         const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
         const total = Object.keys(dexNames).length;
@@ -8238,14 +8507,63 @@ class Component extends DCLogic {
         return `COMPLETE species census — every one of the ${roster.length} Pokemon owned, counts authoritative (use THIS for "how many X do I have"): `
           + entries.join('; ');
       })(),
-      `Detailed stats for the best 90 by league rank ONLY (${roster.length} owned in total — this list is truncated, so absence here does NOT mean the Pokemon is not owned; consult the census above for counts). Fields: name, dex, form, cp, hp, ivAvg, atkIV/defIV/staIV, lucky, shadow, greatRank%, ultraRank%, littleRank%: ` +
-        [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a)).slice(0, 90).map(p => `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${(p.shadowPurified === '1' || p.shadowPurified === 1) ? 'S' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'}`).join('; ')
+      (() => {
+        // Enough per-Pokemon detail to actually judge "which one hits
+        // harder" or "is this one safe to transfer" — not just IV/rank.
+        // Previously the model never saw moves, real DPS, raid-role status,
+        // or whether another owned copy already beats a Pokemon outright, so
+        // it could only guess at damage/transfer questions from CP+IV alone.
+        // Same pattern as the app's own screens: raidRole and dominated are
+        // entirely self-referential to this roster (Keep Best, Dominated
+        // Duplicates, Transfer Candidates all work the same way) — no
+        // external tier list, nothing invented.
+        const raidTypeBest = this.raidRoleTypeBest(roster);
+        const dominatedByIdx = {};
+        this.dominatedDuplicates(roster).forEach(({ loser, winner }) => { dominatedByIdx[loser.idx] = winner; });
+        const candyFor = p => {
+          const rec = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()];
+          return rec ? (Number(rec.candy) || 0) : null;
+        };
+        const chatLine = p => {
+          const dps = this.bestDpsFor(p);
+          const note = this.movesetDataNote(p);
+          const moves = [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.formatMoveName(n)).join(' / ') || 'not on file';
+          // Never state a damage number the move database can't back —
+          // "dps unknown" plus the reason beats a confident-sounding guess.
+          const dpsText = dps ? `DPS ${dps.dps.toFixed(1)} (${dps.fast}/${dps.charged})` : `dps unknown${note ? ' (' + note + ')' : ''}`;
+          const winner = dominatedByIdx[p.idx];
+          const dominated = winner ? `beaten by owned ${winner.cp || '?'}CP ${winner.name}` : 'no';
+          const candy = candyFor(p);
+          return `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'}`;
+        };
+        const byRank = [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a));
+        const top = byRank.slice(0, 90);
+        const topIdx = new Set(top.map(p => p.idx));
+        // Second list fills the gap the top-90-only design left: the weak
+        // Pokemon that actually matter for "should I transfer this" were
+        // never sent at all. Deliberately NOT filtered by lucky/shadow/
+        // favorite \u2014 that exclusion used to mean any flagged Pokemon
+        // ranking outside the top 90 had NO detail in either list, so asking
+        // about it by name (e.g. a specific Gyarados) got no CP/HP/IV/moves
+        // at all. The L/S/F flags already visible on each row are enough to
+        // stop the model recommending a transfer of something protected.
+        const cutCandidates = [...roster]
+          .filter(p => !topIdx.has(p.idx))
+          .sort((a, b) => (a.ivAvg ?? 999) - (b.ivAvg ?? 999) || this.bestRank(a) - this.bestRank(b))
+          .slice(0, 150);
+        return [
+          `BEST BY LEAGUE RANK — top 90 of ${roster.length} owned (${roster.length} total — absence here does NOT mean not owned; consult the census above for counts). Flags: L=lucky S=shadow F=favorite. moves is quick/charge1/charge2, "not on file" = never read off a detail-screen scan. dps is real level-50 damage/sec (STAB + type included) when the move database covers it — "dps unknown" means don't claim a damage number for that Pokemon, only that it's unverified. raidRole:Y = clears 90% of this roster's own best attacker ceiling for at least one of its types. dominated:X = another owned copy beats it on every single IV — a safe transfer; "no" only means not strictly outclassed, not that it's good.\n` +
+            top.map(chatLine).join('; '),
+          `EVERYTHING ELSE — up to 150 more of ${roster.length} owned, not already listed above, sorted lowest IV then lowest rank first (still includes lucky/shadow/favorite \u2014 check the L/S/F flags on each row before ever suggesting a transfer). Check THIS pool before recommending any transfer, and check it for any named Pokemon not found in the list above. Same fields as above: ` +
+            cutCandidates.map(chatLine).join('; ')
+        ].join('\n');
+      })()
     ].join('\n');
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The detailed stats list is truncated to the top 90 by rank, so never treat a Pokemon's absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, or favorite included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F flag is the profile of an easy cut — but never suggest transferring anything showing L, S, or F regardless of its rank. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false }, () => this.queueCloudPush());
@@ -8642,7 +8960,7 @@ class Component extends DCLogic {
         cardTint: this.dsTypeTint(p),
         cardEdge: this.dsTypeEdge(p),
         typeChips: this.typeLook(p).chips,
-        moves: [p.quickMove, p.chargeMove].filter(Boolean).join(' / ') || '—',
+        moves: [p.quickMove, p.chargeMove].filter(Boolean).map(n => this.formatMoveName(n)).join(' / ') || '—',
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'var(--ink-300)',
         flags: flags,
@@ -8660,7 +8978,17 @@ class Component extends DCLogic {
         onCandyChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setCandyDraft(p, 'candy', e.target.value); },
         onXlChange: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setCandyDraft(p, 'xlCandy', e.target.value); },
         saveCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.saveCandyEdit(p); },
-        markTransferredCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.transferPokemon(p); }
+        markTransferredCandy: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.transferPokemon(p); },
+        // For accidental duplicates (a repeated ADD AS NEW POKEMON tap, a bad
+        // import, etc.) — plain removePokemon(), NOT transferPokemon(), so no
+        // candy is granted for something that was never actually given away
+        // in-game. Confirmed inline since this permanently hides the entry.
+        removeDuplicate: (e) => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          let ok = true;
+          try { ok = window.confirm('Remove this entry? Use this only for a mistaken duplicate \u2014 it will NOT grant a transfer candy. For a real transfer, use TRANSFERRED (+1 CANDY) instead.'); } catch (err) {}
+          if (ok) this.removePokemon(p.idx);
+        }
       };
     });
 
@@ -8879,7 +9207,7 @@ class Component extends DCLogic {
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         badgeColor: this.dsTypeColor(p),
-        moveLine: (p.quickMove || '?') + ' / ' + (p.chargeMove || '?'),
+        moveLine: this.formatMoveName(p.quickMove || '?') + ' / ' + this.formatMoveName(p.chargeMove || '?'),
         rankLine: Number.isFinite(this.bestRank(p)) ? this.bestRank(p).toFixed(0) + '% rank' : '',
         onClick: () => this.openDetail(p),
         markDone: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleDone(p.idx); }
@@ -9161,15 +9489,44 @@ class Component extends DCLogic {
         flags: flags || 'No special flags',
         flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
         dust: p.dust != null ? p.dust : '—',
-        moveRows: (() => {
-          const rows = [
-            { label: 'FAST', value: p.quickMove },
-            { label: 'CHARGE', value: p.chargeMove },
-            { label: 'CHARGE 2', value: p.chargeMove2 }
-          ].filter(r => r.value);
-          return rows.length ? rows : null;
+        // Lets a Fast TM / Charged TM used in-game be reflected here without a
+        // full re-scan. '' (blank) = "no charge move 2 learned yet", distinct
+        // from the fast/charge-1 slots which always have a value once known.
+        // Native <select> never reliably showed the current selection in this
+        // app's runtime (a browser's HTML parser only allows <option>/
+        // <optgroup> as direct <select> children \u2014 any templated conditional
+        // nested inside one gets silently relocated before app code even
+        // runs), so this is a plain button + onClick/sc-if picker instead,
+        // the same pattern already used everywhere else in this file.
+        quickMoveLabel: this.moveDraftFor(p, 'quickMove') ? this.formatMoveName(this.moveDraftFor(p, 'quickMove')) : '— not set —',
+        chargeMoveLabel: this.moveDraftFor(p, 'chargeMove') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove')) : '— not set —',
+        chargeMove2Label: this.moveDraftFor(p, 'chargeMove2') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove2')) : '— none learned —',
+        quickMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'quickMove')),
+        chargeMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove')),
+        chargeMove2Info: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove2')),
+        openQuickMovePicker: () => this.openMovePicker(p, 'quickMove', 'fast'),
+        openChargeMovePicker: () => this.openMovePicker(p, 'chargeMove', 'charged'),
+        openChargeMove2Picker: () => this.openMovePicker(p, 'chargeMove2', 'charged'),
+        movePickerOpenForQuick: !!(this.state.movePicker && this.state.movePicker.pokeIdx === p.idx && this.state.movePicker.field === 'quickMove'),
+        movePickerOpenForCharge: !!(this.state.movePicker && this.state.movePicker.pokeIdx === p.idx && this.state.movePicker.field === 'chargeMove'),
+        movePickerOpenForCharge2: !!(this.state.movePicker && this.state.movePicker.pokeIdx === p.idx && this.state.movePicker.field === 'chargeMove2'),
+        movePickerFilterValue: this.state.movePickerFilter || '',
+        onMovePickerFilterChange: (e) => this.onMovePickerFilterChange(e),
+        closeMovePicker: () => this.closeMovePicker(),
+        movePickerResults: (() => {
+          const mp = this.state.movePicker;
+          if (!mp || mp.pokeIdx !== p.idx) return [];
+          const filter = (this.state.movePickerFilter || '').trim().toLowerCase();
+          const current = this.moveDraftFor(p, mp.field);
+          const clearLabel = mp.field === 'chargeMove2' ? '— none learned —' : '— not set —';
+          const rows = this.moveOptionsByKind(mp.kind)
+            .filter(o => !filter || o.label.toLowerCase().indexOf(filter) >= 0)
+            .map(o => ({ value: o.value, label: o.label, isCurrent: o.value === current,
+              choose: () => this.chooseMoveFromPicker(p, mp.field, o.value) }));
+          return [{ value: '', label: clearLabel, isCurrent: current === '' || !current,
+            choose: () => this.chooseMoveFromPicker(p, mp.field, '') }, ...rows];
         })(),
-        hasMoveset: !!(p.quickMove || p.chargeMove || p.chargeMove2),
+        saveMoves: () => this.saveMovesEdit(p),
         bodyChips: (() => {
           const chips = [];
           if (p.weight) chips.push({ label: 'Weight', value: p.weight + (/kg/i.test(String(p.weight)) ? '' : ' kg') });
@@ -9313,6 +9670,10 @@ class Component extends DCLogic {
     const evoShown = expand.evolve ? evoQueueAll : evoQueueAll.slice(0, BLOCK);
     const gapsShown = expand.gaps ? dexGapsAll : dexGapsAll.slice(0, BLOCK);
     const missingEvo = this.missingEvoNames().length;
+    // How many distinct moves on the roster have no damage data on file yet —
+    // every one of them is a Pokemon whose raid DPS the app can't compute, so
+    // this doubles as "how much of Attackers/Raid Counters is unverified".
+    const unverifiedDpsCount = this.missingMoveNames().length;
     const fmt = n => Number(n || 0).toLocaleString('en-US');
     const candyLabelFor = evo => {
       if (evo.need == null) return 'candy cost unknown';
@@ -10004,7 +10365,17 @@ class Component extends DCLogic {
           bg: `color-mix(in oklab, var(${c.token}) 16%, var(--surface-card))`,
           border: `color-mix(in oklab, var(${c.token}) 42%, var(--surface-card))`,
           onClick: () => this.jumpToSection(c.key)
-        })),
+        }))
+        // Separate from the section-jump chips above: this one jumps tabs
+        // rather than scrolling, since move data lives on Attackers, not Today.
+        .concat(unverifiedDpsCount > 0 ? [{
+          label: 'UNVERIFIED DPS',
+          count: unverifiedDpsCount,
+          color: 'var(--type-electric)',
+          bg: 'color-mix(in oklab, var(--type-electric) 16%, var(--surface-card))',
+          border: 'color-mix(in oklab, var(--type-electric) 42%, var(--surface-card))',
+          onClick: () => this.goToTab('attackers')
+        }] : []),
 
       todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' : '',
       todayEvolveEmpty: evoQueueAll.length ? null : true,
@@ -10262,6 +10633,20 @@ class Component extends DCLogic {
           : 'Done \u2014 the cloud copy already matched this build.';
       })(),
       isAdminUser: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())),
+      // Fails loudly instead of the two silent-drift bugs already found in
+      // this file's history: any field kept live-synced (SYNC_KEYS) that a
+      // file/snapshot restore would silently skip because it never made it
+      // into SYNCED_STATE_KEYS, and isn't deliberately excluded on purpose
+      // (RESTORE_EXCLUDED_KEYS, for credentials that should never come back
+      // from an old backup). Admin-only \u2014 this is a maintenance signal
+      // about the codebase, not something a trainer using the app could act on.
+      syncKeyDriftWarning: (() => {
+        const drift = this.SYNC_KEYS().filter(k =>
+          this.SYNCED_STATE_KEYS.indexOf(k) < 0 && this.RESTORE_EXCLUDED_KEYS.indexOf(k) < 0);
+        return drift.length
+          ? `SYNC/RESTORE KEY DRIFT: ${drift.join(', ')} \\u2014 synced live but a file restore or snapshot restore silently skips ${drift.length === 1 ? 'it' : 'them'}. Add to SYNCED_STATE_KEYS (or RESTORE_EXCLUDED_KEYS if that's deliberate).`
+          : null;
+      })(),
       showMigrateButton: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())) && !this.state.migrationAlreadyDone && !this.state.migration,
       migrationDisplay: this.state.migration ? {
         stage: this.state.migration.stage,
