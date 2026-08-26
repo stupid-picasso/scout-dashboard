@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.52</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.54</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -7599,29 +7599,29 @@ class Component extends DCLogic {
   // own current level (not the level-50 ceiling raid numbers use), because
   // the question here is "how hard does my Pokemon hit right now", not
   // "how hard could it hit at max investment".
-  moveDamageFor(p, moveName) {
-    const m = this.mechanics;
+  // Raw move stats only \u2014 see moveDamageLine for why this deliberately
+  // doesn't compute a per-Pokemon damage figure. No base stats/IVs needed
+  // means an un-appraised Pokemon still shows move info here, unlike before.
+  moveDamageFor(moveName) {
     const move = this.lookupMove(moveName);
-    if (!m || !move) return null;
-    const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
-    if (!base || !ivs) return null;
-    const levelKnown = Number.isFinite(p.lvlMin);
-    const level = levelKnown ? p.lvlMin : 40;
-    const cpm = m.CPM[level];
-    if (!cpm) return null;
-    const sBase = m.shadowAdjustedBase(base, this.isShadow(p));
-    const atk = (sBase[0] + ivs[0]) * cpm;
-    const damage = m.moveDamage(move, atk, this.typesOf(p));
-    return { damage, type: move.type, power: move.power, energy: move.energy, kind: move.kind, level, levelKnown };
+    if (!move) return null;
+    return { type: move.type, power: move.power, energy: move.energy, durationMs: move.durationMs, kind: move.kind };
   }
 
+  // Raw move stats \u2014 Power/Energy/Duration \u2014 the same numbers every generic
+  // move-reference tool (PokeGenie, GamePress's move list, etc.) shows,
+  // deliberately NOT a per-Pokemon computed damage figure. A computed number
+  // depends on this Pokemon's specific Attack stat plus a chosen reference
+  // defense, which will never byte-for-byte match a generic move list no
+  // matter how correct the underlying data is \u2014 showing the raw numbers
+  // directly removes that whole class of "why doesn't this match" confusion.
   moveDamageLine(p, name) {
-    const info = this.moveDamageFor(p, name);
+    const info = this.moveDamageFor(name);
     if (!info) return null;
-    const lvlNote = info.levelKnown ? '' : ' (level not pinned \u2014 using Lv ' + info.level + ')';
+    const durationS = (info.durationMs / 1000).toFixed(1) + 's';
     return info.kind === 'fast'
-      ? info.type + ' \u00b7 ' + info.damage + ' dmg/hit \u00b7 +' + info.energy + '\u26a1 energy' + lvlNote
-      : info.type + ' \u00b7 ' + info.damage + ' dmg \u00b7 ' + info.energy + '\u26a1 cost' + lvlNote;
+      ? info.type + ' \u00b7 Power ' + info.power + ' \u00b7 CD ' + durationS + ' \u00b7 +' + info.energy + '\u26a1 energy'
+      : info.type + ' \u00b7 Power ' + info.power + ' \u00b7 CD ' + durationS + ' \u00b7 ' + info.energy + '\u26a1 cost';
   }
 
   formatMoveName(name) {
