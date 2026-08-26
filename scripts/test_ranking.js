@@ -239,18 +239,26 @@ const MEWTWO = m.BASE_STATS[150];    // master-league-relevant
   const vineWhip = moves['vine whip'];
   checkExact('Vine Whip is a fast Grass move', vineWhip && vineWhip.kind, 'fast');
   checkExact('Vine Whip type', vineWhip && vineWhip.type, 'Grass');
-  check('Vine Whip power', vineWhip && vineWhip.power, 5, 0.5);
+  check('Vine Whip power (Gym & Raid)', vineWhip && vineWhip.power, 6, 0.5);
 
   const sludgeBomb = moves['sludge bomb'];
   checkExact('Sludge Bomb is a charged Poison move', sludgeBomb && sludgeBomb.kind, 'charged');
-  check('Sludge Bomb energy cost', sludgeBomb && sludgeBomb.energy, 50, 1);
+  check('Sludge Bomb energy cost (Gym & Raid)', sludgeBomb && sludgeBomb.energy, 50, 1);
 
-  // Known-ambiguous moves (conflicting stats under one name in the source
-  // data — a Niantic rebalance or form-dependent move) must be excluded
-  // rather than silently resolved to a possibly-wrong value.
-  ['aura wheel', 'air slash', 'psycho cut'].forEach(name => {
-    checkExact(`${name} excluded from authoritative table (ambiguous source data)`, moves[name], undefined);
-  });
+  // Aura Wheel is genuinely form-dependent (Electric/Dark Morpeko learn
+  // different-typed versions) — the bare, unsuffixed name correctly has no
+  // single answer and must stay excluded regardless of data source.
+  checkExact('bare "aura wheel" excluded (form-dependent, no single answer)', moves['aura wheel'], undefined);
+  checkExact('aura wheel dark resolves', moves['aura wheel dark'] && moves['aura wheel dark'].type, 'Dark');
+  checkExact('aura wheel electric resolves', moves['aura wheel electric'] && moves['aura wheel electric'].type, 'Electric');
+
+  // air slash / psycho cut used to be excluded here because the OLD
+  // PvP-sourced table (Trainer Battle combatMove overrides) carries
+  // multiple stat blocks per name across past competitive seasons. Gym &
+  // Raid moveSettings has no such history — verified zero naming collisions
+  // against the raw GAME_MASTER — so these now resolve cleanly.
+  checkExact('air slash resolves (Gym & Raid, no longer ambiguous)', moves['air slash'] && moves['air slash'].kind, 'fast');
+  checkExact('psycho cut resolves (Gym & Raid, no longer ambiguous)', moves['psycho cut'] && moves['psycho cut'].kind, 'fast');
 })();
 
 // ---------------------------------------------------------------------------
