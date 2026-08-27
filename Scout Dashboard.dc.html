@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.56</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.63</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -716,11 +716,11 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <label class="om-press" style="cursor:pointer;background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-700);font:600 12px var(--font-display);padding:9px 16px;border-radius:5px;white-space:nowrap">
             IMPORT SCREENSHOT
-            <input type="file" accept="image/*" onChange="{{ onScreenshotUpload }}" style="display:none" />
+            <input type="file" accept="image/*" multiple onChange="{{ onScreenshotUpload }}" style="display:none" />
           </label>
           <label class="om-press" style="cursor:pointer;background:color-mix(in oklab, var(--type-water) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-water) 42%, var(--surface-card));color:var(--type-water);font:600 12px var(--font-display);padding:9px 16px;border-radius:5px;white-space:nowrap">
             {{ apprShotLabel }}
-            <input type="file" accept="image/*" onChange="{{ onAppraisalUpload }}" style="display:none" />
+            <input type="file" accept="image/*" multiple onChange="{{ onAppraisalUpload }}" style="display:none" />
           </label>
           <label class="om-press" style="cursor:pointer;background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-900);font:600 12px var(--font-display);padding:9px 16px;border-radius:5px;white-space:nowrap">
             IMPORT SCREEN RECORDING
@@ -906,6 +906,12 @@
           </sc-if>
         </div>
       </sc-if>
+      <sc-if value="{{ ocrQueueLabel }}" hint-placeholder-val="{{ false }}">
+        <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.04em">{{ ocrQueueLabel }}</div>
+      </sc-if>
+      <sc-if value="{{ ocrQueueSummary }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12px var(--font-body);color:var(--ink-500)">{{ ocrQueueSummary }}</div>
+      </sc-if>
       <sc-if value="{{ ocrBusy }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:center;gap:12px">
           <div style="position:relative;width:52px;height:74px;border-radius:6px;overflow:hidden;background:var(--surface-card);border:1px solid var(--brand-primary-strong);flex-shrink:0">
@@ -943,7 +949,7 @@
           <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
             <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 12px var(--font-display)">SAVE CANDY/TYPE</div>
             <div onClick="{{ addOcrAsNew }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 12px var(--font-display)">ADD AS NEW POKEMON</div>
-            <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1 1 90px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 12px var(--font-display)">CANCEL</div>
+            <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1 1 90px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 12px var(--font-display)">{{ ocrCancelLabel }}</div>
           </div>
           <details style="margin-top:2px">
             <summary style="cursor:pointer;font:10.5px var(--font-display);color:var(--ink-300)">Raw read (debug)</summary>
@@ -2155,6 +2161,15 @@ class Component extends DCLogic {
     ocrError: '',
     ocrPreview: null,
     ocrParsed: null,
+    // Multi-screenshot import: files queued from one multi-select, processed
+    // one at a time through the SAME single-image pipeline below (nothing
+    // about vision OCR itself changes) — only the "what happens after you
+    // act on this one" step differs, advancing to the next queued file
+    // instead of just closing the panel.
+    ocrQueue: [],
+    ocrQueueIndex: 0,
+    ocrQueueDone: [],
+    ocrQueueSummary: '',
     aiUsage: { day: '' },
     importProgress: { day: '', clips: 0, added: 0, updated: 0 },
     clearArmed: false,
@@ -4547,6 +4562,42 @@ class Component extends DCLogic {
     };
   }
 
+  // Kicks off a multi-screenshot import: files queued from one multi-select
+  // input, processed one at a time. Each file goes through the exact same
+  // handleScreenshotUpload() as a single upload always has — this only adds
+  // what happens AFTER the trainer acts on one (advance to the next queued
+  // file, or wrap up with a summary once the queue is empty).
+  startOcrQueue(files) {
+    if (!files || !files.length) return;
+    this.setState({ ocrQueue: files, ocrQueueIndex: 0, ocrQueueDone: [], ocrQueueSummary: '' }, () => {
+      this.handleScreenshotUpload(files[0]);
+    });
+  }
+
+  // Called from every exit point of the single-item panel (ADD AS NEW,
+  // SAVE CANDY/TYPE, CANCEL/SKIP) instead of just clearing ocrParsed. If more
+  // files are queued, advances to the next one automatically; otherwise
+  // leaves a short summary of what happened across the whole batch.
+  advanceOcrQueue(logEntry) {
+    const doneLog = logEntry ? [...(this.state.ocrQueueDone || []), logEntry] : (this.state.ocrQueueDone || []);
+    const queue = this.state.ocrQueue || [];
+    const nextIndex = (this.state.ocrQueueIndex || 0) + 1;
+    if (nextIndex < queue.length) {
+      this.setState({ ocrQueueIndex: nextIndex, ocrQueueDone: doneLog, ocrParsed: null, ocrPreview: null, ocrError: '' }, () => {
+        this.handleScreenshotUpload(queue[nextIndex]);
+      });
+      return;
+    }
+    const summary = doneLog.length
+      ? doneLog.filter(d => d.action === 'added').length + ' added, '
+        + doneLog.filter(d => d.action === 'updated').length + ' updated, '
+        + doneLog.filter(d => d.action === 'skipped').length + ' skipped'
+        + (queue.length > 1 ? ' (' + queue.length + ' screenshots)' : '')
+      : '';
+    this.setState({ ocrQueue: [], ocrQueueIndex: 0, ocrQueueDone: [], ocrQueueSummary: summary,
+      ocrParsed: null, ocrPreview: null, ocrError: '' });
+  }
+
   async handleScreenshotUpload(file) {
     if (!file) return;
     this._lastAiError = '';
@@ -4657,7 +4708,7 @@ class Component extends DCLogic {
     }
     const nextRoster = [...(this.state.roster || []), mon];
     const removedIds = this.removedIdsWithout(mon);
-    this.setState({ roster: nextRoster, removedIds, ocrParsed: null, ocrPreview: null, ocrError: '' });
+    this.setState({ roster: nextRoster, removedIds }, () => this.advanceOcrQueue({ name: mon.name, action: 'added' }));
     this.resetAppraisalHint();
   }
 
@@ -4878,7 +4929,7 @@ class Component extends DCLogic {
         this.setState({ ivOverrides: overrides });
       }
     }
-    this.setState({ candyInventory: candyInv, typeTable: types, ocrParsed: null, ocrPreview: null });
+    this.setState({ candyInventory: candyInv, typeTable: types }, () => this.advanceOcrQueue({ name: p.matchedName || p.name, action: 'updated' }));
     this.resetAppraisalHint();
     // Stardust is the first thing the importer promises to update — it was being
     // read off the screenshot, held in state, then dropped on save.
@@ -5128,8 +5179,8 @@ class Component extends DCLogic {
   }
 
   cancelOcr() {
-    this.setState({ ocrParsed: null, ocrPreview: null, ocrError: '' });
     this.resetAppraisalHint();
+    this.advanceOcrQueue((this.state.ocrQueue || []).length ? { name: (this.state.ocrParsed && this.state.ocrParsed.name) || '?', action: 'skipped' } : null);
   }
 
   dismissVideoImport() {
@@ -6689,29 +6740,70 @@ class Component extends DCLogic {
     });
   }
 
+  // Does the actual read-measure-match-pin work for ONE appraisal
+  // screenshot and returns { ok, line, review, summary } instead of setting
+  // state directly, so both the single-image path and the multi-image batch
+  // loop below can share this without stepping on each other's progress
+  // state mid-batch.
+  async processOneAppraisalShot(file) {
+    const canvas = await this.imageToCanvas(file);
+    const bars = this.measureAppraisalBars(canvas);
+    if (!bars) throw new Error('No appraisal bars found in that screenshot. Capture the appraisal screen with all three bars visible, uncropped.');
+    const rec = await this.readScreenshotWithVision(file);
+    const name = rec.pokemon_name || '';
+    if (!name || rec.cp == null || rec.hp == null) throw new Error('Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but could not read the name, CP and HP from this shot. All three are needed to match it to a Pokemon you already imported.');
+    const item = { name, cp: rec.cp, hp: rec.hp, atkIV: bars.atk, defIV: bars.def, staIV: bars.sta,
+                   ivSource: 'bar-measure', barDrift: bars.drift, barConfidence: bars.drift < 0.2 ? 'high' : 'low' };
+    const clean = this.normalizeAppraisalItems([item]);
+    if (!clean.length) throw new Error('Read ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP, but no Pokemon called "' + name + '" is in your roster and no single entry matches that CP/HP \u2014 import its detail screen first, or check the name was read correctly.');
+    const summary = this.mergeAppraisalImport(clean);
+    const line = summary.applied ? 'Pinned ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' to ' + name
+      : (summary.contradiction ? 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but it cannot produce CP ' + rec.cp + ' at ' + rec.hp + ' HP - check the screenshot is one Pokemon'
+      : 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but no imported Pokemon matches ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP');
+    return { ok: !!summary.applied, line, review: summary._review, summary };
+  }
+
   async handleAppraisalUpload(file) {
     if (!file) return;
     this.setState({ apprShotBusy: true, apprShotError: '', apprShotSummary: '' });
     try {
-      const canvas = await this.imageToCanvas(file);
-      const bars = this.measureAppraisalBars(canvas);
-      if (!bars) throw new Error('No appraisal bars found in that screenshot. Capture the appraisal screen with all three bars visible, uncropped.');
-      const rec = await this.readScreenshotWithVision(file);
-      const name = rec.pokemon_name || '';
-      if (!name || rec.cp == null || rec.hp == null) throw new Error('Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but could not read the name, CP and HP from this shot. All three are needed to match it to a Pokemon you already imported.');
-      const item = { name, cp: rec.cp, hp: rec.hp, atkIV: bars.atk, defIV: bars.def, staIV: bars.sta,
-                     ivSource: 'bar-measure', barDrift: bars.drift, barConfidence: bars.drift < 0.2 ? 'high' : 'low' };
-      const clean = this.normalizeAppraisalItems([item]);
-      if (!clean.length) throw new Error('Read ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP, but no Pokemon called "' + name + '" is in your roster and no single entry matches that CP/HP \u2014 import its detail screen first, or check the name was read correctly.');
-      const summary = this.mergeAppraisalImport(clean);
-      const line = summary.applied ? 'Pinned ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' to ' + name
-        : (summary.contradiction ? 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but it cannot produce CP ' + rec.cp + ' at ' + rec.hp + ' HP - check the screenshot is one Pokemon'
-        : 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but no imported Pokemon matches ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP');
-      this.setState({ apprShotBusy: false, apprShotSummary: line,
-        videoImport: { stage: 'done', mode: 'appraisal', review: summary._review, summary } });
+      const r = await this.processOneAppraisalShot(file);
+      this.setState({ apprShotBusy: false, apprShotSummary: r.line,
+        videoImport: { stage: 'done', mode: 'appraisal', review: r.review, summary: r.summary } });
     } catch (e) {
       this.setState({ apprShotBusy: false, apprShotError: (e && e.message) || 'Could not read that appraisal screenshot.' });
     }
+  }
+
+  // Multi-select entry point: each file goes through the exact same
+  // processOneAppraisalShot() a single upload always has \u2014 sequential, not
+  // parallel, so this doesn't fire a burst of simultaneous vision API calls.
+  // Every appraisal screenshot auto-applies on its own (no per-item confirm
+  // step, unlike the detail-screenshot importer), so there's nothing to pause
+  // on between files — just a running progress line and a combined summary.
+  async handleAppraisalUploadBatch(files) {
+    if (!files || !files.length) return;
+    if (files.length === 1) return this.handleAppraisalUpload(files[0]);
+    let pinned = 0, failed = 0;
+    const failMessages = [];
+    for (let i = 0; i < files.length; i++) {
+      this.setState({ apprShotBusy: true, apprShotError: '',
+        apprShotSummary: 'Screenshot ' + (i + 1) + ' of ' + files.length + '\u2026' });
+      try {
+        const r = await this.processOneAppraisalShot(files[i]);
+        if (r.ok) pinned++; else { failed++; failMessages.push(r.line); }
+      } catch (e) {
+        failed++;
+        failMessages.push((e && e.message) || 'Could not read screenshot ' + (i + 1) + '.');
+      }
+    }
+    const summary = pinned + ' of ' + files.length + ' pinned'
+      + (failed ? ', ' + failed + ' skipped' : '') + '.';
+    this.setState({
+      apprShotBusy: false,
+      apprShotSummary: summary,
+      apprShotError: failMessages.length ? failMessages.slice(0, 3).join(' \u2014 ') + (failMessages.length > 3 ? ' \u2026' : '') : ''
+    });
   }
 
   normalizeAppraisalItems(items) {
@@ -7541,7 +7633,11 @@ class Component extends DCLogic {
   moveDraftFor(p, field) {
     const draft = (this.state.moveDraft || {})[p.idx];
     if (draft && draft[field] !== undefined) return draft[field];
-    const cur = p[field];
+    // p (state.detailPoke) is a frozen snapshot from when the sheet opened \u2014
+    // it's never refreshed after a save, so it can't be trusted here. The
+    // live override store can be, regardless of how stale p itself is.
+    const override = (this.state.ivOverrides || {})[p.idx];
+    const cur = (override && override[field] !== undefined) ? override[field] : p[field];
     return cur == null ? '' : this.canonicalMoveName(cur);
   }
 
@@ -7567,7 +7663,15 @@ class Component extends DCLogic {
     overrides[p.idx] = patch;
     const allDraft = { ...(this.state.moveDraft || {}) };
     delete allDraft[p.idx];
-    this.setState({ ivOverrides: overrides, moveDraft: allDraft }, () => {
+    // state.detailPoke is a frozen snapshot from when the sheet opened, never
+    // otherwise refreshed on save \u2014 merge the saved fields into it directly
+    // so nothing else displayed in the open sheet can show a stale value the
+    // same way the move pickers just did.
+    const stateUpdate = { ivOverrides: overrides, moveDraft: allDraft };
+    if (this.state.detailPoke && this.state.detailPoke.idx === p.idx) {
+      stateUpdate.detailPoke = { ...this.state.detailPoke, ...patch };
+    }
+    this.setState(stateUpdate, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
   }
@@ -8763,7 +8867,10 @@ class Component extends DCLogic {
   }
 
   openDetail(p) { this.haptic('light'); this.setState({ detailPoke: p }); }
-  closeDetail() { this.setState({ detailPoke: null }); }
+  // Clears the move-edit draft/picker too \u2014 an abandoned, never-saved pick
+  // must not linger and look "selected" the next time this Pokemon's sheet
+  // opens. Drafts are meant to be immediate save-or-discard, not a cache.
+  closeDetail() { this.setState({ detailPoke: null, moveDraft: {}, movePicker: null, movePickerFilter: '' }); }
 
   topForLeague(key) {
     const pool = this.state.roster.filter(p => p[key] && Number.isFinite(p[key].rankPct));
@@ -9930,7 +10037,7 @@ class Component extends DCLogic {
         return { used, capacity, free, freeLabel: (free >= 0 ? (free + ' free') : (Math.abs(free) + ' over')), pct: pct.toFixed(0), color, tip };
       })(),
       cutTargetDraft: this.state.cutTargetDraft,
-      onCutTargetChange: (v) => this.onCutTargetChange(v),
+      onCutTargetChange: (e) => this.onCutTargetChange(e.target.value),
       saveCutTarget: () => this.saveCutTarget(),
       toggleCutList: () => this.toggleCutList(),
       cutListRevealed: this.state.cutListRevealed,
@@ -10018,8 +10125,13 @@ class Component extends DCLogic {
       ocrParsedDisplay,
       hasOcrPreview: !!this.state.ocrPreview,
       hasOcrParsed: !!ocrParsedDisplay,
-      onScreenshotUpload: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.handleScreenshotUpload(f); },
-      onAppraisalUpload: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.handleAppraisalUpload(f); e.target.value = ''; },
+      ocrQueueLabel: (this.state.ocrQueue || []).length > 1
+        ? 'Screenshot ' + ((this.state.ocrQueueIndex || 0) + 1) + ' of ' + this.state.ocrQueue.length
+        : '',
+      ocrQueueSummary: this.state.ocrQueueSummary || '',
+      ocrCancelLabel: (this.state.ocrQueue || []).length > 1 ? 'SKIP' : 'CANCEL',
+      onScreenshotUpload: (e) => { const files = Array.from(e.target.files || []); if (files.length) this.startOcrQueue(files); },
+      onAppraisalUpload: (e) => { const files = Array.from(e.target.files || []); if (files.length) this.handleAppraisalUploadBatch(files); e.target.value = ''; },
       apprShotLabel: this.state.apprShotBusy ? 'MEASURING\u2026' : 'IMPORT APPRAISAL',
       apprShotSummary: this.state.apprShotSummary || '',
       apprShotError: this.state.apprShotError || '',
