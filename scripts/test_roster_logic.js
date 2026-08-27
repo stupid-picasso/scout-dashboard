@@ -166,6 +166,17 @@ function buildLists(roster, bestRank) {
   check('a favorite Pokemon ranked outside the top 90 still appears in some list', allCovered.has('favorite-mon'), true);
 })();
 
+(function testCloseDetailClearsAbandonedMoveDraft() {
+  const closeDetailBody = extractMethodBody(SRC, 'closeDetail() {');
+  const ctx2 = { state: { detailPoke: { idx: 'garchomp1' }, moveDraft: { garchomp1: { quickMove: 'Fire Fang' } }, movePicker: { pokeIdx: 'garchomp1', field: 'quickMove' }, movePickerFilter: 'fire' } };
+  ctx2.setState = function(patch) { Object.assign(this.state, patch); };
+  ctx2.closeDetail = new Function(closeDetailBody).bind(ctx2);
+  ctx2.closeDetail();
+  check('closeDetail clears the abandoned move draft', ctx2.state.moveDraft, {});
+  check('closeDetail clears the open move picker', ctx2.state.movePicker, null);
+  check('closeDetail clears the move picker filter text', ctx2.state.movePickerFilter, '');
+})();
+
 // ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
