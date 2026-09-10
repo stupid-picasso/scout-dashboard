@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.64</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.66</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2067,9 +2067,24 @@
         </div>
         <sc-if value="{{ megaEnergyEntries }}" hint-placeholder-val="{{ false }}">
           <sc-for list="{{ megaEnergyEntries }}" as="m" hint-placeholder-count="0">
-            <div style="display:flex;justify-content:space-between;align-items:center;font:12.5px var(--font-body);color:var(--ink-600)">
-              <span>{{ m.name }}</span>
-              <span style="display:flex;align-items:center;gap:8px"><strong style="font:var(--font-display)">{{ m.amount }}</strong><span onClick="{{ m.remove }}" style="cursor:pointer;color:var(--ink-400)">&times;</span></span>
+            <div style="display:flex;flex-direction:column;gap:4px;padding-bottom:8px;border-bottom:1px solid var(--surface-muted)">
+              <div style="display:flex;justify-content:space-between;align-items:center;font:12.5px var(--font-body);color:var(--ink-600)">
+                <span>{{ m.name }}</span>
+                <span style="display:flex;align-items:center;gap:8px"><strong style="font:var(--font-display)">{{ m.amount }}</strong><span onClick="{{ m.remove }}" style="cursor:pointer;color:var(--ink-400)">&times;</span></span>
+              </div>
+              <sc-if value="{{ m.evolveForms }}" hint-placeholder-val="{{ false }}">
+                <sc-for list="{{ m.evolveForms }}" as="ef" hint-placeholder-count="0">
+                  <div style="display:flex;justify-content:space-between;align-items:center;font:10.5px var(--font-display);letter-spacing:.03em;padding-left:8px">
+                    <span style="color:var(--ink-400)">{{ ef.formLabel }} &middot; {{ ef.cost }} energy ({{ ef.costNote }})</span>
+                    <span style="display:flex;align-items:center;gap:6px">
+                      <span style="color:{{ ef.statusColor }};font-weight:700">{{ ef.statusLabel }}</span>
+                      <sc-if value="{{ ef.evolve }}" hint-placeholder-val="{{ false }}">
+                        <div onClick="{{ ef.evolve }}" style="cursor:pointer;padding:4px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10px var(--font-display)">EVOLVE</div>
+                      </sc-if>
+                    </span>
+                  </div>
+                </sc-for>
+              </sc-if>
             </div>
           </sc-for>
         </sc-if>
@@ -2518,6 +2533,24 @@
             <div style="font:12px var(--font-display);color:var(--ink-600)">{{ detail.powerPlan.levelLine }}</div>
             <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:4px">{{ detail.powerPlan.luckyNote }}</div>
             <div style="font:11.5px var(--font-display);color:var(--ink-400);margin-bottom:12px">{{ detail.powerPlan.inventoryLine }}</div>
+            <sc-if value="{{ detail.powerPlan.quickStep }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+                <div>
+                  <div style="font:700 11.5px var(--font-display);color:var(--ink-900)">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</div>
+                  <div style="display:flex;gap:12px;font:11.5px var(--font-display);color:var(--ink-700);font-variant-numeric:tabular-nums;margin-top:3px">
+                    <span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span>
+                    <span>Candy {{ detail.powerPlan.quickStep.candy }}</span>
+                    <span>XL {{ detail.powerPlan.quickStep.xlCandy }}</span>
+                  </div>
+                </div>
+                <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;white-space:nowrap;padding:9px 16px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11.5px var(--font-display)">POWER UP</div>
+                </sc-if>
+                <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
+                  <div style="white-space:nowrap;font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</div>
+                </sc-if>
+              </div>
+            </sc-if>
             <div style="display:flex;flex-direction:column;gap:10px">
               <sc-for list="{{ detail.powerPlan.targets }}" as="t" hint-placeholder-count="3">
                 <div style="background:var(--surface-card);border-radius:10px;padding:10px 12px">
@@ -2531,7 +2564,12 @@
                     <span>Candy {{ t.candy }}</span>
                     <span>XL {{ t.xlCandy }}</span>
                   </div>
-                  <div style="font:700 10.5px var(--font-display);letter-spacing:.05em;color:{{ t.statusColor }};margin-top:6px">{{ t.statusLabel }}</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+                    <div style="font:700 10.5px var(--font-display);letter-spacing:.05em;color:{{ t.statusColor }}">{{ t.statusLabel }}</div>
+                    <sc-if value="{{ t.markDone }}" hint-placeholder-val="{{ false }}">
+                      <div onClick="{{ t.markDone }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">MARK DONE</div>
+                    </sc-if>
+                  </div>
                 </div>
               </sc-for>
             </div>
@@ -3259,6 +3297,7 @@ class Component extends DCLogic {
     recalcSummary: '',
     eliteTmDone: [],
     megaEnergyInventory: {},
+    megaEvolvedHistory: {},
     megaNameDraft: '',
     megaAmountDraft: '',
     migration: null,
@@ -3415,7 +3454,7 @@ class Component extends DCLogic {
 
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
-      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
+      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
       'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'githubToken'];
   }
 
@@ -3545,7 +3584,7 @@ class Component extends DCLogic {
       eliteTmDone: [],
       cutTarget: 300, cutTargetDraft: '300',
       githubToken: '',
-      megaEnergyInventory: {}, triageKeep: {}, transferQueue: [],
+      megaEnergyInventory: {}, megaEvolvedHistory: {}, triageKeep: {}, transferQueue: [],
       geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
       apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
     };
@@ -3631,6 +3670,7 @@ class Component extends DCLogic {
       cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
       githubToken: remote.githubToken || '',
       megaEnergyInventory: remote.megaEnergyInventory || {},
+      megaEvolvedHistory: remote.megaEvolvedHistory || {},
       triageKeep: remote.triageKeep || {},
       transferQueue: remote.transferQueue || [],
       trainerLevel: remote.trainerLevel != null ? remote.trainerLevel : this.state.trainerLevel,
@@ -3787,7 +3827,7 @@ class Component extends DCLogic {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable',
       'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
-      'megaEnergyInventory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
+      'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
       'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint',
       'bagCapacity', 'eliteTmDone', 'cutTarget'];
   }
@@ -3804,7 +3844,7 @@ class Component extends DCLogic {
   get PACKED_KEYS() {
     return ['roster', 'addedPokemon', 'ivOverrides', 'candyInventory', 'typeTable',
       'moveDB', 'evoTable', 'candyAiDecisions', 'history', 'completedIds', 'removedIds',
-      'checklistDone', 'resources', 'megaEnergyInventory', 'triageKeep', 'transferQueue',
+      'checklistDone', 'resources', 'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue',
       'chatMessages', 'geminiKeys'];
   }
 
@@ -3847,7 +3887,7 @@ class Component extends DCLogic {
       typeTable: s.typeTable, moveDB: s.moveDB, evoTable: s.evoTable, candyAiDecisions: s.candyAiDecisions,
       stardustBalance: s.stardustBalance, history: s.history,
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
-      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory,
+      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
       bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, githubToken: s.githubToken,
       // Trimmed on write: an unbounded transcript would eventually crowd out the
@@ -4682,8 +4722,15 @@ class Component extends DCLogic {
     const m = this.mechanics;
     if (!m || !m.powerUpCostBetween) return null;
     const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
-    const level = Number.isFinite(p.lvlMin) ? p.lvlMin : null;
-    if (!base || !ivs || level == null) return null;
+    const scannedLevel = Number.isFinite(p.lvlMin) ? p.lvlMin : null;
+    if (!base || !ivs || scannedLevel == null) return null;
+    // pendingPowerUps: half-level steps tapped via the POWER UP button since
+    // the last rescan. Level itself is never stored independently of a scan
+    // (see the note on applyPowerUpStep below) — this is a volatile counter
+    // that only ever nudges cost math between scans, and gets zeroed the
+    // moment a fresh scan gives a real level again.
+    const pending = Number.isFinite(p.pendingPowerUps) ? p.pendingPowerUps : 0;
+    const level = Math.min(m.MAX_POKEMON_LEVEL, scannedLevel + pending * 0.5);
     const levelKnown = !Number.isFinite(p.lvlMax) || p.lvlMax === p.lvlMin;
     const opts = { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) };
     const inv = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()] || {};
@@ -4700,15 +4747,20 @@ class Component extends DCLogic {
       if (haveDust != null && cost.dust > haveDust) short.push('stardust');
       if (haveCandy != null && cost.candy > haveCandy) short.push('candy');
       if (haveXL != null && cost.xlCandy > haveXL) short.push('XL candy');
+      const blocked = short.length > 0;
       targets.push({
         label, note: note || '',
         toLevel: 'Lv ' + toLevel,
         dust: cost.dust.toLocaleString(),
         candy: cost.candy > 0 ? String(cost.candy) : '\u2014',
         xlCandy: cost.xlCandy > 0 ? String(cost.xlCandy) : '\u2014',
-        blocked: short.length > 0,
-        statusLabel: short.length ? 'SHORT ON ' + short.join(' + ').toUpperCase() : (haveDust == null && haveCandy == null ? 'NO INVENTORY LOGGED' : 'AFFORDABLE NOW'),
-        statusColor: short.length ? 'var(--type-fighting)' : (haveDust == null && haveCandy == null ? 'var(--ink-400)' : 'var(--grass-700)')
+        blocked,
+        statusLabel: blocked ? 'SHORT ON ' + short.join(' + ').toUpperCase() : (haveDust == null && haveCandy == null ? 'NO INVENTORY LOGGED' : 'AFFORDABLE NOW'),
+        statusColor: blocked ? 'var(--type-fighting)' : (haveDust == null && haveCandy == null ? 'var(--ink-400)' : 'var(--grass-700)'),
+        // Confirms the power-ups actually happened in-game: deducts the full
+        // dust/candy/XL for this milestone and advances pendingPowerUps so
+        // the next target/plan prices from the new effective level.
+        markDone: blocked ? null : () => this.applyPowerUp(p, cost, cost.steps)
       });
     };
     const capLevel = key => {
@@ -4722,8 +4774,29 @@ class Component extends DCLogic {
     push('LEVEL 40', 40, 'last level before XL Candy is required');
     push('LEVEL 50', 50, 'maximum');
 
+    // Single-tap quick action — the direct analog of one in-game Power Up.
+    const step = level < m.MAX_POKEMON_LEVEL ? m.powerUpCostBetween(level, level + 0.5, opts) : null;
+    let quickStep = null;
+    if (step && step.steps) {
+      const short = [];
+      if (haveDust != null && step.dust > haveDust) short.push('stardust');
+      if (haveCandy != null && step.candy > haveCandy) short.push('candy');
+      if (haveXL != null && step.xlCandy > haveXL) short.push('XL candy');
+      const blocked = short.length > 0;
+      quickStep = {
+        nextLevel: 'Lv ' + (level + 0.5),
+        dust: step.dust.toLocaleString(), candy: step.candy > 0 ? String(step.candy) : '\u2014',
+        xlCandy: step.xlCandy > 0 ? String(step.xlCandy) : '\u2014',
+        blocked,
+        statusLabel: blocked ? 'SHORT ON ' + short.join(' + ').toUpperCase() : 'TAP TO POWER UP',
+        statusColor: blocked ? 'var(--type-fighting)' : 'var(--grass-700)',
+        apply: blocked ? null : () => this.applyPowerUp(p, step, 1)
+      };
+    }
+
     return {
-      levelLine: levelKnown ? 'Currently Lv ' + level : 'Currently Lv ' + p.lvlMin + '\u2013' + p.lvlMax + ' (level not pinned)',
+      levelLine: (levelKnown ? 'Currently Lv ' + level : 'Currently Lv ' + p.lvlMin + '\u2013' + p.lvlMax + ' (level not pinned)')
+        + (pending > 0 ? '  \u00b7  +' + pending + ' pending (resets on next scan)' : ''),
       levelKnown,
       luckyNote: p.lucky ? 'Lucky \u2014 stardust costs are halved' : (opts.shadow ? 'Shadow \u2014 costs are 20% higher' : (opts.purified ? 'Purified \u2014 costs are 10% lower' : '')),
       inventoryLine: [
@@ -4731,6 +4804,7 @@ class Component extends DCLogic {
         haveCandy != null ? haveCandy + ' candy' : null,
         haveXL != null ? haveXL + ' XL' : null
       ].filter(Boolean).join('  \u00b7  ') || 'No candy or stardust logged for this species yet',
+      quickStep,
       targets: targets.length ? targets : null
     };
   }
@@ -5164,6 +5238,54 @@ class Component extends DCLogic {
 
   onMegaNameChange(e) { this.setState({ megaNameDraft: e.target.value }); }
   onMegaAmountChange(e) { this.setState({ megaAmountDraft: e.target.value }); }
+
+  // Real per-form cost (first-time vs. reduced repeat, from MEGA_EVOLUTION_COSTS)
+  // against the energy actually logged for this species, so the admin panel
+  // can show whether a Mega Evolve is affordable right now instead of just a
+  // bare energy count with no idea what it's for.
+  megaEvolveInfoFor(key) {
+    const m = this.mechanics;
+    if (!m || !m.megaEvolveCostFor) return null;
+    const history = (this.state.megaEvolvedHistory || {})[key] || {};
+    const forms = m.megaEvolveCostFor(key, history);
+    if (!forms) return null;
+    const have = ((this.state.megaEnergyInventory || {})[key] || {}).amount;
+    const haveNum = Number.isFinite(have) ? have : null;
+    return forms.map(f => {
+      const ready = haveNum != null && haveNum >= f.cost;
+      const everDone = !!history[f.form || ''];
+      return {
+        form: f.form,
+        formLabel: f.form ? ('MEGA ' + f.form.toUpperCase()) : 'MEGA',
+        cost: f.cost,
+        costNote: everDone ? 'repeat cost' : 'first-time cost',
+        ready,
+        statusLabel: haveNum == null ? 'NO ENERGY LOGGED' : (ready ? 'READY' : 'NEED ' + (f.cost - haveNum) + ' MORE'),
+        statusColor: haveNum == null ? 'var(--ink-400)' : (ready ? 'var(--grass-700)' : 'var(--type-fighting)'),
+        evolve: ready ? () => this.applyMegaEvolve(key, f.form) : null
+      };
+    });
+  }
+
+  // Confirms a real in-game Mega Evolve: deducts that form's cost from the
+  // species' logged energy and marks the form as having been done at least
+  // once, so the next quote correctly uses the reduced repeat cost instead
+  // of the one-time first cost.
+  applyMegaEvolve(key, form) {
+    const info = this.megaEvolveInfoFor(key);
+    const match = (info || []).find(f => (f.form || '') === (form || ''));
+    if (!match || !match.ready) return;
+    this.haptic('light');
+    const inv = { ...(this.state.megaEnergyInventory || {}) };
+    const cur = inv[key];
+    if (!cur) return;
+    inv[key] = { ...cur, amount: Math.max(0, cur.amount - match.cost) };
+    const history = { ...(this.state.megaEvolvedHistory || {}) };
+    history[key] = { ...(history[key] || {}), [form || '']: true };
+    this.setState({ megaEnergyInventory: inv, megaEvolvedHistory: history }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+  }
 
   addMegaEnergy() {
     const name = (this.state.megaNameDraft || '').trim();
@@ -6210,18 +6332,28 @@ class Component extends DCLogic {
       return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
     const lg = (p, k, f) => (p[k] && p[k][f] != null ? p[k][f] : '');
-    const rows = roster.map((p, i) => [
+    const rows = roster.map((p, i) => {
+      // Candy is species-level (candyInventory), not per-record — video
+      // import (the source for almost this whole roster) never writes
+      // p.candy/p.xlCandy directly, only candyInventory. Reading those raw
+      // fields here exported blank Candy/XL columns for nearly every row
+      // even when the card and Professor panel showed correct counts.
+      // candyStockFor() is the same lookup the card and evolve-readiness
+      // logic already use, so this now matches what's on screen.
+      const candyStock = this.candyStockFor(p);
+      return [
       i + 1, p.name, p.form || '', p.dex, p.gender || '', p.cp, p.hp,
       p.atkIV, p.defIV, p.staIV, p.ivAvg,
       (!Number.isFinite(p.atkIV) ? '' : (p.ivManual ? 'manual' : (p.ivMeasured ? 'appraisal' : 'estimated from CP/HP'))),
       p.lvlMin, p.lvlMax,
       p.quickMove || '', p.chargeMove || '', p.chargeMove2 || '', p.scanDate || '', p.catchDate || '',
       p.weight || '', p.height || '', p.lucky ? 'Y' : '', p.shadowPurified || '0', p.favorite ? 'Y' : '', p.dust,
-      p.candy, p.xlCandy, p.type1 || '', p.type2 || '',
+      candyStock.candy, candyStock.xlCandy, p.type1 || '', p.type2 || '',
       lg(p, 'great', 'rankPct'), lg(p, 'great', 'rankNum'), lg(p, 'great', 'statProd'), lg(p, 'great', 'dustCost'), lg(p, 'great', 'candyCost'), lg(p, 'great', 'evolvesTo'),
       lg(p, 'ultra', 'rankPct'), lg(p, 'ultra', 'rankNum'), lg(p, 'ultra', 'statProd'), lg(p, 'ultra', 'dustCost'), lg(p, 'ultra', 'candyCost'), lg(p, 'ultra', 'evolvesTo'),
       lg(p, 'little', 'rankPct'), lg(p, 'little', 'rankNum'), lg(p, 'little', 'statProd'), lg(p, 'little', 'dustCost'), lg(p, 'little', 'candyCost'), lg(p, 'little', 'evolvesTo')
-    ].map(cell).join(','));
+      ].map(cell).join(',');
+    });
     // BOM so Excel opens UTF-8 names (Farfetch'd, Flabébé) correctly.
     const csv = '\ufeff' + cols.join(',') + '\r\n' + rows.join('\r\n') + '\r\n';
     const filename = 'scout-roster-' + new Date().toISOString().split('T')[0] + '.csv';
@@ -8205,7 +8337,10 @@ class Component extends DCLogic {
           const littlePct = this.littleCupEligible(item) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
           ivPatch = {
             atkIV: item.atkIV, defIV: item.defIV, staIV: item.staIV, ivAvg,
-            ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level } : {}),
+            // A fresh solved level is real evidence from CP/HP — it supersedes
+            // any POWER UP taps logged in-app since the last scan, so the
+            // pending counter clears rather than compounding on top of it.
+            ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level, pendingPowerUps: 0 } : {}),
             ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {}),
             great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: item.name },
             ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: item.name },
@@ -8223,7 +8358,7 @@ class Component extends DCLogic {
         ivPatch = {
           atkIV: null, defIV: null, staIV: null, ivAvg: null,
           ivRange: item._ivRange, ivCandidates: item._solvedCount, ivSolved: false,
-          lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1],
+          lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1], pendingPowerUps: 0,
           great: null, ultra: null, little: null
         };
       }
@@ -8898,6 +9033,60 @@ class Component extends DCLogic {
     const all = { ...(this.state.candyDraft || {}) };
     delete all[key];
     this.setState({ candyInventory: inv, candyDraft: all }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+  }
+
+  // Confirms one or more real Power Ups happened in-game: deducts the given
+  // cost from stardustBalance + the species' candyInventory, and advances
+  // pendingPowerUps by `steps` half-levels so the next quote in powerUpPlan()
+  // prices from the real current level rather than recharging the same
+  // first-step cost on every tap. pendingPowerUps is NOT the same kind of
+  // state as lvlMin/lvlMax — it never overrides a scanned level, only offsets
+  // it, and mergeVideoImport zeroes it the moment fresh CP/HP evidence
+  // arrives, so it can never permanently drift from reality.
+  //
+  // Re-checks affordability itself rather than trusting the caller's
+  // already-rendered button, since state can move between render and tap
+  // (e.g. two open tabs, or a cloud sync landing mid-session).
+  applyPowerUp(p, cost, steps) {
+    if (!cost || !steps) return;
+    const key = this.candyKeyFor(p);
+    const inv = (this.state.candyInventory || {})[key] || {};
+    const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
+    const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
+    const haveXL = Number.isFinite(inv.xlCandy) ? inv.xlCandy : null;
+    if (haveDust != null && cost.dust > haveDust) return;
+    if (haveCandy != null && cost.candy > haveCandy) return;
+    if (haveXL != null && cost.xlCandy > haveXL) return;
+    this.haptic('light');
+
+    const candyInv = { ...(this.state.candyInventory || {}) };
+    const curCandy = candyInv[key] || { name: p.name, candy: 0, xlCandy: null };
+    candyInv[key] = {
+      ...curCandy, name: curCandy.name || p.name,
+      candy: Math.max(0, (Number.isFinite(curCandy.candy) ? curCandy.candy : 0) - cost.candy),
+      xlCandy: curCandy.xlCandy == null ? curCandy.xlCandy : Math.max(0, curCandy.xlCandy - cost.xlCandy)
+    };
+    const nextDust = Number.isFinite(this.state.stardustBalance)
+      ? Math.max(0, this.state.stardustBalance - cost.dust)
+      : this.state.stardustBalance;
+
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    const patch = { ...(overrides[p.idx] || {}) };
+    patch.pendingPowerUps = (Number.isFinite(patch.pendingPowerUps) ? patch.pendingPowerUps
+      : Number.isFinite(p.pendingPowerUps) ? p.pendingPowerUps : 0) + steps;
+    overrides[p.idx] = patch;
+
+    const stateUpdate = { candyInventory: candyInv, stardustBalance: nextDust, ivOverrides: overrides };
+    // Same frozen-snapshot fix saveMovesEdit uses — the open detail sheet
+    // reads state.detailPoke directly, which is captured once on open and
+    // never otherwise refreshed, so the sheet would keep showing the
+    // pre-power-up cost/level until closed and reopened without this.
+    if (this.state.detailPoke && this.state.detailPoke.idx === p.idx) {
+      stateUpdate.detailPoke = { ...this.state.detailPoke, ...patch };
+    }
+    this.setState(stateUpdate, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
   }
@@ -11180,7 +11369,8 @@ class Component extends DCLogic {
         return list.length ? list : null;
       })(),
       megaEnergyEntries: Object.keys(this.state.megaEnergyInventory).length ? Object.keys(this.state.megaEnergyInventory).map(k => ({
-        key: k, name: this.state.megaEnergyInventory[k].name, amount: this.state.megaEnergyInventory[k].amount, remove: () => this.removeMegaEnergy(k)
+        key: k, name: this.state.megaEnergyInventory[k].name, amount: this.state.megaEnergyInventory[k].amount, remove: () => this.removeMegaEnergy(k),
+        evolveForms: this.megaEvolveInfoFor(k)
       })) : null,
       megaNameDraft: this.state.megaNameDraft,
       megaAmountDraft: this.state.megaAmountDraft,
