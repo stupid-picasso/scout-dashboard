@@ -1346,6 +1346,90 @@ const TYPE_CHART = {
 // rather than guessed at (see import_move_data.py) — none exist as of this
 // snapshot; genuinely form-dependent moves (Morpeko's Aura Wheel) are kept
 // as separate per-form entries instead.
+// Real per-species Mega Evolution energy costs, sourced from Niantic's raw
+// GAME_MASTER via scripts/import_mega_data.py (same source/authority tier as
+// AUTHORITATIVE_MOVES below). `first` is the one-time cost to Mega Evolve a
+// species for the first time; `subsequent` is the reduced cost every time
+// after that (species-level, matches how megaEnergyInventory already tracks
+// energy — not per-individual Pokemon). Species with two forms (Charizard,
+// Mewtwo, Raichu) list both MEGA_X and MEGA_Y separately. Primal Reversion
+// (Groudon, Kyogre) is deliberately excluded — it's a different mechanic
+// with its own resource, not Mega Energy, despite a similarly-shaped cost
+// field in the raw data.
+const MEGA_EVOLUTION_COSTS = {
+  "abomasnow": [{ form: "", first: 200, subsequent: 40 }],
+  "absol": [{ form: "", first: 200, subsequent: 40 }],
+  "aerodactyl": [{ form: "", first: 200, subsequent: 40 }],
+  "aggron": [{ form: "", first: 200, subsequent: 40 }],
+  "alakazam": [{ form: "", first: 200, subsequent: 40 }],
+  "altaria": [{ form: "", first: 300, subsequent: 60 }],
+  "ampharos": [{ form: "", first: 200, subsequent: 40 }],
+  "audino": [{ form: "", first: 200, subsequent: 40 }],
+  "banette": [{ form: "", first: 100, subsequent: 20 }],
+  "beedrill": [{ form: "", first: 100, subsequent: 20 }],
+  "blastoise": [{ form: "", first: 200, subsequent: 40 }],
+  "blaziken": [{ form: "", first: 200, subsequent: 40 }],
+  "camerupt": [{ form: "", first: 200, subsequent: 40 }],
+  "charizard": [{ form: "x", first: 200, subsequent: 40 }, { form: "y", first: 200, subsequent: 40 }],
+  "chesnaught": [{ form: "", first: 300, subsequent: 60 }],
+  "delphox": [{ form: "", first: 300, subsequent: 60 }],
+  "diancie": [{ form: "", first: 300, subsequent: 60 }],
+  "dragonite": [{ form: "", first: 300, subsequent: 60 }],
+  "falinks": [{ form: "", first: 300, subsequent: 60 }],
+  "gallade": [{ form: "", first: 200, subsequent: 40 }],
+  "garchomp": [{ form: "", first: 300, subsequent: 60 }],
+  "gardevoir": [{ form: "", first: 200, subsequent: 40 }],
+  "gengar": [{ form: "", first: 200, subsequent: 40 }],
+  "glalie": [{ form: "", first: 200, subsequent: 40 }],
+  "greninja": [{ form: "", first: 300, subsequent: 60 }],
+  "gyarados": [{ form: "", first: 300, subsequent: 60 }],
+  "heracross": [{ form: "", first: 200, subsequent: 40 }],
+  "houndoom": [{ form: "", first: 100, subsequent: 20 }],
+  "kangaskhan": [{ form: "", first: 200, subsequent: 40 }],
+  "latias": [{ form: "", first: 300, subsequent: 60 }],
+  "latios": [{ form: "", first: 300, subsequent: 60 }],
+  "lopunny": [{ form: "", first: 200, subsequent: 40 }],
+  "lucario": [{ form: "", first: 200, subsequent: 40 }],
+  "malamar": [{ form: "", first: 300, subsequent: 60 }],
+  "manectric": [{ form: "", first: 100, subsequent: 20 }],
+  "mawile": [{ form: "", first: 200, subsequent: 40 }],
+  "medicham": [{ form: "", first: 100, subsequent: 20 }],
+  "metagross": [{ form: "", first: 300, subsequent: 60 }],
+  "mewtwo": [{ form: "x", first: 7500, subsequent: 150 }, { form: "y", first: 7500, subsequent: 150 }],
+  "pidgeot": [{ form: "", first: 100, subsequent: 20 }],
+  "pinsir": [{ form: "", first: 200, subsequent: 40 }],
+  "raichu": [{ form: "x", first: 300, subsequent: 60 }, { form: "y", first: 300, subsequent: 60 }],
+  "rayquaza": [{ form: "", first: 400, subsequent: 80 }],
+  "sableye": [{ form: "", first: 100, subsequent: 20 }],
+  "salamence": [{ form: "", first: 300, subsequent: 60 }],
+  "sceptile": [{ form: "", first: 200, subsequent: 40 }],
+  "scizor": [{ form: "", first: 200, subsequent: 40 }],
+  "sharpedo": [{ form: "", first: 200, subsequent: 40 }],
+  "skarmory": [{ form: "", first: 300, subsequent: 60 }],
+  "slowbro": [{ form: "", first: 100, subsequent: 20 }],
+  "starmie": [{ form: "", first: 300, subsequent: 60 }],
+  "steelix": [{ form: "", first: 200, subsequent: 40 }],
+  "swampert": [{ form: "", first: 200, subsequent: 40 }],
+  "tyranitar": [{ form: "", first: 300, subsequent: 60 }],
+  "venusaur": [{ form: "", first: 200, subsequent: 40 }],
+  "victreebel": [{ form: "", first: 300, subsequent: 60 }],
+};
+
+// Cost table lookup — one entry per form (plain species, or MEGA_X/MEGA_Y for
+// the handful of dual-form species). `everMegaEvolved` should come from the
+// caller's own tracked state (this file has no notion of history), and picks
+// first-time vs. the reduced subsequent cost per form.
+function megaEvolveCostFor(name, everMegaEvolved) {
+  const forms = MEGA_EVOLUTION_COSTS[String(name || '').toLowerCase()];
+  if (!forms) return null;
+  return forms.map(f => ({
+    form: f.form || null,
+    cost: everMegaEvolved && everMegaEvolved[f.form || ''] ? f.subsequent : f.first,
+    first: f.first,
+    subsequent: f.subsequent
+  }));
+}
+
 const AUTHORITATIVE_MOVES = {
   "acid": { type: "Poison", power: 11, energy: 10, durationMs: 1000, kind: "fast" },
   "acid spray": { type: "Poison", power: 20, energy: 50, durationMs: 3000, kind: "charged" },
@@ -1716,6 +1800,7 @@ function cycleDps(base, ivs, level, fastMove, chargedMove, opts) {
 if (typeof window !== 'undefined') {
   window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
+    MEGA_EVOLUTION_COSTS, megaEvolveCostFor,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, AUTHORITATIVE_MOVES };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }
