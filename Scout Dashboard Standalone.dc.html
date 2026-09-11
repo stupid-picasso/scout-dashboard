@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.71</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.73</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2973,6 +2973,37 @@
       <sc-if value="{{ tmUseNoResults }}" hint-placeholder-val="{{ false }}">
         <div style="font:12px var(--font-body);color:var(--ink-400)">No roster match for "{{ tmUseSearch }}".</div>
       </sc-if>
+
+      <div style="border-top:1px solid var(--surface-muted);margin-top:16px;padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font:10.5px var(--font-display);color:var(--ink-300)">AI RECOMMENDED PICKS</div>
+          <div onClick="{{ getTmAiRecommendations }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 10px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
+        </div>
+        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Picked from your Lucky/Shadow/Favorite and well-ranked Pokemon using real moves and ranks from your roster. The suggested move itself is the AI's general Pokemon GO knowledge, not verified against this app's own data \u2014 double check it before committing an Elite TM.</div>
+        <sc-if value="{{ tmAiError }}" hint-placeholder-val="{{ false }}">
+          <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ tmAiError }}</div>
+        </sc-if>
+        <sc-if value="{{ tmAiRecommendations }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ tmAiRecommendations }}" as="rec" hint-placeholder-count="0">
+              <div style="background:var(--surface-page);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font:700 12px var(--font-display);color:var(--ink-900)">{{ rec.name }}</span>
+                  <span style="font:10px var(--font-display);color:var(--grass-700);letter-spacing:.03em">{{ rec.tmLabel }}</span>
+                </div>
+                <div style="font:11px var(--font-body);color:var(--ink-500)">{{ rec.why }}</div>
+                <sc-if value="{{ rec.suggestedMove }}" hint-placeholder-val="{{ false }}">
+                  <div style="font:11px var(--font-display);color:var(--ink-400)">Suggested: {{ rec.suggestedMove }}</div>
+                </sc-if>
+                <div onClick="{{ rec.use }}" class="om-press" style="cursor:pointer;align-self:flex-start;margin-top:4px;padding:5px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">USE THIS TM</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ !tmAiHasCandidates }}" hint-placeholder-val="{{ true }}">
+          <div style="font:11.5px var(--font-body);color:var(--ink-400)">No Lucky/Shadow/Favorite or well-ranked Pokemon found to recommend from yet.</div>
+        </sc-if>
+      </div>
     </div>
     <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-card);padding:20px">
       <div style="font:800 13px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:4px">DOMINATED DUPLICATES &middot; {{ dominatedCount }}</div>
@@ -3278,6 +3309,9 @@ class Component extends DCLogic {
     fileFallbackCopied: false,
     evoTable: {},
     candyAiDecisions: {},
+    tmAiRecommendations: [],
+    tmAiBusy: false,
+    tmAiError: '',
     candyAiBusy: false,
     candyAiNotes: [],
     evoFetchBusy: false,
@@ -9688,6 +9722,87 @@ class Component extends DCLogic {
       + ':' + Math.round(c.puRow.score || 0)).sort().join('|');
   }
 
+  // Builds a stable fingerprint of the current candidate pool so a fresh
+  // request only fires when what's actually worth recommending has changed
+  // (roster edits, moves changed, TM counts moved) \u2014 not on every render.
+  tmAiSignature(candidates) {
+    return candidates.map(p => p.idx + ':' + (p.quickMove || '') + ':' + (p.chargeMove || '') + ':' + (p.chargeMove2 || '') + ':' + Math.round(this.bestRank(p))).sort().join('|');
+  }
+
+  // Pre-filters to Pokemon actually worth spending a TM's worth of attention
+  // on \u2014 lucky/shadow/favorited, or ranked well in some league \u2014 using this
+  // app's OWN real data (bestRank, moveDamageLine), not AI guesswork. Keeps
+  // the prompt small and relevant instead of dumping the whole roster on the
+  // model, and means the AI is only ever asked to prioritize AMONG real
+  // signal, not invent which Pokemon matter in the first place.
+  tmAiCandidates() {
+    const roster = this.effectiveRosterForMatch();
+    return roster
+      .filter(p => p.lucky || this.isShadow(p) || p.favorite || this.bestRank(p) >= 80)
+      .sort((a, b) => this.bestRank(b) - this.bestRank(a))
+      .slice(0, 30);
+  }
+
+  ensureTmAiRecommendations() {
+    const candidates = this.tmAiCandidates();
+    if (!candidates.length || this.state.tmAiBusy) return;
+    const sig = this.tmAiSignature(candidates);
+    if (this._tmAiSig === sig) return;
+    this._tmAiSig = sig;
+    this.requestTmAiRecommendations(candidates);
+  }
+
+  async requestTmAiRecommendations(candidates) {
+    this.setState({ tmAiBusy: true, tmAiError: '' });
+    try {
+      const res = this.state.resources || {};
+      const lines = candidates.map(p => {
+        const rank = this.bestRank(p);
+        const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
+        const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
+        const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null].filter(Boolean).join(', ') || 'none';
+        return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + '): current fast move ' + fast + ', current charge move(s) ' + charge
+          + '. Best league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked') + '. Flags: ' + flags + '.';
+      }).join('\n');
+      const inv = 'TMs on hand: Fast TM ' + (res.fastTM ?? 0) + ', Charged TM ' + (res.chargedTM ?? 0)
+        + ', Elite Fast TM ' + (res.eliteFastTM ?? 0) + ', Elite Charged TM ' + (res.eliteChargedTM ?? 0) + '.';
+      const prompt = 'You are helping a Pokemon GO player decide which of their strongest/most-invested Pokemon below would most benefit '
+        + 'from a moveset change using a TM. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s possible pool (no choice), '
+        + 'so only recommend a regular TM when you are confident most of the realistic alternatives would be an improvement. An Elite Fast/Charged TM '
+        + 'lets the player choose the exact move, so recommend Elite specifically when only ONE particular move (e.g. a Community Day exclusive or a '
+        + 'clearly-superior specific move) is the real goal. Only recommend a TM type the player actually has at least 1 of.\n\n'
+        + inv + '\n\nRoster:\n' + lines
+        + '\n\nRespond with ONLY a JSON array, at most 8 items, ranked by impact first, no prose: '
+        + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence"}]';
+      const out = await this.completeWithRetry({ messages: [{ role: 'user', content: prompt }], max_tokens: 1024 });
+      const text = typeof out === 'string' ? out : (out && out.content) || '';
+      const match = String(text).match(/\[[\s\S]*\]/);
+      const arr = match ? JSON.parse(match[0]) : [];
+      const res2 = this.state.resources || {};
+      const recs = [];
+      arr.forEach(item => {
+        const tmType = ['fastTM', 'chargedTM', 'eliteFastTM', 'eliteChargedTM'].indexOf(item.tmType) >= 0 ? item.tmType : null;
+        if (!tmType) return;
+        // Trust but verify: if the AI recommended a TM type the player is
+        // actually out of (stale count, or it just got the inventory line
+        // wrong), drop it rather than showing a dead-end recommendation.
+        if (!(Number.isFinite(res2[tmType]) && res2[tmType] > 0)) return;
+        const p = candidates.find(c => String(c.name || '').toLowerCase() === String(item.species || '').toLowerCase());
+        if (!p) return;
+        recs.push({
+          idx: p.idx, name: p.name, tmType, tmLabel: { fastTM: 'FAST TM', chargedTM: 'CHARGED TM', eliteFastTM: 'ELITE FAST TM', eliteChargedTM: 'ELITE CHARGED TM' }[tmType],
+          suggestedMove: item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null,
+          why: item.why || '',
+          use: () => this.useTM(p, tmType)
+        });
+      });
+      this.setState({ tmAiRecommendations: recs, tmAiBusy: false });
+    } catch (e) {
+      this.setState({ tmAiBusy: false, tmAiError: (e && e.message) || 'Could not get recommendations.' });
+    }
+  }
+
+
   ensureCandyAiDecisions(contested) {
     if (!contested.length) return;
     const sig = this.candyContestSignature(contested);
@@ -11429,6 +11544,12 @@ class Component extends DCLogic {
         if (!q) return false;
         return !this.effectiveRosterForMatch().some(p => String(p.name || '').toLowerCase().indexOf(q.toLowerCase()) >= 0);
       })(),
+      tmAiBusy: this.state.tmAiBusy,
+      tmAiButtonLabel: this.state.tmAiBusy ? 'THINKING\u2026' : 'GET RECOMMENDATIONS',
+      tmAiError: this.state.tmAiError || '',
+      tmAiHasCandidates: this.tmAiCandidates().length > 0,
+      tmAiRecommendations: (this.state.tmAiRecommendations || []).length ? this.state.tmAiRecommendations : null,
+      getTmAiRecommendations: () => this.ensureTmAiRecommendations(),
       rosterFilterChips: [
         { key: 'all', label: 'ALL' },
         { key: 'measured', label: 'MEASURED \u2713' },
