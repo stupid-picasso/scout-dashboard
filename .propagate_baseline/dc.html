@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.69</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.71</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1900,6 +1900,53 @@
 
   <sc-if value="{{ isRecommend }}" hint-placeholder-val="{{ false }}">
   <div style="display:flex;flex-direction:column;gap:20px;animation:fadeSlideIn .35s ease">
+    <div style="background:var(--surface-card);border-radius:var(--r-card);padding:20px">
+      <div style="font:800 13px var(--font-display);color:var(--ink-900);letter-spacing:.05em;margin-bottom:4px">USE A TM</div>
+      <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px;max-width:80ch;text-wrap:pretty">Search a Pokemon, then tap the TM you used on it in-game. Opens its move picker to log what it learned, and deducts 1 from your TM count on save. Greyed-out buttons mean you're logged as having none of that TM.</div>
+      <input type="text" value="{{ tmUseSearch }}" onChange="{{ onTmUseSearchChange }}" placeholder="Search your roster by name&hellip;" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:9px 11px;border-radius:8px;font:13px var(--font-display);margin-bottom:12px" />
+      <sc-if value="{{ tmUseResults }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ tmUseResults }}" as="r" hint-placeholder-count="0">
+            <div style="background:var(--surface-page);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font:700 12.5px var(--font-display);color:var(--ink-900)">{{ r.name }}</span>
+                <span style="font:11px var(--font-display);color:var(--ink-400)">{{ r.cp }} CP</span>
+              </div>
+              <div style="font:11px var(--font-body);color:var(--ink-400)">Fast: {{ r.quickMoveLabel }} &middot; Charged: {{ r.chargeMoveLabel }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">
+                <sc-if value="{{ r.fastTmReady }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ r.useFastTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">FAST TM</div>
+                </sc-if>
+                <sc-if value="{{ !r.fastTmReady }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">FAST TM</div>
+                </sc-if>
+                <sc-if value="{{ r.chargedTmReady }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ r.useChargedTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">CHARGED TM</div>
+                </sc-if>
+                <sc-if value="{{ !r.chargedTmReady }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">CHARGED TM</div>
+                </sc-if>
+                <sc-if value="{{ r.eliteFastTmReady }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ r.useEliteFastTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">ELITE FAST TM</div>
+                </sc-if>
+                <sc-if value="{{ !r.eliteFastTmReady }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">ELITE FAST TM</div>
+                </sc-if>
+                <sc-if value="{{ r.eliteChargedTmReady }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ r.useEliteChargedTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">ELITE CHARGED TM</div>
+                </sc-if>
+                <sc-if value="{{ !r.eliteChargedTmReady }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">ELITE CHARGED TM</div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ tmUseNoResults }}" hint-placeholder-val="{{ false }}">
+        <div style="font:12px var(--font-body);color:var(--ink-400)">No roster match for "{{ tmUseSearch }}".</div>
+      </sc-if>
+    </div>
     <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-card);padding:20px">
       <div style="font:800 13px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:4px">DOMINATED DUPLICATES &middot; {{ dominatedCount }}</div>
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px;max-width:80ch;text-wrap:pretty">Same species and form, every IV equal or lower, no higher level, and none of them Lucky, Shadow or favorited. Each one loses to another Pokemon you already own on every axis at once, so there is nothing to weigh up.</div>
@@ -2313,6 +2360,7 @@ class Component extends DCLogic {
     candyDraft: {},
     moveDraft: {},
     movePicker: null,
+    pendingTmUse: null,
     movePickerFilter: '',
     evoFlashName: '',
     evoFlashStats: '',
@@ -7843,11 +7891,34 @@ class Component extends DCLogic {
     overrides[p.idx] = patch;
     const allDraft = { ...(this.state.moveDraft || {}) };
     delete allDraft[p.idx];
+
+    // If this session was opened via USE A TM (RECS tab) and the matching
+    // kind of move actually changed — fast for Fast/Elite Fast TM, charged
+    // for Charged/Elite Charged TM — deduct 1 of that TM type. A pending tag
+    // for a different Pokemon, or one where that kind of field was never
+    // touched, deducts nothing: the person opened the picker and then just
+    // edited something else, or closed without picking anything.
+    let resourcesPatch = null;
+    const pending = this.state.pendingTmUse;
+    if (pending && pending.pokeIdx === p.idx) {
+      const isFastTm = pending.tmType === 'fastTM' || pending.tmType === 'eliteFastTM';
+      const relevantChanged = isFastTm
+        ? draft.quickMove !== undefined
+        : (draft.chargeMove !== undefined || draft.chargeMove2 !== undefined);
+      if (relevantChanged) {
+        const haveNow = (this.state.resources || {})[pending.tmType];
+        if (Number.isFinite(haveNow) && haveNow > 0) {
+          resourcesPatch = { ...(this.state.resources || {}), [pending.tmType]: haveNow - 1 };
+        }
+      }
+    }
+
     // state.detailPoke is a frozen snapshot from when the sheet opened, never
     // otherwise refreshed on save \u2014 merge the saved fields into it directly
     // so nothing else displayed in the open sheet can show a stale value the
     // same way the move pickers just did.
-    const stateUpdate = { ivOverrides: overrides, moveDraft: allDraft };
+    const stateUpdate = { ivOverrides: overrides, moveDraft: allDraft, pendingTmUse: null };
+    if (resourcesPatch) stateUpdate.resources = resourcesPatch;
     if (this.state.detailPoke && this.state.detailPoke.idx === p.idx) {
       stateUpdate.detailPoke = { ...this.state.detailPoke, ...patch };
     }
@@ -9147,10 +9218,23 @@ class Component extends DCLogic {
   }
 
   openDetail(p) { this.haptic('light'); this.setState({ detailPoke: p }); }
+
+  // Entry point from the RECS tab's "USE A TM" section. Opens the Pokemon's
+  // detail sheet (same overlay as tapping it from Roster) and tags the
+  // session with which TM type is paying, so saveMovesEdit knows to deduct
+  // it once an actual matching-kind move change is confirmed. Deliberately
+  // reuses the sheet's existing move-picker/SAVE MOVES flow rather than a
+  // second parallel UI for the same underlying edit.
+  useTM(p, tmType) {
+    const have = (this.state.resources || {})[tmType];
+    if (!Number.isFinite(have) || have <= 0) return;
+    this.haptic('light');
+    this.setState({ detailPoke: p, pendingTmUse: { pokeIdx: p.idx, tmType } });
+  }
   // Clears the move-edit draft/picker too \u2014 an abandoned, never-saved pick
   // must not linger and look "selected" the next time this Pokemon's sheet
   // opens. Drafts are meant to be immediate save-or-discard, not a cache.
-  closeDetail() { this.setState({ detailPoke: null, moveDraft: {}, movePicker: null, movePickerFilter: '' }); }
+  closeDetail() { this.setState({ detailPoke: null, moveDraft: {}, movePicker: null, movePickerFilter: '', pendingTmUse: null }); }
 
   topForLeague(key) {
     const pool = this.state.roster.filter(p => p[key] && Number.isFinite(p[key].rankPct));
@@ -10130,11 +10214,11 @@ class Component extends DCLogic {
       { key: 'today', label: 'TODAY', navLabel: 'TODAY', icon: '\u2739' },
       { key: 'home', label: 'HOME', navLabel: 'HOME', icon: '\u25c8' },
       { key: 'roster', label: 'ROSTER', navLabel: 'ROSTER', icon: '\u25a4' },
-      { key: 'pvp', label: 'PVP RANKINGS', navLabel: 'PVP', icon: '\u2694' },
-      { key: 'attackers', label: 'ATTACKERS', navLabel: 'ATTACK', icon: '\u25b2' },
-      { key: 'raid', label: 'RAID COUNTERS', navLabel: 'RAID', icon: '\u2726' },
       { key: 'recommend', label: 'RECOMMENDATIONS', navLabel: 'RECS', icon: '\u2605' },
       { key: 'intel', label: 'COLLECTION INTEL', navLabel: 'INTEL', icon: '\u25cf' },
+      { key: 'raid', label: 'RAID COUNTERS', navLabel: 'RAID', icon: '\u2726' },
+      { key: 'pvp', label: 'PVP RANKINGS', navLabel: 'PVP', icon: '\u2694' },
+      { key: 'attackers', label: 'ATTACKERS', navLabel: 'ATTACK', icon: '\u25b2' },
       { key: 'progress', label: 'PROGRESS LOG', navLabel: 'LOG', icon: '\u2261' }
     ];
     const tabList = tabDefs.map(t => ({
@@ -10236,6 +10320,35 @@ class Component extends DCLogic {
       })(),
       dominatedList: dominatedList.length ? dominatedList : null,
       dominatedCount: dominatedRaw.length,
+      tmUseSearch: this.state.tmUseSearch || '',
+      onTmUseSearchChange: (e) => this.setState({ tmUseSearch: e.target.value }),
+      tmUseResults: (() => {
+        const q = (this.state.tmUseSearch || '').trim().toLowerCase();
+        if (!q) return null;
+        const res = this.state.resources || {};
+        const ready = k => Number.isFinite(res[k]) && res[k] > 0;
+        return this.effectiveRosterForMatch()
+          .filter(p => String(p.name || '').toLowerCase().indexOf(q) >= 0)
+          .slice(0, 8)
+          .map(p => ({
+            idx: p.idx, name: p.name, cp: p.cp,
+            quickMoveLabel: p.quickMove ? this.formatMoveName(p.quickMove) : 'not set',
+            chargeMoveLabel: [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set',
+            fastTmReady: ready('fastTM'),
+            chargedTmReady: ready('chargedTM'),
+            eliteFastTmReady: ready('eliteFastTM'),
+            eliteChargedTmReady: ready('eliteChargedTM'),
+            useFastTm: () => this.useTM(p, 'fastTM'),
+            useChargedTm: () => this.useTM(p, 'chargedTM'),
+            useEliteFastTm: () => this.useTM(p, 'eliteFastTM'),
+            useEliteChargedTm: () => this.useTM(p, 'eliteChargedTM')
+          })) || null;
+      })(),
+      tmUseNoResults: (() => {
+        const q = (this.state.tmUseSearch || '').trim();
+        if (!q) return false;
+        return !this.effectiveRosterForMatch().some(p => String(p.name || '').toLowerCase().indexOf(q.toLowerCase()) >= 0);
+      })(),
       rosterFilterChips: [
         { key: 'all', label: 'ALL' },
         { key: 'measured', label: 'MEASURED \u2713' },
