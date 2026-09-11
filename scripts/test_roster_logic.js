@@ -178,6 +178,122 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// evoRecordFor() — real GAME_MASTER data (via mechanics.js) must take
+// precedence over the AI-guessed evoTable for any species it covers, and
+// fall back to evoTable only when the real table has nothing for that name.
+// This is the precedence rule the whole evoTable-replacement effort depends
+// on; getting it backwards would silently keep every species on AI-guessed
+// data even after real data was added.
+// ---------------------------------------------------------------------------
+(function testEvoRecordForPrefersRealDataOverAiTable() {
+  const evoRecordBody = extractMethodBody(SRC, 'evoRecordFor(p) {');
+  const ctx = {
+    mechanics: {
+      evolutionInfoFor: (name) => (name === 'onix'
+        ? { to: 'Steelix', candy: 50, itemKey: 'metalCoat', itemLabel: 'Metal Coat' }
+        : null)
+    },
+    // Deliberately WRONG AI-guessed data for onix, to prove real data wins
+    // rather than being silently shadowed by whatever evoTable already has.
+    state: { evoTable: { onix: { to: 'Wrong Guess', candy: 999, item: null } } }
+  };
+  ctx.evoRecordFor = new Function('p', evoRecordBody).bind(ctx);
+
+  const real = ctx.evoRecordFor({ name: 'Onix' });
+  check('real GAME_MASTER data wins over evoTable for a covered species', real, { to: 'Steelix', candy: 50, item: 'Metal Coat', itemKey: 'metalCoat' });
+
+  const fallback = ctx.evoRecordFor({ name: 'SomeUnreleasedMon' });
+  check('falls back to evoTable when real data has nothing for this species', fallback, null);
+
+  ctx.state.evoTable.somenewmon = { to: 'GuessedEvo', candy: 25, item: null };
+  const fallback2 = ctx.evoRecordFor({ name: 'SomeNewMon' });
+  check('evoTable fallback is actually used (not just returning null) when real data is silent',
+    fallback2, { to: 'GuessedEvo', candy: 25, item: null, itemKey: null });
+})();
+
+// ---------------------------------------------------------------------------
+// evoInfoFor() — item-gated evolutions must not read READY off candy alone.
+// Before this session, an evolution needing Metal Coat would show "READY TO
+// EVOLVE" the moment candy was funded, with the item requirement rendered as
+// inert text nobody's readiness depended on. These tests build the exact
+// shape that bug needs (candy funded, item NOT on hand) and assert `ready`
+// is false, not true — a regression here would silently reintroduce exactly
+// that bug.
+// ---------------------------------------------------------------------------
+(function testEvoInfoForGatesOnItemNotJustCandy() {
+  const evoInfoBody = extractMethodBody(SRC, 'evoInfoFor(p) {');
+  function makeCtx(evolutionItems, candyOnHand) {
+    const ctx = {
+      mechanics: {
+        evolutionInfoFor: () => ({ to: 'Steelix', candy: 50, itemKey: 'metalCoat', itemLabel: 'Metal Coat' })
+      },
+      state: { evoTable: {}, evolutionItems },
+      candyStockFor: () => ({ candy: candyOnHand, xlCandy: null })
+    };
+    ctx.evoRecordFor = function(p) {
+      const real = this.mechanics.evolutionInfoFor();
+      return { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey };
+    };
+    ctx.evoInfoFor = new Function('p', evoInfoBody).bind(ctx);
+    return ctx;
+  }
+
+  const p = { name: 'Onix' };
+
+  const fundedNoItem = makeCtx({ metalCoat: 0 }, 50).evoInfoFor(p);
+  check('candy funded but item count is 0 -> ready is false, not true', fundedNoItem.ready, false);
+  check('itemReady is false when on-hand count is 0', fundedNoItem.itemReady, false);
+
+  const fundedWithItem = makeCtx({ metalCoat: 1 }, 50).evoInfoFor(p);
+  check('candy funded and item on hand -> ready is true', fundedWithItem.ready, true);
+
+  const itemReadyNoCandy = makeCtx({ metalCoat: 1 }, 0).evoInfoFor(p);
+  check('item on hand but candy short -> ready is still false (candy blocks independently)', itemReadyNoCandy.ready, false);
+
+  const itemCountUnlogged = makeCtx({}, 50).evoInfoFor(p);
+  check('candy funded but item count was never logged -> ready is unknown (null), not true',
+    itemCountUnlogged.ready, null);
+  check('an unlogged item count must not be silently treated as zero-on-hand',
+    itemCountUnlogged.itemReady, null);
+})();
+
+// ---------------------------------------------------------------------------
+// megaEvolveInfoFor() — must charge the first-time cost before a species has
+// ever been Mega Evolved, and the (lower) repeat cost after. Getting this
+// backwards either overcharges every trainer's first Mega Evolve or
+// undercharges every repeat — either way silently wrong energy math.
+// ---------------------------------------------------------------------------
+(function testMegaEvolveInfoForFirstVsRepeatCost() {
+  const megaInfoBody = extractMethodBody(SRC, 'megaEvolveInfoFor(key) {');
+  function makeCtx(history, energyOnHand) {
+    const ctx = {
+      mechanics: {
+        megaEvolveCostFor: (key, hist) => ([{
+          form: null, cost: (hist && hist['']) ? 40 : 200, first: 200, subsequent: 40
+        }])
+      },
+      state: {
+        megaEvolvedHistory: history,
+        megaEnergyInventory: { charizard: { name: 'Charizard', amount: energyOnHand } }
+      }
+    };
+    ctx.megaEvolveInfoFor = new Function('key', megaInfoBody).bind(ctx);
+    return ctx;
+  }
+
+  const beforeFirstEvolve = makeCtx({}, 200).megaEvolveInfoFor('charizard');
+  check('first-ever Mega Evolve is priced at the full first-time cost', beforeFirstEvolve[0].cost, 200);
+  check('200 energy exactly covers the first-time cost -> ready', beforeFirstEvolve[0].ready, true);
+
+  const afterFirstEvolve = makeCtx({ charizard: { '': true } }, 40).megaEvolveInfoFor('charizard');
+  check('after one Mega Evolve, repeat cost applies instead of first-time cost', afterFirstEvolve[0].cost, 40);
+  check('40 energy exactly covers the repeat cost -> ready', afterFirstEvolve[0].ready, true);
+
+  const notEnoughForRepeat = makeCtx({ charizard: { '': true } }, 39).megaEvolveInfoFor('charizard');
+  check('one energy short of the repeat cost -> not ready', notEnoughForRepeat[0].ready, false);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

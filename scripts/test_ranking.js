@@ -282,6 +282,60 @@ const MEWTWO = m.BASE_STATS[150];    // master-league-relevant
 })();
 
 // ---------------------------------------------------------------------------
+// 8. megaEvolveCostFor — must charge the first-time cost before a species'
+//    Mega has ever been evolved, and the reduced repeat cost after. This is
+//    the actual decision logic (not the dc.html display wrapper around it),
+//    so this is the real regression guard for that first-vs-repeat pricing.
+// ---------------------------------------------------------------------------
+(function testMegaEvolveCostForFirstVsRepeat() {
+  const neverEvolved = m.megaEvolveCostFor('charizard', {});
+  checkExact('Charizard Mega X, never evolved before, prices at first-time cost',
+    neverEvolved.find(f => f.form === 'x').cost, 200);
+
+  const evolvedOnceX = m.megaEvolveCostFor('charizard', { x: true });
+  checkExact('Charizard Mega X, evolved once before, prices at the reduced repeat cost',
+    evolvedOnceX.find(f => f.form === 'x').cost, 40);
+
+  // The two forms track history independently — evolving Mega X should not
+  // discount Mega Y, since they're tracked as separate forms in the data and
+  // a trainer could easily have only ever done one of the two.
+  checkExact('Mega Y is unaffected by Mega X\'s history and still prices at first-time cost',
+    evolvedOnceX.find(f => f.form === 'y').cost, 200);
+
+  checkExact('an unknown species returns null rather than a guessed cost',
+    m.megaEvolveCostFor('not-a-real-pokemon', {}), null);
+})();
+
+// ---------------------------------------------------------------------------
+// 9. evolutionInfoFor — spot-check real per-species evolution data pulled
+//    from GAME_MASTER, including that an item-gated evolution actually
+//    carries its item, and that a species with no further evolution (or an
+//    unknown name) returns null rather than a guessed answer.
+// ---------------------------------------------------------------------------
+(function testEvolutionInfoFor() {
+  const onix = m.evolutionInfoFor('onix');
+  checkExact('Onix evolves into Steelix', onix && onix.to, 'Steelix');
+  checkExact('Onix -> Steelix costs 50 candy', onix && onix.candy, 50);
+  checkExact('Onix -> Steelix requires Metal Coat', onix && onix.itemKey, 'metalCoat');
+
+  const charmander = m.evolutionInfoFor('charmander');
+  checkExact('Charmander evolves into Charmeleon with no item required', charmander && charmander.to, 'Charmeleon');
+  checkExact('a non-item evolution has a null itemKey, not an empty string', charmander && charmander.itemKey, null);
+
+  checkExact('a species with no further evolution is not in the real table', m.evolutionInfoFor('charizard'), null);
+  checkExact('an unrecognized name returns null rather than guessing', m.evolutionInfoFor('not-a-real-pokemon'), null);
+
+  // The one deliberate branch-selection override this table makes: Poliwhirl
+  // and Slowpoke each have two real branches, and the item-gated one was
+  // chosen over plain array order specifically so this table stays useful
+  // for the exact case (item readiness) it exists to answer.
+  const poliwhirl = m.evolutionInfoFor('poliwhirl');
+  checkExact('Poliwhirl\'s branch was deliberately chosen as the item-gated one (Politoed), not Poliwrath',
+    poliwhirl && poliwhirl.to, 'Politoed');
+  checkExact('Poliwhirl -> Politoed requires King\'s Rock', poliwhirl && poliwhirl.itemKey, 'kingsRock');
+})();
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
