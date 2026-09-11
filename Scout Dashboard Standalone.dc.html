@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.66</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.69</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2053,10 +2053,30 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">
         <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">RARE CANDY</div><input type="text" value="{{ resourcesDraft.rareCandy }}" onChange="{{ onResourceRareCandy }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
         <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">RARE CANDY XL</div><input type="text" value="{{ resourcesDraft.rareCandyXL }}" onChange="{{ onResourceRareCandyXL }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">FAST TM</div><input type="text" value="{{ resourcesDraft.fastTM }}" onChange="{{ onResourceFastTM }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">CHARGED TM</div><input type="text" value="{{ resourcesDraft.chargedTM }}" onChange="{{ onResourceChargedTM }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
         <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE FAST TM</div><input type="text" value="{{ resourcesDraft.eliteFastTM }}" onChange="{{ onResourceEliteFast }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
         <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE CHARGED TM</div><input type="text" value="{{ resourcesDraft.eliteChargedTM }}" onChange="{{ onResourceEliteCharged }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
       </div>
       <div onClick="{{ saveResources }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE RESOURCES</div>
+
+      <div style="border-top:1px solid var(--surface-muted);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+        <div style="font:10.5px var(--font-display);color:var(--ink-300)">EVOLUTION ITEMS</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SUN STONE</div><input type="text" value="{{ evolutionItemsDraft.sunStone }}" onChange="{{ onEvoItemSunStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">KING'S ROCK</div><input type="text" value="{{ evolutionItemsDraft.kingsRock }}" onChange="{{ onEvoItemKingsRock }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">METAL COAT</div><input type="text" value="{{ evolutionItemsDraft.metalCoat }}" onChange="{{ onEvoItemMetalCoat }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">DRAGON SCALE</div><input type="text" value="{{ evolutionItemsDraft.dragonScale }}" onChange="{{ onEvoItemDragonScale }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">UPGRADE</div><input type="text" value="{{ evolutionItemsDraft.upgrade }}" onChange="{{ onEvoItemUpgrade }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SINNOH STONE</div><input type="text" value="{{ evolutionItemsDraft.sinnohStone }}" onChange="{{ onEvoItemSinnohStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">UNOVA STONE</div><input type="text" value="{{ evolutionItemsDraft.unovaStone }}" onChange="{{ onEvoItemUnovaStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">GIMMIGHOUL COINS</div><input type="text" value="{{ evolutionItemsDraft.gimmighoulCoins }}" onChange="{{ onEvoItemGimmighoulCoins }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SWEET APPLE</div><input type="text" value="{{ evolutionItemsDraft.sweetApple }}" onChange="{{ onEvoItemSweetApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">TART APPLE</div><input type="text" value="{{ evolutionItemsDraft.tartApple }}" onChange="{{ onEvoItemTartApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SYRUPY APPLE</div><input type="text" value="{{ evolutionItemsDraft.syrupyApple }}" onChange="{{ onEvoItemSyrupyApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        </div>
+        <div onClick="{{ saveEvolutionItems }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE EVOLUTION ITEMS</div>
+      </div>
 
       <div style="border-top:1px solid var(--surface-muted);padding-top:12px;display:flex;flex-direction:column;gap:8px">
         <div style="font:10.5px var(--font-display);color:var(--ink-300)">MEGA ENERGY (per species)</div>
@@ -3276,8 +3296,10 @@ class Component extends DCLogic {
     lastAnswer: '',
     videoImport: null,
     importScreenMode: 'detail',
-    resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
-    resourcesDraft: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+    resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
+    resourcesDraft: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
+    evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null },
+    evolutionItemsDraft: {},
     bagCapacity: null,
     bagCapacityDraft: null,
     closestMissRevealed: false,
@@ -3453,7 +3475,7 @@ class Component extends DCLogic {
   }
 
   SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
+    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
       'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'githubToken'];
   }
@@ -3579,12 +3601,12 @@ class Component extends DCLogic {
       roster: [], ivOverrides: {}, addedPokemon: [], candyInventory: {}, typeTable: {},
       stardustBalance: null, history: [], completedIds: [], removedIds: [],
       checklistDate: this.state.checklistDate, checklistDone: {},
-      resources: { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+      resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
       bagCapacity: null,
       eliteTmDone: [],
       cutTarget: 300, cutTargetDraft: '300',
       githubToken: '',
-      megaEnergyInventory: {}, megaEvolvedHistory: {}, triageKeep: {}, transferQueue: [],
+      megaEnergyInventory: {}, megaEvolvedHistory: {}, evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, triageKeep: {}, transferQueue: [],
       geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
       apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
     };
@@ -3664,7 +3686,8 @@ class Component extends DCLogic {
       removedIds: remote.removedIds || [],
       checklistDate: remote.checklistDate || this.state.checklistDate,
       checklistDone: remote.checklistDone || {},
-      resources: remote.resources || { rareCandy: null, rareCandyXL: null, eliteFastTM: null, eliteChargedTM: null },
+      resources: remote.resources || { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
+      evolutionItems: remote.evolutionItems || { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null },
       bagCapacity: remote.bagCapacity != null ? remote.bagCapacity : null,
       eliteTmDone: remote.eliteTmDone || [],
       cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
@@ -3826,7 +3849,7 @@ class Component extends DCLogic {
   get SYNCED_STATE_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable',
       'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
-      'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources',
+      'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
       'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint',
       'bagCapacity', 'eliteTmDone', 'cutTarget'];
@@ -3844,7 +3867,7 @@ class Component extends DCLogic {
   get PACKED_KEYS() {
     return ['roster', 'addedPokemon', 'ivOverrides', 'candyInventory', 'typeTable',
       'moveDB', 'evoTable', 'candyAiDecisions', 'history', 'completedIds', 'removedIds',
-      'checklistDone', 'resources', 'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue',
+      'checklistDone', 'resources', 'evolutionItems', 'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue',
       'chatMessages', 'geminiKeys'];
   }
 
@@ -3887,7 +3910,7 @@ class Component extends DCLogic {
       typeTable: s.typeTable, moveDB: s.moveDB, evoTable: s.evoTable, candyAiDecisions: s.candyAiDecisions,
       stardustBalance: s.stardustBalance, history: s.history,
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
-      checklistDone: s.checklistDone, resources: s.resources, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
+      checklistDone: s.checklistDone, resources: s.resources, evolutionItems: s.evolutionItems, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
       bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, githubToken: s.githubToken,
       // Trimmed on write: an unbounded transcript would eventually crowd out the
@@ -4709,7 +4732,7 @@ class Component extends DCLogic {
   // has fetched its evolution data yet. Only a confirmed final stage (an
   // entry whose `to` is explicitly null/falsy) is excluded.
   littleCupEligible(p) {
-    const rec = (this.state.evoTable || {})[String(p.name || '').toLowerCase()];
+    const rec = this.evoRecordFor(p);
     if (!rec) return true;
     return !!rec.to;
   }
@@ -4946,7 +4969,7 @@ class Component extends DCLogic {
         p => p.dex == null),
       mk('evo', 'Evolution unknown', 'Missing from the evolve queue even when candy is ready.',
         'Run the evolution lookup on the Today tab.',
-        p => !(this.state.evoTable || {})[String(p.name || '').toLowerCase()])
+        p => !this.evoRecordFor(p))
     ].filter(Boolean);
   }
 
@@ -5090,8 +5113,30 @@ class Component extends DCLogic {
   saveResources() {
     const d = this.state.resourcesDraft;
     const n = v => { const x = v === '' ? null : parseInt(String(v).replace(/,/g, ''), 10); return Number.isNaN(x) ? null : x; };
-    const resources = { rareCandy: n(d.rareCandy), rareCandyXL: n(d.rareCandyXL), eliteFastTM: n(d.eliteFastTM), eliteChargedTM: n(d.eliteChargedTM) };
+    const resources = { rareCandy: n(d.rareCandy), rareCandyXL: n(d.rareCandyXL), fastTM: n(d.fastTM), chargedTM: n(d.chargedTM), eliteFastTM: n(d.eliteFastTM), eliteChargedTM: n(d.eliteChargedTM) };
     this.setState({ resources });
+  }
+
+  // Evolution items are a fixed, known set (unlike megaEnergyInventory, which
+  // is free-text since species vary) — Niantic only gates evolutions on 8
+  // classic items plus the 3 Applin apples, confirmed against GAME_MASTER
+  // directly rather than assumed from memory (Deep Sea Tooth/Scale, Prism
+  // Scale, etc. are NOT used as item gates in Pokemon GO despite being real
+  // evolution items in the core games — those evolutions are candy-only here).
+  onEvolutionItemChange(field, value) {
+    const draft = { ...this.state.evolutionItemsDraft, [field]: value };
+    this.setState({ evolutionItemsDraft: draft });
+  }
+
+  saveEvolutionItems() {
+    const d = this.state.evolutionItemsDraft;
+    const cur = this.state.evolutionItems || {};
+    const n = v => { const x = v === '' ? null : parseInt(String(v).replace(/,/g, ''), 10); return Number.isNaN(x) ? null : x; };
+    const next = { ...cur };
+    Object.keys(d).forEach(k => { next[k] = n(d[k]); });
+    this.setState({ evolutionItems: next, evolutionItemsDraft: {} }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
   }
 
   onBagCapacityChange(value) {
@@ -9322,12 +9367,28 @@ class Component extends DCLogic {
     return { candy: null, xlCandy: null };
   }
 
+  // Real GAME_MASTER data (via mechanics.js) is preferred whenever this
+  // species is covered; evoTable (Gemini-guessed, fetched species-by-species
+  // via the Today tab) is now only a fallback for species GAME_MASTER
+  // doesn't have yet. Every other evoTable consumer in this file should read
+  // through here rather than state.evoTable directly, so the whole app gets
+  // the real data the moment it's available without needing a re-fetch.
+  evoRecordFor(p) {
+    const name = String(p && p.name || '').toLowerCase();
+    const m = this.mechanics;
+    const real = m && m.evolutionInfoFor ? m.evolutionInfoFor(name) : null;
+    if (real) return { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey };
+    const rec = (this.state.evoTable || {})[name];
+    if (rec) return { to: rec.to, candy: rec.candy, item: rec.item || null, itemKey: null };
+    return null;
+  }
+
   // The CSV and the video importers both write the Pokemon's OWN name into
   // league.evolvesTo as a placeholder, which is why the PVP table read
   // "Castform -> Castform". The looked-up table is the real answer; the
   // placeholder is only trusted when it names something else.
   evolvesToName(p) {
-    const rec = (this.state.evoTable || {})[String(p.name || '').toLowerCase()];
+    const rec = this.evoRecordFor(p);
     if (rec) return rec.to || null;
     const legacy = p.great && p.great.evolvesTo;
     if (legacy && String(legacy).toLowerCase() !== String(p.name || '').toLowerCase()) return legacy;
@@ -9335,20 +9396,34 @@ class Component extends DCLogic {
   }
 
   evoInfoFor(p) {
-    const table = this.state.evoTable || {};
-    const rec = table[String(p.name || '').toLowerCase()];
+    const rec = this.evoRecordFor(p);
     if (!rec || !rec.to) return null;
     const stock = this.candyStockFor(p);
     const need = rec.candy;
     const have = stock.candy;
+    // An item requirement is a hard yes/no gate, not a quantity comparison —
+    // you either have at least 1 or you don't. itemKey (only ever set from
+    // the real GAME_MASTER table, never the AI table, since evoTable has no
+    // concept of a trackable item count) is looked up against the
+    // evolutionItems the person logs under Resources.
+    const itemHave = rec.itemKey ? ((this.state.evolutionItems || {})[rec.itemKey] ?? null) : null;
+    const itemReady = rec.itemKey ? (itemHave != null ? itemHave >= 1 : null) : true;
+    const candyReady = need != null && have != null ? have >= need : null;
+    let ready;
+    if (candyReady === false || itemReady === false) ready = false;
+    else if (candyReady == null || itemReady == null) ready = null;
+    else ready = true;
     return {
       to: rec.to,
       item: rec.item || null,
+      itemKey: rec.itemKey || null,
+      itemHave,
+      itemReady,
       need,
       have,
       // Unknown stock is not the same as insufficient stock, so it reads as
       // "candy unknown" rather than silently blocking the evolution.
-      ready: need != null && have != null ? have >= need : null,
+      ready,
       short: need != null && have != null ? Math.max(0, need - have) : null
     };
   }
@@ -9367,7 +9442,11 @@ class Component extends DCLogic {
   // saying how many more candy the next one needs.
   evolveQueue() {
     const done = new Set(this.state.completedIds || []);
-    const table = this.state.evoTable || {};
+    // Same precedence as evoRecordFor: real GAME_MASTER data wins per species,
+    // evoTable (AI-guessed) fills in anything not covered. Merged once here
+    // rather than per-Pokemon since this function walks the whole table to
+    // find family roots, not just one record.
+    const table = { ...(this.state.evoTable || {}), ...((this.mechanics && this.mechanics.REAL_EVOLUTION_TABLE) || {}) };
 
     // Every stage in a family shares ONE candy pool (Pichu/Pikachu/Raichu all
     // spend Pikachu Candy), so ranking "Pichu ready to evolve" and "Pikachu
@@ -9597,8 +9676,7 @@ class Component extends DCLogic {
   // better one of the same species is already owned. Nothing unique, lucky,
   // shadow, favourited or high-ranked is ever suggested.
   triageSignature(p) {
-    const evo = this.state.evoTable || {};
-    const rec = evo[String(p.name || '').toLowerCase()];
+    const rec = this.evoRecordFor(p);
     return [p.idx, p.atkIV, p.defIV, p.staIV, p.cp, rec && rec.to ? rec.to : ''].join('|');
   }
 
@@ -9716,6 +9794,18 @@ class Component extends DCLogic {
       inv[fromKey] = { ...cur, candy: Math.max(0, (Number(cur.candy) || 0) - need) };
     }
 
+    // Item-gated evolutions (Metal Coat, King's Rock, etc.) consume exactly
+    // one of the item, same as the game — only deducted when the count is
+    // actually known, so an unlogged item doesn't get silently walked to -1.
+    let evolutionItemsPatch = null;
+    if (evo && evo.itemKey) {
+      const items = this.state.evolutionItems || {};
+      const have = items[evo.itemKey];
+      if (Number.isFinite(have)) {
+        evolutionItemsPatch = { ...items, [evo.itemKey]: Math.max(0, have - 1) };
+      }
+    }
+
     // A stale override would otherwise re-apply the pre-evolution species and
     // ranks straight back over the transformed record.
     const overrides = { ...(this.state.ivOverrides || {}) };
@@ -9729,6 +9819,7 @@ class Component extends DCLogic {
       .filter(Boolean).join(' \u00b7 ') || 'stats unchanged';
     this.setState({
       roster, addedPokemon, ivOverrides: overrides, candyInventory: inv,
+      ...(evolutionItemsPatch ? { evolutionItems: evolutionItemsPatch } : {}),
       evoFlashName: toName, evoFlashStats: statLine
     }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
@@ -9858,7 +9949,7 @@ class Component extends DCLogic {
         const nundo = roster.filter(p => p.atkIV === 0 && p.defIV === 0 && p.staIV === 0).length;
         const r = this.state.resources || {};
         return `Living Dex: ${owned.size}/${total} species (${(owned.size / (total || 1) * 100).toFixed(1)}%). Kanto Dex: ${kantoOwned}/${kanto.length}. Hundo: ${hundo}. Nundo: ${nundo}. `
-          + `Resources on hand: Rare Candy ${r.rareCandy ?? 'unknown'}, Rare Candy XL ${r.rareCandyXL ?? 'unknown'}, Elite Fast TM ${r.eliteFastTM ?? 'unknown'}, Elite Charged TM ${r.eliteChargedTM ?? 'unknown'}, Stardust ${this.state.stardustBalance ?? 'unknown'}.`;
+          + `Resources on hand: Rare Candy ${r.rareCandy ?? 'unknown'}, Rare Candy XL ${r.rareCandyXL ?? 'unknown'}, Fast TM ${r.fastTM ?? 'unknown'}, Charged TM ${r.chargedTM ?? 'unknown'}, Elite Fast TM ${r.eliteFastTM ?? 'unknown'}, Elite Charged TM ${r.eliteChargedTM ?? 'unknown'}, Stardust ${this.state.stardustBalance ?? 'unknown'}.`;
       })(),
       // COMPLETE species census. The detailed list below is capped for token
       // reasons, which meant "how many Eevee do I have?" was answered from a
@@ -10962,12 +11053,13 @@ class Component extends DCLogic {
           toName: evoInfo.to,
           canAfford: evoInfo.ready === true,
           statusLabel: evoInfo.ready === true ? 'READY TO EVOLVE'
-            : evoInfo.ready === false ? 'NEEDS ' + Math.max(0, (evoInfo.need || 0) - (evoInfo.have || 0)) + ' MORE CANDY'
+            : evoInfo.itemReady === false ? 'NEEDS ' + (evoInfo.item || 'AN ITEM').toUpperCase()
+            : evoInfo.need != null && evoInfo.have != null && evoInfo.have < evoInfo.need ? 'NEEDS ' + Math.max(0, evoInfo.need - evoInfo.have) + ' MORE CANDY'
             : 'CANDY UNKNOWN',
           statusColor: evoInfo.ready === true ? 'var(--grass-700)' : evoInfo.ready === false ? 'var(--type-fighting)' : 'var(--ink-400)',
           candyLine: (evoInfo.need != null ? evoInfo.need + ' candy needed' : 'candy cost unknown')
             + (evoInfo.have != null ? ' \u00b7 you have ' + evoInfo.have : '')
-            + (evoInfo.item ? ' \u00b7 needs ' + evoInfo.item : ''),
+            + (evoInfo.item ? ' \u00b7 needs ' + evoInfo.item + (evoInfo.itemHave != null ? ' (have ' + evoInfo.itemHave + ')' : ' (count unknown)') : ''),
           buttonLabel: 'EVOLVE TO ' + String(evoInfo.to || '?').toUpperCase(),
           onEvolve: () => { this.markEvolveDone(p); this.closeDetail(); }
         } : { hasEvo: false }
@@ -11251,14 +11343,38 @@ class Component extends DCLogic {
       resourcesDraft: {
         rareCandy: this.state.resourcesDraft.rareCandy != null ? this.state.resourcesDraft.rareCandy : (this.state.resources.rareCandy != null ? String(this.state.resources.rareCandy) : ''),
         rareCandyXL: this.state.resourcesDraft.rareCandyXL != null ? this.state.resourcesDraft.rareCandyXL : (this.state.resources.rareCandyXL != null ? String(this.state.resources.rareCandyXL) : ''),
+        fastTM: this.state.resourcesDraft.fastTM != null ? this.state.resourcesDraft.fastTM : (this.state.resources.fastTM != null ? String(this.state.resources.fastTM) : ''),
+        chargedTM: this.state.resourcesDraft.chargedTM != null ? this.state.resourcesDraft.chargedTM : (this.state.resources.chargedTM != null ? String(this.state.resources.chargedTM) : ''),
         eliteFastTM: this.state.resourcesDraft.eliteFastTM != null ? this.state.resourcesDraft.eliteFastTM : (this.state.resources.eliteFastTM != null ? String(this.state.resources.eliteFastTM) : ''),
         eliteChargedTM: this.state.resourcesDraft.eliteChargedTM != null ? this.state.resourcesDraft.eliteChargedTM : (this.state.resources.eliteChargedTM != null ? String(this.state.resources.eliteChargedTM) : '')
       },
       onResourceRareCandy: (e) => this.onResourceChange('rareCandy', e.target.value),
       onResourceRareCandyXL: (e) => this.onResourceChange('rareCandyXL', e.target.value),
+      onResourceFastTM: (e) => this.onResourceChange('fastTM', e.target.value),
+      onResourceChargedTM: (e) => this.onResourceChange('chargedTM', e.target.value),
       onResourceEliteFast: (e) => this.onResourceChange('eliteFastTM', e.target.value),
       onResourceEliteCharged: (e) => this.onResourceChange('eliteChargedTM', e.target.value),
       saveResources: () => this.saveResources(),
+      evolutionItemsDraft: (() => {
+        const keys = ['sunStone', 'kingsRock', 'metalCoat', 'dragonScale', 'upgrade', 'sinnohStone', 'unovaStone', 'gimmighoulCoins', 'sweetApple', 'tartApple', 'syrupyApple'];
+        const draft = this.state.evolutionItemsDraft || {};
+        const saved = this.state.evolutionItems || {};
+        const out = {};
+        keys.forEach(k => { out[k] = draft[k] != null ? draft[k] : (saved[k] != null ? String(saved[k]) : ''); });
+        return out;
+      })(),
+      onEvoItemSunStone: (e) => this.onEvolutionItemChange('sunStone', e.target.value),
+      onEvoItemKingsRock: (e) => this.onEvolutionItemChange('kingsRock', e.target.value),
+      onEvoItemMetalCoat: (e) => this.onEvolutionItemChange('metalCoat', e.target.value),
+      onEvoItemDragonScale: (e) => this.onEvolutionItemChange('dragonScale', e.target.value),
+      onEvoItemUpgrade: (e) => this.onEvolutionItemChange('upgrade', e.target.value),
+      onEvoItemSinnohStone: (e) => this.onEvolutionItemChange('sinnohStone', e.target.value),
+      onEvoItemUnovaStone: (e) => this.onEvolutionItemChange('unovaStone', e.target.value),
+      onEvoItemGimmighoulCoins: (e) => this.onEvolutionItemChange('gimmighoulCoins', e.target.value),
+      onEvoItemSweetApple: (e) => this.onEvolutionItemChange('sweetApple', e.target.value),
+      onEvoItemTartApple: (e) => this.onEvolutionItemChange('tartApple', e.target.value),
+      onEvoItemSyrupyApple: (e) => this.onEvolutionItemChange('syrupyApple', e.target.value),
+      saveEvolutionItems: () => this.saveEvolutionItems(),
       bagCapacityDraft: this.state.bagCapacityDraft != null ? this.state.bagCapacityDraft : (this.state.bagCapacity != null ? String(this.state.bagCapacity) : ''),
       onBagCapacityChange: (e) => this.onBagCapacityChange(e.target.value),
       saveBagCapacity: () => this.saveBagCapacity(),
