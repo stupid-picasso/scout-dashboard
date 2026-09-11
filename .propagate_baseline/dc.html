@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.73</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.74</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1952,7 +1952,7 @@
           <div style="font:10.5px var(--font-display);color:var(--ink-300)">AI RECOMMENDED PICKS</div>
           <div onClick="{{ getTmAiRecommendations }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 10px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
         </div>
-        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Picked from your Lucky/Shadow/Favorite and well-ranked Pokemon using real moves and ranks from your roster. The suggested move itself is the AI's general Pokemon GO knowledge, not verified against this app's own data \u2014 double check it before committing an Elite TM.</div>
+        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Picked from your Lucky/Shadow/Favorite, genuinely Great/Ultra-ranked, or heavily-leveled Pokemon \u2014 your actual standouts, not Little Cup mons that rank high just because that league's pool is thin. The suggested move itself is the AI's general Pokemon GO knowledge, not verified against this app's own data \u2014 double check it before committing an Elite TM.</div>
         <sc-if value="{{ tmAiError }}" hint-placeholder-val="{{ false }}">
           <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ tmAiError }}</div>
         </sc-if>
@@ -8652,12 +8652,30 @@ class Component extends DCLogic {
   // the prompt small and relevant instead of dumping the whole roster on the
   // model, and means the AI is only ever asked to prioritize AMONG real
   // signal, not invent which Pokemon matter in the first place.
+  // Great/Ultra rank only, deliberately excluding Little Cup. Little Cup is
+  // a shallow, CP-capped league where plenty of ordinary, low-investment
+  // species (an unevolved Ivysaur, Servine, Gible) rank 80%+ just because
+  // the contender pool is thin \u2014 that's not the same thing as "strong",
+  // and including it was why the AI picks skewed toward mediocre Pokemon
+  // instead of the roster's actual standouts.
+  bestGreatUltraRank(p) {
+    const g = (p.great && p.great.rankPct) || 0;
+    const u = (p.ultra && p.ultra.rankPct) || 0;
+    return Math.max(g, u);
+  }
+
   tmAiCandidates() {
     const roster = this.effectiveRosterForMatch();
+    // "Strong/invested" now means: flagged (Lucky/Shadow/Favorite), OR a
+    // real Great/Ultra rank (not Little Cup), OR meaningfully leveled up
+    // (level 35+ is real stardust committed, not just whatever it hatched
+    // or was caught at) \u2014 each of these is a genuine "this Pokemon matters"
+    // signal, unlike raw bestRank which let low-value Little Cup mons in.
+    const strength = p => Math.max(this.bestGreatUltraRank(p), p.lucky || this.isShadow(p) || p.favorite ? 90 : 0, (p.lvlMin || 0) >= 35 ? 70 : 0);
     return roster
-      .filter(p => p.lucky || this.isShadow(p) || p.favorite || this.bestRank(p) >= 80)
-      .sort((a, b) => this.bestRank(b) - this.bestRank(a))
-      .slice(0, 30);
+      .filter(p => p.lucky || this.isShadow(p) || p.favorite || this.bestGreatUltraRank(p) >= 90 || (p.lvlMin || 0) >= 35)
+      .sort((a, b) => strength(b) - strength(a))
+      .slice(0, 20);
   }
 
   ensureTmAiRecommendations() {
@@ -8674,23 +8692,27 @@ class Component extends DCLogic {
     try {
       const res = this.state.resources || {};
       const lines = candidates.map(p => {
-        const rank = this.bestRank(p);
+        const rank = this.bestGreatUltraRank(p);
         const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
         const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
         const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null].filter(Boolean).join(', ') || 'none';
-        return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + '): current fast move ' + fast + ', current charge move(s) ' + charge
-          + '. Best league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked') + '. Flags: ' + flags + '.';
+        return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + ', Level ' + (p.lvlMin || '?') + '): current fast move ' + fast + ', current charge move(s) ' + charge
+          + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.';
       }).join('\n');
       const inv = 'TMs on hand: Fast TM ' + (res.fastTM ?? 0) + ', Charged TM ' + (res.chargedTM ?? 0)
         + ', Elite Fast TM ' + (res.eliteFastTM ?? 0) + ', Elite Charged TM ' + (res.eliteChargedTM ?? 0) + '.';
-      const prompt = 'You are helping a Pokemon GO player decide which of their strongest/most-invested Pokemon below would most benefit '
-        + 'from a moveset change using a TM. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s possible pool (no choice), '
-        + 'so only recommend a regular TM when you are confident most of the realistic alternatives would be an improvement. An Elite Fast/Charged TM '
+      const prompt = 'The Pokemon below are already this player\'s strongest and most-invested \u2014 each one is Lucky, Shadow, Favorited, '
+        + 'genuinely ranked in Great or Ultra League, or leveled up significantly with real stardust. Your job is to find which of '
+        + 'THESE would become meaningfully MORE dominant (a real raid DPS jump, or a real PvP rank jump) from a moveset change \u2014 '
+        + 'not to flag every mediocre move you notice. Skip a Pokemon if its current moveset is already good, or if it\'s already near the '
+        + 'bottom of this list in overall relevance \u2014 a small move upgrade on the single best attacker or top PvP pick is worth more here '
+        + 'than any change on a middling one. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s possible pool (no choice), '
+        + 'so only recommend a regular TM when most of the realistic alternatives would be an improvement. An Elite Fast/Charged TM '
         + 'lets the player choose the exact move, so recommend Elite specifically when only ONE particular move (e.g. a Community Day exclusive or a '
         + 'clearly-superior specific move) is the real goal. Only recommend a TM type the player actually has at least 1 of.\n\n'
-        + inv + '\n\nRoster:\n' + lines
-        + '\n\nRespond with ONLY a JSON array, at most 8 items, ranked by impact first, no prose: '
-        + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence"}]';
+        + inv + '\n\nCandidates, already filtered to this player\'s strongest Pokemon:\n' + lines
+        + '\n\nRespond with ONLY a JSON array, at most 6 items, the single highest-impact pick FIRST, no prose: '
+        + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence on the concrete gain"}]';
       const out = await this.completeWithRetry({ messages: [{ role: 'user', content: prompt }], max_tokens: 1024 });
       const text = typeof out === 'string' ? out : (out && out.content) || '';
       const match = String(text).match(/\[[\s\S]*\]/);
