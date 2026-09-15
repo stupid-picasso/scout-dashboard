@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.74</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.75</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2993,7 +2993,7 @@
                 </div>
                 <div style="font:11px var(--font-body);color:var(--ink-500)">{{ rec.why }}</div>
                 <sc-if value="{{ rec.suggestedMove }}" hint-placeholder-val="{{ false }}">
-                  <div style="font:11px var(--font-display);color:var(--ink-400)">Suggested: {{ rec.suggestedMove }}</div>
+                  <div style="font:11px var(--font-display);color:var(--ink-400)">Suggested: {{ rec.suggestedMove }} {{ rec.verifiedNote }}</div>
                 </sc-if>
                 <div onClick="{{ rec.use }}" class="om-press" style="cursor:pointer;align-self:flex-start;margin-top:4px;padding:5px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">USE THIS TM</div>
               </div>
@@ -9779,8 +9779,14 @@ class Component extends DCLogic {
         const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
         const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
         const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null].filter(Boolean).join(', ') || 'none';
+        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name) : null;
+        const poolLine = pool
+          ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
+            + (pool.fastLegacy.length ? ', Elite-only fast: [' + pool.fastLegacy.join(', ') + ']' : '')
+            + (pool.chargeLegacy.length ? ', Elite-only charge: [' + pool.chargeLegacy.join(', ') + ']' : '') + '.'
+          : ' (movepool not in local database \\u2014 use your own knowledge for this one.)';
         return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + ', Level ' + (p.lvlMin || '?') + '): current fast move ' + fast + ', current charge move(s) ' + charge
-          + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.';
+          + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.' + poolLine;
       }).join('\n');
       const inv = 'TMs on hand: Fast TM ' + (res.fastTM ?? 0) + ', Charged TM ' + (res.chargedTM ?? 0)
         + ', Elite Fast TM ' + (res.eliteFastTM ?? 0) + ', Elite Charged TM ' + (res.eliteChargedTM ?? 0) + '.';
@@ -9789,10 +9795,12 @@ class Component extends DCLogic {
         + 'THESE would become meaningfully MORE dominant (a real raid DPS jump, or a real PvP rank jump) from a moveset change \u2014 '
         + 'not to flag every mediocre move you notice. Skip a Pokemon if its current moveset is already good, or if it\'s already near the '
         + 'bottom of this list in overall relevance \u2014 a small move upgrade on the single best attacker or top PvP pick is worth more here '
-        + 'than any change on a middling one. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s possible pool (no choice), '
-        + 'so only recommend a regular TM when most of the realistic alternatives would be an improvement. An Elite Fast/Charged TM '
-        + 'lets the player choose the exact move, so recommend Elite specifically when only ONE particular move (e.g. a Community Day exclusive or a '
-        + 'clearly-superior specific move) is the real goal. Only recommend a TM type the player actually has at least 1 of.\n\n'
+        + 'than any change on a middling one. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s REGULAR pool only (no '
+        + 'choice, and never an Elite-only move), so only recommend a regular TM when most of the regular pool would be an improvement. An '
+        + 'Elite Fast/Charged TM lets the player choose the exact move from the regular OR Elite-only pool, so recommend Elite specifically '
+        + 'when only ONE particular move (often an Elite-only one) is the real goal. When a species lists real learnable moves above, your '
+        + 'suggestedMove MUST be one of those exact move names \u2014 never invent or half-remember a move for a species with a real list given. '
+        + 'Only recommend a TM type the player actually has at least 1 of.\n\n'
         + inv + '\n\nCandidates, already filtered to this player\'s strongest Pokemon:\n' + lines
         + '\n\nRespond with ONLY a JSON array, at most 6 items, the single highest-impact pick FIRST, no prose: '
         + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence on the concrete gain"}]';
@@ -9811,9 +9819,28 @@ class Component extends DCLogic {
         if (!(Number.isFinite(res2[tmType]) && res2[tmType] > 0)) return;
         const p = candidates.find(c => String(c.name || '').toLowerCase() === String(item.species || '').toLowerCase());
         if (!p) return;
+        // Verify the suggested move against real movepool data when this
+        // species is covered \u2014 the model is told to only pick from the real
+        // list, but LLM output still needs checking rather than trusting.
+        // A species not in the local database gets no such check; nothing to
+        // verify against, so its suggestion passes through as-is.
+        let suggestedMove = item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null;
+        let moveVerified = null;
+        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name) : null;
+        if (suggestedMove && pool) {
+          const isFastTm = tmType === 'fastTM' || tmType === 'eliteFastTM';
+          const isElite = tmType === 'eliteFastTM' || tmType === 'eliteChargedTM';
+          const normalPool = isFastTm ? pool.fast : pool.charge;
+          const legacyPool = isFastTm ? pool.fastLegacy : pool.chargeLegacy;
+          const allowed = isElite ? [...normalPool, ...legacyPool] : normalPool;
+          const key = String(suggestedMove).toLowerCase();
+          if (allowed.indexOf(key) >= 0) moveVerified = true;
+          else { suggestedMove = null; moveVerified = false; }
+        }
         recs.push({
           idx: p.idx, name: p.name, tmType, tmLabel: { fastTM: 'FAST TM', chargedTM: 'CHARGED TM', eliteFastTM: 'ELITE FAST TM', eliteChargedTM: 'ELITE CHARGED TM' }[tmType],
-          suggestedMove: item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null,
+          suggestedMove, moveVerified,
+          verifiedNote: moveVerified === true ? '\u2713 verified' : (moveVerified === false ? '(unverified)' : ''),
           why: item.why || '',
           use: () => this.useTM(p, tmType)
         });
@@ -11216,7 +11243,29 @@ class Component extends DCLogic {
           const filter = (this.state.movePickerFilter || '').trim().toLowerCase();
           const current = this.moveDraftFor(p, mp.field);
           const clearLabel = mp.field === 'chargeMove2' ? '— none learned —' : '— not set —';
+          // Restrict to what this species can actually learn, when real data
+          // covers it. A regular TM only offers the normal reroll pool
+          // (matches the real game \u2014 no player choice, but also no legacy
+          // moves); an Elite TM adds the legacy/exclusive pool on top, since
+          // that's the whole reason to spend one. Manual edits (correcting a
+          // scan, no pending TM) get the combined pool \u2014 the Pokemon may
+          // already carry a legacy move from before this session. A species
+          // GAME_MASTER doesn't cover falls back to the full unrestricted
+          // search rather than blocking the picker on missing data.
+          const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name) : null;
+          const poolKey = mp.kind === 'fast' ? 'fast' : 'charge';
+          const legacyKey = mp.kind === 'fast' ? 'fastLegacy' : 'chargeLegacy';
+          const pending = this.state.pendingTmUse;
+          const isElite = pending && pending.pokeIdx === p.idx && (pending.tmType === 'eliteFastTM' || pending.tmType === 'eliteChargedTM');
+          const isRegularTm = pending && pending.pokeIdx === p.idx && (pending.tmType === 'fastTM' || pending.tmType === 'chargedTM');
+          let allowed = null;
+          if (pool) {
+            if (isRegularTm) allowed = new Set(pool[poolKey]);
+            else if (isElite) allowed = new Set([...pool[poolKey], ...pool[legacyKey]]);
+            else allowed = new Set([...pool[poolKey], ...pool[legacyKey]]);
+          }
           const rows = this.moveOptionsByKind(mp.kind)
+            .filter(o => !allowed || allowed.has(o.value))
             .filter(o => !filter || o.label.toLowerCase().indexOf(filter) >= 0)
             .map(o => ({ value: o.value, label: o.label, isCurrent: o.value === current,
               choose: () => this.chooseMoveFromPicker(p, mp.field, o.value) }));
