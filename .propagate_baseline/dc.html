@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.75</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.77</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1369,43 +1369,44 @@
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;display:flex;align-items:stretch;overflow:hidden;background:{{ p.cardTint }};border:1px solid {{ p.cardEdge }};border-radius:var(--r-card);transition:transform .16s cubic-bezier(.22,1,.36,1),border-color .16s ease,box-shadow .16s ease" style-hover="transform:translateY(-3px);border-color:var(--grass-300);box-shadow:var(--shadow-pop)">
-          <div style="flex-shrink:0;width:6px;background:{{ p.typeAccent }}"></div>
-          <div style="flex-shrink:0;width:92px;display:flex;align-items:center;justify-content:center;position:relative">
-            <span style="position:absolute;font:800 24px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
-            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:78px;height:78px;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5)) drop-shadow(0 0 10px {{ p.railGlow }})" />
+        <div onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;display:flex;align-items:center;gap:10px;overflow:hidden;background:{{ p.cardTint }};border:1px solid {{ p.cardEdge }};border-left:4px solid {{ p.typeAccent }};border-radius:12px;padding:8px 10px;transition:transform .14s cubic-bezier(.22,1,.36,1)" style-hover="transform:translateY(-1px)">
+          <div style="flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+            <span style="position:absolute;font:800 15px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
+            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 0 6px {{ p.railGlow }})" />
           </div>
-          <div style="flex:1;min-width:0;padding:12px 14px;display:flex;align-items:center;gap:12px">
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:7px">
-                <div style="font:600 15px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.displayName }}</div>
-                <sc-if value="{{ p.rowSpreadMeasured }}" hint-placeholder-val="{{ true }}">
-                  <div style="flex-shrink:0;font:700 10px var(--font-display);color:var(--surface-page);background:var(--grass-700);border-radius:4px;padding:2px 5px">&#10003;</div>
-                </sc-if>
-                <div style="font:12px;flex-shrink:0">{{ p.flags }}</div>
-              </div>
-              <div style="font:14px var(--font-display);color:{{ p.rowSpreadColor }};font-variant-numeric:tabular-nums;letter-spacing:.02em;margin-top:4px">{{ p.rowSpread }}</div>
-              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap">
-                <sc-for list="{{ p.typeChips }}" as="t" hint-placeholder-count="2">
-                  <div style="font:700 9.5px var(--font-display);letter-spacing:.06em;padding:2.5px 7px;border-radius:4px;color:{{ t.fg }};background:{{ t.bg }}">{{ t.label }}</div>
-                </sc-for>
-              </div>
-              <div onClick="{{ stopProp }}" style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
-                <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
-                  <input type="text" inputmode="numeric" placeholder="Atk" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:36px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                  <input type="text" inputmode="numeric" placeholder="Def" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:36px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                  <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:36px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                  <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SAVE</div>
-                </sc-if>
-                <div onClick="{{ p.markTransferredCandy }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">TRANSFERRED (+1 CANDY)</div>
-                <div onClick="{{ p.removeDuplicate }}" class="om-tap" style="cursor:pointer;padding:5px 10px;border-radius:var(--r-pill);background:transparent;border:1px solid var(--line-300);color:var(--ink-400);font:700 10.5px var(--font-display)">REMOVE (mistake, no candy)</div>
-              </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="font:600 13.5px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.displayName }}</div>
+              <sc-if value="{{ p.rowSpreadMeasured }}" hint-placeholder-val="{{ true }}">
+                <div style="flex-shrink:0;font:700 9px var(--font-display);color:var(--surface-page);background:var(--grass-700);border-radius:3px;padding:1px 4px">&#10003;</div>
+              </sc-if>
+              <div style="font:11px;flex-shrink:0">{{ p.flags }}</div>
             </div>
-            <div style="text-align:right;flex-shrink:0">
-              <div style="font:800 23px var(--font-display);line-height:1;letter-spacing:-.02em;color:{{ p.typeAccent }}">{{ p.cp }}</div>
-              <div style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.12em;margin-top:3px">CP</div>
-              <div style="font:700 11px var(--font-display);color:{{ p.bestLeagueColor }};margin-top:7px;white-space:nowrap">{{ p.bestLeagueLabel }}</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px;overflow:hidden;white-space:nowrap">
+              <span style="font:11.5px var(--font-display);color:{{ p.rowSpreadColor }};font-variant-numeric:tabular-nums;flex-shrink:0">{{ p.rowSpread }}</span>
+              <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
+              <sc-if value="{{ p.typeChips }}" hint-placeholder-val="{{ false }}">
+                <span style="font:10.5px var(--font-display);letter-spacing:.03em;color:{{ p.typeAccent }};text-transform:uppercase;flex-shrink:0">{{ p.primaryTypeLabel }}</span>
+                <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
+              </sc-if>
+              <span style="font:800 13px var(--font-display);color:{{ p.typeAccent }};flex-shrink:0">{{ p.cp }} CP</span>
+              <sc-if value="{{ p.bestLeagueLabel }}" hint-placeholder-val="{{ false }}">
+                <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
+                <span style="font:700 11px var(--font-display);color:{{ p.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis">{{ p.bestLeagueLabel }}</span>
+              </sc-if>
             </div>
+            <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ stopProp }}" style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
+                <input type="text" inputmode="numeric" placeholder="Atk" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:34px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
+                <input type="text" inputmode="numeric" placeholder="Def" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:34px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
+                <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:34px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
+                <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:4px 9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10px var(--font-display)">SAVE</div>
+              </div>
+            </sc-if>
+          </div>
+          <div onClick="{{ stopProp }}" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;align-items:center">
+            <div onClick="{{ p.markTransferredCandy }}" class="om-press" aria-label="Transferred, plus 1 candy" style="cursor:pointer;width:30px;height:30px;border-radius:50%;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;font:700 14px var(--font-display);color:var(--ink-700)">&#8617;</div>
+            <div onClick="{{ p.removeDuplicate }}" class="om-press" aria-label="Remove, mistake, no candy" style="cursor:pointer;width:30px;height:30px;border-radius:50%;background:transparent;border:1px solid var(--line-300);display:flex;align-items:center;justify-content:center;font:700 14px var(--font-display);color:var(--ink-400)">&times;</div>
           </div>
         </div>
       </sc-for>
@@ -9601,6 +9602,7 @@ class Component extends DCLogic {
         cardTint: this.dsTypeTint(p),
         cardEdge: this.dsTypeEdge(p),
         typeChips: this.typeLook(p).chips,
+        primaryTypeLabel: this.primaryTypeOf(p),
         moves: [p.quickMove, p.chargeMove].filter(Boolean).map(n => this.formatMoveName(n)).join(' / ') || '—',
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'var(--ink-300)',
