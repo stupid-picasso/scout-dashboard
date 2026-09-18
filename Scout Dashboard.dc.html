@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.81</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.82</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -5135,7 +5135,7 @@ class Component extends DCLogic {
         idx: newIdx, name: p.name, form: null, dex: p.dex, gender: null,
         cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
         lvlMin: r.level, lvlMax: r.level, quickMove: null, chargeMove: null, chargeMove2: null,
-        catchDate: null, lucky: false, shadowPurified: '0', favorite: false, dust: null,
+        catchDate: null, lucky: false, shadowPurified: '0', favorite: false, shiny: false, dust: null,
         great: patch.great, ultra: patch.ultra, little: patch.little
       };
       const added = [...this.state.addedPokemon, newRec];
@@ -5387,7 +5387,7 @@ class Component extends DCLogic {
     const cols = ['Index', 'Name', 'Form', 'Pokemon Number', 'Gender', 'CP', 'HP',
       'Atk IV', 'Def IV', 'Sta IV', 'IV Avg', 'IV Source', 'Level Min', 'Level Max',
       'Quick Move', 'Charge Move', 'Charge Move 2', 'Scan Date', 'Catch Date',
-      'Weight', 'Height', 'Lucky', 'Shadow/Purified', 'Favorite', 'Dust',
+      'Weight', 'Height', 'Lucky', 'Shadow/Purified', 'Favorite', 'Shiny', 'Dust',
       'Candy', 'XL Candy', 'Type 1', 'Type 2',
       'Rank % (G)', 'Rank # (G)', 'Stat Prod (G)', 'Dust Cost (G)', 'Candy Cost (G)', 'Evolves To (G)',
       'Rank % (U)', 'Rank # (U)', 'Stat Prod (U)', 'Dust Cost (U)', 'Candy Cost (U)', 'Evolves To (U)',
@@ -5414,7 +5414,7 @@ class Component extends DCLogic {
       (!Number.isFinite(p.atkIV) ? '' : (p.ivManual ? 'manual' : (p.ivMeasured ? 'appraisal' : 'estimated from CP/HP'))),
       p.lvlMin, p.lvlMax,
       p.quickMove || '', p.chargeMove || '', p.chargeMove2 || '', p.scanDate || '', p.catchDate || '',
-      p.weight || '', p.height || '', p.lucky ? 'Y' : '', p.shadowPurified || '0', p.favorite ? 'Y' : '', p.dust,
+      p.weight || '', p.height || '', p.lucky ? 'Y' : '', p.shadowPurified || '0', p.favorite ? 'Y' : '', p.shiny ? 'Y' : '', p.dust,
       candyStock.candy, candyStock.xlCandy, p.type1 || '', p.type2 || '',
       lg(p, 'great', 'rankPct'), lg(p, 'great', 'rankNum'), lg(p, 'great', 'statProd'), lg(p, 'great', 'dustCost'), lg(p, 'great', 'candyCost'), lg(p, 'great', 'evolvesTo'),
       lg(p, 'ultra', 'rankPct'), lg(p, 'ultra', 'rankNum'), lg(p, 'ultra', 'statProd'), lg(p, 'ultra', 'dustCost'), lg(p, 'ultra', 'candyCost'), lg(p, 'ultra', 'evolvesTo'),
@@ -6329,9 +6329,9 @@ class Component extends DCLogic {
         + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, '
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
         + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, '
-        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
+        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "favorite": boolean}. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
-        + 'A shadow Pokemon shows a PURIFY button and the Frustration move. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
+        + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring, never guess from name or CP alone. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
         + 'A partially-readable Pokemon is still a Pokemon \u2014 emit it with nulls. The null/never-guess rules below apply to individual FIELDS, never to whether a Pokemon is listed. '
         + 'Only return an empty array if these frames genuinely contain no Pokemon at all (map view, item bag, loading screen).\n'
@@ -6697,7 +6697,7 @@ class Component extends DCLogic {
       + '{"name":string,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,'
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
-      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"favorite":boolean}\n\n'
+      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"favorite":boolean}\n\n'
       + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
       + 'Rules:\n'
       + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
@@ -6707,6 +6707,7 @@ class Component extends DCLogic {
       + '- evolveCandy is the candy cost on the EVOLVE button.\n'
       + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
       + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
+      + '- A shiny Pokemon has a visibly different color palette from its normal coloring. Set shiny true only when that distinct coloring is actually visible \u2014 never guess from name or CP alone.\n'
       + '- Only give atkIV/defIV/staIV if exact 0-15 numbers are visible. Never infer them from appraisal bars or stars.\n'
       + '- Never guess a FIELD: anything not clearly visible must be null. Never omit a Pokemon because fields are missing.';
   }
@@ -7425,6 +7426,7 @@ class Component extends DCLogic {
           hp: item.hp != null ? item.hp : match.hp,
           lucky: item.lucky != null ? !!item.lucky : match.lucky,
           favorite: item.favorite != null ? !!item.favorite : match.favorite,
+          shiny: item.shiny != null ? !!item.shiny : match.shiny,
           ...(item.gender ? { gender: item.gender } : {}),
           ...(item.fastMove ? { quickMove: item.fastMove } : {}),
           ...(item.chargeMove1 ? { chargeMove: item.chargeMove1 } : {}),
@@ -7449,7 +7451,7 @@ class Component extends DCLogic {
           weight: item.weight || null, height: item.height || null,
           evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
           catchDate: null, scanDate: today,
-          lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, dust: null,
+          lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, dust: null,
           // Never null — the render path reads p.great.rankPct directly.
           great: ivPatch.great || this.emptyLeague(),
           ultra: ivPatch.ultra || this.emptyLeague(),
@@ -8696,7 +8698,7 @@ class Component extends DCLogic {
         const rank = this.bestGreatUltraRank(p);
         const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
         const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
-        const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null].filter(Boolean).join(', ') || 'none';
+        const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null, p.shiny ? 'Shiny' : null].filter(Boolean).join(', ') || 'none';
         const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name) : null;
         const poolLine = pool
           ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
@@ -9539,6 +9541,7 @@ class Component extends DCLogic {
       if (rosterFilter === 'needsAppraisal') return this.needsAppraisal(p);
       if (rosterFilter === 'lucky') return !!p.lucky;
       if (rosterFilter === 'shadow') return this.isShadow(p) || this.isPurified(p);
+      if (rosterFilter === 'shiny') return !!p.shiny;
       if (rosterFilter === 'pvp') return this.bestRank(p) >= 90;
       return true;
     });
@@ -9575,7 +9578,7 @@ class Component extends DCLogic {
     const pagedFiltered = filtered.slice(0, visibleCount);
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
-      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.favorite ? '♥' : ''].filter(Boolean).join(' ');
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.favorite ? '♥' : '', p.shiny ? '✨' : ''].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
@@ -10016,7 +10019,7 @@ class Component extends DCLogic {
     let detail = null;
     if (detailPoke) {
       const p = detailPoke;
-      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : ''].filter(Boolean).join('  ');
+      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : '', p.shiny ? '✨ Shiny' : ''].filter(Boolean).join('  ');
       const statRings = [
         { label: 'ATK', value: Number.isFinite(p.atkIV) ? p.atkIV : '—', color: 'var(--type-fighting)', ...this.ringGeom((Number.isFinite(p.atkIV) ? p.atkIV : 0) / 15 * 100, 27) },
         { label: 'DEF', value: Number.isFinite(p.defIV) ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((Number.isFinite(p.defIV) ? p.defIV : 0) / 15 * 100, 27) },
@@ -10549,7 +10552,8 @@ class Component extends DCLogic {
         { key: 'needsAppraisal', label: 'NEEDS APPRAISAL' },
         { key: 'pvp', label: 'PVP 90%+' },
         { key: 'lucky', label: 'LUCKY' },
-        { key: 'shadow', label: 'SHADOW / PURIFIED' }
+        { key: 'shadow', label: 'SHADOW / PURIFIED' },
+        { key: 'shiny', label: '\u2728 SHINY' }
       ].map(c => ({
         label: c.label,
         active: rosterFilter === c.key,
