@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.82</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.83</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2537,6 +2537,19 @@
             </sc-for>
           </sc-if>
         </div>
+
+        <sc-if value="{{ detail.purify }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:16px;padding:14px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+              <span style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">PURIFY</span>
+              <span style="font:700 10.5px var(--font-display);color:{{ detail.purify.statusColor }}">{{ detail.purify.statusLabel }}</span>
+            </div>
+            <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:10px">{{ detail.purify.costLine }} &middot; IVs +2 each (capped 15), level raised to at least 25, learns Return</div>
+            <sc-if value="{{ detail.purify.onPurify }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ detail.purify.onPurify }}" class="om-press" style="cursor:pointer;text-align:center;padding:10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 12px var(--font-display)">PURIFY</div>
+            </sc-if>
+          </div>
+        </sc-if>
 
         <sc-if value="{{ detail.hasBodyStats }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
@@ -9244,6 +9257,53 @@ class Component extends DCLogic {
     });
   }
 
+  // Confirms a real in-game Purify: deducts the real stardust/candy cost,
+  // and applies the same three changes the game itself makes \u2014 each IV up
+  // by 2 (capped at 15, so a 13/13/13 Shadow becomes a 15/15/15 hundo),
+  // level raised to at least 25 if it was lower, and Return granted in the
+  // first charge slot (replacing whatever was there, same as the real
+  // purification screen). Does NOT touch pendingPowerUps \u2014 an IV/level jump
+  // from purification is real evidence, not a pending-tap estimate, so nothing
+  // needs to wait for a rescan to reconcile.
+  applyPurify(p, cost) {
+    if (!cost) return;
+    const key = this.candyKeyFor(p);
+    const inv = (this.state.candyInventory || {})[key] || {};
+    const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
+    const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
+    if (haveDust != null && cost.stardust > haveDust) return;
+    if (haveCandy != null && cost.candy > haveCandy) return;
+    this.haptic('medium');
+
+    const candyInv = { ...(this.state.candyInventory || {}) };
+    const curCandy = candyInv[key] || { name: p.name, candy: 0, xlCandy: null };
+    candyInv[key] = { ...curCandy, name: curCandy.name || p.name, candy: Math.max(0, (Number.isFinite(curCandy.candy) ? curCandy.candy : 0) - cost.candy) };
+    const nextDust = Number.isFinite(this.state.stardustBalance) ? Math.max(0, this.state.stardustBalance - cost.stardust) : this.state.stardustBalance;
+
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    const patch = { ...(overrides[p.idx] || {}) };
+    const bump = v => Number.isFinite(v) ? Math.min(15, v + 2) : v;
+    patch.atkIV = bump(p.atkIV);
+    patch.defIV = bump(p.defIV);
+    patch.staIV = bump(p.staIV);
+    if ([patch.atkIV, patch.defIV, patch.staIV].every(Number.isFinite)) {
+      patch.ivAvg = (patch.atkIV + patch.defIV + patch.staIV) / 45 * 100;
+    }
+    const curLevel = Number.isFinite(p.lvlMin) ? p.lvlMin : null;
+    if (curLevel == null || curLevel < 25) { patch.lvlMin = 25; patch.lvlMax = 25; }
+    patch.shadowPurified = '2';
+    patch.chargeMove = 'return';
+    overrides[p.idx] = patch;
+
+    const stateUpdate = { candyInventory: candyInv, stardustBalance: nextDust, ivOverrides: overrides };
+    if (this.state.detailPoke && this.state.detailPoke.idx === p.idx) {
+      stateUpdate.detailPoke = { ...this.state.detailPoke, ...patch };
+    }
+    this.setState(stateUpdate, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+  }
+
   setManualIvDraft(idx, field, val) {
     const clean = val.replace(/[^0-9]/g, '').slice(0, 2);
     const num = clean === '' ? '' : Math.min(15, Number(clean));
@@ -11217,6 +11277,25 @@ class Component extends DCLogic {
           : (!Number.isFinite(p.atkIV) ? 'var(--ink-400)' : 'var(--type-electric)'),
         flags: flags || 'No special flags',
         flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
+        purify: (() => {
+          if (!this.isShadow(p)) return null;
+          const m = this.mechanics;
+          const cost = m && m.purifyCostFor ? m.purifyCostFor(p.name) : null;
+          if (!cost) return null;
+          const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
+          const inv = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()] || {};
+          const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
+          const short = [];
+          if (haveDust != null && cost.stardust > haveDust) short.push('stardust');
+          if (haveCandy != null && cost.candy > haveCandy) short.push('candy');
+          const blocked = short.length > 0;
+          return {
+            costLine: cost.stardust.toLocaleString() + ' dust \u00b7 ' + cost.candy + ' candy',
+            statusLabel: blocked ? 'SHORT ON ' + short.join(' + ').toUpperCase() : (haveDust == null && haveCandy == null ? 'INVENTORY UNKNOWN' : 'READY'),
+            statusColor: blocked ? 'var(--type-fighting)' : (haveDust == null && haveCandy == null ? 'var(--ink-400)' : 'var(--grass-700)'),
+            onPurify: blocked ? null : () => this.applyPurify(p, cost)
+          };
+        })(),
         dust: p.dust != null ? p.dust : '—',
         // Lets a Fast TM / Charged TM used in-game be reflected here without a
         // full re-scan. '' (blank) = "no charge move 2 learned yet", distinct
