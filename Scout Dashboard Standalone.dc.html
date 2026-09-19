@@ -1145,7 +1145,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.96</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.98</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2479,27 +2479,27 @@
   <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
     <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
-      <div style="position:relative;height:calc(178px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:hidden;display:flex;flex-direction:column">
+      <div style="position:relative;min-height:calc(178px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
-        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 10px 4px">
+        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:env(safe-area-inset-top) 10px 0">
           <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
           <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
             <div style="font:700 10.5px var(--font-display);color:rgba(255,255,255,.75);letter-spacing:.04em">{{ detail.navPositionLabel }}</div>
           </sc-if>
           <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
-        <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;padding-bottom:2px;overflow:visible">
+        <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;padding-bottom:10px">
           <div style="font:800 20px var(--font-display);color:rgba(255,255,255,.92);letter-spacing:.02em;text-shadow:0 2px 6px rgba(0,0,0,.4)"><span style="font-size:11px;font-weight:700;opacity:.7;vertical-align:2px;margin-right:2px">CP</span>{{ detail.cp }}</div>
-          <div style="position:relative;width:148px;height:70px;margin-top:2px">
+          <div style="position:relative;width:148px;height:70px;margin-top:8px">
             <svg width="148" height="70" viewBox="0 0 148 78" style="position:absolute;top:0;left:0;overflow:visible">
               <path d="M 8 70 A 66 66 0 0 1 140 70" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5" stroke-linecap="round"></path>
               <path d="M 8 70 A 66 66 0 0 1 140 70" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" style="transition:stroke-dashoffset 1s ease"></path>
             </svg>
           </div>
-          <div style="position:relative;width:150px;height:128px;margin-top:-46px;display:flex;align-items:flex-end;justify-content:center">
-            <div style="position:absolute;bottom:6px;width:104px;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
-            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:relative;width:140px;height:140px;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
+          <div style="position:relative;width:150px;height:120px;margin-top:8px;display:flex;align-items:flex-end;justify-content:center">
+            <div style="position:absolute;bottom:2px;width:100px;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
+            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:relative;width:120px;height:120px;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
           </div>
         </div>
       </div>
@@ -3558,6 +3558,7 @@ class Component extends DCLogic {
     this.initFirebase();
     this.checkPendingImport();
     this.bindPullToRefresh();
+    this.bindRosterSwipe();
     this.bindRosterSwipe();
   }
 
@@ -10845,6 +10846,18 @@ class Component extends DCLogic {
     if (this._rosterSwipeBound) return;
     this._rosterSwipeBound = true;
     const REVEAL = this.ROSTER_SWIPE_REVEAL;
+    // Long-press: a guaranteed fallback to Transfer/Remove that doesn't
+    // depend on the swipe-to-reveal drag working at all. Held in place
+    // (no real movement) for LONG_PRESS_MS opens the action menu directly.
+    // Any movement past the small threshold cancels it — that's a scroll
+    // or a swipe attempt, not a hold.
+    const LONG_PRESS_MS = 480;
+    const MOVE_CANCEL_PX = 10;
+    let longPressTimer = null, longPressRowEl = null;
+    const clearLongPress = () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      longPressRowEl = null;
+    };
     let dragEl = null, startX = 0, startY = 0, lastX = 0, dragging = false, axisLocked = false, openAtStart = 0;
     const openRow = (rowEl) => {
       if (this._openSwipeEl && this._openSwipeEl !== rowEl) this.closeAnyRosterSwipe();
@@ -10862,7 +10875,7 @@ class Component extends DCLogic {
     };
     const onStart = (e) => {
       const rowEl = e.target && e.target.closest ? e.target.closest('[data-swipe-row]') : null;
-      if (!rowEl) { dragEl = null; dragging = false; return; }
+      if (!rowEl) { dragEl = null; dragging = false; clearLongPress(); return; }
       dragEl = rowEl;
       const t = e.touches ? e.touches[0] : e;
       startX = lastX = t.clientX;
@@ -10871,17 +10884,33 @@ class Component extends DCLogic {
       axisLocked = false;
       openAtStart = rowEl.dataset.swipeOpen === '1' ? -REVEAL : 0;
       rowEl.style.transition = 'none';
+
+      clearLongPress();
+      longPressRowEl = rowEl;
+      const idxAttr = rowEl.getAttribute('data-swipe-row');
+      longPressTimer = setTimeout(() => {
+        if (longPressRowEl !== rowEl || axisLocked) return;
+        longPressTimer = null;
+        dragging = false;
+        dragEl = null;
+        rowEl.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)';
+        rowEl.style.transform = 'translateX(0)';
+        this.haptic('medium');
+        this.openRosterActionMenu(idxAttr);
+      }, LONG_PRESS_MS);
     };
     const onMove = (e) => {
       if (!dragging || !dragEl) return;
       const t = e.touches ? e.touches[0] : e;
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
+      if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) clearLongPress();
       // Don't hijack a vertical scroll through the roster list.
       if (!axisLocked) {
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { dragging = false; return; }
         if (Math.abs(dx) < 8) return;
         axisLocked = true;
+        clearLongPress();
         // A new drag starting on a different row closes whatever was open.
         if (this._openSwipeEl && this._openSwipeEl !== dragEl) this.closeAnyRosterSwipe();
       }
@@ -10892,6 +10921,7 @@ class Component extends DCLogic {
       dragEl.style.transform = 'translateX(' + next + 'px)';
     };
     const onEnd = () => {
+      clearLongPress();
       if (!dragging || !dragEl) { dragEl = null; return; }
       dragging = false;
       if (!axisLocked) { dragEl = null; return; }
@@ -10904,6 +10934,32 @@ class Component extends DCLogic {
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd, { passive: true });
     window.addEventListener('touchcancel', onEnd, { passive: true });
+  }
+
+  // Long-press fallback for a roster row: opens the shared confirm sheet as
+  // a small action menu (Transfer / Remove), each leading into the same
+  // sub-confirm flows the swipe-reveal buttons already use. idxAttr comes
+  // straight off the row's data-swipe-row attribute (a string), so match
+  // loosely rather than assuming numeric identity.
+  openRosterActionMenu(idxAttr) {
+    const p = (this.state.roster || []).find(x => String(x.idx) === String(idxAttr));
+    if (!p) return;
+    const name = p.name ? (p.name.charAt(0).toUpperCase() + p.name.slice(1)) : 'this Pokemon';
+    this.askConfirm({
+      title: name,
+      message: 'What would you like to do?',
+      actions: [
+        { label: 'TRANSFER (+1 CANDY)', style: 'primary', run: () => { this.closeConfirm(); this.askTransferConfirm(p); } },
+        { label: 'REMOVE (mistake, no candy)', style: 'danger', run: () => {
+          this.closeConfirm();
+          this.askConfirm({
+            title: 'Remove this entry?',
+            message: 'Use this only for a mistaken duplicate \u2014 it will NOT grant a transfer candy. For a real transfer, use Transfer instead.',
+            actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.removePokemon(p.idx); this.closeConfirm(); } }]
+          });
+        } }
+      ]
+    });
   }
 
   // navList (optional): the ordered array of Pokemon the sheet was opened
