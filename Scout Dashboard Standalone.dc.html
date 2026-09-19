@@ -1132,7 +1132,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.86</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.87</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2478,7 +2478,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <sc-for list="{{ detail.dsTypeBadges }}" as="tb" hint-placeholder-count="2">
               <span style="display:inline-flex;align-items:center;gap:7px;background:{{ tb.fill }};color:{{ tb.ink }};border-radius:var(--r-pill);padding:4px 12px 4px 4px;font-family:var(--font-display);font-weight:700;font-size:11px;line-height:1">
-                <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.3)"></span>{{ tb.name }}</span>
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.3);font-size:11px;line-height:1">{{ tb.icon }}</span>{{ tb.name }}</span>
             </sc-for>
             <span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font-family:var(--font-display);font-weight:700;font-size:11px;line-height:1">{{ detail.cp }} CP</span>
           </div>
@@ -2675,6 +2675,41 @@
         </sc-if>
 
         <sc-if value="{{ detail.onEvolution }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ detail.weaknesses }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:16px;padding:14px 16px;margin-bottom:14px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:10px">WEAK TO</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ detail.weaknesses }}" as="w" hint-placeholder-count="4">
+                <span style="display:inline-flex;align-items:center;gap:6px;background:{{ w.fill }};color:{{ w.ink }};border-radius:var(--r-pill);padding:5px 11px 5px 6px;font:700 11px var(--font-display)">
+                  <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);font-size:10px;line-height:1">{{ w.icon }}</span>{{ w.label }} <span style="opacity:.75;font-weight:600">{{ w.multLabel }}</span></span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ detail.evoChain }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:16px;padding:14px 16px;margin-bottom:14px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:12px">EVOLUTION CHAIN</div>
+            <div style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{ detail.evoChain }}" as="node" hint-placeholder-count="3">
+                <sc-if value="{{ node.stepCandy }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:8px;padding-left:19px;margin:2px 0">
+                    <div style="width:1.5px;height:16px;background:var(--line-300)"></div>
+                    <div style="font:600 10.5px var(--font-display);color:var(--ink-400)">{{ node.stepCandy }} candy<sc-if value="{{ node.stepItem }}" hint-placeholder-val="{{ false }}"> + {{ node.stepItem }}</sc-if></div>
+                  </div>
+                </sc-if>
+                <div style="display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;background:{{ node.isCurrent ? 'var(--surface-sunken)' : 'transparent' }};border:1px solid {{ node.isCurrent ? 'var(--brand-primary-strong)' : 'transparent' }}">
+                  <div style="width:40px;height:40px;border-radius:50%;background:var(--surface-muted);position:relative;overflow:hidden;flex-shrink:0">
+                    <img ref="{{ node.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain">
+                  </div>
+                  <div style="font:600 13.5px var(--font-body);color:var(--ink-900)">{{ node.displayName }}</div>
+                  <sc-if value="{{ node.isCurrent }}" hint-placeholder-val="{{ false }}">
+                    <span style="margin-left:auto;font:700 9.5px var(--font-display);letter-spacing:.05em;color:var(--brand-primary-strong)">CURRENT</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
         <div style="margin-bottom:14px">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">MOVES</div>
@@ -2693,7 +2728,7 @@
                 <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.quickMoveInfo }}</div>
               </sc-if>
               <sc-if value="{{ detail.movePickerOpenForQuick }}" hint-placeholder-val="{{ false }}">
-                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                <div style="margin-top:0;border:1.5px solid var(--brand-primary-strong);border-top:none;border-radius:0 0 9px 9px;background:var(--surface-card);overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.25)">
                   <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
                   <div style="max-height:230px;overflow-y:auto">
                     <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
@@ -2721,7 +2756,7 @@
                 <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMoveInfo }}</div>
               </sc-if>
               <sc-if value="{{ detail.movePickerOpenForCharge }}" hint-placeholder-val="{{ false }}">
-                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                <div style="margin-top:0;border:1.5px solid var(--brand-primary-strong);border-top:none;border-radius:0 0 9px 9px;background:var(--surface-card);overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.25)">
                   <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
                   <div style="max-height:230px;overflow-y:auto">
                     <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
@@ -2749,7 +2784,7 @@
                 <div style="font:11px var(--font-body);color:var(--ink-500);text-align:right">{{ detail.chargeMove2Info }}</div>
               </sc-if>
               <sc-if value="{{ detail.movePickerOpenForCharge2 }}" hint-placeholder-val="{{ false }}">
-                <div style="margin-top:2px;border:1px solid var(--line-200);border-radius:9px;background:var(--surface-sunken);overflow:hidden">
+                <div style="margin-top:0;border:1.5px solid var(--brand-primary-strong);border-top:none;border-radius:0 0 9px 9px;background:var(--surface-card);overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.25)">
                   <input value="{{ detail.movePickerFilterValue }}" onChange="{{ detail.onMovePickerFilterChange }}" placeholder="Search moves…" style="width:100%;box-sizing:border-box;background:transparent;border:none;border-bottom:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
                   <div style="max-height:230px;overflow-y:auto">
                     <sc-for list="{{ detail.movePickerResults }}" as="mv" hint-placeholder-count="4">
@@ -4580,6 +4615,17 @@ class Component extends DCLogic {
     };
   }
 
+  // Single-glyph icon per type, shown inside the small circle on a type
+  // badge (previously always empty) and reused for weakness chips below.
+  TYPE_ICONS() {
+    return {
+      normal:'⚪', fire:'🔥', water:'💧', electric:'⚡', grass:'🌿',
+      ice:'❄️', fighting:'👊', poison:'☠️', ground:'⛰️', flying:'🪶',
+      psychic:'🔮', bug:'🐛', rock:'🪨', ghost:'👻', dragon:'🐉',
+      dark:'🌑', steel:'⚙️', fairy:'✨'
+    };
+  }
+
   TYPE_TINT_PCT() {
     return {
       electric:15, ice:18, fire:20, fairy:20, bug:21, ground:23, grass:24,
@@ -4646,6 +4692,74 @@ class Component extends DCLogic {
       accent: c1,
       chips: parts.map(t => ({ label: t.toUpperCase(), fg: map[t] || '#b0a294', bg: this.rgbaHex(map[t] || '#9a8b7c', .18) }))
     };
+  }
+
+  // All 18 attacking types with a multiplier over 1 against this Pokemon's
+  // own type(s) — i.e. what it's weak to. Reuses the same TYPE_CHART/
+  // typeMultiplier the Raid Counters/Attackers boards already use for real
+  // damage math, so this is the same effectiveness data, not a separate
+  // guessed table. Sorted worst-first (double weaknesses like Bug on a
+  // Grass/Poison mon surface before single ones).
+  weaknessesFor(p) {
+    const m = this.mechanics;
+    if (!m || !m.typeMultiplier || !m.TYPE_CHART) return [];
+    const defTypes = this.typeOf(p).split('/').map(s => s.trim()).filter(Boolean);
+    if (!defTypes.length) return [];
+    const icons = this.TYPE_ICONS();
+    return Object.keys(m.TYPE_CHART)
+      .map(atk => ({ type: atk, mult: m.typeMultiplier(atk, defTypes) }))
+      .filter(x => x.mult > 1)
+      .sort((a, b) => b.mult - a.mult)
+      .map(x => {
+        const t = x.type.toLowerCase();
+        const b = this.dsBadge(t);
+        return { label: x.type, icon: icons[t] || '', fill: b.fill, ink: b.ink,
+          multLabel: x.mult >= 2.5 ? '\u00d72.56' : '\u00d71.6' };
+      });
+  }
+
+  // Every stage of this Pokemon's family, base form to final, in order —
+  // not just the single next step evoRecordFor gives. Walks backward from
+  // the current species to find the base (via a reverse index built from
+  // the same merged real+AI table evoRecordFor uses), then forward to the
+  // final stage. A branch (Eevee, Wurmple) only ever has one real forward
+  // target per the existing single-target data model, so this chain is
+  // exactly as branch-blind as the rest of the app's evolution data —
+  // no new limitation introduced here.
+  evolutionChainFor(p) {
+    const m = this.mechanics;
+    const table = { ...(this.state.evoTable || {}), ...((m && m.REAL_EVOLUTION_TABLE) || {}) };
+    const reverse = {};
+    Object.keys(table).forEach(from => {
+      const to = table[from] && table[from].to;
+      if (to) reverse[String(to).toLowerCase()] = from;
+    });
+    let base = String(p && p.name || '').toLowerCase();
+    const seenBack = new Set();
+    while (reverse[base] && !seenBack.has(base)) {
+      seenBack.add(base);
+      base = reverse[base];
+    }
+    const chain = [];
+    let name = base;
+    const seenFwd = new Set();
+    const currentName = String(p && p.name || '').toLowerCase();
+    while (name && !seenFwd.has(name)) {
+      seenFwd.add(name);
+      const dex = m && m.resolveDexByName ? m.resolveDexByName(name) : null;
+      const rec = table[name] || null;
+      chain.push({
+        name,
+        displayName: name.charAt(0).toUpperCase() + name.slice(1),
+        dex: dex || null,
+        spriteRef: dex ? this.makeSpriteRefByDex(dex, null) : null,
+        isCurrent: name === currentName,
+        stepCandy: chain.length ? (table[chain[chain.length - 1].name] || {}).candy : null,
+        stepItem: chain.length ? (table[chain[chain.length - 1].name] || {}).item : null
+      });
+      name = rec && rec.to ? String(rec.to).toLowerCase() : null;
+    }
+    return chain.length > 1 ? chain : [];
   }
 
   // The row's IV line. A measured spread is a fact and reads as three plain
@@ -11416,14 +11530,22 @@ class Component extends DCLogic {
           const pending = this.state.pendingTmUse;
           const isElite = pending && pending.pokeIdx === p.idx && (pending.tmType === 'eliteFastTM' || pending.tmType === 'eliteChargedTM');
           const isRegularTm = pending && pending.pokeIdx === p.idx && (pending.tmType === 'fastTM' || pending.tmType === 'chargedTM');
+          // The movepool table stores lowercase move names ("aqua jet");
+          // moveOptionsByKind's o.value is Title Case ("Aqua Jet") built from
+          // the move database, with a trailing "+" on legacy entries — a raw
+          // Set.has(o.value) comparison NEVER matched, so every real move was
+          // silently filtered out whenever a species had real movepool data
+          // (i.e. most of the roster), leaving only the "not set" clear
+          // option in the picker. Normalize both sides before comparing.
+          const normalizeMove = v => String(v || '').replace(/\+$/, '').toLowerCase();
           let allowed = null;
           if (pool) {
-            if (isRegularTm) allowed = new Set(pool[poolKey]);
-            else if (isElite) allowed = new Set([...pool[poolKey], ...pool[legacyKey]]);
-            else allowed = new Set([...pool[poolKey], ...pool[legacyKey]]);
+            const basePool = new Set((pool[poolKey] || []).map(normalizeMove));
+            const legacyPool = new Set((pool[legacyKey] || []).map(normalizeMove));
+            allowed = isRegularTm ? basePool : new Set([...basePool, ...legacyPool]);
           }
           const rows = this.moveOptionsByKind(mp.kind)
-            .filter(o => !allowed || allowed.has(o.value))
+            .filter(o => !allowed || allowed.has(normalizeMove(o.value)))
             .filter(o => !filter || o.label.toLowerCase().indexOf(filter) >= 0)
             .map(o => ({ value: o.value, label: o.label, isCurrent: o.value === current,
               choose: () => this.chooseMoveFromPicker(p, mp.field, o.value) }));
@@ -11473,8 +11595,10 @@ class Component extends DCLogic {
         bestLeagueColor: (() => { const b = this.bestLeagueInfo(p); return b ? leagueColor(b.label) : 'var(--ink-300)'; })(),
         dsTypeBadges: this.typeOf(p).split('/').map(s => s.trim()).filter(Boolean).slice(0, 2).map(t => {
           const b = this.dsBadge(t);
-          return { name: t.charAt(0).toUpperCase() + t.slice(1), fill: b.fill, ink: b.ink };
+          return { name: t.charAt(0).toUpperCase() + t.slice(1), fill: b.fill, ink: b.ink, icon: this.TYPE_ICONS()[t.toLowerCase()] || '' };
         }),
+        weaknesses: this.weaknessesFor(p),
+        evoChain: this.evolutionChainFor(p),
         favoriteFilled: p.favorite ? '#ff5f7a' : 'rgba(255,255,255,.55)',
         evo: evoInfo ? {
           hasEvo: true,
