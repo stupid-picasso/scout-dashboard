@@ -41,9 +41,24 @@
  */
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 const REPO = path.dirname(__dirname);
 const SRC = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8');
+
+// Same loader test_ranking.js uses — real pokemon-mechanics.js in a sandbox,
+// not reimplemented, so movepoolFor()/AUTHORITATIVE_MOVES stay authoritative.
+function loadMechanics() {
+  const code = fs.readFileSync(path.join(REPO, 'pokemon-mechanics.js'), 'utf8');
+  const sandbox = { window: { dispatchEvent: () => {} }, Event: function () {}, console };
+  vm.createContext(sandbox);
+  vm.runInContext(code, sandbox);
+  if (!sandbox.window.PokemonMechanics) {
+    throw new Error('pokemon-mechanics.js did not export window.PokemonMechanics — cannot test');
+  }
+  return sandbox.window.PokemonMechanics;
+}
+const m = loadMechanics();
 
 let pass = 0;
 let fail = 0;
@@ -344,6 +359,46 @@ function buildLists(roster, bestRank) {
 
   const notEnoughForRepeat = makeCtx({ charizard: { '': true } }, 39).megaEvolveInfoFor('charizard');
   check('one energy short of the repeat cost -> not ready', notEnoughForRepeat[0].ready, false);
+})();
+
+// ---------------------------------------------------------------------------
+// Move picker case-sensitivity bug: MOVEPOOL_TABLE stores lowercase move
+// names ("aqua jet"), but moveOptionsByKind() (the real, shipped method,
+// extracted below rather than reimplemented) builds Title Case values
+// ("Aqua Jet") from AUTHORITATIVE_MOVES, with a trailing "+" on legacy
+// entries. A raw `Set(movepool).has(titleCaseValue)` comparison never
+// matches, which silently filtered every real move out of the picker for
+// any species the movepool table covers — i.e. most of the roster — leaving
+// only the "not set" clear option. This reproduces that exact shape against
+// the real Wartortle data (found live, not constructed) and asserts the
+// normalization the fix requires actually closes the gap.
+// ---------------------------------------------------------------------------
+(function testMovePickerNormalizesCaseAgainstMovepool() {
+  const moveOptionsBody = extractMethodBody(SRC, 'moveOptionsByKind(kind) {');
+  const ctx = { mechanics: m };
+  ctx.moveOptionsByKind = new Function('kind', moveOptionsBody).bind(ctx);
+
+  const wartortlePool = m.movepoolFor('wartortle');
+  if (!wartortlePool) throw new Error('wartortle missing from MOVEPOOL_TABLE — pick a species that is still covered');
+  const chargeOptions = ctx.moveOptionsByKind('charged');
+  const realWartortleCharge = chargeOptions.filter(o => wartortlePool.charge.includes(o.value.toLowerCase()));
+  check('real charge moves exist in the option list before any filtering (sanity check)',
+    realWartortleCharge.length > 0, true);
+
+  // The exact broken comparison the picker used to make.
+  const brokenAllowed = new Set(wartortlePool.charge);
+  const brokenSurvivors = chargeOptions.filter(o => brokenAllowed.has(o.value));
+  check('BUG SHAPE: unnormalized Set comparison matches nothing (Title Case vs lowercase)',
+    brokenSurvivors.length, 0);
+
+  // The fixed comparison: both sides normalized (lowercase, legacy "+" stripped).
+  const normalizeMove = v => String(v || '').replace(/\+$/, '').toLowerCase();
+  const fixedAllowed = new Set(wartortlePool.charge.map(normalizeMove));
+  const fixedSurvivors = chargeOptions.filter(o => fixedAllowed.has(normalizeMove(o.value)));
+  check('FIX: normalized comparison recovers all 3 of Wartortle real charge moves',
+    fixedSurvivors.length, wartortlePool.charge.length);
+  check('FIX: Aqua Jet specifically survives normalization',
+    fixedSurvivors.some(o => o.value === 'Aqua Jet'), true);
 })();
 
 // ---------------------------------------------------------------------------
