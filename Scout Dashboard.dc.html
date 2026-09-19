@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.88</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.89</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1379,7 +1379,18 @@
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;display:flex;align-items:center;gap:10px;overflow:hidden;background:{{ p.cardTint }};border:1px solid {{ p.cardEdge }};border-left:4px solid {{ p.typeAccent }};border-radius:12px;padding:8px 10px;transition:transform .14s cubic-bezier(.22,1,.36,1)" style-hover="transform:translateY(-1px)">
+        <div style="position:relative;overflow:hidden;border-radius:12px">
+          <div style="position:absolute;inset:0;display:flex;justify-content:flex-end;align-items:stretch">
+            <div onClick="{{ p.markTransferredCandy }}" class="om-press" aria-label="Transfer, plus 1 candy" style="cursor:pointer;width:68px;flex-shrink:0;background:var(--surface-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-700)">
+              <span style="font:700 18px var(--font-display)">&#8617;</span>
+              <span style="font:700 9px var(--font-display);letter-spacing:.04em">TRANSFER</span>
+            </div>
+            <div onClick="{{ p.removeDuplicate }}" class="om-press" aria-label="Remove, mistake, no candy" style="cursor:pointer;width:68px;flex-shrink:0;background:var(--type-fighting);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:white">
+              <span style="font:700 18px var(--font-display)">&times;</span>
+              <span style="font:700 9px var(--font-display);letter-spacing:.04em">REMOVE</span>
+            </div>
+          </div>
+          <div ref="{{ p.swipeRef }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;align-items:center;gap:10px;background:{{ p.cardTint }};border:1px solid {{ p.cardEdge }};border-left:4px solid {{ p.typeAccent }};border-radius:12px;padding:8px 10px;touch-action:pan-y">
           <div style="flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
             <span style="position:absolute;font:800 15px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
             <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 0 6px {{ p.railGlow }})" />
@@ -1414,9 +1425,6 @@
               </div>
             </sc-if>
           </div>
-          <div onClick="{{ stopProp }}" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;align-items:center">
-            <div onClick="{{ p.markTransferredCandy }}" class="om-press" aria-label="Transferred, plus 1 candy" style="cursor:pointer;width:30px;height:30px;border-radius:50%;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;font:700 14px var(--font-display);color:var(--ink-700)">&#8617;</div>
-            <div onClick="{{ p.removeDuplicate }}" class="om-press" aria-label="Remove, mistake, no candy" style="cursor:pointer;width:30px;height:30px;border-radius:50%;background:transparent;border:1px solid var(--line-300);display:flex;align-items:center;justify-content:center;font:700 14px var(--font-display);color:var(--ink-400)">&times;</div>
           </div>
         </div>
       </sc-for>
@@ -1434,8 +1442,11 @@
       <div style="position:relative;height:calc(148px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:hidden;display:flex;flex-direction:column">
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
-        <div style="position:relative;display:flex;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 10px 10px">
+        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 10px 10px">
           <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
+          <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
+            <div style="font:700 10.5px var(--font-display);color:rgba(255,255,255,.75);letter-spacing:.04em">{{ detail.navPositionLabel }}</div>
+          </sc-if>
           <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
         <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:2px;overflow:hidden">
@@ -2349,6 +2360,8 @@ class Component extends DCLogic {
     restorePending: null,
     fileFallback: null,
     pendingConfirm: null,
+    detailNavList: [],
+    detailNavIndex: -1,
     fileFallbackCopied: false,
     evoTable: {},
     candyAiDecisions: {},
@@ -9529,33 +9542,79 @@ class Component extends DCLogic {
     this._headerIO.observe(el);
   }
 
-  // Drag the detail sheet down to dismiss, the way a native bottom sheet works.
-  // Past 110px (or a fast flick) it closes; otherwise it springs back.
+  // Drag the detail sheet down to dismiss, the way a native bottom sheet
+  // works — Past 110px (or a fast flick) it closes; otherwise it springs
+  // back. Also handles the horizontal axis: swipe left/right to step to the
+  // next/previous Pokemon in whatever list the sheet was opened from
+  // (detailNavList/detailNavIndex, set by openDetail). Axis is locked on
+  // the first meaningful move so a vertical scroll/dismiss never also drags
+  // sideways and vice versa — same lock pattern as triageSwipeRef.
   sheetRef(el) {
     if (!el || el.dataset.swipeBound) return;
     el.dataset.swipeBound = '1';
-    let startY = 0, lastY = 0, startT = 0, dragging = false;
+    let startX = 0, startY = 0, lastX = 0, lastY = 0, startT = 0, dragging = false, axis = null;
     const onStart = (e) => {
       if (el.scrollTop > 0) return; // let the sheet scroll its own content first
       const t = e.touches ? e.touches[0] : e;
+      startX = lastX = t.clientX;
       startY = lastY = t.clientY;
       startT = Date.now();
       dragging = true;
+      axis = null;
       el.style.transition = 'none';
     };
     const onMove = (e) => {
       if (!dragging) return;
       const t = e.touches ? e.touches[0] : e;
+      lastX = t.clientX;
       lastY = t.clientY;
+      const dx = lastX - startX;
       const dy = lastY - startY;
-      if (dy <= 0) { el.style.transform = 'translateY(0)'; return; }
+      if (!axis) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      }
+      if (axis === 'y') {
+        if (dy <= 0) { el.style.transform = 'translateY(0)'; return; }
+        if (e.cancelable) e.preventDefault();
+        el.style.transform = 'translateY(' + dy + 'px)';
+        el.style.opacity = String(Math.max(0.45, 1 - dy / 620));
+        return;
+      }
+      // axis === 'x': resist (rubber-band) past either end of the list.
+      const canGo = dx < 0 ? this.state.detailNavIndex < (this.state.detailNavList || []).length - 1 : this.state.detailNavIndex > 0;
       if (e.cancelable) e.preventDefault();
-      el.style.transform = 'translateY(' + dy + 'px)';
-      el.style.opacity = String(Math.max(0.45, 1 - dy / 620));
+      const applied = canGo ? dx : dx * 0.28;
+      el.style.transform = 'translateX(' + applied + 'px)';
+      el.style.opacity = String(Math.max(0.55, 1 - Math.abs(applied) / 700));
     };
     const onEnd = () => {
       if (!dragging) return;
       dragging = false;
+      if (axis === 'x') {
+        const dx = lastX - startX;
+        const velocity = Math.abs(dx) / Math.max(1, Date.now() - startT);
+        const dir = dx < 0 ? 1 : -1; // swipe left -> next, swipe right -> previous
+        const wantsNav = Math.abs(dx) > 90 || (Math.abs(dx) > 30 && velocity > 0.6);
+        el.style.transition = 'transform .22s ease-out, opacity .2s ease-out';
+        if (wantsNav) {
+          const moved = this.navigateDetail(dir);
+          if (moved) {
+            this.haptic('light');
+            el.style.transform = 'translateX(' + (dir * -60) + 'px)';
+            el.style.opacity = '0';
+            setTimeout(() => {
+              el.style.transition = 'none';
+              el.style.transform = 'translateX(0)';
+              el.style.opacity = '1';
+            }, 200);
+            return;
+          }
+        }
+        el.style.transform = 'translateX(0)';
+        el.style.opacity = '1';
+        return;
+      }
       const dy = lastY - startY;
       const velocity = dy / Math.max(1, Date.now() - startT);
       el.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1), opacity .28s ease';
@@ -9645,7 +9704,105 @@ class Component extends DCLogic {
     el.addEventListener('touchcancel', onEnd, { passive: true });
   }
 
-  openDetail(p) { this.haptic('light'); this.setState({ detailPoke: p }); }
+  // Roster row swipe-to-reveal (iOS Mail style): swipe left to reveal
+  // Transfer/Remove underneath, tap either to act. Reveal-then-tap rather
+  // than a full-swipe-commits gesture, since Remove is destructive and a
+  // fast horizontal flick while scrolling a long roster is easy to trigger
+  // by accident. Only one row is ever open at a time (this._openSwipeEl is
+  // an instance field, not React state — DOM transforms are set directly so
+  // opening/closing never forces a full-list re-render).
+  get ROSTER_SWIPE_REVEAL() { return 136; }
+
+  closeAnyRosterSwipe(animate) {
+    const el = this._openSwipeEl;
+    if (!el) return;
+    el.style.transition = animate === false ? 'none' : 'transform .22s cubic-bezier(.22,1,.36,1)';
+    el.style.transform = 'translateX(0)';
+    el.dataset.swipeOpen = '0';
+    this._openSwipeEl = null;
+  }
+
+  rosterSwipeRef(el) {
+    if (!el || el.dataset.rosterSwipeBound) return;
+    el.dataset.rosterSwipeBound = '1';
+    const REVEAL = this.ROSTER_SWIPE_REVEAL;
+    let startX = 0, startY = 0, lastX = 0, dragging = false, axisLocked = false, openAtStart = 0;
+    const openThis = () => {
+      if (this._openSwipeEl && this._openSwipeEl !== el) this.closeAnyRosterSwipe();
+      el.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)';
+      el.style.transform = 'translateX(-' + REVEAL + 'px)';
+      el.dataset.swipeOpen = '1';
+      this._openSwipeEl = el;
+      this.haptic('light');
+    };
+    const closeThis = () => {
+      el.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)';
+      el.style.transform = 'translateX(0)';
+      el.dataset.swipeOpen = '0';
+      if (this._openSwipeEl === el) this._openSwipeEl = null;
+    };
+    const onStart = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      startX = lastX = t.clientX;
+      startY = t.clientY;
+      dragging = true;
+      axisLocked = false;
+      openAtStart = el.dataset.swipeOpen === '1' ? -REVEAL : 0;
+      el.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const t = e.touches ? e.touches[0] : e;
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      // Don't hijack a vertical scroll through the roster list.
+      if (!axisLocked) {
+        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { dragging = false; return; }
+        if (Math.abs(dx) < 8) return;
+        axisLocked = true;
+        // A new drag starting on a different row closes whatever was open.
+        if (this._openSwipeEl && this._openSwipeEl !== el) this.closeAnyRosterSwipe();
+      }
+      lastX = t.clientX;
+      if (e.cancelable) e.preventDefault();
+      let next = openAtStart + dx;
+      next = Math.max(-REVEAL - 24, Math.min(0, next));
+      el.style.transform = 'translateX(' + next + 'px)';
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      if (!axisLocked) return;
+      const dx = lastX - startX;
+      const finalX = openAtStart + dx;
+      if (finalX < -REVEAL / 2) openThis(); else closeThis();
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+  }
+
+  // navList (optional): the ordered array of Pokemon the sheet was opened
+  // from, so swiping left/right on the sheet can step through the SAME list
+  // the person was browsing — Roster in its current filter/sort, not some
+  // other ordering. Omitted call sites just get no prev/next (canNavPrev/
+  // canNavNext both false), rather than navigating a stale or wrong list.
+  openDetail(p, navList) {
+    this.haptic('light');
+    const list = Array.isArray(navList) ? navList : [];
+    const idx = list.findIndex(x => x && x.idx === p.idx);
+    this.setState({ detailPoke: p, detailNavList: list, detailNavIndex: idx });
+  }
+
+  navigateDetail(dir) {
+    const list = this.state.detailNavList || [];
+    const next = this.state.detailNavIndex + dir;
+    if (next < 0 || next >= list.length) return false;
+    this.haptic('light');
+    this.setState({ detailPoke: list[next], detailNavIndex: next });
+    return true;
+  }
 
   // Entry point from the RECS tab's "USE A TM" section. Opens the Pokemon's
   // detail sheet (same overlay as tapping it from Roster) and tags the
@@ -9662,7 +9819,7 @@ class Component extends DCLogic {
   // Clears the move-edit draft/picker too \u2014 an abandoned, never-saved pick
   // must not linger and look "selected" the next time this Pokemon's sheet
   // opens. Drafts are meant to be immediate save-or-discard, not a cache.
-  closeDetail() { this.setState({ detailPoke: null, moveDraft: {}, movePicker: null, movePickerFilter: '', pendingTmUse: null }); }
+  closeDetail() { this.setState({ detailPoke: null, moveDraft: {}, movePicker: null, movePickerFilter: '', pendingTmUse: null, detailNavList: [], detailNavIndex: -1 }); }
 
   topForLeague(key) {
     const pool = this.state.roster.filter(p => p[key] && Number.isFinite(p[key].rankPct));
@@ -9843,7 +10000,8 @@ class Component extends DCLogic {
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
-        onClick: () => this.openDetail(p),
+        onClick: () => { if (this._openSwipeEl) { this.closeAnyRosterSwipe(); return; } this.openDetail(p, filteredRoster.map(r => r.raw)); },
+        swipeRef: (el) => this.rosterSwipeRef(el),
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         initial: (p.name || '?').charAt(0),
         dex: p.dex,
@@ -10568,6 +10726,8 @@ class Component extends DCLogic {
         weaknesses: this.weaknessesFor(p),
         evoChain: this.evolutionChainFor(p),
         favoriteFilled: p.favorite ? '#ff5f7a' : 'rgba(255,255,255,.55)',
+        navPositionLabel: (this.state.detailNavList && this.state.detailNavList.length > 1)
+          ? (this.state.detailNavIndex + 1) + ' of ' + this.state.detailNavList.length : '',
         evo: evoInfo ? {
           hasEvo: true,
           toName: evoInfo.to,
