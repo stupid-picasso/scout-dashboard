@@ -1145,7 +1145,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.98</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.100</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2479,7 +2479,7 @@
   <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
     <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
-      <div style="position:relative;min-height:calc(178px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
+      <div style="position:relative;min-height:calc(256px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
         <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:env(safe-area-inset-top) 10px 0">
@@ -2489,17 +2489,15 @@
           </sc-if>
           <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
-        <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;padding-bottom:10px">
-          <div style="font:800 20px var(--font-display);color:rgba(255,255,255,.92);letter-spacing:.02em;text-shadow:0 2px 6px rgba(0,0,0,.4)"><span style="font-size:11px;font-weight:700;opacity:.7;vertical-align:2px;margin-right:2px">CP</span>{{ detail.cp }}</div>
-          <div style="position:relative;width:148px;height:70px;margin-top:8px">
-            <svg width="148" height="70" viewBox="0 0 148 78" style="position:absolute;top:0;left:0;overflow:visible">
-              <path d="M 8 70 A 66 66 0 0 1 140 70" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5" stroke-linecap="round"></path>
-              <path d="M 8 70 A 66 66 0 0 1 140 70" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" style="transition:stroke-dashoffset 1s ease"></path>
+        <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding-top:8px;padding-bottom:14px">
+          <div style="position:relative;width:180px;height:180px">
+            <div style="position:absolute;top:6px;left:2px;font:800 22px var(--font-display);color:rgba(255,255,255,.95);text-shadow:0 2px 6px rgba(0,0,0,.45)"><span style="font-size:12px;font-weight:700;opacity:.75;vertical-align:2px;margin-right:2px">CP</span>{{ detail.cp }}</div>
+            <svg width="180" height="180" viewBox="0 0 148 148" style="position:absolute;inset:0">
+              <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5" stroke-linecap="round"></path>
+              <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" style="transition:stroke-dashoffset 1s ease"></path>
             </svg>
-          </div>
-          <div style="position:relative;width:150px;height:120px;margin-top:8px;display:flex;align-items:flex-end;justify-content:center">
-            <div style="position:absolute;bottom:2px;width:100px;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
-            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:relative;width:120px;height:120px;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
+            <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:100px;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
+            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:130px;height:130px;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
           </div>
         </div>
       </div>
@@ -5782,11 +5780,18 @@ class Component extends DCLogic {
   }
 
   // Same idea as ringGeom but for a semi-circle arc (path length is pi*r,
-  // half the full circle's 2*pi*r) — used by the detail sheet's top CP
-  // gauge, which now draws only the top arc rather than a full circle so it
-  // never needs to be clipped by the header's height.
+  // half the full circle's 2*pi*r).
   semiRingGeom(pct, r) {
     const c = Math.PI * r;
+    const ratio = Math.max(0, Math.min(1, (pct || 0) / 100));
+    return { dasharray: c.toFixed(1) + ' ' + c.toFixed(1), dashoffset: (c * (1 - ratio)).toFixed(1) };
+  }
+
+  // Same idea again but for a 270-degree (3/4 circle) arc — the actual
+  // Pokemon GO CP-gauge shape: open at the bottom, sweeping up through the
+  // left, over the top, and down the right. Path length is (3/2)*pi*r.
+  threeQuarterRingGeom(pct, r) {
+    const c = r * (3 * Math.PI / 2);
     const ratio = Math.max(0, Math.min(1, (pct || 0) / 100));
     return { dasharray: c.toFixed(1) + ' ' + c.toFixed(1), dashoffset: (c * (1 - ratio)).toFixed(1) };
   }
@@ -11691,7 +11696,7 @@ class Component extends DCLogic {
         accentInk: this.dsBadge(this.primaryTypeOf(p)).ink,
         headerGradient: `radial-gradient(ellipse 140% 95% at 50% 40%, ${this.rgbaHex(this.typeLook(p).accent, .5)} 0%, ${this.rgbaHex(this.typeLook(p).accent, .16)} 45%, var(--surface-sunken) 78%), var(--surface-sunken)`,
         typeChips: this.typeLook(p).chips,
-        overallRing: this.semiRingGeom(p.ivAvg, 66),
+        overallRing: this.threeQuarterRingGeom(p.ivAvg, 66),
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         dex: p.dex, cp: p.cp, hp: p.hp,
