@@ -222,6 +222,7 @@ function buildLists(roster, bestRank) {
 // ---------------------------------------------------------------------------
 (function testEvoInfoForGatesOnItemNotJustCandy() {
   const evoInfoBody = extractMethodBody(SRC, 'evoInfoFor(p) {');
+  const chainCandyCostBody = extractMethodBody(SRC, 'chainCandyCost(p) {');
   function makeCtx(evolutionItems, candyOnHand) {
     const ctx = {
       mechanics: {
@@ -230,10 +231,16 @@ function buildLists(roster, bestRank) {
       state: { evoTable: {}, evolutionItems },
       candyStockFor: () => ({ candy: candyOnHand, xlCandy: null })
     };
+    // Single-hop mock: Onix -> Steelix is Onix's actual final stage, so make
+    // the mock terminal there (matches production shape) rather than looping
+    // forever off a name-blind mock — chainCandyCost has its own dedicated
+    // test below, this one only needs evoInfoFor to not throw.
     ctx.evoRecordFor = function(p) {
+      if (String(p.name || '').toLowerCase() === 'steelix') return null;
       const real = this.mechanics.evolutionInfoFor();
       return { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey };
     };
+    ctx.chainCandyCost = new Function('p', chainCandyCostBody).bind(ctx);
     ctx.evoInfoFor = new Function('p', evoInfoBody).bind(ctx);
     return ctx;
   }
@@ -255,6 +262,52 @@ function buildLists(roster, bestRank) {
     itemCountUnlogged.ready, null);
   check('an unlogged item count must not be silently treated as zero-on-hand',
     itemCountUnlogged.itemReady, null);
+})();
+
+// ---------------------------------------------------------------------------
+// chainCandyCost() / evoInfoFor().chainReady — evolving a Pokemon now must
+// not look "fully ready" off just the next stage's cost when the SAME
+// individual still owes candy for a later stage too (Squirtle->Wartortle
+// costs 25, but the line isn't done until Blastoise, another 100). This is
+// the exact bug shape reported: an "evolve now" card that doesn't know
+// evolving will spend candy the same Pokemon needs again downstream.
+// ---------------------------------------------------------------------------
+(function testChainCandyCostSumsFullRemainingLine() {
+  const chainCandyCostBody = extractMethodBody(SRC, 'chainCandyCost(p) {');
+  const evoInfoBody = extractMethodBody(SRC, 'evoInfoFor(p) {');
+  // Squirtle -25-> Wartortle -100-> Blastoise (final stage, no further evo).
+  const CHAIN = {
+    squirtle: { to: 'Wartortle', candy: 25 },
+    wartortle: { to: 'Blastoise', candy: 100 },
+    blastoise: null
+  };
+  function makeCtx(candyOnHand) {
+    const ctx = { state: { evoTable: {} }, candyStockFor: () => ({ candy: candyOnHand, xlCandy: null }) };
+    ctx.evoRecordFor = function(p) {
+      const rec = CHAIN[String(p.name || '').toLowerCase()];
+      return rec ? { to: rec.to, candy: rec.candy, item: null, itemKey: null } : null;
+    };
+    ctx.chainCandyCost = new Function('p', chainCandyCostBody).bind(ctx);
+    ctx.evoInfoFor = new Function('p', evoInfoBody).bind(ctx);
+    return ctx;
+  }
+
+  const squirtle = { name: 'Squirtle' };
+  check('chain cost sums every remaining stage, not just the next one',
+    makeCtx(999).chainCandyCost(squirtle), 125);
+
+  const midStock = makeCtx(30).evoInfoFor(squirtle);
+  check('30 candy covers the next stage (25) so the immediate step reads ready', midStock.ready, true);
+  check('but 30 does not cover the full 125 remaining line -> chainReady is false, not true',
+    midStock.chainReady, false);
+
+  const fullStock = makeCtx(125).evoInfoFor(squirtle);
+  check('125 candy covers next stage AND the rest of the line -> chainReady is true', fullStock.chainReady, true);
+
+  const wartortle = { name: 'Wartortle' };
+  check('a final-stage species (Blastoise, no further evo) breaks the chain-need walk at null to',
+    makeCtx(999).chainCandyCost({ name: 'Blastoise' }), 0);
+  check('mid-chain species still sums correctly on its own', makeCtx(999).chainCandyCost(wartortle), 100);
 })();
 
 // ---------------------------------------------------------------------------
