@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.83</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.86</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -297,7 +297,7 @@
                 <div style="font:700 10.5px var(--font-display);color:{{ row.candyColor }};white-space:nowrap">{{ row.candyLabel }}</div>
               </div>
               <sc-if value="{{ row.dupNote }}" hint-placeholder-val="{{ false }}">
-                <div style="font:10.5px var(--font-display);color:var(--grass-700);margin-top:5px">{{ row.dupNote }}</div>
+                <div style="font:10.5px var(--font-display);color:{{ row.dupNoteColor }};margin-top:5px">{{ row.dupNote }}</div>
               </sc-if>
             </div>
             <div onClick="{{ row.onDone }}" class="om-press" style="cursor:pointer;flex-shrink:0;width:40px;height:40px;border-radius:50%;background:{{ row.doneBg }};border:1px solid {{ row.doneBorder }};display:flex;align-items:center;justify-content:center;font:800 15px var(--font-display);color:{{ row.doneColor }}">&#10003;</div>
@@ -1422,15 +1422,22 @@
     <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
       <div style="position:relative;height:calc(148px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:hidden;display:flex;flex-direction:column">
-        <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.14);border-radius:62% 8% 62% 8%"></div>
-        <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.10);border-radius:62% 8% 62% 8%"></div>
+        <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
+        <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
         <div style="position:relative;display:flex;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 10px 10px">
           <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
           <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
-        <div style="position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding-bottom:4px;overflow:hidden">
-          <div style="position:absolute;bottom:8px;width:100px;height:16px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.35), transparent 70%)"></div>
-          <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:relative;max-height:88%;max-width:80%;object-fit:contain;transform:scale(1.45);filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
+        <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:2px;overflow:hidden">
+          <div style="font:800 20px var(--font-display);color:rgba(255,255,255,.92);letter-spacing:.02em;text-shadow:0 2px 6px rgba(0,0,0,.4)"><span style="font-size:11px;font-weight:700;opacity:.7;vertical-align:2px;margin-right:2px">CP</span>{{ detail.cp }}</div>
+          <div style="position:relative;width:112px;height:112px;margin-top:-2px">
+            <svg width="112" height="112" viewBox="0 0 148 148" style="position:absolute;inset:0">
+              <circle cx="74" cy="74" r="66" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5"></circle>
+              <circle cx="74" cy="74" r="66" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" transform="rotate(-90 74 74)" style="transition:stroke-dashoffset 1s ease"></circle>
+            </svg>
+            <div style="position:absolute;bottom:2px;width:100%;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
+            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:absolute;inset:0;margin:auto;max-height:88%;max-width:80%;object-fit:contain;transform:scale(1.45);filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
+          </div>
         </div>
       </div>
 
@@ -1519,7 +1526,7 @@
             </div>
             <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:10px">{{ detail.purify.costLine }} &middot; IVs +2 each (capped 15), level raised to at least 25, learns Return</div>
             <sc-if value="{{ detail.purify.onPurify }}" hint-placeholder-val="{{ false }}">
-              <div onClick="{{ detail.purify.onPurify }}" class="om-press" style="cursor:pointer;text-align:center;padding:10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 12px var(--font-display)">PURIFY</div>
+              <div onClick="{{ detail.purify.onPurify }}" class="om-press" style="cursor:pointer;text-align:center;padding:10px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 12px var(--font-display)">PURIFY</div>
             </sc-if>
           </div>
         </sc-if>
@@ -1551,7 +1558,7 @@
                   </div>
                 </div>
                 <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;white-space:nowrap;padding:9px 16px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11.5px var(--font-display)">POWER UP</div>
+                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;white-space:nowrap;padding:9px 16px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 11.5px var(--font-display)">POWER UP</div>
                 </sc-if>
                 <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
                   <div style="white-space:nowrap;font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</div>
@@ -1742,7 +1749,7 @@
               <div style="font:700 10px var(--font-display);letter-spacing:.05em;color:{{ detail.evo.statusColor }}">{{ detail.evo.statusLabel }}</div>
             </div>
             <div style="font:12px var(--font-display);color:var(--ink-500);margin-bottom:12px">{{ detail.evo.candyLine }}</div>
-            <button onClick="{{ detail.evo.onEvolve }}" class="om-press" style="display:block;width:100%;cursor:pointer;text-align:center;padding:13px 24px;border:none;border-radius:var(--r-pill);background:var(--grad-primary);color:#fff;font:700 13px var(--font-display);letter-spacing:.03em">{{ detail.evo.buttonLabel }}</button>
+            <button onClick="{{ detail.evo.onEvolve }}" class="om-press" style="display:block;width:100%;cursor:pointer;text-align:center;padding:13px 24px;border:none;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 13px var(--font-display);letter-spacing:.03em">{{ detail.evo.buttonLabel }}</button>
           </div>
         </sc-if>
 
@@ -1767,14 +1774,17 @@
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
       <div style="display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
-        <div>#</div><div>NAME</div><div>CP</div><div>RANK %</div><div>STAT PROD</div><div>EVOLVES TO</div>
+        <div>#</div><div>NAME</div><div>CP</div><div>IV RANK %</div><div>STAT PROD</div><div>EVOLVES TO</div>
       </div>
       <sc-for list="{{ pvpList }}" as="p" hint-placeholder-count="8">
         <div class="om-stagger" style="--i:{{ $index }};display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:13px var(--font-body);border-bottom:1px solid var(--surface-muted);align-items:center">
           <div style="font:var(--font-display);color:var(--ink-300)">{{ p.rankNum }}</div>
           <div style="font-weight:600">{{ p.displayName }}</div>
           <div style="font:var(--font-display)">{{ p.cp }}</div>
-          <div style="font:700 var(--font-display);color:var(--grass-700)">{{ p.rankPctDisplay }}</div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="flex-shrink:0;width:17px;height:17px;border-radius:5px;background:{{ p.tierColor }};color:var(--surface-page);font:800 10px var(--font-display);display:flex;align-items:center;justify-content:center">{{ p.tierLabel }}</span>
+            <span style="font:700 var(--font-display);color:var(--grass-700)">{{ p.rankPctDisplay }}</span>
+          </div>
           <div style="font:var(--font-display);color:var(--ink-500)">{{ p.statProdDisplay }}</div>
           <div style="font:12.5px var(--font-body);color:var(--ink-500)">{{ p.evolvesTo }}</div>
         </div>
@@ -8480,6 +8490,28 @@ class Component extends DCLogic {
     return null;
   }
 
+  // Sums the candy cost of every remaining stage past THIS individual's
+  // current species, not just the next one — Squirtle->Wartortle->Blastoise
+  // is 25+100=125, not just the 25 to reach Wartortle. Same shared pool
+  // funds every future stage of this one Pokemon, so "ready to evolve"
+  // needs to know the whole bill, not just the next installment. Returns
+  // null if any hop's cost is unknown (an unknown link breaks the total,
+  // rather than silently underclaiming what's owed).
+  chainCandyCost(p) {
+    let name = String(p && p.name || '').toLowerCase();
+    const seen = new Set();
+    let total = 0;
+    while (!seen.has(name)) {
+      seen.add(name);
+      const rec = this.evoRecordFor({ name });
+      if (!rec || !rec.to) break;
+      if (rec.candy == null) return null;
+      total += rec.candy;
+      name = String(rec.to).toLowerCase();
+    }
+    return total;
+  }
+
   evoInfoFor(p) {
     const rec = this.evoRecordFor(p);
     if (!rec || !rec.to) return null;
@@ -8498,6 +8530,15 @@ class Component extends DCLogic {
     if (candyReady === false || itemReady === false) ready = false;
     else if (candyReady == null || itemReady == null) ready = null;
     else ready = true;
+    // Chain-aware on top of the immediate-step "ready": does the current
+    // stock cover every remaining stage this individual has left, not just
+    // the one in front of it. chainReady === false is a distinct state from
+    // ready === false — the next step is affordable, but taking it now
+    // spends candy the SAME Pokemon will need again for its own next stage.
+    const chainNeed = this.chainCandyCost(p);
+    const chainReady = ready === true
+      ? (chainNeed == null || have == null ? null : have >= chainNeed)
+      : null;
     return {
       to: rec.to,
       item: rec.item || null,
@@ -8509,6 +8550,8 @@ class Component extends DCLogic {
       // Unknown stock is not the same as insufficient stock, so it reads as
       // "candy unknown" rather than silently blocking the evolution.
       ready,
+      chainNeed,
+      chainReady,
       short: need != null && have != null ? Math.max(0, need - have) : null
     };
   }
@@ -9732,15 +9775,44 @@ class Component extends DCLogic {
     const leagueKey = league;
     const rosterForLeague = leagueKey === 'master' ? roster.map(p => ({ ...p, master: this.masterRankFor(p) })) : roster;
     const leaguePool = rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct));
-    leaguePool.sort((a, b) => b[leagueKey].rankPct - a[leagueKey].rankPct);
-    const pvpList = leaguePool.slice(0, 20).map(p => ({
-      displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
-      cp: p.cp,
-      rankNum: Number.isFinite(p[leagueKey].rankNum) ? '#' + p[leagueKey].rankNum : '—',
-      rankPctDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(1) + '%' : '—',
-      statProdDisplay: Number.isFinite(p[leagueKey].statProd) ? p[leagueKey].statProd.toFixed(1) + '%' : '—',
-      evolvesTo: this.evolvesToName(p) || '—'
-    }));
+    // Species meta tier (S/A/B/C) is a DIFFERENT thing from rankPct: rankPct
+    // is this individual's IV quality relative to its OWN species' cap (a
+    // perfect-IV Pikachu reads 100% there and is still bad in Great League).
+    // Tier is whether the species itself is competitive at all, sourced from
+    // scripts/import_pvp_tier_data.py. Only Great/Ultra have real tier data
+    // (that's what PvPoke publishes) — Little Cup/Master fall back to the
+    // old rankPct-only sort, same as before this change.
+    const tierOrder = { S: 0, A: 1, B: 2, C: 3 };
+    const tierFor = (p) => (this.mechanics && this.mechanics.pvpTierFor)
+      ? this.mechanics.pvpTierFor(p.name, this.isShadow(p), leagueKey)
+      : null;
+    leaguePool.sort((a, b) => {
+      const ta = tierFor(a), tb = tierFor(b);
+      if (ta && tb) {
+        const byTier = tierOrder[ta.tier] - tierOrder[tb.tier];
+        if (byTier !== 0) return byTier;
+        return b[leagueKey].rankPct - a[leagueKey].rankPct;
+      }
+      // One or both species have no tier data for this league (Little Cup,
+      // Master, or a species PvPoke hasn't ranked) — fall back to rankPct
+      // alone rather than silently sorting untiered mons to the bottom.
+      return b[leagueKey].rankPct - a[leagueKey].rankPct;
+    });
+    const tierColor = t => t === 'S' ? 'var(--type-fairy)' : t === 'A' ? 'var(--grass-700)'
+      : t === 'B' ? 'var(--type-electric)' : 'var(--ink-400)';
+    const pvpList = leaguePool.slice(0, 20).map(p => {
+      const tier = tierFor(p);
+      return {
+        displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        cp: p.cp,
+        rankNum: Number.isFinite(p[leagueKey].rankNum) ? '#' + p[leagueKey].rankNum : '—',
+        rankPctDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(1) + '%' : '—',
+        statProdDisplay: Number.isFinite(p[leagueKey].statProd) ? p[leagueKey].statProd.toFixed(1) + '%' : '—',
+        evolvesTo: this.evolvesToName(p) || '—',
+        tierLabel: tier ? tier.tier : '—',
+        tierColor: tier ? tierColor(tier.tier) : 'var(--ink-300)'
+      };
+    });
 
     const leagueDefs = [
       { key: 'great', label: 'GREAT ≤1500' },
@@ -10117,7 +10189,9 @@ class Component extends DCLogic {
         initial: (p.name || '?').charAt(0),
         badgeColor: this.dsTypeColor(p),
         auraColor: this.typeLook(p).glow,
-        headerGradient: `linear-gradient(158deg, ${this.rgbaHex(this.typeLook(p).accent, .92)} 0%, ${this.rgbaHex(this.typeLook(p).chips[1] ? this.typeLook(p).chips[1].fg : this.typeLook(p).accent, .7)} 58%, var(--surface-card) 100%)`,
+        accentColor: this.typeLook(p).accent,
+        accentInk: this.dsBadge(this.primaryTypeOf(p)).ink,
+        headerGradient: `radial-gradient(ellipse 140% 95% at 50% 40%, ${this.rgbaHex(this.typeLook(p).accent, .5)} 0%, ${this.rgbaHex(this.typeLook(p).accent, .16)} 45%, var(--surface-sunken) 78%), var(--surface-sunken)`,
         typeChips: this.typeLook(p).chips,
         overallRing: this.ringGeom(p.ivAvg, 66),
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
@@ -10428,8 +10502,15 @@ class Component extends DCLogic {
       if (evo.have == null) return evo.need + ' candy needed';
       return evo.have + '/' + evo.need + ' candy';
     };
-    const candyColorFor = evo => evo.ready === true ? 'var(--grass-700)'
+    const candyColorFor = evo => evo.ready === true
+      ? (evo.chainReady === false ? 'var(--type-electric)' : 'var(--grass-700)')
       : evo.ready === false ? 'var(--type-fighting)' : 'var(--ink-400)';
+    // Only shown when the immediate step is funded but the total remaining
+    // chain isn't — the amber "ready" case that used to look identical to
+    // a fully-funded one.
+    const chainNoteFor = evo => (evo.ready === true && evo.chainReady === false)
+      ? ('evolving now leaves it short for the rest of the line \u2014 needs ' + evo.chainNeed + ' total to reach final form')
+      : null;
     const triageTop = triageAll[0] || null;
     const queueIdx = this.state.transferQueue || [];
     const rosterByIdx = {};
@@ -11206,7 +11287,8 @@ class Component extends DCLogic {
         candyPct: (row.evo.need && row.evo.have != null)
           ? Math.min(100, Math.round(row.evo.have / row.evo.need * 100)) + '%'
           : (row.evo.ready ? '100%' : '0%'),
-        dupNote: this.evolveDupNote(row),
+        dupNote: [this.evolveDupNote(row), chainNoteFor(row.evo)].filter(Boolean).join(' \u00b7 ') || null,
+        dupNoteColor: chainNoteFor(row.evo) ? 'var(--type-electric)' : 'var(--grass-700)',
         risk: row.risk,
         riskNote: 'Strong Little Cup pick \u2014 evolving puts it over the 500 CP cap.',
         doneBg: 'var(--grass-500)',
