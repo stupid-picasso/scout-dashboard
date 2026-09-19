@@ -69,6 +69,19 @@
   .om-press{transition:transform .18s cubic-bezier(.2,.8,.2,1),filter .18s ease}
   .om-press:active{transform:scale(.96);filter:brightness(1.1)}
   .om-tap{transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s ease,background .2s ease}
+  /* .om-tap/.om-press set touch-action:manipulation (see the button/.om-tap
+     rule above) so double-tap-zoom is disabled on ordinary tappable rows.
+     That's fine for a plain tap target, but a roster row is BOTH tappable
+     (om-tap, for the press-scale feedback) AND a horizontal swipe target —
+     "manipulation" still lets the browser claim the gesture natively for
+     panning, and since the row itself has nothing to pan, that silently
+     swallows the whole touch sequence before any JS ever sees usable
+     movement. The swipe looking like it "does nothing" was this, not the
+     JS. !important + the attribute selector guarantees pan-y (JS handles
+     horizontal, browser only handles vertical) wins over the class rule
+     regardless of source order or any touch-action cascade quirk.
+  */
+  [data-swipe-row]{touch-action:pan-y !important}
   .om-tap:active{transform:scale(.985);border-color:var(--ink-300)}
   /* Momentum inside panels, and no scroll chaining to the page behind. */
   .om-scroll{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -106,7 +119,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.94</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.96</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
