@@ -106,7 +106,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.90</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.94</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1377,7 +1377,7 @@
         </sc-for>
       </div>
     </sc-if>
-    <div ref="{{ rosterListRef }}" style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
+    <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
         <div style="position:relative;overflow:hidden;border-radius:12px">
           <div style="position:absolute;inset:0;display:flex;justify-content:flex-end;align-items:stretch">
@@ -1442,22 +1442,24 @@
       <div style="position:relative;height:calc(178px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:hidden;display:flex;flex-direction:column">
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
-        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 10px 10px">
+        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 10px 4px">
           <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
           <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
             <div style="font:700 10.5px var(--font-display);color:rgba(255,255,255,.75);letter-spacing:.04em">{{ detail.navPositionLabel }}</div>
           </sc-if>
           <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
-        <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-bottom:2px;overflow:visible">
+        <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;padding-bottom:2px;overflow:visible">
           <div style="font:800 20px var(--font-display);color:rgba(255,255,255,.92);letter-spacing:.02em;text-shadow:0 2px 6px rgba(0,0,0,.4)"><span style="font-size:11px;font-weight:700;opacity:.7;vertical-align:2px;margin-right:2px">CP</span>{{ detail.cp }}</div>
-          <div style="position:relative;width:148px;height:150px;margin-top:4px">
-            <svg width="148" height="78" viewBox="0 0 148 78" style="position:absolute;top:0;left:0">
+          <div style="position:relative;width:148px;height:70px;margin-top:2px">
+            <svg width="148" height="70" viewBox="0 0 148 78" style="position:absolute;top:0;left:0;overflow:visible">
               <path d="M 8 70 A 66 66 0 0 1 140 70" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5" stroke-linecap="round"></path>
               <path d="M 8 70 A 66 66 0 0 1 140 70" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" style="transition:stroke-dashoffset 1s ease"></path>
             </svg>
-            <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:104px;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
-            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:136px;height:136px;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
+          </div>
+          <div style="position:relative;width:150px;height:128px;margin-top:-46px;display:flex;align-items:flex-end;justify-content:center">
+            <div style="position:absolute;bottom:6px;width:104px;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
+            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:relative;width:140px;height:140px;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))" />
           </div>
         </div>
       </div>
@@ -2516,6 +2518,7 @@ class Component extends DCLogic {
     this.initFirebase();
     this.checkPendingImport();
     this.bindPullToRefresh();
+    this.bindRosterSwipe();
   }
 
   // Safari-style pull-to-refresh. An installed PWA has no address bar and no
@@ -9722,13 +9725,15 @@ class Component extends DCLogic {
   // an instance field, not React state — DOM transforms are set directly so
   // opening/closing never forces a full-list re-render).
   //
-  // Bound ONCE to the whole list container rather than once per row: a
-  // per-row ref callback inside sc-for turned out unreliable (rows never
-  // got their listeners attached — the swipe silently did nothing). A
-  // single delegated listener on the container, identifying the touched
-  // row via closest('[data-swipe-row]'), matches the same single-ref
-  // pattern sheetRef/triageCardRef already use successfully elsewhere in
-  // this file, so it doesn't depend on ref-inside-a-loop working at all.
+  // Bound to `window` from componentDidMount, exactly like
+  // bindPullToRefresh() above — NOT via a ref= callback on the list
+  // container. Two different ref-based attempts (once per-row, once on the
+  // container) both produced zero effect on-device despite looking correct
+  // in review, while the window-level pattern is the one gesture technique
+  // already confirmed working in this app (pull-to-refresh, and the detail
+  // sheet's own swipe-to-dismiss). Delegating from window with
+  // closest('[data-swipe-row]') sidesteps whatever was wrong with binding
+  // through ref= on this particular element entirely.
   get ROSTER_SWIPE_REVEAL() { return 136; }
 
   closeAnyRosterSwipe(animate) {
@@ -9740,9 +9745,9 @@ class Component extends DCLogic {
     this._openSwipeEl = null;
   }
 
-  rosterListRef(el) {
-    if (!el || el.dataset.rosterListBound) return;
-    el.dataset.rosterListBound = '1';
+  bindRosterSwipe() {
+    if (this._rosterSwipeBound) return;
+    this._rosterSwipeBound = true;
     const REVEAL = this.ROSTER_SWIPE_REVEAL;
     let dragEl = null, startX = 0, startY = 0, lastX = 0, dragging = false, axisLocked = false, openAtStart = 0;
     const openRow = (rowEl) => {
@@ -9760,8 +9765,8 @@ class Component extends DCLogic {
       if (this._openSwipeEl === rowEl) this._openSwipeEl = null;
     };
     const onStart = (e) => {
-      const rowEl = e.target.closest ? e.target.closest('[data-swipe-row]') : null;
-      if (!rowEl) { dragEl = null; return; }
+      const rowEl = e.target && e.target.closest ? e.target.closest('[data-swipe-row]') : null;
+      if (!rowEl) { dragEl = null; dragging = false; return; }
       dragEl = rowEl;
       const t = e.touches ? e.touches[0] : e;
       startX = lastX = t.clientX;
@@ -9791,7 +9796,7 @@ class Component extends DCLogic {
       dragEl.style.transform = 'translateX(' + next + 'px)';
     };
     const onEnd = () => {
-      if (!dragging || !dragEl) return;
+      if (!dragging || !dragEl) { dragEl = null; return; }
       dragging = false;
       if (!axisLocked) { dragEl = null; return; }
       const dx = lastX - startX;
@@ -9799,10 +9804,10 @@ class Component extends DCLogic {
       if (finalX < -REVEAL / 2) openRow(dragEl); else closeRow(dragEl);
       dragEl = null;
     };
-    el.addEventListener('touchstart', onStart, { passive: true });
-    el.addEventListener('touchmove', onMove, { passive: false });
-    el.addEventListener('touchend', onEnd, { passive: true });
-    el.addEventListener('touchcancel', onEnd, { passive: true });
+    window.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd, { passive: true });
+    window.addEventListener('touchcancel', onEnd, { passive: true });
   }
 
   // navList (optional): the ordered array of Pokemon the sheet was opened
@@ -10948,7 +10953,6 @@ class Component extends DCLogic {
       headerRef: (el) => { if (el) this._headerEl = el; },
       headerSentinelRef: (el) => this.headerSentinelRef(el),
       sheetRef: (el) => this.sheetRef(el),
-      rosterListRef: (el) => this.rosterListRef(el),
       isMobile,
       // A phone sheet rises from the bottom edge and keeps its bottom corners
       // square against it; a desktop dialog stays centred and fully rounded.
