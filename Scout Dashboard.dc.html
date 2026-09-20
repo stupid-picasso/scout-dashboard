@@ -119,7 +119,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.100</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.102</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1452,19 +1452,19 @@
   <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(12px);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
     <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
-      <div style="position:relative;min-height:calc(256px + env(safe-area-inset-top));background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
+      <div style="position:relative;min-height:230px;background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
-        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:env(safe-area-inset-top) 10px 0">
+        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 10px 0">
           <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
           <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
             <div style="font:700 10.5px var(--font-display);color:rgba(255,255,255,.75);letter-spacing:.04em">{{ detail.navPositionLabel }}</div>
           </sc-if>
           <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
-        <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding-top:8px;padding-bottom:14px">
+        <div style="position:absolute;top:44px;left:14px;font:800 22px var(--font-display);color:rgba(255,255,255,.95);text-shadow:0 2px 6px rgba(0,0,0,.45);z-index:2"><span style="font-size:12px;font-weight:700;opacity:.75;vertical-align:2px;margin-right:2px">CP</span>{{ detail.cp }}</div>
+        <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding-top:2px;padding-bottom:6px">
           <div style="position:relative;width:180px;height:180px">
-            <div style="position:absolute;top:6px;left:2px;font:800 22px var(--font-display);color:rgba(255,255,255,.95);text-shadow:0 2px 6px rgba(0,0,0,.45)"><span style="font-size:12px;font-weight:700;opacity:.75;vertical-align:2px;margin-right:2px">CP</span>{{ detail.cp }}</div>
             <svg width="180" height="180" viewBox="0 0 148 148" style="position:absolute;inset:0">
               <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5" stroke-linecap="round"></path>
               <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" style="transition:stroke-dashoffset 1s ease"></path>
