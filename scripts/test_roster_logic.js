@@ -460,6 +460,21 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// pvpMovesetFor() — PvPoke's recommended set per species/league, stored as a
+// compact "fast|charged1|charged2" string and returned in app move naming.
+// ---------------------------------------------------------------------------
+(function testPvpMovesetFor() {
+  const g = m.pvpMovesetFor('azumarill', false, 'great');
+  check('ranked species returns a fast move and at least one charged move',
+    !!g && typeof g.fast === 'string' && Array.isArray(g.charged) && g.charged.length >= 1, true);
+  check('move names use the app naming (lowercase, spaces, no underscores)',
+    !!g && [g.fast, ...g.charged].every(n => n === n.toLowerCase() && !n.includes('_')), true);
+  check('unranked/unknown species returns null', m.pvpMovesetFor('notarealmon', false, 'great'), null);
+  const u = m.pvpMovesetFor('azumarill', false, 'ultra');
+  check('ultra league lookup works independently of great', u === null || typeof u.fast === 'string', true);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

@@ -39,6 +39,8 @@ USAGE
 -----
     python3 scripts/import_pvp_tier_data.py
 
+Also stores PvPoke's recommended moveset per species ("moves" / "shadowMoves").
+
 Writes/updates the PVP_TIER_GREAT / PVP_TIER_ULTRA blocks in
 pokemon-mechanics.js (same GENERATED BLOCK convention as the other
 import_*.py scripts in this repo).
@@ -78,12 +80,19 @@ def build_table(rankings):
         # species — they're mechanically different Pokemon, same as the
         # movepool/evolution import scripts treat them.
         entry = table.setdefault(base, {})
+        # PvPoke's simulated best moveset: [fast, charged1, charged2]. Stored as
+        # one compact "fast|charged1|charged2" string in the app's own move
+        # naming (lowercase, spaces) to keep the generated block small.
+        moveset = row.get("moveset") or []
+        mv = "|".join(m.lower().replace("_", " ") for m in moveset) if moveset else None
         if is_shadow:
             entry["shadowScore"] = round(score, 1)
             entry["shadowTier"] = tier_for(score)
+            if mv: entry["shadowMoves"] = mv
         else:
             entry["score"] = round(score, 1)
             entry["tier"] = tier_for(score)
+            if mv: entry["moves"] = mv
     return table
 
 
