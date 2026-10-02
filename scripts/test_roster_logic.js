@@ -423,6 +423,30 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// bestRaidMoveset() — best legal fast+charge pair by cycleDps, compared with
+// the Pokemon's current moves. Runs the real shipped methods against the real
+// mechanics tables.
+// ---------------------------------------------------------------------------
+(function testBestRaidMoveset() {
+  const ctx = { mechanics: m, state: { moveDB: {} } };
+  [['moveKey', 'name'], ['lookupMove', 'name'], ['bestDpsFor', 'p'], ['bestRaidMoveset', 'p'], ['formatMoveName', 'name']].forEach(([n, arg]) => {
+    ctx[n] = new Function(arg, extractMethodBody(SRC, `${n}(${arg}) {`)).bind(ctx);
+  });
+  ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
+  ctx.ivsOf = () => [15, 15, 15];
+  ctx.typesOf = p => p.types;
+  ctx.isShadow = () => false;
+  const mon = { name: 'Wartortle', dex: 8, types: ['Water'], quickMove: 'water gun', chargeMove: 'hydro pump' };
+  const r = ctx.bestRaidMoveset(mon);
+  check('returns a recommendation for a species with a movepool', !!r && /DPS/.test(r.best), true);
+  const pool = m.movepoolFor('wartortle');
+  const all = [...pool.fast, ...(pool.fastLegacy || [])];
+  check('recommended fast move comes from the species pool', all.some(f => r.best.toLowerCase().includes(f)), true);
+  const bad = ctx.bestRaidMoveset({ ...mon, name: 'NotARealMon' });
+  check('unknown species returns null instead of throwing', bad, null);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

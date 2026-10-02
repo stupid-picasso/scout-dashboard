@@ -1145,7 +1145,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.104</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.105</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2606,12 +2606,28 @@
             </sc-for>
           </div>
         </sc-if>
+
+        <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
+          <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">LEAGUE RANKINGS</div>
+          <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:12px">{{ detail.ivFloorLine }}</div>
+          <sc-for list="{{ detail.leagues }}" as="l" hint-placeholder-count="3">
+            <div style="margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;font:12.5px var(--font-display);margin-bottom:5px">
+                <span style="color:{{ l.color }};font-weight:750">{{ l.label }}</span>
+                <span style="color:var(--ink-500)">{{ l.pctDisplay }} &middot; rank {{ l.rankDisplay }}</span>
+              </div>
+              <div style="height:7px;background:var(--line-200);border-radius:4px;overflow:hidden">
+                <div style="height:100%;border-radius:4px;background:{{ l.color }};width:{{ l.barWidth }};transition:width 1s ease"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
         </sc-if>
 
         <sc-if value="{{ detail.onInvestment }}" hint-placeholder-val="{{ false }}">
         <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
-            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">COST TO POWER UP</div>
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
             <div style="font:12px var(--font-display);color:var(--ink-600)">{{ detail.powerPlan.levelLine }}</div>
             <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:4px">{{ detail.powerPlan.luckyNote }}</div>
             <div style="font:11.5px var(--font-display);color:var(--ink-400);margin-bottom:12px">{{ detail.powerPlan.inventoryLine }}</div>
@@ -2658,61 +2674,12 @@
           </div>
         </sc-if>
 
-        <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
-          <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">LEAGUE RANKINGS</div>
-          <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:12px">{{ detail.ivFloorLine }}</div>
-          <sc-for list="{{ detail.leagues }}" as="l" hint-placeholder-count="3">
-            <div style="margin-bottom:14px">
-              <div style="display:flex;justify-content:space-between;align-items:baseline;font:12.5px var(--font-display);margin-bottom:5px">
-                <span style="color:{{ l.color }};font-weight:750">{{ l.label }}</span>
-                <span style="color:var(--ink-500)">{{ l.pctDisplay }} &middot; rank {{ l.rankDisplay }}</span>
-              </div>
-              <div style="height:7px;background:var(--line-200);border-radius:4px;overflow:hidden">
-                <div style="height:100%;border-radius:4px;background:{{ l.color }};width:{{ l.barWidth }};transition:width 1s ease"></div>
-              </div>
-            </div>
-          </sc-for>
-        </div>
-
-        <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
-          <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">INVESTMENT</div>
-          <sc-if value="{{ detail.plan.known }}" hint-placeholder-val="{{ false }}">
-            <div style="font:11.5px var(--font-display);color:var(--ink-500);margin-bottom:12px">{{ detail.plan.levelLine }}</div>
-            <sc-if value="{{ detail.plan.hasTargets }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-                <sc-for list="{{ detail.plan.targets }}" as="t" hint-placeholder-count="2">
-                  <div style="background:var(--surface-card);border-radius:9px;padding:10px 12px">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
-                      <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em">{{ t.label }}</div>
-                      <div style="font:700 12px var(--font-display);color:var(--ink-900)">{{ t.cpLine }}</div>
-                    </div>
-                    <div style="font:11.5px var(--font-display);color:var(--ink-600);margin-top:5px">{{ t.costLine }}</div>
-                    <sc-if value="{{ t.afford }}" hint-placeholder-val="{{ false }}">
-                      <div style="font:11px var(--font-body);color:{{ t.affordColor }};margin-top:4px">{{ t.afford }}</div>
-                    </sc-if>
-                  </div>
-                </sc-for>
-              </div>
-            </sc-if>
-            <sc-if value="{{ detail.plan.maxedNote }}" hint-placeholder-val="{{ false }}">
-              <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-bottom:12px">{{ detail.plan.maxedNote }}</div>
-            </sc-if>
-            <div style="border-top:1px solid var(--line-200);padding-top:12px">
-              <div style="font:650 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:8px">PVP LEVEL TARGET</div>
-              <div style="display:flex;flex-direction:column;gap:7px">
-                <sc-for list="{{ detail.plan.caps }}" as="c" hint-placeholder-count="2">
-                  <div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap">
-                    <div style="font:700 10.5px var(--font-display);color:var(--ink-500);letter-spacing:.05em;min-width:44px">{{ c.label }}</div>
-                    <div style="flex:1;min-width:0;font:11.5px var(--font-body);color:{{ c.color }};text-wrap:pretty">{{ c.line }}</div>
-                  </div>
-                </sc-for>
-              </div>
-            </div>
-          </sc-if>
-          <sc-if value="{{ detail.plan.note }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ detail.plan.note }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
             <div style="font:12px/1.55 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ detail.plan.note }}</div>
-          </sc-if>
-        </div>
+          </div>
+        </sc-if>
         </sc-if>
 
         <sc-if value="{{ detail.onEvolution }}" hint-placeholder-val="{{ false }}">
@@ -2756,6 +2723,17 @@
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">MOVES</div>
             <div style="font:11px var(--font-body);color:var(--ink-400)">Update after using a TM in-game</div>
           </div>
+          <sc-if value="{{ detail.bestMoves }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface-card);border-radius:10px;padding:9px 13px;margin-bottom:7px">
+              <div style="font:650 10.5px var(--font-display);color:var(--grass-700);letter-spacing:.05em;margin-bottom:3px">BEST FOR RAIDS &amp; GYMS</div>
+              <div style="font:600 12.5px var(--font-body);color:var(--ink-900)">{{ detail.bestMoves.best }}</div>
+              <div style="font:11px var(--font-body);color:var(--ink-500);margin-top:2px">{{ detail.bestMoves.compare }}</div>
+              <sc-if value="{{ detail.bestMoves.noLegacy }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-500);margin-top:2px">{{ detail.bestMoves.noLegacy }}</div>
+              </sc-if>
+              <div style="font:10.5px var(--font-body);color:var(--ink-400);margin-top:4px">PvP moves use different stats \u2014 not covered yet.</div>
+            </div>
+          </sc-if>
           <div style="display:flex;flex-direction:column;gap:7px">
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -3551,6 +3529,9 @@ class Component extends DCLogic {
   }
 
   async componentDidMount() {
+    // Bound before anything else: a throw in a later mount step used to skip
+    // this entirely, leaving swipe/long-press with no listeners at all.
+    try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     this.bindNetworkStatus();
     try {
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
@@ -3568,7 +3549,6 @@ class Component extends DCLogic {
     this.initFirebase();
     this.checkPendingImport();
     this.bindPullToRefresh();
-    this.bindRosterSwipe();
   }
 
   // Safari-style pull-to-refresh. An installed PWA has no address bar and no
@@ -5036,13 +5016,14 @@ class Component extends DCLogic {
       if (toLevel == null || toLevel <= level) return;
       const cost = m.powerUpCostBetween(level, toLevel, opts);
       if (!cost.steps) return;
+      const cpAt = m.cpFor(base, ivs, toLevel);
       const short = [];
       if (haveDust != null && cost.dust > haveDust) short.push('stardust');
       if (haveCandy != null && cost.candy > haveCandy) short.push('candy');
       if (haveXL != null && cost.xlCandy > haveXL) short.push('XL candy');
       const blocked = short.length > 0;
       targets.push({
-        label, note: note || '',
+        label, note: [note, cpAt != null ? cpAt + ' CP at Lv ' + toLevel : ''].filter(Boolean).join(' \u00b7 '),
         toLevel: 'Lv ' + toLevel,
         dust: cost.dust.toLocaleString(),
         candy: cost.candy > 0 ? String(cost.candy) : '\u2014',
@@ -9315,6 +9296,51 @@ class Component extends DCLogic {
   // defense, which will never byte-for-byte match a generic move list no
   // matter how correct the underlying data is \u2014 showing the raw numbers
   // directly removes that whole class of "why doesn't this match" confusion.
+  // Best fast + charge pair the species can legally learn, scored with the
+  // same cycleDps the raid boards use (level 50, STAB, neutral defender).
+  // Raid/gym only: PvP moves use different numbers that aren't on file.
+  bestRaidMoveset(p) {
+    const m = this.mechanics;
+    if (!m || !m.cycleDps || !m.movepoolFor) return null;
+    const pool = m.movepoolFor(p.name);
+    const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+    if (!pool || !base || !ivs) return null;
+    const ownTypes = this.typesOf(p), isShadow = this.isShadow(p);
+    const score = (fastName, chargeName) => {
+      const f = this.lookupMove(fastName), c = this.lookupMove(chargeName);
+      if (!f || !c || f.kind !== 'fast' || c.kind !== 'charged') return null;
+      return m.cycleDps(base, ivs, 50, f, c, { ownTypes, isShadow });
+    };
+    const fasts = [...(pool.fast || []).map(n => ({ n, legacy: false })), ...(pool.fastLegacy || []).map(n => ({ n, legacy: true }))];
+    const charges = [...(pool.charge || []).map(n => ({ n, legacy: false })), ...(pool.chargeLegacy || []).map(n => ({ n, legacy: true }))];
+    let best = null, bestNoLegacy = null;
+    fasts.forEach(f => charges.forEach(c => {
+      const dps = score(f.n, c.n);
+      if (dps == null) return;
+      const legacy = f.legacy || c.legacy;
+      const row = { fast: f.n, charge: c.n, dps, legacy };
+      if (!best || dps > best.dps) best = row;
+      if (!legacy && (!bestNoLegacy || dps > bestNoLegacy.dps)) bestNoLegacy = row;
+    }));
+    if (!best) return null;
+    const cur = this.bestDpsFor(p);
+    const tidy = n => String(n).replace(/\b\w/g, ch => ch.toUpperCase());
+    const fmtRowNice = r => tidy(r.fast) + ' + ' + tidy(r.charge) + ' \u00b7 ' + r.dps.toFixed(1) + ' DPS';
+    let compare = '';
+    if (cur) {
+      const gain = (best.dps / cur.dps - 1) * 100;
+      compare = gain < 1 ? 'Your current moves are already the best available.'
+        : 'Yours: ' + cur.dps.toFixed(1) + ' DPS \u2192 +' + gain.toFixed(0) + '% with the best set.';
+    } else {
+      compare = 'Set both moves to compare against yours.';
+    }
+    return {
+      best: fmtRowNice(best) + (best.legacy ? ' \u00b7 needs an Elite TM' : ''),
+      noLegacy: best.legacy && bestNoLegacy ? 'Best without an Elite TM: ' + fmtRowNice(bestNoLegacy) : '',
+      compare
+    };
+  }
+
   moveDamageLine(p, name) {
     const info = this.moveDamageFor(name);
     if (!info) return null;
@@ -10894,7 +10920,7 @@ class Component extends DCLogic {
     this._openSwipeEl = null;
   }
 
-  // TEMPORARY (v53.104): on-screen touch trace to find out which stage of
+  // TEMPORARY (v53.105): on-screen touch trace to find out which stage of
   // the roster gesture fails on-device. Remove once swipe/long-press confirmed.
   _swipeTrace(msg) {
     try {
@@ -11004,10 +11030,21 @@ class Component extends DCLogic {
       if (finalX < -REVEAL / 2) openRow(dragEl); else closeRow(dragEl);
       dragEl = null;
     };
+    // One set of listeners per page: the runtime can swap the Logic instance
+    // (hot reload / re-mount), and an old instance's listeners must not keep
+    // fighting the new one's over the same row.
+    if (window.__scoutSwipeUnbind) { try { window.__scoutSwipeUnbind(); } catch (e) {} }
     window.addEventListener('touchstart', onStart, { passive: true });
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd, { passive: true });
     window.addEventListener('touchcancel', onEnd, { passive: true });
+    window.__scoutSwipeUnbind = () => {
+      window.removeEventListener('touchstart', onStart);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+      window.removeEventListener('touchcancel', onEnd);
+    };
+    this._swipeTrace('swipe handlers bound');
   }
 
   // Long-press fallback for a roster row: opens the shared confirm sheet as
@@ -11879,6 +11916,7 @@ class Component extends DCLogic {
         quickMoveLabel: this.moveDraftFor(p, 'quickMove') ? this.formatMoveName(this.moveDraftFor(p, 'quickMove')) : '— not set —',
         chargeMoveLabel: this.moveDraftFor(p, 'chargeMove') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove')) : '— not set —',
         chargeMove2Label: this.moveDraftFor(p, 'chargeMove2') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove2')) : '— none learned —',
+        bestMoves: this.bestRaidMoveset(p),
         quickMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'quickMove')),
         chargeMoveInfo: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove')),
         chargeMove2Info: this.moveDamageLine(p, this.moveDraftFor(p, 'chargeMove2')),
@@ -12192,7 +12230,7 @@ class Component extends DCLogic {
       sheetAlign: isMobile ? 'flex-end' : 'center',
       sheetRadius: isMobile ? '26px 26px 0 0' : '28px',
       sheetMaxW: isMobile ? '100vw' : '92vw',
-      sheetMaxH: isMobile ? '92vh' : '90vh',
+      sheetMaxH: isMobile ? 'calc(100vh - max(env(safe-area-inset-top), 34px) - 14px)' : '90vh',
       sheetAnim: isMobile
         ? 'sheetUp .42s cubic-bezier(.32,.72,0,1) backwards'
         : 'sheetRise .44s cubic-bezier(.22,1,.36,1) backwards',
