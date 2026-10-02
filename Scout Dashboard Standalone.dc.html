@@ -1145,7 +1145,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.105</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.106</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2529,8 +2529,7 @@
 
         <div style="display:flex;gap:24px;border-bottom:1px solid var(--line-200)">
           <button onClick="{{ detail.showAppraisal }}" style="background:none;border:none;padding:0 0 10px;cursor:pointer;font-family:var(--font-display);font-size:13px;margin-bottom:-1px;transition:color .15s ease;font-weight:{{ detail.tabAppraisalWeight }};color:{{ detail.tabAppraisalColor }};border-bottom:2.5px solid {{ detail.tabAppraisalRule }}">APPRAISAL</button>
-          <button onClick="{{ detail.showInvestment }}" style="background:none;border:none;padding:0 0 10px;cursor:pointer;font-family:var(--font-display);font-size:13px;margin-bottom:-1px;transition:color .15s ease;font-weight:{{ detail.tabInvestWeight }};color:{{ detail.tabInvestColor }};border-bottom:2.5px solid {{ detail.tabInvestRule }}">INVESTMENT</button>
-          <button onClick="{{ detail.showEvolution }}" style="background:none;border:none;padding:0 0 10px;cursor:pointer;font-family:var(--font-display);font-size:13px;margin-bottom:-1px;transition:color .15s ease;font-weight:{{ detail.tabEvoWeight }};color:{{ detail.tabEvoColor }};border-bottom:2.5px solid {{ detail.tabEvoRule }}">EVOLUTION</button>
+          <button onClick="{{ detail.showEvolution }}" style="background:none;border:none;padding:0 0 10px;cursor:pointer;font-family:var(--font-display);font-size:13px;margin-bottom:-1px;transition:color .15s ease;font-weight:{{ detail.tabEvoWeight }};color:{{ detail.tabEvoColor }};border-bottom:2.5px solid {{ detail.tabEvoRule }}">EVOLVE &amp; POWER UP</button>
         </div>
 
         <sc-if value="{{ detail.onAppraisal }}" hint-placeholder-val="{{ true }}">
@@ -2622,64 +2621,6 @@
             </div>
           </sc-for>
         </div>
-        </sc-if>
-
-        <sc-if value="{{ detail.onInvestment }}" hint-placeholder-val="{{ false }}">
-        <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
-          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
-            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
-            <div style="font:12px var(--font-display);color:var(--ink-600)">{{ detail.powerPlan.levelLine }}</div>
-            <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:4px">{{ detail.powerPlan.luckyNote }}</div>
-            <div style="font:11.5px var(--font-display);color:var(--ink-400);margin-bottom:12px">{{ detail.powerPlan.inventoryLine }}</div>
-            <sc-if value="{{ detail.powerPlan.quickStep }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-bottom:10px">
-                <div>
-                  <div style="font:700 11.5px var(--font-display);color:var(--ink-900)">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</div>
-                  <div style="display:flex;gap:12px;font:11.5px var(--font-display);color:var(--ink-700);font-variant-numeric:tabular-nums;margin-top:3px">
-                    <span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span>
-                    <span>Candy {{ detail.powerPlan.quickStep.candy }}</span>
-                    <span>XL {{ detail.powerPlan.quickStep.xlCandy }}</span>
-                  </div>
-                </div>
-                <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;white-space:nowrap;padding:9px 16px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 11.5px var(--font-display)">POWER UP</div>
-                </sc-if>
-                <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
-                  <div style="white-space:nowrap;font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</div>
-                </sc-if>
-              </div>
-            </sc-if>
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <sc-for list="{{ detail.powerPlan.targets }}" as="t" hint-placeholder-count="3">
-                <div style="background:var(--surface-card);border-radius:10px;padding:10px 12px">
-                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-                    <span style="font:700 11.5px var(--font-display);color:var(--ink-900);letter-spacing:.04em">{{ t.label }}</span>
-                    <span style="font:11px var(--font-display);color:var(--ink-400)">{{ t.toLevel }}</span>
-                  </div>
-                  <div style="font:11px var(--font-body);color:var(--ink-400);margin:2px 0 7px">{{ t.note }}</div>
-                  <div style="display:flex;gap:14px;font:12px var(--font-display);color:var(--ink-700);font-variant-numeric:tabular-nums">
-                    <span>&#10023; {{ t.dust }}</span>
-                    <span>Candy {{ t.candy }}</span>
-                    <span>XL {{ t.xlCandy }}</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-                    <div style="font:700 10.5px var(--font-display);letter-spacing:.05em;color:{{ t.statusColor }}">{{ t.statusLabel }}</div>
-                    <sc-if value="{{ t.markDone }}" hint-placeholder-val="{{ false }}">
-                      <div onClick="{{ t.markDone }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">MARK DONE</div>
-                    </sc-if>
-                  </div>
-                </div>
-              </sc-for>
-            </div>
-          </div>
-        </sc-if>
-
-        <sc-if value="{{ detail.plan.note }}" hint-placeholder-val="{{ false }}">
-          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
-            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
-            <div style="font:12px/1.55 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ detail.plan.note }}</div>
-          </div>
-        </sc-if>
         </sc-if>
 
         <sc-if value="{{ detail.onEvolution }}" hint-placeholder-val="{{ false }}">
@@ -2840,7 +2781,62 @@
         </div>
 
         <div onClick="{{ detail.markTransferred }}" class="om-press" style="cursor:pointer;text-align:center;margin-top:14px;padding:13px 24px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">TRANSFERRED (+1 CANDY)</div>
+        <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
+            <div style="font:12px var(--font-display);color:var(--ink-600)">{{ detail.powerPlan.levelLine }}</div>
+            <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:4px">{{ detail.powerPlan.luckyNote }}</div>
+            <div style="font:11.5px var(--font-display);color:var(--ink-400);margin-bottom:12px">{{ detail.powerPlan.inventoryLine }}</div>
+            <sc-if value="{{ detail.powerPlan.quickStep }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+                <div>
+                  <div style="font:700 11.5px var(--font-display);color:var(--ink-900)">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</div>
+                  <div style="display:flex;gap:12px;font:11.5px var(--font-display);color:var(--ink-700);font-variant-numeric:tabular-nums;margin-top:3px">
+                    <span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span>
+                    <span>Candy {{ detail.powerPlan.quickStep.candy }}</span>
+                    <span>XL {{ detail.powerPlan.quickStep.xlCandy }}</span>
+                  </div>
+                </div>
+                <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;white-space:nowrap;padding:9px 16px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 11.5px var(--font-display)">POWER UP</div>
+                </sc-if>
+                <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
+                  <div style="white-space:nowrap;font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</div>
+                </sc-if>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ detail.powerPlan.targets }}" as="t" hint-placeholder-count="3">
+                <div style="background:var(--surface-card);border-radius:10px;padding:10px 12px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                    <span style="font:700 11.5px var(--font-display);color:var(--ink-900);letter-spacing:.04em">{{ t.label }}</span>
+                    <span style="font:11px var(--font-display);color:var(--ink-400)">{{ t.toLevel }}</span>
+                  </div>
+                  <div style="font:11px var(--font-body);color:var(--ink-400);margin:2px 0 7px">{{ t.note }}</div>
+                  <div style="display:flex;gap:14px;font:12px var(--font-display);color:var(--ink-700);font-variant-numeric:tabular-nums">
+                    <span>&#10023; {{ t.dust }}</span>
+                    <span>Candy {{ t.candy }}</span>
+                    <span>XL {{ t.xlCandy }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+                    <div style="font:700 10.5px var(--font-display);letter-spacing:.05em;color:{{ t.statusColor }}">{{ t.statusLabel }}</div>
+                    <sc-if value="{{ t.markDone }}" hint-placeholder-val="{{ false }}">
+                      <div onClick="{{ t.markDone }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">MARK DONE</div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
         </sc-if>
+
+        <sc-if value="{{ detail.plan.note }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
+            <div style="font:12px/1.55 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ detail.plan.note }}</div>
+          </div>
+        </sc-if>
+                </sc-if>
       </div>
     </div>
   </div>
@@ -10741,8 +10737,17 @@ class Component extends DCLogic {
     if (!el || el.dataset.swipeBound) return;
     el.dataset.swipeBound = '1';
     let startX = 0, startY = 0, lastX = 0, lastY = 0, startT = 0, dragging = false, axis = null;
+    // A finished gesture used to leave `transform: translateY(0)` inline on the
+    // sheet, even after a plain tap. Safari keeps that as a composited layer and
+    // rasterises its text soft. Clear the inline styles once the snap-back ends.
+    let settleT = null;
+    const settle = (ms) => {
+      clearTimeout(settleT);
+      settleT = setTimeout(() => { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; }, ms);
+    };
     const onStart = (e) => {
       if (el.scrollTop > 0) return; // let the sheet scroll its own content first
+      clearTimeout(settleT);
       const t = e.touches ? e.touches[0] : e;
       startX = lastX = t.clientX;
       startY = lastY = t.clientY;
@@ -10779,6 +10784,7 @@ class Component extends DCLogic {
     const onEnd = () => {
       if (!dragging) return;
       dragging = false;
+      if (!axis) { el.style.transition = ''; return; } // plain tap: nothing moved
       if (axis === 'x') {
         const dx = lastX - startX;
         const velocity = Math.abs(dx) / Math.max(1, Date.now() - startT);
@@ -10791,16 +10797,13 @@ class Component extends DCLogic {
             this.haptic('light');
             el.style.transform = 'translateX(' + (dir * -60) + 'px)';
             el.style.opacity = '0';
-            setTimeout(() => {
-              el.style.transition = 'none';
-              el.style.transform = 'translateX(0)';
-              el.style.opacity = '1';
-            }, 200);
+            settle(200);
             return;
           }
         }
         el.style.transform = 'translateX(0)';
         el.style.opacity = '1';
+        settle(260);
         return;
       }
       const dy = lastY - startY;
@@ -10814,6 +10817,7 @@ class Component extends DCLogic {
       } else {
         el.style.transform = 'translateY(0)';
         el.style.opacity = '1';
+        settle(340);
       }
     };
     el.addEventListener('touchstart', onStart, { passive: true });
@@ -10920,7 +10924,7 @@ class Component extends DCLogic {
     this._openSwipeEl = null;
   }
 
-  // TEMPORARY (v53.105): on-screen touch trace to find out which stage of
+  // TEMPORARY (v53.106): on-screen touch trace to find out which stage of
   // the roster gesture fails on-device. Remove once swipe/long-press confirmed.
   _swipeTrace(msg) {
     try {
@@ -10970,7 +10974,14 @@ class Component extends DCLogic {
       if (this._openSwipeEl === rowEl) this._openSwipeEl = null;
     };
     const onStart = (e) => {
-      const rowEl = e.target && e.target.closest ? e.target.closest('[data-swipe-row]') : null;
+      const t0 = e.touches ? e.touches[0] : e;
+      let rowEl = e.target && e.target.closest ? e.target.closest('[data-swipe-row]') : null;
+      if (!rowEl && document.elementsFromPoint) {
+        const hit = document.elementsFromPoint(t0.clientX, t0.clientY).find(n => n.closest && n.closest('[data-swipe-row]'));
+        rowEl = hit ? hit.closest('[data-swipe-row]') : null;
+      }
+      const tg = e.target;
+      this._swipeTrace('touch ' + (tg && tg.tagName ? tg.tagName.toLowerCase() : '?') + ' row=' + (rowEl ? rowEl.getAttribute('data-swipe-row') : 'none'));
       if (!rowEl) { dragEl = null; dragging = false; clearLongPress(); return; }
       dragEl = rowEl;
       this._swipeTrace('start row ' + rowEl.getAttribute('data-swipe-row'));
@@ -11034,15 +11045,15 @@ class Component extends DCLogic {
     // (hot reload / re-mount), and an old instance's listeners must not keep
     // fighting the new one's over the same row.
     if (window.__scoutSwipeUnbind) { try { window.__scoutSwipeUnbind(); } catch (e) {} }
-    window.addEventListener('touchstart', onStart, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onEnd, { passive: true });
-    window.addEventListener('touchcancel', onEnd, { passive: true });
+    window.addEventListener('touchstart', onStart, { passive: true, capture: true });
+    window.addEventListener('touchmove', onMove, { passive: false, capture: true });
+    window.addEventListener('touchend', onEnd, { passive: true, capture: true });
+    window.addEventListener('touchcancel', onEnd, { passive: true, capture: true });
     window.__scoutSwipeUnbind = () => {
-      window.removeEventListener('touchstart', onStart);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onEnd);
-      window.removeEventListener('touchcancel', onEnd);
+      window.removeEventListener('touchstart', onStart, true);
+      window.removeEventListener('touchmove', onMove, true);
+      window.removeEventListener('touchend', onEnd, true);
+      window.removeEventListener('touchcancel', onEnd, true);
     };
     this._swipeTrace('swipe handlers bound');
   }
@@ -11993,18 +12004,14 @@ class Component extends DCLogic {
       const evoInfo = this.evoInfoFor(p);
       const tabOn = k => dTab === k;
       Object.assign(detail, {
-        onAppraisal: tabOn('appraisal'), onInvestment: tabOn('investment'), onEvolution: tabOn('evolution'),
+        onAppraisal: tabOn('appraisal'), onEvolution: tabOn('evolution'),
         tabAppraisalWeight: tabOn('appraisal') ? 700 : 500,
         tabAppraisalColor: tabOn('appraisal') ? 'var(--ink-900)' : 'var(--ink-400)',
         tabAppraisalRule: tabOn('appraisal') ? 'var(--grass-500)' : 'transparent',
-        tabInvestWeight: tabOn('investment') ? 700 : 500,
-        tabInvestColor: tabOn('investment') ? 'var(--ink-900)' : 'var(--ink-400)',
-        tabInvestRule: tabOn('investment') ? 'var(--grass-500)' : 'transparent',
         tabEvoWeight: tabOn('evolution') ? 700 : 500,
         tabEvoColor: tabOn('evolution') ? 'var(--ink-900)' : 'var(--ink-400)',
         tabEvoRule: tabOn('evolution') ? 'var(--grass-500)' : 'transparent',
         showAppraisal: () => this.setState({ detailTab: 'appraisal' }),
-        showInvestment: () => this.setState({ detailTab: 'investment' }),
         showEvolution: () => this.setState({ detailTab: 'evolution' }),
         candyDraft: this.candyDraftFor(p, 'candy'),
         xlDraft: this.candyDraftFor(p, 'xlCandy'),
