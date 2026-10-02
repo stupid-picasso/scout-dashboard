@@ -447,6 +447,19 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Roster rows: the template renders data-swipe-row="{{ p.idx }}". If the row
+// view-model has no top-level idx the attribute is never rendered and swipe /
+// long-press can't find their row (five on-device attempts failed on this).
+// ---------------------------------------------------------------------------
+(function testRosterRowExposesIdx() {
+  const start = SRC.indexOf('const filteredRoster = pagedFiltered.map');
+  const objStart = SRC.indexOf('return {', start);
+  const head = SRC.slice(objStart, objStart + 600);
+  check('filteredRoster row view-model exposes idx for data-swipe-row', /\n\s+idx: p\.idx,/.test(head), true);
+  check('template still binds data-swipe-row to p.idx', SRC.includes('data-swipe-row="{{ p.idx }}"'), true);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));
