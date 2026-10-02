@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.112</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.113</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2556,7 +2556,7 @@
         </div>
 
         <div class="om-rise" style="--i:0">
-        <div style="background:var(--surface-card);border-radius:16px;padding:14px 12px 12px;margin-bottom:12px">
+        <div style="background:var(--surface-card);border-radius:16px;padding:14px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-around;text-align:center">
             <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.stardust }}</div><div style="font:650 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">STARDUST</div></div>
             <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.xl }}</div><div style="font:650 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">XL CANDY</div></div>
@@ -2571,10 +2571,35 @@
               <div class="om-bar" style="height:100%;width:{{ detail.levelBar.pct }};border-radius:4px;background:linear-gradient(90deg, var(--grass-700), var(--type-electric))"></div>
             </div>
           </sc-if>
-        </div>
-        </div>
-        <div class="om-rise" style="--i:1">
-        <div style="background:var(--surface-card);border-radius:16px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap">
+        
+<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line-200)">          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <span style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">HP</span>
+            <span style="font:600 12.5px var(--font-display);color:var(--ink-600)">{{ detail.hp }} / {{ detail.hp }}</span>
+          </div>
+          <div style="height:9px;background:var(--line-200);border-radius:5px;overflow:hidden">
+            <div class="om-bar" style="height:100%;width:100%;border-radius:5px;background:linear-gradient(90deg, var(--grass-700), var(--grass-700))"></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-around;margin-top:10px">
+            <sc-for list="{{ detail.statRings }}" as="r" hint-placeholder-count="3">
+              <div style="text-align:center">
+                <div style="width:46px;height:46px;position:relative">
+                  <svg width="46" height="46" viewBox="0 0 56 56" style="position:absolute;inset:0">
+                    <circle cx="28" cy="28" r="23" fill="none" stroke="var(--line-200)" stroke-width="5"></circle>
+                    <circle cx="28" cy="28" r="23" fill="none" class="om-arc" stroke="{{ r.color }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ r.dasharray }}" stroke-dashoffset="{{ r.dashoffset }}" transform="rotate(-90 28 28)" style="transition:stroke-dashoffset 1s ease"></circle>
+                  </svg>
+                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 12px var(--font-display);color:{{ r.color }}">{{ r.value }}</div>
+                </div>
+                <div style="font:650 10px var(--font-display);color:var(--ink-300);letter-spacing:.06em;margin-top:4px">{{ r.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ detail.ivSourceLine }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:8px;font:600 10px var(--font-display);color:{{ detail.ivSourceColor }};letter-spacing:.04em;text-align:center">{{ detail.ivSourceLine }}</div>
+          </sc-if>
+        
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-200)">
           <span style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">CANDY</span>
           <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.candyDraft }}" onChange="{{ detail.onCandyChange }}" style="width:48px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
           <span style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">XL</span>
@@ -2582,66 +2607,27 @@
           <div onClick="{{ detail.saveCandy }}" class="om-tap" style="cursor:pointer;flex-shrink:0;padding:6px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SET</div>
           <span style="flex:1;min-width:0;text-align:right;font:700 11px var(--font-display);color:{{ detail.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.bestLeagueLabel }}</span>
         </div>
-        </div>
-        <div class="om-rise" style="--i:2">
-        <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
-          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
-            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
-            <div style="font:12px var(--font-display);color:var(--ink-600)">{{ detail.powerPlan.levelLine }}</div>
-            <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:4px">{{ detail.powerPlan.luckyNote }}</div>
-            <div style="font:11.5px var(--font-display);color:var(--ink-400);margin-bottom:12px">{{ detail.powerPlan.inventoryLine }}</div>
+          <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
             <sc-if value="{{ detail.powerPlan.quickStep }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-bottom:10px">
-                <div>
-                  <div style="font:700 11.5px var(--font-display);color:var(--ink-900)">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</div>
-                  <div style="display:flex;gap:12px;font:11.5px var(--font-display);color:var(--ink-700);font-variant-numeric:tabular-nums;margin-top:3px">
-                    <span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span>
-                    <span>Candy {{ detail.powerPlan.quickStep.candy }}</span>
-                    <span>XL {{ detail.powerPlan.quickStep.xlCandy }}</span>
-                  </div>
-                </div>
+              <div style="margin-top:12px">
                 <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;white-space:nowrap;padding:9px 16px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 11.5px var(--font-display)">POWER UP</div>
+                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }}">
+                    <span style="display:flex;gap:10px;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums;opacity:.85"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></span>
+                    <span style="font:800 13px var(--font-display);letter-spacing:.05em">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</span>
+                  </div>
                 </sc-if>
                 <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
-                  <div style="white-space:nowrap;font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-radius:var(--r-pill);background:var(--surface-muted)">
+                    <span style="display:flex;gap:10px;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums;color:var(--ink-500)"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></span>
+                    <span style="font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</span>
+                  </div>
                 </sc-if>
               </div>
             </sc-if>
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <sc-for list="{{ detail.powerPlan.targets }}" as="t" hint-placeholder-count="3">
-                <div style="background:var(--surface-card);border-radius:10px;padding:10px 12px">
-                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-                    <span style="font:700 11.5px var(--font-display);color:var(--ink-900);letter-spacing:.04em">{{ t.label }}</span>
-                    <span style="font:11px var(--font-display);color:var(--ink-400)">{{ t.toLevel }}</span>
-                  </div>
-                  <div style="font:11px var(--font-body);color:var(--ink-400);margin:2px 0 7px">{{ t.note }}</div>
-                  <div style="display:flex;gap:14px;font:12px var(--font-display);color:var(--ink-700);font-variant-numeric:tabular-nums">
-                    <span>&#10023; {{ t.dust }}</span>
-                    <span>Candy {{ t.candy }}</span>
-                    <span>XL {{ t.xlCandy }}</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-                    <div style="font:700 10.5px var(--font-display);letter-spacing:.05em;color:{{ t.statusColor }}">{{ t.statusLabel }}</div>
-                    <sc-if value="{{ t.markDone }}" hint-placeholder-val="{{ false }}">
-                      <div onClick="{{ t.markDone }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">MARK DONE</div>
-                    </sc-if>
-                  </div>
-                </div>
-              </sc-for>
-            </div>
-          </div>
-        </sc-if>
+          </sc-if>
         </div>
-        <div class="om-rise" style="--i:3">
-        <sc-if value="{{ detail.plan.note }}" hint-placeholder-val="{{ false }}">
-          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
-            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">POWER-UP PLAN</div>
-            <div style="font:12px/1.55 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ detail.plan.note }}</div>
-          </div>
-        </sc-if>
         </div>
-        <div class="om-rise" style="--i:4">
+        <div class="om-rise" style="--i:1">
         <sc-if value="{{ detail.evo.hasEvo }}" hint-placeholder-val="{{ false }}">
           <div style="background:color-mix(in oklab, var(--grass-600) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-600) 42%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
@@ -2653,36 +2639,7 @@
           </div>
         </sc-if>
         </div>
-        <div class="om-rise" style="--i:5">
-        <div style="background:var(--surface-card);border-radius:16px;padding:14px;margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-            <span style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">HP</span>
-            <span style="font:600 12.5px var(--font-display);color:var(--ink-600)">{{ detail.hp }} / {{ detail.hp }}</span>
-          </div>
-          <div style="height:9px;background:var(--line-200);border-radius:5px;overflow:hidden">
-            <div class="om-bar" style="height:100%;width:100%;border-radius:5px;background:linear-gradient(90deg, var(--grass-700), var(--grass-700))"></div>
-          </div>
-
-          <div style="display:flex;justify-content:space-around;margin-top:10px">
-            <sc-for list="{{ detail.statRings }}" as="r" hint-placeholder-count="3">
-              <div style="text-align:center">
-                <div style="width:56px;height:56px;position:relative">
-                  <svg width="56" height="56" viewBox="0 0 56 56" style="position:absolute;inset:0">
-                    <circle cx="28" cy="28" r="23" fill="none" stroke="var(--line-200)" stroke-width="5"></circle>
-                    <circle cx="28" cy="28" r="23" fill="none" class="om-arc" stroke="{{ r.color }}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{ r.dasharray }}" stroke-dashoffset="{{ r.dashoffset }}" transform="rotate(-90 28 28)" style="transition:stroke-dashoffset 1s ease"></circle>
-                  </svg>
-                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px var(--font-display);color:{{ r.color }}">{{ r.value }}</div>
-                </div>
-                <div style="font:650 10px var(--font-display);color:var(--ink-300);letter-spacing:.06em;margin-top:6px">{{ r.label }}</div>
-              </div>
-            </sc-for>
-          </div>
-          <sc-if value="{{ detail.ivSourceLine }}" hint-placeholder-val="{{ false }}">
-            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line-200);font:600 10.5px var(--font-display);color:{{ detail.ivSourceColor }};letter-spacing:.04em;text-align:center">{{ detail.ivSourceLine }}</div>
-          </sc-if>
-        </div>
-        </div>
-        <div class="om-rise" style="--i:6">
+        <div class="om-rise" style="--i:2">
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
           <div style="background:var(--surface-muted);border-radius:10px;padding:8px 12px;font:12px var(--font-display);color:var(--ink-600);flex:1;text-align:center">Dust <strong style="color:var(--ink-900);font-weight:700">{{ detail.dust }}</strong></div>
           <sc-if value="{{ detail.flagChips }}" hint-placeholder-val="{{ false }}">
@@ -2692,7 +2649,7 @@
           </sc-if>
         </div>
         </div>
-        <div class="om-rise" style="--i:7">
+        <div class="om-rise" style="--i:3">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;background:var(--surface-card);border-radius:12px;padding:8px 12px">
           <span style="flex:1;min-width:0;font:650 10.5px var(--font-display);letter-spacing:.05em;color:{{ detail.shinyControl.tone }}">{{ detail.shinyControl.title }}</span>
           <sc-for list="{{ detail.shinyControl.buttons }}" as="sb" hint-placeholder-count="0">
@@ -2700,7 +2657,7 @@
           </sc-for>
         </div>
         </div>
-        <div class="om-rise" style="--i:8">
+        <div class="om-rise" style="--i:4">
         <sc-if value="{{ detail.purify }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:14px;margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -2714,7 +2671,7 @@
           </div>
         </sc-if>
         </div>
-        <div class="om-rise" style="--i:9">
+        <div class="om-rise" style="--i:5">
         <sc-if value="{{ detail.hasBodyStats }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
             <sc-for list="{{ detail.bodyChips }}" as="bc" hint-placeholder-count="2">
@@ -2723,7 +2680,7 @@
           </div>
         </sc-if>
         </div>
-        <div class="om-rise" style="--i:10">
+        <div class="om-rise" style="--i:6">
         <div style="margin-bottom:14px">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">MOVES</div>
@@ -2846,7 +2803,7 @@
           </div>
         </div>
         </div>
-        <div class="om-rise" style="--i:11">
+        <div class="om-rise" style="--i:7">
         <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
           <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:4px">LEAGUE RANKINGS</div>
           <div style="font:11.5px var(--font-body);color:var(--ink-400);margin-bottom:12px">{{ detail.ivFloorLine }}</div>
@@ -2863,7 +2820,7 @@
           </sc-for>
         </div>
         </div>
-        <div class="om-rise" style="--i:12">
+        <div class="om-rise" style="--i:8">
         <sc-if value="{{ detail.weaknesses }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:14px 16px;margin-bottom:14px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:10px">WEAK TO</div>
@@ -2876,7 +2833,7 @@
           </div>
         </sc-if>
         </div>
-        <div class="om-rise" style="--i:13">
+        <div class="om-rise" style="--i:9">
         <sc-if value="{{ detail.evoChain }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:14px 16px;margin-bottom:14px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:12px">EVOLUTION CHAIN</div>
@@ -2902,13 +2859,13 @@
           </div>
         </sc-if>
         </div>
-        <div class="om-rise" style="--i:14">
+        <div class="om-rise" style="--i:10">
         <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:16px;padding:14px 16px">
           <div style="font:700 10.5px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
           <div style="font:13.5px/1.45 var(--font-body);color:var(--ink-900)">{{ detail.recommendation }}</div>
         </div>
         </div>
-        <div class="om-rise" style="--i:15">
+        <div class="om-rise" style="--i:11">
         <div onClick="{{ detail.markTransferred }}" class="om-press" style="cursor:pointer;text-align:center;margin-top:14px;padding:13px 24px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">TRANSFERRED (+1 CANDY)</div>
         </div>
       </div>
