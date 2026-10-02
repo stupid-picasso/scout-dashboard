@@ -1077,6 +1077,10 @@
   /* Entrance stagger: --i is set per card so lists cascade instead of popping
      in all at once. Capped so a 200-row roster never waits seconds. */
   .om-stagger{animation:riseIn .42s cubic-bezier(.22,1,.36,1) both;animation-delay:min(calc(var(--i, 0) * 34ms), 620ms)}
+  /* IV bar on roster rows grows in from the left. fill-mode is `backwards`
+     (not `both`) so no finished transform is left behind on the element. */
+  @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  .om-bar{transform-origin:left center;animation:barGrow .7s cubic-bezier(.22,1,.36,1) backwards;animation-delay:calc(var(--i, 0) * 34ms + 120ms)}
   /* Loading placeholders: a moving highlight band over a flat card. */
   .om-skel{background:linear-gradient(100deg, var(--surface-card) 28%, var(--line-200) 46%, var(--surface-card) 64%);background-size:460px 100%;animation:shimmerSlide 1.25s linear infinite}
   :focus-visible{outline:2px solid var(--type-electric);outline-offset:2px;border-radius:4px}
@@ -1145,7 +1149,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.107</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.109</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2361,9 +2365,13 @@
 
   <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ false }}">
   <div style="animation:fadeSlideIn .35s ease">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin:2px 2px 12px">
+      <div style="font:800 20px var(--font-display);letter-spacing:.03em">POK&Eacute;MON</div>
+      <div style="font:12px var(--font-display);color:var(--ink-300)">{{ rosterCountLabel }}</div>
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center">
-      <input type="text" placeholder="Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:14px var(--font-display);padding:9px 14px;border-radius:6px;flex:1 1 160px;min-width:140px" />
-      <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-display);padding:9px 12px;border-radius:6px;flex:0 1 150px;min-width:0;max-width:150px">
+      <input type="text" placeholder="🔍 Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:14px var(--font-display);padding:10px 18px;border-radius:999px;flex:1 1 160px;min-width:140px" />
+      <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-display);padding:10px 14px;border-radius:999px;flex:0 1 150px;min-width:0;max-width:150px">
         <option value="cp">Sort: CP</option>
         <option value="ivAvg">Sort: IV%</option>
         <option value="rank">Sort: Best league rank</option>
@@ -2373,10 +2381,9 @@
         <option value="catchDate">Sort: Catch date (newest)</option>
         <option value="scanDate">Sort: Scanned date (newest)</option>
       </select>
-      <div style="font:12px var(--font-display);color:var(--ink-300);white-space:nowrap">{{ rosterCountLabel }}</div>
     </div>
     <sc-if value="{{ typeData.missing }}" hint-placeholder-val="{{ false }}">
-      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:10px 14px;margin-bottom:12px">
         <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
           <div style="font:700 11px var(--font-display);letter-spacing:.05em;color:var(--ink-500);white-space:nowrap">TYPE DATA</div>
           <div style="font:12px var(--font-display);color:var(--type-electric)">{{ typeData.pct }}</div>
@@ -2392,9 +2399,9 @@
         </div>
       </div>
     </sc-if>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+    <div class="om-scroll" style="display:flex;flex-wrap:nowrap;gap:8px;margin:0 -2px 14px;padding:2px;overflow-x:auto;scrollbar-width:none">
       <sc-for list="{{ rosterFilterChips }}" as="c" hint-placeholder-count="6">
-        <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;padding:6px 12px;border-radius:999px;font:700 11px var(--font-display);letter-spacing:.05em;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}">{{ c.label }}</div>
+        <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;white-space:nowrap;padding:6px 12px;border-radius:999px;font:700 11px var(--font-display);letter-spacing:.05em;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}">{{ c.label }}</div>
       </sc-for>
     </div>
     <sc-if value="{{ rosterLoading }}" hint-placeholder-val="{{ false }}">
@@ -2431,26 +2438,27 @@
             </div>
           </div>
           <div data-swipe-row="{{ p.idx }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;align-items:center;gap:10px;background:{{ p.cardTint }};border:1px solid {{ p.cardEdge }};border-left:4px solid {{ p.typeAccent }};border-radius:12px;padding:8px 10px;touch-action:pan-y">
-          <div style="flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
-            <span style="position:absolute;font:800 15px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
-            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 0 6px {{ p.railGlow }})" />
+          <div style="flex-shrink:0;width:54px;height:54px;display:flex;align-items:center;justify-content:center;position:relative">
+            <span style="position:absolute;font:800 18px var(--font-display);color:rgba(255,255,255,.12)">{{ p.initial }}</span>
+            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 4px 8px {{ p.railGlow }})" />
           </div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:6px">
-              <div style="font:600 13.5px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.displayName }}</div>
+              <div style="font:600 14px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.displayName }}</div>
               <sc-if value="{{ p.rowSpreadMeasured }}" hint-placeholder-val="{{ true }}">
                 <div style="flex-shrink:0;font:700 9px var(--font-display);color:var(--surface-page);background:var(--grass-700);border-radius:3px;padding:1px 4px">&#10003;</div>
               </sc-if>
               <div style="font:11px;flex-shrink:0">{{ p.flags }}</div>
             </div>
-            <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px;overflow:hidden;white-space:nowrap">
+            <div style="height:4px;border-radius:2px;background:var(--surface-sunken);margin:6px 0 5px;overflow:hidden">
+              <div class="om-bar" style="--i:{{ $index }};height:100%;width:{{ p.ivBarPct }};background:{{ p.rowSpreadColor }};border-radius:2px"></div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:6px;overflow:hidden;white-space:nowrap">
               <span style="font:11.5px var(--font-display);color:{{ p.rowSpreadColor }};font-variant-numeric:tabular-nums;flex-shrink:0">{{ p.rowSpread }}</span>
-              <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
               <sc-if value="{{ p.typeChips }}" hint-placeholder-val="{{ false }}">
-                <span style="font:10.5px var(--font-display);letter-spacing:.03em;color:{{ p.typeAccent }};text-transform:uppercase;flex-shrink:0">{{ p.primaryTypeLabel }}</span>
                 <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
+                <span style="font:10.5px var(--font-display);letter-spacing:.03em;color:{{ p.typeAccent }};text-transform:uppercase;flex-shrink:0">{{ p.primaryTypeLabel }}</span>
               </sc-if>
-              <span style="font:800 13px var(--font-display);color:{{ p.typeAccent }};flex-shrink:0">{{ p.cp }} CP</span>
               <sc-if value="{{ p.bestLeagueLabel }}" hint-placeholder-val="{{ false }}">
                 <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
                 <span style="font:700 11px var(--font-display);color:{{ p.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis">{{ p.bestLeagueLabel }}</span>
@@ -2464,6 +2472,12 @@
                 <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:4px 9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10px var(--font-display)">SAVE</div>
               </div>
             </sc-if>
+          </div>
+          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;line-height:1">
+            <sc-if value="{{ p.isFav }}" hint-placeholder-val="{{ false }}">
+              <span style="color:#f2c14e;font-size:13px">&#9733;</span>
+            </sc-if>
+            <div style="white-space:nowrap"><span style="font:700 10px var(--font-display);color:var(--ink-400);margin-right:2px">CP</span><span style="font:800 22px var(--font-display);color:{{ p.typeAccent }};font-variant-numeric:tabular-nums">{{ p.cp }}</span></div>
           </div>
           </div>
         </div>
@@ -10924,10 +10938,12 @@ class Component extends DCLogic {
     this._openSwipeEl = null;
   }
 
-  // TEMPORARY (v53.107): on-screen touch trace to find out which stage of
-  // the roster gesture fails on-device. Remove once swipe/long-press confirmed.
+  // Opt-in on-screen touch trace for diagnosing roster gestures on a device:
+  // run localStorage.setItem('scoutTrace','1') in the Safari web inspector
+  // console to turn it on. Off by default.
   _swipeTrace(msg) {
     try {
+      if (localStorage.getItem('scoutTrace') !== '1') return;
       let el = document.getElementById('scout-swipe-trace');
       if (!el) {
         el = document.createElement('div');
@@ -11299,13 +11315,15 @@ class Component extends DCLogic {
     const pagedFiltered = filtered.slice(0, visibleCount);
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
-      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.favorite ? '♥' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : ''].filter(Boolean).join(' ');
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : ''].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
         // The row template reads {{ p.idx }} for data-swipe-row; without this
         // the attribute rendered as undefined and no gesture could find its row.
         idx: p.idx,
+        ivBarPct: Math.max(0, Math.min(100, Number.isFinite(p.ivAvg) ? p.ivAvg : 0)).toFixed(0) + '%',
+        isFav: !!p.favorite,
         onClick: () => { if (this._openSwipeEl) { this.closeAnyRosterSwipe(); return; } this.openDetail(p, filteredRoster.map(r => r.raw)); },
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         initial: (p.name || '?').charAt(0),
