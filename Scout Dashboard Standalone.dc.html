@@ -1145,7 +1145,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.103</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.104</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2579,6 +2579,13 @@
           </sc-if>
         </div>
 
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;background:var(--surface-card);border-radius:12px;padding:8px 12px">
+          <span style="flex:1;min-width:0;font:650 10.5px var(--font-display);letter-spacing:.05em;color:{{ detail.shinyControl.tone }}">{{ detail.shinyControl.title }}</span>
+          <sc-for list="{{ detail.shinyControl.buttons }}" as="sb" hint-placeholder-count="0">
+            <div onClick="{{ sb.onClick }}" class="om-press" style="cursor:pointer;border-radius:var(--r-pill);padding:6px 12px;font:700 11px var(--font-display);letter-spacing:.04em;background:var(--surface-muted);color:var(--ink-700)">{{ sb.label }}</div>
+          </sc-for>
+        </div>
+
         <sc-if value="{{ detail.purify }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:14px;margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -3306,6 +3313,11 @@
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px">
       <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">PVP READY (90%+ rank, any league)</div>
       <div style="font:800 30px var(--font-display);color:var(--grass-700)">{{ intelDisplay.pvpReadyCount }}</div>
+    </div>
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px">
+      <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">\u2728 SHINIES</div>
+      <div style="font:800 30px var(--font-display);color:var(--type-electric)">{{ intelDisplay.shinyCount }} <span style="font-size:12px;color:var(--ink-300)">{{ intelDisplay.shinyToConfirm }} to confirm</span></div>
+      <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:4px">{{ intelDisplay.shinySpecies }}</div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px;grid-column:1/-1">
       <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:8px">MISSING FROM YOUR DEX ({{ intelDisplay.missingCount }})</div>
@@ -5265,7 +5277,7 @@ class Component extends DCLogic {
         .sort((a, b) => (b.rank - a.rank) || (b.iv - a.iv));
       const winner = ranked[0];
       ranked.slice(1).forEach(loser => {
-        if (loser.p.lucky || loser.p.favorite) return; // never advise trading these away
+        if (loser.p.lucky || loser.p.favorite || loser.p.shiny) return; // never advise trading these away
         if (loser.rank >= winner.rank) return;
         dupes.push({ loser: loser.p, winner: winner.p, loserRank: loser.rank, winnerRank: winner.rank });
       });
@@ -5346,7 +5358,7 @@ class Component extends DCLogic {
     Object.values(groups).forEach(g => {
       if (g.length < 2) return;
       g.forEach(p => {
-        if (p.lucky || p.favorite || this.isShadow(p)) return;
+        if (p.lucky || p.favorite || p.shiny || this.isShadow(p)) return;
         const a = this.ivsOf(p);
         const lv = Number.isFinite(p.lvlMin) ? p.lvlMin : 0;
         const beater = g.find(q => {
@@ -5980,7 +5992,7 @@ class Component extends DCLogic {
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,'
       + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"megaEnergy":number|null,'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
-      + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"favorite":boolean}. '
+      + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,"favorite":boolean}. '
       + 'Rules: '
       + 'CP is the number in the badge at the very TOP of the screen. If the top of the card is scrolled off and no CP badge is visible, return null — never substitute another number. '
       + 'CP is NEVER the stardust amount: stardust is the large comma-grouped number next to the stardust icon (e.g. 148,482). '
@@ -5992,6 +6004,7 @@ class Component extends DCLogic {
       + 'A shadow Pokemon shows a PURIFY button and the Frustration move; set shadow true then. Set purified true only if the screen says Purified. '
       + 'Moves are listed under Gyms & Raids: the first is fastMove, the rest are chargeMove1/chargeMove2. Give move names only, without the type in parentheses. '
       + 'Only report atkIV/defIV/staIV if exact 0-15 numbers are visible; never infer them from appraisal bars or stars. '
+      + 'shiny: true if the Pokemon shows the small sparkles icon on its detail card, or its coloring is clearly a different palette from its normal form. shinyIcon: true ONLY if you can actually see that sparkles icon (coloring alone is not enough). Never guess either from name or CP alone. '
       + 'Never guess. Any field not clearly visible must be null.';
     const reply = await this.completeWithRetry({
       messages: [{ role: 'user', content: [
@@ -6026,7 +6039,7 @@ class Component extends DCLogic {
       power_up_stardust: num(o.powerUpStardust), power_up_candy: num(o.powerUpCandy),
       evolve_candy: num(o.evolveCandy), mega_energy: num(o.megaEnergy),
       attack_iv: num(o.atkIV), defense_iv: num(o.defIV), stamina_iv: num(o.staIV),
-      lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, favorite: !!o.favorite,
+      lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, shiny_icon: !!o.shinyIcon, favorite: !!o.favorite,
       _source: 'vision'
     };
   }
@@ -6388,8 +6401,13 @@ class Component extends DCLogic {
       ultra: { rankPct: r.ultra, evolvesTo: p.matchedName || p.name },
       little: { rankPct: r.little, evolvesTo: p.matchedName || p.name }
     };
+    const shinyItem = { shiny: p._rec ? !!p._rec.shiny : undefined, shinyIcon: p._rec ? !!p._rec.shiny_icon : false };
     if (p.matchedIdx != null) {
-      overrides[p.matchedIdx] = patch;
+      const prevOv = overrides[p.matchedIdx] || {};
+      const keep = {};
+      if (prevOv.shiny !== undefined) keep.shiny = prevOv.shiny;
+      if (prevOv.shinyState !== undefined) keep.shinyState = prevOv.shinyState;
+      overrides[p.matchedIdx] = { ...patch, ...keep, ...this.shinyPatch(shinyItem, this.monWithOverrides(p.matchedIdx)) };
       this.setState({ ivOverrides: overrides });
     } else {
       const newIdx = 'new-' + Date.now();
@@ -6397,7 +6415,7 @@ class Component extends DCLogic {
         idx: newIdx, name: p.name, form: null, dex: p.dex, gender: null,
         cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
         lvlMin: r.level, lvlMax: r.level, quickMove: null, chargeMove: null, chargeMove2: null,
-        catchDate: null, lucky: false, shadowPurified: '0', favorite: false, shiny: false, dust: null,
+        catchDate: null, lucky: false, shadowPurified: '0', favorite: false, shiny: !!shinyItem.shiny, shinyState: shinyItem.shiny && !shinyItem.shinyIcon ? 'suspected' : null, dust: null,
         great: patch.great, ultra: patch.ultra, little: patch.little
       };
       const added = [...this.state.addedPokemon, newRec];
@@ -6436,6 +6454,8 @@ class Component extends DCLogic {
       put('weight', p.weight || rec.weight);
       put('height', p.height || rec.height);
       put('sizeClass', rec.size_class);
+      const sp = this.shinyPatch({ shiny: !!rec.shiny, shinyIcon: !!rec.shiny_icon }, this.monWithOverrides(p.matchedIdx));
+      Object.keys(sp).forEach(k => { patch[k] = sp[k]; touched = true; });
       if (touched) {
         overrides[p.matchedIdx] = patch;
         this.setState({ ivOverrides: overrides });
@@ -7588,9 +7608,9 @@ class Component extends DCLogic {
         + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, '
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
         + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, '
-        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "favorite": boolean}. '
+        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "favorite": boolean}. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
-        + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring, never guess from name or CP alone. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
+        + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring or the small sparkles icon on the card, never guess from name or CP alone. Set shinyIcon true ONLY if you can actually see that sparkles icon. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
         + 'A partially-readable Pokemon is still a Pokemon \u2014 emit it with nulls. The null/never-guess rules below apply to individual FIELDS, never to whether a Pokemon is listed. '
         + 'Only return an empty array if these frames genuinely contain no Pokemon at all (map view, item bag, loading screen).\n'
@@ -7956,7 +7976,7 @@ class Component extends DCLogic {
       + '{"name":string,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,'
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
-      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"favorite":boolean}\n\n'
+      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"favorite":boolean}\n\n'
       + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
       + 'Rules:\n'
       + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
@@ -7966,7 +7986,7 @@ class Component extends DCLogic {
       + '- evolveCandy is the candy cost on the EVOLVE button.\n'
       + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
       + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
-      + '- A shiny Pokemon has a visibly different color palette from its normal coloring. Set shiny true only when that distinct coloring is actually visible \u2014 never guess from name or CP alone.\n'
+      + '- A shiny Pokemon has a visibly different color palette from its normal coloring and/or shows a small sparkles icon on its card. Set shiny true only when that is actually visible \u2014 never guess from name or CP alone. Set shinyIcon true ONLY if the sparkles icon itself is visible.\n'
       + '- Only give atkIV/defIV/staIV if exact 0-15 numbers are visible. Never infer them from appraisal bars or stars.\n'
       + '- Never guess a FIELD: anything not clearly visible must be null. Never omit a Pokemon because fields are missing.';
   }
@@ -8708,7 +8728,7 @@ class Component extends DCLogic {
           hp: item.hp != null ? item.hp : match.hp,
           lucky: item.lucky != null ? !!item.lucky : match.lucky,
           favorite: item.favorite != null ? !!item.favorite : match.favorite,
-          shiny: item.shiny != null ? !!item.shiny : match.shiny,
+          ...this.shinyPatch(item, before),
           ...(item.gender ? { gender: item.gender } : {}),
           ...(item.fastMove ? { quickMove: item.fastMove } : {}),
           ...(item.chargeMove1 ? { chargeMove: item.chargeMove1 } : {}),
@@ -8733,7 +8753,7 @@ class Component extends DCLogic {
           weight: item.weight || null, height: item.height || null,
           evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
           catchDate: null, scanDate: today,
-          lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, dust: null,
+          lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
           // Never null — the render path reads p.great.rankPct directly.
           great: ivPatch.great || this.emptyLeague(),
           ultra: ivPatch.ultra || this.emptyLeague(),
@@ -9324,6 +9344,34 @@ class Component extends DCLogic {
     return removedSet.has(p.idx);
   }
 
+  // Roster entry with its saved overrides applied, or null.
+  monWithOverrides(idx) {
+    const base = [...(this.state.roster || []), ...(this.state.addedPokemon || [])].find(x => x && x.idx === idx);
+    return base ? { ...base, ...((this.state.ivOverrides || {})[idx] || {}) } : null;
+  }
+
+  // Shiny is read by a vision model, so a colour-only read is held as
+  // 'suspected' until the trainer confirms it; a visible sparkles icon counts
+  // as confirmed. A shiny the trainer already confirmed (or one saved before
+  // shinyState existed) is never changed by a later scan.
+  shinyPatch(item, prior) {
+    const priorConfirmed = !!(prior && prior.shiny && prior.shinyState !== 'suspected');
+    if (priorConfirmed || !item) return {};
+    if (item.shiny) return { shiny: true, shinyState: item.shinyIcon ? null : 'suspected' };
+    if (item.shiny === false && prior && prior.shiny) return { shiny: false, shinyState: null };
+    return {};
+  }
+
+  setShinyConfirmed(p, isShiny) {
+    if (!p) return;
+    const overrides = { ...this.state.ivOverrides };
+    overrides[p.idx] = { ...overrides[p.idx], shiny: !!isShiny, shinyState: null };
+    const patch = { shiny: !!isShiny, shinyState: null };
+    const dp = this.state.detailPoke;
+    this.setState({ ivOverrides: overrides, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, ...patch } } : {}) });
+    this.haptic('light');
+  }
+
   removePokemon(idx) {
     this.haptic('heavy');
     const set = new Set(this.state.removedIds);
@@ -9591,7 +9639,7 @@ class Component extends DCLogic {
     if (bestRank >= 85) return 'Strong league contender. Worth the investment.';
     if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
     if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
-    if ((!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
+    if ((!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !p.shiny && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
     return 'No urgent action. Keep as roster depth.';
   }
 
@@ -10062,9 +10110,9 @@ class Component extends DCLogic {
     // (level 35+ is real stardust committed, not just whatever it hatched
     // or was caught at) \u2014 each of these is a genuine "this Pokemon matters"
     // signal, unlike raw bestRank which let low-value Little Cup mons in.
-    const strength = p => Math.max(this.bestGreatUltraRank(p), p.lucky || this.isShadow(p) || p.favorite ? 90 : 0, (p.lvlMin || 0) >= 35 ? 70 : 0);
+    const strength = p => Math.max(this.bestGreatUltraRank(p), p.lucky || this.isShadow(p) || p.favorite || p.shiny ? 90 : 0, (p.lvlMin || 0) >= 35 ? 70 : 0);
     return roster
-      .filter(p => p.lucky || this.isShadow(p) || p.favorite || this.bestGreatUltraRank(p) >= 90 || (p.lvlMin || 0) >= 35)
+      .filter(p => p.lucky || this.isShadow(p) || p.favorite || p.shiny || this.bestGreatUltraRank(p) >= 90 || (p.lvlMin || 0) >= 35)
       .sort((a, b) => strength(b) - strength(a))
       .slice(0, 20);
   }
@@ -10232,7 +10280,7 @@ class Component extends DCLogic {
     const out = [];
     roster.forEach(p => {
       if (queued.has(p.idx)) return;
-      if (p.favorite || p.lucky || this.isShadow(p) || this.isPurified(p)) return;
+      if (p.favorite || p.lucky || p.shiny || this.isShadow(p) || this.isPurified(p)) return;
       const rank = this.bestRank(p);
       if (Number.isFinite(rank) && rank >= 70) return;
       if ((p.ivAvg || 0) >= 70) return;
@@ -10449,7 +10497,7 @@ class Component extends DCLogic {
     const powerUp = withRank.filter(x => x.rank >= 90 && !x.p.favorite && notDone(x.p)).sort((a, b) => b.rank - a.rank).slice(0, 5).map(x => x.p);
     const evolveSoon = roster.filter(p => this.evolvesToName(p) && (p.ivAvg || 0) >= 60 && notDone(p))
       .sort((a, b) => (b.ivAvg || 0) - (a.ivAvg || 0)).slice(0, 5);
-    const transferSafe = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
+    const transferSafe = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
       .slice(0, 10);
     const dexCounts = {};
     roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
@@ -10550,7 +10598,7 @@ class Component extends DCLogic {
           const winner = dominatedByIdx[p.idx];
           const dominated = winner ? `beaten by owned ${winner.cp || '?'}CP ${winner.name}` : 'no';
           const candy = candyFor(p);
-          return `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'}`;
+          return `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'}`;
         };
         const byRank = [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a));
         const top = byRank.slice(0, 90);
@@ -10579,7 +10627,7 @@ class Component extends DCLogic {
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, or favorite included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F flag is the profile of an easy cut — but never suggest transferring anything showing L, S, or F regardless of its rank. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false }, () => this.queueCloudPush());
@@ -10846,7 +10894,7 @@ class Component extends DCLogic {
     this._openSwipeEl = null;
   }
 
-  // TEMPORARY (v53.103): on-screen touch trace to find out which stage of
+  // TEMPORARY (v53.104): on-screen touch trace to find out which stage of
   // the roster gesture fails on-device. Remove once swipe/long-press confirmed.
   _swipeTrace(msg) {
     try {
@@ -11083,7 +11131,7 @@ class Component extends DCLogic {
       const top = roster.slice().sort((a, b) => (b.cp || 0) - (a.cp || 0))[0];
       answer = top ? `Your highest CP Pokemon is ${top.name} at ${top.cp} CP.` : 'No CP data.';
     } else if (q.includes('transfer')) {
-      const count = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
+      const count = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
       answer = `I count ${count} transfer candidates on the Recommendations tab.`;
     } else if (q.includes('how many') || q.includes('total')) {
       answer = `You have ${roster.length} Pokemon logged.`;
@@ -11166,6 +11214,7 @@ class Component extends DCLogic {
       if (rosterFilter === 'lucky') return !!p.lucky;
       if (rosterFilter === 'shadow') return this.isShadow(p) || this.isPurified(p);
       if (rosterFilter === 'shiny') return !!p.shiny;
+      if (rosterFilter === 'shinyCheck') return !!p.shiny && p.shinyState === 'suspected';
       if (rosterFilter === 'pvp') return this.bestRank(p) >= 90;
       return true;
     });
@@ -11202,7 +11251,7 @@ class Component extends DCLogic {
     const pagedFiltered = filtered.slice(0, visibleCount);
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
-      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.favorite ? '♥' : '', p.shiny ? '✨' : ''].filter(Boolean).join(' ');
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.favorite ? '♥' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : ''].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
@@ -11403,7 +11452,7 @@ class Component extends DCLogic {
     // exists, raidRoleTypeBest/hasRaidRole make it real: compared only
     // against your OWN roster, never an external tier list.
     const raidTypeBest = this.raidRoleTypeBest(roster);
-    const transferPool = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !this.hasRaidRole(p, raidTypeBest) && !p.lucky && !p.favorite && !this.isShadow(p) && notDone(p));
+    const transferPool = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !this.hasRaidRole(p, raidTypeBest) && !p.lucky && !p.favorite && !p.shiny && !this.isShadow(p) && notDone(p));
     transferPool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const transferList = transferPool.slice(0, 12).map(p => ({
       idx: p.idx,
@@ -11420,7 +11469,7 @@ class Component extends DCLogic {
     // glance rather than an auto-flag, so this opens the detail sheet instead
     // of offering a one-tap remove.
     const transferIdxSet = new Set(transferPool.map(p => p.idx));
-    const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && (!Number.isFinite(p.ivAvg) || p.ivAvg < 58) && this.bestRank(p) < 78 && !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
+    const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && (!Number.isFinite(p.ivAvg) || p.ivAvg < 58) && this.bestRank(p) < 78 && !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
     borderlinePool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const borderlineList = borderlinePool.slice(0, 10).map(p => ({
       idx: p.idx,
@@ -11436,7 +11485,7 @@ class Component extends DCLogic {
 
     let closestMiss = null;
     if (!transferPool.length && !borderlinePool.length) {
-      const cmPool = roster.filter(p => !p.lucky && !p.favorite && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p) && Number.isFinite(p.ivAvg));
+      const cmPool = roster.filter(p => !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p) && Number.isFinite(p.ivAvg));
       cmPool.sort((a, b) => a.ivAvg - b.ivAvg);
       const cm = cmPool[0];
       if (cm) {
@@ -11676,7 +11725,7 @@ class Component extends DCLogic {
     let detail = null;
     if (detailPoke) {
       const p = detailPoke;
-      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : '', p.shiny ? '✨ Shiny' : ''].filter(Boolean).join('  ');
+      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨ Shiny (unconfirmed)' : '✨ Shiny') : ''].filter(Boolean).join('  ');
       const statRings = [
         { label: 'ATK', value: Number.isFinite(p.atkIV) ? p.atkIV : '—', color: 'var(--type-fighting)', ...this.ringGeom((Number.isFinite(p.atkIV) ? p.atkIV : 0) / 15 * 100, 27) },
         { label: 'DEF', value: Number.isFinite(p.defIV) ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((Number.isFinite(p.defIV) ? p.defIV : 0) / 15 * 100, 27) },
@@ -11792,7 +11841,12 @@ class Component extends DCLogic {
         ivSourceColor: p.ivMeasured ? 'var(--grass-700)'
           : (!Number.isFinite(p.atkIV) ? 'var(--ink-400)' : 'var(--type-electric)'),
         flags: flags || 'No special flags',
-        flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : ''].filter(Boolean); return fc.length ? fc : null; })(),
+        flagChips: (() => { const fc = [p.lucky ? '\u2605 Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? '\u25c6 Shadow' : '', p.favorite ? '\u2665 Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? '\u2728 Shiny (unconfirmed)' : '\u2728 Shiny') : ''].filter(Boolean); return fc.length ? fc : null; })(),
+        shinyControl: (() => {
+          if (!p.shiny) return { title: 'NOT SHINY', tone: 'var(--ink-400)', buttons: [{ label: 'MARK AS SHINY', primary: false, onClick: () => this.setShinyConfirmed(p, true) }] };
+          if (p.shinyState === 'suspected') return { title: '\u2728 SHINY? READ FROM COLOR \u2014 CONFIRM IT', tone: 'var(--type-electric)', buttons: [{ label: 'CONFIRM SHINY', primary: true, onClick: () => this.setShinyConfirmed(p, true) }, { label: 'NOT SHINY', primary: false, onClick: () => this.setShinyConfirmed(p, false) }] };
+          return { title: '\u2728 SHINY CONFIRMED', tone: 'var(--grass-700)', buttons: [{ label: 'UNMARK', primary: false, onClick: () => this.setShinyConfirmed(p, false) }] };
+        })(),
         purify: (() => {
           if (!this.isShadow(p)) return null;
           const m = this.mechanics;
@@ -11970,6 +12024,9 @@ class Component extends DCLogic {
       missingCount: missingDex.length, missingPreview: missingPreview || 'None \u2014 full dex!',
       hundoCount: hundoList.length, nundoCount: nundoList.length,
       pvpReadyCount: roster.filter(p => this.bestRank(p) >= 90).length,
+      shinyCount: roster.filter(p => p.shiny).length,
+      shinyToConfirm: roster.filter(p => p.shiny && p.shinyState === 'suspected').length,
+      shinySpecies: (() => { const n = [...new Set(roster.filter(p => p.shiny).map(p => p.name))]; return n.length ? n.slice(0, 24).join(', ') + (n.length > 24 ? ' +' + (n.length - 24) + ' more' : '') : 'None yet'; })(),
       duplicateGroups: duplicateGroups.length ? duplicateGroups : null
     };
 
@@ -12247,7 +12304,8 @@ class Component extends DCLogic {
         { key: 'pvp', label: 'PVP 90%+' },
         { key: 'lucky', label: 'LUCKY' },
         { key: 'shadow', label: 'SHADOW / PURIFIED' },
-        { key: 'shiny', label: '\u2728 SHINY' }
+        { key: 'shiny', label: '\u2728 SHINY' },
+        ...(roster.some(p => p.shiny && p.shinyState === 'suspected') ? [{ key: 'shinyCheck', label: '\u2728? TO CONFIRM' }] : [])
       ].map(c => ({
         label: c.label,
         active: rosterFilter === c.key,
@@ -12385,7 +12443,7 @@ class Component extends DCLogic {
           // in a close tie is reasonable. Never meant to override the rank/IV
           // verdict on its own.
           const movesetComplete = !this.movesetDataNote(p);
-          const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0)
+          const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0)
             + (this.isShadow(p) ? 20000 : 0) + (this.isPurified(p) ? 10000 : 0)
             + (onlyCopy ? 5000 : 0) + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01;
           return { p, score };

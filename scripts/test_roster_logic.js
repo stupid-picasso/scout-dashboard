@@ -402,6 +402,27 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// shinyPatch() — colour-only reads are held as 'suspected'; a confirmed shiny
+// (or a legacy one with no shinyState) is never changed by a later scan.
+// ---------------------------------------------------------------------------
+(function testShinyPatch() {
+  const body = extractMethodBody(SRC, 'shinyPatch(item, prior) {');
+  const shinyPatch = new Function('item', 'prior', body);
+  check('colour-only read on a non-shiny -> suspected',
+    shinyPatch({ shiny: true, shinyIcon: false }, { shiny: false }), { shiny: true, shinyState: 'suspected' });
+  check('sparkles icon seen -> confirmed (no suspected state)',
+    shinyPatch({ shiny: true, shinyIcon: true }, null), { shiny: true, shinyState: null });
+  check('confirmed shiny is not downgraded by a scan that says false',
+    shinyPatch({ shiny: false }, { shiny: true, shinyState: null }), {});
+  check('legacy shiny (no shinyState key) is treated as confirmed',
+    shinyPatch({ shiny: false }, { shiny: true }), {});
+  check('suspected shiny cleared when a later scan says false',
+    shinyPatch({ shiny: false }, { shiny: true, shinyState: 'suspected' }), { shiny: false, shinyState: null });
+  check('scan with no shiny info changes nothing',
+    shinyPatch({}, { shiny: false }), {});
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));
