@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.117</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.118</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1232,6 +1232,11 @@
     </div>
   </div>
 
+  <sc-if value="{{ updateReady }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ reloadApp }}" class="om-press" style="position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:80;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 12.5px var(--font-display);box-shadow:var(--shadow-pop);animation:riseIn .4s ease backwards">
+      <span>A new version is ready</span><span style="letter-spacing:.05em">TAP TO RELOAD</span>
+    </div>
+  </sc-if>
   <div data-navbar="1" class="om-scroll" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:var(--surface-page);border-top:1px solid var(--line-300);box-shadow:0 -6px 18px rgba(0,0,0,.45);padding:8px 10px max(8px, env(safe-area-inset-bottom))">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="8">
       <div onClick="{{ t.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 13px;border-radius:var(--r-pill);background:{{ t.navBg }};min-width:58px">
@@ -2419,7 +2424,7 @@
     </sc-if>
     <div class="om-scroll" style="display:flex;flex-wrap:nowrap;gap:8px;margin:0 -2px 14px;padding:2px;overflow-x:auto;scrollbar-width:none">
       <sc-for list="{{ rosterFilterChips }}" as="c" hint-placeholder-count="6">
-        <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;white-space:nowrap;padding:6px 12px;border-radius:999px;font:700 11px var(--font-display);letter-spacing:.05em;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}">{{ c.label }}</div>
+        <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;white-space:nowrap;padding:9px 14px;border-radius:999px;font:700 11px var(--font-display);letter-spacing:.05em;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}">{{ c.label }}</div>
       </sc-for>
     </div>
     <sc-if value="{{ rosterLoading }}" hint-placeholder-val="{{ false }}">
@@ -2970,7 +2975,7 @@
       <div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em">BOSS TYPES (PICK UP TO 2)</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
         <sc-for list="{{ raidTypeChips }}" as="c" hint-placeholder-count="18">
-          <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 9.5px var(--font-display);letter-spacing:.05em;padding:5px 9px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
+          <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 10px var(--font-display);letter-spacing:.05em;padding:8px 12px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
         </sc-for>
       </div>
     </div>
@@ -2978,7 +2983,7 @@
     <div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin:-6px 0 6px">WEATHER (OPTIONAL, +20% DAMAGE TO MATCHING MOVE TYPES)</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">
       <sc-for list="{{ raidWeatherChips }}" as="w" hint-placeholder-count="7">
-        <div onClick="{{ w.onClick }}" class="om-tap" style="cursor:pointer;font:700 9.5px var(--font-display);letter-spacing:.05em;padding:5px 9px;border-radius:var(--r-pill);background:{{ w.bg }};color:{{ w.fg }}">{{ w.label }}</div>
+        <div onClick="{{ w.onClick }}" class="om-tap" style="cursor:pointer;font:700 10px var(--font-display);letter-spacing:.05em;padding:8px 12px;border-radius:var(--r-pill);background:{{ w.bg }};color:{{ w.fg }}">{{ w.label }}</div>
       </sc-for>
     </div>
 
@@ -3395,6 +3400,20 @@
 
   <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
   <div style="animation:fadeSlideIn .35s ease">
+    <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:10px 14px;margin-bottom:16px">
+      <summary style="cursor:pointer;font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.05em;list-style:none">DIAGNOSTICS &middot; {{ diagSummary }}</summary>
+      <sc-if value="{{ hasDiag }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ diagRows }}" as="d" hint-placeholder-count="0">
+            <div style="font:11px/1.4 var(--font-display);color:var(--ink-600);word-break:break-word">{{ d.line }}</div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div onClick="{{ copyDiagnostics }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">COPY</div>
+          <div onClick="{{ clearDiagnostics }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font:700 11px var(--font-display)">CLEAR</div>
+        </div>
+      </sc-if>
+    </details>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="font:13.5px/1.5 var(--font-body);color:var(--ink-500);max-width:560px">Log a snapshot of your current roster to track growth over time. Re-sync a fresh CSV export whenever you want to update the numbers above.</div>
       <div onClick="{{ logSnapshot }}" style="cursor:pointer;background:var(--brand-primary-strong);color:var(--ink-900);font:700 13px var(--font-display);padding:11px 20px;border-radius:var(--r-pill);white-space:nowrap">+ LOG SNAPSHOT</div>
@@ -3576,6 +3595,8 @@ class Component extends DCLogic {
     raidBossName: '',
     raidBossTypes: [],
     raidWeather: '',
+    updateReady: false,
+    diagCount: 0,
     snapshots: [],
     snapshotBusy: false,
     snapshotError: '',
@@ -3607,6 +3628,31 @@ class Component extends DCLogic {
     // Bound before anything else: a throw in a later mount step used to skip
     // this entirely, leaving swipe/long-press with no listeners at all.
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
+    this.loadLocalSecrets();
+    // A new service worker takes over without reloading the page, so the code on
+    // screen can be older than the app. Tell the person instead of letting them
+    // test a stale build, and check for updates whenever the app comes forward.
+    try {
+      if ('serviceWorker' in navigator) {
+        const hadController = !!navigator.serviceWorker.controller;
+        navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) this.setState({ updateReady: true }); });
+        const checkForUpdate = () => { navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}); };
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+        checkForUpdate();
+      }
+    } catch (e) {}
+    // Keep the last errors so a crash can be read on the phone (Log tab).
+    try {
+      this._diag = this._diag || [];
+      const note = (kind, msg) => {
+        this._diag.unshift({ at: new Date().toLocaleTimeString(), kind, msg: String(msg || '').slice(0, 400) });
+        if (this._diag.length > 20) this._diag.length = 20;
+        clearTimeout(this._diagTimer);
+        this._diagTimer = setTimeout(() => this.setState({ diagCount: this._diag.length }), 400);
+      };
+      window.addEventListener('error', ev => note('error', (ev && ev.message) || 'script error'));
+      window.addEventListener('unhandledrejection', ev => note('promise', ev && ev.reason && (ev.reason.message || ev.reason)));
+    } catch (e) {}
     // Count-up numbers animate a registered integer custom property; where the
     // browser can't register one the plain number simply shows.
     try {
@@ -3731,12 +3777,14 @@ class Component extends DCLogic {
 
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
-      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
-      'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'githubToken'];
+      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'candyAiDecisions',
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel'];
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // Nothing is persisted to this device. The roster (and everything else in
+    // Credentials are the one thing kept on this device (see loadLocalSecrets).
+    this.persistSecretsIfChanged();
+    // Nothing else is persisted to this device. The roster (and everything else in
     // SYNC_KEYS) only ever goes to Firestore, and only when signed in — the
     // block below is the single choke point for that.
     if (this._applyingRemote || !this.state.cloudUser) return;
@@ -3902,6 +3950,51 @@ class Component extends DCLogic {
     }, err => this.setState({ syncStatus: 'error: ' + err.message, authError: 'Sync read failed: ' + err.message + ' \u2014 check your Firestore rules allow this user.' }));
   }
 
+  // ---- Device-only secrets ------------------------------------------------
+  // The Gemini keys, custom API endpoint and GitHub token are credentials, so
+  // they are kept in this browser's localStorage and never written to the cloud
+  // document or its backup snapshots. A device that signs in fresh needs them
+  // entered once. Older cloud copies are adopted once (see applyRemote), then
+  // deleted from the cloud on the next write.
+  loadLocalSecrets() {
+    try {
+      localStorage.setItem('scout.probe', '1'); localStorage.removeItem('scout.probe');
+      this._secretsLocalOk = true;
+      const raw = localStorage.getItem('scout.secrets.v1');
+      if (!raw) return;
+      const sec = JSON.parse(raw) || {};
+      const keys = Array.isArray(sec.geminiKeys) ? sec.geminiKeys.filter(Boolean) : [];
+      const patch = {};
+      if (keys.length) { patch.geminiKeys = keys; patch.geminiKey = sec.geminiKey || keys[0]; patch.geminiKeyDraft = keys.join('\n'); }
+      if (sec.apiEndpoint) { patch.apiEndpoint = sec.apiEndpoint; patch.apiEndpointDraft = sec.apiEndpoint; }
+      if (sec.githubToken) patch.githubToken = sec.githubToken;
+      if (Object.keys(patch).length) this.setState(patch);
+    } catch (e) { this._secretsLocalOk = false; }
+  }
+
+  persistSecretsIfChanged() {
+    if (this._secretsLocalOk === false) return;
+    const st = this.state;
+    const sec = { geminiKey: st.geminiKey || '', geminiKeys: st.geminiKeys || [], apiEndpoint: st.apiEndpoint || '', githubToken: st.githubToken || '' };
+    const sig = JSON.stringify(sec);
+    if (sig === this._secretsSig) return;
+    try {
+      localStorage.setItem('scout.secrets.v1', sig);
+      this._secretsSig = sig;
+      this._secretsPersisted = localStorage.getItem('scout.secrets.v1') === sig;
+    } catch (e) { this._secretsLocalOk = false; }
+  }
+
+  // Delete the old cloud copies once, and only after this device holds them.
+  secretScrubFields() {
+    try {
+      if (this._secretsLocalOk !== true || !this._secretsPersisted) return {};
+      if (localStorage.getItem('scout.secretsScrubbed') === '1') return {};
+      const del = firebase.firestore.FieldValue.delete();
+      return { githubToken: del, geminiKey: del, geminiKeys: del, apiEndpoint: del };
+    } catch (e) { return {}; }
+  }
+
   // Firestore is the only source of truth — nothing on this device is ever
   // treated as authoritative over what the cloud doc says, so this just
   // mirrors `remote` into state field-for-field (defaulting missing fields to
@@ -3947,14 +4040,14 @@ class Component extends DCLogic {
       eliteTmDone: remote.eliteTmDone || [],
       cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
       pvpMaxLevel: [40, 50, 51].includes(remote.pvpMaxLevel) ? remote.pvpMaxLevel : 50,
-      githubToken: remote.githubToken || '',
+      githubToken: this.state.githubToken || remote.githubToken || '',
       megaEnergyInventory: remote.megaEnergyInventory || {},
       megaEvolvedHistory: remote.megaEvolvedHistory || {},
       triageKeep: remote.triageKeep || {},
       transferQueue: remote.transferQueue || [],
       trainerLevel: remote.trainerLevel != null ? remote.trainerLevel : this.state.trainerLevel,
       dustReserve: remote.dustReserve != null ? remote.dustReserve : this.state.dustReserve,
-      apiEndpoint: remote.apiEndpoint || '',
+      apiEndpoint: this.state.apiEndpoint || remote.apiEndpoint || '',
       geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys : (remote.geminiKeys || (remote.geminiKey ? [remote.geminiKey] : [])),
       geminiKey: this.state.geminiKey || (remote.geminiKeys && remote.geminiKeys[0]) || remote.geminiKey || '',
     };
@@ -4107,7 +4200,7 @@ class Component extends DCLogic {
       'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
-      'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint',
+      'chatMessages',
       'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel'];
   }
 
@@ -4124,7 +4217,7 @@ class Component extends DCLogic {
     return ['roster', 'addedPokemon', 'ivOverrides', 'candyInventory', 'typeTable',
       'moveDB', 'evoTable', 'candyAiDecisions', 'history', 'completedIds', 'removedIds',
       'checklistDone', 'resources', 'evolutionItems', 'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue',
-      'chatMessages', 'geminiKeys'];
+      'chatMessages'];
   }
 
   // Split on ENCODED BYTES, not string length. slice() counts UTF-16 code units,
@@ -4168,12 +4261,13 @@ class Component extends DCLogic {
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
       checklistDone: s.checklistDone, resources: s.resources, evolutionItems: s.evolutionItems, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
-      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, pvpMaxLevel: s.pvpMaxLevel, githubToken: s.githubToken,
+      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, pvpMaxLevel: s.pvpMaxLevel,
       // Trimmed on write: an unbounded transcript would eventually crowd out the
       // roster, which is the data that actually matters.
       chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
-      geminiKey: s.geminiKey, geminiKeys: s.geminiKeys,
-      apiEndpoint: s.apiEndpoint,
+      // API keys and the GitHub token stay on this device. They only go to the
+      // cloud when the browser refuses to store them locally (private mode).
+      ...(this._secretsLocalOk === false ? { githubToken: s.githubToken, geminiKey: s.geminiKey, geminiKeys: s.geminiKeys, apiEndpoint: s.apiEndpoint } : {}),
       updatedAt: Date.now()
     };
     const out = {};
@@ -4349,8 +4443,10 @@ class Component extends DCLogic {
     const gen = (this._writeGen = (this._writeGen || 0) + 1);
     this._writeInFlight = true;
     try {
-      this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).set(safeBlob, { merge: true })
+      const scrub = this.secretScrubFields();
+      this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).set({ ...safeBlob, ...scrub }, { merge: true })
         .then(() => {
+          if (Object.keys(scrub).length) { try { localStorage.setItem('scout.secretsScrubbed', '1'); } catch (e) {} }
           this._writeInFlight = false;
           if (this._writeGen === gen) this._dirtyUntilPush = false;
           this.setState({ syncStatus: 'saved ' + new Date().toLocaleTimeString() + ' · ' + Math.round((this._lastBlobBytes || 0) / 1024) + 'kB' + (this._lastShed ? ' · trimmed ' + this._lastShed + ' to fit' : '') });
@@ -5364,6 +5460,17 @@ class Component extends DCLogic {
         .filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
     }
     this.setState(patch);
+  }
+
+  reloadApp() { try { location.reload(); } catch (e) {} }
+
+  diagnosticsText() {
+    return (this._diag || []).map(d => d.at + ' [' + d.kind + '] ' + d.msg).join('\n');
+  }
+
+  copyDiagnostics() {
+    const text = 'Scout ' + (document.title || '') + '\n' + this.diagnosticsText();
+    try { navigator.clipboard.writeText(text); this.haptic('light'); } catch (e) {}
   }
 
   setRaidWeather(w) {
@@ -13459,6 +13566,13 @@ class Component extends DCLogic {
           onClick: () => this.toggleRaidType(t)
         };
       }),
+      updateReady: this.state.updateReady,
+      reloadApp: () => this.reloadApp(),
+      diagRows: (this._diag || []).map(d => ({ line: d.at + ' \u00b7 ' + d.kind + ' \u00b7 ' + d.msg })),
+      hasDiag: (this._diag || []).length > 0,
+      diagSummary: (this._diag || []).length ? (this._diag.length + ' recent error' + (this._diag.length > 1 ? 's' : '')) : 'No errors recorded',
+      copyDiagnostics: () => this.copyDiagnostics(),
+      clearDiagnostics: () => { this._diag = []; this.setState({ diagCount: 0 }); },
       raidWeatherChips: Object.keys((this.mechanics && this.mechanics.WEATHER_TYPES) || {}).map(w => {
         const on = this.state.raidWeather === w;
         return {

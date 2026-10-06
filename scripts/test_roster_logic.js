@@ -552,6 +552,37 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Credentials stay on the device: persisted to localStorage, deleted from the
+// cloud once, never part of the synced key lists.
+// ---------------------------------------------------------------------------
+(function testDeviceOnlySecrets() {
+  const mkStorage = () => { const d = {}; return { d, getItem: k => (k in d ? d[k] : null), setItem: (k, v) => { d[k] = String(v); }, removeItem: k => { delete d[k]; } }; };
+  const call = (name, ls, ctx, fb) => new Function('localStorage', 'firebase', extractMethodBody(SRC, name + '() {')).call(ctx, ls, fb);
+  const ls = mkStorage();
+  const ctx = { state: { geminiKey: 'AIza1', geminiKeys: ['AIza1', 'AIza2'], apiEndpoint: 'https://x', githubToken: 'ghp_x' } };
+  ctx._secretsLocalOk = true;
+  call('persistSecretsIfChanged', ls, ctx);
+  const saved = JSON.parse(ls.d['scout.secrets.v1'] || '{}');
+  check('secrets are written to localStorage', saved.githubToken === 'ghp_x' && saved.geminiKeys.length === 2, true);
+  check('persistence is confirmed by read-back', ctx._secretsPersisted, true);
+
+  const fb = { firestore: { FieldValue: { delete: () => 'DELETE' } } };
+  const scrub = call('secretScrubFields', ls, ctx, fb);
+  check('first write deletes the old cloud copies', scrub.githubToken === 'DELETE' && scrub.geminiKeys === 'DELETE' && scrub.apiEndpoint === 'DELETE', true);
+  ls.setItem('scout.secretsScrubbed', '1');
+  check('after the scrub is recorded nothing more is deleted', Object.keys(call('secretScrubFields', ls, ctx, fb)).length, 0);
+  const ctx2 = { state: {}, _secretsLocalOk: true, _secretsPersisted: false };
+  check('cloud copies are never deleted before the device holds them', Object.keys(call('secretScrubFields', mkStorage(), ctx2, fb)).length, 0);
+
+  const ctx3 = { _patch: null, setState(p) { this._patch = p; } };
+  call('loadLocalSecrets', ls, ctx3);
+  check('a fresh load restores the keys and endpoint', !!ctx3._patch && ctx3._patch.geminiKeys.length === 2 && ctx3._patch.apiEndpoint === 'https://x' && ctx3._patch.githubToken === 'ghp_x', true);
+
+  const syncKeys = extractMethodBody(SRC, 'SYNC_KEYS() {') + extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {') + extractMethodBody(SRC, 'get PACKED_KEYS() {');
+  check('no credential is in the synced or packed key lists', /geminiKey|githubToken|apiEndpoint/.test(syncKeys), false);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

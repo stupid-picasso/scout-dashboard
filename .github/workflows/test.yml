@@ -1,0 +1,36 @@
+name: Tests
+
+# Runs the logic tests and a real-browser smoke render on every push and PR.
+# The smoke test loads the actual index.html in headless Chromium, imports a
+# small CSV, and checks the screens that have broken before (roster rows, swipe,
+# long-press, detail sheet, PvP / Attackers / Raid tabs), failing on any
+# uncaught page error.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Logic tests
+        run: |
+          node scripts/test_ranking.js
+          node scripts/test_roster_logic.js
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Smoke render
+        run: node scripts/smoke_render.js
