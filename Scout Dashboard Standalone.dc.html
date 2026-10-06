@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.115</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.117</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1289,6 +1289,13 @@
       <div style="display:flex;flex-direction:column;gap:2px">
         <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.04em">PVP RANKS OUT OF DATE?</div>
         <div style="font:11.5px var(--font-body);color:var(--ink-400)">Recalculates great/ultra/little for your whole roster with the current ranking logic \u2014 run after any ranking fix, no re-import needed.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-basis:100%">
+        <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em">MAX LEVEL FOR PVP RANKS</span>
+        <sc-for list="{{ pvpLevelChoices }}" as="lv" hint-placeholder-count="3">
+          <div onClick="{{ lv.onClick }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);font:700 11px var(--font-display);background:{{ lv.bg }};color:{{ lv.fg }}">{{ lv.label }}</div>
+        </sc-for>
+        <span style="font:11px var(--font-body);color:var(--ink-400)">40 = no XL Candy &middot; 50 standard &middot; 51 best buddy</span>
       </div>
       <div onClick="{{ recalculateAllRanks }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:10px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);white-space:nowrap">{{ recalcLabel }}</div>
     </div>
@@ -2816,6 +2823,9 @@
               <div style="height:7px;background:var(--line-200);border-radius:4px;overflow:hidden">
                 <div class="om-bar" style="height:100%;border-radius:4px;background:{{ l.color }};width:{{ l.barWidth }};transition:width 1s ease"></div>
               </div>
+              <sc-if value="{{ l.idealLine }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-400);margin-top:4px">{{ l.idealLine }}</div>
+              </sc-if>
             </div>
           </sc-for>
         </div>
@@ -2903,6 +2913,30 @@
         </div>
       </sc-for>
     </div>
+    <sc-if value="{{ pvpTeam }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:20px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:16px">
+        <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:4px">{{ pvpTeam.title }}</div>
+        <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:12px">From PvPoke&rsquo;s simulated matchups, using only Pokemon with measured IVs, 90%+ IV rank and an S/A/B species.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+          <sc-for list="{{ pvpTeam.members }}" as="tm" hint-placeholder-count="3">
+            <div onClick="{{ tm.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px">
+              <div style="width:40px;height:40px;border-radius:50%;background:{{ tm.badgeColor }};position:relative;overflow:hidden">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 14px var(--font-display);color:var(--surface-sunken)">{{ tm.initial }}</span>
+                <img ref="{{ tm.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="font:700 13px var(--font-body)">{{ tm.displayName }}</div>
+              <div style="font:11px var(--font-display);color:var(--ink-500)">{{ tm.line }}</div>
+              <div style="font:600 10.5px var(--font-display);color:var(--type-electric)">{{ tm.moveLine }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font:12px var(--font-body);color:var(--ink-700);margin-bottom:4px">{{ pvpTeam.sharedLine }}</div>
+        <div style="font:12px var(--font-body);color:var(--ink-700);margin-bottom:4px">{{ pvpTeam.coverLine }}</div>
+        <sc-if value="{{ pvpTeam.stillLine }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12px var(--font-body);color:var(--type-electric)">{{ pvpTeam.stillLine }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
     <sc-if value="{{ suggestedTeamDisplay }}" hint-placeholder-val="{{ false }}">
       <div style="margin-top:20px;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:8px;padding:18px">
         <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:4px">SUGGESTED TEAM (type-diverse top ranks)</div>
@@ -2928,7 +2962,7 @@
   <div style="animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
       <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em">RAID COUNTERS</div>
-      <div style="font:12.5px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types, and this ranks your own Pokemon by real damage per second against it &mdash; type effectiveness and STAB included, at each one&rsquo;s current level. Anything whose moves aren&rsquo;t in the move database is left out rather than guessed.</div>
+      <div style="font:12.5px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types, and this ranks your own Pokemon against it by damage per second (STAB, type effectiveness and optional weather) weighted by how well each one survives the boss&rsquo;s own types. It assumes the boss uses moves of its own types, so it is an estimate, not a battle simulation. Pokemon whose moves aren&rsquo;t in the move database are left out rather than guessed.</div>
     </div>
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:11px">
@@ -2939,6 +2973,13 @@
           <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 9.5px var(--font-display);letter-spacing:.05em;padding:5px 9px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
         </sc-for>
       </div>
+    </div>
+
+    <div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin:-6px 0 6px">WEATHER (OPTIONAL, +20% DAMAGE TO MATCHING MOVE TYPES)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">
+      <sc-for list="{{ raidWeatherChips }}" as="w" hint-placeholder-count="7">
+        <div onClick="{{ w.onClick }}" class="om-tap" style="cursor:pointer;font:700 9.5px var(--font-display);letter-spacing:.05em;padding:5px 9px;border-radius:var(--r-pill);background:{{ w.bg }};color:{{ w.fg }}">{{ w.label }}</div>
+      </sc-for>
     </div>
 
     <sc-if value="{{ raidHasBoss }}" hint-placeholder-val="{{ false }}">
@@ -3503,6 +3544,7 @@ class Component extends DCLogic {
     bagCapacityDraft: null,
     closestMissRevealed: false,
     cutTarget: 300,
+    pvpMaxLevel: 50,
     cutTargetDraft: '300',
     cutListRevealed: false,
     githubToken: '',
@@ -3533,6 +3575,7 @@ class Component extends DCLogic {
     syncStatus: '',
     raidBossName: '',
     raidBossTypes: [],
+    raidWeather: '',
     snapshots: [],
     snapshotBusy: false,
     snapshotError: '',
@@ -3689,7 +3732,7 @@ class Component extends DCLogic {
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'geminiKey', 'geminiKeys', 'candyAiDecisions',
-      'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'githubToken'];
+      'apiEndpoint', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'githubToken'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -3816,7 +3859,7 @@ class Component extends DCLogic {
       resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
       bagCapacity: null,
       eliteTmDone: [],
-      cutTarget: 300, cutTargetDraft: '300',
+      cutTarget: 300, pvpMaxLevel: 50, cutTargetDraft: '300',
       githubToken: '',
       megaEnergyInventory: {}, megaEvolvedHistory: {}, evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, triageKeep: {}, transferQueue: [],
       geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
@@ -3903,6 +3946,7 @@ class Component extends DCLogic {
       bagCapacity: remote.bagCapacity != null ? remote.bagCapacity : null,
       eliteTmDone: remote.eliteTmDone || [],
       cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
+      pvpMaxLevel: [40, 50, 51].includes(remote.pvpMaxLevel) ? remote.pvpMaxLevel : 50,
       githubToken: remote.githubToken || '',
       megaEnergyInventory: remote.megaEnergyInventory || {},
       megaEvolvedHistory: remote.megaEvolvedHistory || {},
@@ -4064,7 +4108,7 @@ class Component extends DCLogic {
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
       'chatMessages', 'geminiKey', 'geminiKeys', 'apiEndpoint',
-      'bagCapacity', 'eliteTmDone', 'cutTarget'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel'];
   }
 
   // Credentials are excluded from a restore by NAME, not by being forgotten, so
@@ -4124,7 +4168,7 @@ class Component extends DCLogic {
       completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
       checklistDone: s.checklistDone, resources: s.resources, evolutionItems: s.evolutionItems, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
-      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, githubToken: s.githubToken,
+      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, pvpMaxLevel: s.pvpMaxLevel, githubToken: s.githubToken,
       // Trimmed on write: an unbounded transcript would eventually crowd out the
       // roster, which is the data that actually matters.
       chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
@@ -5066,7 +5110,9 @@ class Component extends DCLogic {
     const wanted = ms ? [ms.fast, ...ms.charged] : [];
     const missing = wanted.filter(n => !have.has(n));
     return { league: leagueKey, rank: lg.rankPct, tier: tier ? tier.tier : null, tierScore: tier ? tier.score : null, tierRank,
-      wanted, missing, movesOk: ms ? missing.length === 0 : null };
+      wanted, missing, movesOk: ms ? missing.length === 0 : null,
+      // IVs still a guess from CP/HP (not measured from the appraisal screen)
+      confirmed: !this.needsAppraisal(p) };
   }
 
   // Best Great/Ultra assessment for a Pokemon: strongest species tier first,
@@ -5078,10 +5124,55 @@ class Component extends DCLogic {
     return list[0];
   }
 
+  // Best 3-Pokemon team for Great or Ultra League from YOUR box, from PvPoke's
+  // simulated matchups. For each candidate the data lists the 5 opponents that
+  // beat it (counters) and the 5 it beats best (matchups). A team is judged on
+  //  1. fewest SHARED weaknesses (the same opponent beating 2+ members),
+  //  2. most of the threats that beat a member being answered by a teammate,
+  //  3. highest average species score.
+  // Candidates are measured IVs, tier S/A/B, 90%+ IV rank, one per species.
+  // It only sees the top-5 lists, so it is a strong filter, not a full
+  // simulation of every meta matchup.
+  pvpTeamFor(leagueKey) {
+    const m = this.mechanics;
+    if (!m || !m.pvpMatchupsFor || (leagueKey !== 'great' && leagueKey !== 'ultra')) return null;
+    const pool = [];
+    this.effectiveRosterForMatch().forEach(p => {
+      if (this.needsAppraisal(p)) return;
+      const a = this.pvpAssess(p, leagueKey);
+      if (!a || a.tierRank > 2 || a.rank < 90) return;
+      const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), leagueKey);
+      if (!mu) return;
+      pool.push({ p, a, mu, id: String(p.name).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
+    });
+    pool.sort((x, y) => ((y.a.movesOk === true) - (x.a.movesOk === true)) || (y.a.rank - x.a.rank));
+    const bySpecies = new Map();
+    pool.forEach(c => { if (!bySpecies.has(c.id)) bySpecies.set(c.id, c); });
+    const cands = [...bySpecies.values()].sort((x, y) => (y.a.tierScore || 0) - (x.a.tierScore || 0)).slice(0, 16);
+    if (cands.length < 3) return null;
+    let best = null;
+    for (let i = 0; i < cands.length; i++) for (let j = i + 1; j < cands.length; j++) for (let k = j + 1; k < cands.length; k++) {
+      const members = [cands[i], cands[j], cands[k]];
+      const weak = new Map();
+      members.forEach(c => c.mu.counters.forEach(t => { if (t.rating < 500) weak.set(t.id, (weak.get(t.id) || 0) + 1); }));
+      const threats = [...weak.keys()];
+      const shared = threats.filter(id => weak.get(id) >= 2);
+      const covered = threats.filter(id => members.some(c => c.mu.matchups.some(t => t.id === id && t.rating > 500)));
+      const avg = members.reduce((a, c) => a + (c.a.tierScore || 0), 0) / 3;
+      const cand = { members, threats, shared, covered, avg };
+      if (!best || shared.length < best.shared.length
+        || (shared.length === best.shared.length && (covered.length > best.covered.length
+          || (covered.length === best.covered.length && avg > best.avg)))) best = cand;
+    }
+    return best ? { league: leagueKey, ...best } : null;
+  }
+
   // "PvP ready": 90%+ IV rank on a species PvPoke rates S, A or B in that
   // league, or 90%+ in Little Cup (no tier data exists there). IV rank alone
   // is not enough: a perfect-IV Pikachu is 100% and still weak.
   isPvpWorthy(p) {
+    // Estimated IVs can look elite and be wrong, so only measured ones count.
+    if (this.needsAppraisal(p)) return false;
     const b = this.pvpBest(p);
     if (b && b.rank >= 90 && b.tierRank <= 2) return true;
     const lc = p.little && p.little.rankPct;
@@ -5275,6 +5366,10 @@ class Component extends DCLogic {
     this.setState(patch);
   }
 
+  setRaidWeather(w) {
+    this.setState({ raidWeather: this.state.raidWeather === w ? '' : w });
+  }
+
   toggleRaidType(type) {
     const cur = [...(this.state.raidBossTypes || [])];
     const i = cur.indexOf(type);
@@ -5283,10 +5378,16 @@ class Component extends DCLogic {
     this.setState({ raidBossTypes: cur });
   }
 
+  // Ranks your Pokemon against one boss. Score = damage rate (STAB, type
+  // effectiveness, optional weather) x bulk^0.4, where bulk is HP x DEF divided
+  // by how hard the boss's own types hit that Pokemon (the boss is assumed to
+  // use moves of its own types). So a Pokemon that resists the boss outlasts one
+  // that is weak to it, which damage alone would miss.
   raidCounters() {
     const m = this.mechanics;
     const defenderTypes = this.state.raidBossTypes || [];
-    if (!m || !m.cycleDps || !defenderTypes.length) return [];
+    if (!m || !m.raidRating || !defenderTypes.length) return [];
+    const weatherTypes = (m.WEATHER_TYPES && m.WEATHER_TYPES[this.state.raidWeather]) || null;
     const rows = [];
     this.effectiveRosterForMatch().forEach(p => {
       const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
@@ -5296,30 +5397,36 @@ class Component extends DCLogic {
       const fast = this.lookupMove(p.quickMove);
       if (!fast || fast.kind !== 'fast') return;
       const ownTypes = this.typesOf(p);
+      const opts = { ownTypes, defenderTypes, weatherTypes, isShadow: this.isShadow(p) };
+      // How hard the boss hits this Pokemon: average effectiveness of the boss's
+      // own types against its typing.
+      const incoming = defenderTypes.reduce((a, bt) => a + m.typeMultiplier(bt, ownTypes), 0) / defenderTypes.length;
+      const score = r => r.dps * Math.pow(r.hp * r.def / incoming, 0.4);
       let best = null;
       [p.chargeMove, p.chargeMove2].forEach(name => {
         const ch = this.lookupMove(name);
         if (!ch || ch.kind !== 'charged') return;
-        const r = m.cycleDps(base, ivs, lv.level, fast, ch, { ownTypes, defenderTypes, isShadow: this.isShadow(p) });
-        if (r != null && (best == null || r > best.dps)) best = { dps: r, charged: name };
+        const r = m.raidRating(base, ivs, lv.level, fast, ch, opts);
+        if (r && (best == null || score(r) > best.score)) best = { r, score: score(r), charged: name, chargedMove: ch };
       });
       if (!best) return;
       // What the same team would do if powered to 50 — the upside the dust buys.
-      let dps50 = null;
+      let score50 = null, dps50 = null;
       if (lv.level < m.MAX_POKEMON_LEVEL) {
-        const ch = this.lookupMove(best.charged);
-        dps50 = m.cycleDps(base, ivs, m.MAX_POKEMON_LEVEL, fast, ch, { ownTypes, defenderTypes, isShadow: this.isShadow(p) });
+        const r50 = m.raidRating(base, ivs, m.MAX_POKEMON_LEVEL, fast, best.chargedMove, opts);
+        if (r50) { dps50 = r50.dps; score50 = score(r50); }
       }
       const cost = m.powerUpCostBetween(lv.level, m.MAX_POKEMON_LEVEL, {
         lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p)
       });
+      const boosted = !!(weatherTypes && (weatherTypes.indexOf(fast.type) >= 0 || weatherTypes.indexOf(best.chargedMove.type) >= 0));
       rows.push({
-        p, dps: best.dps, charged: best.charged, fast: p.quickMove,
-        level: lv.level, exact: lv.exact, dps50, cost,
-        eff: m.typeMultiplier(this.lookupMove(best.charged).type, defenderTypes)
+        p, dps: best.r.dps, score: best.score, charged: best.charged, fast: p.quickMove,
+        level: lv.level, exact: lv.exact, dps50, score50, cost, incoming, boosted,
+        eff: m.typeMultiplier(best.chargedMove.type, defenderTypes)
       });
     });
-    return rows.sort((a, b) => b.dps - a.dps).slice(0, 12);
+    return rows.sort((a, b) => b.score - a.score).slice(0, 12);
   }
 
   // ---- Data-quality triage ------------------------------------------------
@@ -5587,6 +5694,15 @@ class Component extends DCLogic {
   // AFTER the fix ships. This walks the whole roster and re-derives all
   // three league ranks for everyone in one pass, using whatever the current
   // mechanics logic is, without requiring a re-import.
+  // Highest level PvP ranks may use (40 without XL Candy, 50 standard, 51 with a
+  // best-buddy boost). Changing it re-derives every league rank.
+  setPvpMaxLevel(v) {
+    const n = Number(v);
+    if (![40, 50, 51].includes(n)) return;
+    if (this.mechanics && this.mechanics.setPvpMaxLevel) this.mechanics.setPvpMaxLevel(n);
+    this.setState({ pvpMaxLevel: n }, () => this.recalculateAllRanks());
+  }
+
   recalculateAllRanks() {
     if (!this.mechanics || this.state.recalcBusy) return;
     this.setState({ recalcBusy: true, recalcSummary: '' });
@@ -11621,7 +11737,7 @@ class Component extends DCLogic {
       const tier = tierFor(p);
       const as = assessFor(p);
       const nice = n => String(n).replace(/\b\w/g, c => c.toUpperCase());
-      const moveNote = !as ? '' : (as.movesOk === true ? '\u2713 recommended moves' : (as.movesOk === false ? 'needs ' + as.missing.map(nice).join(', ') : ''));
+      const moveNote = !as ? '' : ((as.movesOk === true ? '\u2713 recommended moves' : (as.movesOk === false ? 'needs ' + as.missing.map(nice).join(', ') : '')) + (as.confirmed ? '' : ' \u00b7 IVs unconfirmed')).replace(/^ \u00b7 /, '');
       return {
         moveNote, moveNoteColor: as && as.movesOk === true ? 'var(--grass-700)' : 'var(--type-electric)',
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
@@ -11634,6 +11750,27 @@ class Component extends DCLogic {
         tierColor: tier ? tierColor(tier.tier) : 'var(--ink-300)'
       };
     });
+
+    const teamRaw = this.pvpTeamFor(leagueKey);
+    const prettyId = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const pvpTeam = teamRaw ? {
+      title: 'BEST ' + (leagueKey === 'ultra' ? 'ULTRA' : 'GREAT') + ' LEAGUE TEAM',
+      members: teamRaw.members.map(c => ({
+        displayName: c.p.name + (c.p.form ? ' (' + c.p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(c.p.dex, c.p.form),
+        badgeColor: this.dsTypeColor(c.p),
+        initial: (c.p.name || '?').charAt(0),
+        line: (c.a.tier || '') + ' tier \u00b7 ' + c.a.rank.toFixed(0) + '% IV',
+        moveLine: c.a.movesOk === true ? '\u2713 recommended moves' : (c.a.movesOk === false ? 'needs ' + c.a.missing.map(n => n.replace(/\b\w/g, ch => ch.toUpperCase())).join(', ') : ''),
+        onClick: () => this.openDetail(c.p)
+      })),
+      sharedLine: teamRaw.shared.length ? 'Shared weaknesses: ' + teamRaw.shared.map(prettyId).join(', ') : 'No opponent in the top-5 counter lists beats two of them.',
+      coverLine: 'A teammate beats ' + teamRaw.covered.length + ' of the ' + teamRaw.threats.length + ' opponents that beat a member.',
+      stillLine: (() => {
+        const un = teamRaw.threats.filter(id => !teamRaw.covered.includes(id));
+        return un.length ? 'Still beats a member with no answer: ' + un.slice(0, 6).map(prettyId).join(', ') : '';
+      })()
+    } : null;
 
     const leagueDefs = [
       { key: 'great', label: 'GREAT ≤1500' },
@@ -11660,7 +11797,8 @@ class Component extends DCLogic {
         typeLabel: t || 'Unknown', rankDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(0) + '%' : '—'
       });
     });
-    const suggestedTeamDisplay = suggestedTeam.length ? suggestedTeam : null;
+    // The matchup-based team above replaces this type-only fallback whenever it exists.
+    const suggestedTeamDisplay = (suggestedTeam.length && !pvpTeam) ? suggestedTeam : null;
     const leagueList = leagueDefs.map(l => {
       const active = l.key === league;
       return {
@@ -11979,9 +12117,20 @@ class Component extends DCLogic {
         { label: 'DEF', value: Number.isFinite(p.defIV) ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((Number.isFinite(p.defIV) ? p.defIV : 0) / 15 * 100, 27) },
         { label: 'STA', value: Number.isFinite(p.staIV) ? p.staIV : '—', color: 'var(--grass-700)', ...this.ringGeom((Number.isFinite(p.staIV) ? p.staIV : 0) / 15 * 100, 27) }
       ];
+      const idealBase = this.baseStatsOf(p);
       const leagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].map(([label, o]) => {
         o = o || {};
+        let idealLine = '';
+        try {
+          const mm = this.mechanics;
+          const cap = mm && mm.LEAGUE_CAPS ? mm.LEAGUE_CAPS[label.toLowerCase()] : null;
+          if (cap && idealBase && Number.isFinite(o.rankPct) && mm.bestSpreadUnderCap) {
+            const sp = mm.bestSpreadUnderCap(idealBase, cap, this.isShadow(p));
+            if (sp) idealLine = 'Best spread ' + sp.ivs.join('/') + ' at L' + sp.level + (Number.isFinite(p.atkIV) ? ' \u00b7 yours ' + p.atkIV + '/' + p.defIV + '/' + p.staIV : '');
+          }
+        } catch (e) {}
         return {
+          idealLine,
           label,
           color: leagueColor(label),
           pctDisplay: Number.isFinite(o.rankPct) ? o.rankPct.toFixed(1) + '%' : '—',
@@ -12331,6 +12480,9 @@ class Component extends DCLogic {
       nundo: nundoList.length
     };
 
+    if (this.mechanics && this.mechanics.getPvpMaxLevel && this.mechanics.getPvpMaxLevel() !== (this.state.pvpMaxLevel || 50)) {
+      this.mechanics.setPvpMaxLevel(this.state.pvpMaxLevel || 50);
+    }
     const attackerGroups = this.attackerBoard(roster);
     const dominatedRaw = this.dominatedDuplicates(roster);
     const dominatedList = dominatedRaw.slice(0, 20).map(({ loser, winner }) => ({
@@ -12600,6 +12752,7 @@ class Component extends DCLogic {
       league,
       leagueList,
       pvpList,
+      pvpTeam,
       suggestedTeamDisplay,
       intelDisplay,
       resourcesDraft: {
@@ -12683,6 +12836,12 @@ class Component extends DCLogic {
         }
         return { used, capacity, free, freeLabel: (free >= 0 ? (free + ' free') : (Math.abs(free) + ' over')), pct: pct.toFixed(0), color, tip };
       })(),
+      pvpLevelChoices: [40, 50, 51].map(n => ({
+        label: 'L' + n,
+        bg: (this.state.pvpMaxLevel || 50) === n ? 'var(--brand-primary-strong)' : 'var(--surface-sunken)',
+        fg: (this.state.pvpMaxLevel || 50) === n ? 'white' : 'var(--ink-600)',
+        onClick: () => this.setPvpMaxLevel(n)
+      })),
       cutTargetDraft: this.state.cutTargetDraft,
       onCutTargetChange: (e) => this.onCutTargetChange(e.target.value),
       saveCutTarget: () => this.saveCutTarget(),
@@ -13300,6 +13459,15 @@ class Component extends DCLogic {
           onClick: () => this.toggleRaidType(t)
         };
       }),
+      raidWeatherChips: Object.keys((this.mechanics && this.mechanics.WEATHER_TYPES) || {}).map(w => {
+        const on = this.state.raidWeather === w;
+        return {
+          label: w.toUpperCase(),
+          bg: on ? 'var(--brand-primary-strong)' : 'var(--surface-card)',
+          fg: on ? 'white' : 'var(--ink-500)',
+          onClick: () => this.setRaidWeather(w)
+        };
+      }),
       raidHasBoss: (this.state.raidBossTypes || []).length > 0,
       raidBossLine: (this.state.raidBossTypes || []).join(' / '),
       raidRows: raidRowsRaw.map((r, i) => ({
@@ -13311,7 +13479,7 @@ class Component extends DCLogic {
         railGlow: this.typeLook(r.p).glow,
         dps: r.dps.toFixed(1),
         moveLine: r.fast + ' / ' + r.charged,
-        levelLine: 'L' + r.level + (r.exact ? '' : ' (approx)'),
+        levelLine: 'L' + r.level + (r.exact ? '' : ' (approx)') + ' \u00b7 boss hits it ' + r.incoming.toFixed(2) + '\u00d7' + (r.boosted ? ' \u00b7 weather boosted' : ''),
         // 1.6 per super-effective stage; call it out because it is the single
         // biggest lever in counter choice.
         effLabel: r.eff >= 2.5 ? 'DOUBLE SUPER' : r.eff >= 1.55 ? 'SUPER EFFECTIVE'

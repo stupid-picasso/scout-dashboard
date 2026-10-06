@@ -39,7 +39,8 @@ USAGE
 -----
     python3 scripts/import_pvp_tier_data.py
 
-Also stores PvPoke's recommended moveset per species ("moves" / "shadowMoves").
+Also stores PvPoke's recommended moveset per species ("moves" / "shadowMoves") and,
+for tier B or better, its simulated best matchups ("mu") and worst matchups ("cn").
 
 Writes/updates the PVP_TIER_GREAT / PVP_TIER_ULTRA blocks in
 pokemon-mechanics.js (same GENERATED BLOCK convention as the other
@@ -85,14 +86,27 @@ def build_table(rankings):
         # naming (lowercase, spaces) to keep the generated block small.
         moveset = row.get("moveset") or []
         mv = "|".join(m.lower().replace("_", " ") for m in moveset) if moveset else None
+        # PvPoke's simulated matchups: the 5 species this one beats best ("mu")
+        # and the 5 that beat it ("cn"), as "id:rating|id:rating". Rating is
+        # 0-1000, above 500 is a win. Kept only for species worth fielding
+        # (tier B or better) so the generated block stays small.
+        def pack(rows):
+            return "|".join(f"{r['opponent']}:{int(r['rating'])}" for r in (rows or [])[:5])
+        keep_matchups = score >= 55
         if is_shadow:
             entry["shadowScore"] = round(score, 1)
             entry["shadowTier"] = tier_for(score)
             if mv: entry["shadowMoves"] = mv
+            if keep_matchups:
+                entry["shadowCn"] = pack(row.get("counters"))
+                entry["shadowMu"] = pack(row.get("matchups"))
         else:
             entry["score"] = round(score, 1)
             entry["tier"] = tier_for(score)
             if mv: entry["moves"] = mv
+            if keep_matchups:
+                entry["cn"] = pack(row.get("counters"))
+                entry["mu"] = pack(row.get("matchups"))
     return table
 
 

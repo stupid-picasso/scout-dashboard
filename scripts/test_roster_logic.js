@@ -489,8 +489,8 @@ function buildLists(roster, bestRank) {
   check('missing move data returns null', m.raidRating([200, 100, 100], [15, 15, 15], 50, null, charged, {}), null);
 
   const ctx = { mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } };
-  ['moveKey', 'lookupMove', 'raidProfile', 'pvpAssess', 'pvpBest', 'isPvpWorthy'].forEach(n => {
-    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey', pvpBest: 'p', isPvpWorthy: 'p' }[n];
+  ['moveKey', 'lookupMove', 'raidProfile', 'pvpAssess', 'pvpBest', 'isPvpWorthy', 'needsAppraisal'].forEach(n => {
+    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p' }[n];
     ctx[n] = new Function(...sig.split(', '), extractMethodBody(SRC, `${n}(${sig}) {`)).bind(ctx);
   });
   ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
@@ -504,13 +504,51 @@ function buildLists(roster, bestRank) {
   check('best legal moveset is never worse than the current one', prof.ceil.rating >= prof.now.rating - 1e-9, true);
   check('no-legacy ceiling is never better than the full ceiling', !prof.ceilNoLegacy || prof.ceilNoLegacy.rating <= prof.ceil.rating + 1e-9, true);
 
-  const mk = (name, rank) => ({ name, dex: 0, great: { rankPct: rank }, ultra: { rankPct: rank }, little: null, quickMove: null, chargeMove: null, chargeMove2: null });
+  const mk = (name, rank, measured = true) => ({ name, dex: 0, great: { rankPct: rank }, ultra: { rankPct: rank }, little: null, quickMove: null, chargeMove: null, chargeMove2: null, atkIV: 0, ivMeasured: measured, ivSolved: !measured });
   const strong = ctx.pvpAssess(mk('Azumarill', 95), 'great');
   check('a PvPoke-ranked strong species has tier S/A/B', !!strong && strong.tierRank <= 2, true);
   check('missing recommended moves are reported', !!strong && strong.movesOk === false && strong.missing.length >= 1, true);
   check('S/A/B species at 95% IV rank counts as PvP ready', ctx.isPvpWorthy(mk('Azumarill', 95)), true);
   check('a species PvPoke does not rank is NOT PvP ready even at 100% IV rank', ctx.isPvpWorthy(mk('Caterpie', 100)), false);
   check('90% IV rank is the floor even for a strong species', ctx.isPvpWorthy(mk('Azumarill', 80)), false);
+  check('estimated (unmeasured) IVs never count as PvP ready', ctx.isPvpWorthy(mk('Azumarill', 98, false)), false);
+  check('the assessment flags unconfirmed IVs', ctx.pvpAssess(mk('Azumarill', 98, false), 'great').confirmed, false);
+
+  // Level cap: a lower cap can only lower (or keep) the best stat product, and the setting restores.
+  const base = m.BASE_STATS[184];
+  const orig = m.getPvpMaxLevel();
+  m.setPvpMaxLevel(51); const p51 = m.bestStatProductUnderCap(base, 500, false);
+  m.setPvpMaxLevel(40); const p40 = m.bestStatProductUnderCap(base, 2500, false);
+  m.setPvpMaxLevel(50); const p50 = m.bestStatProductUnderCap(base, 2500, false);
+  m.setPvpMaxLevel(51); const p51b = m.bestStatProductUnderCap(base, 2500, false);
+  check('a lower max level never raises the best stat product (L40 <= L50 <= L51)', p40 <= p50 + 1e-9 && p50 <= p51b + 1e-9, true);
+  check('level 51 vs 50 can only differ upward', p51 > 0, true);
+  m.setPvpMaxLevel(orig);
+  const sp = m.bestSpreadUnderCap(m.BASE_STATS[184], 1500, false);
+  check('Great League best spread keeps attack IV low and puts the CP budget into DEF/HP', sp.ivs[0] <= 3 && sp.ivs[1] >= 10 && sp.ivs[2] >= 10, true);
+  const spMaster = m.bestSpreadUnderCap(m.BASE_STATS[149], Infinity, false);
+  check('with no CP cap the best spread is 15/15/15', spMaster.ivs.join('/'), '15/15/15');
+
+  const mu = m.pvpMatchupsFor('azumarill', false, 'great');
+  check('matchup data exists for a strong species', !!mu && mu.counters.length > 0 && mu.matchups.length > 0, true);
+  check('matchup ratings are 0-1000 numbers', !!mu && mu.counters.concat(mu.matchups).every(t => t.rating >= 0 && t.rating <= 1000), true);
+  check('no matchup data for an unranked species', m.pvpMatchupsFor('caterpie', false, 'great'), null);
+})();
+
+// ---------------------------------------------------------------------------
+// Weather: +20% damage on matching move types only.
+// ---------------------------------------------------------------------------
+(function testWeatherBoost() {
+  const water = { type: 'Water', power: 90, energy: 50, durationMs: 2000, kind: 'charged' };
+  const fastW = { type: 'Water', power: 10, energy: 8, durationMs: 1000, kind: 'fast' };
+  const base = [200, 150, 150], ivs = [15, 15, 15];
+  const plain = m.cycleDps(base, ivs, 40, fastW, water, { ownTypes: ['Water'], defenderTypes: ['Fire'] });
+  const rainy = m.cycleDps(base, ivs, 40, fastW, water, { ownTypes: ['Water'], defenderTypes: ['Fire'], weatherTypes: m.WEATHER_TYPES['Rainy'] });
+  const sunny = m.cycleDps(base, ivs, 40, fastW, water, { ownTypes: ['Water'], defenderTypes: ['Fire'], weatherTypes: m.WEATHER_TYPES['Sunny'] });
+  check('rain boosts Water moves', rainy > plain, true);
+  check('sun does not boost Water moves', Math.abs(sunny - plain) < 1e-9, true);
+  check('all seven weathers are defined', Object.keys(m.WEATHER_TYPES).length, 7);
+  check('boost is +20%', m.WEATHER_BOOST, 1.2);
 })();
 
 // ---------------------------------------------------------------------------
