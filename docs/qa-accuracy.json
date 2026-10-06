@@ -1,0 +1,195 @@
+[
+ {
+  "id": "A01",
+  "name": "Base stats (atk/def/sta) for every released species",
+  "compared": 1024,
+  "matched": 1024,
+  "accuracy": 1,
+  "detail": "1024 species in the game master",
+  "samples": []
+ },
+ {
+  "id": "A02",
+  "name": "Species typing",
+  "compared": 1024,
+  "matched": 1023,
+  "accuracy": 0.9990234375,
+  "detail": "",
+  "samples": [
+   "URSHIFU: app fighting,dark vs game fighting"
+  ]
+ },
+ {
+  "id": "A03",
+  "name": "Buddy walking distance (km per candy)",
+  "compared": 1024,
+  "matched": 1024,
+  "accuracy": 1,
+  "detail": "",
+  "samples": []
+ },
+ {
+  "id": "A04",
+  "name": "Evolution candy cost",
+  "compared": 446,
+  "matched": 445,
+  "accuracy": 0.9977578475336323,
+  "detail": "one target per species in the app; matches any real branch",
+  "samples": [
+   "FLABEBE: no evolution row"
+  ]
+ },
+ {
+  "id": "A04b",
+  "name": "No phantom evolutions (app rows that the game does not have)",
+  "compared": 446,
+  "matched": 445,
+  "accuracy": 0.9977578475336323,
+  "detail": "",
+  "samples": [
+   "flabébé: app says it evolves; game master says the plain form does not"
+  ]
+ },
+ {
+  "id": "A05",
+  "name": "CP multiplier by level (1-50, incl. half levels)",
+  "compared": 99,
+  "matched": 99,
+  "accuracy": 1,
+  "detail": "",
+  "samples": []
+ },
+ {
+  "id": "A06",
+  "name": "Power-up cost per step (stardust, candy, XL candy)",
+  "compared": 98,
+  "matched": 98,
+  "accuracy": 1,
+  "detail": "shadow x1.2, purified x0.9 in game",
+  "samples": []
+ },
+ {
+  "id": "A07",
+  "name": "Gym/raid move data (power, energy, duration, type)",
+  "compared": 315,
+  "matched": 315,
+  "accuracy": 1,
+  "detail": "317 moves in the app",
+  "samples": []
+ },
+ {
+  "id": "A08",
+  "name": "PvP fast-move data (power, energy, turns) — 20-move sample",
+  "compared": 20,
+  "matched": 20,
+  "accuracy": 1,
+  "detail": "",
+  "samples": []
+ },
+ {
+  "id": "A18",
+  "name": "Learnable movepools (fast + charged, incl. Elite/legacy) per species",
+  "compared": 1023,
+  "matched": 968,
+  "accuracy": 0.946236559139785,
+  "detail": "",
+  "samples": [
+   "NIDORAN: no movepool",
+   "NIDORAN: no movepool",
+   "FARFETCHD: no movepool",
+   "MR_MIME: no movepool",
+   "HO_OH: no movepool",
+   "DEOXYS: no movepool"
+  ]
+ },
+ {
+  "id": "A09",
+  "name": "Type effectiveness chart (324 matchups)",
+  "compared": 324,
+  "matched": 324,
+  "accuracy": 1,
+  "detail": "",
+  "samples": []
+ },
+ {
+  "id": "A10",
+  "name": "STAB multiplier (game: 1.2)",
+  "compared": 1,
+  "matched": 1,
+  "accuracy": 1,
+  "detail": "app 1.2",
+  "samples": []
+ },
+ {
+  "id": "A11",
+  "name": "Rank-1 stat-product spread vs PvPoke (1500 CP)",
+  "compared": 1200,
+  "matched": 1200,
+  "accuracy": 1,
+  "detail": "849 where the app found a higher-product spread than PvPoke's default (counted as match)",
+  "samples": []
+ },
+ {
+  "id": "A12",
+  "name": "Rank-1 stat-product spread vs PvPoke (2500 CP)",
+  "compared": 600,
+  "matched": 600,
+  "accuracy": 1,
+  "detail": "230 where the app found a higher-product spread than PvPoke's default (counted as match)",
+  "samples": []
+ },
+ {
+  "id": "A13",
+  "name": "IV solver: true IVs always among candidates (3,000 random Pokémon)",
+  "compared": 3000,
+  "matched": 3000,
+  "accuracy": 1,
+  "detail": "avg 44.5 candidates per CP/HP pair; 0.4% resolve to exactly one",
+  "samples": []
+ },
+ {
+  "id": "A13b",
+  "name": "IV solver uniqueness (share of CP/HP pairs resolving to one candidate)",
+  "compared": 3000,
+  "matched": 11,
+  "accuracy": 0.0036666666666666666,
+  "detail": "informational: low values mean an appraisal is needed",
+  "samples": []
+ },
+ {
+  "id": "A14",
+  "name": "Mega Evolution energy: first-time and repeat cost vs game master level rules",
+  "compared": 59,
+  "matched": 59,
+  "accuracy": 1,
+  "detail": "",
+  "samples": []
+ },
+ {
+  "id": "A15",
+  "name": "Great League top-40 scores vs live PvPoke today (freshness)",
+  "compared": 30,
+  "matched": 30,
+  "accuracy": 1,
+  "detail": "drops when PvPoke re-rates; the weekly workflow refreshes it",
+  "samples": []
+ },
+ {
+  "id": "A16",
+  "name": "Great League recommended movesets vs live PvPoke",
+  "compared": 30,
+  "matched": 30,
+  "accuracy": 1,
+  "detail": "",
+  "samples": []
+ },
+ {
+  "id": "A17",
+  "name": "Math invariants (7)",
+  "compared": 7,
+  "matched": 7,
+  "accuracy": 1,
+  "detail": "",
+  "samples": []
+ }
+]

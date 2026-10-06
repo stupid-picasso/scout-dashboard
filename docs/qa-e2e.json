@@ -1,0 +1,1559 @@
+[
+ {
+  "id": "BOOT-01",
+  "area": "Boot",
+  "name": "App loads and renders content without a page error",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 6
+ },
+ {
+  "id": "BOOT-02",
+  "area": "Boot",
+  "name": "Version string vNN.NN is shown in the header",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "BOOT-03",
+  "area": "Boot",
+  "name": "Empty state: header says 0 Pokemon and invites a sync",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "BOOT-04",
+  "area": "Boot",
+  "name": "Five tab-bar items plus a More menu holding the other five destinations",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 814
+ },
+ {
+  "id": "BOOT-05",
+  "area": "Boot",
+  "name": "Every tab renders on an empty roster without throwing",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 7989
+ },
+ {
+  "id": "BOOT-06",
+  "area": "Boot",
+  "name": "Initial load completes in under 4 seconds",
+  "sev": "normal",
+  "status": "pass",
+  "note": "764 ms",
+  "ms": 0
+ },
+ {
+  "id": "BOOT-07",
+  "area": "Boot",
+  "name": "No horizontal overflow at 430 px width",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "BOOT-W320",
+  "area": "Boot",
+  "name": "No horizontal overflow and no error at 320px width",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "BOOT-W390",
+  "area": "Boot",
+  "name": "No horizontal overflow and no error at 390px width",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 6
+ },
+ {
+  "id": "BOOT-W768",
+  "area": "Boot",
+  "name": "No horizontal overflow and no error at 768px width",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "BOOT-W1280",
+  "area": "Boot",
+  "name": "No horizontal overflow and no error at 1280px width",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "IMP-01",
+  "area": "Import",
+  "name": "CSV of 64 Pokemon loads and the header count updates",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 15
+ },
+ {
+  "id": "IMP-02",
+  "area": "Import",
+  "name": "Success notice names the file and the count",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 12
+ },
+ {
+  "id": "IMP-03",
+  "area": "Import",
+  "name": "Header stat tiles show roster count, average IV, lucky and shadow counts",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "IMP-04",
+  "area": "Import",
+  "name": "Re-importing the same file replaces rather than duplicates",
+  "sev": "normal",
+  "status": "pass",
+  "note": "count stays 64 (notice does not mention the replacement)",
+  "ms": 912
+ },
+ {
+  "id": "IMP-05",
+  "area": "Import",
+  "name": "CRLF line endings import cleanly (Windows exports)",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 963
+ },
+ {
+  "id": "IMP-06",
+  "area": "Import",
+  "name": "A header-only file shows a readable error, not a crash",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 915
+ },
+ {
+  "id": "IMP-07",
+  "area": "Import",
+  "name": "A garbage file does not crash or corrupt the roster",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1838
+ },
+ {
+  "id": "IMP-08",
+  "area": "Import",
+  "name": "HTML in a Pokemon name is rendered as text (no script execution)",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 1533
+ },
+ {
+  "id": "IMP-09",
+  "area": "Import",
+  "name": "Names with accents and symbols (Flab\u00e9b\u00e9, Nidoran\u2640, Farfetch'd) import",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 916
+ },
+ {
+  "id": "IMP-10",
+  "area": "Import",
+  "name": "A file with missing trailing columns still imports the Pokemon",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 923
+ },
+ {
+  "id": "IMP-11",
+  "area": "Import",
+  "name": "800-row import renders in under 5 seconds",
+  "sev": "high",
+  "status": "pass",
+  "note": "1022 ms",
+  "ms": 1022
+ },
+ {
+  "id": "IMP-12",
+  "area": "Import",
+  "name": "Roster is persisted: a reload keeps the imported Pokemon",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 7404
+ },
+ {
+  "id": "ROS-01",
+  "area": "Roster",
+  "name": "First page shows 30 rows with a count line",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 6
+ },
+ {
+  "id": "ROS-02",
+  "area": "Roster",
+  "name": "LOAD MORE adds the next page",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 716
+ },
+ {
+  "id": "ROS-03",
+  "area": "Roster",
+  "name": "Search by name filters the list",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 536
+ },
+ {
+  "id": "ROS-04",
+  "area": "Roster",
+  "name": "Search by move name finds Pokemon that know the move",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 520
+ },
+ {
+  "id": "ROS-05",
+  "area": "Roster",
+  "name": "Search by type works once types are known",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 537
+ },
+ {
+  "id": "ROS-06",
+  "area": "Roster",
+  "name": "A search with no matches shows an empty state, not a blank screen",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 524
+ },
+ {
+  "id": "ROS-07",
+  "area": "Roster",
+  "name": "Search is case-insensitive and trims spaces",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 524
+ },
+ {
+  "id": "ROS-08",
+  "area": "Roster",
+  "name": "Sort control offers eight orderings",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "ROS-S-cp",
+  "area": "Roster",
+  "name": "Sort: CP highest first is correctly ordered",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 536
+ },
+ {
+  "id": "ROS-S-name",
+  "area": "Roster",
+  "name": "Sort: Name A-Z is correctly ordered",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 563
+ },
+ {
+  "id": "ROS-S-iv",
+  "area": "Roster",
+  "name": "Sort: IV% highest first is correctly ordered",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 541
+ },
+ {
+  "id": "ROS-S-dex",
+  "area": "Roster",
+  "name": "Sort: Dex number ascending is correctly ordered",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 533
+ },
+ {
+  "id": "ROS-F-MEASURED",
+  "area": "Roster",
+  "name": "Filter chip MEASURED narrows the list and ALL restores it",
+  "sev": "normal",
+  "status": "pass",
+  "note": "0 rows",
+  "ms": 1118
+ },
+ {
+  "id": "ROS-F-NEEDSAPPRAISAL",
+  "area": "Roster",
+  "name": "Filter chip NEEDS APPRAISAL narrows the list and ALL restores it",
+  "sev": "normal",
+  "status": "pass",
+  "note": "0 rows",
+  "ms": 1148
+ },
+ {
+  "id": "ROS-F-PVPREADY",
+  "area": "Roster",
+  "name": "Filter chip PVP READY narrows the list and ALL restores it",
+  "sev": "normal",
+  "status": "pass",
+  "note": "30 rows",
+  "ms": 1011
+ },
+ {
+  "id": "ROS-F-LUCKY",
+  "area": "Roster",
+  "name": "Filter chip LUCKY narrows the list and ALL restores it",
+  "sev": "normal",
+  "status": "pass",
+  "note": "30 rows",
+  "ms": 1014
+ },
+ {
+  "id": "ROS-F-SHADOW",
+  "area": "Roster",
+  "name": "Filter chip SHADOW narrows the list and ALL restores it",
+  "sev": "normal",
+  "status": "pass",
+  "note": "30 rows",
+  "ms": 1017
+ },
+ {
+  "id": "ROS-09",
+  "area": "Roster",
+  "name": "Lucky filter count matches the Lucky stat tile",
+  "sev": "normal",
+  "status": "pass",
+  "note": "lucky in data: 5",
+  "ms": 615
+ },
+ {
+  "id": "ROS-10",
+  "area": "Roster",
+  "name": "Every row shows name, CP, IV triple and a type label",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 8
+ },
+ {
+  "id": "ROS-11",
+  "area": "Roster",
+  "name": "Row opens the detail sheet on tap",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1020
+ },
+ {
+  "id": "DET-01",
+  "area": "Detail",
+  "name": "Detail header shows name, CP and a position counter (\"1 of N\")",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "DET-02",
+  "area": "Detail",
+  "name": "Next arrow moves to the following Pokemon",
+  "sev": "normal",
+  "status": "skip",
+  "note": "no next control found by text",
+  "ms": 11
+ },
+ {
+  "id": "DET-03",
+  "area": "Detail",
+  "name": "Detail sheet shows moves with a best-moves suggestion",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 5
+ },
+ {
+  "id": "DET-04",
+  "area": "Detail",
+  "name": "Detail shows type weaknesses",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "DET-05",
+  "area": "Detail",
+  "name": "Detail shows league rank chips (Great/Ultra/Little)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "DET-06",
+  "area": "Detail",
+  "name": "Power-up card shows a stardust cost (non-maxed Pokemon)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1724
+ },
+ {
+  "id": "DET-07",
+  "area": "Detail",
+  "name": "Close returns to the roster at the same scroll position",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 606
+ },
+ {
+  "id": "DET-10",
+  "area": "Detail",
+  "name": "A Mega-capable Pokemon shows the MEGA EVOLUTION card",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "DET-11",
+  "area": "Detail",
+  "name": "Typing Mega energy updates the status line live",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 334
+ },
+ {
+  "id": "DET-12",
+  "area": "Detail",
+  "name": "Mega level + rest days produce the game's skip cost (level 1, 4 days = 11)",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 347
+ },
+ {
+  "id": "DET-13",
+  "area": "Detail",
+  "name": "I MEGA EVOLVED deducts the cost and restarts the rest period",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 357
+ },
+ {
+  "id": "DET-14",
+  "area": "Detail",
+  "name": "Mega data survives a reload",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 7449
+ },
+ {
+  "id": "GES-01",
+  "area": "Gestures",
+  "name": "Swipe left reveals Transfer / Remove actions",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 728
+ },
+ {
+  "id": "GES-02",
+  "area": "Gestures",
+  "name": "Tapping elsewhere closes an open swipe row (iOS list behaviour)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 418
+ },
+ {
+  "id": "GES-03",
+  "area": "Gestures",
+  "name": "Long press opens the action menu",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 1257
+ },
+ {
+  "id": "GES-04",
+  "area": "Gestures",
+  "name": "Vertical scrolling is not hijacked by the swipe handler",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 313
+ },
+ {
+  "id": "GES-05",
+  "area": "Gestures",
+  "name": "Transfer removes the Pokemon and the count drops by one",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 33121
+ },
+ {
+  "id": "RNK-01",
+  "area": "Ranks",
+  "name": "Recalculate-all-ranks fills Great/Ultra/Little ranks for every Pokemon with IVs",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 85
+ },
+ {
+  "id": "PVP-L-GREAT",
+  "area": "PvP",
+  "name": "GREAT \u22641500: list shows only Pokemon whose CP is within the cap",
+  "sev": "critical",
+  "status": "pass",
+  "note": "20 rows",
+  "ms": 616
+ },
+ {
+  "id": "PVP-L-ULTRA",
+  "area": "PvP",
+  "name": "ULTRA \u22642500: list shows only Pokemon whose CP is within the cap",
+  "sev": "critical",
+  "status": "pass",
+  "note": "20 rows",
+  "ms": 620
+ },
+ {
+  "id": "PVP-L-LITTLE",
+  "area": "PvP",
+  "name": "LITTLE CUP: list shows only Pokemon whose CP is within the cap",
+  "sev": "critical",
+  "status": "pass",
+  "note": "2 rows",
+  "ms": 606
+ },
+ {
+  "id": "PVP-L-MASTER",
+  "area": "PvP",
+  "name": "MASTER: list shows only Pokemon whose CP is within the cap",
+  "sev": "critical",
+  "status": "pass",
+  "note": "20 rows",
+  "ms": 685
+ },
+ {
+  "id": "PVP-01",
+  "area": "PvP",
+  "name": "Every PvP row shows a sprite image",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 9
+ },
+ {
+  "id": "PVP-02",
+  "area": "PvP",
+  "name": "Rows are numbered #1..#N consecutively",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "PVP-03",
+  "area": "PvP",
+  "name": "Row shows tier letter, IV rank %, level and a moves note",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "PVP-04",
+  "area": "PvP",
+  "name": "Best-team card lists three distinct species",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "PVP-05",
+  "area": "PvP",
+  "name": "Team members are all legal for the league (CP within cap)",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 41
+ },
+ {
+  "id": "PVP-06",
+  "area": "PvP",
+  "name": "Team shows shared-weakness and coverage lines",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "PVP-07",
+  "area": "PvP",
+  "name": "Over-cap Pokemon are never ranked in Great League",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 6
+ },
+ {
+  "id": "PVP-08",
+  "area": "PvP",
+  "name": "Evolution hint (\u2192 X) shows for Pokemon that can evolve into a better PvP form",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "PVP-09",
+  "area": "PvP",
+  "name": "Master League list is not capped and shows high-CP Pokemon",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1246
+ },
+ {
+  "id": "PVP-10",
+  "area": "PvP",
+  "name": "Little Cup list only contains Pokemon at or below 500 CP",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1231
+ },
+ {
+  "id": "PVP-11",
+  "area": "PvP",
+  "name": "Saving the suggested team adds it to Saved teams with 0-0",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 473
+ },
+ {
+  "id": "PVP-12",
+  "area": "PvP",
+  "name": "Level-cap setting L40 changes ranks (XL-free players)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3258
+ },
+ {
+  "id": "PVP-13",
+  "area": "PvP",
+  "name": "Detail sheet of a Great League Pokemon shows IV breakpoints",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1867
+ },
+ {
+  "id": "PVP-14",
+  "area": "PvP",
+  "name": "Switching leagues does not throw page errors",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 0
+ },
+ {
+  "id": "ATK-01",
+  "area": "Attackers",
+  "name": "Best attacker per type lists ranked attackers with DPS",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "ATK-02",
+  "area": "Attackers",
+  "name": "Overall ranking is in descending DPS x bulk order (top 6 DPS not wildly inverted)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "ATK-03",
+  "area": "Attackers",
+  "name": "Move database coverage line is shown",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "ATK-04",
+  "area": "Attackers",
+  "name": "Power-up payoff list gives rating gain per 10k stardust",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "ATK-05",
+  "area": "Attackers",
+  "name": "TM payoff list (best moves to teach) is present",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "ATK-06",
+  "area": "Attackers",
+  "name": "A Pokemon with unknown moves is labelled, not silently ranked",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "RAI-01",
+  "area": "Raid",
+  "name": "Picking Fire boss type produces a ranked counter list",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 784
+ },
+ {
+  "id": "RAI-02",
+  "area": "Raid",
+  "name": "Counters to a Fire boss favour Water/Rock/Ground types",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "RAI-03",
+  "area": "Raid",
+  "name": "Counters shown are not weak to the boss (no Grass/Bug/Ice at the top vs Fire)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "RAI-04",
+  "area": "Raid",
+  "name": "Weather boost changes the ranking inputs (Rainy)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 825
+ },
+ {
+  "id": "RAI-05",
+  "area": "Raid",
+  "name": "Boss name field accepts a name and resolves its types",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 766
+ },
+ {
+  "id": "RAI-06",
+  "area": "Raid",
+  "name": "Picking a third boss type is rejected (max two)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 653
+ },
+ {
+  "id": "RAI-07",
+  "area": "Raid",
+  "name": "Survivability note explains it is an estimate",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 4
+ },
+ {
+  "id": "REC-01",
+  "area": "Recs",
+  "name": "Power-up candidates list high-rank, not-yet-favourited Pokemon",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "REC-02",
+  "area": "Recs",
+  "name": "Transfer candidates never include Lucky, Shadow or Favourite Pokemon",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "REC-03",
+  "area": "Recs",
+  "name": "Dominated-duplicates section explains its rule",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "REC-04",
+  "area": "Recs",
+  "name": "MARK DONE removes an item from the power-up list",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 474
+ },
+ {
+  "id": "REC-05",
+  "area": "Recs",
+  "name": "USE A TM search finds a Pokemon by name",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 551
+ },
+ {
+  "id": "REC-06",
+  "area": "Recs",
+  "name": "AI recommendations without a key explain what is missing instead of failing",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 774
+ },
+ {
+  "id": "INT-01",
+  "area": "Intel",
+  "name": "Living Dex count equals the number of unique species in the roster",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "INT-02",
+  "area": "Intel",
+  "name": "Hundo count matches the number of 15/15/15 Pokemon",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "INT-03",
+  "area": "Intel",
+  "name": "Lucky / Shadow / Favourite counters match the data",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "INT-04",
+  "area": "Intel",
+  "name": "Kanto dex percentage is computed from owned Kanto species",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "INT-05",
+  "area": "Intel",
+  "name": "Trade advisor names Pokemon whose lowest IV is under 12",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "INT-06",
+  "area": "Intel",
+  "name": "Missing-from-dex list excludes owned species",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "INT-07",
+  "area": "Intel",
+  "name": "Data confidence reflects measured vs guessed IVs",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "TOD-01",
+  "area": "Today",
+  "name": "GBL card appears when the feed has a current week",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "TOD-02",
+  "area": "Today",
+  "name": "Current week is labelled THIS WEEK and the next NEXT WEEK",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-03",
+  "area": "Today",
+  "name": "An already-ended week is not shown",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "TOD-04",
+  "area": "Today",
+  "name": "Each league shows its CP cap and rules text",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-05",
+  "area": "Today",
+  "name": "Open Great League lists top species with tier and moves",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "TOD-06",
+  "area": "Today",
+  "name": "Cup squad only contains Pokemon of the cup's allowed types (Color Cup)",
+  "sev": "critical",
+  "status": "pass",
+  "note": "no squad (not enough eligible): Squad: not enough measured, in-cap, legal Pokemon of A tier or better yet.",
+  "ms": 9
+ },
+ {
+  "id": "TOD-07",
+  "area": "Today",
+  "name": "Cup note says rankings are PvPoke's cup ranking (not an estimate) when a table exists",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "TOD-08",
+  "area": "Today",
+  "name": "Mega Edition league shows a Mega-ready line for owned Mega-capable species",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-09",
+  "area": "Today",
+  "name": "Squad members are all within the league CP cap",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 7
+ },
+ {
+  "id": "TOD-10",
+  "area": "Today",
+  "name": "Events within 14 days are listed; far-future and expired are not",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "TOD-11",
+  "area": "Today",
+  "name": "Event shows bonuses and a per-species verdict (HUNT / POWER UP / SKIP)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-12",
+  "area": "Today",
+  "name": "Live event says LIVE with its end date",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-13",
+  "area": "Today",
+  "name": "Raid boss with a form suffix \"Mewtwo (Armored)\" is judged as Mewtwo",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "TOD-14",
+  "area": "Today",
+  "name": "Feed stamp says the data is community-sourced, not official",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-15",
+  "area": "Today",
+  "name": "Without a cross-check file the card says it is not cross-checked",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "TOD-16",
+  "area": "Today",
+  "name": "MEGAS WORTH EVOLVING ranks Mega-capable Pokemon with a raid rating",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 4
+ },
+ {
+  "id": "TOD-17",
+  "area": "Today",
+  "name": "Mega ranking is sorted by Mega raid rating (descending)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-18",
+  "area": "Today",
+  "name": "Event planner: adding an event judges each species",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 691
+ },
+ {
+  "id": "TOD-19",
+  "area": "Today",
+  "name": "Event planner: REMOVE deletes the event",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 488
+ },
+ {
+  "id": "TOD-20",
+  "area": "Today",
+  "name": "Event planner rejects an event with no species",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 463
+ },
+ {
+  "id": "TOD-21",
+  "area": "Today",
+  "name": "Scan queue lists Pokemon whose IVs are unmeasured, with reasons",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-22",
+  "area": "Today",
+  "name": "Stats strip shows TO EVOLVE / QUEUED / NEW DEX",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-23",
+  "area": "Today",
+  "name": "No page errors after the whole Today session",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 0
+ },
+ {
+  "id": "TOD-30",
+  "area": "Today",
+  "name": "Feed unreachable: no GBL card, no error, rest of Today still works",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "TOD-31",
+  "area": "Today",
+  "name": "Malformed feed JSON is ignored safely",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-32",
+  "area": "Today",
+  "name": "A feed whose weeks have all ended shows no league card (never stale as current)",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "TOD-33",
+  "area": "Today",
+  "name": "Last good feed is cached on the device for offline use",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 804
+ },
+ {
+  "id": "TOD-34",
+  "area": "Today",
+  "name": "Offline: GBL card renders from the cached feed",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "HOM-01",
+  "area": "Home",
+  "name": "Greeting, Power Up, Evolve Soon and Great League Project counts render",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 3
+ },
+ {
+  "id": "HOM-02",
+  "area": "Home",
+  "name": "Sign-in form is present and a bad login shows an error, not a crash",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1591
+ },
+ {
+  "id": "HOM-03",
+  "area": "Home",
+  "name": "Trainer level and stardust reserve save and survive state read-back",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 62
+ },
+ {
+  "id": "HOM-04",
+  "area": "Home",
+  "name": "Resources (TMs, rare candy) save",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 48
+ },
+ {
+  "id": "HOM-05",
+  "area": "Home",
+  "name": "Mega energy admin list: adding a species and amount creates an entry",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 611
+ },
+ {
+  "id": "HOM-06",
+  "area": "Home",
+  "name": "Mega energy admin list: a non-numeric amount is rejected",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 411
+ },
+ {
+  "id": "HOM-07",
+  "area": "Home",
+  "name": "Mega list shows cost and READY / NEED n MORE per form",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 4
+ },
+ {
+  "id": "HOM-08",
+  "area": "Home",
+  "name": "CLEAR ROSTER needs a second confirmation tap",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 391
+ },
+ {
+  "id": "HOM-09",
+  "area": "Home",
+  "name": "Storage planner reports whether the roster is within the keep target",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "HOM-10",
+  "area": "Home",
+  "name": "Evolution items and TM resources sections are present",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 2
+ },
+ {
+  "id": "SEC-01",
+  "area": "Security",
+  "name": "API keys are kept in on-device storage",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 2190
+ },
+ {
+  "id": "SEC-02",
+  "area": "Security",
+  "name": "Secrets are never part of the cloud-sync payload",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 943
+ },
+ {
+  "id": "SEC-03",
+  "area": "Security",
+  "name": "Secrets are not rendered into the page text",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 8
+ },
+ {
+  "id": "SEC-04",
+  "area": "Security",
+  "name": "No inline secrets in the shipped HTML (key-like strings)",
+  "sev": "critical",
+  "status": "pass",
+  "note": "only the Firebase web config key (public by design) is present; restrict it by referrer in the Google console",
+  "ms": 12
+ },
+ {
+  "id": "SEC-05",
+  "area": "Security",
+  "name": "Firebase web config is public by design (no private keys)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 11
+ },
+ {
+  "id": "SEC-06",
+  "area": "Security",
+  "name": "Page sets no mixed-content http:// subresources",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 9
+ },
+ {
+  "id": "PWA-01",
+  "area": "PWA",
+  "name": "Web manifest is linked and valid (name, icons, display standalone)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 0
+ },
+ {
+  "id": "PWA-02",
+  "area": "PWA",
+  "name": "Manifest icons exist on disk",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "PWA-03",
+  "area": "PWA",
+  "name": "apple-touch-icon and theme-color meta tags are present",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 21
+ },
+ {
+  "id": "PWA-04",
+  "area": "PWA",
+  "name": "Service worker registers and activates",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 2509
+ },
+ {
+  "id": "PWA-05",
+  "area": "PWA",
+  "name": "Offline reload still boots the app (shell cached)",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 4816
+ },
+ {
+  "id": "PWA-06",
+  "area": "PWA",
+  "name": "Safe-area insets are used so the tab bar clears the iPhone home indicator",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 8
+ },
+ {
+  "id": "PWA-07",
+  "area": "PWA",
+  "name": "viewport-fit=cover is set for the notch/Dynamic Island",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 8
+ },
+ {
+  "id": "A11Y-01",
+  "area": "Accessibility",
+  "name": "Bottom-nav tap targets are at least 44x44 px",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 182
+ },
+ {
+  "id": "A11Y-02",
+  "area": "Accessibility",
+  "name": "Interactive elements expose a role or accessible name (VoiceOver)",
+  "sev": "high",
+  "status": "pass",
+  "note": "65/65",
+  "ms": 33
+ },
+ {
+  "id": "A11Y-03",
+  "area": "Accessibility",
+  "name": "Interactive elements are reachable by keyboard (tabindex or native)",
+  "sev": "medium",
+  "status": "pass",
+  "note": "65/65",
+  "ms": 28
+ },
+ {
+  "id": "A11Y-04",
+  "area": "Accessibility",
+  "name": "Body text is at least 11 px (count of smaller text runs)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "0/270",
+  "ms": 32
+ },
+ {
+  "id": "A11Y-05",
+  "area": "Accessibility",
+  "name": "Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs",
+  "sev": "high",
+  "status": "pass",
+  "note": "8/261 below 4.5:1",
+  "ms": 34
+ },
+ {
+  "id": "A11Y-06",
+  "area": "Accessibility",
+  "name": "prefers-reduced-motion is honoured by animations",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 9
+ },
+ {
+  "id": "A11Y-07",
+  "area": "Accessibility",
+  "name": "html lang attribute is set",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 37
+ },
+ {
+  "id": "A11Y-08",
+  "area": "Accessibility",
+  "name": "Form inputs have labels or placeholders",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 45
+ },
+ {
+  "id": "A11Y-09",
+  "area": "Accessibility",
+  "name": "Images have alt text (decorative alt=\"\" allowed)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 41
+ },
+ {
+  "id": "A11Y-10",
+  "area": "Accessibility",
+  "name": "Page zoom is not disabled (user-scalable)",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 12
+ },
+ {
+  "id": "PERF-01",
+  "area": "Performance",
+  "name": "Average tab switch is under 400 ms with 64 Pokemon",
+  "sev": "normal",
+  "status": "pass",
+  "note": "136 ms avg (re-measured with the corrected method)",
+  "ms": 8592
+ },
+ {
+  "id": "PERF-02",
+  "area": "Performance",
+  "name": "No long tasks over 200 ms during a full tab tour",
+  "sev": "normal",
+  "status": "pass",
+  "note": "0 long tasks",
+  "ms": 2814
+ },
+ {
+  "id": "PERF-03",
+  "area": "Performance",
+  "name": "JS heap does not grow by more than 50% over 40 tab switches (leak check)",
+  "sev": "normal",
+  "status": "pass",
+  "note": "50.4 -> 50.4 MB",
+  "ms": 26155
+ },
+ {
+  "id": "PERF-04",
+  "area": "Performance",
+  "name": "Page weight: index.html under 3 MB gzipped",
+  "sev": "normal",
+  "status": "pass",
+  "note": "1.08 MB gz",
+  "ms": 73
+ },
+ {
+  "id": "PERF-05",
+  "area": "Performance",
+  "name": "Mechanics data (pokemon-mechanics.js) under 1.5 MB raw",
+  "sev": "normal",
+  "status": "pass",
+  "note": "1.27 MB",
+  "ms": 0
+ },
+ {
+  "id": "LOG-01",
+  "area": "Log",
+  "name": "Snapshot logging adds a dated row with roster size",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 560
+ },
+ {
+  "id": "LOG-02",
+  "area": "Log",
+  "name": "Diagnostics panel captures a runtime error",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 906
+ }
+]

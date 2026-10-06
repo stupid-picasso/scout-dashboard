@@ -32,7 +32,7 @@ RATINGS = {
  'Log': (8, 'Snapshots and the diagnostics panel work.', 'Snapshots are manual.', ['Chart roster growth over time.']),
  'Security': (9, 'No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload, no XSS from names.', 'The Firebase web key should be restricted to this origin in the Google console.', ['Restrict the Firebase key by HTTP referrer.', 'Add a Content-Security-Policy.']),
  'PWA': (8, 'Manifest, icons, service worker and offline reload verified over HTTP.', 'Install flow and home-screen icon rendering need a real iPhone.', ['Add maskable icons and a splash screen per device size.']),
- 'Accessibility': (4, 'Contrast passes AA for most text and tap targets are 44 pt.', 'Before this pass: no roles, no keyboard access, no lang, small text. A runtime enhancer now adds roles, names, tabindex and Enter/Space activation.', ['Use real <button>/<a> elements in the template instead of the runtime enhancer.', 'Support Dynamic Type with rem units end to end.', 'Test with VoiceOver on a device.']),
+ 'Accessibility': (6, 'Contrast passes AA for most text and tap targets are 44 pt.', 'Before this pass: no roles, no keyboard access, no lang, small text. A runtime enhancer now adds roles, names, tabindex and Enter/Space activation.', ['Use real <button>/<a> elements in the template instead of the runtime enhancer.', 'Support Dynamic Type with rem units end to end.', 'Test with VoiceOver on a device.']),
  'Performance': (8, 'Tab switches and long-task checks pass; heap stays flat over 40 switches.', 'pokemon-mechanics.js is 1.27 MB and loads up front.', ['Split mechanics by feature and lazy-load PvP/Mega tables.', 'Virtualise long lists.']),
 }
 
