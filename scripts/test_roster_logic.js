@@ -757,6 +757,37 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Mega energy per form + cost shown in game
+// ---------------------------------------------------------------------------
+(() => {
+  const state = { megaEnergyInventory: {}, megaEvolvedHistory: {} };
+  const ctx = { mechanics: m, state, setState(p, cb) { Object.assign(state, p); if (cb) cb(); }, haptic() {}, pushCloud() {} };
+  const defs = { megaEvolveInfoFor: 'key', applyMegaEvolve: 'key, form', megaCardFor: 'p', setMegaField: 'key, name, form, field, raw' };
+  Object.keys(defs).forEach(n => { ctx[n] = new Function(...defs[n].split(', '), extractMethodBody(SRC, `${n}(${defs[n]}) {`)).bind(ctx); });
+  ctx.setMegaField('mewtwo', 'Mewtwo', 'x', 'energy', '0');
+  ctx.setMegaField('mewtwo', 'Mewtwo', 'y', 'energy', '500');
+  let info = ctx.megaEvolveInfoFor('mewtwo');
+  check('X and Y keep separate energy pools', info.map(f => f.have).join(','), '0,500');
+  check('Mewtwo X is short by the full 7500', info[0].short, 7500);
+  ctx.setMegaField('mewtwo', 'Mewtwo', 'y', 'cost', '150');
+  info = ctx.megaEvolveInfoFor('mewtwo');
+  check('cost typed from the game button overrides the table', info[1].cost === 150 && info[1].ready === true, true);
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'energy', '215');
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'cost', '11');
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'dotsDone', '1');
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'dotsTotal', '4');
+  const card = ctx.megaCardFor({ name: 'Beedrill' });
+  check('level dots show as 1/4', card.rows[0].levelLine, 'Mega Level 1/4');
+  ctx.applyMegaEvolve('beedrill', '');
+  check('evolving deducts the shown cost', state.megaEnergyInventory.beedrill.amount, 204);
+  ctx.applyMegaEvolve('mewtwo', 'y');
+  check('evolving deducts from that form only', state.megaEnergyInventory.mewtwo.forms.y === 350 && state.megaEnergyInventory.mewtwo.forms.x === 0, true);
+  check('a species with no Mega gets no card', ctx.megaCardFor({ name: 'Pikachu' }).has, false);
+  ctx.setMegaField('mewtwo', 'Mewtwo', 'x', 'energy', 'abc');
+  check('junk input clears the field instead of NaN', state.megaEnergyInventory.mewtwo.forms.x, null);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

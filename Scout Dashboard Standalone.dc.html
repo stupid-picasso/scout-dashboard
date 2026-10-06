@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.129</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.130</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2776,6 +2776,31 @@
           </sc-if>
         </div>
         </div>
+        <sc-if value="{{ detail.mega.has }}" hint-placeholder-val="{{ false }}">
+          <div style="background:color-mix(in oklab, var(--type-electric) 14%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-electric) 40%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
+            <div style="font:700 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-bottom:8px">MEGA EVOLUTION</div>
+            <sc-for list="{{ detail.mega.rows }}" as="mg" hint-placeholder-count="1">
+              <div style="padding:8px 0;border-top:1px solid var(--line-200)">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                  <div style="font:700 12.5px var(--font-display)">{{ mg.label }}</div>
+                  <div style="font:800 10.5px var(--font-display);letter-spacing:.05em;color:{{ mg.statusColor }}">{{ mg.statusLabel }}</div>
+                </div>
+                <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-top:2px">{{ mg.energyLine }} &middot; {{ mg.costLine }}</div>
+                <div style="font:11.5px var(--font-body);color:var(--ink-500)">{{ mg.levelLine }}</div>
+                <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
+                  <input type="text" inputmode="numeric" placeholder="energy" value="{{ mg.energyVal }}" onChange="{{ mg.onEnergy }}" style="width:70px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="cost shown" value="{{ mg.costVal }}" onChange="{{ mg.onCost }}" style="width:84px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="dots" value="{{ mg.dotsVal }}" onChange="{{ mg.onDots }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
+                  <span style="font:11px var(--font-body);color:var(--ink-400)">of</span>
+                  <input type="text" inputmode="numeric" placeholder="total" value="{{ mg.totalVal }}" onChange="{{ mg.onTotal }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
+                  <sc-if value="{{ mg.evolve }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ mg.evolve }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">I MEGA EVOLVED</div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
         <div class="om-rise" style="--i:1">
         <sc-if value="{{ detail.evo.hasEvo }}" hint-placeholder-val="{{ false }}">
           <div style="background:color-mix(in oklab, var(--grass-600) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-600) 42%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
@@ -6282,28 +6307,37 @@ class Component extends DCLogic {
     const history = (this.state.megaEvolvedHistory || {})[key] || {};
     const forms = m.megaEvolveCostFor(key, history);
     if (!forms) return null;
-    const have = ((this.state.megaEnergyInventory || {})[key] || {}).amount;
-    const haveNum = Number.isFinite(have) ? have : null;
+    const entry = (this.state.megaEnergyInventory || {})[key] || {};
     return forms.map(f => {
-      const ready = haveNum != null && haveNum >= f.cost;
-      const everDone = !!history[f.form || ''];
+      const fk = f.form || '';
+      const st = (entry.status || {})[fk] || {};
+      const per = (entry.forms || {})[fk];
+      const haveNum = Number.isFinite(per) ? per : (Number.isFinite(entry.amount) ? entry.amount : null);
+      // The cost printed on the in-game button wins over the table: the game
+      // changes it with Mega Level and recency, which the table cannot know.
+      const shown = Number.isFinite(st.cost);
+      const cost = shown ? st.cost : f.cost;
+      const ready = haveNum != null && haveNum >= cost;
+      const everDone = !!history[fk];
       return {
         form: f.form,
         formLabel: f.form ? ('MEGA ' + f.form.toUpperCase()) : 'MEGA',
-        cost: f.cost,
-        costNote: everDone ? 'repeat cost' : 'first-time cost',
+        have: haveNum,
+        cost,
+        costNote: shown ? 'cost as shown in game' : (everDone ? 'repeat cost (table)' : 'first-time cost (table)'),
+        dotsDone: Number.isFinite(st.dotsDone) ? st.dotsDone : null,
+        dotsTotal: Number.isFinite(st.dotsTotal) ? st.dotsTotal : null,
         ready,
-        statusLabel: haveNum == null ? 'NO ENERGY LOGGED' : (ready ? 'READY' : 'NEED ' + (f.cost - haveNum) + ' MORE'),
+        short: haveNum == null ? null : Math.max(0, cost - haveNum),
+        statusLabel: haveNum == null ? 'NO ENERGY LOGGED' : (ready ? 'READY' : 'NEED ' + (cost - haveNum) + ' MORE'),
         statusColor: haveNum == null ? 'var(--ink-400)' : (ready ? 'var(--grass-700)' : 'var(--type-fighting)'),
         evolve: ready ? () => this.applyMegaEvolve(key, f.form) : null
       };
     });
   }
 
-  // Confirms a real in-game Mega Evolve: deducts that form's cost from the
-  // species' logged energy and marks the form as having been done at least
-  // once, so the next quote correctly uses the reduced repeat cost instead
-  // of the one-time first cost.
+  // Confirms a real in-game Mega Evolve: deducts that form's cost from its
+  // energy pool and marks the form as done at least once.
   applyMegaEvolve(key, form) {
     const info = this.megaEvolveInfoFor(key);
     const match = (info || []).find(f => (f.form || '') === (form || ''));
@@ -6312,12 +6346,56 @@ class Component extends DCLogic {
     const inv = { ...(this.state.megaEnergyInventory || {}) };
     const cur = inv[key];
     if (!cur) return;
-    inv[key] = { ...cur, amount: Math.max(0, cur.amount - match.cost) };
+    const fk = form || '';
+    const next = { ...cur };
+    if (Number.isFinite((cur.forms || {})[fk])) next.forms = { ...cur.forms, [fk]: Math.max(0, cur.forms[fk] - match.cost) };
+    else next.amount = Math.max(0, cur.amount - match.cost);
+    inv[key] = next;
     const history = { ...(this.state.megaEvolvedHistory || {}) };
-    history[key] = { ...(history[key] || {}), [form || '']: true };
+    history[key] = { ...(history[key] || {}), [fk]: true };
     this.setState({ megaEnergyInventory: inv, megaEvolvedHistory: history }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
+  }
+
+  // Mega card on the detail page: energy per form, the cost the game shows,
+  // and the Mega Level dots, all typed in from the Pokemon's own screen.
+  megaCardFor(p) {
+    const key = String(p.name || '').toLowerCase();
+    const info = this.megaEvolveInfoFor(key);
+    if (!info) return { has: false, rows: [] };
+    const txt = v => (Number.isFinite(v) ? String(v) : '');
+    return { has: true, rows: info.map(f => ({
+      label: f.formLabel,
+      energyLine: f.have == null ? 'energy not logged' : f.have + ' energy',
+      costLine: f.cost + ' needed \u00b7 ' + f.costNote,
+      levelLine: f.dotsTotal ? 'Mega Level ' + (f.dotsDone || 0) + '/' + f.dotsTotal : '',
+      statusLabel: f.statusLabel, statusColor: f.statusColor,
+      energyVal: txt(f.have), costVal: txt(f.cost !== undefined && f.costNote.indexOf('shown') >= 0 ? f.cost : null),
+      dotsVal: txt(f.dotsDone), totalVal: txt(f.dotsTotal),
+      onEnergy: e => this.setMegaField(key, p.name, f.form, 'energy', e.target.value),
+      onCost: e => this.setMegaField(key, p.name, f.form, 'cost', e.target.value),
+      onDots: e => this.setMegaField(key, p.name, f.form, 'dotsDone', e.target.value),
+      onTotal: e => this.setMegaField(key, p.name, f.form, 'dotsTotal', e.target.value),
+      evolve: f.evolve
+    })) };
+  }
+
+  setMegaField(key, name, form, field, raw) {
+    const n = parseInt(raw, 10);
+    const val = Number.isFinite(n) && n >= 0 ? n : null;
+    const fk = form || '';
+    const inv = { ...(this.state.megaEnergyInventory || {}) };
+    const e = { name: name || key, ...(inv[key] || {}) };
+    if (field === 'energy') {
+      const multi = !!(this.mechanics.megaEvolveCostFor(key, {}) || []).filter(f => f.form).length;
+      if (multi) e.forms = { ...(e.forms || {}), [fk]: val };
+      else e.amount = val;
+    } else {
+      e.status = { ...(e.status || {}), [fk]: { ...((e.status || {})[fk] || {}), [field]: val } };
+    }
+    inv[key] = e;
+    this.setState({ megaEnergyInventory: inv });
   }
 
   addMegaEnergy() {
@@ -13202,6 +13280,7 @@ class Component extends DCLogic {
         favoriteFilled: p.favorite ? '#ff5f7a' : 'rgba(255,255,255,.55)',
         navPositionLabel: (this.state.detailNavList && this.state.detailNavList.length > 1)
           ? (this.state.detailNavIndex + 1) + ' of ' + this.state.detailNavList.length : '',
+        mega: this.megaCardFor(p),
         evo: evoInfo ? {
           hasEvo: true,
           toName: evoInfo.to,

@@ -86,6 +86,7 @@ const check = (name, ok, extra) => {
   await go('ROSTER');
   await page.locator('[data-swipe-row]').first().click();
   await page.waitForTimeout(1200);
+  check('a Mega-capable Pokemon shows the Mega card', (await page.getByText('MEGA EVOLUTION', { exact: true }).count()) >= 1);
   check('detail sheet opens with the count-up CP', (await page.locator('.om-count').count()) >= 1);
   check('detail sheet leaves no inline transform behind', await page.evaluate(() => {
     const s = [...document.querySelectorAll('.om-scroll')].find(e => e.style.maxHeight && e.style.maxHeight.includes('calc'));
