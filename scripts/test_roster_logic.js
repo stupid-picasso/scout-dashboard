@@ -749,7 +749,9 @@ function buildLists(roster, bestRank) {
   const wk = ctx.gblWeeks(t);
   check('first shown week is labelled THIS WEEK', /^THIS WEEK/.test(wk[0].title) && /^NEXT WEEK/.test(wk[1].title), true);
   check('open Great League gets top species, Mega edition does not', wk[0].leagues[0].hasTop && !wk[0].leagues[1].hasTop, true);
-  check('Little Cup has no ranking data and says nothing false', wk[1].leagues[0].hasTop, false);
+  check('Little Cup now has ranked species', wk[1].leagues[0].hasTop, true);
+  check('Master League has ranked species', ctx.leagueTopSpecies(10000, 3).length, 3);
+  check('a cap with no table returns null', ctx.leagueTopSpecies(3000, 3), null);
   const top = ctx.leagueTopSpecies(2500, 3);
   check('top species are sorted by score', top.length === 3 && top[0].score >= top[1].score && top[1].score >= top[2].score, true);
 })();

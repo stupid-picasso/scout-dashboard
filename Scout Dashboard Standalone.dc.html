@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.128</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.129</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -5397,13 +5397,13 @@ class Component extends DCLogic {
   //  - tier: whether the species is competitive at all (PvPoke, Great/Ultra only)
   //  - moves: whether it knows PvPoke's recommended fast + charged moves
   // tierRank: S 0, A 1, B 2, C 3; 4 = PvPoke does not rank it in this league;
-  // 2.5 = no tier data exists for the league (Little Cup, Master).
+  // 2.5 = no tier data exists for the league. Little/Master carry only PvPoke's top 80.
   pvpAssess(p, leagueKey) {
     const m = this.mechanics;
     const lg = p[leagueKey];
     if (!m || !lg || !Number.isFinite(lg.rankPct) || !this.leagueUsable(p, leagueKey)) return null;
     const shadow = this.isShadow(p);
-    const hasTierData = leagueKey === 'great' || leagueKey === 'ultra';
+    const hasTierData = leagueKey === 'great' || leagueKey === 'ultra' || leagueKey === 'little' || leagueKey === 'master';
     const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(p.name, shadow, leagueKey) : null;
     const order = { S: 0, A: 1, B: 2, C: 3 };
     const tierRank = !hasTierData ? 2.5 : (tier ? order[tier.tier] : 4);
@@ -5437,7 +5437,7 @@ class Component extends DCLogic {
   // simulation of every meta matchup.
   pvpTeamFor(leagueKey) {
     const m = this.mechanics;
-    if (!m || !m.pvpMatchupsFor || (leagueKey !== 'great' && leagueKey !== 'ultra')) return null;
+    if (!m || !m.pvpMatchupsFor || ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) < 0) return null;
     const pool = [];
     this.effectiveRosterForMatch().forEach(p => {
       if (this.needsAppraisal(p)) return;
@@ -11269,7 +11269,8 @@ class Component extends DCLogic {
   // Only the open Great/Ultra tables exist; cups and Mega editions return null.
   leagueTopSpecies(cp, n) {
     const m = this.mechanics;
-    const table = cp === 1500 ? m && m.PVP_TIER_GREAT : (cp === 2500 ? m && m.PVP_TIER_ULTRA : null);
+    const table = m && m.pvpTableFor ? m.pvpTableFor(cp === 1500 ? 'great' : cp === 2500 ? 'ultra' : cp === 500 ? 'little' : cp >= 10000 ? 'master' : null) : null;
+    if (!table || (cp !== 1500 && cp !== 2500 && cp !== 500 && cp < 10000)) return null;
     if (!table) return null;
     const tidy = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return Object.keys(table).sort((a, b) => table[b].score - table[a].score).slice(0, n || 6).map(id => ({
@@ -11291,11 +11292,12 @@ class Component extends DCLogic {
       title: (new Date(w.start).getTime() <= t ? 'THIS WEEK' : 'NEXT WEEK') + ' · ' + fmt(w.start) + ' – ' + fmt(w.end),
       season: w.season || '',
       leagues: w.leagues.map(l => {
-        const open = !l.mega && /^(Great League|Ultra League)$/.test(l.name);
-        const league = l.cp === 1500 ? 'great' : (l.cp === 2500 ? 'ultra' : null);
+        const open = !l.mega && /^(Great League|Ultra League|Master League|Little Cup)$/.test(l.name);
+        const league = l.cp === 1500 ? 'great' : (l.cp === 2500 ? 'ultra' : (l.cp === 500 ? 'little' : (l.cp >= 10000 ? 'master' : null)));
         const top = l.mega ? null : this.leagueTopSpecies(l.cp, 5);
+        const plain = open && !!league;
         let squad = null;
-        if (wi === 0 && league && !l.mega) {
+        if (wi === 0 && plain) {
           if (!(league in squads)) squads[league] = this.pvpTeamFor(league);
           squad = squads[league];
         }
@@ -11305,7 +11307,7 @@ class Component extends DCLogic {
           name: l.name, cap: l.cp >= 10000 ? 'No CP cap' : '≤' + l.cp + ' CP',
           rules: (l.rules || []).join(' '),
           top: top || [], hasTop: !!(top && top.length),
-          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' · ') : (wi === 0 && league && !l.mega ? 'Squad: not enough measured, in-cap Pokemon of A tier or better yet.' : ''),
+          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' · ') : (wi === 0 && plain ? 'Squad: not enough measured, in-cap Pokemon of A tier or better yet.' : ''),
           note
         };
       })
@@ -12456,7 +12458,7 @@ class Component extends DCLogic {
     // Order: species tier first, then a complete recommended moveset, then IV
     // rank. A species PvPoke does not rank in Great/Ultra sorts after tier C;
     // leagues with no tier data (Little Cup, Master) sort on IV rank alone.
-    const assessFor = (p) => (leagueKey === 'great' || leagueKey === 'ultra') ? this.pvpAssess(p, leagueKey) : null;
+    const assessFor = (p) => ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) >= 0 ? this.pvpAssess(p, leagueKey) : null;
     leaguePool.sort((a, b) => {
       const aa = assessFor(a), ab = assessFor(b);
       if (aa && ab) {
@@ -12501,7 +12503,7 @@ class Component extends DCLogic {
     const teamRaw = this.pvpTeamFor(leagueKey);
     const prettyId = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const pvpTeam = teamRaw ? {
-      title: 'BEST ' + (leagueKey === 'ultra' ? 'ULTRA' : 'GREAT') + ' LEAGUE TEAM',
+      title: 'BEST ' + ({ ultra: 'ULTRA', little: 'LITTLE CUP', master: 'MASTER' }[leagueKey] || 'GREAT') + (leagueKey === 'little' ? ' TEAM' : ' LEAGUE TEAM'),
       members: teamRaw.members.map(c => ({
         displayName: c.p.name + (c.p.form ? ' (' + c.p.form + ')' : ''),
         spriteRef: this.makeSpriteRefByDex(c.p.dex, c.p.form),

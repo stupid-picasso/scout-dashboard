@@ -53,6 +53,14 @@ import urllib.request
 GREAT_URL = "https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/all/overall/rankings-1500.json"
 ULTRA_URL = "https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/all/overall/rankings-2500.json"
 MECH_PATH = "pokemon-mechanics.js"
+_B = "https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/"
+# Smaller tables: only the top species per format (the rest is never fielded).
+EXTRA = [
+    ("LITTLE", _B + "little/overall/rankings-500.json"),
+    ("MASTER", _B + "all/overall/rankings-10000.json"),
+    ("MEGA", _B + "mega/overall/rankings-10000.json"),
+]
+EXTRA_TOP = 80
 
 
 def fetch(url):
@@ -113,6 +121,15 @@ def build_table(rankings):
 def main():
     great = build_table(fetch(GREAT_URL))
     ultra = build_table(fetch(ULTRA_URL))
+    extra = {}
+    for key, url in EXTRA:
+        rows = sorted((r for r in fetch(url) if r.get("score") is not None), key=lambda r: -r["score"])
+        extra[key] = build_table(rows[:EXTRA_TOP * 2])
+        # build_table merges shadow + plain rows; trim to the best EXTRA_TOP keys
+        best = lambda e: max(e.get("score", 0), e.get("shadowScore", 0))
+        keep = sorted(extra[key], key=lambda k: -best(extra[key][k]))[:EXTRA_TOP]
+        extra[key] = {k: extra[key][k] for k in keep}
+        print(f"{key}: {len(extra[key])} species")
     print(f"Great League: {len(great)} species")
     print(f"Ultra League: {len(ultra)} species")
 
@@ -126,6 +143,7 @@ def main():
         "// GENERATED BLOCK: PVP_TIER (import_pvp_tier_data.py) — do not hand-edit\n"
         "const PVP_TIER_GREAT = " + json.dumps(great, separators=(",", ":")) + ";\n"
         "const PVP_TIER_ULTRA = " + json.dumps(ultra, separators=(",", ":")) + ";\n"
+        + "".join("const PVP_TIER_%s = %s;\n" % (k, json.dumps(v, separators=(",", ":"))) for k, v in extra.items()) +
         "// END GENERATED BLOCK: PVP_TIER"
     )
 
