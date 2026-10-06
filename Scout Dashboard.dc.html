@@ -134,7 +134,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.124</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.125</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -279,6 +279,39 @@
                 <div style="font:600 13px var(--font-body)">{{ sq.displayName }} <span style="font:11px var(--font-display);color:var(--ink-400)">{{ sq.cp }}</span></div>
                 <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px;text-wrap:pretty">{{ sq.reasons }}</div>
               </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
+      <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:3px">EVENT PLANNER</div>
+      <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-bottom:10px">There is no event feed to read, so add an event and the species it features. Each species is judged from what you own and the PvPoke data: hunt it, power up, or skip.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input type="text" placeholder="Event name, e.g. Community Day" value="{{ eventTitle }}" onChange="{{ onEventTitle }}" style="background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:13px var(--font-body);padding:9px 12px" />
+        <input type="text" placeholder="Date (optional), e.g. Sat 18 Oct" value="{{ eventDate }}" onChange="{{ onEventDate }}" style="background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:13px var(--font-body);padding:9px 12px" />
+        <input type="text" placeholder="Featured species, comma separated" value="{{ eventSpecies }}" onChange="{{ onEventSpecies }}" style="background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:13px var(--font-body);padding:9px 12px" />
+        <div onClick="{{ addEvent }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:9px 18px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">ADD EVENT</div>
+      </div>
+      <sc-if value="{{ hasEvents }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:14px">
+          <sc-for list="{{ eventRows }}" as="ev" hint-placeholder-count="1">
+            <div style="background:var(--surface-sunken);border-radius:10px;padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                <div style="font:700 13px var(--font-display)">{{ ev.title }} <span style="font:11px var(--font-body);color:var(--ink-400)">{{ ev.date }}</span></div>
+                <div onClick="{{ ev.onRemove }}" class="om-press" style="cursor:pointer;font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">REMOVE</div>
+              </div>
+              <sc-for list="{{ ev.species }}" as="sp" hint-placeholder-count="2">
+                <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-200)">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline">
+                    <div style="font:700 12.5px var(--font-body)">{{ sp.name }}</div>
+                    <div style="font:800 10.5px var(--font-display);letter-spacing:.06em;color:{{ sp.color }}">{{ sp.verdict }}</div>
+                  </div>
+                  <sc-for list="{{ sp.lines }}" as="ln" hint-placeholder-count="3">
+                    <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ ln }}</div>
+                  </sc-for>
+                </div>
+              </sc-for>
             </div>
           </sc-for>
         </div>
@@ -1337,6 +1370,27 @@
           </div>
         </div>
       </sc-if>
+      <sc-if value="{{ optimizePlanDisplay.hasBuddyPlan }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
+          <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:3px">6. WALK THESE AS BUDDY</div>
+          <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-bottom:10px">Pokemon that matter and are short of candy, cheapest to finish first.</div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <sc-for list="{{ optimizePlanDisplay.buddyPlan }}" as="bp" hint-placeholder-count="3">
+              <div onClick="{{ bp.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:50%;background:{{ bp.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken)">{{ bp.initial }}</span>
+                  <img ref="{{ bp.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 13px var(--font-body)">{{ bp.displayName }}</div>
+                  <div style="font:11px var(--font-display);color:var(--type-electric);margin-top:2px">{{ bp.line }}</div>
+                  <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px">{{ bp.reasons }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
       <sc-if value="{{ optimizePlanDisplay.buddySuggestion }}" hint-placeholder-val="{{ false }}">
         <div onClick="{{ optimizePlanDisplay.buddySuggestion.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:12px 16px;display:flex;align-items:center;gap:12px;transition:border-color .12s ease,background .12s ease" style-hover="border-color:var(--ink-300);background:var(--surface-muted)">
           <div style="font:700 11px var(--font-display);color:var(--ink-400)">6. SET AS BUDDY NEXT</div>
@@ -1958,6 +2012,28 @@
         <sc-if value="{{ pvpTeam.stillLine }}" hint-placeholder-val="{{ false }}">
           <div style="font:12px var(--font-body);color:var(--type-electric)">{{ pvpTeam.stillLine }}</div>
         </sc-if>
+        <div onClick="{{ pvpTeam.onSave }}" class="om-press" style="cursor:pointer;display:inline-block;margin-top:12px;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SAVE THIS TEAM</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasSavedTeams }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:16px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:16px">
+        <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:10px">MY TEAMS</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ savedTeamRows }}" as="st" hint-placeholder-count="1">
+            <div style="background:var(--surface-sunken);border-radius:10px;padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                <div style="font:700 13px var(--font-display)">{{ st.name }}</div>
+                <div onClick="{{ st.onRemove }}" class="om-press" style="cursor:pointer;font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">REMOVE</div>
+              </div>
+              <div style="font:12px var(--font-body);color:var(--ink-600);margin-top:4px">{{ st.members }}</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+                <div style="font:700 12px var(--font-display);color:var(--ink-700);flex:1">{{ st.record }}</div>
+                <div onClick="{{ st.onWin }}" class="om-press" style="cursor:pointer;padding:6px 14px;border-radius:var(--r-pill);background:var(--grass-700);color:var(--surface-page);font:700 11px var(--font-display)">+ WIN</div>
+                <div onClick="{{ st.onLoss }}" class="om-press" style="cursor:pointer;padding:6px 14px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11px var(--font-display)">+ LOSS</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
       </div>
     </sc-if>
     <sc-if value="{{ suggestedTeamDisplay }}" hint-placeholder-val="{{ false }}">
@@ -2615,6 +2691,9 @@ class Component extends DCLogic {
     raidWeather: '',
     updateReady: false,
     diagCount: 0,
+    events: [],
+    savedTeams: [],
+    eventDraft: { title: '', date: '', species: '' },
     snapshots: [],
     snapshotBusy: false,
     snapshotError: '',
@@ -2796,7 +2875,7 @@ class Component extends DCLogic {
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'candyAiDecisions',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -2926,10 +3005,9 @@ class Component extends DCLogic {
       bagCapacity: null,
       eliteTmDone: [],
       cutTarget: 300, pvpMaxLevel: 50, cutTargetDraft: '300',
-      githubToken: '',
       megaEnergyInventory: {}, megaEvolvedHistory: {}, evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, triageKeep: {}, transferQueue: [],
-      geminiKeys: [], geminiKey: '', geminiKeyDraft: '',
-      apiEndpoint: '', apiEndpointDraft: '', syncedFrom: ''
+      syncedFrom: '',
+      events: [], savedTeams: []
     };
   }
 
@@ -3058,6 +3136,8 @@ class Component extends DCLogic {
       eliteTmDone: remote.eliteTmDone || [],
       cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
       pvpMaxLevel: [40, 50, 51].includes(remote.pvpMaxLevel) ? remote.pvpMaxLevel : 50,
+      events: Array.isArray(remote.events) ? remote.events : [],
+      savedTeams: Array.isArray(remote.savedTeams) ? remote.savedTeams : [],
       githubToken: this.state.githubToken || remote.githubToken || '',
       megaEnergyInventory: remote.megaEnergyInventory || {},
       megaEvolvedHistory: remote.megaEvolvedHistory || {},
@@ -3219,7 +3299,7 @@ class Component extends DCLogic {
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
       'chatMessages',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams'];
   }
 
   // Credentials are excluded from a restore by NAME, not by being forgotten, so
@@ -3280,6 +3360,7 @@ class Component extends DCLogic {
       checklistDone: s.checklistDone, resources: s.resources, evolutionItems: s.evolutionItems, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
       bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, pvpMaxLevel: s.pvpMaxLevel,
+      events: s.events || [], savedTeams: s.savedTeams || [],
       // Trimmed on write: an unbounded transcript would eventually crowd out the
       // roster, which is the data that actually matters.
       chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
@@ -9962,6 +10043,117 @@ class Component extends DCLogic {
   // ---- Verdict ----
   // Weighted in the order the trainer ranked them: Little Cup rank, raid DPS,
   // last-of-species, legacy move, then shiny/lucky/shadow status.
+  // Which Pokemon to walk as a buddy: among the ones that matter (PvP-ready,
+  // raid role, Lucky/Shadow, or 85%+ IV rank), the ones short of candy for their
+  // next evolution or for powering up to level 40, cheapest to finish first.
+  // km = candy short x the species' buddy distance (PvPoke game master).
+  buddyPlan() {
+    const m = this.mechanics;
+    if (!m || !m.speciesInfo || !m.powerUpCostBetween) return [];
+    const roster = this.effectiveRosterForMatch();
+    const typeBest = this.raidRoleTypeBest(roster);
+    const rows = [];
+    const seen = new Set();
+    roster.forEach(p => {
+      const key = String(p.name || '').toLowerCase() + '|' + String(p.form || '');
+      if (seen.has(key)) return;
+      const matters = this.isPvpWorthy(p) || this.hasRaidRole(p, typeBest) || p.lucky || this.isShadow(p) || this.bestRank(p) >= 85;
+      if (!matters) return;
+      const info = m.speciesInfo(p.name, p.form);
+      if (!info || !info.buddyKm) return;
+      const stock = this.candyStockFor(p);
+      if (stock.candy == null) return;
+      const reasons = [];
+      let short = 0;
+      const evo = this.evoInfoFor(p);
+      if (evo && evo.need != null && evo.short > 0) { short = Math.max(short, evo.short); reasons.push('evolve to ' + evo.to + ' needs ' + evo.short + ' more'); }
+      const lv = this.evalLevelOf(p);
+      if (lv.level != null && lv.level < 40) {
+        const cost = m.powerUpCostBetween(lv.level, 40, { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) });
+        if (cost && cost.reachable && cost.candy > stock.candy) { const gap = cost.candy - stock.candy; short = Math.max(short, gap); reasons.push('power-up to L40 needs ' + gap + ' more'); }
+      }
+      if (short <= 0) return;
+      seen.add(key);
+      rows.push({ p, short, km: short * info.buddyKm, buddyKm: info.buddyKm, reasons });
+    });
+    return rows.sort((a, b) => a.km - b.km).slice(0, 3);
+  }
+
+  // ---- Events: manual planner (there is no event feed to read) -------------
+  setEventDraft(field, value) {
+    this.setState({ eventDraft: { ...(this.state.eventDraft || {}), [field]: value } });
+  }
+
+  addEvent() {
+    const d = this.state.eventDraft || {};
+    const title = String(d.title || '').trim();
+    const species = String(d.species || '').split(',').map(x => x.trim()).filter(Boolean);
+    if (!title || !species.length) return;
+    const ev = { id: 'ev-' + Date.now(), title, date: String(d.date || '').trim(), species };
+    this.setState({ events: [...(this.state.events || []), ev], eventDraft: { title: '', date: '', species: '' } });
+  }
+
+  removeEvent(id) {
+    this.setState({ events: (this.state.events || []).filter(e => e.id !== id) });
+  }
+
+  // One featured species, judged from what you own and what the data says.
+  eventSpeciesVerdict(name) {
+    const m = this.mechanics;
+    const lower = String(name || '').toLowerCase();
+    const tidy = n => String(n).replace(/\b\w/g, c => c.toUpperCase());
+    const owned = this.effectiveRosterForMatch().filter(p => String(p.name || '').toLowerCase() === lower);
+    const lines = [];
+    let verdict = 'SKIP', color = 'var(--ink-400)';
+    const tiers = m && m.pvpTierFor ? ['great', 'ultra'].map(k => ({ k, t: m.pvpTierFor(lower, false, k) })).filter(x => x.t) : [];
+    const topTier = tiers.sort((a, b) => ({ S: 0, A: 1, B: 2, C: 3 }[a.t.tier] - { S: 0, A: 1, B: 2, C: 3 }[b.t.tier]))[0];
+    const goodSpecies = !!(topTier && topTier.t.tier !== 'C');
+    if (topTier) lines.push('PvP: ' + topTier.t.tier + ' tier in ' + (topTier.k === 'ultra' ? 'Ultra' : 'Great') + ' League (score ' + topTier.t.score + ')'); else lines.push('PvP: not ranked in Great or Ultra League');
+    const pool = m && m.movepoolFor ? m.movepoolFor(lower) : null;
+    const elite = pool ? [...(pool.fastLegacy || []), ...(pool.chargeLegacy || [])] : [];
+    if (elite.length) lines.push('Elite/legacy moves it can learn: ' + elite.map(tidy).join(', '));
+    if (!owned.length) {
+      lines.push('You own none.');
+      if (goodSpecies) { verdict = 'HUNT'; color = 'var(--grass-700)'; lines.push('Worth catching for a 90%+ IV rank spread.'); }
+    } else {
+      const ranked = owned.map(p => ({ p, a: this.pvpBest(p) })).sort((x, y) => (y.a ? y.a.rank : 0) - (x.a ? x.a.rank : 0));
+      const top = ranked[0];
+      lines.push('You own ' + owned.length + (top.a ? ' \u00b7 best IV rank ' + top.a.rank.toFixed(0) + '%' : ' \u00b7 IVs not measured'));
+      const evo = this.evoInfoFor(top.p);
+      if (evo && evo.need != null) lines.push('Evolves to ' + evo.to + ': ' + (evo.have != null ? evo.have : '?') + '/' + evo.need + ' candy');
+      const prof = this.raidProfile(top.p);
+      if (prof && prof.now && prof.ceil && prof.ceil.rating > prof.now.rating * 1.03) lines.push('Better moves could add ' + Math.round((prof.ceil.rating / prof.now.rating - 1) * 100) + '% raid rating' + (prof.ceil.legacy ? ' (Elite TM)' : ''));
+      if (goodSpecies && (!top.a || top.a.rank < 90)) { verdict = 'HUNT'; color = 'var(--grass-700)'; lines.push('Your best is under 90% \u2014 an event is a chance to find a better one.'); }
+      else if (goodSpecies) { verdict = 'POWER UP'; color = 'var(--type-electric)'; lines.push('You already have a strong one \u2014 spend the event on candy and moves.'); }
+      else if (elite.length) { verdict = 'MOVES ONLY'; color = 'var(--type-electric)'; }
+    }
+    return { name: tidy(lower), verdict, color, lines };
+  }
+
+  // ---- Saved teams ---------------------------------------------------------
+  saveTeam(teamRaw) {
+    if (!teamRaw) return;
+    const league = teamRaw.league;
+    const team = {
+      id: 'tm-' + Date.now(),
+      name: (league === 'ultra' ? 'Ultra' : 'Great') + ' team ' + new Date().toISOString().slice(0, 10),
+      league,
+      members: teamRaw.members.map(c => ({ name: c.p.name, form: c.p.form || null, idx: c.p.idx, cp: c.p.cp })),
+      wins: 0, losses: 0
+    };
+    this.setState({ savedTeams: [...(this.state.savedTeams || []), team] });
+    this.haptic('light');
+  }
+
+  tallyTeam(id, field) {
+    this.setState({ savedTeams: (this.state.savedTeams || []).map(t => t.id === id ? { ...t, [field]: (t[field] || 0) + 1 } : t) });
+    this.haptic('light');
+  }
+
+  removeTeam(id) {
+    this.setState({ savedTeams: (this.state.savedTeams || []).filter(t => t.id !== id) });
+  }
+
   // Pokemon worth the effort of an appraisal scan, best first. Scanning every
   // Pokemon is tiring and most of a box is not worth it, so this ranks the
   // unmeasured ones by how much a measured IV could change a decision: a species
@@ -11051,6 +11243,7 @@ class Component extends DCLogic {
         moveLine: c.a.movesOk === true ? '\u2713 recommended moves' : (c.a.movesOk === false ? 'needs ' + c.a.missing.map(n => n.replace(/\b\w/g, ch => ch.toUpperCase())).join(', ') : ''),
         onClick: () => this.openDetail(c.p)
       })),
+      onSave: () => this.saveTeam(teamRaw),
       sharedLine: teamRaw.shared.length ? 'Shared weaknesses: ' + teamRaw.shared.map(prettyId).join(', ') : 'No opponent in the top-5 counter lists beats two of them.',
       coverLine: 'A teammate beats ' + teamRaw.covered.length + ' of the ' + teamRaw.threats.length + ' opponents that beat a member.',
       stillLine: (() => {
@@ -11197,6 +11390,7 @@ class Component extends DCLogic {
       onClick: () => this.openDetail(p),
       markDone: () => this.toggleDone(p.idx)
     }));
+    const buddyRaw = this.buddyPlan();
     const optimizePlanDisplay = {
       powerUpCount: plan.powerUp.length,
       evolveCount: plan.evolveSoon.length,
@@ -11237,7 +11431,17 @@ class Component extends DCLogic {
         onClick: () => this.openDetail(p),
         markDone: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleDone(p.idx); }
       })),
-      buddySuggestion: plan.buddySuggestion ? {
+      hasBuddyPlan: buddyRaw.length > 0,
+      buddyPlan: buddyRaw.map(r => ({
+        displayName: r.p.name + (r.p.form ? ' (' + r.p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form),
+        badgeColor: this.dsTypeColor(r.p),
+        initial: (r.p.name || '?').charAt(0),
+        line: r.short + ' candy short \u00b7 about ' + r.km + ' km (' + r.buddyKm + ' km per candy)',
+        reasons: r.reasons.join(' \u00b7 '),
+        onClick: () => this.openDetail(r.p)
+      })),
+      buddySuggestion: (plan.buddySuggestion && !buddyRaw.length) ? {
         onClick: () => this.openDetail(plan.buddySuggestion),
         displayName: plan.buddySuggestion.name,
         spriteRef: this.makeSpriteRefByDex(plan.buddySuggestion.dex, plan.buddySuggestion.form),
@@ -12073,6 +12277,15 @@ class Component extends DCLogic {
       leagueList,
       pvpList,
       pvpTeam,
+      savedTeamRows: (this.state.savedTeams || []).map(t => ({
+        name: t.name,
+        members: t.members.map(x => x.name).join(' \u00b7 '),
+        record: (t.wins || 0) + 'W \u2013 ' + (t.losses || 0) + 'L' + ((t.wins || 0) + (t.losses || 0) ? ' \u00b7 ' + Math.round((t.wins || 0) / ((t.wins || 0) + (t.losses || 0)) * 100) + '% win rate' : ''),
+        onWin: () => this.tallyTeam(t.id, 'wins'),
+        onLoss: () => this.tallyTeam(t.id, 'losses'),
+        onRemove: () => this.removeTeam(t.id)
+      })),
+      hasSavedTeams: (this.state.savedTeams || []).length > 0,
       suggestedTeamDisplay,
       intelDisplay,
       resourcesDraft: {
@@ -12779,6 +12992,19 @@ class Component extends DCLogic {
           onClick: () => this.toggleRaidType(t)
         };
       }),
+      eventRows: (this.state.events || []).map(e => ({
+        id: e.id, title: e.title, date: e.date,
+        species: (e.species || []).map(n => this.eventSpeciesVerdict(n)),
+        onRemove: () => this.removeEvent(e.id)
+      })),
+      hasEvents: (this.state.events || []).length > 0,
+      eventTitle: (this.state.eventDraft || {}).title || '',
+      eventDate: (this.state.eventDraft || {}).date || '',
+      eventSpecies: (this.state.eventDraft || {}).species || '',
+      onEventTitle: (e) => this.setEventDraft('title', e.target.value),
+      onEventDate: (e) => this.setEventDraft('date', e.target.value),
+      onEventSpecies: (e) => this.setEventDraft('species', e.target.value),
+      addEvent: () => this.addEvent(),
       scanQueueRows: (() => {
         const q = this.scanQueue();
         return q.rows.map(x => ({

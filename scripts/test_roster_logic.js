@@ -660,6 +660,60 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Buddy plan, event planner and saved teams.
+// ---------------------------------------------------------------------------
+(function testPlanners() {
+  const roster = [];
+  const state = { events: [], savedTeams: [], candyInventory: {} };
+  const ctx = { mechanics: m, state, effectiveRosterForMatch: () => roster, isShadow: () => false, isPurified: () => false,
+    setState(p) { Object.assign(this.state, p); }, haptic() {}, moveKey: n => String(n || '').trim().toLowerCase() };
+  const defs = { eventSpeciesVerdict: 'name', buddyPlan: '', saveTeam: 'teamRaw', tallyTeam: 'id, field', removeTeam: 'id', addEvent: '', removeEvent: 'id', setEventDraft: 'field, value' };
+  Object.keys(defs).forEach(n => { ctx[n] = new Function(...(defs[n] ? defs[n].split(', ') : []), extractMethodBody(SRC, `${n}(${defs[n]}) {`)).bind(ctx); });
+
+  // events
+  ctx.pvpBest = () => null; ctx.evoInfoFor = () => null; ctx.raidProfile = () => null;
+  const hunt = ctx.eventSpeciesVerdict('azumarill');
+  check('an unowned S/A/B-tier species is worth hunting', hunt.verdict, 'HUNT');
+  check('an unowned unranked species is skipped', ctx.eventSpeciesVerdict('caterpie').verdict, 'SKIP');
+  roster.push({ name: 'Azumarill', dex: 184, great: { rankPct: 98 } });
+  ctx.pvpBest = () => ({ rank: 98, tierRank: 0, league: 'great' });
+  check('owning a 98% one of a strong species means power it up', ctx.eventSpeciesVerdict('azumarill').verdict, 'POWER UP');
+  ctx.pvpBest = () => ({ rank: 82, tierRank: 0, league: 'great' });
+  check('owning only an 82% one means hunt for a better one', ctx.eventSpeciesVerdict('azumarill').verdict, 'HUNT');
+  ctx.setEventDraft('title', 'Community Day'); ctx.setEventDraft('species', 'Pikachu, Azumarill');
+  ctx.addEvent();
+  check('an event with species is stored and the draft clears', state.events.length === 1 && state.events[0].species.length === 2 && state.eventDraft.title === '', true);
+  ctx.setEventDraft('title', ''); ctx.setEventDraft('species', 'x'); ctx.addEvent();
+  check('an event without a title is not added', state.events.length, 1);
+  ctx.removeEvent(state.events[0].id);
+  check('events can be removed', state.events.length, 0);
+
+  // teams
+  ctx.saveTeam({ league: 'great', members: [{ p: { name: 'Azumarill', idx: 1, cp: 1498 } }, { p: { name: 'Dragonite', idx: 2, cp: 1490 } }, { p: { name: 'Machamp', idx: 3, cp: 1500 } }] });
+  const team = state.savedTeams[0];
+  check('a saved team keeps its members and starts at 0-0', team.members.length === 3 && team.wins === 0 && team.losses === 0, true);
+  ctx.tallyTeam(team.id, 'wins'); ctx.tallyTeam(team.id, 'wins'); ctx.tallyTeam(team.id, 'losses');
+  check('wins and losses are tallied on the right team', state.savedTeams[0].wins === 2 && state.savedTeams[0].losses === 1, true);
+  ctx.removeTeam(team.id);
+  check('a saved team can be removed', state.savedTeams.length, 0);
+
+  // buddy plan
+  roster.length = 0;
+  const pika = { idx: 9, name: 'Pikachu', dex: 25, form: null, ivAvg: 90, ivMeasured: true, atkIV: 0, defIV: 15, staIV: 15, lvlMin: 40, lvlMax: 40 };
+  roster.push(pika);
+  ctx.isPvpWorthy = () => true; ctx.hasRaidRole = () => false; ctx.raidRoleTypeBest = () => ({ r: {}, s: {} });
+  ctx.bestRank = () => 95; ctx.candyStockFor = () => ({ candy: 10, xlCandy: 0 });
+  ctx.evoInfoFor = () => ({ to: 'Raichu', need: 50, have: 10, short: 40, ready: false });
+  ctx.evalLevelOf = () => ({ level: 40, exact: true });
+  const plan = ctx.buddyPlan();
+  const km = m.speciesInfo('Pikachu', '').buddyKm;
+  check('a Pokemon short of evolve candy gets a buddy row', plan.length, 1);
+  check('km to finish = candy short x the species buddy distance', plan[0].short === 40 && plan[0].km === 40 * km, true);
+  ctx.evoInfoFor = () => ({ to: 'Raichu', need: 50, have: 50, short: 0, ready: true });
+  check('nothing short means no buddy row', ctx.buddyPlan().length, 0);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

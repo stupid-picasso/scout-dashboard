@@ -103,6 +103,28 @@ const check = (name, ok, extra) => {
     // A literal \\uXXXX in visible text means an escape was written into HTML (it only works in JS strings).
     check(label + ' tab shows no raw \\u escapes', !/\\u[0-9a-fA-F]{4}/.test(text), (text.match(/.{0,30}\\u[0-9a-fA-F]{4}.{0,20}/) || [''])[0]);
   }
+  // Planners: add an event, save a team and tally a result.
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(2200);
+  await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
+  await page.waitForTimeout(1000);
+  await go('TODAY');
+  await page.getByPlaceholder('Event name, e.g. Community Day').fill('Smoke Day');
+  await page.getByPlaceholder('Featured species, comma separated').fill('Azumarill, Caterpie');
+  await page.getByText('ADD EVENT', { exact: true }).click();
+  await page.waitForTimeout(600);
+  check('event planner lists the event and judges each species', (await page.getByText('Smoke Day').count()) >= 1 && (await page.getByText('HUNT').count()) >= 1);
+  await go('PVP');
+  await page.getByText('SAVE THIS TEAM', { exact: true }).scrollIntoViewIfNeeded().catch(() => {});
+  const canSave = (await page.getByText('SAVE THIS TEAM', { exact: true }).count()) === 1;
+  check('PvP tab offers to save the suggested team', canSave);
+  if (canSave) {
+    await page.getByText('SAVE THIS TEAM', { exact: true }).click();
+    await page.waitForTimeout(500);
+    await page.getByText('+ WIN', { exact: true }).first().click();
+    await page.waitForTimeout(400);
+    check('a saved team records a win', (await page.getByText(/1W . 0L/).count()) >= 1);
+  }
   check('no uncaught page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
   await browser.close();
