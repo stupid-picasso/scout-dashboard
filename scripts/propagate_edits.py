@@ -290,7 +290,23 @@ def reembed_mechanics_js_if_changed(baseline_mechanics_path):
             except Exception:
                 continue
         if not target_uuid:
-            notes.append(f"[{os.path.basename(path)}] could not find the embedded pokemon-mechanics.js blob to replace (baseline content not found in manifest) — check manually")
+            # The embedded copy has drifted from the baseline (an earlier run skipped a
+            # re-embed). Identify the blob by what it is instead, so a stale bundle
+            # can never ship old mechanics: the one script that defines the app's
+            # window.PokemonMechanics export.
+            for uuid, entry in manifest.items():
+                if entry.get('mime') != 'application/javascript':
+                    continue
+                try:
+                    dec = gzip.decompress(base64.b64decode(entry['data'])).decode('utf-8', 'ignore')
+                except Exception:
+                    continue
+                if 'window.PokemonMechanics = {' in dec:
+                    target_uuid = uuid
+                    notes.append(f"[{os.path.basename(path)}] embedded mechanics had drifted from the baseline; replaced by content marker")
+                    break
+        if not target_uuid:
+            notes.append(f"[{os.path.basename(path)}] could not find the embedded pokemon-mechanics.js blob to replace — BUNDLE HAS STALE MECHANICS")
             continue
 
         compressed = gzip.compress(new_bytes, compresslevel=9)
@@ -421,6 +437,49 @@ def run_ranking_tests():
 
 # ---------------------------------------------------------------------------
 # Commands
+def sync_embedded_mechanics(fix=True):
+    """Make sure each bundle embeds EXACTLY the current pokemon-mechanics.js.
+
+    The baseline-diff re-embed above silently skips when the embedded copy has drifted
+    from the baseline, which shipped stale mechanics in the bundles for several
+    releases. This compares the embedded blob to the real file every time and (with
+    fix=True) replaces it. Returns a list of problems left unfixed."""
+    new = read(MECHANICS_JS)
+    problems = []
+    for path in BUNDLE_FILES:
+        src = read(path)
+        start = src.find('<script type="__bundler/manifest">')
+        if start == -1:
+            problems.append(f"[{os.path.basename(path)}] no manifest block found")
+            continue
+        tag_end = src.find('>', start) + 1
+        end = src.find('</script>', tag_end)
+        manifest = json.loads(src[tag_end:end])
+        target = None
+        for uuid, entry in manifest.items():
+            if entry.get('mime') != 'application/javascript':
+                continue
+            try:
+                dec = gzip.decompress(base64.b64decode(entry['data'])).decode('utf-8', 'ignore')
+            except Exception:
+                continue
+            if 'window.PokemonMechanics = {' in dec:
+                target = (uuid, dec)
+                break
+        if not target:
+            problems.append(f"[{os.path.basename(path)}] embedded mechanics blob not found")
+            continue
+        if target[1] == new:
+            continue
+        if not fix:
+            problems.append(f"[{os.path.basename(path)}] embedded mechanics is STALE (differs from pokemon-mechanics.js)")
+            continue
+        manifest[target[0]]['data'] = base64.b64encode(gzip.compress(new.encode('utf-8'), compresslevel=9)).decode('ascii')
+        write(path, src[:tag_end] + "\n" + json.dumps(manifest) + "\n" + src[end:])
+        print(f"  [{os.path.basename(path)}] embedded mechanics was stale; re-embedded ({len(target[1])} -> {len(new)} bytes)")
+    return problems
+
+
 # ---------------------------------------------------------------------------
 def cmd_snapshot():
     os.makedirs(BASELINE_DIR, exist_ok=True)
@@ -446,6 +505,7 @@ def cmd_apply(bump_version=True):
 
     if not dc_changed and not mechanics_changed:
         print("No changes detected in Scout Dashboard.dc.html or pokemon-mechanics.js since the last snapshot — nothing to propagate.")
+        sync_embedded_mechanics(fix=True)
         return
 
     hunks = compute_hunks(old_dc_text, new_dc_text) if dc_changed else []
@@ -475,6 +535,7 @@ def cmd_apply(bump_version=True):
             print(f"  {n}")
     else:
         print("  unchanged")
+    all_errors += sync_embedded_mechanics(fix=True)
 
     print("\n--- Marker verification ---")
     marker_problems = verify_markers(hunks, old_dc_text) if hunks else []
@@ -542,6 +603,9 @@ def cmd_verify():
     print("--- Marker verification ---")
     marker_problems = verify_markers(hunks, old_text)
     print("All markers match." if not marker_problems else '\n'.join(marker_problems))
+    print("\n--- Embedded mechanics ---")
+    emb = sync_embedded_mechanics(fix=False)
+    print("Bundles embed the current pokemon-mechanics.js." if not emb else '\n'.join(emb))
     print("\n--- Syntax verification ---")
     syntax_problems = verify_syntax()
     print("All files pass node --check." if not syntax_problems else '\n'.join(syntax_problems))

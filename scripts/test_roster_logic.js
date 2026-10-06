@@ -490,7 +490,7 @@ function buildLists(roster, bestRank) {
 
   const ctx = { mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } };
   ['moveKey', 'lookupMove', 'raidProfile', 'pvpAssess', 'pvpBest', 'isPvpWorthy', 'needsAppraisal', 'leagueUsable', 'bestRank', 'bestLeagueInfo'].forEach(n => {
-    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
+    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey, tableKey', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
     ctx[n] = new Function(...sig.split(', '), extractMethodBody(SRC, `${n}(${sig}) {`)).bind(ctx);
   });
   ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
@@ -732,12 +732,19 @@ function buildLists(roster, bestRank) {
 // ---------------------------------------------------------------------------
 (() => {
   const ctx = { mechanics: m, state: {} };
-  ['validFeed(f)', 'cupAllowsSpecies(cup, species, form, types)', 'cupAllows(cup, p)', 'leagueTopSpecies(cp, n, cup, mega)', 'megaReadyPicks(n)', 'gblWeeks(now)'].forEach(sig => {
+  ['validFeed(f)', 'cupAllowsSpecies(cup, species, form, types)', 'cupAllows(cup, p)', 'cupUnknown(cup, p)', 'leagueTopSpecies(cp, n, cup, mega, tableKey)', 'megaReadyPicks(n, cp)', 'gblWeeks(now)'].forEach(sig => {
     const name = sig.slice(0, sig.indexOf('(')), args = sig.slice(sig.indexOf('(') + 1, -1);
     ctx[name] = new Function(...(args ? args.split(', ') : []), extractMethodBody(SRC, sig + ' {')).bind(ctx);
   });
   ctx.pvpTeamFor = () => null; ctx.typeOf = p => (m.speciesInfo(p.name, p.form) || { types: [] }).types.join(' / ');
   ctx.effectiveRosterForMatch = () => []; ctx.megaEvolveInfoFor = () => null;
+  ctx.feedVerifyLine = new Function(extractMethodBody(SRC, 'feedVerifyLine() {')).bind(ctx);
+  check('no cross-check says so', /Not cross-checked/.test(ctx.feedVerifyLine()), true);
+  ctx.state.feedCheck = { status: 'mismatch', checkedAt: '2026-10-06T00:00:00Z', onlyOnOfficialPage: ['retro cup'], notOnOfficialPage: [] };
+  check('a mismatch names the cups the official page adds', /official page also names: retro cup/.test(ctx.feedVerifyLine()), true);
+  ctx.state.feedCheck = { status: 'ok', checkedAt: '2026-10-06T00:00:00Z' };
+  check('a clean check is shown as matching', /match the official/.test(ctx.feedVerifyLine()), true);
+  ctx.state.feedCheck = null;
   check('feed without gbl is rejected', ctx.validFeed({ events: [] }), false);
   check('feed with a malformed week is rejected', ctx.validFeed({ events: [], gbl: [{ start: 'x' }] }), false);
   const t = Date.parse('2026-10-08T00:00:00Z');
@@ -750,7 +757,7 @@ function buildLists(roster, bestRank) {
   const wk = ctx.gblWeeks(t);
   check('first shown week is labelled THIS WEEK', /^THIS WEEK/.test(wk[0].title) && /^NEXT WEEK/.test(wk[1].title), true);
   check('open Great League and its Mega edition both list top species', wk[0].leagues[0].hasTop && wk[0].leagues[1].hasTop, true);
-  check('Mega edition says Mega forms are not modelled', /not modelled/.test(wk[0].leagues[1].note), true);
+  check('Mega edition says Mega stats are not computed', /own base stats/.test(wk[0].leagues[1].note), true);
   check('Little Cup now has ranked species', wk[1].leagues[0].hasTop, true);
   check('Master League has ranked species', ctx.leagueTopSpecies(10000, 3).length, 3);
   check('a cap with no table returns null', ctx.leagueTopSpecies(3000, 3), null);
@@ -762,11 +769,21 @@ function buildLists(roster, bestRank) {
   check('banned type is out', ctx.cupAllowsSpecies(laic, 'charizard', '', ['fire', 'flying']), false);
   check('banned species is out', ctx.cupAllowsSpecies(laic, 'snorlax', '', ['normal']), false);
   check('ban on one form leaves the other', ctx.cupAllowsSpecies(laic, 'corsola', '', ['water', 'rock']) && !ctx.cupAllowsSpecies(laic, 'corsola', 'Galarian', ['ghost']), true);
+  const catchCup = { caught: [Date.parse('2026-09-08'), Date.parse('2026-12-01')] };
+  check('Catch Cup: a Pokemon caught in the window is legal', ctx.cupAllows(catchCup, { name: 'Azumarill', catchDate: '2026-10-01' }), true);
+  check('Catch Cup: one caught before the window is not', ctx.cupAllows(catchCup, { name: 'Azumarill', catchDate: '2025-01-01' }), false);
+  check('Catch Cup: an unknown catch date is let through but flagged', ctx.cupAllows(catchCup, { name: 'Azumarill' }) && ctx.cupUnknown(catchCup, { name: 'Azumarill' }).join() === 'catch date', true);
+  const classic = { level: { maxLevel: 40 } };
+  check('Classic cup: a level 41 Pokemon is out, level 40 is in', !ctx.cupAllows(classic, { name: 'Azumarill', lvlMax: 41 }) && ctx.cupAllows(classic, { name: 'Azumarill', lvlMax: 40 }), true);
   const little = { allow: ['bulbasaur', 'pikachu', 'meowth:normal|alolan'] };
   check('allow list admits listed species and forms only', ctx.cupAllowsSpecies(little, 'pikachu', '', []) && ctx.cupAllowsSpecies(little, 'meowth', 'Alolan', []) && !ctx.cupAllowsSpecies(little, 'meowth', 'Galarian', []) && !ctx.cupAllowsSpecies(little, 'dragonite', '', []), true);
   const ft = ctx.leagueTopSpecies(1500, 8, { types: ['water'] });
   check('top species honour the cup type filter', ft.length > 0 && ft.every(x => (m.speciesInfo(x.name.replace(/ \(Shadow\)$/, '').toLowerCase().replace(/ /g, '_'), '') || { types: ['water'] }).types.map(y => y.toLowerCase()).indexOf('water') >= 0), true);
   check('no cup means no filter', ctx.cupAllowsSpecies(null, 'anything', '', []), true);
+  const mg = ctx.leagueTopSpecies(1500, 5, null, true, 'cup:mega@1500');
+  check('Mega Great League uses PvPoke\u2019s mega@1500 table', mg.length === 5 && mg[0].score >= mg[4].score, true);
+  check('a missing cup table yields no list', ctx.leagueTopSpecies(1500, 5, null, false, 'cup:nonexistent@1500'), null);
+  check('cup tables exist for the weekly cups', ['colormega@1500', 'laic2027@1500', 'willpower@1500', 'catch@1500', 'fantasy@2500', 'mega@10000'].every(k => !!m.pvpTableFor('cup:' + k)), true);
   check('Mega Master has its own table', ctx.leagueTopSpecies(10000, 3, null, true).length, 3);
   const top = ctx.leagueTopSpecies(2500, 3);
   check('top species are sorted by score', top.length === 3 && top[0].score >= top[1].score && top[1].score >= top[2].score, true);
@@ -842,6 +859,31 @@ function buildLists(roster, bestRank) {
   const bd2 = ctx.megaEvolveInfoFor('beedrill')[0];
   check('OCR shape updates energy and rest; level kept', bd2.have === 300 && bd2.level === 1 && Math.abs(bd2.restDays - 2) < 0.01, true);
   check('a non-Mega species is ignored', ctx.logMegaScans([{ name: 'Pikachu', megaEnergy: 5 }]), 0);
+})();
+
+// ---------------------------------------------------------------------------
+// Mega shortlist, worth-evolving ranking and row tag
+// ---------------------------------------------------------------------------
+(() => {
+  const roster = [];
+  const state = { megaEnergyInventory: { beedrill: { name: 'Beedrill', amount: 300, status: { '': { level: 0 } } } }, megaEvolvedHistory: {} };
+  const ctx = { mechanics: m, state, effectiveRosterForMatch: () => roster, needsAppraisal: () => false, ivsOf: p => p.ivs, isShadow: () => false,
+    raidProfile: () => ({ now: { rating: 1000, fast: 'bug bite', charged: 'x scissor' } }),
+    lookupMove: n => ({ ...m.AUTHORITATIVE_MOVES[n] }) };
+  ['megaEvolveInfoFor(key)', 'megaTagFor(p)', 'megaWorth(limit)', 'megaReadyPicks(n, cp)'].forEach(sig => {
+    const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
+    ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
+  });
+  roster.push({ idx: 1, name: 'Beedrill', ivs: [10, 15, 15] }, { idx: 2, name: 'Sableye', ivs: [2, 15, 15] }, { idx: 3, name: 'Pikachu', ivs: [15, 15, 15] });
+  check('a Mega-capable species is tagged', ctx.megaTagFor(roster[0]), 'M\u2713');
+  check('a species with no Mega has no tag', ctx.megaTagFor(roster[2]), '');
+  const w = ctx.megaWorth(5);
+  check('Mega worth-evolving rows are for Mega-capable species only', w.length >= 1 && w.every(r => ['beedrill', 'sableye'].indexOf(r.key) >= 0), true);
+  const bd = w.find(r => r.key === 'beedrill');
+  check('Mega Beedrill is stronger than the current Beedrill', bd && bd.rating > 0 && bd.cost === 100, true);
+  const picks = ctx.megaReadyPicks(5, 1500);
+  check('Mega Great League shortlist lists Sableye with its Mega-form rank', picks.some(x => /^Sableye .*IV rank \d+% as Mega, fits at L/.test(x)), true);
+  check('a species whose Mega cannot fit the cap is left out', picks.every(x => !/^Beedrill/.test(x)), true);
 })();
 
 // ---------------------------------------------------------------------------

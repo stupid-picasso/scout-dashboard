@@ -33,6 +33,7 @@ const check = (name, ok, extra) => {
   await page.goto(PAGE, { waitUntil: 'load' });
   await page.waitForTimeout(3000);
   const version = await page.evaluate(() => (document.body.innerText.match(/v53\.\d+/) || [])[0]);
+  check('the bundle ships current mechanics (Mega rules, cup tables)', await page.evaluate(() => { const m = window.PokemonMechanics; return !!(m && m.megaFormsFor && m.PVP_CUP_TABLES && m.pvpTableFor('cup:mega@1500')); }));
   check('app boots and shows a version', !!version, String(version));
 
   await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
@@ -137,6 +138,7 @@ const check = (name, ok, extra) => {
   await page.getByPlaceholder('Featured species, comma separated').fill('Azumarill, Caterpie');
   await page.getByText('ADD EVENT', { exact: true }).click();
   await page.waitForTimeout(600);
+  check('Megas-worth-evolving card lists Mega-capable Pokemon', (await page.getByText('MEGAS WORTH EVOLVING', { exact: true }).count()) >= 1);
   check('GBL card shows the cup rotation and rules', (await page.getByText('GO BATTLE LEAGUE', { exact: true }).count()) >= 1 && (await page.getByText('Mega Edition').count()) >= 1);
   check('feed events show details and a verdict', (await page.getByText('Smoke Community Day').count()) >= 1 && (await page.getByText('3x Catch XP').count()) >= 1);
   check('event planner lists the event and judges each species', (await page.getByText('Smoke Day').count()) >= 1 && (await page.getByText('HUNT').count()) >= 1);

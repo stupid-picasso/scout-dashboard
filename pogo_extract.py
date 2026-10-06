@@ -577,6 +577,56 @@ def extract_moves(text):
     return found_moves
 
 
+def detect_mega_dots(path):
+    """Mega Level dots under each MEGA EVOLVE button, measured from pixels.
+
+    The dots are small round icons in an evenly spaced row: grey when the level
+    is not reached, coloured (saturated) when it is. Text OCR cannot see them, so
+    the model is told these measurements instead of reading them itself.
+    Returns [{"filled": n, "total": m}, ...] top to bottom, [] when none.
+    A dot hidden behind an on-screen button is simply not counted in `total`.
+    """
+    try:
+        import cv2
+    except ImportError:
+        return []  # optional dependency: without it the model reads the dots itself
+    img = cv2.imread(path)
+    if img is None:
+        return []
+    h, w = img.shape[:2]
+    g = cv2.medianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 5)
+    circles = cv2.HoughCircles(g, cv2.HOUGH_GRADIENT, dp=1.2, minDist=int(0.045 * w),
+                               param1=100, param2=28, minRadius=int(0.018 * w), maxRadius=int(0.033 * w))
+    if circles is None:
+        return []
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    pts = [(int(x), int(y), int(r)) for x, y, r in circles[0] if y > h * 0.35]
+    rows = []
+    for x, y, r in sorted(pts, key=lambda c: c[1]):
+        for row in rows:
+            if abs(row[0][1] - y) <= 0.004 * h and abs(row[0][2] - r) <= 3:
+                row.append((x, y, r))
+                break
+        else:
+            rows.append([(x, y, r)])
+    out = []
+    for row in rows:
+        row.sort()
+        if len(row) < 3:
+            continue
+        gaps = [b[0] - a[0] for a, b in zip(row, row[1:])]
+        med = sorted(gaps)[len(gaps) // 2]
+        if med < 1.6 * row[0][2] or any(abs(g_ - med) > 0.2 * med for g_ in gaps):
+            continue  # not an evenly spaced row of icons
+        filled = 0
+        for x, y, r in row:
+            ring = hsv[max(0, y - r + 4):y + r - 4, max(0, x - r + 4):x + r - 4]
+            if ring.size and float(ring[..., 1].mean()) > 40:
+                filled += 1
+        out.append({"filled": filled, "total": len(row), "y": row[0][1]})
+    return out
+
+
 def parse_pokemon_text(text):
     """Parse OCR text into structured record."""
     rec = {}
@@ -2049,15 +2099,19 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     encoded = [image_to_base64_jpeg(p) for p in frame_paths]
 
     batches = []
-    current, current_size = [], 0
-    for data in encoded:
+    batch_paths = []
+    current, current_size, current_paths = [], 0, []
+    for data, fpath in zip(encoded, frame_paths):
         if current and (current_size + len(data) > BATCH_CHAR_BUDGET or len(current) >= MAX_FRAMES_PER_BATCH):
             batches.append(current)
-            current, current_size = [], 0
+            batch_paths.append(current_paths)
+            current, current_size, current_paths = [], 0, []
         current.append(data)
+        current_paths.append(fpath)
         current_size += len(data)
     if current:
         batches.append(current)
+        batch_paths.append(current_paths)
     print(f"[Gemini] {len(batches)} batch(es) of up to {MAX_FRAMES_PER_BATCH} frames each")
 
     model_idx = 0
@@ -2082,6 +2136,21 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
 
     for b_i, batch in enumerate(batches):
         note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
+        # Mega Level dots are drawn icons the model reads poorly; measure them
+        # from pixels and hand the numbers over, per frame of this batch.
+        hints = []
+        if prompt is VIDEO_IMPORT_PROMPT:
+            for k, fp in enumerate(batch_paths[b_i], 1):
+                try:
+                    rows = detect_mega_dots(fp)
+                except Exception:
+                    rows = []
+                if rows:
+                    hints.append(f"frame {k}: " + ", ".join(f"{r['filled']} of {r['total']} dots filled" for r in rows))
+        if hints:
+            note += (" MEASURED Mega Level dots (software, top row first; use these for dotsFilled of the matching "
+                     "MEGA EVOLVE button, in the same top-to-bottom order, instead of your own reading): "
+                     + "; ".join(hints) + ".")
         attempts = 0
         no_capacity_streak = 0
         max_attempts = len(GEMINI_MODELS) * len(keys) * 2 + 4

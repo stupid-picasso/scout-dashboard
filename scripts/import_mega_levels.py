@@ -44,6 +44,9 @@ def main():
     days = lambda s: round(int(s["cooldown"]["durationMs"]) / 86400000, 4)
     out = {
         "evolveHours": int(evo["evolutionLengthMs"]) / 3600000,
+        # MEGA_EVO_SETTINGS.numMegaLevels: the number of Mega Level dots the game draws
+        # for every species (Super Max is a dot too, even where it is not unlocked yet).
+        "dots": evo["numMegaLevels"],
         "generic": {
             "cost": [gen[l]["cooldown"]["bypassCostInitial"] for l in range(4)],
             "restDays": [days(gen[l]) for l in range(4)],
@@ -64,6 +67,24 @@ def main():
             unlock = lv[4].get("megaEnergyCostToUnlock", unlock)
         out["species"][sp] = ent
     out["superMaxUnlock"] = unlock
+    # Mega forms: base stats and types, for raid / PvP ratings of the Mega Evolved Pokemon.
+    # tempEvoId TEMP_EVOLUTION_MEGA[_X|_Y]; Primal Reversion is a different mechanic (no energy).
+    forms = {}
+    for x in gm:
+        ps = x.get("data", {}).get("pokemonSettings")
+        if not ps or not re.match(r"V\d+_POKEMON_", x["templateId"]) or not ps.get("tempEvoOverrides"):
+            continue
+        sp = ps["pokemonId"].lower()
+        for t in ps["tempEvoOverrides"]:
+            m = re.fullmatch(r"TEMP_EVOLUTION_MEGA(?:_([XY]))?", t.get("tempEvoId", ""))
+            st = t.get("stats") or {}
+            if not m or not st:
+                continue
+            types = [t[k].replace("POKEMON_TYPE_", "").title() for k in ("typeOverride1", "typeOverride2") if t.get(k)]
+            if any(f["form"] == (m.group(1) or "").lower() for f in forms.get(sp, [])):
+                continue  # the same Mega appears on several templates (e.g. form variants)
+            forms.setdefault(sp, []).append({"form": (m.group(1) or "").lower(), "base": [st["baseAttack"], st["baseDefense"], st["baseStamina"]], "types": types})
+    out["forms"] = forms
     block = ("// GENERATED BLOCK: MEGA_LEVEL_DATA (import_mega_levels.py) — do not hand-edit\n"
              "const MEGA_LEVEL_DATA = " + json.dumps(out, separators=(",", ":")) + ";\n"
              "// END GENERATED BLOCK: MEGA_LEVEL_DATA")

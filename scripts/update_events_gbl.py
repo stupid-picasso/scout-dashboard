@@ -126,7 +126,11 @@ def find_cup(name, cp, cups):
         if any(w not in need and not w.isdigit() for w in rest):
             continue  # the name carries a keyword this template does not know (e.g. LAIC)
         score = (len(need), key.endswith('_PREMIER') is False, key)  # more specific, newest suffix (S22 > S8 by sort below)
-        if best is None or (len(need), natural(key)) > (len(best[1]['kw']), natural(best[0])):
+        # Same specificity: prefer the template with the newest Catch Cup window, then the
+        # highest suffix. (Seasons reuse one template name with a new window each time.)
+        def rank(k, rr):
+            return (len([w for w in rr['kw'] if w != 'mega']), (rr['caught'] or [0, 0])[1], natural(k))
+        if best is None or rank(key, r) > rank(best[0], best[1]):
             best = (key, r)
     return best
 
@@ -169,6 +173,32 @@ def cup_from_text(rules, classes):
                 mm = re.match(r'(.+?)\s*\((.+)\)$', n)
                 r['ban'].append(sp_key(mm.group(1)) + ':' + sp_key(mm.group(2)) if mm else sp_key(n))
     return r
+
+
+def pvpoke_table(name, cp, mega):
+    """Which PvPoke ranking file describes this league (stored by import_pvp_tier_data.py
+    as PVP_CUP_TABLES["id@cp"]). Empty when PvPoke has none: the app then falls back to
+    the open-league scores filtered by the cup's rules."""
+    words = set(kw(name)) - {'mega', 'edition', 'cup'}
+    cpk = 10000 if cp >= 10000 else cp
+    if mega and not words:
+        return 'mega@%d' % cpk
+    table = None
+    if 'color' in words and mega:
+        table = 'colormega@1500'
+    elif 'laic' in words:
+        table = 'laic2027@1500'
+    elif 'willpower' in words:
+        table = 'willpower@1500'
+    elif 'catch' in words and cp == 1500:
+        table = 'catch@1500'
+    elif 'fantasy' in words and cp == 2500:
+        table = 'fantasy@2500'
+    elif 'retro' in words:
+        table = 'retro@1500'
+    elif 'premier' in words and cp >= 10000:
+        table = 'premier@10000'
+    return table
 
 
 def norm_event(e):
@@ -230,6 +260,9 @@ def main():
                     ft = next((f for f in formats if f.get('rules') and any(w in f.get('title', '').lower() for w in kw(nm) if len(w) > 3 and w not in ('mega', 'edition'))), None)
                     if ft and cups:
                         lg['cup'] = {k: v for k, v in cup_from_text(ft['rules'], classes).items() if v}
+                lg['pvpoke'] = pvpoke_table(nm, cp, lg['mega'])
+                if not lg['pvpoke']:
+                    del lg['pvpoke']
                 leagues.append(lg)
             season = e['name'].split('|')[-1].strip() if '|' in e['name'] else ''
             gbl.append({'start': e['start'], 'end': e['end'], 'season': season, 'leagues': leagues, 'link': e.get('link', '')})

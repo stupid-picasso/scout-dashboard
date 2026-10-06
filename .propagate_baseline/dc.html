@@ -134,7 +134,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.132</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.134</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -284,10 +284,32 @@
         </div>
       </sc-if>
     </div>
+    <sc-if value="{{ hasMegaWorth }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
+        <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:3px">MEGAS WORTH EVOLVING</div>
+        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px">Your Mega-capable Pokemon by raid strength as the Mega form (its Mega stats and typing, your own moves, level 50). Same-type teammates also get the Mega attack boost in raids.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ megaWorthRows }}" as="mw" hint-placeholder-count="4">
+            <div onClick="{{ mw.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:{{ mw.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken)">{{ mw.initial }}</span>
+                <img ref="{{ mw.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font:600 13px var(--font-body)">{{ mw.displayName }}</div>
+                <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px">{{ mw.line }}</div>
+                <div style="font:10.5px var(--font-display);color:var(--ink-400)">{{ mw.costLine }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
     <sc-if value="{{ hasGbl }}" hint-placeholder-val="{{ false }}">
       <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
         <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:3px">GO BATTLE LEAGUE</div>
-        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px">{{ feedStamp }}</div>
+        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:2px">{{ feedStamp }}</div>
+        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px">{{ feedVerify }}</div>
         <sc-for list="{{ gblWeekRows }}" as="wk" hint-placeholder-count="2">
           <div style="background:var(--surface-sunken);border-radius:10px;padding:12px;margin-bottom:10px">
             <div style="font:800 11px var(--font-display);letter-spacing:.06em;color:var(--ink-500)">{{ wk.title }} <span style="color:var(--ink-400)">{{ wk.season }}</span></div>
@@ -2782,6 +2804,7 @@ class Component extends DCLogic {
     savedTeams: [],
     eventDraft: { title: '', date: '', species: '' },
     feed: null,
+    feedCheck: null,
     snapshots: [],
     snapshotBusy: false,
     snapshotError: '',
@@ -4398,16 +4421,17 @@ class Component extends DCLogic {
   //  - moves: whether it knows PvPoke's recommended fast + charged moves
   // tierRank: S 0, A 1, B 2, C 3; 4 = PvPoke does not rank it in this league;
   // 2.5 = no tier data exists for the league. Little/Master carry only PvPoke's top 80.
-  pvpAssess(p, leagueKey) {
+  pvpAssess(p, leagueKey, tableKey) {
     const m = this.mechanics;
+    const tk = tableKey || leagueKey;
     const lg = p[leagueKey];
     if (!m || !lg || !Number.isFinite(lg.rankPct) || !this.leagueUsable(p, leagueKey)) return null;
     const shadow = this.isShadow(p);
     const hasTierData = leagueKey === 'great' || leagueKey === 'ultra' || leagueKey === 'little' || leagueKey === 'master';
-    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(p.name, shadow, leagueKey) : null;
+    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(p.name, shadow, tk) : null;
     const order = { S: 0, A: 1, B: 2, C: 3 };
     const tierRank = !hasTierData ? 2.5 : (tier ? order[tier.tier] : 4);
-    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(p.name, shadow, leagueKey) : null;
+    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(p.name, shadow, tk) : null;
     const have = new Set([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.moveKey(n).replace(/\+$/, '')));
     const wanted = ms ? [ms.fast, ...ms.charged] : [];
     const missing = wanted.filter(n => !have.has(n));
@@ -4435,16 +4459,16 @@ class Component extends DCLogic {
   // Candidates are measured IVs, tier S/A/B, 90%+ IV rank, one per species.
   // It only sees the top-5 lists, so it is a strong filter, not a full
   // simulation of every meta matchup.
-  pvpTeamFor(leagueKey, eligible) {
+  pvpTeamFor(leagueKey, eligible, tableKey) {
     const m = this.mechanics;
     if (!m || !m.pvpMatchupsFor || ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) < 0) return null;
     const pool = [];
     this.effectiveRosterForMatch().forEach(p => {
       if (this.needsAppraisal(p)) return;
       if (eligible && !eligible(p)) return;
-      const a = this.pvpAssess(p, leagueKey);
+      const a = this.pvpAssess(p, leagueKey, tableKey);
       if (!a || a.tierRank > 2 || a.rank < 90) return;
-      const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), leagueKey);
+      const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey);
       if (!mu) return;
       pool.push({ p, a, mu, id: String(p.name).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
     });
@@ -5308,7 +5332,7 @@ class Component extends DCLogic {
         cost,
         costNote,
         level, restDays,
-        total: Number.isFinite(st.total) ? st.total : (rules ? rules.levels : null),
+        total: Number.isFinite(st.total) ? st.total : (rules ? rules.dots : null),
         typedCost: Number.isFinite(st.cost) ? st.cost : null,
         ready,
         short: haveNum == null ? null : Math.max(0, cost - haveNum),
@@ -5377,6 +5401,49 @@ class Component extends DCLogic {
     })) };
   }
 
+  // Row marker: M = this species can Mega Evolve, M\u2713 = you have the energy for it now.
+  megaTagFor(p) {
+    const info = this.megaEvolveInfoFor(String(p.name || '').toLowerCase());
+    if (!info || !info.length) return '';
+    return info.some(f => f.evolve) ? 'M\u2713' : 'M';
+  }
+
+  // Mega-capable species you own, ranked by how strong the Mega form is as a raid
+  // attacker, using your own best Pokemon's real moves, its Mega base stats and
+  // Mega typing (game master). Energy is the cost to do it now. Level 50, no
+  // weather; same DPS x (HP x DEF)^0.4 rating as the raid tab.
+  megaWorth(limit) {
+    const m = this.mechanics;
+    if (!m || !m.megaFormsFor || !m.raidRating) return [];
+    const bySpecies = new Map();
+    this.effectiveRosterForMatch().forEach(p => {
+      const forms = m.megaFormsFor(p.name);
+      if (!forms.length || this.needsAppraisal(p)) return;
+      const prof = this.raidProfile(p);
+      if (!prof || !prof.now) return;
+      const cur = bySpecies.get(String(p.name).toLowerCase());
+      if (!cur || prof.now.rating > cur.prof.now.rating) bySpecies.set(String(p.name).toLowerCase(), { p, prof });
+    });
+    const rows = [];
+    bySpecies.forEach(({ p, prof }, key) => {
+      const ivs = this.ivsOf(p);
+      const f = this.lookupMove(prof.now.fast), c = this.lookupMove(prof.now.charged);
+      const info = this.megaEvolveInfoFor(key) || [];
+      m.megaFormsFor(p.name).forEach(form => {
+        const r = ivs && f && c ? m.raidRating(form.base, ivs, 50, f, c, { ownTypes: form.types, isShadow: this.isShadow(p) }) : null;
+        if (!r) return;
+        const e = info.find(x => (x.form || '') === form.form) || {};
+        rows.push({
+          p, key, rating: r.rating, now: prof.now.rating, form,
+          gain: r.rating / prof.now.rating - 1, cost: e.cost, have: e.have, ready: !!e.evolve, short: e.short,
+          buff: form.types.join('/')
+        });
+      });
+    });
+    rows.sort((a, b) => b.rating - a.rating);
+    return rows.slice(0, limit || 8);
+  }
+
   // "4 DAYS" / "5 HOURS" / "30 MIN" as printed next to the Mega badge.
   parseRestDays(text) {
     const m = /(\d+(?:\.\d+)?)\s*(day|hour|hr|min)/i.exec(String(text || ''));
@@ -5422,7 +5489,7 @@ class Component extends DCLogic {
         const level = num(r.level != null ? r.level : r.dotsFilled), total = num(r.total != null ? r.total : r.dotsTotal), cost = num(r.cost);
         const rest = this.parseRestDays(r.rest);
         if (level != null) { st.level = level; delete st.cost; }
-        if (total != null) st.total = total;
+        if (total != null) st.total = Math.max(total, (m.megaLevelsFor ? m.megaLevelsFor(key).dots : 0) || 0);  // dots behind an on-screen button are not counted
         if (rest != null) st.restEndsAt = Date.now() + rest * 86400000;
         else if (level === 0) st.restEndsAt = null;
         // The button cost goes stale as the rest runs down; keep it only when the
@@ -10359,6 +10426,25 @@ class Component extends DCLogic {
         .catch(() => attempt(i + 1));
     };
     attempt(0);
+    // Optional cross-check against the official season page (written by the workflow).
+    fetch('data/feed_check.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(c => { if (c && c.status) this.setState({ feedCheck: c }); })
+      .catch(() => {});
+  }
+
+  // One line for the GBL card: what the official-page cross-check found.
+  feedVerifyLine() {
+    const c = this.state.feedCheck;
+    if (!c) return 'Not cross-checked against pokemongo.com.';
+    const when = c.checkedAt ? new Date(c.checkedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+    if (c.status === 'ok') return '\u2713 Cups match the official pokemongo.com season page (checked ' + when + ').';
+    if (c.status === 'mismatch') {
+      return '\u26a0 Differs from pokemongo.com (checked ' + when + ')'
+        + (c.onlyOnOfficialPage && c.onlyOnOfficialPage.length ? ' \u2014 official page also names: ' + c.onlyOnOfficialPage.join(', ') : '')
+        + (c.notOnOfficialPage && c.notOnOfficialPage.length ? ' \u2014 not on the official page: ' + c.notOnOfficialPage.join(', ') : '') + '.';
+    }
+    return 'Official page could not be read (' + c.status + ', checked ' + when + ').';
   }
 
   // Strongest species for a league CP cap, from the imported PvPoke rankings.
@@ -10381,24 +10467,42 @@ class Component extends DCLogic {
     return true;
   }
 
-  // The same check for one of the user's Pokemon.
+  // The same check for one of the user's Pokemon: species/types, the level cap of
+  // Classic cups, and the Catch Cup's catch-date window. A Pokemon with no catch date
+  // is let through (see cupUnknown) rather than silently dropped.
   cupAllows(cup, p) {
     if (!cup) return true;
     const types = String(this.typeOf(p) || '').split('/').map(x => x.trim()).filter(Boolean);
-    return this.cupAllowsSpecies(cup, p.name, p.form, types);
+    if (!this.cupAllowsSpecies(cup, p.name, p.form, types)) return false;
+    const maxLv = cup.level && cup.level.maxLevel;
+    const lv = Number.isFinite(p.lvlMax) ? p.lvlMax : (Number.isFinite(p.lvlMin) ? p.lvlMin : null);
+    if (maxLv && lv != null && lv > maxLv) return false;
+    if (cup.caught) {
+      const t = p.catchDate ? Date.parse(p.catchDate) : NaN;
+      if (Number.isFinite(t) && (t < cup.caught[0] || t > cup.caught[1])) return false;
+    }
+    return true;
+  }
+
+  // What a cup's rules need that this Pokemon's record cannot answer.
+  cupUnknown(cup, p) {
+    const out = [];
+    if (cup && cup.caught && !Number.isFinite(p.catchDate ? Date.parse(p.catchDate) : NaN)) out.push('catch date');
+    if (cup && cup.level && cup.level.maxLevel && !Number.isFinite(p.lvlMax) && !Number.isFinite(p.lvlMin)) out.push('level');
+    return out;
   }
 
   // Strongest species for a league CP cap from the imported PvPoke rankings,
   // optionally filtered by a cup's rules. Only open Little/Great/Ultra/Master
   // tables exist; `mega` selects PvPoke's Mega Master table instead.
-  leagueTopSpecies(cp, n, cup, mega) {
+  leagueTopSpecies(cp, n, cup, mega, tableKey) {
     const m = this.mechanics;
-    const lk = mega && cp >= 10000 ? 'mega' : (cp === 1500 ? 'great' : cp === 2500 ? 'ultra' : cp === 500 ? 'little' : cp >= 10000 ? 'master' : null);
+    const lk = tableKey || (mega && cp >= 10000 ? 'mega' : (cp === 1500 ? 'great' : cp === 2500 ? 'ultra' : cp === 500 ? 'little' : cp >= 10000 ? 'master' : null));
     const table = lk && m && m.pvpTableFor ? m.pvpTableFor(lk) : null;
     if (!table) return null;
     const tidy = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const ok = id => {
-      if (!cup) return true;
+      if (!cup || tableKey) return true;  // a cup ranking is already cup-specific
       const info = m.speciesInfo ? m.speciesInfo(id, '') : null;
       const types = info ? info.types : [];
       const parts = id.replace(/_shadow$/, '').split('_');
@@ -10412,23 +10516,43 @@ class Component extends DCLogic {
     }));
   }
 
-  // Owned species that appear in PvPoke's Mega Master ranking, with their
-  // Mega Energy status. Mega Evolved CP/stats are not modelled, so this is a
-  // shortlist, not a ranking of your own Pokemon.
-  megaReadyPicks(n) {
+  // Owned species whose Mega Evolved form is in PvPoke's Mega ranking for this CP
+  // cap. The Mega form is judged on its own game-master base stats: stat-product
+  // rank of your IVs under the cap, the level it fits at, PvPoke's tier/score, and
+  // your Mega Energy. Returns display strings, best score first.
+  megaReadyPicks(n, cp) {
     const m = this.mechanics;
-    const table = m && m.pvpTableFor ? m.pvpTableFor('mega') : null;
-    if (!table) return [];
-    const owned = new Set(this.effectiveRosterForMatch().map(p => String(p.name || '').toLowerCase()));
-    const out = [], seen = new Set();
+    const ck = cp >= 10000 || !cp ? 10000 : cp;
+    const table = m && m.pvpTableFor ? (m.pvpTableFor('cup:mega@' + ck) || (ck === 10000 ? m.pvpTableFor('mega') : null)) : null;
+    if (!table || !m.megaFormsFor) return [];
+    const leagueKey = ck === 1500 ? 'great' : ck === 2500 ? 'ultra' : ck === 500 ? 'little' : 'master';
+    const byName = new Map();
+    this.effectiveRosterForMatch().forEach(p => {
+      const k = String(p.name || '').toLowerCase();
+      const cur = byName.get(k) || [];
+      cur.push(p); byName.set(k, cur);
+    });
+    const out = [];
     Object.keys(table).sort((a, b) => table[b].score - table[a].score).forEach(id => {
-      const base = id.replace(/_(mega|primal)(_[xy])?$/, '');
-      if (id === base || seen.has(base) || !owned.has(base)) return;
-      seen.add(base);
-      const info = this.megaEvolveInfoFor(base);
-      if (!info) return;
-      const f = info.find(r => id.endsWith('_' + r.form)) || info[0];
-      out.push(base.replace(/\b\w/g, c => c.toUpperCase()) + (f.form ? ' ' + f.form.toUpperCase() : '') + ' \u2014 ' + (f.have == null ? 'energy not logged' : f.have + '/' + f.cost + ' energy' + (f.ready ? ' (ready)' : '')));
+      const mm = /^(.*)_mega(?:_([xy]))?$/.exec(id);
+      if (!mm || !byName.has(mm[1])) return;
+      const form = m.megaFormsFor(mm[1]).find(f => f.form === (mm[2] || ''));
+      if (!form) return;
+      let best = null;
+      byName.get(mm[1]).forEach(p => {
+        const ivs = this.needsAppraisal(p) ? null : this.ivsOf(p);
+        if (!ivs) { if (!best) best = { p, rank: null, level: null }; return; }
+        const lvl = m.maxLevelUnderCap(form.base, ivs, m.LEAGUE_CAPS[leagueKey]);
+        if (lvl == null) return;  // even level 1 would exceed the cap as a Mega
+        const rank = m.rankPctForLeague(form.base, ivs, leagueKey, this.isShadow(p));
+        if (!best || (rank != null && (best.rank == null || rank > best.rank))) best = { p, rank, level: lvl };
+      });
+      if (!best) return;
+      const info = (this.megaEvolveInfoFor(mm[1]) || []).find(r => (r.form || '') === form.form);
+      out.push(mm[1].replace(/\b\w/g, c => c.toUpperCase()) + (form.form ? ' ' + form.form.toUpperCase() : '')
+        + ' \u2014 ' + table[id].tier + ' ' + table[id].score.toFixed(0)
+        + (best.rank != null ? ' \u00b7 IV rank ' + best.rank.toFixed(0) + '% as Mega, fits at L' + best.level : ' \u00b7 IVs not measured')
+        + (info ? ' \u00b7 ' + (info.have == null ? 'energy not logged' : info.have + '/' + info.cost + ' energy' + (info.evolve ? ' (ready)' : '')) : ''));
     });
     return out.slice(0, n || 5);
   }
@@ -10448,25 +10572,29 @@ class Component extends DCLogic {
       leagues: w.leagues.map(l => {
         const league = l.cp === 1500 ? 'great' : (l.cp === 2500 ? 'ultra' : (l.cp === 500 ? 'little' : (l.cp >= 10000 ? 'master' : null)));
         const cup = l.cup && (l.cup.types || l.cup.banTypes || l.cup.allow || l.cup.ban) ? l.cup : null;
-        const top = this.leagueTopSpecies(l.cp, 5, cup, l.mega);
+        const mm = this.mechanics;
+        const tableKey = l.pvpoke && mm && mm.pvpTableFor && mm.pvpTableFor('cup:' + l.pvpoke) ? 'cup:' + l.pvpoke : null;
+        const top = this.leagueTopSpecies(l.cp, 5, cup, l.mega, tableKey);
         let squad = null;
-        const canSquad = league && !(l.mega && league === 'master');
+        const canSquad = !!league;
         if (wi === 0 && canSquad) {
           const ck = league + '|' + l.name;
-          if (!(ck in squads)) squads[ck] = this.pvpTeamFor(league, cup ? p => this.cupAllows(cup, p) : null);
+          if (!(ck in squads)) squads[ck] = this.pvpTeamFor(league, cup ? p => this.cupAllows(cup, p) : null, tableKey);
           squad = squads[ck];
         }
         const notes = [];
-        if (l.mega) notes.push('Mega Evolved forms are not modelled; picks use normal forms' + (l.cp >= 10000 ? ' (list shows PvPoke\u2019s Mega Master ranking)' : '') + '.');
-        if (cup) notes.push('Ranked on open-league scores, filtered by this cup\u2019s rules (' + (cup.src || 'feed') + ') \u2014 an estimate.');
+        if (tableKey) notes.push('Ranked with PvPoke\u2019s ' + l.pvpoke.split('@')[0] + ' rankings for this format.');
+        else if (cup) notes.push('No PvPoke ranking for this cup: open-league scores filtered by its rules (' + (cup.src || 'feed') + ') \u2014 an estimate.');
+        if (l.mega) notes.push('Mega-ready picks are judged on the Mega form\u2019s own base stats (game master); the squad line uses normal forms.');
         if (l.cup && l.cup.caughtWindowUnknown) notes.push('Catch Cup: only Pokemon caught in this season\u2019s window are legal \u2014 not checked here.');
-        if (l.cup && l.cup.level) notes.push('Level limits apply \u2014 not checked here.');
-        const picks = l.mega ? this.megaReadyPicks(4) : [];
+        if (l.cup && l.cup.caught) notes.push('Catch Cup: only Pokemon caught in the window are legal \u2014 checked against your catch dates.');
+        if (l.cup && l.cup.level && l.cup.level.maxLevel) notes.push('Level cap ' + l.cup.level.maxLevel + ' applies \u2014 checked against your levels.');
+        const picks = l.mega ? this.megaReadyPicks(4, l.cp) : [];
         return {
           name: l.name, cap: l.cp >= 10000 ? 'No CP cap' : '\u2264' + l.cp + ' CP',
           rules: (l.rules || []).join(' '),
           top: top || [], hasTop: !!(top && top.length),
-          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') : (wi === 0 && canSquad ? 'Squad: not enough measured, in-cap, legal Pokemon of A tier or better yet.' : ''),
+          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ' for: ' + squad.members.filter(c => this.cupUnknown(cup, c.p).length).map(c => c.p.name).join(', ') + ')' : '') : (wi === 0 && canSquad ? 'Squad: not enough measured, in-cap, legal Pokemon of A tier or better yet.' : ''),
           megaLine: picks.length ? 'Mega-ready from your roster: ' + picks.join('; ') : '',
           note: notes.join(' ')
         };
@@ -11500,7 +11628,7 @@ class Component extends DCLogic {
     const pagedFiltered = filtered.slice(0, visibleCount);
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
-      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : ''].filter(Boolean).join(' ');
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p)].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
@@ -12032,7 +12160,7 @@ class Component extends DCLogic {
     let detail = null;
     if (detailPoke) {
       const p = detailPoke;
-      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨ Shiny (unconfirmed)' : '✨ Shiny') : ''].filter(Boolean).join('  ');
+      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨ Shiny (unconfirmed)' : '✨ Shiny') : '', this.megaTagFor(p) ? (this.megaTagFor(p) === 'M\u2713' ? 'Mega ready' : 'Can Mega Evolve') : ''].filter(Boolean).join('  ');
       const statRings = [
         { label: 'ATK', value: Number.isFinite(p.atkIV) ? p.atkIV : '—', color: 'var(--type-fighting)', ...this.ringGeom((Number.isFinite(p.atkIV) ? p.atkIV : 0) / 15 * 100, 27) },
         { label: 'DEF', value: Number.isFinite(p.defIV) ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((Number.isFinite(p.defIV) ? p.defIV : 0) / 15 * 100, 27) },
@@ -13424,10 +13552,21 @@ class Component extends DCLogic {
           onClick: () => this.toggleRaidType(t)
         };
       }),
+      megaWorthRows: this.megaWorth(8).map(r => ({
+        displayName: r.p.name + (r.form.form ? ' ' + r.form.form.toUpperCase() : ''),
+        spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form),
+        badgeColor: this.dsTypeColor(r.p),
+        initial: (r.p.name || '?').charAt(0),
+        line: 'Mega raid rating ' + Math.round(r.rating) + ' vs ' + Math.round(r.now) + ' now (+' + Math.round(r.gain * 100) + '%) \u00b7 ' + r.buff,
+        costLine: (r.cost === 0 ? 'free (rested)' : r.cost + ' energy') + (r.have != null ? ' \u00b7 you have ' + r.have : ' \u00b7 energy not logged') + (r.ready ? ' \u00b7 READY' : (r.short ? ' \u00b7 ' + r.short + ' short' : '')),
+        onClick: () => this.openDetail(r.p)
+      })),
+      hasMegaWorth: this.megaWorth(8).length > 0,
       gblWeekRows: this.gblWeeks(),
       hasGbl: this.gblWeeks().length > 0,
       feedEventRows: this.feedEvents(),
       hasFeedEvents: this.feedEvents().length > 0,
+      feedVerify: this.feedVerifyLine(),
       feedStamp: this.validFeed(this.state.feed) ? 'Community data (not official) \u00b7 refreshed ' + new Date(this.state.feed.fetchedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Feed not loaded yet.',
       eventRows: (this.state.events || []).map(e => ({
         id: e.id, title: e.title, date: e.date,

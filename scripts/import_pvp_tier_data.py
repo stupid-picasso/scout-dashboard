@@ -61,6 +61,15 @@ EXTRA = [
     ("MEGA", _B + "mega/overall/rankings-10000.json"),
 ]
 EXTRA_TOP = 80
+# Cup / Mega ranking files PvPoke publishes (id, CP cap). Stored as PVP_CUP_TABLES["id@cp"]
+# and used by the GBL card for the matching weekly cup. Smaller than the open tables.
+CUP_FILES = [
+    ("mega", 1500), ("mega", 2500), ("mega", 10000),
+    ("colormega", 1500), ("laic2027", 1500), ("willpower", 1500), ("catch", 1500),
+    ("fantasy", 2500), ("retro", 1500),
+    ("premier", 10000),
+]
+CUP_TOP = 40
 
 
 def fetch(url):
@@ -130,6 +139,18 @@ def main():
         keep = sorted(extra[key], key=lambda k: -best(extra[key][k]))[:EXTRA_TOP]
         extra[key] = {k: extra[key][k] for k in keep}
         print(f"{key}: {len(extra[key])} species")
+    cups = {}
+    for cid, cp in CUP_FILES:
+        try:
+            rows = sorted((r for r in fetch(_B + f"{cid}/overall/rankings-{cp}.json") if r.get("score") is not None), key=lambda r: -r["score"])
+        except Exception as ex:
+            print(f"cup {cid}@{cp} unavailable ({ex}); skipped")
+            continue
+        t = build_table(rows[:CUP_TOP * 2])
+        best = lambda e: max(e.get("score", 0), e.get("shadowScore", 0))
+        keep = sorted(t, key=lambda k: -best(t[k]))[:CUP_TOP]
+        cups[f"{cid}@{cp}"] = {k: t[k] for k in keep}
+    print(f"Cup tables: {sorted(cups)}")
     print(f"Great League: {len(great)} species")
     print(f"Ultra League: {len(ultra)} species")
 
@@ -143,7 +164,8 @@ def main():
         "// GENERATED BLOCK: PVP_TIER (import_pvp_tier_data.py) — do not hand-edit\n"
         "const PVP_TIER_GREAT = " + json.dumps(great, separators=(",", ":")) + ";\n"
         "const PVP_TIER_ULTRA = " + json.dumps(ultra, separators=(",", ":")) + ";\n"
-        + "".join("const PVP_TIER_%s = %s;\n" % (k, json.dumps(v, separators=(",", ":"))) for k, v in extra.items()) +
+        + "".join("const PVP_TIER_%s = %s;\n" % (k, json.dumps(v, separators=(",", ":"))) for k, v in extra.items())
+        + "const PVP_CUP_TABLES = " + json.dumps(cups, separators=(",", ":")) + ";\n" +
         "// END GENERATED BLOCK: PVP_TIER"
     )
 
