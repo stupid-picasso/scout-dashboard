@@ -134,7 +134,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.118</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.120</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1809,6 +1809,20 @@
         </div>
         </div>
         <div class="om-rise" style="--i:8">
+        <sc-if value="{{ detail.breakpoints }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:16px;padding:16px;margin-bottom:14px">
+            <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:10px">{{ detail.breakpoints.title }}</div>
+            <sc-for list="{{ detail.breakpoints.lines }}" as="bl" hint-placeholder-count="2">
+              <div style="margin-bottom:10px">
+                <div style="font:700 10px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:3px">{{ bl.label }}</div>
+                <div style="font:12px/1.5 var(--font-body);color:var(--ink-700);text-wrap:pretty">{{ bl.text }}</div>
+              </div>
+            </sc-for>
+            <div style="font:10.5px var(--font-body);color:var(--ink-400)">Fast-move damage against PvPoke&rsquo;s top-ranked species for this league, re-solving your level under the CP cap at each IV. It ignores shields, buffs and charged moves.</div>
+          </div>
+        </sc-if>
+        </div>
+        <div class="om-rise" style="--i:9">
         <sc-if value="{{ detail.weaknesses }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:14px 16px;margin-bottom:14px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:10px">WEAK TO</div>
@@ -1821,7 +1835,7 @@
           </div>
         </sc-if>
         </div>
-        <div class="om-rise" style="--i:9">
+        <div class="om-rise" style="--i:10">
         <sc-if value="{{ detail.evoChain }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border-radius:16px;padding:14px 16px;margin-bottom:14px">
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:12px">EVOLUTION CHAIN</div>
@@ -1847,13 +1861,13 @@
           </div>
         </sc-if>
         </div>
-        <div class="om-rise" style="--i:10">
+        <div class="om-rise" style="--i:11">
         <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:16px;padding:14px 16px">
           <div style="font:700 10.5px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
           <div style="font:13.5px/1.45 var(--font-body);color:var(--ink-900)">{{ detail.recommendation }}</div>
         </div>
         </div>
-        <div class="om-rise" style="--i:11">
+        <div class="om-rise" style="--i:12">
         <div onClick="{{ detail.markTransferred }}" class="om-press" style="cursor:pointer;text-align:center;margin-top:14px;padding:13px 24px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">TRANSFERRED (+1 CANDY)</div>
         </div>
       </div>
@@ -4059,7 +4073,13 @@ class Component extends DCLogic {
   typeOf(p) {
     if (!p) return '';
     const fromTable = (this.state.typeTable || {})[String(p.name || '').toLowerCase()];
-    const raw = fromTable || p.type || [p.type1, p.type2].filter(Boolean).join(' / ') || '';
+    let raw = fromTable || p.type || [p.type1, p.type2].filter(Boolean).join(' / ') || '';
+    // PvPoke's game master (bundled) knows every released species' typing,
+    // including regional forms, so the AI type lookup is only a last resort.
+    if (!raw && this.mechanics && this.mechanics.speciesInfo) {
+      const info = this.mechanics.speciesInfo(p.name, p.form);
+      if (info) raw = info.types.join(' / ');
+    }
     return String(raw);
   }
 
@@ -4234,6 +4254,23 @@ class Component extends DCLogic {
           || (covered.length === best.covered.length && avg > best.avg)))) best = cand;
     }
     return best ? { league: leagueKey, ...best } : null;
+  }
+
+  // IV breakpoints for this Pokemon in its best league, from ivBreakpoints()
+  // (fast-move damage dealt to and taken from PvPoke's top 25 for that league).
+  // Needs measured IVs, known typing and a fast move PvPoke has numbers for.
+  pvpBreakpointsFor(p) {
+    const m = this.mechanics;
+    if (!m || !m.ivBreakpoints || this.needsAppraisal(p)) return null;
+    const best = this.pvpBest(p);
+    const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+    if (!best || !base || !ivs) return null;
+    const norm = n => this.moveKey(n).replace(/\+$/, '').replace(/\s+/g, '_');
+    const ms = m.pvpMovesetFor ? m.pvpMovesetFor(p.name, this.isShadow(p), best.league) : null;
+    let fast = ms ? ms.fast.replace(/\s+/g, '_') : null;
+    if (!fast || !m.pvpFastMoveFor(fast)) fast = p.quickMove ? norm(p.quickMove) : null;
+    if (!fast) return null;
+    return m.ivBreakpoints(base, ivs, best.league, this.isShadow(p), fast, this.typesOf(p));
   }
 
   // "PvP ready": 90%+ IV rank on a species PvPoke rates S, A or B in that
@@ -11301,6 +11338,35 @@ class Component extends DCLogic {
         chargeMoveLabel: this.moveDraftFor(p, 'chargeMove') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove')) : '— not set —',
         chargeMove2Label: this.moveDraftFor(p, 'chargeMove2') ? this.formatMoveName(this.moveDraftFor(p, 'chargeMove2')) : '— none learned —',
         bestMoves: this.bestRaidMoveset(p),
+        breakpoints: (() => {
+          const bp = this.pvpBreakpointsFor(p);
+          if (!bp) return null;
+          const nice = n => String(n).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          const pct = v => (v == null ? '' : v.toFixed(1) + '%');
+          const gainTxt = v => v == null ? '' : (v >= 0 ? ' and gain ' + v.toFixed(2) + ' points of stat product' : ' and lose ' + Math.abs(v).toFixed(2) + ' points of stat product');
+          const lines = [];
+          if (bp.atk) {
+            const a = bp.atk;
+            let t = a.keepLowest < a.current
+              ? 'Attack ' + a.current + ' hits the top ' + bp.metaSize + ' exactly as hard as attack ' + a.keepLowest + '. Dropping to ' + a.keepLowest + ' would lift stat product from ' + pct(a.curPct) + ' to ' + pct(a.keepPct) + '.'
+              : 'Attack ' + a.current + ' is itself a breakpoint.' + (a.drop ? ' Attack ' + a.drop.iv + ' would hit ' + (a.drop.who.length ? a.drop.who.slice(0, 4).join(', ') + (a.drop.who.length > 4 ? ' +' + (a.drop.who.length - 4) + ' more' : '') : 'nobody') + ' for 1 less' + gainTxt(a.drop.pctGain) + '.' : '');
+            t += a.next.length
+              ? ' Next breakpoints: ' + a.next.slice(0, 2).map(n => 'attack ' + n.iv + ' (+1 damage to ' + n.who.slice(0, 3).join(', ') + (n.pct != null ? '; stat product ' + pct(n.pct) : '') + ')').join('; ') + '.'
+              : ' No higher attack IV changes damage against them.';
+            lines.push({ label: 'ATTACK IV', text: t });
+          }
+          if (bp.def) {
+            const d = bp.def;
+            let t = d.keepLowest < d.current
+              ? 'Defense ' + d.current + ' takes the same fast-move damage as defense ' + d.keepLowest + ' from the top ' + bp.metaSize + '.'
+              : 'Defense ' + d.current + ' is itself a bulkpoint.' + (d.drop ? ' Defense ' + d.drop.iv + ' would take 1 more from ' + (d.drop.who.length ? d.drop.who.slice(0, 4).join(', ') + (d.drop.who.length > 4 ? ' +' + (d.drop.who.length - 4) + ' more' : '') : 'nobody') + gainTxt(d.drop.pctGain) + '.' : '');
+            t += d.next.length
+              ? ' Next bulkpoints: ' + d.next.slice(0, 2).map(n => 'defense ' + n.iv + ' (takes 1 less from ' + n.who.slice(0, 3).join(', ') + ')').join('; ') + '.'
+              : ' No higher defense IV reduces fast-move damage from them.';
+            lines.push({ label: 'DEFENSE IV', text: t });
+          }
+          return lines.length ? { title: 'IV BREAKPOINTS \u00b7 ' + (bp.league === 'ultra' ? 'ULTRA' : 'GREAT') + ' LEAGUE \u00b7 ' + nice(bp.fast), lines } : null;
+        })(),
         pvpMoves: (() => {
           const m = this.mechanics;
           if (!m || !m.pvpMovesetFor) return null;

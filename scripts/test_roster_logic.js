@@ -583,6 +583,33 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// PvPoke game master data: species typing, PvP damage formula, IV breakpoints.
+// ---------------------------------------------------------------------------
+(function testBreakpoints() {
+  const b = m.speciesInfo('Bulbasaur', '');
+  check('species types come from the bundled game master', b && b.types.join('/'), 'Grass/Poison');
+  const alolan = m.speciesInfo('Raichu', 'Alolan');
+  check('regional forms resolve to their own typing', alolan && alolan.types.join('/'), 'Electric/Psychic');
+  check('buddy distance and second-move cost are present', !!b && b.buddyKm === 3 && b.thirdMoveCost > 0, true);
+  check('PvP damage formula (no STAB)', m.pvpDamage(6, 'Poison', 100, 100, [], []), 4);
+  check('PvP damage formula (STAB x1.2)', m.pvpDamage(6, 'Poison', 100, 100, ['Poison'], []), 5);
+  check('PvP damage is non-decreasing in attack', m.pvpDamage(9, 'Water', 120, 100, [], []) <= m.pvpDamage(9, 'Water', 130, 100, [], []), true);
+
+  const base = m.BASE_STATS[184];
+  const orig = m.getPvpMaxLevel(); m.setPvpMaxLevel(50);
+  const r = m.ivBreakpoints(base, [8, 14, 15], 'great', false, 'bubble', ['Water', 'Fairy']);
+  check('breakpoints computed for a ranked species', !!r && r.metaSize > 0 && !!r.atk && !!r.def, true);
+  check('the lowest attack that keeps the damage is never above the current attack', r.atk.keepLowest <= r.atk.current, true);
+  check('lowering attack to that value does not lower stat product', r.atk.keepPct >= r.atk.curPct - 1e-9, true);
+  check('next attack breakpoints are strictly higher IVs, in order', r.atk.next.every((n, i) => n.iv > r.atk.current && (i === 0 || n.iv > r.atk.next[i - 1].iv)), true);
+  check('next bulkpoints are strictly higher defense IVs', r.def.next.every(n => n.iv > r.def.current), true);
+  check('a stat that is itself a breakpoint reports what one step down costs', r.atk.keepLowest < r.atk.current || (!!r.atk.drop && r.atk.drop.iv === r.atk.current - 1 && Array.isArray(r.atk.drop.who)), true);
+  check('unknown fast move returns null instead of throwing', m.ivBreakpoints(base, [8, 14, 15], 'great', false, 'not_a_move', ['Water']), null);
+  check('leagues without meta data return null', m.ivBreakpoints(base, [8, 14, 15], 'master', false, 'bubble', ['Water']), null);
+  m.setPvpMaxLevel(orig);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

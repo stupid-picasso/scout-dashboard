@@ -1,0 +1,57 @@
+name: Update PvPoke Data
+
+# PvPoke re-rates species and changes recommended movesets every season, so the
+# tier, moveset, matchup and game-master blocks in pokemon-mechanics.js go
+# stale. This re-runs both PvPoke import scripts weekly and, if anything
+# changed, opens a pull request for review (it is not auto-merged: a bad
+# upstream edit should not silently change your rankings).
+
+on:
+  schedule:
+    # Every Wednesday at 09:30 UTC
+    - cron: '30 9 * * 3'
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Refresh PvPoke tiers, movesets and matchups
+        run: python scripts/import_pvp_tier_data.py
+
+      - name: Refresh PvPoke game master (types, buddy distance, PvP fast moves, meta)
+        run: python scripts/import_pvpoke_gamemaster.py
+
+      - name: Open a PR if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- pokemon-mechanics.js; then
+            echo "PvPoke data is unchanged"
+            exit 0
+          fi
+          BRANCH="pvpoke-data-$(date +%Y%m%d)"
+          git checkout -b "$BRANCH"
+          git add pokemon-mechanics.js
+          git commit -m "Refresh PvPoke data ($(date +%Y-%m-%d))"
+          git push origin "$BRANCH" --force
+          gh pr create \
+            --title "Refresh PvPoke data ($(date +%Y-%m-%d))" \
+            --body "Automated weekly refresh of PvPoke tiers, recommended movesets, matchups, species typing, buddy distance and PvP fast-move numbers. Review the diff in pokemon-mechanics.js before merging; the propagate workflow regenerates the bundled copies after merge." \
+            --base main \
+            --head "$BRANCH" || echo "PR may already exist for this branch"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
