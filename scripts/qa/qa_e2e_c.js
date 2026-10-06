@@ -72,6 +72,29 @@ module.exports = async function suiteC() {
   await T('TOD-20', 'Today', 'Event planner rejects an event with no species', async () => { const n0 = ((await s.state()).events || []).length; await s.page.getByPlaceholder('Event name, e.g. Community Day').fill('No species'); await s.page.getByText('ADD EVENT', { exact: true }).click(); await s.page.waitForTimeout(300); expect(((await s.state()).events || []).length === n0); });
   await T('TOD-21', 'Today', 'Scan queue lists Pokemon whose IVs are unmeasured, with reasons', async () => { const t = await t0(); expect(/SCAN THESE NEXT/.test(t)); });
   await T('TOD-22', 'Today', 'Stats strip shows TO EVOLVE / QUEUED / NEW DEX', async () => { const t = await t0(); expect(/TO EVOLVE/.test(t) && /QUEUED/.test(t) && /NEW DEX/.test(t)); });
+  await T('TOD-40', 'Today', 'A raid-boss event offers "Best six vs <boss>" and opens the Raid tab with the boss\'s types filled in', async () => {
+    await s.go('TODAY'); const b = s.page.getByRole('button', { name: /^Best six vs Mewtwo/ }); expect(await b.count() >= 1, 'no button'); await b.first().click(); await s.page.waitForTimeout(700);
+    const st = await s.state(); expect(st.tab === 'raid' && st.raidBossName === 'Mewtwo' && st.raidBossTypes.join() === 'Psychic', JSON.stringify([st.tab, st.raidBossName, st.raidBossTypes]));
+  }, 'high');
+  await T('TOD-41', 'Today', 'Boss names map to types: Mega X/Y, forms, shadows', async () => {
+    const r = async n => (await s.call('raidBossTarget', n)); const cx = await r('Mega Charizard X'), cy = await r('Mega Charizard Y'), la = await r('Landorus (Incarnate)'), sh = await r('Shadow Landorus'), yv = await r('Yveltal');
+    expect(cx.types.join() === 'Fire,Dragon', JSON.stringify(cx)); expect(cy.types.join() === 'Fire,Flying', JSON.stringify(cy)); expect(la.types.join() === 'Ground,Flying' && yv.types.join() === 'Dark,Flying', JSON.stringify([la, yv])); expect(sh.name === 'Shadow Landorus' && sh.types.join() === 'Ground,Flying', JSON.stringify(sh)); expect((await r('Notarealmon')) === null);
+  }, 'high');
+  await T('TOD-42', 'Today', 'Add to calendar downloads a valid .ics for the event', async () => {
+    await s.go('TODAY'); const [dl] = await Promise.all([s.page.waitForEvent('download', { timeout: 8000 }), s.page.getByRole('button', { name: /Add QA Raid Boss to calendar/ }).click()]);
+    const txt = fs.readFileSync(await dl.path(), 'utf8'); expect(/BEGIN:VCALENDAR[\s\S]*BEGIN:VEVENT[\s\S]*SUMMARY:QA Raid Boss[\s\S]*END:VEVENT/.test(txt) && /DTSTART:\d{8}T\d{6}\r\n/.test(txt) && /DTEND:\d{8}T\d{6}\r\n/.test(txt), txt.slice(0, 300));
+  }, 'medium');
+  await T('TOD-43', 'Today', 'Reminders: events starting within the hour and finished Mega rests are listed once', async () => {
+    const now = Date.now(); const items = await s.call('reminderItems', now + 86400000 - 1800000); expect(items.some(i => i.id === 'ev:cd' && /starts soon/.test(i.title)), JSON.stringify(items));
+    expect(!(await s.call('reminderItems', now)).some(i => i.id === 'ev:cd'), 'listed too early');
+    await s.set({ megaEnergyInventory: { gible: { status: { '': { level: 1, restEndsAt: now - 1000 } } } } }); expect((await s.call('reminderItems', now)).some(i => /^mr:gible/.test(i.id)), 'no mega rest item');
+  }, 'high');
+  await T('TOD-44', 'Today', 'Turning reminders on asks for permission, and each reminder fires only once', async () => {
+    await s.ctx.grantPermissions(['notifications']); await s.go('TODAY'); await s.page.getByRole('button', { name: 'Remind me' }).click(); await s.page.waitForTimeout(600); expect((await s.state()).remindersOn === true, 'not on');
+    await s.page.evaluate(() => localStorage.removeItem('scout.remind.sent.v1'));
+    await s.set({ megaEnergyInventory: { gible: { status: { '': { level: 1, restEndsAt: Date.now() - 1000 } } } } });
+    const first = await s.call('checkReminders'); const second = await s.call('checkReminders'); expect(first.length >= 1 && second.length === 0, first.length + '/' + second.length);
+  }, 'high');
   await T('TOD-23', 'Today', 'No page errors after the whole Today session', async () => expect(s.errors.length === 0, s.errors[0]));
   await s.close();
 
@@ -167,5 +190,29 @@ module.exports = async function suiteC() {
   await s.load(QA); await s.go('LOG');
   await T('LOG-01', 'Log', 'Snapshot logging adds a dated row with roster size', async () => { await s.page.getByText('+ LOG SNAPSHOT', { exact: true }).click(); await s.page.waitForTimeout(500); const t = await s.text(); expect(/64/.test(t.split('DATE')[1] || '') && !/No snapshots yet/.test(t)); });
   await T('LOG-02', 'Log', 'Diagnostics panel captures a runtime error', async () => { await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0)); await s.page.waitForTimeout(900); const t = await s.text(); expect(/qa-diag-test|ERRORS?/i.test(t) || /No errors recorded/.test(t) === false, t.slice(300, 500)); });
+  await T('LOG-03', 'Log', 'A daily snapshot is taken automatically once, with hundo and species counts', async () => {
+    await s.set({ history: [] }); const r1 = await s.call('dailyLogSnapshot'); const r2 = await s.call('dailyLogSnapshot'); const h = (await s.state()).history;
+    expect(r1 === true && r2 === false && h.length === 1, 'r1=' + r1 + ' r2=' + r2 + ' n=' + h.length); expect(h[0].auto === true && Number.isFinite(h[0].hundo) && Number.isFinite(h[0].dex) && h[0].count === 64, JSON.stringify(h[0]));
+    const next = await s.call('dailyLogSnapshot', Date.now() + 86400000 * 1.5); expect(next === true && (await s.state()).history.length === 2, 'next day not taken');
+  }, 'high');
+  await T('LOG-04', 'Log', 'Thirty synthetic days draw four correct growth charts', async () => {
+    const hist = []; for (let i = 0; i < 30; i++) { const d = new Date(Date.UTC(2026, 8, 30 - i)).toISOString().slice(0, 10) + ' 12:00'; hist.push({ date: d, stardust: 100000 + (29 - i) * 1000, count: 60 + (29 - i), avgIV: (70 + (29 - i) * 0.5).toFixed(1), lucky: 3, hundo: 1 + Math.floor((29 - i) / 5), dex: 40 + (29 - i) }); }
+    await s.set({ history: hist }); await s.call('goToTab', 'progress'); await s.page.waitForTimeout(700);
+    const charts = await s.page.locator('svg[role=img]').evaluateAll(els => els.map(e => ({ label: e.getAttribute('aria-label'), d: e.querySelectorAll('path')[1].getAttribute('d') })));
+    expect(charts.length === 4, 'charts=' + charts.length); const nums = d => d.match(/[ML]/g).length; expect(charts.every(c => nums(c.d) === 30), 'points ' + charts.map(c => nums(c.d)));
+    const ys = charts[0].d.match(/[ML]([\d.]+) ([\d.]+)/g).map(m => +m.split(' ')[1]); expect(ys[0] > ys[ys.length - 1], 'avg IV line should rise (y falls)');
+    const t = await s.text(); expect(/84\.5%/.test(t) && /\+14\.5/.test(t), 'latest/delta missing');
+  }, 'high');
+  await T('LOG-05', 'Log', 'Export then import round-trips the log exactly', async () => {
+    const text = await s.call('exportLogData'); const back = await s.call('parseLogData', text); const hist = (await s.state()).history;
+    const norm = a => JSON.stringify(a.map(h => Object.keys(h).sort().reduce((o, k) => (o[k] = h[k], o), {}))); expect(norm(back) === norm(hist), 'differs');
+    await s.set({ history: [] }); const n = await s.call('importLogText', text); expect(n === hist.length && (await s.state()).history.length === hist.length, 'import ' + n);
+    expect((await s.call('importLogText', text)) === hist.length && (await s.state()).history.length === hist.length, 'duplicates added');
+  }, 'high');
+  await T('LOG-06', 'Log', 'Junk files are rejected without touching the log', async () => {
+    const n0 = (await s.state()).history.length; for (const junk of ['not json', '{"history":"x"}', '[{"date":"nope"}]', '[]', 'null']) { const r = await s.call('importLogText', junk); expect(r === 0, junk + ' -> ' + r); }
+    expect((await s.state()).history.length === n0, 'log changed');
+  }, 'high');
+  await T('LOG-07', 'Log', 'Export and Import controls are present and named', async () => { await s.call('goToTab', 'progress'); await s.page.waitForTimeout(500); expect(await s.page.getByRole('button', { name: 'Export log' }).count() === 1 && await s.page.locator('input[aria-label="Import progress log"]').count() === 1); }, 'medium');
   await s.close();
 };

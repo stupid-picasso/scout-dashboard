@@ -743,7 +743,9 @@ function buildLists(roster, bestRank) {
   ctx.state.feedCheck = { status: 'mismatch', checkedAt: '2026-10-06T00:00:00Z', onlyOnOfficialPage: ['retro cup'], notOnOfficialPage: [] };
   check('a mismatch names the cups the official page adds', /official page also names: retro cup/.test(ctx.feedVerifyLine()), true);
   ctx.state.feedCheck = { status: 'ok', checkedAt: '2026-10-06T00:00:00Z' };
-  check('a clean check is shown as matching', /match the official/.test(ctx.feedVerifyLine()), true);
+  check('a clean check is shown as matching', /on the official pokemongo\.com/.test(ctx.feedVerifyLine()), true);
+  ctx.state.feedCheck = { status: 'ok', checkedAt: '2026-10-06T00:00:00Z', onlyOnOfficialPage: ['retro cup'] };
+  check('later-season cups are noted but not an error', /Later in the season: retro cup/.test(ctx.feedVerifyLine()) && !/Differs/.test(ctx.feedVerifyLine()), true);
   ctx.state.feedCheck = null;
   check('feed without gbl is rejected', ctx.validFeed({ events: [] }), false);
   check('feed with a malformed week is rejected', ctx.validFeed({ events: [], gbl: [{ start: 'x' }] }), false);

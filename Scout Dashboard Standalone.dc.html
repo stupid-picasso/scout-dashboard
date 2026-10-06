@@ -1222,7 +1222,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.139</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.142</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1441,12 +1441,21 @@
     </sc-if>
     <sc-if value="{{ hasFeedEvents }}" hint-placeholder-val="{{ false }}">
       <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
-        <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:10px">EVENTS &middot; NEXT 14 DAYS</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+          <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em">EVENTS &middot; NEXT 14 DAYS</div>
+          <button type="button" onClick="{{ toggleReminders }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:4px 2px">{{ remindLabel }}</button>
+        </div>
         <sc-for list="{{ feedEventRows }}" as="fe" hint-placeholder-count="3">
           <div style="background:var(--surface-sunken);border-radius:10px;padding:12px;margin-bottom:10px">
             <div style="font:700 13px var(--font-display)">{{ fe.title }}</div>
             <div style="font:11px var(--font-body);color:var(--ink-400);margin-top:2px">{{ fe.when }}</div>
             <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ fe.bonus }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px">
+              <sc-for list="{{ fe.raidActions }}" as="ra" hint-placeholder-count="0">
+                <button type="button" onClick="{{ ra.run }}" style="font:600 14px var(--font-body);color:var(--ios-blue);padding:4px 0">{{ ra.label }} &rsaquo;</button>
+              </sc-for>
+              <button type="button" onClick="{{ fe.addToCalendar }}" aria-label="{{ fe.calLabel }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:4px 0">Add to calendar</button>
+            </div>
             <sc-for list="{{ fe.species }}" as="sp" hint-placeholder-count="2">
               <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line-200)">
                 <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -2482,6 +2491,7 @@
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px var(--font-display);color:var(--grass-700)">{{ p.sub }} &middot; {{ p.cp }} CP</div>
+              <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
             </div>
           </sc-for>
         </div>
@@ -2499,6 +2509,7 @@
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px var(--font-display);color:var(--type-electric)">{{ p.sub }}</div>
+              <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
             </div>
           </sc-for>
         </div>
@@ -2516,6 +2527,7 @@
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px var(--font-display);color:var(--ink-500)">{{ p.sub }}</div>
+              <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
               <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:5px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)" style-hover="background:var(--type-fighting)">TRANSFERRED &mdash; REMOVE</div>
             </div>
           </sc-for>
@@ -2534,6 +2546,7 @@
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px var(--font-display);color:var(--ink-500)">{{ p.sub }} &middot; {{ p.cp }} CP</div>
+              <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
             </div>
           </sc-for>
         </div>
@@ -2553,6 +2566,7 @@
                 </div>
                 <div style="font:11px var(--font-display);color:var(--type-ghost)">{{ p.moveLine }}</div>
                 <div style="font:11px var(--font-display);color:var(--ink-500)">{{ p.rankLine }}</div>
+                <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
               </div>
             </sc-for>
           </div>
@@ -2805,11 +2819,15 @@
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
         <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 10px 0">
-          <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
+          <button type="button" onClick="{{ closeDetail }}" aria-label="Close details" class="om-press" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</button>
           <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
-            <div style="font:700 11px var(--font-display);color:rgba(255,255,255,.75);letter-spacing:.04em">{{ detail.navPositionLabel }}</div>
+            <div style="display:flex;align-items:center;gap:2px;min-width:0">
+              <button type="button" onClick="{{ detail.goPrev }}" aria-label="{{ detail.prevAria }}" style="font:600 12px var(--font-body);color:rgba(255,255,255,.9);padding:8px 6px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ detail.prevOpacity }}">&lsaquo; {{ detail.prevName }}</button>
+              <div style="font:700 11px var(--font-display);color:rgba(255,255,255,.8);letter-spacing:.04em;white-space:nowrap">{{ detail.navPositionLabel }}</div>
+              <button type="button" onClick="{{ detail.goNext }}" aria-label="{{ detail.nextAria }}" style="font:600 12px var(--font-body);color:rgba(255,255,255,.9);padding:8px 6px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ detail.nextOpacity }}">{{ detail.nextName }} &rsaquo;</button>
+            </div>
           </sc-if>
-          <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
+          <button type="button" onClick="{{ detail.toggleFav }}" aria-label="{{ detail.favAria }}" aria-pressed="{{ detail.favPressed }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</button>
         </div>
         <div style="position:absolute;top:44px;left:14px;font:800 22px var(--font-display);color:rgba(255,255,255,.95);text-shadow:0 2px 6px rgba(0,0,0,.45);z-index:2"><span style="font-size:12px;font-weight:700;opacity:.75;vertical-align:2px;margin-right:2px">CP</span><span class="om-count" style="--t:{{ detail.cp }}"><span class="om-count-real">{{ detail.cp }}</span></span></div>
         <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding-top:2px;padding-bottom:6px">
@@ -3563,6 +3581,7 @@
               <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
             </div>
             <div style="font:var(--font-display);font-size:11.5px;color:var(--grass-700)">{{ p.bestLeagueLabel }} &middot; {{ p.bestRankDisplay }} &middot; {{ p.cp }} CP</div>
+            <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
             <sc-if value="{{ p.movesetNote }}" hint-placeholder-val="{{ false }}">
               <div style="font:11px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }} &mdash; stats-only rank</div>
             </sc-if>
@@ -3585,6 +3604,7 @@
               <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
             </div>
             <div style="font:var(--font-display);font-size:11.5px;color:var(--type-fighting)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
+            <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
             <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
           </div>
         </sc-for>
@@ -3621,6 +3641,7 @@
                   <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
                 </div>
                 <div style="font:var(--font-display);font-size:11.5px;color:var(--ink-500)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
+                <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
               </div>
             </sc-for>
           </div>
@@ -3784,6 +3805,27 @@
       <div style="font:13.5px/1.5 var(--font-body);color:var(--ink-500);max-width:560px">Log a snapshot of your current roster to track growth over time. Re-sync a fresh CSV export whenever you want to update the numbers above.</div>
       <div onClick="{{ logSnapshot }}" style="cursor:pointer;background:var(--brand-primary-strong);color:var(--ink-900);font:700 13px var(--font-display);padding:11px 20px;border-radius:var(--r-pill);white-space:nowrap">+ LOG SNAPSHOT</div>
     </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px">
+      <sc-for list="{{ growthCharts }}" as="g" hint-placeholder-count="4">
+        <div style="background:var(--surface-card);border-radius:16px;padding:12px 14px">
+          <div style="font:600 11px var(--font-body);color:var(--ink-400);letter-spacing:.04em">{{ g.label }}</div>
+          <div style="font:700 24px var(--font-display);letter-spacing:-.02em;margin-top:2px">{{ g.latest }}</div>
+          <sc-if value="{{ g.hasData }}" hint-placeholder-val="{{ false }}">
+            <svg viewBox="0 0 120 36" width="100%" height="40" role="img" aria-label="{{ g.label }} trend, {{ g.delta }}" style="display:block;margin-top:6px">
+              <path d="{{ g.area }}" fill="{{ g.color }}" opacity=".16"/>
+              <path d="{{ g.line }}" fill="none" stroke="{{ g.color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </sc-if>
+          <div style="font:12px var(--font-body);color:var(--ink-400);margin-top:4px">{{ g.delta }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:18px;margin-bottom:14px">
+      <sc-if value="{{ hasHistory }}" hint-placeholder-val="{{ false }}">
+        <button type="button" onClick="{{ exportLog }}" style="font:500 15px var(--font-body);color:var(--ios-blue);padding:4px 0">Export log</button>
+      </sc-if>
+      <label style="font:500 15px var(--font-body);color:var(--ios-blue);padding:4px 0;cursor:pointer">Import log<input type="file" accept=".json,application/json" onChange="{{ onLogFile }}" style="display:none" aria-label="Import progress log" /></label>
+    </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
       <div style="display:grid;grid-template-columns:1.2fr 0.8fr 1fr 0.8fr 1fr 1fr;padding:10px 16px;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
         <div>DATE</div><div>ROSTER</div><div>AVG IV%</div><div>LUCKY</div><div>STARDUST</div><div>&Delta; VS PREV</div>
@@ -3837,6 +3879,7 @@ class Component extends DCLogic {
     selectedIdx: [],
     savedViews: [],
     undoLabel: '',
+    remindersOn: false,
     completedIds: [],
     removedIds: [],
     stardustBalance: null,
@@ -4012,8 +4055,13 @@ class Component extends DCLogic {
     this.loadFeed();
     try { this.enhanceAccessibility(); } catch (e) { console.error(e); }
     try { this.bindCsvDrop(); } catch (e) { console.error(e); }
+    setTimeout(() => this.dailyLogSnapshot(), 6000);
     try { const sv = JSON.parse(localStorage.getItem('scout.savedViews.v1') || '[]'); if (Array.isArray(sv)) this.setState({ savedViews: sv.filter(v => v && v.id && v.filter).slice(-8) }); } catch (e) {}
     setTimeout(() => this.maybeSwipeHint(), 3500);
+    try { if (localStorage.getItem('scout.remind.v1') === '1' && typeof Notification !== 'undefined' && Notification.permission === 'granted') this.setState({ remindersOn: true }); } catch (e) {}
+    this._remindTimer = setInterval(() => this.checkReminders(), 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.checkReminders(); this.dailyLogSnapshot(); } });
+    setTimeout(() => this.checkReminders(), 4000);
     try { const z = parseFloat(localStorage.getItem('scout.uiZoom')); if (z >= 1 && z <= 2) this.setUiZoom(z); } catch (e) {}
     // Auth settles within a couple of seconds; only then is it clear nobody is signed in.
     setTimeout(() => this.restoreLocalSnapshot(), 2400);
@@ -4297,7 +4345,9 @@ class Component extends DCLogic {
   restoreLocalSnapshot() {
     this._localRestoreDone = true;
     try {
-      if (this.state.cloudUser || (this.state.roster || []).length) return false;
+      // Changes made before this point were not saved (queueLocalSave waits for this flag),
+      // so save what is on screen now instead of waiting for the next edit.
+      if (this.state.cloudUser || (this.state.roster || []).length) { this.queueLocalSave(); return false; }
       const raw = localStorage.getItem('scout.local.v1');
       if (!raw) return false;
       const blob = JSON.parse(raw);
@@ -7169,6 +7219,7 @@ class Component extends DCLogic {
     const set = new Set(this.state.completedIds);
     if (set.has(idx)) set.delete(idx); else set.add(idx);
     const arr = [...set];
+    if (!this.state.completedIds.includes(idx)) this.offerUndo('Marked done', ['completedIds']);
     this.setState({ completedIds: arr });
   }
 
@@ -10782,6 +10833,130 @@ class Component extends DCLogic {
     this.haptic('light');
   }
 
+  // Types for a raid boss named the way the feed names it: "Yveltal", "Mega Blastoise",
+  // "Mega Charizard X", "Landorus (Incarnate)", "Shadow Landorus".
+  raidBossTarget(raw) {
+    const m = this.mechanics;
+    if (!m) return null;
+    let n = String(raw || '').replace(/^shadow\s+/i, '').trim();
+    let mega = null;
+    const mm = n.match(/^mega\s+(.+?)(?:\s+([xy]))?$/i);
+    if (mm) { mega = mm[2] ? mm[2].toLowerCase() : ''; n = mm[1]; }
+    const fm = n.match(/^(.+?)\s*\((.+)\)$/);
+    const base = fm ? fm[1].trim() : n;
+    const form = fm ? fm[2].trim() : '';
+    let types = null;
+    if (mega !== null && m.megaFormsFor) {
+      const forms = m.megaFormsFor(base);
+      const hit = forms.find(f => (f.form || '') === mega) || forms[0];
+      if (hit) types = hit.types;
+    }
+    if (!types && m.speciesInfo) {
+      const info = m.speciesInfo(base, form) || m.speciesInfo(base);
+      if (info) types = info.types;
+    }
+    if (!types) return null;
+    const label = String(raw).replace(/\s*\(.*\)\s*$/, '').trim();
+    return { name: label, types: types.map(t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()) };
+  }
+
+  openRaidVs(target) {
+    this.setState({ raidBossName: target.name, raidBossTypes: target.types, moreOpen: false }, () => this.goToTab('raid'));
+  }
+
+  // Calendar file for one event. Feed times are the local wall-clock times the event
+  // runs at, so they are written as floating times (no zone).
+  downloadIcs(e) {
+    const f = iso => String(iso).replace(/[-:]/g, '').replace(/\.\d+$/, '').slice(0, 15);
+    const esc = v => String(v || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Professor//Events//EN', 'BEGIN:VEVENT',
+      'UID:' + e.id + '@professor', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'),
+      'DTSTART:' + f(e.start), 'DTEND:' + f(e.end), 'SUMMARY:' + esc(e.name), e.link ? 'URL:' + e.link : '', 'END:VEVENT', 'END:VCALENDAR'].filter(Boolean);
+    const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = String(e.id).slice(0, 40) + '.ics';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    this.haptic('light');
+    return lines.join('\r\n');
+  }
+
+  // Reminders are local notifications shown while the app is open or comes to the
+  // front; iOS cannot wake an installed web app on a timer, so nothing fires while
+  // it is fully closed.
+  reminderItems(now) {
+    const t = now || Date.now();
+    const out = [];
+    const f = this.state.feed;
+    if (this.validFeed(f)) {
+      f.events.filter(e => e.type !== 'season').forEach(e => {
+        const st = new Date(e.start).getTime();
+        if (st > t && st - t <= 3600000) out.push({ id: 'ev:' + e.id, title: e.name + ' starts soon', body: 'Starts ' + new Date(e.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) });
+      });
+    }
+    Object.keys(this.state.megaEnergyInventory || {}).forEach(key => {
+      const status = ((this.state.megaEnergyInventory || {})[key] || {}).status || {};
+      Object.keys(status).forEach(fk => {
+        const r = status[fk] && status[fk].restEndsAt;
+        if (Number.isFinite(r) && r <= t && r > t - 3 * 86400000) out.push({ id: 'mr:' + key + ':' + fk + ':' + r, title: 'Mega rest finished', body: key.replace(/\b\w/g, c => c.toUpperCase()) + (fk ? ' ' + fk.toUpperCase() : '') + ' can Mega Evolve again.' });
+      });
+    });
+    return out;
+  }
+
+  checkReminders() {
+    try {
+      if (!this.state.remindersOn || typeof Notification === 'undefined' || Notification.permission !== 'granted') return [];
+      let sent = [];
+      try { sent = JSON.parse(localStorage.getItem('scout.remind.sent.v1') || '[]'); } catch (e) {}
+      const due = this.reminderItems().filter(i => sent.indexOf(i.id) < 0);
+      if (!due.length) return [];
+      due.forEach(i => {
+        const opts = { body: i.body, tag: i.id, icon: './icons/icon-192.png' };
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(r => r.showNotification(i.title, opts)).catch(() => { try { new Notification(i.title, opts); } catch (e) {} });
+        else { try { new Notification(i.title, opts); } catch (e) {} }
+      });
+      sent = sent.concat(due.map(i => i.id)).slice(-200);
+      try { localStorage.setItem('scout.remind.sent.v1', JSON.stringify(sent)); } catch (e) {}
+      return due;
+    } catch (e) { return []; }
+  }
+
+  toggleReminders() {
+    if (this.state.remindersOn) {
+      try { localStorage.removeItem('scout.remind.v1'); } catch (e) {}
+      this.setState({ remindersOn: false });
+      return;
+    }
+    if (typeof Notification === 'undefined') { this.setState({ csvError: 'This browser cannot show notifications. On iPhone, add the app to the Home Screen first.' }); return; }
+    const go = perm => {
+      if (perm === 'granted') { try { localStorage.setItem('scout.remind.v1', '1'); } catch (e) {} this.setState({ remindersOn: true }, () => this.checkReminders()); }
+      else this.setState({ csvError: 'Notifications are blocked. Allow them for this app in Settings to get reminders.' });
+    };
+    try { const r = Notification.requestPermission(go); if (r && r.then) r.then(go); } catch (e) { go('denied'); }
+  }
+
+  // One sentence naming the rule that put a Pokemon in a recommendation list, with
+  // the numbers from the Pokemon itself. The thresholds match buildOptimizePlan and
+  // the Recommendations lists exactly, so the reason can always be reproduced.
+  whyLine(p, kind) {
+    const iv = Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '%' : 'unknown';
+    const rank = this.bestRank(p);
+    const r = Number.isFinite(rank) ? rank.toFixed(0) + '%' : 'unranked';
+    if (kind === 'powerUp') return 'Best league rank ' + r + ' (rule: 90% or higher, not a favourite).';
+    if (kind === 'pvpPowerUp') return 'PvP-worthy IV spread, best rank ' + r + ' (rule: not a favourite).';
+    if (kind === 'evolve') return 'IV ' + iv + ' (rule: 60% or higher) and it can evolve to ' + (this.evolvesToName(p) || '?') + '.';
+    if (kind === 'transfer') return 'IV ' + iv + ' is under 51% and best rank ' + r + ' is under 70%, with no raid role and not lucky, shiny, shadow or a favourite.';
+    if (kind === 'borderline') return 'IV ' + iv + ' (under 58%) and best rank ' + r + ' (under 78%): close to the transfer bar, worth a look.';
+    if (kind === 'luckyTrade') {
+      const n = this.effectiveRosterForMatch().filter(q => q.dex === p.dex).length;
+      return 'You own ' + n + ' of this species and this one is not lucky with IV ' + iv + ' (under 90%): good trade fodder.';
+    }
+    if (kind === 'secondMove') return 'Best rank ' + r + ' (rule: 80% or higher) but only one charged move unlocked.';
+    return '';
+  }
+
   // One-step undo for destructive roster actions. Snapshots the named state keys
   // before the change; the toast offers Undo for 8 seconds.
   offerUndo(label, keys) {
@@ -12040,7 +12215,7 @@ class Component extends DCLogic {
     const c = this.state.feedCheck;
     if (!c) return 'Not cross-checked against pokemongo.com.';
     const when = c.checkedAt ? new Date(c.checkedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
-    if (c.status === 'ok') return '\u2713 Cups match the official pokemongo.com season page (checked ' + when + ').';
+    if (c.status === 'ok') return '\u2713 Every cup here is on the official pokemongo.com season page (checked ' + when + ')' + (c.onlyOnOfficialPage && c.onlyOnOfficialPage.length ? '. Later in the season: ' + c.onlyOnOfficialPage.join(', ') : '') + '.';
     if (c.status === 'mismatch') {
       return '\u26a0 Differs from pokemongo.com (checked ' + when + ')'
         + (c.onlyOnOfficialPage && c.onlyOnOfficialPage.length ? ' \u2014 official page also names: ' + c.onlyOnOfficialPage.join(', ') : '')
@@ -12219,7 +12394,10 @@ class Component extends DCLogic {
         return {
           title: e.name, when: (live ? 'LIVE · until ' + fmt(e.end) : fmt(e.start) + ' – ' + fmt(e.end)),
           bonus: [e.spotlight && e.spotlight.bonus, ...(e.bonuses || [])].filter(Boolean).join(' · '),
-          species: names.map(n => this.eventSpeciesVerdict(n))
+          species: names.map(n => this.eventSpeciesVerdict(n)),
+          raidActions: e.type === 'raid-battles' ? (e.bosses || []).map(b => ({ b, t: this.raidBossTarget(b) })).filter(x => x.t).slice(0, 2).map(x => ({ label: 'Best six vs ' + x.t.name, run: () => this.openRaidVs(x.t) })) : [],
+          addToCalendar: () => this.downloadIcs(e),
+          calLabel: 'Add ' + e.name + ' to calendar'
         };
       });
   }
@@ -13030,12 +13208,21 @@ class Component extends DCLogic {
     this.setState({ detailPoke: p, detailNavList: list, detailNavIndex: idx });
   }
 
+  toggleFavoriteOf(p) {
+    const ov = { ...(this.state.ivOverrides || {}) };
+    const nf = !p.favorite;
+    ov[p.idx] = { ...(ov[p.idx] || {}), favorite: nf };
+    const dp = this.state.detailPoke;
+    this.haptic('light');
+    this.setState({ ivOverrides: ov, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, favorite: nf } } : {}) });
+  }
+
   navigateDetail(dir) {
     const list = this.state.detailNavList || [];
     const next = this.state.detailNavIndex + dir;
     if (next < 0 || next >= list.length) return false;
     this.haptic('light');
-    this.setState({ detailPoke: list[next], detailNavIndex: next });
+    this.setState({ detailPoke: { ...list[next], ...((this.state.ivOverrides || {})[list[next].idx] || {}) }, detailNavIndex: next });
     return true;
   }
 
@@ -13134,20 +13321,124 @@ class Component extends DCLogic {
     return best;
   }
 
-  logSnapshot() {
-    const roster = this.state.roster;
-    if (!roster.length) return;
+  snapshotEntry(now) {
+    const roster = this.effectiveRosterForMatch();
+    if (!roster.length) return null;
     const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
     const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length) : 0;
-    const entry = {
-      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    return {
+      date: new Date(Number.isFinite(now) ? now : Date.now()).toISOString().slice(0, 16).replace('T', ' '),
       stardust: this.state.stardustBalance,
       count: roster.length,
       avgIV: Number.isFinite(avgIV) ? avgIV.toFixed(1) : 'n/a',
-      lucky: roster.filter(p => p.lucky).length
+      lucky: roster.filter(p => p.lucky).length,
+      hundo: roster.filter(p => p.atkIV === 15 && p.defIV === 15 && p.staIV === 15).length,
+      dex: new Set(roster.map(p => p.dex).filter(d => d != null)).size
     };
-    const history = [entry, ...this.state.history];
-    this.setState({ history });
+  }
+
+  logSnapshot() {
+    const entry = this.snapshotEntry();
+    if (!entry) return;
+    this.setState({ history: [entry, ...this.state.history] });
+  }
+
+  // One automatic snapshot per day, taken when the app opens or returns to the front
+  // with a roster loaded, so growth charts fill in without remembering to log.
+  dailyLogSnapshot(now) {
+    if (!(this.state.roster || []).length && !(this.state.addedPokemon || []).length) return false;
+    const entry = this.snapshotEntry(now);
+    if (!entry) return false;
+    const today = entry.date.slice(0, 10);
+    if ((this.state.history || []).some(h => String(h.date || '').slice(0, 10) === today)) return false;
+    this.setState({ history: [{ ...entry, auto: true }, ...(this.state.history || [])].slice(0, 400) });
+    return true;
+  }
+
+  exportLogData() {
+    return JSON.stringify({ app: 'professor', kind: 'progress-log', v: 1, exportedAt: new Date().toISOString(), history: this.state.history || [] }, null, 1);
+  }
+
+  // Reads an exported log (or a bare array) and returns clean entries; anything that does
+  // not look like a snapshot is dropped rather than trusted.
+  parseLogData(text) {
+    let d;
+    try { d = JSON.parse(text); } catch (e) { return null; }
+    const arr = Array.isArray(d) ? d : (d && Array.isArray(d.history) ? d.history : null);
+    if (!arr) return null;
+    const num = v => (Number.isFinite(v) ? v : null);
+    return arr.filter(h => h && typeof h.date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(h.date) && Number.isFinite(h.count) && h.count >= 0)
+      .map(h => {
+        const o = { date: h.date.slice(0, 16), stardust: num(h.stardust), count: h.count, avgIV: h.avgIV == null ? 'n/a' : String(h.avgIV), lucky: num(h.lucky) || 0 };
+        if (Number.isFinite(h.hundo)) o.hundo = h.hundo;
+        if (Number.isFinite(h.dex)) o.dex = h.dex;
+        if (h.auto) o.auto = true;
+        return o;
+      });
+  }
+
+  downloadText(name, text, type) {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  exportLog() {
+    this.downloadText('professor-log-' + new Date().toISOString().slice(0, 10) + '.json', this.exportLogData(), 'application/json');
+    this.haptic('light');
+  }
+
+  importLogText(text) {
+    const entries = this.parseLogData(text);
+    if (!entries || !entries.length) { this.setState({ csvError: 'That file is not a Professor progress log.' }); return 0; }
+    this.offerUndo('Imported ' + entries.length + ' log entries', ['history']);
+    const have = new Set((this.state.history || []).map(h => h.date));
+    const merged = [...(this.state.history || []), ...entries.filter(e => !have.has(e.date))].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 400);
+    this.setState({ history: merged });
+    return entries.length;
+  }
+
+  onLogFile(e) {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => this.importLogText(String(ev.target.result || ''));
+    r.readAsText(f);
+    try { e.target.value = ''; } catch (x) {}
+  }
+
+  // Small line chart for one numeric series (oldest to newest).
+  sparkline(values, w, h) {
+    const v = values.filter(x => Number.isFinite(x));
+    if (v.length < 2) return null;
+    const min = Math.min(...v), max = Math.max(...v), span = max - min || 1;
+    const pts = v.map((x, i) => [(i / (v.length - 1)) * w, h - 3 - ((x - min) / span) * (h - 6)]);
+    const line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+    return { line, area: line + ' L' + w + ' ' + h + ' L0 ' + h + ' Z', last: pts[pts.length - 1] };
+  }
+
+  growthCharts() {
+    const hist = (this.state.history || []).slice().reverse();
+    const series = [
+      { key: 'avgIV', label: 'AVG IV%', get: h => parseFloat(h.avgIV), fmt: v => v.toFixed(1) + '%', color: 'var(--ios-blue)' },
+      { key: 'hundo', label: 'HUNDOS', get: h => h.hundo, fmt: v => String(v), color: 'var(--ios-yellow)' },
+      { key: 'dex', label: 'SPECIES', get: h => h.dex, fmt: v => String(v), color: 'var(--ios-green)' },
+      { key: 'count', label: 'ROSTER', get: h => h.count, fmt: v => String(v), color: '#bf5af2' }
+    ];
+    return series.map(sr => {
+      const vals = hist.map(sr.get).filter(x => Number.isFinite(x));
+      const sp = this.sparkline(vals, 120, 36);
+      const d = vals.length >= 2 ? vals[vals.length - 1] - vals[0] : 0;
+      return {
+        label: sr.label, color: sr.color, hasData: !!sp,
+        latest: vals.length ? sr.fmt(vals[vals.length - 1]) : '\u2014',
+        delta: vals.length >= 2 ? (d > 0 ? '+' : '') + (sr.key === 'avgIV' ? d.toFixed(1) : String(d)) + ' since ' + hist[0].date.slice(5, 10) : 'needs 2 days',
+        line: sp ? sp.line : '', area: sp ? sp.area : '',
+        points: vals.length
+      };
+    });
   }
 
   renderVals() {
@@ -13484,6 +13775,7 @@ class Component extends DCLogic {
         bestLeagueLabel: best ? best.label : '',
         bestRankDisplay: (best && Number.isFinite(best.rankPct)) ? best.rankPct.toFixed(0) + '%' : '',
         movesetNote: this.movesetDataNote(p),
+        why: this.whyLine(p, 'pvpPowerUp'),
         markDone: () => this.toggleDone(p.idx)
       };
     });
@@ -13504,7 +13796,8 @@ class Component extends DCLogic {
       initial: (p.name || '?').charAt(0),
       ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '—',
       cp: p.cp,
-      markTransferred: () => this.removePokemon(p.idx)
+      why: this.whyLine(p, 'transfer'),
+      markTransferred: () => { this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); }
     }));
 
     // Borderline: fails the strict transfer bar but only just — worth a human
@@ -13521,6 +13814,7 @@ class Component extends DCLogic {
       initial: (p.name || '?').charAt(0),
       ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '—',
       cp: p.cp,
+      why: this.whyLine(p, 'borderline'),
       onClick: () => this.openDetail(p)
     }));
     const borderlineCount = borderlinePool.length;
@@ -13555,13 +13849,14 @@ class Component extends DCLogic {
       : personality === 'deadpan' ? baseGreeting.replace('Trainer.', 'Trainer. Data follows.')
       : baseGreeting;
     const greatProjects = roster.filter(p => p.great && Number.isFinite(p.great.rankPct) && p.great.rankPct >= 80 && notDone(p)).length;
-    const mapMini = (arr) => arr.map(p => ({
+    const mapMini = (arr, kind) => arr.map(p => ({
       idx: p.idx,
       displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
       spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
       badgeColor: this.dsTypeColor(p),
       initial: (p.name || '?').charAt(0),
       sub: this.bestRank(p) ? this.bestRank(p).toFixed(0) + '% rank' : '',
+      why: this.whyLine(p, kind),
       cp: p.cp,
       onClick: () => this.openDetail(p),
       markDone: () => this.toggleDone(p.idx)
@@ -13572,7 +13867,7 @@ class Component extends DCLogic {
       evolveCount: plan.evolveSoon.length,
       transferCount: plan.transferSafe.length,
       luckyCount: plan.luckyTrade.length,
-      powerUp: mapMini(plan.powerUp),
+      powerUp: mapMini(plan.powerUp, 'powerUp'),
       evolveSoon: plan.evolveSoon.map(p => ({
         idx: p.idx,
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
@@ -13580,6 +13875,7 @@ class Component extends DCLogic {
         badgeColor: this.dsTypeColor(p),
         initial: (p.name || '?').charAt(0),
         sub: 'evolves to ' + (this.evolvesToName(p) || '?'),
+        why: this.whyLine(p, 'evolve'),
         cp: p.cp,
         onClick: () => this.openDetail(p),
         markDone: () => this.toggleDone(p.idx)
@@ -13591,11 +13887,12 @@ class Component extends DCLogic {
         badgeColor: this.dsTypeColor(p),
         initial: (p.name || '?').charAt(0),
         sub: Number.isFinite(p.cp) ? p.cp + ' CP' : '',
+        why: this.whyLine(p, 'transfer'),
         cp: p.cp,
         onClick: () => this.openDetail(p),
-        markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.removePokemon(p.idx); }
+        markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); }
       })),
-      luckyTrade: mapMini(plan.luckyTrade),
+      luckyTrade: mapMini(plan.luckyTrade, 'luckyTrade'),
       secondMoveCount: (plan.needsSecondMove || []).length,
       needsSecondMove: (plan.needsSecondMove || []).map(p => ({
         idx: p.idx,
@@ -13604,6 +13901,7 @@ class Component extends DCLogic {
         badgeColor: this.dsTypeColor(p),
         moveLine: this.formatMoveName(p.quickMove || '?') + ' / ' + this.formatMoveName(p.chargeMove || '?'),
         rankLine: Number.isFinite(this.bestRank(p)) ? this.bestRank(p).toFixed(0) + '% rank' : '',
+        why: this.whyLine(p, 'secondMove'),
         onClick: () => this.openDetail(p),
         markDone: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleDone(p.idx); }
       })),
@@ -14109,6 +14407,20 @@ class Component extends DCLogic {
         favoriteFilled: p.favorite ? '#ff5f7a' : 'rgba(255,255,255,.55)',
         navPositionLabel: (this.state.detailNavList && this.state.detailNavList.length > 1)
           ? (this.state.detailNavIndex + 1) + ' of ' + this.state.detailNavList.length : '',
+        ...(() => {
+          const list = this.state.detailNavList || [], i = this.state.detailNavIndex;
+          const nm = q => q ? (q.name || 'Pokemon') + (q.form ? ' (' + q.form + ')' : '') : '';
+          const prev = i > 0 ? list[i - 1] : null, next = i >= 0 && i < list.length - 1 ? list[i + 1] : null;
+          return {
+            prevName: prev ? nm(prev) : '', nextName: next ? nm(next) : '',
+            prevAria: prev ? 'Previous: ' + nm(prev) : 'No previous Pokemon', nextAria: next ? 'Next: ' + nm(next) : 'No next Pokemon',
+            prevOpacity: prev ? 1 : 0.3, nextOpacity: next ? 1 : 0.3,
+            goPrev: () => this.navigateDetail(-1), goNext: () => this.navigateDetail(1)
+          };
+        })(),
+        toggleFav: () => this.toggleFavoriteOf(p),
+        favPressed: !!p.favorite,
+        favAria: (p.favorite ? 'Remove ' : 'Mark ') + (p.name || 'Pokemon') + (p.favorite ? ' from favourites' : ' as favourite'),
         mega: this.megaCardFor(p),
         evo: evoInfo ? {
           hasEvo: true,
@@ -15222,6 +15534,8 @@ class Component extends DCLogic {
       gblWeekRows: this.gblWeeks(),
       hasGbl: this.gblWeeks().length > 0,
       feedEventRows: this.feedEvents(),
+      remindLabel: this.state.remindersOn ? 'Reminders on' : 'Remind me',
+      toggleReminders: () => this.toggleReminders(),
       hasFeedEvents: this.feedEvents().length > 0,
       feedVerify: this.feedVerifyLine(),
       feedStamp: this.validFeed(this.state.feed) ? 'Community data (not official) \u00b7 refreshed ' + new Date(this.state.feed.fetchedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Feed not loaded yet.',
@@ -15466,6 +15780,10 @@ class Component extends DCLogic {
       sendChat: () => this.sendChat(),
       onChatKeyDown: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChat(); } },
       historyDisplay,
+      growthCharts: this.growthCharts(),
+      exportLog: () => this.exportLog(),
+      onLogFile: (e) => this.onLogFile(e),
+      hasHistory: (this.state.history || []).length > 0,
       historyEmpty: historyDisplay.length === 0,
       logSnapshot: () => this.logSnapshot(),
       onFileChange: (e) => this.onFileChange(e),

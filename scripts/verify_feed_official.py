@@ -7,9 +7,9 @@ whether the cups it names match the feed. It NEVER fails the workflow and never
 edits feed.json: it only writes data/feed_check.json, which the app shows as a
 line under the GBL card:
 
-  status "ok"           every feed cup is named on the official page, and the page
-                        names no cup the feed lacks
-  status "mismatch"     lists the cups only one side mentions
+  status "ok"           every feed cup is named on the official page (cups only the
+                        page names are listed as later-season, not an error)
+  status "mismatch"     the feed names a cup the official page does not
   status "unreadable"   page fetched but carries no usable text (client-rendered)
   status "unreachable"  the fetch failed
 
@@ -72,7 +72,9 @@ def main():
         return finish(res)
     miss_off, miss_feed = compare(text, cups)
     res['notOnOfficialPage'], res['onlyOnOfficialPage'] = miss_off, miss_feed
-    res['status'] = 'ok' if not miss_off and not miss_feed else 'mismatch'
+    # Cups only the official page names are usually later weeks the mirrors have not
+    # published yet, so they are reported but do not make the check a mismatch.
+    res['status'] = 'ok' if not miss_off else 'mismatch'
     finish(res)
 
 

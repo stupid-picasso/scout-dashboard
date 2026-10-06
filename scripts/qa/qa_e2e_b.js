@@ -65,6 +65,20 @@ module.exports = async function suiteB() {
   await T('REC-04', 'Recs', 'MARK DONE removes an item from the power-up list', async () => { const b = s.page.getByText('MARK DONE', { exact: true }).first(); if (!(await b.count())) skip('none'); const seg = async () => ((await s.text()).split('POWER UP CANDIDATES')[1] || '').split('\n').filter(x => x.length > 3)[2]; const first0 = await seg(); await b.click(); await s.page.waitForTimeout(400); expect((await seg()) !== first0, 'first item unchanged: ' + first0); });
   await T('REC-05', 'Recs', 'USE A TM search finds a Pokemon by name', async () => { const f = s.page.getByPlaceholder(/Search your roster by name/); await f.fill('Gyarados'); await s.page.waitForTimeout(500); expect(/Gyarados/.test(await s.text())); await f.fill(''); });
   await T('REC-06', 'Recs', 'AI recommendations without a key explain what is missing instead of failing', async () => { await s.page.getByText('GET RECOMMENDATIONS', { exact: true }).click().catch(() => {}); await s.page.waitForTimeout(700); expect(s.errors.length === 0, s.errors[0]); });
+  await T('REC-07', 'Recs', 'Every recommendation card states the rule behind it', async () => {
+    const t = await s.text(); const cards = await s.page.locator('div').filter({ hasText: /^(Best league rank|PvP-worthy|IV \d|IV unknown|You own|Best rank)/ }).count();
+    const why = (t.match(/(Best league rank \d+%|PvP-worthy IV spread|IV (?:\d+%|unknown) (?:is under|\(under)|rule: )/g) || []).length;
+    const items = await s.page.getByText(/MARK DONE|TRANSFERRED/).count(); expect(why >= Math.min(items, 1) && why > 0, 'why lines=' + why + ' items=' + items);
+  }, 'high');
+  await T('REC-08', 'Recs', 'The reason reproduces from the Pokemon\'s own numbers (IV and rank)', async () => {
+    const st = await s.state(); const mon = st.roster.find(p => Number.isFinite(p.ivAvg)); const text = await s.call('whyLine', mon, 'transfer');
+    expect(text.includes('IV ' + mon.ivAvg.toFixed(0) + '%'), text); expect(/under 51%/.test(text) && /under 70%/.test(text), text);
+    const pu = await s.call('whyLine', mon, 'powerUp'); expect(/90% or higher/.test(pu), pu);
+  }, 'high');
+  await T('REC-09', 'Recs', 'MARK DONE offers Undo that puts the item back', async () => {
+    const b = s.page.getByText('MARK DONE', { exact: true }).first(); if (!(await b.count())) skip('none'); const n0 = (await s.state()).completedIds.length; await b.click(); await s.page.waitForTimeout(400);
+    expect((await s.state()).completedIds.length === n0 + 1, 'not marked'); await s.page.getByRole('button', { name: 'Undo' }).click(); await s.page.waitForTimeout(300); expect((await s.state()).completedIds.length === n0, 'undo failed');
+  }, 'medium');
 
   // ------------------------------------------------------------------ INTEL
   await s.go('INTEL');
