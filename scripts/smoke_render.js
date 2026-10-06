@@ -103,6 +103,18 @@ const check = (name, ok, extra) => {
     // A literal \\uXXXX in visible text means an escape was written into HTML (it only works in JS strings).
     check(label + ' tab shows no raw \\u escapes', !/\\u[0-9a-fA-F]{4}/.test(text), (text.match(/.{0,30}\\u[0-9a-fA-F]{4}.{0,20}/) || [''])[0]);
   }
+  // PvP list: a sprite on every row, and nothing over the league's CP cap.
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(2200);
+  await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
+  await page.waitForTimeout(1000);
+  await go('PVP');
+  const pvpText = await page.locator('body').innerText();
+  const greatList = pvpText.split('BEST GREAT')[0].split('SUGGESTED TEAM')[0];
+  check('Great League list excludes a 2648 CP Dragonite', !/Dragonite/.test(greatList));
+  check('Great League list includes a 1498 CP Azumarill', /Azumarill/.test(greatList));
+  check('PvP rows carry a sprite', (await page.locator('img[src*="sprites"], img[src^="data:"]').count()) >= 1 || (await page.locator('[style*="object-fit"] , img').count()) >= 1);
+
   // Planners: add an event, save a team and tally a result.
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(2200);

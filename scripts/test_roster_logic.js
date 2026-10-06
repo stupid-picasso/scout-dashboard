@@ -489,8 +489,8 @@ function buildLists(roster, bestRank) {
   check('missing move data returns null', m.raidRating([200, 100, 100], [15, 15, 15], 50, null, charged, {}), null);
 
   const ctx = { mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } };
-  ['moveKey', 'lookupMove', 'raidProfile', 'pvpAssess', 'pvpBest', 'isPvpWorthy', 'needsAppraisal'].forEach(n => {
-    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p' }[n];
+  ['moveKey', 'lookupMove', 'raidProfile', 'pvpAssess', 'pvpBest', 'isPvpWorthy', 'needsAppraisal', 'leagueUsable', 'bestRank', 'bestLeagueInfo'].forEach(n => {
+    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
     ctx[n] = new Function(...sig.split(', '), extractMethodBody(SRC, `${n}(${sig}) {`)).bind(ctx);
   });
   ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
@@ -512,6 +512,20 @@ function buildLists(roster, bestRank) {
   check('a species PvPoke does not rank is NOT PvP ready even at 100% IV rank', ctx.isPvpWorthy(mk('Caterpie', 100)), false);
   check('90% IV rank is the floor even for a strong species', ctx.isPvpWorthy(mk('Azumarill', 80)), false);
   check('estimated (unmeasured) IVs never count as PvP ready', ctx.isPvpWorthy(mk('Azumarill', 98, false)), false);
+
+  // CP caps: a Pokemon already over a league's cap can never play it.
+  const over = (name, rank, cp) => ({ ...mk(name, rank), cp, little: null });
+  check('1498 CP fits Great League', ctx.leagueUsable({ cp: 1498 }, 'great'), true);
+  check('1501 CP does not fit Great League', ctx.leagueUsable({ cp: 1501 }, 'great'), false);
+  check('2546 CP does not fit Ultra League either', ctx.leagueUsable({ cp: 2546 }, 'ultra'), false);
+  check('Master League has no cap', ctx.leagueUsable({ cp: 4500 }, 'master'), true);
+  check('unknown CP gets the benefit of the doubt', ctx.leagueUsable({ cp: null }, 'great'), true);
+  check('an over-cap Pokemon has no Great League assessment', ctx.pvpAssess(over('Azumarill', 98, 2546), 'great'), null);
+  check('an over-cap Pokemon is not PvP ready for Great League', ctx.isPvpWorthy(over('Azumarill', 98, 2546)), false);
+  check('a Pokemon under the cap is still assessed', !!ctx.pvpAssess(over('Azumarill', 98, 1498), 'great'), true);
+  check('best rank ignores leagues the CP already exceeds', ctx.bestRank({ cp: 2546, great: { rankPct: 96 }, ultra: { rankPct: 90 }, little: null }), 0);
+  check('best rank keeps leagues the CP still fits', ctx.bestRank({ cp: 2000, great: { rankPct: 96 }, ultra: { rankPct: 90 }, little: null }), 90);
+  check('best league label skips leagues that are out of reach', ctx.bestLeagueInfo({ cp: 2000, great: { rankPct: 96 }, ultra: { rankPct: 90 }, little: null }).label, 'ULTRA');
   check('the assessment flags unconfirmed IVs', ctx.pvpAssess(mk('Azumarill', 98, false), 'great').confirmed, false);
 
   // Level cap: a lower cap can only lower (or keep) the best stat product, and the setting restores.

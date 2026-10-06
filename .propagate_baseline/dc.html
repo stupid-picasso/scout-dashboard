@@ -134,7 +134,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.125</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.127</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1968,25 +1968,33 @@
       </sc-for>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
-        <div>#</div><div>NAME</div><div>CP</div><div>IV RANK %</div><div>STAT PROD</div><div>EVOLVES TO</div>
+      <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 44px 74px 58px;gap:6px;padding:10px 12px;font:700 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
+        <div>#</div><div>POK&Eacute;MON</div><div>CP</div><div>IV RANK</div><div>LEVEL</div>
       </div>
       <sc-for list="{{ pvpList }}" as="p" hint-placeholder-count="8">
-        <div class="om-stagger" style="--i:{{ $index }};display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:13px var(--font-body);border-bottom:1px solid var(--surface-muted);align-items:center">
-          <div style="font:var(--font-display);color:var(--ink-300)">{{ p.rankNum }}</div>
-          <div style="min-width:0">
-            <div style="font-weight:600">{{ p.displayName }}</div>
-            <sc-if value="{{ p.moveNote }}" hint-placeholder-val="{{ false }}">
-              <div style="font:600 10.5px var(--font-display);color:{{ p.moveNoteColor }};margin-top:2px">{{ p.moveNote }}</div>
-            </sc-if>
+        <div onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;display:grid;grid-template-columns:22px minmax(0,1fr) 44px 74px 58px;gap:6px;padding:10px 12px;font:13px var(--font-body);border-bottom:1px solid var(--surface-muted);align-items:center">
+          <div style="font:700 11px var(--font-display);color:var(--ink-300)">{{ p.rankNum }}</div>
+          <div style="min-width:0;display:flex;align-items:center;gap:9px">
+            <div style="flex-shrink:0;width:40px;height:40px;position:relative;display:flex;align-items:center;justify-content:center">
+              <span style="position:absolute;font:800 14px var(--font-display);color:rgba(255,255,255,.12)">{{ p.initial }}</span>
+              <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.4))" />
+            </div>
+            <div style="min-width:0">
+              <div style="font-weight:600;overflow-wrap:anywhere">{{ p.displayName }}</div>
+              <sc-if value="{{ p.moveNote }}" hint-placeholder-val="{{ false }}">
+                <div style="font:600 10.5px var(--font-display);color:{{ p.moveNoteColor }};margin-top:2px;text-wrap:pretty">{{ p.moveNote }}</div>
+              </sc-if>
+              <sc-if value="{{ p.evolvesTo }}" hint-placeholder-val="{{ false }}">
+                <div style="font:10.5px var(--font-display);color:var(--ink-400);margin-top:2px">{{ p.evolvesTo }}</div>
+              </sc-if>
+            </div>
           </div>
-          <div style="font:var(--font-display)">{{ p.cp }}</div>
+          <div style="font:700 13px var(--font-display);font-variant-numeric:tabular-nums">{{ p.cp }}</div>
           <div style="display:flex;align-items:center;gap:5px">
             <span style="flex-shrink:0;width:17px;height:17px;border-radius:5px;background:{{ p.tierColor }};color:var(--surface-page);font:800 10px var(--font-display);display:flex;align-items:center;justify-content:center">{{ p.tierLabel }}</span>
-            <span style="font:700 var(--font-display);color:var(--grass-700)">{{ p.rankPctDisplay }}</span>
+            <span style="font:700 12.5px var(--font-display);color:var(--grass-700)">{{ p.rankPctDisplay }}</span>
           </div>
-          <div style="font:var(--font-display);color:var(--ink-500)">{{ p.statProdDisplay }}</div>
-          <div style="font:12.5px var(--font-body);color:var(--ink-500)">{{ p.evolvesTo }}</div>
+          <div style="font:600 11px var(--font-display);color:var(--ink-500)">{{ p.levelDisplay }}</div>
         </div>
       </sc-for>
     </div>
@@ -3784,12 +3792,24 @@ class Component extends DCLogic {
     return { rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null };
   }
 
+  // A Pokemon can only play a league its CURRENT CP fits under (Great 1500,
+  // Ultra 2500, Little 500; Master has no cap). Power-ups cannot be undone, so a
+  // 2546 CP Snorlax is a Master League Pokemon whatever its Great League IV rank
+  // says. Unknown CP is given the benefit of the doubt.
+  leagueUsable(p, leagueKey) {
+    const caps = (this.mechanics && this.mechanics.LEAGUE_CAPS) || { great: 1500, ultra: 2500, little: 500 };
+    const cap = caps[leagueKey];
+    if (!cap || !Number.isFinite(p.cp)) return true;
+    return p.cp <= cap;
+  }
+
   bestRank(p) {
     // Video/OCR-imported Pokemon can arrive without league objects at all, so
-    // reading p.great.rankPct directly crashes the whole render.
-    const g = (p.great && p.great.rankPct) || 0;
-    const u = (p.ultra && p.ultra.rankPct) || 0;
-    const l = (p.little && p.little.rankPct) || 0;
+    // reading p.great.rankPct directly crashes the whole render. Leagues the
+    // Pokemon is already too strong for do not count.
+    const g = (this.leagueUsable(p, 'great') && p.great && p.great.rankPct) || 0;
+    const u = (this.leagueUsable(p, 'ultra') && p.ultra && p.ultra.rankPct) || 0;
+    const l = (this.leagueUsable(p, 'little') && p.little && p.little.rankPct) || 0;
     return Math.max(g, u, l);
   }
 
@@ -4300,7 +4320,7 @@ class Component extends DCLogic {
   pvpAssess(p, leagueKey) {
     const m = this.mechanics;
     const lg = p[leagueKey];
-    if (!m || !lg || !Number.isFinite(lg.rankPct)) return null;
+    if (!m || !lg || !Number.isFinite(lg.rankPct) || !this.leagueUsable(p, leagueKey)) return null;
     const shadow = this.isShadow(p);
     const hasTierData = leagueKey === 'great' || leagueKey === 'ultra';
     const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(p.name, shadow, leagueKey) : null;
@@ -4393,7 +4413,7 @@ class Component extends DCLogic {
     if (this.needsAppraisal(p)) return false;
     const b = this.pvpBest(p);
     if (b && b.rank >= 90 && b.tierRank <= 2) return true;
-    const lc = p.little && p.little.rankPct;
+    const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
     return Number.isFinite(lc) && lc >= 90;
   }
 
@@ -9709,8 +9729,8 @@ class Component extends DCLogic {
   // and including it was why the AI picks skewed toward mediocre Pokemon
   // instead of the roster's actual standouts.
   bestGreatUltraRank(p) {
-    const g = (p.great && p.great.rankPct) || 0;
-    const u = (p.ultra && p.ultra.rankPct) || 0;
+    const g = (this.leagueUsable(p, 'great') && p.great && p.great.rankPct) || 0;
+    const u = (this.leagueUsable(p, 'ultra') && p.ultra && p.ultra.rankPct) || 0;
     return Math.max(g, u);
   }
 
@@ -10232,7 +10252,7 @@ class Component extends DCLogic {
   }
 
   verdictFor(p) {
-    const little = p.little && p.little.rankPct;
+    const little = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
     const rank = this.bestRank(p);
     const roster = this.effectiveRosterForMatch();
     const sameDex = roster.filter(q => q.dex === p.dex).length;
@@ -10977,7 +10997,7 @@ class Component extends DCLogic {
   }
 
   bestLeagueInfo(p) {
-    const opts = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]];
+    const opts = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].filter(([label]) => this.leagueUsable(p, label.toLowerCase()));
     let best = null;
     for (const [label, obj] of opts) {
       // A fully-evolved Pokemon has little: null (ineligible for Little Cup) —
@@ -11187,7 +11207,8 @@ class Component extends DCLogic {
 
     const leagueKey = league;
     const rosterForLeague = leagueKey === 'master' ? roster.map(p => ({ ...p, master: this.masterRankFor(p) })) : roster;
-    const leaguePool = rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct));
+    // Only Pokemon whose CP already fits under the league's cap can play it.
+    const leaguePool = rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct) && this.leagueUsable(p, leagueKey));
     // Species meta tier (S/A/B/C) is a DIFFERENT thing from rankPct: rankPct
     // is this individual's IV quality relative to its OWN species' cap (a
     // perfect-IV Pikachu reads 100% there and is still bad in Great League).
@@ -11217,14 +11238,28 @@ class Component extends DCLogic {
       const as = assessFor(p);
       const nice = n => String(n).replace(/\b\w/g, c => c.toUpperCase());
       const moveNote = !as ? '' : ((as.movesOk === true ? '\u2713 recommended moves' : (as.movesOk === false ? 'needs ' + as.missing.map(nice).join(', ') : '')) + (as.confirmed ? '' : ' \u00b7 IVs unconfirmed')).replace(/^ \u00b7 /, '');
+      // Level now vs the level that fills the league's CP cap for these IVs.
+      let levelDisplay = '\u2014';
+      try {
+        const lv = this.evalLevelOf(p), base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+        const cap = this.mechanics && this.mechanics.LEAGUE_CAPS ? this.mechanics.LEAGUE_CAPS[leagueKey] : null;
+        const target = (cap && cap !== Infinity && base && ivs) ? this.mechanics.maxLevelUnderCap(base, ivs, cap) : null;
+        if (lv.level != null) levelDisplay = 'L' + lv.level + (target != null && target > lv.level ? ' \u2192 L' + target : '');
+        else if (target != null) levelDisplay = '\u2192 L' + target;
+      } catch (e) {}
+      const evoTo = this.evolvesToName(p);
       return {
         moveNote, moveNoteColor: as && as.movesOk === true ? 'var(--grass-700)' : 'var(--type-electric)',
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+        badgeColor: this.dsTypeColor(p),
+        initial: (p.name || '?').charAt(0),
+        onClick: () => this.openDetail(p),
         cp: p.cp,
-        rankNum: Number.isFinite(p[leagueKey].rankNum) ? '#' + p[leagueKey].rankNum : '—',
+        rankNum: '#' + (leaguePool.indexOf(p) + 1),
         rankPctDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(1) + '%' : '—',
-        statProdDisplay: Number.isFinite(p[leagueKey].statProd) ? p[leagueKey].statProd.toFixed(1) + '%' : '—',
-        evolvesTo: this.evolvesToName(p) || '—',
+        levelDisplay,
+        evolvesTo: evoTo ? '\u2192 ' + evoTo : '',
         tierLabel: tier ? tier.tier : '—',
         tierColor: tier ? tierColor(tier.tier) : 'var(--ink-300)'
       };
@@ -11265,7 +11300,7 @@ class Component extends DCLogic {
     const suggestedTeam = [];
     suggestedTeamPool.forEach(p => {
       if (suggestedTeam.length >= 6) return;
-      const t = (typeTableRef[p.name.toLowerCase()] || '').split('/')[0].trim();
+      const t = (typeTableRef[p.name.toLowerCase()] || this.typeOf(p) || '').split('/')[0].trim();
       const key = t || 'unknown-' + p.dex;
       if (teamTypes[key]) return;
       teamTypes[key] = true;
@@ -11619,6 +11654,7 @@ class Component extends DCLogic {
             const sp = mm.bestSpreadUnderCap(idealBase, cap, this.isShadow(p));
             if (sp) idealLine = 'Best spread ' + sp.ivs.join('/') + ' at L' + sp.level + (Number.isFinite(p.atkIV) ? ' \u00b7 yours ' + p.atkIV + '/' + p.defIV + '/' + p.staIV : '');
           }
+          if (cap && !this.leagueUsable(p, label.toLowerCase())) idealLine = 'Already ' + p.cp + ' CP \u2014 over the ' + cap + ' cap, so this one cannot enter this league.';
         } catch (e) {}
         return {
           idealLine,
