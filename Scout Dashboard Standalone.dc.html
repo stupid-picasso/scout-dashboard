@@ -1222,7 +1222,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.136</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.139</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2625,7 +2625,10 @@
   <div role="main" style="animation:fadeSlideIn .35s ease">
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin:2px 2px 12px">
       <div style="font:800 20px var(--font-display);letter-spacing:.03em">POK&Eacute;MON</div>
-      <div style="font:12px var(--font-display);color:var(--ink-300)">{{ rosterCountLabel }}</div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="font:12px var(--font-display);color:var(--ink-300)">{{ rosterCountLabel }}</div>
+        <button type="button" onClick="{{ toggleSelectMode }}" style="font:600 16px var(--font-body);color:var(--ios-blue);padding:6px 2px">{{ selectLabel }}</button>
+      </div>
     </div>
     <sc-if value="{{ hasImportReport }}" hint-placeholder-val="{{ false }}">
       <details style="background:var(--surface-card);border-radius:16px;padding:12px 16px;margin-bottom:14px">
@@ -2644,6 +2647,7 @@
         <option value="cp">Sort: CP</option>
         <option value="ivAvg">Sort: IV%</option>
         <option value="rank">Sort: Best league rank</option>
+        <option value="megaReady">Sort: Mega ready</option>
         <option value="ivFloor">Sort: IV floor (lowest first)</option>
         <option value="name">Sort: Name</option>
         <option value="dex">Sort: Dex #</option>
@@ -2673,6 +2677,17 @@
         <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;white-space:nowrap;padding:9px 14px;border-radius:999px;font:700 11px var(--font-display);letter-spacing:.05em;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}">{{ c.label }}</div>
       </sc-for>
     </div>
+    <sc-if value="{{ canSaveView }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:-4px 0 12px"><button type="button" onClick="{{ saveView }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:4px 2px">Save this view</button></div>
+    </sc-if>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 12px">
+      <sc-for list="{{ savedViewChips }}" as="v" hint-placeholder-count="0">
+        <span style="display:inline-flex;align-items:center;background:var(--ios-fill);border-radius:999px;overflow:hidden">
+          <button type="button" onClick="{{ v.apply }}" style="font:500 13px var(--font-body);color:var(--ink-900);padding:7px 6px 7px 12px">{{ v.name }}</button>
+          <button type="button" onClick="{{ v.remove }}" aria-label="{{ v.removeLabel }}" style="font:600 14px var(--font-body);color:var(--ink-400);padding:7px 11px 7px 4px">&times;</button>
+        </span>
+      </sc-for>
+    </div>
     <sc-if value="{{ rosterLoading }}" hint-placeholder-val="{{ false }}">
       <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
         <sc-for list="{{ skeletonCards }}" as="s" hint-placeholder-count="8">
@@ -2695,7 +2710,7 @@
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div style="position:relative;overflow:hidden;border-radius:16px">
+        <div style="position:relative;overflow:hidden;border-radius:16px;content-visibility:auto;contain-intrinsic-size:auto 84px">
           <div style="position:absolute;inset:0;display:flex;justify-content:flex-end;align-items:stretch">
             <div onClick="{{ p.markTransferredCandy }}" class="om-press" aria-label="Transfer, plus 1 candy" style="cursor:pointer;width:68px;flex-shrink:0;background:var(--surface-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-700)">
               <span style="font:700 18px var(--font-display)">&#8617;</span>
@@ -2706,7 +2721,10 @@
               <span style="font:600 11px var(--font-body)">Remove</span>
             </div>
           </div>
-          <div data-swipe-row="{{ p.idx }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--surface-card);border-radius:16px;padding:12px 14px;touch-action:pan-y">
+          <div data-swipe-row="{{ p.idx }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--surface-card);border-radius:{{ p.rowRadius }};padding:12px 14px;touch-action:pan-y">
+          <sc-if value="{{ p.selectMode }}" hint-placeholder-val="{{ false }}">
+            <span role="checkbox" aria-checked="{{ p.isSelected }}" aria-label="Select {{ p.displayName }}" style="flex-shrink:0;width:24px;height:24px;border-radius:50%;border:2px solid {{ p.selectBorder }};background:{{ p.selectBg }};color:#fff;font:700 14px/20px var(--font-body);text-align:center">{{ p.selectGlyph }}</span>
+          </sc-if>
           <div style="flex-shrink:0;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 50% 38%, color-mix(in oklab, {{ p.typeAccent }} 34%, transparent), color-mix(in oklab, {{ p.typeAccent }} 5%, transparent) 72%)">
             <span style="position:absolute;font:700 20px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
             <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))" />
@@ -2763,9 +2781,20 @@
       <div style="text-align:center;padding:36px 20px;color:var(--ink-400);font:14px/1.5 var(--font-body)">{{ rosterEmptyMsg }}</div>
     </sc-if>
     <sc-if value="{{ hasMore }}" hint-placeholder-val="{{ true }}">
+      <div ref="{{ autoLoadRef }}" style="height:1px"></div>
       <div onClick="{{ loadMore }}" style="cursor:pointer;text-align:center;margin-top:20px;padding:12px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);font:700 12.5px var(--font-display);color:var(--type-electric)">LOAD 30 MORE</div>
     </sc-if>
   </div>
+  </sc-if>
+
+  <sc-if value="{{ selectMode }}" hint-placeholder-val="{{ false }}">
+    <div role="toolbar" aria-label="Bulk actions" style="position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:45;display:flex;align-items:center;gap:6px;padding:10px 12px;border-radius:20px;background:rgba(28,28,30,.96);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);box-shadow:0 10px 30px rgba(0,0,0,.5)">
+      <div style="flex:1;min-width:0;font:600 15px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ selectedLabel }}</div>
+      <button type="button" onClick="{{ selectAllShown }}" style="font:500 14px var(--font-body);color:#64b5ff;padding:8px 6px">All</button>
+      <button type="button" onClick="{{ bulkFavourite }}" style="font:500 14px var(--font-body);color:#64b5ff;padding:8px 6px">Favourite</button>
+      <button type="button" onClick="{{ bulkTransfer }}" style="font:600 14px var(--font-body);color:#fff;background:var(--ios-blue-fill);border-radius:999px;padding:8px 14px">Transfer</button>
+      <button type="button" onClick="{{ bulkRemove }}" style="font:600 14px var(--font-body);color:#ff8a80;padding:8px 6px">Remove</button>
+    </div>
   </sc-if>
 
   <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
@@ -3804,6 +3833,10 @@ class Component extends DCLogic {
     syncedFrom: '',
     detailPoke: null,
     visibleCount: 30,
+    selectMode: false,
+    selectedIdx: [],
+    savedViews: [],
+    undoLabel: '',
     completedIds: [],
     removedIds: [],
     stardustBalance: null,
@@ -3979,6 +4012,8 @@ class Component extends DCLogic {
     this.loadFeed();
     try { this.enhanceAccessibility(); } catch (e) { console.error(e); }
     try { this.bindCsvDrop(); } catch (e) { console.error(e); }
+    try { const sv = JSON.parse(localStorage.getItem('scout.savedViews.v1') || '[]'); if (Array.isArray(sv)) this.setState({ savedViews: sv.filter(v => v && v.id && v.filter).slice(-8) }); } catch (e) {}
+    setTimeout(() => this.maybeSwipeHint(), 3500);
     try { const z = parseFloat(localStorage.getItem('scout.uiZoom')); if (z >= 1 && z <= 2) this.setUiZoom(z); } catch (e) {}
     // Auth settles within a couple of seconds; only then is it clear nobody is signed in.
     setTimeout(() => this.restoreLocalSnapshot(), 2400);
@@ -10747,6 +10782,123 @@ class Component extends DCLogic {
     this.haptic('light');
   }
 
+  // One-step undo for destructive roster actions. Snapshots the named state keys
+  // before the change; the toast offers Undo for 8 seconds.
+  offerUndo(label, keys) {
+    const snap = {};
+    keys.forEach(k => { snap[k] = this.state[k]; });
+    this._undoSnap = snap;
+    this.setState({ undoLabel: label });
+    clearTimeout(this._undoTimer);
+    this._undoTimer = setTimeout(() => { this._undoSnap = null; this.setState({ undoLabel: '' }); }, 8000);
+  }
+
+  performUndo() {
+    const snap = this._undoSnap;
+    if (!snap) return;
+    this._undoSnap = null;
+    clearTimeout(this._undoTimer);
+    this.haptic('light');
+    this.setState({ ...snap, undoLabel: '' }, () => { try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {} });
+  }
+
+  toggleSelectMode() {
+    this.closeAnyRosterSwipe && this.closeAnyRosterSwipe(false);
+    this.setState({ selectMode: !this.state.selectMode, selectedIdx: [] });
+  }
+
+  toggleSelect(idx) {
+    const cur = new Set(this.state.selectedIdx || []);
+    if (cur.has(idx)) cur.delete(idx); else cur.add(idx);
+    this.haptic('light');
+    this.setState({ selectedIdx: [...cur] });
+  }
+
+  // Bulk transfer: each Pokemon removed and +1 candy for its species (XL is a random
+  // in-game bonus that cannot be known per Pokemon, so none is assumed).
+  bulkTransfer(withCandy) {
+    const sel = new Set(this.state.selectedIdx || []);
+    if (!sel.size) return;
+    const picked = this.effectiveRosterForMatch().filter(p => sel.has(p.idx));
+    this.offerUndo((withCandy ? 'Transferred ' : 'Removed ') + picked.length + ' Pokemon', ['removedIds', 'candyInventory']);
+    const removed = new Set(this.state.removedIds || []);
+    sel.forEach(i => removed.add(i));
+    const inv = { ...(this.state.candyInventory || {}) };
+    if (withCandy) picked.forEach(p => {
+      const key = String(p.name || '').toLowerCase();
+      const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
+      inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1 };
+    });
+    this.haptic('heavy');
+    this.setState({ removedIds: [...removed], candyInventory: inv, selectedIdx: [], selectMode: false }, () => { try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {} });
+  }
+
+  bulkFavourite() {
+    const sel = new Set(this.state.selectedIdx || []);
+    if (!sel.size) return;
+    const picked = this.effectiveRosterForMatch().filter(p => sel.has(p.idx));
+    const makeFav = picked.some(p => !p.favorite);
+    this.offerUndo((makeFav ? 'Favourited ' : 'Unfavourited ') + picked.length + ' Pokemon', ['ivOverrides']);
+    const ov = { ...(this.state.ivOverrides || {}) };
+    sel.forEach(i => { ov[i] = { ...(ov[i] || {}), favorite: makeFav }; });
+    this.setState({ ivOverrides: ov, selectedIdx: [], selectMode: false });
+  }
+
+  // Saved views: a named combination of filter, search and sort, kept on this device.
+  persistViews(list) {
+    try { localStorage.setItem('scout.savedViews.v1', JSON.stringify(list)); } catch (e) {}
+  }
+
+  currentViewName() {
+    const f = { all: 'All', measured: 'Measured', needsAppraisal: 'Needs appraisal', pvp: 'PvP ready', lucky: 'Lucky', shadow: 'Shadow', shiny: 'Shiny', shinyCheck: 'Shiny to confirm' }[this.state.rosterFilter || 'all'] || 'View';
+    const so = { cp: 'CP', ivAvg: 'IV%', rank: 'League rank', ivFloor: 'IV floor', name: 'Name', dex: 'Dex', catchDate: 'Newest', scanDate: 'Scanned', megaReady: 'Mega ready' }[this.state.sortField] || '';
+    const q = (this.state.search || '').trim();
+    return [f, q ? '“' + q + '”' : '', so].filter(Boolean).join(' · ');
+  }
+
+  saveCurrentView() {
+    const v = { id: Date.now(), name: this.currentViewName(), filter: this.state.rosterFilter || 'all', sort: this.state.sortField, search: this.state.search || '' };
+    const list = (this.state.savedViews || []).filter(x => !(x.filter === v.filter && x.sort === v.sort && x.search === v.search)).concat(v).slice(-8);
+    this.persistViews(list);
+    this.setState({ savedViews: list });
+    this.haptic('light');
+  }
+
+  applyView(v) {
+    this.setState({ rosterFilter: v.filter, sortField: v.sort, search: v.search, visibleCount: 30 });
+  }
+
+  deleteView(id) {
+    const list = (this.state.savedViews || []).filter(x => x.id !== id);
+    this.persistViews(list);
+    this.setState({ savedViews: list });
+  }
+
+  // Infinite scroll: a sentinel under the list loads the next page as it nears the screen.
+  autoLoadRef(el) {
+    if (this._autoLoadObs) { this._autoLoadObs.disconnect(); this._autoLoadObs = null; }
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    this._autoLoadObs = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) this.loadMore();
+    }, { rootMargin: '300px 0px' });
+    this._autoLoadObs.observe(el);
+  }
+
+  // One-time hint that rows swipe: nudge the first row open and back, once ever.
+  maybeSwipeHint() {
+    try {
+      if (localStorage.getItem('scout.hint.swipe')) return;
+      if (this.state.tab !== 'roster' || this.state.selectMode) return;
+      const row = document.querySelector('[data-swipe-row]');
+      if (!row || this._openSwipeEl) return;
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { localStorage.setItem('scout.hint.swipe', '1'); return; }
+      localStorage.setItem('scout.hint.swipe', '1');
+      row.style.transition = 'transform .35s cubic-bezier(.22,1,.36,1)';
+      row.style.transform = 'translateX(-56px)';
+      setTimeout(() => { row.style.transform = 'translateX(0)'; setTimeout(() => { row.style.transition = ''; row.style.transform = ''; }, 400); }, 900);
+    } catch (e) {}
+  }
+
   removePokemon(idx) {
     this.haptic('heavy');
     const set = new Set(this.state.removedIds);
@@ -10777,6 +10929,7 @@ class Component extends DCLogic {
   // transfer toast, so the caller asks (via askTransferConfirm below) and
   // passes the answer in, rather than this method blocking on window.confirm.
   transferPokemon(p, gotXl) {
+    this.offerUndo('Transferred ' + (p.name || 'Pokemon'), ['removedIds', 'candyInventory']);
     this.removePokemon(p.idx);
     const key = String(p.name || '').toLowerCase();
     const inv = { ...(this.state.candyInventory || {}) };
@@ -12858,7 +13011,7 @@ class Component extends DCLogic {
           this.askConfirm({
             title: 'Remove this entry?',
             message: 'Use this only for a mistaken duplicate \u2014 it will NOT grant a transfer candy. For a real transfer, use Transfer instead.',
-            actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.removePokemon(p.idx); this.closeConfirm(); } }]
+            actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); this.closeConfirm(); } }]
           });
         } }
       ]
@@ -13060,6 +13213,10 @@ class Component extends DCLogic {
         return fa - fb;
       }
       if (sortField === 'rank') return this.bestRank(b) - this.bestRank(a);
+      if (sortField === 'megaReady') {
+        const w = x => { const t = this.megaTagFor(x); return t === 'MEGA \u2713' ? 2 : t ? 1 : 0; };
+        return (w(b) - w(a)) || ((b.cp || 0) - (a.cp || 0));
+      }
       if (sortField === 'scanDate') {
         const ta = a.scanDate ? Date.parse(a.scanDate) : NaN, tb = b.scanDate ? Date.parse(b.scanDate) : NaN;
         if (Number.isNaN(ta)) return 1;
@@ -13089,7 +13246,12 @@ class Component extends DCLogic {
         idx: p.idx,
         ivBarPct: Math.max(0, Math.min(100, Number.isFinite(p.ivAvg) ? p.ivAvg : 0)).toFixed(0) + '%',
         isFav: !!p.favorite,
-        onClick: () => { if (this._openSwipeEl) { this.closeAnyRosterSwipe(); return; } this.openDetail(p, filteredRoster.map(r => r.raw)); },
+        selectMode: this.state.selectMode,
+        isSelected: (this.state.selectedIdx || []).indexOf(p.idx) >= 0,
+        selectGlyph: (this.state.selectedIdx || []).indexOf(p.idx) >= 0 ? '\u2713' : '',
+        selectBg: (this.state.selectedIdx || []).indexOf(p.idx) >= 0 ? 'var(--ios-blue-fill)' : 'transparent',
+        selectBorder: (this.state.selectedIdx || []).indexOf(p.idx) >= 0 ? 'var(--ios-blue-fill)' : 'var(--ink-400)',
+        onClick: () => { if (this.state.selectMode) { this.toggleSelect(p.idx); return; } if (this._openSwipeEl) { this.closeAnyRosterSwipe(); return; } this.openDetail(p, filteredRoster.map(r => r.raw)); },
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         initial: (p.name || '?').charAt(0),
         dex: p.dex,
@@ -13119,6 +13281,7 @@ class Component extends DCLogic {
         flags: flags,
         stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : '',
         showManualIv: !this.rowSpread(p).measured,
+        rowRadius: !this.rowSpread(p).measured ? '16px 16px 0 0' : '16px',
         ivEditOpen: this.state.ivEditIdx === p.idx,
         ivEditClosed: this.state.ivEditIdx !== p.idx,
         toggleIvEdit: () => this.setState({ ivEditIdx: this.state.ivEditIdx === p.idx ? null : p.idx }),
@@ -13146,7 +13309,7 @@ class Component extends DCLogic {
           this.askConfirm({
             title: 'Remove this entry?',
             message: 'Use this only for a mistaken duplicate \u2014 it will NOT grant a transfer candy. For a real transfer, use the transfer button instead.',
-            actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.removePokemon(p.idx); this.closeConfirm(); } }]
+            actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); this.closeConfirm(); } }]
           });
         }
       };
@@ -14159,6 +14322,7 @@ class Component extends DCLogic {
         if (this.state.csvError) return { text: this.state.csvError, dot: 'var(--ios-red)' };
         if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         if (this.state.storageWarning) return { text: this.state.storageWarning, bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
+        if (this.state.undoLabel) return { text: this.state.undoLabel + '.', dot: 'var(--ios-green)', action: { label: 'Undo', run: () => this.performUndo() } };
         if (this.state.csvNotice) return { text: this.state.csvNotice, dot: 'var(--ios-green)', action: this.state.importUndoable ? { label: 'Undo', run: () => this.undoImport() } : null };
         return null;
       })(),
@@ -14299,6 +14463,24 @@ class Component extends DCLogic {
         onClick: () => this.setState({ rosterFilter: c.key, visibleCount: 30 })
       })),
       rosterCountLabel: `${filteredRoster.length} of ${totalFiltered} shown`,
+      selectMode: !!this.state.selectMode,
+      selectLabel: this.state.selectMode ? 'Done' : 'Select',
+      toggleSelectMode: () => this.toggleSelectMode(),
+      selectedCount: (this.state.selectedIdx || []).length,
+      selectedLabel: (this.state.selectedIdx || []).length ? (this.state.selectedIdx || []).length + ' selected' : 'Select Pokemon',
+      selectAllShown: () => this.setState({ selectedIdx: filtered.map(p => p.idx) }),
+      bulkTransfer: () => this.bulkTransfer(true),
+      bulkRemove: () => this.askConfirm({ title: 'Remove ' + (this.state.selectedIdx || []).length + ' entries?', message: 'Use this only for mistaken duplicates \u2014 it will NOT grant transfer candy. You can undo right after.', actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.closeConfirm(); this.bulkTransfer(false); } }] }),
+      bulkFavourite: () => this.bulkFavourite(),
+      savedViewChips: (this.state.savedViews || []).map(v => ({
+        name: v.name,
+        removeLabel: 'Delete saved view ' + v.name,
+        apply: () => this.applyView(v),
+        remove: () => this.deleteView(v.id)
+      })),
+      canSaveView: (rosterFilter !== 'all' || (search && search.trim()) || sortField !== 'cp') && !(this.state.savedViews || []).some(v => v.filter === rosterFilter && v.sort === sortField && v.search === (search || '')),
+      saveView: () => this.saveCurrentView(),
+      autoLoadRef: (el) => this.autoLoadRef(el),
       filteredRoster,
       rosterEmptyMsg: (this.state.loaded && filteredRoster.length === 0) ? (roster.length === 0 ? 'Your roster is empty. Use SYNC CSV above to import your Pokemon.' : 'No Pokemon match' + (search && search.trim() ? ' \u201c' + search.trim() + '\u201d' : ' this filter') + '. Clear the search or choose ALL.') : '',
       hasMore: visibleCount < totalFiltered,
