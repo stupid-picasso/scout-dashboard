@@ -732,11 +732,12 @@ function buildLists(roster, bestRank) {
 // ---------------------------------------------------------------------------
 (() => {
   const ctx = { mechanics: m, state: {} };
-  ['validFeed(f)', 'leagueTopSpecies(cp, n)', 'gblWeeks(now)'].forEach(sig => {
+  ['validFeed(f)', 'cupAllowsSpecies(cup, species, form, types)', 'cupAllows(cup, p)', 'leagueTopSpecies(cp, n, cup, mega)', 'megaReadyPicks(n)', 'gblWeeks(now)'].forEach(sig => {
     const name = sig.slice(0, sig.indexOf('(')), args = sig.slice(sig.indexOf('(') + 1, -1);
     ctx[name] = new Function(...(args ? args.split(', ') : []), extractMethodBody(SRC, sig + ' {')).bind(ctx);
   });
-  ctx.pvpTeamFor = () => null;
+  ctx.pvpTeamFor = () => null; ctx.typeOf = p => (m.speciesInfo(p.name, p.form) || { types: [] }).types.join(' / ');
+  ctx.effectiveRosterForMatch = () => []; ctx.megaEvolveInfoFor = () => null;
   check('feed without gbl is rejected', ctx.validFeed({ events: [] }), false);
   check('feed with a malformed week is rejected', ctx.validFeed({ events: [], gbl: [{ start: 'x' }] }), false);
   const t = Date.parse('2026-10-08T00:00:00Z');
@@ -748,10 +749,25 @@ function buildLists(roster, bestRank) {
   check('expired weeks are dropped, current + next kept', ctx.validFeed(ctx.state.feed) && ctx.gblWeeks(t).length, 2);
   const wk = ctx.gblWeeks(t);
   check('first shown week is labelled THIS WEEK', /^THIS WEEK/.test(wk[0].title) && /^NEXT WEEK/.test(wk[1].title), true);
-  check('open Great League gets top species, Mega edition does not', wk[0].leagues[0].hasTop && !wk[0].leagues[1].hasTop, true);
+  check('open Great League and its Mega edition both list top species', wk[0].leagues[0].hasTop && wk[0].leagues[1].hasTop, true);
+  check('Mega edition says Mega forms are not modelled', /not modelled/.test(wk[0].leagues[1].note), true);
   check('Little Cup now has ranked species', wk[1].leagues[0].hasTop, true);
   check('Master League has ranked species', ctx.leagueTopSpecies(10000, 3).length, 3);
   check('a cap with no table returns null', ctx.leagueTopSpecies(3000, 3), null);
+  // cup rules
+  const color = { types: ['fire', 'water', 'grass', 'electric'] };
+  check('type cup allows a Water Pokemon', ctx.cupAllowsSpecies(color, 'azumarill', '', ['water', 'fairy']), true);
+  check('type cup rejects a Steel/Fairy Pokemon', ctx.cupAllowsSpecies(color, 'registeel', '', ['steel']), false);
+  const laic = { banTypes: ['fire', 'dark'], ban: ['corsola:galarian', 'snorlax'] };
+  check('banned type is out', ctx.cupAllowsSpecies(laic, 'charizard', '', ['fire', 'flying']), false);
+  check('banned species is out', ctx.cupAllowsSpecies(laic, 'snorlax', '', ['normal']), false);
+  check('ban on one form leaves the other', ctx.cupAllowsSpecies(laic, 'corsola', '', ['water', 'rock']) && !ctx.cupAllowsSpecies(laic, 'corsola', 'Galarian', ['ghost']), true);
+  const little = { allow: ['bulbasaur', 'pikachu', 'meowth:normal|alolan'] };
+  check('allow list admits listed species and forms only', ctx.cupAllowsSpecies(little, 'pikachu', '', []) && ctx.cupAllowsSpecies(little, 'meowth', 'Alolan', []) && !ctx.cupAllowsSpecies(little, 'meowth', 'Galarian', []) && !ctx.cupAllowsSpecies(little, 'dragonite', '', []), true);
+  const ft = ctx.leagueTopSpecies(1500, 8, { types: ['water'] });
+  check('top species honour the cup type filter', ft.length > 0 && ft.every(x => (m.speciesInfo(x.name.replace(/ \(Shadow\)$/, '').toLowerCase().replace(/ /g, '_'), '') || { types: ['water'] }).types.map(y => y.toLowerCase()).indexOf('water') >= 0), true);
+  check('no cup means no filter', ctx.cupAllowsSpecies(null, 'anything', '', []), true);
+  check('Mega Master has its own table', ctx.leagueTopSpecies(10000, 3, null, true).length, 3);
   const top = ctx.leagueTopSpecies(2500, 3);
   check('top species are sorted by score', top.length === 3 && top[0].score >= top[1].score && top[1].score >= top[2].score, true);
 })();

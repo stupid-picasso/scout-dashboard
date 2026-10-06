@@ -1,6 +1,6 @@
 {
  "source": "ScrapedDuck (LeekDuck mirror) + PvPoke formats; community data, not official",
- "fetchedAt": "2026-10-06T04:36:28Z",
+ "fetchedAt": "2026-10-06T18:17:41Z",
  "events": [
   {
    "id": "season-24-twilight-trails",
@@ -465,7 +465,16 @@
       "Pokemon must be at or below 1,500 CP to enter.",
       "Mega-Evolved Pokémon are eligible.",
       "Only Grass-, Fire-, Water-, Electric-type Pokémon are eligible."
-     ]
+     ],
+     "cup": {
+      "types": [
+       "fire",
+       "electric",
+       "water",
+       "grass"
+      ],
+      "src": "game master COMBAT_LEAGUE_COLOR_GREAT"
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_master-league_mega-color-cup-great-league-edition/"
@@ -482,7 +491,10 @@
      "rules": [
       "Pokemon must be at or below 1,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_GREAT_MEGAS"
+     }
     },
     {
      "name": "Ultra League: Mega Edition",
@@ -491,7 +503,10 @@
      "rules": [
       "Pokemon must be at or below 2,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_ULTRA_MEGAS"
+     }
     },
     {
      "name": "Master League: Mega Edition",
@@ -500,7 +515,10 @@
      "rules": [
       "No CP limit.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_MASTER_MEGAS"
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_great-league-mega-edition_ultra-league-mega-edition_master-league-mega-edition-split-2/"
@@ -516,7 +534,10 @@
      "mega": false,
      "rules": [
       "Pokemon must be at or below 1,500 CP."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_GREAT"
+     }
     },
     {
      "name": "Ultra League: Mega Edition",
@@ -525,7 +546,10 @@
      "rules": [
       "Pokemon must be at or below 2,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_ULTRA_MEGAS"
+     }
     },
     {
      "name": "Little Cup",
@@ -534,7 +558,282 @@
      "rules": [
       "Pokémon must be at or below 500 CP to enter.",
       "Only Pokémon that are able to evolve and have not evolved even once are eligible."
-     ]
+     ],
+     "cup": {
+      "allow": [
+       "bulbasaur",
+       "charmander",
+       "squirtle",
+       "caterpie:normal",
+       "weedle",
+       "pidgey:normal",
+       "rattata",
+       "spearow:normal",
+       "ekans",
+       "sandshrew",
+       "nidoranfemale",
+       "nidoranmale",
+       "vulpix",
+       "zubat",
+       "oddish",
+       "paras:normal",
+       "venonat",
+       "diglett",
+       "meowth",
+       "psyduck",
+       "mankey:normal",
+       "growlithe",
+       "poliwag",
+       "abra",
+       "machop",
+       "bellsprout",
+       "tentacool:normal",
+       "geodude",
+       "ponyta",
+       "slowpoke",
+       "magnemite",
+       "farfetchd:galarian",
+       "doduo:normal",
+       "seel:normal",
+       "grimer",
+       "shellder",
+       "gastly:normal",
+       "onix",
+       "drowzee",
+       "krabby",
+       "voltorb",
+       "exeggcute",
+       "cubone",
+       "lickitung:normal",
+       "koffing",
+       "rhyhorn",
+       "tangela",
+       "horsea",
+       "goldeen:normal",
+       "staryu:normal",
+       "scyther",
+       "magikarp",
+       "eevee",
+       "porygon",
+       "omanyte",
+       "kabuto",
+       "dratini",
+       "chikorita",
+       "cyndaquil",
+       "totodile",
+       "sentret:normal",
+       "hoothoot:normal",
+       "ledyba:normal",
+       "spinarak:normal",
+       "chinchou:normal",
+       "pichu:normal",
+       "cleffa:normal",
+       "igglybuff:normal",
+       "togepi:normal",
+       "natu:normal",
+       "mareep",
+       "hoppip",
+       "aipom",
+       "sunkern:normal",
+       "yanma:normal",
+       "wooper",
+       "murkrow",
+       "misdreavus",
+       "pineco",
+       "gligar",
+       "snubbull",
+       "sneasel",
+       "teddiursa",
+       "slugma:normal",
+       "swinub",
+       "remoraid:normal",
+       "houndour",
+       "phanpy:normal",
+       "tyrogue:normal",
+       "smoochum:normal",
+       "elekid:normal",
+       "magby:normal",
+       "larvitar",
+       "treecko:normal",
+       "torchic",
+       "mudkip",
+       "poochyena",
+       "zigzagoon",
+       "wurmple:normal",
+       "lotad:normal",
+       "seedot",
+       "taillow:normal",
+       "wingull:normal",
+       "ralts",
+       "surskit:normal",
+       "shroomish:normal",
+       "slakoth:normal",
+       "nincada:normal",
+       "whismur",
+       "makuhita",
+       "azurill:normal",
+       "nosepass",
+       "skitty:normal",
+       "aron",
+       "meditite:normal",
+       "electrike",
+       "gulpin:normal",
+       "carvanha",
+       "wailmer:normal",
+       "numel:normal",
+       "spoink:normal",
+       "trapinch",
+       "cacnea",
+       "swablu:normal",
+       "barboach:normal",
+       "corphish:normal",
+       "baltoy:normal",
+       "lileep",
+       "anorith",
+       "feebas:normal",
+       "shuppet",
+       "duskull",
+       "wynaut:normal",
+       "snorunt:normal",
+       "spheal",
+       "clamperl:normal",
+       "bagon",
+       "beldum",
+       "turtwig",
+       "chimchar",
+       "piplup:normal",
+       "starly",
+       "bidoof",
+       "kricketot:normal",
+       "shinx:normal",
+       "budew:normal",
+       "cranidos:normal",
+       "shieldon:normal",
+       "burmy",
+       "combee:normal",
+       "buizel:normal",
+       "cherubi:normal",
+       "shellos",
+       "drifloon:normal",
+       "buneary:normal",
+       "glameow:normal",
+       "chingling:normal",
+       "stunky",
+       "bronzor:normal",
+       "bonsly:normal",
+       "mimejr:normal",
+       "happiny:normal",
+       "gible",
+       "munchlax:normal",
+       "riolu:normal",
+       "hippopotas",
+       "skorupi",
+       "croagunk:normal",
+       "finneon:normal",
+       "mantyke:normal",
+       "snover",
+       "snivy:normal",
+       "tepig:normal",
+       "oshawott:normal",
+       "patrat:normal",
+       "lillipup:normal",
+       "purrloin:normal",
+       "pansage:normal",
+       "pansear:normal",
+       "panpour:normal",
+       "munna:normal",
+       "pidove:normal",
+       "blitzle:normal",
+       "roggenrola:normal",
+       "woobat:normal",
+       "drilbur:normal",
+       "timburr:normal",
+       "tympole:normal",
+       "sewaddle:normal",
+       "venipede:normal",
+       "cottonee:normal",
+       "petilil:normal",
+       "sandile:normal",
+       "darumaka",
+       "dwebble:normal",
+       "scraggy:normal",
+       "yamask",
+       "tirtouga:normal",
+       "archen:normal",
+       "trubbish:normal",
+       "minccino:normal",
+       "gothita:normal",
+       "solosis:normal",
+       "ducklett:normal",
+       "vanillite:normal",
+       "deerling",
+       "karrablast:normal",
+       "foongus:normal",
+       "frillish",
+       "joltik:normal",
+       "ferroseed:normal",
+       "klink:normal",
+       "tynamo:normal",
+       "elgyem:normal",
+       "litwick:normal",
+       "axew:normal",
+       "cubchoo",
+       "shelmet:normal",
+       "mienfoo:normal",
+       "golett:normal",
+       "pawniard:normal",
+       "rufflet:normal",
+       "vullaby:normal",
+       "deino:normal",
+       "chespin:normal",
+       "fennekin:normal",
+       "froakie:normal",
+       "bunnelby:normal",
+       "fletchling:normal",
+       "litleo:normal",
+       "flabebe",
+       "pancham:normal",
+       "espurr:normal",
+       "spritzee:normal",
+       "swirlix:normal",
+       "inkay:normal",
+       "binacle:normal",
+       "skrelp:normal",
+       "clauncher:normal",
+       "helioptile:normal",
+       "goomy:normal",
+       "phantump:normal",
+       "pumpkaboo",
+       "bergmite:normal",
+       "noibat:normal",
+       "rowlet",
+       "litten",
+       "popplio",
+       "pikipek",
+       "yungoos",
+       "rockruff",
+       "fomantis",
+       "salandit",
+       "jangmoo",
+       "meltan:normal",
+       "skwovet:normal",
+       "wooloo:normal",
+       "grubbin",
+       "crabrawler",
+       "mareanie",
+       "morelull",
+       "stufful",
+       "wimpod",
+       "cosmog",
+       "scatterbug",
+       "zorua",
+       "tyrunt:normal",
+       "amaura:normal",
+       "dewpider",
+       "cutiefly"
+      ],
+      "src": "game master COMBAT_LEAGUE_GREAT_LITTLE"
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_great-league_ultra-league-mega-edition_little-cup/"
@@ -550,7 +849,10 @@
      "mega": false,
      "rules": [
       "Pokemon must be at or below 2,500 CP."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_ULTRA"
+     }
     },
     {
      "name": "Master League: Mega Edition",
@@ -559,7 +861,10 @@
      "rules": [
       "No CP limit.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_MASTER_MEGAS"
+     }
     },
     {
      "name": "Fantasy Cup: Great League Edition",
@@ -567,7 +872,15 @@
      "mega": false,
      "rules": [
       "Pokemon must be at or below 1,500 CP."
-     ]
+     ],
+     "cup": {
+      "types": [
+       "steel",
+       "fairy",
+       "dragon"
+      ],
+      "src": "game master COMBAT_LEAGUE_GREAT_FANTASY"
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_ultra-league_master-league-mega-edition_fantasy-cup-great-league-edition/"
@@ -592,7 +905,17 @@
      "rules": [
       "Pokemon must be at or below 1,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "types": [
+       "bug",
+       "poison",
+       "dark",
+       "fairy",
+       "ghost"
+      ],
+      "src": "game master COMBAT_LEAGUE_GREAT_HALLOWEEN"
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_master-league_mega-halloween-cup-great-league-edition/"
@@ -609,7 +932,10 @@
      "rules": [
       "Pokemon must be at or below 1,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_GREAT_MEGAS"
+     }
     },
     {
      "name": "Ultra League: Mega Edition",
@@ -618,7 +944,10 @@
      "rules": [
       "Pokemon must be at or below 2,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_ULTRA_MEGAS"
+     }
     },
     {
      "name": "Master League: Mega Edition",
@@ -627,7 +956,10 @@
      "rules": [
       "No CP limit.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_MASTER_MEGAS"
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_great-league-mega-edition_ultra-league-mega-edition_master-league-mega-edition-split-3/"
@@ -643,7 +975,10 @@
      "mega": false,
      "rules": [
       "Pokemon must be at or below 1,500 CP."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_GREAT"
+     }
     },
     {
      "name": "Ultra League: Mega Edition",
@@ -652,7 +987,10 @@
      "rules": [
       "Pokemon must be at or below 2,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_ULTRA_MEGAS"
+     }
     },
     {
      "name": "2026 GO LAIC Cup",
@@ -660,7 +998,143 @@
      "mega": false,
      "rules": [
       "Pokemon must be at or below 1,500 CP."
-     ]
+     ],
+     "cup": {
+      "ban": [
+       "articuno",
+       "azelf",
+       "calyrex",
+       "chienpao",
+       "chiyu",
+       "cobalion",
+       "cosmoem",
+       "cosmog",
+       "cresselia",
+       "dialga",
+       "enamorus",
+       "entei",
+       "eternatus",
+       "fezandipiti",
+       "giratina",
+       "glastrier",
+       "gougingfire",
+       "groudon",
+       "heatran",
+       "hooh",
+       "ironboulder",
+       "ironcrown",
+       "ironleaves",
+       "koraidon",
+       "kubfu",
+       "kyogre",
+       "kyurem",
+       "landorus",
+       "latias",
+       "latios",
+       "lugia",
+       "lunala",
+       "mesprit",
+       "mewtwo",
+       "miraidon",
+       "moltres",
+       "munkidori",
+       "necrozma",
+       "ogerpon",
+       "okidogi",
+       "palkia",
+       "ragingbolt",
+       "raikou",
+       "rayquaza",
+       "regice",
+       "regidrago",
+       "regieleki",
+       "regigigas",
+       "regirock",
+       "registeel",
+       "reshiram",
+       "silvally",
+       "solgaleo",
+       "spectrier",
+       "suicune",
+       "tapubulu",
+       "tapufini",
+       "tapukoko",
+       "tapulele",
+       "terapagos",
+       "terrakion",
+       "thundurus",
+       "tinglu",
+       "tornadus",
+       "typenull",
+       "urshifu",
+       "uxie",
+       "virizion",
+       "walkingwake",
+       "wochien",
+       "xerneas",
+       "yveltal",
+       "zacian",
+       "zamazenta",
+       "zapdos",
+       "zekrom",
+       "zygarde",
+       "arceus",
+       "celebi",
+       "darkrai",
+       "deoxys",
+       "diancie",
+       "genesect",
+       "hoopa",
+       "jirachi",
+       "keldeo",
+       "magearna",
+       "manaphy",
+       "marshadow",
+       "melmetal",
+       "meloetta",
+       "meltan",
+       "mew",
+       "pecharunt",
+       "phione",
+       "shaymin",
+       "victini",
+       "volcanion",
+       "zarude",
+       "zeraora",
+       "blacephalon",
+       "buzzwole",
+       "celesteela",
+       "guzzlord",
+       "kartana",
+       "naganadel",
+       "nihilego",
+       "pheromosa",
+       "poipole",
+       "stakataka",
+       "xurkitree",
+       "altaria",
+       "annihilape",
+       "araquanid",
+       "chansey",
+       "clodsire",
+       "corsola:galarian",
+       "dusclops",
+       "furret",
+       "jellicent",
+       "kingdra",
+       "medicham",
+       "oranguru",
+       "snorlax",
+       "wobbuffet"
+      ],
+      "src": "PvPoke rules text",
+      "banTypes": [
+       "dark",
+       "fairy",
+       "fire",
+       "steel"
+      ]
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_great-league_ultra-league-mega-edition_2026-go-laic-cup/"
@@ -676,7 +1150,10 @@
      "mega": false,
      "rules": [
       "Pokemon must be at or below 2,500 CP."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_ULTRA"
+     }
     },
     {
      "name": "Master League: Mega Edition",
@@ -685,7 +1162,10 @@
      "rules": [
       "No CP limit.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_MASTER_MEGAS"
+     }
     },
     {
      "name": "2026 GO LAIC Cup",
@@ -693,7 +1173,143 @@
      "mega": false,
      "rules": [
       "Pokemon must be at or below 1,500 CP."
-     ]
+     ],
+     "cup": {
+      "ban": [
+       "articuno",
+       "azelf",
+       "calyrex",
+       "chienpao",
+       "chiyu",
+       "cobalion",
+       "cosmoem",
+       "cosmog",
+       "cresselia",
+       "dialga",
+       "enamorus",
+       "entei",
+       "eternatus",
+       "fezandipiti",
+       "giratina",
+       "glastrier",
+       "gougingfire",
+       "groudon",
+       "heatran",
+       "hooh",
+       "ironboulder",
+       "ironcrown",
+       "ironleaves",
+       "koraidon",
+       "kubfu",
+       "kyogre",
+       "kyurem",
+       "landorus",
+       "latias",
+       "latios",
+       "lugia",
+       "lunala",
+       "mesprit",
+       "mewtwo",
+       "miraidon",
+       "moltres",
+       "munkidori",
+       "necrozma",
+       "ogerpon",
+       "okidogi",
+       "palkia",
+       "ragingbolt",
+       "raikou",
+       "rayquaza",
+       "regice",
+       "regidrago",
+       "regieleki",
+       "regigigas",
+       "regirock",
+       "registeel",
+       "reshiram",
+       "silvally",
+       "solgaleo",
+       "spectrier",
+       "suicune",
+       "tapubulu",
+       "tapufini",
+       "tapukoko",
+       "tapulele",
+       "terapagos",
+       "terrakion",
+       "thundurus",
+       "tinglu",
+       "tornadus",
+       "typenull",
+       "urshifu",
+       "uxie",
+       "virizion",
+       "walkingwake",
+       "wochien",
+       "xerneas",
+       "yveltal",
+       "zacian",
+       "zamazenta",
+       "zapdos",
+       "zekrom",
+       "zygarde",
+       "arceus",
+       "celebi",
+       "darkrai",
+       "deoxys",
+       "diancie",
+       "genesect",
+       "hoopa",
+       "jirachi",
+       "keldeo",
+       "magearna",
+       "manaphy",
+       "marshadow",
+       "melmetal",
+       "meloetta",
+       "meltan",
+       "mew",
+       "pecharunt",
+       "phione",
+       "shaymin",
+       "victini",
+       "volcanion",
+       "zarude",
+       "zeraora",
+       "blacephalon",
+       "buzzwole",
+       "celesteela",
+       "guzzlord",
+       "kartana",
+       "naganadel",
+       "nihilego",
+       "pheromosa",
+       "poipole",
+       "stakataka",
+       "xurkitree",
+       "altaria",
+       "annihilape",
+       "araquanid",
+       "chansey",
+       "clodsire",
+       "corsola:galarian",
+       "dusclops",
+       "furret",
+       "jellicent",
+       "kingdra",
+       "medicham",
+       "oranguru",
+       "snorlax",
+       "wobbuffet"
+      ],
+      "src": "PvPoke rules text",
+      "banTypes": [
+       "dark",
+       "fairy",
+       "fire",
+       "steel"
+      ]
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_ultra-league_master-league-mega-edition_2026-go-laic-cup/"
@@ -718,7 +1334,11 @@
      "rules": [
       "Pokemon must be at or below 1,500 CP.",
       "Mega Evolutions are eligible."
-     ]
+     ],
+     "cup": {
+      "src": "game master COMBAT_LEAGUE_GREAT_CATCH",
+      "caughtWindowUnknown": true
+     }
     }
    ],
    "link": "https://leekduck.com/events/gbl-twilight-trails_master-league_mega-catch-cup-great-league-edition/"

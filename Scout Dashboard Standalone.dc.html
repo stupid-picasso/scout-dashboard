@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.131</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.132</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1332,6 +1332,7 @@
                   </div>
                 </sc-if>
                 <div style="font:11.5px/1.45 var(--font-body);color:var(--brand-primary-strong);margin-top:4px">{{ lg.squadLine }}</div>
+                <div style="font:11.5px/1.45 var(--font-body);color:var(--type-electric);margin-top:2px">{{ lg.megaLine }}</div>
                 <div style="font:11px/1.45 var(--font-body);color:var(--ink-400);margin-top:2px">{{ lg.note }}</div>
               </div>
             </sc-for>
@@ -5461,12 +5462,13 @@ class Component extends DCLogic {
   // Candidates are measured IVs, tier S/A/B, 90%+ IV rank, one per species.
   // It only sees the top-5 lists, so it is a strong filter, not a full
   // simulation of every meta matchup.
-  pvpTeamFor(leagueKey) {
+  pvpTeamFor(leagueKey, eligible) {
     const m = this.mechanics;
     if (!m || !m.pvpMatchupsFor || ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) < 0) return null;
     const pool = [];
     this.effectiveRosterForMatch().forEach(p => {
       if (this.needsAppraisal(p)) return;
+      if (eligible && !eligible(p)) return;
       const a = this.pvpAssess(p, leagueKey);
       if (!a || a.tierRank > 2 || a.rank < 90) return;
       const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), leagueKey);
@@ -11444,20 +11446,78 @@ class Component extends DCLogic {
 
   // Strongest species for a league CP cap, from the imported PvPoke rankings.
   // Only the open Great/Ultra tables exist; cups and Mega editions return null.
-  leagueTopSpecies(cp, n) {
+  // A cup's rules (from the feed's `cup`: allowed types, banned types, species
+  // allow/ban lists) against one species. `form` is e.g. 'galarian'; empty = normal.
+  cupAllowsSpecies(cup, species, form, types) {
+    if (!cup) return true;
+    const key = v => String(v || '').toLowerCase().replace(/[^a-z]/g, '');
+    const sp = key(species), fm = key(form) || 'normal';
+    const hit = list => (list || []).some(e => {
+      const parts = String(e).split(':');
+      return parts[0] === sp && (parts.length < 2 || parts[1].split('|').indexOf(fm) >= 0);
+    });
+    const ts = (types || []).map(t => key(t));
+    if (cup.types && cup.types.length && !ts.some(t => cup.types.indexOf(t) >= 0)) return false;
+    if (cup.banTypes && ts.some(t => cup.banTypes.indexOf(t) >= 0)) return false;
+    if (cup.allow && !hit(cup.allow)) return false;
+    if (cup.ban && hit(cup.ban)) return false;
+    return true;
+  }
+
+  // The same check for one of the user's Pokemon.
+  cupAllows(cup, p) {
+    if (!cup) return true;
+    const types = String(this.typeOf(p) || '').split('/').map(x => x.trim()).filter(Boolean);
+    return this.cupAllowsSpecies(cup, p.name, p.form, types);
+  }
+
+  // Strongest species for a league CP cap from the imported PvPoke rankings,
+  // optionally filtered by a cup's rules. Only open Little/Great/Ultra/Master
+  // tables exist; `mega` selects PvPoke's Mega Master table instead.
+  leagueTopSpecies(cp, n, cup, mega) {
     const m = this.mechanics;
-    const table = m && m.pvpTableFor ? m.pvpTableFor(cp === 1500 ? 'great' : cp === 2500 ? 'ultra' : cp === 500 ? 'little' : cp >= 10000 ? 'master' : null) : null;
-    if (!table || (cp !== 1500 && cp !== 2500 && cp !== 500 && cp < 10000)) return null;
+    const lk = mega && cp >= 10000 ? 'mega' : (cp === 1500 ? 'great' : cp === 2500 ? 'ultra' : cp === 500 ? 'little' : cp >= 10000 ? 'master' : null);
+    const table = lk && m && m.pvpTableFor ? m.pvpTableFor(lk) : null;
     if (!table) return null;
     const tidy = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    return Object.keys(table).sort((a, b) => table[b].score - table[a].score).slice(0, n || 6).map(id => ({
+    const ok = id => {
+      if (!cup) return true;
+      const info = m.speciesInfo ? m.speciesInfo(id, '') : null;
+      const types = info ? info.types : [];
+      const parts = id.replace(/_shadow$/, '').split('_');
+      const tries = [[parts.join(''), '']];
+      for (let k = 1; k < parts.length; k++) tries.push([parts.slice(0, k).join(''), parts.slice(k).join('')]);
+      return tries.some(([sp, fm]) => this.cupAllowsSpecies(cup, sp, fm, types)) && !(cup.ban && tries.some(([sp, fm]) => !this.cupAllowsSpecies({ ban: cup.ban }, sp, fm, [])));
+    };
+    return Object.keys(table).sort((a, b) => table[b].score - table[a].score).filter(ok).slice(0, n || 6).map(id => ({
       name: tidy(id), tier: table[id].tier, score: table[id].score,
       moves: String(table[id].moves || '').split('|').filter(Boolean).map(x => x.replace(/\b\w/g, c => c.toUpperCase())).join(' / ')
     }));
   }
 
-  // Current and next GBL week with rules, top species and (for open
-  // Great/Ultra) the squad built from the user's own roster.
+  // Owned species that appear in PvPoke's Mega Master ranking, with their
+  // Mega Energy status. Mega Evolved CP/stats are not modelled, so this is a
+  // shortlist, not a ranking of your own Pokemon.
+  megaReadyPicks(n) {
+    const m = this.mechanics;
+    const table = m && m.pvpTableFor ? m.pvpTableFor('mega') : null;
+    if (!table) return [];
+    const owned = new Set(this.effectiveRosterForMatch().map(p => String(p.name || '').toLowerCase()));
+    const out = [], seen = new Set();
+    Object.keys(table).sort((a, b) => table[b].score - table[a].score).forEach(id => {
+      const base = id.replace(/_(mega|primal)(_[xy])?$/, '');
+      if (id === base || seen.has(base) || !owned.has(base)) return;
+      seen.add(base);
+      const info = this.megaEvolveInfoFor(base);
+      if (!info) return;
+      const f = info.find(r => id.endsWith('_' + r.form)) || info[0];
+      out.push(base.replace(/\b\w/g, c => c.toUpperCase()) + (f.form ? ' ' + f.form.toUpperCase() : '') + ' \u2014 ' + (f.have == null ? 'energy not logged' : f.have + '/' + f.cost + ' energy' + (f.ready ? ' (ready)' : '')));
+    });
+    return out.slice(0, n || 5);
+  }
+
+  // Current and next GBL week: rules, top species and a squad from the user's
+  // own roster, both filtered by each cup's real rules.
   gblWeeks(now) {
     const f = this.state.feed;
     if (!this.validFeed(f)) return [];
@@ -11466,26 +11526,32 @@ class Component extends DCLogic {
     const fmt = iso => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
     const squads = {};
     return weeks.map((w, wi) => ({
-      title: (new Date(w.start).getTime() <= t ? 'THIS WEEK' : 'NEXT WEEK') + ' · ' + fmt(w.start) + ' – ' + fmt(w.end),
+      title: (new Date(w.start).getTime() <= t ? 'THIS WEEK' : 'NEXT WEEK') + ' \u00b7 ' + fmt(w.start) + ' \u2013 ' + fmt(w.end),
       season: w.season || '',
       leagues: w.leagues.map(l => {
-        const open = !l.mega && /^(Great League|Ultra League|Master League|Little Cup)$/.test(l.name);
         const league = l.cp === 1500 ? 'great' : (l.cp === 2500 ? 'ultra' : (l.cp === 500 ? 'little' : (l.cp >= 10000 ? 'master' : null)));
-        const top = l.mega ? null : this.leagueTopSpecies(l.cp, 5);
-        const plain = open && !!league;
+        const cup = l.cup && (l.cup.types || l.cup.banTypes || l.cup.allow || l.cup.ban) ? l.cup : null;
+        const top = this.leagueTopSpecies(l.cp, 5, cup, l.mega);
         let squad = null;
-        if (wi === 0 && plain) {
-          if (!(league in squads)) squads[league] = this.pvpTeamFor(league);
-          squad = squads[league];
+        const canSquad = league && !(l.mega && league === 'master');
+        if (wi === 0 && canSquad) {
+          const ck = league + '|' + l.name;
+          if (!(ck in squads)) squads[ck] = this.pvpTeamFor(league, cup ? p => this.cupAllows(cup, p) : null);
+          squad = squads[ck];
         }
-        const note = l.mega ? 'Mega rankings are not in the imported data — build from your own Megas.'
-          : (!open && l.cp <= 2500 && top ? 'Cup rules may exclude some of these — check the rules above.' : '');
+        const notes = [];
+        if (l.mega) notes.push('Mega Evolved forms are not modelled; picks use normal forms' + (l.cp >= 10000 ? ' (list shows PvPoke\u2019s Mega Master ranking)' : '') + '.');
+        if (cup) notes.push('Ranked on open-league scores, filtered by this cup\u2019s rules (' + (cup.src || 'feed') + ') \u2014 an estimate.');
+        if (l.cup && l.cup.caughtWindowUnknown) notes.push('Catch Cup: only Pokemon caught in this season\u2019s window are legal \u2014 not checked here.');
+        if (l.cup && l.cup.level) notes.push('Level limits apply \u2014 not checked here.');
+        const picks = l.mega ? this.megaReadyPicks(4) : [];
         return {
-          name: l.name, cap: l.cp >= 10000 ? 'No CP cap' : '≤' + l.cp + ' CP',
+          name: l.name, cap: l.cp >= 10000 ? 'No CP cap' : '\u2264' + l.cp + ' CP',
           rules: (l.rules || []).join(' '),
           top: top || [], hasTop: !!(top && top.length),
-          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' · ') : (wi === 0 && plain ? 'Squad: not enough measured, in-cap Pokemon of A tier or better yet.' : ''),
-          note
+          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') : (wi === 0 && canSquad ? 'Squad: not enough measured, in-cap, legal Pokemon of A tier or better yet.' : ''),
+          megaLine: picks.length ? 'Mega-ready from your roster: ' + picks.join('; ') : '',
+          note: notes.join(' ')
         };
       })
     }));

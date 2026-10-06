@@ -6,12 +6,16 @@ form and the app must not depend on it):
   - ScrapedDuck events.json (LeekDuck mirror): dates, raid bosses, spotlight,
     community day spawns, GBL weekly cup rotation
   - PvPoke formats.json: cup rules text
+  - Niantic game master (PokeMiners mirror): the real COMBAT_LEAGUE_* rules
+    (CP cap, allowed types, species allow/ban lists) and Legendary/Mythic/
+    Ultra Beast classes, attached to every league as `cup`
 
 Never overwrites a good file with a bad parse: exits non-zero instead.
 """
 import json, os, re, sys, urllib.request, datetime
 
 EVENTS_URL = 'https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/events.json'
+GM_URL = 'https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json'
 FORMATS_URL = 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/gamemaster/formats.json'
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'feed.json')
 KEEP_TYPES = {'event', 'community-day', 'raid-battles', 'raid-hour', 'raid-day', 'pokemon-spotlight-hour',
@@ -50,6 +54,123 @@ def rules_for(name, cp, formats):
     return out
 
 
+def sp_key(name):
+    return re.sub(r'[^a-z]', '', str(name).lower())
+
+
+def form_suffix(species, form):
+    f = str(form).upper()
+    if f in ('FORM_UNSET',) or f.endswith('_NORMAL'):
+        return 'normal'
+    return f[len(species) + 1:].lower() if f.startswith(species.upper() + '_') else f.lower()
+
+
+def pack_species(entries):
+    out = []
+    for e in entries:
+        sp = sp_key(e['id'])
+        forms = sorted({form_suffix(e['id'], f) for f in e.get('forms', [])})
+        out.append(sp + (':' + '|'.join(forms) if forms else ''))
+    return out
+
+
+STOP = {'vs', 'seeker', 'combat', 'league', 'great', 'ultra', 'master', 'little', 'default', 'npc', 'cup', 'edition', 'the', 'go'}
+
+
+def kw(text):
+    toks = re.findall(r'[a-z0-9]+', text.lower().replace('megas', 'mega'))
+    return [t for t in toks if t not in STOP]
+
+
+def load_cups(gm):
+    cups = {}
+    for x in gm:
+        cl = x.get('data', {}).get('combatLeague')
+        if not cl or not x['templateId'].startswith('COMBAT_LEAGUE_VS_SEEKER_'):
+            continue
+        r = {'types': [], 'allow': None, 'ban': [], 'caught': None, 'level': None, 'cp': None}
+        for c in cl['pokemonCondition']:
+            t = c['type']
+            if t == 'WITH_POKEMON_CP_LIMIT':
+                r['cp'] = c['withPokemonCpLimit']['maxCp']
+            elif t == 'WITH_POKEMON_TYPE':
+                r['types'] = [y.replace('POKEMON_TYPE_', '').lower() for y in c['withPokemonType']['pokemonType']]
+            elif t == 'POKEMON_WHITELIST':
+                r['allow'] = pack_species(c['pokemonWhiteList']['pokemon'])
+            elif t == 'POKEMON_BANLIST':
+                r['ban'] = pack_species(c['pokemonBanList']['pokemon'])
+            elif t == 'POKEMON_CAUGHT_TIMESTAMP':
+                ts = c['pokemonCaughtTimestamp']
+                r['caught'] = [int(ts.get('afterTimestamp', 0)), int(ts.get('beforeTimestamp', 0))]
+            elif t == 'POKEMON_LEVEL_RANGE':
+                r['level'] = c.get('pokemonLevelRange')
+        key = x['templateId'].replace('COMBAT_LEAGUE_VS_SEEKER_', '')
+        r['kw'] = kw(key.lower().replace('_', ' '))
+        cups[key] = r
+    return cups
+
+
+def find_cup(name, cp, cups):
+    words = kw(name)
+    rest = [w for w in words if w not in ('mega',)]
+    best = None
+    for key, r in cups.items():
+        if r['cp'] is None or (r['cp'] if r['cp'] < 9999 else 10000) != cp and not (cp >= 10000 and r['cp'] >= 9999):
+            continue
+        is_mega_tpl = 'mega' in r['kw']
+        if is_mega_tpl != (not rest and 'mega' in words):
+            continue
+        need = [w for w in r['kw'] if w != 'mega']
+        if any(w not in rest for w in need):
+            continue
+        if any(w not in need and not w.isdigit() for w in rest):
+            continue  # the name carries a keyword this template does not know (e.g. LAIC)
+        score = (len(need), key.endswith('_PREMIER') is False, key)  # more specific, newest suffix (S22 > S8 by sort below)
+        if best is None or (len(need), natural(key)) > (len(best[1]['kw']), natural(best[0])):
+            best = (key, r)
+    return best
+
+
+def natural(k):
+    return [int(t) if t.isdigit() else t for t in re.split(r'(\d+)', k)]
+
+
+def species_by_class(gm):
+    cls = {'legendary': [], 'mythical': [], 'ultra beast': []}
+    for x in gm:
+        ps = x.get('data', {}).get('pokemonSettings')
+        if ps and re.match(r'V\d+_POKEMON_', x['templateId']):
+            c = ps.get('pokemonClass', '')
+            k = {'POKEMON_CLASS_LEGENDARY': 'legendary', 'POKEMON_CLASS_MYTHIC': 'mythical', 'POKEMON_CLASS_ULTRA_BEAST': 'ultra beast'}.get(c)
+            if k:
+                cls[k].append(sp_key(ps['pokemonId']))
+    return {k: sorted(set(v)) for k, v in cls.items()}
+
+
+def cup_from_text(rules, classes):
+    """PvPoke text rules for cups the game master does not carry yet (e.g. LAIC)."""
+    r = {'types': [], 'allow': None, 'ban': [], 'caught': None, 'level': None, 'src': 'PvPoke rules text', 'banTypes': []}
+    for line in rules:
+        m = re.match(r'Prohibited Types:\s*(.*?)\.?$', line)
+        if m:
+            r['banTypes'] = [t.strip().lower() for t in m.group(1).split(',')]
+        m = re.match(r'Prohibited Categories:\s*(.*?)\.?$', line)
+        if m:
+            for c in m.group(1).split(','):
+                c = c.strip().lower().rstrip('s')
+                c = {'legendary': 'legendary', 'mythical': 'mythical', 'ultra beast': 'ultra beast'}.get(c)
+                r['ban'] += classes.get(c, [])
+        m = re.match(r'Prohibited Pokemon:\s*(.*?)\.?$', line)
+        if m:
+            for n in m.group(1).split(','):
+                n = n.strip()
+                if n.lower().startswith('mega '):
+                    continue
+                mm = re.match(r'(.+?)\s*\((.+)\)$', n)
+                r['ban'].append(sp_key(mm.group(1)) + ':' + sp_key(mm.group(2)) if mm else sp_key(n))
+    return r
+
+
 def norm_event(e):
     ed = e.get('extraData') or {}
     o = {'id': e['eventID'], 'name': e['name'], 'type': e['eventType'], 'start': e['start'], 'end': e['end'],
@@ -76,6 +197,12 @@ def main():
         formats = get(FORMATS_URL)
     except Exception as ex:
         print('formats unavailable:', ex)
+    cups, classes = {}, {}
+    try:
+        gm = get(GM_URL)
+        cups, classes = load_cups(gm), species_by_class(gm)
+    except Exception as ex:
+        print('game master unavailable:', ex)
     now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
     events, gbl = [], []
     for e in raw:
@@ -87,7 +214,23 @@ def main():
             leagues = []
             for nm in split_leagues(e['name']):
                 cp = league_cp(nm)
-                leagues.append({'name': nm, 'cp': cp, 'mega': 'mega' in nm.lower(), 'rules': rules_for(nm, cp, formats)})
+                lg = {'name': nm, 'cp': cp, 'mega': 'mega' in nm.lower(), 'rules': rules_for(nm, cp, formats)}
+                hit = find_cup(nm, cp, cups) if cups else None
+                if hit:
+                    r = hit[1]
+                    lg['cup'] = {k: r[k] for k in ('types', 'allow', 'ban', 'caught', 'level') if r.get(k)}
+                    lg['cup']['src'] = 'game master COMBAT_LEAGUE_' + hit[0]
+                    c = lg['cup']
+                    # The game master only keeps past Catch Cup windows; a window that
+                    # ended before this league starts is stale, so do not trust it.
+                    if c.get('caught') and c['caught'][1] < datetime.datetime.fromisoformat(e['start'].replace('Z', '')).timestamp() * 1000:
+                        c.pop('caught')
+                        c['caughtWindowUnknown'] = True
+                else:
+                    ft = next((f for f in formats if f.get('rules') and any(w in f.get('title', '').lower() for w in kw(nm) if len(w) > 3 and w not in ('mega', 'edition'))), None)
+                    if ft and cups:
+                        lg['cup'] = {k: v for k, v in cup_from_text(ft['rules'], classes).items() if v}
+                leagues.append(lg)
             season = e['name'].split('|')[-1].strip() if '|' in e['name'] else ''
             gbl.append({'start': e['start'], 'end': e['end'], 'season': season, 'leagues': leagues, 'link': e.get('link', '')})
         else:
