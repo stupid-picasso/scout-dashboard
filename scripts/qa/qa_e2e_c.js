@@ -156,6 +156,27 @@ module.exports = async function suiteC() {
   await T('PWA-05', 'PWA', 'Offline reload still boots the app (shell cached)', async () => { await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(1500); await s.ctx.setOffline(true); await s.page.reload({ waitUntil: 'load' }).catch(() => {}); await s.page.waitForTimeout(2500); const t = await s.text(); expect(/Professor|Today|OFFLINE/.test(t), t.slice(0, 80)); await s.ctx.setOffline(false); }, 'critical');
   await T('PWA-06', 'PWA', 'Safe-area insets are used so the tab bar clears the iPhone home indicator', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); expect(/safe-area-inset-bottom/.test(h), 'no safe-area-inset-bottom'); }, 'high');
   await T('PWA-07', 'PWA', 'viewport-fit=cover is set for the notch/Dynamic Island', async () => expect(/viewport-fit=cover/.test(fs.readFileSync(path.join(REPO, 'index.html'), 'utf8')), 'missing'));
+  const png = f => { const b = fs.readFileSync(path.join(REPO, f)); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), colorType: b[25], size: b.length }; };
+  const tplOf = () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); const a = h.indexOf('<script type="__bundler/template">'); const st = h.indexOf('>', a) + 1; return JSON.parse(h.slice(st, h.indexOf('</script>', st))); };
+  await T('PWA-08', 'PWA', 'Manifest: named Professor, black theme, any + maskable icons whose real sizes match', async () => {
+    const m = JSON.parse(fs.readFileSync(path.join(REPO, 'manifest.json'), 'utf8')); expect(m.short_name === 'Professor' && /Professor/.test(m.name) && m.theme_color === '#000000' && m.background_color === '#000000', 'name/colors');
+    expect(m.icons.some(i => i.purpose === 'maskable') && m.icons.some(i => i.purpose === 'any' && i.sizes === '512x512') && m.icons.some(i => i.sizes === '192x192'), 'icon set');
+    for (const i of m.icons) { const d = png(i.src); expect(i.sizes === d.w + 'x' + d.h, i.src + ' declares ' + i.sizes + ' but is ' + d.w + 'x' + d.h); }
+  }, 'high');
+  await T('PWA-09', 'PWA', 'apple-touch-icon is 180x180 and opaque (iOS paints transparency black)', async () => { const d = png('icons/apple-touch-icon.png'); expect(d.w === 180 && d.h === 180 && d.colorType === 2, JSON.stringify(d)); const e = png('icons/icon-maskable.png'); expect(e.colorType === 2, 'maskable has alpha'); }, 'high');
+  await T('PWA-10', 'PWA', 'Every iPhone splash image exists at the size its media query promises', async () => {
+    const t = tplOf(); const links = [...t.matchAll(/<link rel="apple-touch-startup-image" media="\(device-width: (\d+)px\) and \(device-height: (\d+)px\) and \(-webkit-device-pixel-ratio: (\d)\)[^"]*" href="([^"]+)">/g)];
+    expect(links.length >= 8, 'links ' + links.length); for (const [, w, h, r, f] of links) { const d = png(f); expect(d.w === w * r && d.h === h * r, f + ' is ' + d.w + 'x' + d.h + ' expected ' + w * r + 'x' + h * r); expect(d.size < 120000, f + ' too heavy'); }
+  }, 'medium');
+  await T('PWA-11', 'PWA', 'Head tags: one theme-color, one apple-touch-icon, title Professor', async () => { const t = tplOf(); const head = t.slice(t.indexOf('<helmet>'), t.indexOf('</helmet>')); expect((head.match(/name="theme-color"/g) || []).length === 1 && (head.match(/rel="apple-touch-icon"/g) || []).length === 1 && /<title>Professor<\/title>/.test(head), 'head tags'); }, 'medium');
+  await T('PWA-12', 'PWA', 'Offline bundle carries no unused-script fonts (Devanagari) and stays under 1.7 MB raw', async () => { const t = tplOf(); expect(!/devanagari/.test(t), 'devanagari present'); const n = fs.statSync(path.join(REPO, 'index.html')).size; expect(n < 1.7e6, (n / 1e6).toFixed(2) + ' MB'); return (n / 1e6).toFixed(2) + ' MB'; }, 'medium');
+  await T('PWA-13', 'PWA', 'Install steps show on iPhone Safari, not in the installed app, and not after Not now', async () => {
+    const ios = { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', platform: 'iPhone' };
+    expect((await s.call('installHintShown', ios, false)) === true, 'not shown on Safari'); expect((await s.call('installHintShown', ios, true)) === false, 'shown when installed');
+    expect((await s.call('installHintShown', { ...ios, userAgent: ios.userAgent.replace('Version/17.5 Mobile', 'CriOS/126 Mobile') }, false)) === 'open-in-safari', 'chrome ios');
+    expect((await s.call('installHintShown', { userAgent: 'Mozilla/5.0 (Linux; Android 14)', platform: 'Linux' }, false)) === false, 'android');
+    await s.call('dismissInstallHint'); expect((await s.call('installHintShown', ios, false)) === false, 'still shown after dismiss');
+  }, 'medium');
   await s.close(); srv.close();
 
   // ------------------------------------------------------------------ ACCESSIBILITY

@@ -1045,8 +1045,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Professor">
-<meta name="theme-color" content="#12181f">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1320x2868.png">
+<link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1290x2796.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1125x2436.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/1242x2688.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="icons/splash/828x1792.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="icons/splash/750x1334.png">
 <style>
   /* The page must never scroll sideways. Any single over-wide child (a long
      unbroken string, a wide grid, the negative-margin sticky header) used to
@@ -1357,6 +1365,19 @@
 
   <sc-if value="{{ isToday }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="display:flex;flex-direction:column;gap:14px;animation:fadeSlideIn .35s ease">
+    <sc-if value="{{ installHint }}" hint-placeholder-val="{{ false }}">
+      <section aria-label="Install on iPhone" style="background:var(--surface-card);border-radius:18px;padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+          <div style="font:600 17px var(--font-body)">Install Professor</div>
+          <button type="button" onClick="{{ installHint.dismiss }}" style="font:500 15px var(--font-body);color:var(--ios-blue);padding:4px 2px">Not now</button>
+        </div>
+        <ol style="margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ installHint.steps }}" as="st" hint-placeholder-count="3">
+            <li style="font:14px/1.4 var(--font-body);color:var(--ink-500)">{{ st }}</li>
+          </sc-for>
+        </ol>
+      </section>
+    </sc-if>
 
     <div class="om-scroll" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;margin-bottom:2px">
       <sc-for list="{{ todayChips }}" as="c" hint-placeholder-count="4">
@@ -3880,6 +3901,7 @@ class Component extends DCLogic {
     savedViews: [],
     undoLabel: '',
     remindersOn: false,
+    installHintHidden: false,
     completedIds: [],
     removedIds: [],
     stardustBalance: null,
@@ -10833,6 +10855,26 @@ class Component extends DCLogic {
     this.haptic('light');
   }
 
+  // The Add to Home Screen steps are shown on iPhone/iPad Safari until the app is installed
+  // (or the person dismisses them). `nav` is injectable for tests.
+  installHintShown(nav, standalone) {
+    const n = nav || (typeof navigator !== 'undefined' ? navigator : {});
+    const ua = String(n.userAgent || '');
+    const ios = /iPhone|iPad|iPod/.test(ua) || (n.platform === 'MacIntel' && n.maxTouchPoints > 1);
+    if (!ios) return false;
+    const inApp = /CriOS|FxiOS|EdgiOS|Instagram|FBAN|FBAV|Line\//.test(ua);
+    let sa = standalone;
+    if (sa === undefined) { try { sa = n.standalone === true || window.matchMedia('(display-mode: standalone)').matches; } catch (e) { sa = false; } }
+    if (sa) return false;
+    try { if (localStorage.getItem('scout.hint.install') === '1') return false; } catch (e) {}
+    return !this.state.installHintHidden && !inApp ? true : (!this.state.installHintHidden && inApp ? 'open-in-safari' : false);
+  }
+
+  dismissInstallHint() {
+    try { localStorage.setItem('scout.hint.install', '1'); } catch (e) {}
+    this.setState({ installHintHidden: true });
+  }
+
   // Types for a raid boss named the way the feed names it: "Yveltal", "Mega Blastoise",
   // "Mega Charizard X", "Landorus (Incarnate)", "Shadow Landorus".
   raidBossTarget(raw) {
@@ -15534,6 +15576,7 @@ class Component extends DCLogic {
       gblWeekRows: this.gblWeeks(),
       hasGbl: this.gblWeeks().length > 0,
       feedEventRows: this.feedEvents(),
+      installHint: (() => { const v = this.installHintShown(); return v ? { inSafari: v === true, steps: v === true ? ['Tap the Share button (square with an arrow) in Safari\u2019s bottom bar.', 'Scroll down and tap Add to Home Screen.', 'Tap Add. Open Professor from the new icon \u2014 it runs full screen and works offline.'] : ['Open this page in Safari first: Home Screen install only works from Safari.'], dismiss: () => this.dismissInstallHint() } : null; })(),
       remindLabel: this.state.remindersOn ? 'Reminders on' : 'Remind me',
       toggleReminders: () => this.toggleReminders(),
       hasFeedEvents: this.feedEvents().length > 0,

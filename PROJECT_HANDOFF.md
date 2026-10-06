@@ -326,6 +326,15 @@ The sections above describe the original video/OCR pipeline. The app has since g
 - **Persistence:** a device copy of the cloud blob lives in `localStorage` key `scout.local.v1` (no API keys); it is restored only when no cloud account has claimed the app.
 - **Accessibility:** `enhanceAccessibility()` adds role/name/tabindex to clickable divs at runtime. Prefer real buttons in new markup.
 
+## Engineering notes (v53.141+): rebuild flow, bundle slimming, Phase 3-5 features
+
+- **Rebuild flow that works:** `git checkout HEAD -- .propagate_baseline "Scout Dashboard Standalone.dc.html" index.html "Scout Dashboard.html" sw.js`, then `python3 scripts/propagate_edits.py apply` (it bumps the version and overwrites the baseline on success, so ALWAYS restore the baseline from HEAD first when re-running), then `python3 scripts/slim_bundles.py`. The helmet hunks never apply to the bundles (their head differs), so `apply` reports "partially patched" and does not update the baseline; after verifying, run `snapshot` and commit baseline + bundles together.
+- **`scripts/slim_bundles.py`:** idempotent. Removes Devanagari Poppins fonts, embeds the 180 px apple-touch-icon, normalises the bundle head (`<html lang>`, one theme-color, startup images, title).
+- **Method names:** `autoSnapshot(reason, opts)` is the roster backup; the daily log entry is `dailyLogSnapshot`. A duplicate method name silently overrides the earlier one in the class.
+- **Roster:** select mode + bulk actions, saved views (`scout.savedViews.v1`), undo (`offerUndo`/`performUndo`, 8 s), infinite scroll, `content-visibility` rows, one-time swipe hint (`scout.hint.swipe`).
+- **Today:** raid-boss one-tap (`raidBossTarget`), `.ics` export, reminders (`scout.remind.v1`; fire only while the app is open or returns to the front), install steps (`scout.hint.install`).
+- **Lighthouse:** `node scripts/qa/qa_lighthouse.js`. The local server gzips like GitHub Pages. Firebase loads from gstatic at start and is blocked in the sandbox, so real-device load is slower than the sandbox figure.
+
 ---
 
 ## Contact & Support

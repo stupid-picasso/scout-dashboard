@@ -7,7 +7,13 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.json': '
 const srv = http.createServer((req, res) => {
   const p = path.join(REPO, decodeURIComponent(req.url.split('?')[0]).replace(/^\/$/, '/index.html'));
   if (!p.startsWith(REPO) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
-  res.writeHead(200, { 'content-type': mime[path.extname(p)] || 'application/octet-stream' }); fs.createReadStream(p).pipe(res);
+  // GitHub Pages (where the app is served) gzips text responses; do the same here so the
+  // transfer size, and therefore the load metrics, match what a phone actually downloads.
+  const type = mime[path.extname(p)] || 'application/octet-stream';
+  const text = /^(text\/|application\/(javascript|json))/.test(type);
+  const gz = text && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+  res.writeHead(200, { 'content-type': type, ...(gz ? { 'content-encoding': 'gzip', vary: 'accept-encoding' } : {}) });
+  if (gz) fs.createReadStream(p).pipe(require('zlib').createGzip({ level: 6 })).pipe(res); else fs.createReadStream(p).pipe(res);
 });
 (async () => {
   const lighthouse = (await import('lighthouse')).default;
@@ -15,8 +21,9 @@ const srv = http.createServer((req, res) => {
   await new Promise(r => srv.listen(0, r));
   const url = 'http://localhost:' + srv.address().port + '/index.html';
   const chrome = await chromeLauncher.launch({ chromePath: process.env.PW_CHROMIUM, chromeFlags: ['--headless=new', '--no-sandbox'] });
-  const r = await lighthouse(url, { port: chrome.port, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'] });
+  const r = await lighthouse(url, { port: chrome.port, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'], pauseAfterLoadMs: 6000, networkQuietThresholdMs: 3000 });
   await chrome.kill(); srv.close();
+  if (process.env.LH_FULL) fs.writeFileSync(process.env.LH_FULL, JSON.stringify(r.lhr));
   const c = r.lhr.categories, a = r.lhr.audits;
   const out = {
     scores: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.round(v.score * 100)])),
