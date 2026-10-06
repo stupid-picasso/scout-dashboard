@@ -1,0 +1,51 @@
+name: QA
+
+# Data accuracy audit, end-to-end suites (Chromium and WebKit), axe accessibility and
+# Lighthouse. Nightly and on every push. Thresholds are a ratchet: raise them as areas improve.
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '40 3 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      QA_BROWSER: ${{ matrix.browser }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install tooling and browsers
+        run: |
+          npm install
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Data accuracy audit (game master + PvPoke)
+        if: matrix.browser == 'chromium'
+        run: node scripts/qa/qa_accuracy.js qa-accuracy.json
+      - name: End-to-end suites
+        run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c
+      - name: Accessibility (axe) - reports only until the semantic-markup phase lands
+        continue-on-error: true
+        run: QA_OUT=qa-axe-${{ matrix.browser }}.json QA_AXE_OUT=axe-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
+      - name: Lighthouse (mobile)
+        if: matrix.browser == 'chromium'
+        run: |
+          export PW_CHROMIUM=$(node -e "console.log(require('playwright').chromium.executablePath())")
+          LH_MIN_PERF=20 LH_MIN_A11Y=85 node scripts/qa/qa_lighthouse.js lighthouse.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-${{ matrix.browser }}
+          path: |
+            qa-*.json
+            axe-*.json
+            lighthouse.json

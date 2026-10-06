@@ -1,0 +1,16 @@
+{
+  "name": "scout-dashboard-qa",
+  "private": true,
+  "description": "Test tooling only; the app itself has no build step.",
+  "scripts": {
+    "qa:accuracy": "node scripts/qa/qa_accuracy.js qa-accuracy.json",
+    "qa:e2e": "node scripts/qa/qa_run.js",
+    "qa:lighthouse": "node scripts/qa/qa_lighthouse.js"
+  },
+  "devDependencies": {
+    "axe-core": "^4.10.0",
+    "chrome-launcher": "^1.1.2",
+    "lighthouse": "^12.0.0",
+    "playwright": "^1.48.0"
+  }
+}

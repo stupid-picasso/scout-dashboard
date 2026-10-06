@@ -1,6 +1,7 @@
 // Shared helpers for the QA suites: test registry, fresh app sessions, navigation.
 const path = require('path');
-const { chromium } = require(path.join(__dirname, '..', '..', 'node_modules', 'playwright'));
+const pw = require(path.join(__dirname, '..', '..', 'node_modules', 'playwright'));
+const chromium = pw[process.env.QA_BROWSER || 'chromium'];
 const REPO = path.join(__dirname, '..', '..');
 const PAGE = 'file://' + path.join(REPO, 'index.html');
 const results = [];
