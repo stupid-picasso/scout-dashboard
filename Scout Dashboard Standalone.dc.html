@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.113</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.115</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -2887,7 +2887,12 @@
       <sc-for list="{{ pvpList }}" as="p" hint-placeholder-count="8">
         <div class="om-stagger" style="--i:{{ $index }};display:grid;grid-template-columns:.6fr 2fr 1fr 1fr 1fr 1.4fr;padding:10px 16px;font:13px var(--font-body);border-bottom:1px solid var(--surface-muted);align-items:center">
           <div style="font:var(--font-display);color:var(--ink-300)">{{ p.rankNum }}</div>
-          <div style="font-weight:600">{{ p.displayName }}</div>
+          <div style="min-width:0">
+            <div style="font-weight:600">{{ p.displayName }}</div>
+            <sc-if value="{{ p.moveNote }}" hint-placeholder-val="{{ false }}">
+              <div style="font:600 10.5px var(--font-display);color:{{ p.moveNoteColor }};margin-top:2px">{{ p.moveNote }}</div>
+            </sc-if>
+          </div>
           <div style="font:var(--font-display)">{{ p.cp }}</div>
           <div style="display:flex;align-items:center;gap:5px">
             <span style="flex-shrink:0;width:17px;height:17px;border-radius:5px;background:{{ p.tierColor }};color:var(--surface-page);font:800 10px var(--font-display);display:flex;align-items:center;justify-content:center">{{ p.tierLabel }}</span>
@@ -2976,7 +2981,7 @@
   <div style="animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
       <div style="font:800 13px var(--font-display);letter-spacing:.05em;color:var(--ink-900);margin-bottom:6px">BEST ATTACKER PER TYPE</div>
-      <div style="font:12.5px var(--font-body);color:var(--ink-500);max-width:70ch;text-wrap:pretty">Ranked by damage per second at level 50 once move data is stored &mdash; a full cycle of the fast move charging the better of the two charge moves, with STAB applied and no particular defender in mind. Anything whose moves aren&rsquo;t in the database falls back to a raw-stat ranking and says so.</div>
+      <div style="font:12.5px var(--font-body);color:var(--ink-500);max-width:70ch;text-wrap:pretty">Ranked at level 50 by damage rate weighted by bulk (DPS &times; (HP &times; DEF)^0.4) with your CURRENT moves, STAB included and no particular boss in mind. &ldquo;Possible&rdquo; shows what the best legal moves for that species would add. Pokemon whose moves aren&rsquo;t in the database show their potential or fall back to raw stats, and say so.</div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--surface-muted)">
         <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
           <div style="font:700 11px var(--font-display);letter-spacing:.05em;color:var(--ink-500);white-space:nowrap">MOVE DATABASE</div>
@@ -3316,7 +3321,7 @@
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-top:4px">15/15/15 and 0/0/0 IV Pokemon in your roster</div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px">
-      <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">PVP READY (90%+ rank, any league)</div>
+      <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">PVP READY (90%+ IV rank on an S/A/B species)</div>
       <div style="font:800 30px var(--font-display);color:var(--grass-700)">{{ intelDisplay.pvpReadyCount }}</div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px">
@@ -4950,8 +4955,11 @@ class Component extends DCLogic {
       .map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
   }
 
-  // Level-50 attacker ceiling (no particular boss in mind — see attackerScore's
-  // own REFERENCE_DEFENCE comment for why that's still a fair ordering).
+  // Level-50 attacker ceiling (no particular boss in mind). With move data it is
+  // the rating of the best legal fast+charged pairing (damage rate weighted by
+  // bulk, see raidRating); without move data it falls back to the stat-only
+  // score. The two are different units, so callers must not mix them in one
+  // comparison \u2014 raidRoleTypeBest keeps them in separate maps.
   attackerCeilingOf(p) {
     const m = this.mechanics;
     if (!m || !m.attackerScore) return null;
@@ -4960,32 +4968,124 @@ class Component extends DCLogic {
     return m.attackerScore(base, ivs, 50, this.isShadow(p));
   }
 
-  // Best attacker ceiling YOU OWN, per type — the reference point "has a raid
-  // role" is measured against. No external tier list needed or wanted: this
-  // is entirely self-referential to your own roster, same pattern as
-  // Dominated Duplicates (loses to something you already own) and Keep
-  // Best's only-copy bonus.
+  // Raid numbers for one Pokemon at level 50: `now` is its current moveset,
+  // `ceil` the best pairing it can legally learn (Elite/legacy included) and
+  // `ceilNoLegacy` the best without an Elite TM. Each is
+  // { fast, charged, dps, hp, def, rating } or null when move data is missing.
+  // Cached: it is read for every roster member on several screens per render.
+  raidProfile(p) {
+    const m = this.mechanics;
+    if (!m || !m.raidRating) return null;
+    const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+    if (!base || !ivs) return null;
+    const shadow = this.isShadow(p);
+    const key = [p.idx, ivs.join('/'), shadow ? 1 : 0, p.quickMove, p.chargeMove, p.chargeMove2, p.name, Object.keys(this.state.moveDB || {}).length].join('|');
+    const cache = this._raidCache || (this._raidCache = new Map());
+    if (cache.has(key)) return cache.get(key);
+    const opts = { ownTypes: this.typesOf(p), isShadow: shadow };
+    const rate = (fastName, chargeName) => {
+      const f = this.lookupMove(fastName), c = this.lookupMove(chargeName);
+      if (!f || !c || f.kind !== 'fast' || c.kind !== 'charged') return null;
+      return m.raidRating(base, ivs, 50, f, c, opts);
+    };
+    let now = null;
+    [p.chargeMove, p.chargeMove2].forEach(cn => {
+      if (!p.quickMove || !cn) return;
+      const r = rate(p.quickMove, cn);
+      if (r && (!now || r.rating > now.rating)) now = { ...r, fast: p.quickMove, charged: cn };
+    });
+    let ceil = null, ceilNoLegacy = null;
+    const pool = m.movepoolFor ? m.movepoolFor(p.name) : null;
+    if (pool) {
+      const fasts = [...(pool.fast || []).map(n => ({ n, legacy: false })), ...(pool.fastLegacy || []).map(n => ({ n, legacy: true }))];
+      const charges = [...(pool.charge || []).map(n => ({ n, legacy: false })), ...(pool.chargeLegacy || []).map(n => ({ n, legacy: true }))];
+      fasts.forEach(f => charges.forEach(c => {
+        const r = rate(f.n, c.n);
+        if (!r) return;
+        const row = { ...r, fast: f.n, charged: c.n, legacy: f.legacy || c.legacy };
+        if (!ceil || row.rating > ceil.rating) ceil = row;
+        if (!row.legacy && (!ceilNoLegacy || row.rating > ceilNoLegacy.rating)) ceilNoLegacy = row;
+      }));
+    }
+    const prof = { now, ceil, ceilNoLegacy };
+    if (cache.size > 4000) cache.clear();
+    cache.set(key, prof);
+    return prof;
+  }
+
+  // Best attacker YOU OWN per type, in two separate unit systems: `r` uses move
+  // ratings (for Pokemon whose pool and moves are on file) and `s` the stat-only
+  // score (for the rest).
   raidRoleTypeBest(roster) {
-    const best = {};
+    const best = { r: {}, s: {} };
     roster.forEach(p => {
-      const score = this.attackerCeilingOf(p);
+      const prof = this.raidProfile(p);
+      const useRating = !!(prof && prof.ceil);
+      const score = useRating ? prof.ceil.rating : this.attackerCeilingOf(p);
       if (score == null) return;
+      const map = useRating ? best.r : best.s;
       this.typesOf(p).forEach(t => {
-        if (best[t] == null || score > best[t]) best[t] = score;
+        if (map[t] == null || score > map[t]) map[t] = score;
       });
     });
     return best;
   }
 
-  // "Has a raid role" = within the top band of what you personally own for at
-  // least one of its types. 90% of your own best-owned ceiling for that type
-  // is the bar — a tunable design choice, not a fabricated external number:
-  // it only ever compares a Pokemon against other Pokemon you actually have.
+  // "Has a raid role" = within 90% of the best attacker you own for at least one
+  // of its types, measured on move ratings when move data exists (so a species
+  // with poor moves no longer counts just because it has good stats). Still
+  // relative to your own box: it never uses an outside tier list.
   hasRaidRole(p, typeBest) {
+    const RAID_ROLE_BAND = 0.9;
+    const prof = this.raidProfile(p);
+    if (prof && prof.ceil) {
+      return this.typesOf(p).some(t => typeBest.r[t] != null && prof.ceil.rating >= typeBest.r[t] * RAID_ROLE_BAND);
+    }
     const score = this.attackerCeilingOf(p);
     if (score == null) return false;
-    const RAID_ROLE_BAND = 0.9;
-    return this.typesOf(p).some(t => typeBest[t] != null && score >= typeBest[t] * RAID_ROLE_BAND);
+    return this.typesOf(p).some(t => typeBest.s[t] != null && score >= typeBest.s[t] * RAID_ROLE_BAND);
+  }
+
+  // How good one Pokemon is in one PvP league, combining three separate facts:
+  //  - rank: how good ITS IVs are for its species (stat product, real math)
+  //  - tier: whether the species is competitive at all (PvPoke, Great/Ultra only)
+  //  - moves: whether it knows PvPoke's recommended fast + charged moves
+  // tierRank: S 0, A 1, B 2, C 3; 4 = PvPoke does not rank it in this league;
+  // 2.5 = no tier data exists for the league (Little Cup, Master).
+  pvpAssess(p, leagueKey) {
+    const m = this.mechanics;
+    const lg = p[leagueKey];
+    if (!m || !lg || !Number.isFinite(lg.rankPct)) return null;
+    const shadow = this.isShadow(p);
+    const hasTierData = leagueKey === 'great' || leagueKey === 'ultra';
+    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(p.name, shadow, leagueKey) : null;
+    const order = { S: 0, A: 1, B: 2, C: 3 };
+    const tierRank = !hasTierData ? 2.5 : (tier ? order[tier.tier] : 4);
+    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(p.name, shadow, leagueKey) : null;
+    const have = new Set([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.moveKey(n).replace(/\+$/, '')));
+    const wanted = ms ? [ms.fast, ...ms.charged] : [];
+    const missing = wanted.filter(n => !have.has(n));
+    return { league: leagueKey, rank: lg.rankPct, tier: tier ? tier.tier : null, tierScore: tier ? tier.score : null, tierRank,
+      wanted, missing, movesOk: ms ? missing.length === 0 : null };
+  }
+
+  // Best Great/Ultra assessment for a Pokemon: strongest species tier first,
+  // then a complete recommended moveset, then IV rank.
+  pvpBest(p) {
+    const list = ['great', 'ultra'].map(k => this.pvpAssess(p, k)).filter(Boolean);
+    if (!list.length) return null;
+    list.sort((a, b) => (a.tierRank - b.tierRank) || ((b.movesOk === true) - (a.movesOk === true)) || (b.rank - a.rank));
+    return list[0];
+  }
+
+  // "PvP ready": 90%+ IV rank on a species PvPoke rates S, A or B in that
+  // league, or 90%+ in Little Cup (no tier data exists there). IV rank alone
+  // is not enough: a perfect-IV Pikachu is 100% and still weak.
+  isPvpWorthy(p) {
+    const b = this.pvpBest(p);
+    if (b && b.rank >= 90 && b.tierRank <= 2) return true;
+    const lc = p.little && p.little.rankPct;
+    return Number.isFinite(lc) && lc >= 90;
   }
 
   // Data-completeness note for a Pokemon's known moveset — NOT a judgment of
@@ -5306,49 +5406,86 @@ class Component extends DCLogic {
   attackerBoard(roster) {
     const m = this.mechanics;
     if (!m || !m.attackerScore) return [];
+    const tidy = n => String(n).replace(/\+$/, '').replace(/\b\w/g, ch => ch.toUpperCase());
     const buckets = {};
+    const everyone = [];
     roster.forEach(p => {
       const type = this.primaryTypeLabel(p);
       if (!type) return;
       const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
       if (!base || !ivs) return;
-      const dps = this.bestDpsFor(p);
-      // Stat score and DPS are different units, so they cannot be sorted in one
-      // list. Rank on DPS wherever it exists and keep the stat score only as the
-      // fallback ordering for Pokemon whose moves aren't in the database.
-      (buckets[type] = buckets[type] || []).push({
-        p, dps: dps ? dps.dps : null, moveLine: dps ? dps.fast + ' / ' + dps.charged : null,
+      const prof = this.raidProfile(p);
+      const entry = {
+        p, now: prof && prof.now, ceil: prof && prof.ceil,
         ceiling: m.attackerScore(base, ivs, 50, this.isShadow(p))
-      });
+      };
+      (buckets[type] = buckets[type] || []).push(entry);
+      everyone.push(entry);
     });
-    return Object.keys(buckets).sort().map(type => {
+    // Three tiers that are never mixed in one sort (different units): ranked on
+    // the CURRENT moveset rating; potential-only (best legal moves, current moves
+    // not on file); stats only.
+    const order = list => {
+      const rated = list.filter(x => x.now).sort((a, b) => b.now.rating - a.now.rating);
+      const potential = list.filter(x => !x.now && x.ceil).sort((a, b) => b.ceil.rating - a.ceil.rating);
+      const stats = list.filter(x => !x.now && !x.ceil).sort((a, b) => b.ceiling - a.ceiling);
+      return { rated, potential, stats, all: [...rated, ...potential, ...stats] };
+    };
+    const member = (x, i, o) => {
+      const topRated = o.rated.length ? o.rated[0].now.rating : 1;
+      const topPot = o.potential.length ? o.potential[0].ceil.rating : 1;
+      const topStat = o.stats.length ? o.stats[0].ceiling : 1;
+      let line, color, bar;
+      if (x.now) {
+        const gain = x.ceil && x.ceil.rating > x.now.rating * 1.01 ? Math.round((x.ceil.rating / x.now.rating - 1) * 100) : 0;
+        line = x.now.dps.toFixed(1) + ' DPS \u00b7 ' + tidy(x.now.fast) + ' / ' + tidy(x.now.charged)
+          + (gain ? ' \u00b7 +' + gain + '% possible with ' + tidy(x.ceil.fast) + ' + ' + tidy(x.ceil.charged) + (x.ceil.legacy ? ' (Elite TM)' : '') : '');
+        color = 'var(--grass-700)';
+        bar = Math.round(x.now.rating / topRated * 100);
+      } else if (x.ceil) {
+        line = 'moves not on file \u00b7 could reach ' + x.ceil.dps.toFixed(1) + ' DPS with ' + tidy(x.ceil.fast) + ' + ' + tidy(x.ceil.charged);
+        color = 'var(--type-electric)';
+        bar = Math.round(x.ceil.rating / topPot * 100);
+      } else {
+        line = 'no move data \u2014 ranked on stats';
+        color = 'var(--ink-400)';
+        bar = Math.round(x.ceiling / topStat * 100);
+      }
+      return {
+        displayName: x.p.name + (x.p.form ? ' (' + x.p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(x.p.dex, x.p.form),
+        badgeColor: this.dsTypeColor(x.p),
+        initial: (x.p.name || '?').charAt(0),
+        rankLabel: '#' + (i + 1),
+        cpLine: (x.p.cp || '\u2014') + ' CP \u00b7 Lv ' + (x.p.lvlMin != null ? x.p.lvlMin : '?'),
+        ivLine: Number.isFinite(x.p.ivAvg) ? x.p.ivAvg.toFixed(0) + '% IV' : 'IV unknown',
+        dpsLine: line, dpsColor: color, barWidth: bar + '%',
+        measured: !!x.p.ivMeasured,
+        onClick: () => this.openDetail(x.p)
+      };
+    };
+    const groups = Object.keys(buckets).sort().map(type => {
       const all = buckets[type];
-      const withDps = all.filter(x => x.dps != null).sort((a, b) => b.dps - a.dps);
-      const withoutDps = all.filter(x => x.dps == null).sort((a, b) => b.ceiling - a.ceiling);
-      const list = [...withDps, ...withoutDps].slice(0, 4);
-      const topDps = withDps.length ? withDps[0].dps : 0;
-      const topStat = withoutDps.length ? withoutDps[0].ceiling : 1;
+      const o = order(all);
       return {
         type,
         typeColor: this.TYPE_COLORS()[String(type || '').toLowerCase()] || 'var(--ink-300)',
         count: all.length,
-        basisLabel: withDps.length ? (withDps.length === all.length ? 'DPS' : 'DPS + stats') : 'stats only',
-        members: list.map((x, i) => ({
-          displayName: x.p.name + (x.p.form ? ' (' + x.p.form + ')' : ''),
-          spriteRef: this.makeSpriteRefByDex(x.p.dex, x.p.form),
-          badgeColor: this.dsTypeColor(x.p),
-          initial: (x.p.name || '?').charAt(0),
-          rankLabel: '#' + (i + 1),
-          cpLine: (x.p.cp || '\u2014') + ' CP \u00b7 Lv ' + (x.p.lvlMin != null ? x.p.lvlMin : '?'),
-          ivLine: Number.isFinite(x.p.ivAvg) ? x.p.ivAvg.toFixed(0) + '% IV' : 'IV unknown',
-          dpsLine: x.dps != null ? x.dps.toFixed(1) + ' DPS \u00b7 ' + x.moveLine : 'no move data \u2014 ranked on stats',
-          dpsColor: x.dps != null ? 'var(--grass-700)' : 'var(--ink-400)',
-          barWidth: (x.dps != null ? Math.round(x.dps / (topDps || 1) * 100) : Math.round(x.ceiling / topStat * 100)) + '%',
-          measured: !!x.p.ivMeasured,
-          onClick: () => this.openDetail(x.p)
-        }))
+        basisLabel: o.rated.length ? (o.rated.length === all.length ? 'DPS \u00d7 BULK' : 'DPS \u00d7 BULK + stats') : (o.potential.length ? 'POTENTIAL' : 'stats only'),
+        members: o.all.slice(0, 4).map((x, i) => member(x, i, o))
       };
     });
+    // Across every type: damage rate weighted by bulk already includes STAB, so
+    // Pokemon of different types can be compared on one scale.
+    const oAll = order(everyone);
+    const overall = {
+      type: 'BEST OVERALL',
+      typeColor: 'var(--type-electric)',
+      count: everyone.length,
+      basisLabel: oAll.rated.length ? 'DPS \u00d7 BULK' : 'stats only',
+      members: oAll.all.slice(0, 8).map((x, i) => member(x, i, oAll))
+    };
+    return [overall, ...groups];
   }
 
   // Self-contained spread label for the duplicates list. The maintained build
@@ -9696,9 +9833,14 @@ class Component extends DCLogic {
     const bestRank = this.bestRank(p);
     const notFullyEvolved = !!this.evolvesToName(p);
     const isShadow = p.shadowPurified === '1' || p.shadowPurified === 1;
-    if (p.lucky && bestRank >= 90) return 'Lucky and elite-rank — power up now, cheap dust cost.';
-    if (bestRank >= 95) return 'Top-tier league pick. Power up immediately.';
-    if (bestRank >= 85) return 'Strong league contender. Worth the investment.';
+    const pvp = this.pvpBest(p);
+    const tierOk = !!(pvp && pvp.tierRank <= 2);
+    const needs = pvp && pvp.movesOk === false ? ' Needs ' + pvp.missing.map(n => n.replace(/\b\w/g, c => c.toUpperCase())).join(' + ') + ' for its best PvP set.' : '';
+    if (p.lucky && tierOk && pvp.rank >= 90) return 'Lucky, elite IVs and a ' + pvp.tier + '-tier ' + (pvp.league === 'ultra' ? 'Ultra' : 'Great') + ' League species \u2014 power up now, cheap dust cost.' + needs;
+    if (tierOk && pvp.rank >= 95) return pvp.tier + '-tier ' + (pvp.league === 'ultra' ? 'Ultra' : 'Great') + ' League species with near-perfect IVs. Power up.' + needs;
+    if (tierOk && pvp.rank >= 85) return 'Strong ' + pvp.tier + '-tier league contender. Worth the investment.' + needs;
+    if (pvp && pvp.tierRank > 2 && pvp.rank >= 85) return 'Great IVs, but PvPoke rates this species ' + (pvp.tier ? pvp.tier + ' tier' : 'unranked') + ' in the leagues \u2014 not worth the dust for PvP.';
+    if (!pvp && bestRank >= 85) return 'Strong IVs for Little Cup. Worth keeping for that league only.';
     if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
     if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
     if ((!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !p.shiny && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
@@ -10506,8 +10648,14 @@ class Component extends DCLogic {
     if (Number.isFinite(little) && little >= 85) {
       return { verdict: 'KEEP', reason: 'Strong Little Cup pick; do not evolve it', number: little.toFixed(1) + '% LC' };
     }
-    if (p.lucky && Number.isFinite(rank) && rank >= 85) {
-      return { verdict: 'POWER UP', reason: 'Lucky, so half the dust cost', number: rank.toFixed(0) + '% rank' };
+    // IV rank alone is not enough: the species must also be competitive. The
+    // PvPoke tier (S/A/B) is checked first so a perfect-IV Pikachu is not
+    // called a league pick.
+    const pvp = this.pvpBest(p);
+    const pvpTierOk = !!(pvp && pvp.tierRank <= 2);
+    const tierWord = pvp && pvp.tier ? pvp.tier + '-tier ' + (pvp.league === 'ultra' ? 'Ultra' : 'Great') + ' League species' : 'league species';
+    if (p.lucky && pvpTierOk && pvp.rank >= 85) {
+      return { verdict: 'POWER UP', reason: 'Lucky (half the dust) and a ' + tierWord, number: pvp.rank.toFixed(0) + '% IV rank' };
     }
     if (evo && evo.ready) {
       return { verdict: 'EVOLVE', reason: 'Enough candy for ' + evo.to + ' right now', number: evo.have + '/' + evo.need + ' candy' };
@@ -10518,8 +10666,9 @@ class Component extends DCLogic {
     if (evo && evo.short != null && evo.short > 0) {
       return { verdict: 'COLLECT CANDY', reason: evo.short + ' more candy to reach ' + evo.to, number: evo.have + '/' + evo.need + ' candy' };
     }
-    if (Number.isFinite(rank) && rank >= 80) {
-      return { verdict: 'KEEP', reason: 'Top-tier spread worth holding', number: rank.toFixed(0) + '% rank' };
+    if (pvpTierOk && pvp.rank >= 80) {
+      const moveNote = pvp.movesOk === false ? ' \u00b7 needs ' + pvp.missing.map(n => n.replace(/\b\w/g, c => c.toUpperCase())).join(', ') : '';
+      return { verdict: 'KEEP', reason: 'Strong IV spread on a ' + tierWord + moveNote, number: pvp.rank.toFixed(0) + '% IV rank' };
     }
     if (this.isShadow(p)) {
       return { verdict: 'KEEP', reason: 'Shadow Pokemon hit harder in raids', number: rank != null && Number.isFinite(rank) ? rank.toFixed(0) + '% rank' : 'shadow' };
@@ -11305,7 +11454,7 @@ class Component extends DCLogic {
       if (rosterFilter === 'shadow') return this.isShadow(p) || this.isPurified(p);
       if (rosterFilter === 'shiny') return !!p.shiny;
       if (rosterFilter === 'shinyCheck') return !!p.shiny && p.shinyState === 'suspected';
-      if (rosterFilter === 'pvp') return this.bestRank(p) >= 90;
+      if (rosterFilter === 'pvp') return this.isPvpWorthy(p);
       return true;
     });
     filtered = filtered.slice().sort((a, b) => {
@@ -11412,7 +11561,7 @@ class Component extends DCLogic {
 
     const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
     const avgIV = withIV.length ? (withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length) : 0;
-    const pvpReady = roster.filter(p => this.bestRank(p) >= 90).length;
+    const pvpReady = roster.filter(p => this.isPvpWorthy(p)).length;
 
     const statTargets = {
       total: roster.length,
@@ -11455,23 +11604,26 @@ class Component extends DCLogic {
     const tierFor = (p) => (this.mechanics && this.mechanics.pvpTierFor)
       ? this.mechanics.pvpTierFor(p.name, this.isShadow(p), leagueKey)
       : null;
+    // Order: species tier first, then a complete recommended moveset, then IV
+    // rank. A species PvPoke does not rank in Great/Ultra sorts after tier C;
+    // leagues with no tier data (Little Cup, Master) sort on IV rank alone.
+    const assessFor = (p) => (leagueKey === 'great' || leagueKey === 'ultra') ? this.pvpAssess(p, leagueKey) : null;
     leaguePool.sort((a, b) => {
-      const ta = tierFor(a), tb = tierFor(b);
-      if (ta && tb) {
-        const byTier = tierOrder[ta.tier] - tierOrder[tb.tier];
-        if (byTier !== 0) return byTier;
-        return b[leagueKey].rankPct - a[leagueKey].rankPct;
+      const aa = assessFor(a), ab = assessFor(b);
+      if (aa && ab) {
+        return (aa.tierRank - ab.tierRank) || ((ab.movesOk === true) - (aa.movesOk === true)) || (ab.rank - aa.rank);
       }
-      // One or both species have no tier data for this league (Little Cup,
-      // Master, or a species PvPoke hasn't ranked) — fall back to rankPct
-      // alone rather than silently sorting untiered mons to the bottom.
       return b[leagueKey].rankPct - a[leagueKey].rankPct;
     });
     const tierColor = t => t === 'S' ? 'var(--type-fairy)' : t === 'A' ? 'var(--grass-700)'
       : t === 'B' ? 'var(--type-electric)' : 'var(--ink-400)';
     const pvpList = leaguePool.slice(0, 20).map(p => {
       const tier = tierFor(p);
+      const as = assessFor(p);
+      const nice = n => String(n).replace(/\b\w/g, c => c.toUpperCase());
+      const moveNote = !as ? '' : (as.movesOk === true ? '\u2713 recommended moves' : (as.movesOk === false ? 'needs ' + as.missing.map(nice).join(', ') : ''));
       return {
+        moveNote, moveNoteColor: as && as.movesOk === true ? 'var(--grass-700)' : 'var(--type-electric)',
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         cp: p.cp,
         rankNum: Number.isFinite(p[leagueKey].rankNum) ? '#' + p[leagueKey].rankNum : '—',
@@ -11523,8 +11675,9 @@ class Component extends DCLogic {
     const completedSet = new Set(this.state.completedIds || []);
     const notDone = (p) => !completedSet.has(p.idx);
 
-    const powerUpPool = roster.filter(p => this.bestRank(p) >= 90 && !p.favorite && notDone(p));
-    powerUpPool.sort((a, b) => this.bestRank(b) - this.bestRank(a));
+    const powerUpPool = roster.filter(p => this.isPvpWorthy(p) && !p.favorite && notDone(p));
+    const pvpKey = p => { const b = this.pvpBest(p); return b ? (4 - Math.min(4, b.tierRank)) * 1000 + (b.movesOk ? 100 : 0) + b.rank : this.bestRank(p); };
+    powerUpPool.sort((a, b) => pvpKey(b) - pvpKey(a));
     const powerUpList = powerUpPool.slice(0, 12).map(p => {
       const best = this.bestLeagueInfo(p);
       return {
@@ -12147,7 +12300,7 @@ class Component extends DCLogic {
       kantoOwned: kantoOwned.length, kantoTotal: kantoDex.length,
       missingCount: missingDex.length, missingPreview: missingPreview || 'None \u2014 full dex!',
       hundoCount: hundoList.length, nundoCount: nundoList.length,
-      pvpReadyCount: roster.filter(p => this.bestRank(p) >= 90).length,
+      pvpReadyCount: roster.filter(p => this.isPvpWorthy(p)).length,
       shinyCount: roster.filter(p => p.shiny).length,
       shinyToConfirm: roster.filter(p => p.shiny && p.shinyState === 'suspected').length,
       shinySpecies: (() => { const n = [...new Set(roster.filter(p => p.shiny).map(p => p.name))]; return n.length ? n.slice(0, 24).join(', ') + (n.length > 24 ? ' +' + (n.length - 24) + ' more' : '') : 'None yet'; })(),
@@ -12427,7 +12580,7 @@ class Component extends DCLogic {
         { key: 'all', label: 'ALL' },
         { key: 'measured', label: 'MEASURED \u2713' },
         { key: 'needsAppraisal', label: 'NEEDS APPRAISAL' },
-        { key: 'pvp', label: 'PVP 90%+' },
+        { key: 'pvp', label: 'PVP READY' },
         { key: 'lucky', label: 'LUCKY' },
         { key: 'shadow', label: 'SHADOW / PURIFIED' },
         { key: 'shiny', label: '\u2728 SHINY' },

@@ -4345,6 +4345,27 @@ function cycleDps(base, ivs, level, fastMove, chargedMove, opts) {
   return (cycleDmg / cycleMs) * 1000;
 }
 
+// Raid rating: how hard a Pokemon hits AND how long it lasts, for one specific
+// fast + charged pairing. rating = DPS x (HP x DEF)^0.4.
+//  - DPS is cycleDps (STAB, Shadow, real move data).
+//  - HP x DEF stands in for survivability. A boss's damage rate is the same
+//    number for every attacker, so it cancels out of any ordering and is left out.
+//  - The 0.4 exponent is a design choice that mirrors the usual community
+//    weighting of damage rate over survivability (about 60/40). It is an
+//    approximation: no dodging, no energy gained from damage taken, no party
+//    or weather bonuses, no boss-specific move timing.
+// Returns { dps, hp, def, rating } or null when either move lacks data.
+function raidRating(base, ivs, level, fastMove, chargedMove, opts) {
+  opts = opts || {};
+  const dps = cycleDps(base, ivs, level, fastMove, chargedMove, opts);
+  if (dps == null) return null;
+  const cpm = CPM[level != null ? level : 40];
+  const sBase = shadowAdjustedBase(base, opts.isShadow);
+  const def = (sBase[1] + ivs[1]) * cpm;
+  const hp = Math.max(10, Math.floor((sBase[2] + ivs[2]) * cpm));
+  return { dps, hp, def, rating: dps * Math.pow(hp * def, 0.4) };
+}
+
 // Species-level PVP meta tier, from scripts/import_pvp_tier_data.py — filled
 // in by the GENERATED BLOCK below once the import has run. Deliberately
 // separate from rankPctForLeague: that's an individual's OWN IV quality
@@ -4391,6 +4412,6 @@ if (typeof window !== 'undefined') {
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,
     PVP_TIER_GREAT, PVP_TIER_ULTRA, pvpTierFor, pvpMovesetFor,
-    TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, AUTHORITATIVE_MOVES };
+    TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

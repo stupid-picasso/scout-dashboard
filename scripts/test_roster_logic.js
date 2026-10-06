@@ -475,6 +475,45 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Raid rating + PvP assessment: bulk counts, the best legal moveset is never
+// worse than the current one, and a perfect-IV weak species is NOT "PvP ready".
+// ---------------------------------------------------------------------------
+(function testRankingModel() {
+  // raidRating: same moves, same IVs, more bulk -> higher rating, equal DPS.
+  const fast = m.AUTHORITATIVE_MOVES['counter'] || Object.values(m.AUTHORITATIVE_MOVES).find(x => x.kind === 'fast');
+  const charged = m.AUTHORITATIVE_MOVES['dynamic punch'] || Object.values(m.AUTHORITATIVE_MOVES).find(x => x.kind === 'charged');
+  const glass = m.raidRating([200, 100, 100], [15, 15, 15], 50, fast, charged, { ownTypes: [] });
+  const bulky = m.raidRating([200, 100, 200], [15, 15, 15], 50, fast, charged, { ownTypes: [] });
+  check('same attack and moves give the same DPS', Math.abs(glass.dps - bulky.dps) < 1e-9, true);
+  check('more bulk gives a higher raid rating', bulky.rating > glass.rating, true);
+  check('missing move data returns null', m.raidRating([200, 100, 100], [15, 15, 15], 50, null, charged, {}), null);
+
+  const ctx = { mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } };
+  ['moveKey', 'lookupMove', 'raidProfile', 'pvpAssess', 'pvpBest', 'isPvpWorthy'].forEach(n => {
+    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey', pvpBest: 'p', isPvpWorthy: 'p' }[n];
+    ctx[n] = new Function(...sig.split(', '), extractMethodBody(SRC, `${n}(${sig}) {`)).bind(ctx);
+  });
+  ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
+  ctx.ivsOf = p => [p.atkIV, p.defIV, p.staIV];
+  ctx.typesOf = p => p.types;
+  ctx.isShadow = () => false;
+
+  const wart = { idx: 1, name: 'Wartortle', dex: 8, types: ['Water'], atkIV: 15, defIV: 15, staIV: 15, quickMove: 'water gun', chargeMove: 'hydro pump' };
+  const prof = ctx.raidProfile(wart);
+  check('raid profile finds current and best-possible movesets', !!(prof && prof.now && prof.ceil), true);
+  check('best legal moveset is never worse than the current one', prof.ceil.rating >= prof.now.rating - 1e-9, true);
+  check('no-legacy ceiling is never better than the full ceiling', !prof.ceilNoLegacy || prof.ceilNoLegacy.rating <= prof.ceil.rating + 1e-9, true);
+
+  const mk = (name, rank) => ({ name, dex: 0, great: { rankPct: rank }, ultra: { rankPct: rank }, little: null, quickMove: null, chargeMove: null, chargeMove2: null });
+  const strong = ctx.pvpAssess(mk('Azumarill', 95), 'great');
+  check('a PvPoke-ranked strong species has tier S/A/B', !!strong && strong.tierRank <= 2, true);
+  check('missing recommended moves are reported', !!strong && strong.movesOk === false && strong.missing.length >= 1, true);
+  check('S/A/B species at 95% IV rank counts as PvP ready', ctx.isPvpWorthy(mk('Azumarill', 95)), true);
+  check('a species PvPoke does not rank is NOT PvP ready even at 100% IV rank', ctx.isPvpWorthy(mk('Caterpie', 100)), false);
+  check('90% IV rank is the floor even for a strong species', ctx.isPvpWorthy(mk('Azumarill', 80)), false);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));
