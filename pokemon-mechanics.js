@@ -4004,6 +4004,30 @@ const MEGA_EVOLUTION_COSTS = {
 // the handful of dual-form species). `everMegaEvolved` should come from the
 // caller's own tracked state (this file has no notion of history), and picks
 // first-time vs. the reduced subsequent cost per form.
+// GENERATED BLOCK: MEGA_LEVEL_DATA (import_mega_levels.py) — do not hand-edit
+const MEGA_LEVEL_DATA = {"evolveHours":8.0,"generic":{"cost":[200,40,20,10],"restDays":[14.0,7.0,5.0,3.0],"evosNeeded":[0,1,7,30]},"species":{"altaria":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"banette":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"beedrill":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"chesnaught":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"delphox":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"diancie":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"dragonite":{"cost":[500,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"falinks":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"garchomp":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"greninja":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"groudon":{"cost":[400,80,40,20],"restDays":[14.0,7.0,5.0,3.0]},"gyarados":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"houndoom":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"kyogre":{"cost":[400,80,40,20],"restDays":[14.0,7.0,5.0,3.0]},"latias":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"latios":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"malamar":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"manectric":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"medicham":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"metagross":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"mewtwo":{"cost":[7500,80,40,20,10],"restDays":[14.0,7.0,5.0,3.0,1.0]},"pidgeot":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"raichu":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"rayquaza":{"cost":[400,80,40,20],"restDays":[14.0,7.0,5.0,3.0]},"sableye":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"salamence":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"skarmory":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"slowbro":{"cost":[100,20,10,5],"restDays":[14.0,7.0,5.0,3.0]},"starmie":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]},"tyranitar":{"cost":[300,60,30,15],"restDays":[14.0,7.0,5.0,3.0]},"victreebel":{"cost":[300,60,30,15,5],"restDays":[14.0,7.0,5.0,3.0,1.0]}},"superMaxUnlock":5000};
+// END GENERATED BLOCK: MEGA_LEVEL_DATA
+
+// Mega Level rules for a species (see MEGA_LEVEL_DATA): energy cost and rest
+// period per level, Mega Evolutions needed per level, number of levels.
+function megaLevelsFor(name) {
+  const own = MEGA_LEVEL_DATA.species[String(name || '').toLowerCase()];
+  const g = MEGA_LEVEL_DATA.generic;
+  const cost = own ? own.cost : g.cost, restDays = own ? own.restDays : g.restDays;
+  return { cost, restDays, levels: cost.length - 1, evosNeeded: g.evosNeeded, superMaxUnlock: own && own.cost.length > 4 ? MEGA_LEVEL_DATA.superMaxUnlock : null };
+}
+
+// Energy needed to Mega Evolve right now. Level 0 is the first-time cost; at
+// level 1+ the Pokemon rests after each Mega Evolution and the cost to skip
+// the rest is the level's cost scaled by the rest left (nothing once rested).
+function megaCostAt(name, level, restLeftDays) {
+  const r = megaLevelsFor(name);
+  const l = Math.max(0, Math.min(r.levels, Math.floor(level || 0)));
+  if (l === 0) return r.cost[0];
+  if (!(restLeftDays > 0)) return 0;
+  return Math.max(1, Math.round(r.cost[l] * Math.min(1, restLeftDays / r.restDays[l])));
+}
+
 function megaEvolveCostFor(name, everMegaEvolved) {
   const forms = MEGA_EVOLUTION_COSTS[String(name || '').toLowerCase()];
   if (!forms) return null;
@@ -4628,7 +4652,7 @@ function pvpMovesetFor(name, isShadow, leagueKey) {
 if (typeof window !== 'undefined') {
   window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
-    MEGA_EVOLUTION_COSTS, megaEvolveCostFor,
+    MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt,
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,

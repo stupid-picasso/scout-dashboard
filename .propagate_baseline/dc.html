@@ -134,7 +134,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.130</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.131</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1762,10 +1762,11 @@
                 <div style="font:11.5px var(--font-body);color:var(--ink-500)">{{ mg.levelLine }}</div>
                 <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">
                   <input type="text" inputmode="numeric" placeholder="energy" value="{{ mg.energyVal }}" onChange="{{ mg.onEnergy }}" style="width:70px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
-                  <input type="text" inputmode="numeric" placeholder="cost shown" value="{{ mg.costVal }}" onChange="{{ mg.onCost }}" style="width:84px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
-                  <input type="text" inputmode="numeric" placeholder="dots" value="{{ mg.dotsVal }}" onChange="{{ mg.onDots }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="cost (optional)" value="{{ mg.costVal }}" onChange="{{ mg.onCost }}" style="width:110px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="level" value="{{ mg.dotsVal }}" onChange="{{ mg.onDots }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
                   <span style="font:11px var(--font-body);color:var(--ink-400)">of</span>
                   <input type="text" inputmode="numeric" placeholder="total" value="{{ mg.totalVal }}" onChange="{{ mg.onTotal }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
+                  <input type="text" inputmode="decimal" placeholder="rest days left" value="{{ mg.restVal }}" onChange="{{ mg.onRest }}" style="width:96px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
                   <sc-if value="{{ mg.evolve }}" hint-placeholder-val="{{ false }}">
                     <div onClick="{{ mg.evolve }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">I MEGA EVOLVED</div>
                   </sc-if>
@@ -5281,32 +5282,40 @@ class Component extends DCLogic {
     const forms = m.megaEvolveCostFor(key, history);
     if (!forms) return null;
     const entry = (this.state.megaEnergyInventory || {})[key] || {};
+    const rules = m.megaLevelsFor ? m.megaLevelsFor(key) : null;
     return forms.map(f => {
       const fk = f.form || '';
       const st = (entry.status || {})[fk] || {};
       const per = (entry.forms || {})[fk];
       const haveNum = Number.isFinite(per) ? per : (Number.isFinite(entry.amount) ? entry.amount : null);
-      // The cost printed on the in-game button wins over the table: the game
-      // changes it with Mega Level and recency, which the table cannot know.
-      const shown = Number.isFinite(st.cost);
-      const cost = shown ? st.cost : f.cost;
+      const level = Number.isFinite(st.level) ? st.level : null;
+      const restDays = Number.isFinite(st.restEndsAt) ? Math.max(0, (st.restEndsAt - Date.now()) / 86400000) : null;
+      // Cost precedence: a number typed from the game button, then the game's own
+      // rule from Mega Level + rest left (MEGA_LEVEL_DATA), then the plain table.
+      let cost = f.cost, costNote = everDoneNote(history[fk]);
+      if (Number.isFinite(st.cost)) { cost = st.cost; costNote = 'cost as typed from the game'; }
+      else if (rules && m.megaCostAt && level != null && (level === 0 || restDays != null)) {
+        cost = m.megaCostAt(key, level, restDays);
+        costNote = level === 0 ? 'first Mega Evolution' : (cost === 0 ? 'rested \u2014 free' : 'skip-rest cost at Mega Level ' + level + ', ' + restDays.toFixed(1) + ' days left');
+      }
       const ready = haveNum != null && haveNum >= cost;
-      const everDone = !!history[fk];
       return {
         form: f.form,
         formLabel: f.form ? ('MEGA ' + f.form.toUpperCase()) : 'MEGA',
         have: haveNum,
         cost,
-        costNote: shown ? 'cost as shown in game' : (everDone ? 'repeat cost (table)' : 'first-time cost (table)'),
-        dotsDone: Number.isFinite(st.dotsDone) ? st.dotsDone : null,
-        dotsTotal: Number.isFinite(st.dotsTotal) ? st.dotsTotal : null,
+        costNote,
+        level, restDays,
+        total: Number.isFinite(st.total) ? st.total : (rules ? rules.levels : null),
+        typedCost: Number.isFinite(st.cost) ? st.cost : null,
         ready,
         short: haveNum == null ? null : Math.max(0, cost - haveNum),
-        statusLabel: haveNum == null ? 'NO ENERGY LOGGED' : (ready ? 'READY' : 'NEED ' + (cost - haveNum) + ' MORE'),
-        statusColor: haveNum == null ? 'var(--ink-400)' : (ready ? 'var(--grass-700)' : 'var(--type-fighting)'),
-        evolve: ready ? () => this.applyMegaEvolve(key, f.form) : null
+        statusLabel: cost === 0 ? 'FREE (RESTED)' : (haveNum == null ? 'NO ENERGY LOGGED' : (ready ? 'READY' : 'NEED ' + (cost - haveNum) + ' MORE')),
+        statusColor: cost === 0 ? 'var(--grass-700)' : (haveNum == null ? 'var(--ink-400)' : (ready ? 'var(--grass-700)' : 'var(--type-fighting)')),
+        evolve: (ready || cost === 0) ? () => this.applyMegaEvolve(key, f.form) : null
       };
     });
+    function everDoneNote(done) { return done ? 'repeat cost (table)' : 'first-time cost (table)'; }
   }
 
   // Confirms a real in-game Mega Evolve: deducts that form's cost from its
@@ -5314,15 +5323,25 @@ class Component extends DCLogic {
   applyMegaEvolve(key, form) {
     const info = this.megaEvolveInfoFor(key);
     const match = (info || []).find(f => (f.form || '') === (form || ''));
-    if (!match || !match.ready) return;
+    if (!match || !(match.ready || match.cost === 0)) return;
     this.haptic('light');
     const inv = { ...(this.state.megaEnergyInventory || {}) };
-    const cur = inv[key];
-    if (!cur) return;
+    const cur = inv[key] || { name: key };
     const fk = form || '';
     const next = { ...cur };
     if (Number.isFinite((cur.forms || {})[fk])) next.forms = { ...cur.forms, [fk]: Math.max(0, cur.forms[fk] - match.cost) };
-    else next.amount = Math.max(0, cur.amount - match.cost);
+    else if (Number.isFinite(cur.amount)) next.amount = Math.max(0, cur.amount - match.cost);
+    // The Pokemon now rests for its level's rest period; level 0 becomes level 1.
+    const rules = this.mechanics.megaLevelsFor ? this.mechanics.megaLevelsFor(key) : null;
+    const st = { ...((cur.status || {})[fk] || {}) };
+    delete st.cost;
+    const lvl = Number.isFinite(st.level) ? st.level : null;
+    if (lvl != null && rules) {
+      const nl = lvl === 0 ? 1 : lvl;
+      st.level = nl;
+      st.restEndsAt = Date.now() + rules.restDays[Math.min(nl, rules.levels)] * 86400000;
+    }
+    next.status = { ...(cur.status || {}), [fk]: st };
     inv[key] = next;
     const history = { ...(this.state.megaEvolvedHistory || {}) };
     history[key] = { ...(history[key] || {}), [fk]: true };
@@ -5342,24 +5361,95 @@ class Component extends DCLogic {
       label: f.formLabel,
       energyLine: f.have == null ? 'energy not logged' : f.have + ' energy',
       costLine: f.cost + ' needed \u00b7 ' + f.costNote,
-      levelLine: f.dotsTotal ? 'Mega Level ' + (f.dotsDone || 0) + '/' + f.dotsTotal : '',
+      levelLine: f.level != null ? 'Mega Level ' + f.level + (f.total ? '/' + f.total : '') + (f.restDays != null ? ' \u00b7 rest left ' + f.restDays.toFixed(1) + ' days' : '') : '',
       statusLabel: f.statusLabel, statusColor: f.statusColor,
-      energyVal: txt(f.have), costVal: txt(f.cost !== undefined && f.costNote.indexOf('shown') >= 0 ? f.cost : null),
-      dotsVal: txt(f.dotsDone), totalVal: txt(f.dotsTotal),
+      energyVal: txt(f.have), costVal: txt(f.typedCost),
+      dotsVal: txt(f.level), totalVal: txt(f.total),
+      restVal: f.restDays != null ? String(Math.round(f.restDays * 10) / 10) : '',
       onEnergy: e => this.setMegaField(key, p.name, f.form, 'energy', e.target.value),
       onCost: e => this.setMegaField(key, p.name, f.form, 'cost', e.target.value),
-      onDots: e => this.setMegaField(key, p.name, f.form, 'dotsDone', e.target.value),
-      onTotal: e => this.setMegaField(key, p.name, f.form, 'dotsTotal', e.target.value),
+      onDots: e => this.setMegaField(key, p.name, f.form, 'level', e.target.value),
+      onTotal: e => this.setMegaField(key, p.name, f.form, 'total', e.target.value),
+      onRest: e => this.setMegaField(key, p.name, f.form, 'rest', e.target.value),
       evolve: f.evolve
     })) };
   }
 
+  // "4 DAYS" / "5 HOURS" / "30 MIN" as printed next to the Mega badge.
+  parseRestDays(text) {
+    const m = /(\d+(?:\.\d+)?)\s*(day|hour|hr|min)/i.exec(String(text || ''));
+    if (!m) return null;
+    const n = parseFloat(m[1]), u = m[2].toLowerCase();
+    return u.indexOf('day') === 0 ? n : (u.charAt(0) === 'h' ? n / 24 : n / 1440);
+  }
+
+  // Mega Energy, Mega Level, rest left and button cost read off a Pokemon's
+  // detail screen. Used by screenshots (AI vision) and by the video / paste
+  // import, which both end up as the same record shape. One setState for the batch.
+  logMegaScans(items) {
+    const m = this.mechanics;
+    if (!m || !m.megaEvolveCostFor) return 0;
+    const num = v => (v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+    const inv = { ...(this.state.megaEnergyInventory || {}) };
+    let touched = 0;
+    (items || []).forEach(o => {
+      if (!o || !o.name) return;
+      const key = String(o.name).toLowerCase();
+      const forms = m.megaEvolveCostFor(key, {});
+      if (!forms) return;
+      const multi = forms.some(f => f.form);
+      const e = { name: o.name, ...(inv[key] || {}) };
+      let did = false;
+      if (multi) {
+        const ex = num(o.megaEnergyX != null ? o.megaEnergyX : o.mega_energy_x), ey = num(o.megaEnergyY != null ? o.megaEnergyY : o.mega_energy_y);
+        if (ex != null || ey != null) { e.forms = { ...(e.forms || {}), ...(ex != null ? { x: ex } : {}), ...(ey != null ? { y: ey } : {}) }; did = true; }
+      } else {
+        const one = num(o.megaEnergy != null ? o.megaEnergy : o.mega_energy);
+        if (one != null) { e.amount = one; did = true; }
+      }
+      let rows = o.megaForms || o.mega_forms;
+      if (!Array.isArray(rows)) {
+        rows = [1, 2].map(i => ({ form: forms[i - 1] ? forms[i - 1].form : null, cost: o['mega_cost_' + i], level: o['mega_level_' + i], total: o['mega_total_' + i], rest: o['mega_rest_' + i] || (i === 1 ? o.mega_rest : null) }))
+          .filter(r => r.cost != null || r.level != null || r.rest != null);
+      }
+      rows.forEach(r => {
+        const fk = multi ? String(r.form || '').toLowerCase() : '';
+        if (multi && !forms.some(f => f.form === fk)) return;
+        const prev = ((e.status || {})[fk]) || {};
+        const st = { ...prev };
+        const level = num(r.level != null ? r.level : r.dotsFilled), total = num(r.total != null ? r.total : r.dotsTotal), cost = num(r.cost);
+        const rest = this.parseRestDays(r.rest);
+        if (level != null) { st.level = level; delete st.cost; }
+        if (total != null) st.total = total;
+        if (rest != null) st.restEndsAt = Date.now() + rest * 86400000;
+        else if (level === 0) st.restEndsAt = null;
+        // The button cost goes stale as the rest runs down; keep it only when the
+        // level is unknown, otherwise the game's own rule recomputes it.
+        if (cost != null && st.level == null) st.cost = cost;
+        e.status = { ...(e.status || {}), [fk]: st };
+        did = true;
+      });
+      if (did) { inv[key] = e; touched++; }
+    });
+    if (touched) this.setState({ megaEnergyInventory: inv });
+    return touched;
+  }
+
   setMegaField(key, name, form, field, raw) {
-    const n = parseInt(raw, 10);
-    const val = Number.isFinite(n) && n >= 0 ? n : null;
     const fk = form || '';
     const inv = { ...(this.state.megaEnergyInventory || {}) };
     const e = { name: name || key, ...(inv[key] || {}) };
+    if (field === 'rest') {
+      // "4 days" on the Pokemon's screen becomes a fixed end time, so the cost
+      // keeps falling on its own as the rest runs down.
+      const d = parseFloat(raw);
+      e.status = { ...(e.status || {}), [fk]: { ...((e.status || {})[fk] || {}), restEndsAt: Number.isFinite(d) && d >= 0 ? Date.now() + d * 86400000 : null } };
+      inv[key] = e;
+      this.setState({ megaEnergyInventory: inv });
+      return;
+    }
+    const n = parseInt(raw, 10);
+    const val = Number.isFinite(n) && n >= 0 ? n : null;
     if (field === 'energy') {
       const multi = !!(this.mechanics.megaEvolveCostFor(key, {}) || []).filter(f => f.form).length;
       if (multi) e.forms = { ...(e.forms || {}), [fk]: val };
@@ -5759,7 +5849,7 @@ class Component extends DCLogic {
       + '"candy":number|null,"xlCandy":number|null,"stardust":number|null,'
       + '"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,"sizeClass":"XS"|"XL"|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,'
-      + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"megaEnergy":number|null,'
+      + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
       + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,"favorite":boolean}. '
       + 'Rules: '
@@ -5767,6 +5857,8 @@ class Component extends DCLogic {
       + 'CP is NEVER the stardust amount: stardust is the large comma-grouped number next to the stardust icon (e.g. 148,482). '
       + 'HP is the "NN / NN HP" line under the name; return the current (first) value. '
       + 'candy is the count beside "<SPECIES> CANDY"; xlCandy only if a separate "<SPECIES> CANDY XL" count is shown; megaEnergy only if "<SPECIES> MEGA ENERGY" is shown. '
+      + 'Mega: if the screen shows a single "<SPECIES> MEGA ENERGY" count return it as megaEnergy; if it shows "MEGA ENERGY X" and "MEGA ENERGY Y" return megaEnergyX and megaEnergyY. '
+      + 'For each MEGA EVOLVE button add one megaForms entry: form "X" or "Y" (from the "MEGA <SPECIES> X/Y" label, else null), cost = the number on that button, dotsFilled = how many of the small round Mega Level dots under the button are filled with colour, dotsTotal = how many dots there are, rest = the rest-period text such as "4 DAYS" if shown on the Mega badge, else null. Return an empty megaForms array when there is no MEGA EVOLVE button. '
       + 'powerUpStardust/powerUpCandy are the two costs on the POWER UP button; evolveCandy is the candy cost on the EVOLVE button. '
       + 'gender: "M" for the male symbol, "F" for the female symbol, null if neither. '
       + 'sizeClass: "XL" or "XS" only if that tag appears next to height/weight. '
@@ -5807,6 +5899,7 @@ class Component extends DCLogic {
       charged_move_2: o.chargeMove2 || undefined,
       power_up_stardust: num(o.powerUpStardust), power_up_candy: num(o.powerUpCandy),
       evolve_candy: num(o.evolveCandy), mega_energy: num(o.megaEnergy),
+      mega_energy_x: num(o.megaEnergyX), mega_energy_y: num(o.megaEnergyY), mega_forms: Array.isArray(o.megaForms) ? o.megaForms : undefined,
       attack_iv: num(o.atkIV), defense_iv: num(o.defIV), stamina_iv: num(o.staIV),
       lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, shiny_icon: !!o.shinyIcon, favorite: !!o.favorite,
       _source: 'vision'
@@ -6194,6 +6287,7 @@ class Component extends DCLogic {
         this.setState({ ivOverrides: overrides });
       }
     }
+    try { this.logMegaScans([{ ...rec, name: p.matchedName || p.name }]); } catch (e) {}
     this.setState({ candyInventory: candyInv, typeTable: types }, () => this.advanceOcrQueue({ name: p.matchedName || p.name, action: 'updated' }));
     this.resetAppraisalHint();
     // Stardust is the first thing the importer promises to update — it was being
@@ -7344,7 +7438,9 @@ class Component extends DCLogic {
         + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, '
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
         + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, '
+        + '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, "megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}], '
         + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "favorite": boolean}. '
+        + 'Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array if no MEGA EVOLVE button. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
         + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring or the small sparkles icon on the card, never guess from name or CP alone. Set shinyIcon true ONLY if you can actually see that sparkles icon. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
@@ -7712,6 +7808,7 @@ class Component extends DCLogic {
       + '{"name":string,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,'
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
+      + '"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"favorite":boolean}\n\n'
       + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
       + 'Rules:\n'
@@ -7720,6 +7817,7 @@ class Component extends DCLogic {
       + '- hp is the first number in the "NN / NN HP" line.\n'
       + '- candy is the count beside "<SPECIES> CANDY"; xlCandy only if a separate "<SPECIES> CANDY XL" is shown.\n'
       + '- evolveCandy is the candy cost on the EVOLVE button.\n'
+      + '- Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = the number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array when there is no MEGA EVOLVE button.\n'
       + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
       + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
       + '- A shiny Pokemon has a visibly different color palette from its normal coloring and/or shows a small sparkles icon on its card. Set shiny true only when that is actually visible \u2014 never guess from name or CP alone. Set shinyIcon true ONLY if the sparkles icon itself is visible.\n'
@@ -8255,6 +8353,7 @@ class Component extends DCLogic {
   }
 
   mergeVideoImport(rawItems) {
+    try { this.logMegaScans(rawItems || []); } catch (e) {}
     const items = this.coalesceFragments(rawItems || []);
     const overrides = { ...this.state.ivOverrides };
     const candyInv = { ...this.state.candyInventory };

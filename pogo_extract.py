@@ -27,7 +27,8 @@ CSV_FIELDS = [
     "charged_move_type_1", "charged_move_type_2", "stardust_powerup_cost",
     "candy_powerup_cost", "xl_candy_powerup_cost",
     "stardust_evolution_cost", "evolution_candy_cost", "current_candy",
-    "current_xl_candy", "mega_energy", "is_tradeable", "is_legendary",
+    "current_xl_candy", "mega_energy", "mega_energy_x", "mega_energy_y",
+    "mega_cost_1", "mega_cost_2", "mega_rest", "is_tradeable", "is_legendary",
     "is_mythical", "is_ultra_beast", "is_event", "is_costume",
     "is_favorite", "has_second_move", "is_best_buddy", "pokeball_type",
     "catch_method", "friendship_history", "notes"
@@ -47,7 +48,11 @@ REGEX_PATTERNS = {
     "stardust": re.compile(r"([0-9,]+)\s*Stardust", re.IGNORECASE),
     "candy": re.compile(r"([0-9]+)\s+Candy(?!\s*XL)", re.IGNORECASE),
     "xl_candy": re.compile(r"([0-9]+)\s*XL\s*Candy", re.IGNORECASE),
-    "mega_energy": re.compile(r"([0-9]+)\s*Mega Energy", re.IGNORECASE),
+    # The number is printed before "<SPECIES> MEGA ENERGY [X|Y]". Species with two
+    # Mega forms (Charizard, Mewtwo, Raichu) show separate X and Y pools.
+    "mega_energy_x": re.compile(r"([0-9]+)\s+(?:[A-Za-z'. -]{2,30}?\s+)?MEGA\s*ENERGY\s*X\b", re.IGNORECASE),
+    "mega_energy_y": re.compile(r"([0-9]+)\s+(?:[A-Za-z'. -]{2,30}?\s+)?MEGA\s*ENERGY\s*Y\b", re.IGNORECASE),
+    "mega_energy": re.compile(r"([0-9]+)\s+(?:[A-Za-z'. -]{2,30}?\s+)?MEGA\s*ENERGY(?!\s*[XY]\b)", re.IGNORECASE),
     "gender_male": re.compile(r"♂|male|gender male", re.IGNORECASE),
     "gender_female": re.compile(r"♀|female|gender female", re.IGNORECASE),
     "favorite": re.compile(r"Favorite|★", re.IGNORECASE),
@@ -581,7 +586,7 @@ def parse_pokemon_text(text):
         if match:
             val = match.group(1).replace(",", "")
             if field in ["cp", "hp", "attack_iv", "defense_iv", "stamina_iv",
-                         "stardust", "candy", "xl_candy", "mega_energy"]:
+                         "stardust", "candy", "xl_candy", "mega_energy", "mega_energy_x", "mega_energy_y"]:
                 rec[field] = int(float(val)) if "." in val else int(val)
             elif field == "iv_percent":
                 rec[field] = float(val)
@@ -594,6 +599,15 @@ def parse_pokemon_text(text):
                 rec[field] = True
             elif field == "catch_date":
                 rec[field] = match.group(1)
+    # Cost on each MEGA EVOLVE button (one per form) and the rest timer on the
+    # Mega badge ("4 DAYS"). The Mega Level dots are drawn, not text, so they
+    # cannot be read here; the app computes the cost from the level instead.
+    costs = re.findall(r"MEGA\s*EVOLVE\s*([0-9]{1,5})", t, re.IGNORECASE)
+    for i, c in enumerate(costs[:2], 1):
+        rec["mega_cost_%d" % i] = int(c)
+    rest = re.search(r"\b([0-9]+)\s*(DAYS?|HOURS?|HRS?|MINUTES?|MINS?)\b", t, re.IGNORECASE)
+    if rest and "Mega" in text:
+        rec["mega_rest"] = rest.group(1) + " " + rest.group(2).upper()
     if rec.pop("gender_male", False):
         rec["gender"] = "Male"
     elif rec.pop("gender_female", False):
@@ -687,6 +701,11 @@ def record_to_csv_row(rec):
         "current_candy": rec.get("candy", ""),
         "current_xl_candy": rec.get("xl_candy", ""),
         "mega_energy": rec.get("mega_energy", ""),
+        "mega_energy_x": rec.get("mega_energy_x", ""),
+        "mega_energy_y": rec.get("mega_energy_y", ""),
+        "mega_cost_1": rec.get("mega_cost_1", ""),
+        "mega_cost_2": rec.get("mega_cost_2", ""),
+        "mega_rest": rec.get("mega_rest", ""),
         "is_legendary": "1" if rec.get("is_legendary") else "",
         "is_mythical": "1" if rec.get("is_mythical") else "",
         "is_favorite": "1" if rec.get("favorite") else "",
@@ -728,7 +747,16 @@ VIDEO_IMPORT_PROMPT = (
     '"type": string|null, "weight": string|null, "height": string|null, '
     '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, '
     '"evolveCandy": number|null, "atkIV": number|null, "defIV": number|null, '
+    '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, '
+    '"megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,'
+    '"dotsTotal":number|null,"rest":string|null}], '
     '"staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
+    "Mega: a single \"<SPECIES> MEGA ENERGY\" count is megaEnergy; \"MEGA ENERGY X\" and "
+    "\"MEGA ENERGY Y\" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA "
+    "EVOLVE button: form X or Y from the \"MEGA <SPECIES> X/Y\" label, cost = the number "
+    "on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all "
+    "dots, rest = rest text such as \"4 DAYS\" on the Mega badge. Empty array if there "
+    "is no MEGA EVOLVE button. "
     "CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the "
     "large comma-grouped number). If a card is scrolled past its top and no CP badge "
     "is visible in any frame, use null. A shadow Pokemon shows a PURIFY button and the "

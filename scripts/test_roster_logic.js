@@ -773,18 +773,59 @@ function buildLists(roster, bestRank) {
   info = ctx.megaEvolveInfoFor('mewtwo');
   check('cost typed from the game button overrides the table', info[1].cost === 150 && info[1].ready === true, true);
   ctx.setMegaField('beedrill', 'Beedrill', '', 'energy', '215');
-  ctx.setMegaField('beedrill', 'Beedrill', '', 'cost', '11');
-  ctx.setMegaField('beedrill', 'Beedrill', '', 'dotsDone', '1');
-  ctx.setMegaField('beedrill', 'Beedrill', '', 'dotsTotal', '4');
-  const card = ctx.megaCardFor({ name: 'Beedrill' });
-  check('level dots show as 1/4', card.rows[0].levelLine, 'Mega Level 1/4');
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'level', '1');
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'total', '4');
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'rest', '4');
+  let bd = ctx.megaEvolveInfoFor('beedrill')[0];
+  check('Beedrill level 1 with 4 days left costs 11 (matches the game screen)', bd.cost, 11);
+  check('level dots show as 1/4 with rest left', /Mega Level 1\/4 . rest left 4\.0 days/.test(ctx.megaCardFor({ name: 'Beedrill' }).rows[0].levelLine), true);
   ctx.applyMegaEvolve('beedrill', '');
-  check('evolving deducts the shown cost', state.megaEnergyInventory.beedrill.amount, 204);
+  check('evolving deducts the computed cost', state.megaEnergyInventory.beedrill.amount, 204);
+  bd = ctx.megaEvolveInfoFor('beedrill')[0];
+  check('after evolving the rest restarts at the level rest period', bd.restDays > 6.9 && bd.restDays <= 7 && bd.cost === 20, true);
+  ctx.setMegaField('beedrill', 'Beedrill', '', 'rest', '0');
+  check('a fully rested Pokemon is free to Mega Evolve', ctx.megaEvolveInfoFor('beedrill')[0].cost, 0);
+  ctx.setMegaField('mewtwo', 'Mewtwo', 'x', 'level', '0');
+  check('level 0 uses the first-time cost', ctx.megaEvolveInfoFor('mewtwo')[0].cost, 7500);
+  check('Charizard has 3 Mega Levels, Mewtwo 4', m.megaLevelsFor('charizard').levels === 3 && m.megaLevelsFor('mewtwo').levels === 4, true);
   ctx.applyMegaEvolve('mewtwo', 'y');
   check('evolving deducts from that form only', state.megaEnergyInventory.mewtwo.forms.y === 350 && state.megaEnergyInventory.mewtwo.forms.x === 0, true);
   check('a species with no Mega gets no card', ctx.megaCardFor({ name: 'Pikachu' }).has, false);
   ctx.setMegaField('mewtwo', 'Mewtwo', 'x', 'energy', 'abc');
   check('junk input clears the field instead of NaN', state.megaEnergyInventory.mewtwo.forms.x, null);
+})();
+
+// ---------------------------------------------------------------------------
+// Mega data read from screenshots / video
+// ---------------------------------------------------------------------------
+(() => {
+  const state = { megaEnergyInventory: {}, megaEvolvedHistory: {} };
+  const ctx = { mechanics: m, state, setState(p) { Object.assign(state, p); } };
+  ['parseRestDays(text)', 'logMegaScans(items)', 'megaEvolveInfoFor(key)'].forEach(sig => {
+    const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
+    ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
+  });
+  check('rest text in days', ctx.parseRestDays('4 DAYS'), 4);
+  check('rest text in hours', ctx.parseRestDays('12 HOURS'), 0.5);
+  check('no rest text', ctx.parseRestDays('MEGA'), null);
+  // Screenshot / AI shape: the three screens the user sent
+  ctx.logMegaScans([
+    { name: 'Mewtwo', megaEnergyX: 0, megaEnergyY: 500, megaForms: [{ form: 'X', cost: 7500, dotsFilled: 0, dotsTotal: 4, rest: null }, { form: 'Y', cost: 7500, dotsFilled: 0, dotsTotal: 4, rest: null }] },
+    { name: 'Charizard', megaEnergyX: 10, megaEnergyY: 10, megaForms: [{ form: 'X', cost: 200, dotsFilled: 0, dotsTotal: 3 }, { form: 'Y', cost: 200, dotsFilled: 0, dotsTotal: 3 }] },
+    { name: 'Beedrill', megaEnergy: 215, megaForms: [{ form: null, cost: 11, dotsFilled: 1, dotsTotal: 4, rest: '4 DAYS' }] }
+  ]);
+  const mw = ctx.megaEvolveInfoFor('mewtwo'), ch = ctx.megaEvolveInfoFor('charizard'), bd = ctx.megaEvolveInfoFor('beedrill')[0];
+  check('Mewtwo X/Y energy read separately', mw.map(f => f.have).join(','), '0,500');
+  check('Mewtwo costs 7500 at level 0', mw[0].cost === 7500 && mw[1].cost === 7500, true);
+  check('Charizard X and Y both read 10 energy, cost 200', ch.every(f => f.have === 10 && f.cost === 200), true);
+  check('Beedrill reads level 1, 4 days rest, cost 11', bd.level === 1 && Math.abs(bd.restDays - 4) < 0.01 && bd.cost === 11, true);
+  check('Beedrill dots total comes from the screen (4)', bd.total, 4);
+  check('the button cost is not frozen once the level is known', state.megaEnergyInventory.beedrill.status[''].cost, undefined);
+  // CSV / video OCR shape
+  ctx.logMegaScans([{ name: 'Beedrill', mega_energy: 300, mega_cost_1: 20, mega_rest: '2 DAYS' }]);
+  const bd2 = ctx.megaEvolveInfoFor('beedrill')[0];
+  check('OCR shape updates energy and rest; level kept', bd2.have === 300 && bd2.level === 1 && Math.abs(bd2.restDays - 2) < 0.01, true);
+  check('a non-Mega species is ignored', ctx.logMegaScans([{ name: 'Pikachu', megaEnergy: 5 }]), 0);
 })();
 
 // ---------------------------------------------------------------------------
