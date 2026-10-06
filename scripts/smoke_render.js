@@ -115,6 +115,17 @@ const check = (name, ok, extra) => {
   check('Great League list includes a 1498 CP Azumarill', /Azumarill/.test(greatList));
   check('PvP rows carry a sprite', (await page.locator('img[src*="sprites"], img[src^="data:"]').count()) >= 1 || (await page.locator('[style*="object-fit"] , img').count()) >= 1);
 
+  // Live feed: serve a synthetic feed so the check does not expire with real dates.
+  await page.route('**/data/feed.json*', route => {
+    const day = 86400000, now = Date.now(), iso = t => new Date(t).toISOString();
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      source: 'test', fetchedAt: iso(now),
+      gbl: [{ start: iso(now - day), end: iso(now + 6 * day), season: 'Smoke Season', leagues: [
+        { name: 'Great League', cp: 1500, mega: false, rules: ['Pokemon must be at or below 1,500 CP.'] },
+        { name: 'Great League: Mega Edition', cp: 1500, mega: true, rules: ['Mega Evolutions are eligible.'] }] }],
+      events: [{ id: 'x', name: 'Smoke Community Day', type: 'community-day', start: iso(now + day), end: iso(now + 2 * day), link: '', spawns: ['Zorua'], bonuses: ['3x Catch XP'] }]
+    }) });
+  });
   // Planners: add an event, save a team and tally a result.
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(2200);
@@ -125,6 +136,8 @@ const check = (name, ok, extra) => {
   await page.getByPlaceholder('Featured species, comma separated').fill('Azumarill, Caterpie');
   await page.getByText('ADD EVENT', { exact: true }).click();
   await page.waitForTimeout(600);
+  check('GBL card shows the cup rotation and rules', (await page.getByText('GO BATTLE LEAGUE', { exact: true }).count()) >= 1 && (await page.getByText('Mega Edition').count()) >= 1);
+  check('feed events show details and a verdict', (await page.getByText('Smoke Community Day').count()) >= 1 && (await page.getByText('3x Catch XP').count()) >= 1);
   check('event planner lists the event and judges each species', (await page.getByText('Smoke Day').count()) >= 1 && (await page.getByText('HUNT').count()) >= 1);
   await go('PVP');
   await page.getByText('SAVE THIS TEAM', { exact: true }).scrollIntoViewIfNeeded().catch(() => {});

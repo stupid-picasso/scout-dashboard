@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.127</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.128</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -1310,9 +1310,61 @@
         </div>
       </sc-if>
     </div>
+    <sc-if value="{{ hasGbl }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
+        <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:3px">GO BATTLE LEAGUE</div>
+        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px">{{ feedStamp }}</div>
+        <sc-for list="{{ gblWeekRows }}" as="wk" hint-placeholder-count="2">
+          <div style="background:var(--surface-sunken);border-radius:10px;padding:12px;margin-bottom:10px">
+            <div style="font:800 11px var(--font-display);letter-spacing:.06em;color:var(--ink-500)">{{ wk.title }} <span style="color:var(--ink-400)">{{ wk.season }}</span></div>
+            <sc-for list="{{ wk.leagues }}" as="lg" hint-placeholder-count="2">
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-200)">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                  <div style="font:700 13px var(--font-display)">{{ lg.name }}</div>
+                  <div style="font:800 10.5px var(--font-display);color:var(--ink-400)">{{ lg.cap }}</div>
+                </div>
+                <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ lg.rules }}</div>
+                <sc-if value="{{ lg.hasTop }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:6px">
+                    <sc-for list="{{ lg.top }}" as="tp" hint-placeholder-count="5">
+                      <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-700)"><b>{{ tp.name }}</b> <span style="color:var(--ink-400)">{{ tp.tier }} &middot; {{ tp.moves }}</span></div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <div style="font:11.5px/1.45 var(--font-body);color:var(--brand-primary-strong);margin-top:4px">{{ lg.squadLine }}</div>
+                <div style="font:11px/1.45 var(--font-body);color:var(--ink-400);margin-top:2px">{{ lg.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasFeedEvents }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
+        <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:10px">EVENTS &middot; NEXT 14 DAYS</div>
+        <sc-for list="{{ feedEventRows }}" as="fe" hint-placeholder-count="3">
+          <div style="background:var(--surface-sunken);border-radius:10px;padding:12px;margin-bottom:10px">
+            <div style="font:700 13px var(--font-display)">{{ fe.title }}</div>
+            <div style="font:11px var(--font-body);color:var(--ink-400);margin-top:2px">{{ fe.when }}</div>
+            <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ fe.bonus }}</div>
+            <sc-for list="{{ fe.species }}" as="sp" hint-placeholder-count="2">
+              <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line-200)">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <div style="font:700 12.5px var(--font-body)">{{ sp.name }}</div>
+                  <div style="font:800 10.5px var(--font-display);letter-spacing:.06em;color:{{ sp.color }}">{{ sp.verdict }}</div>
+                </div>
+                <sc-for list="{{ sp.lines }}" as="ln" hint-placeholder-count="3">
+                  <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ ln }}</div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
       <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:3px">EVENT PLANNER</div>
-      <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-bottom:10px">There is no event feed to read, so add an event and the species it features. Each species is judged from what you own and the PvPoke data: hunt it, power up, or skip.</div>
+      <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-bottom:10px">Add your own event and the species it features (the feed above covers the official calendar). Each species is judged from what you own and the PvPoke data: hunt it, power up, or skip.</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <input type="text" placeholder="Event name, e.g. Community Day" value="{{ eventTitle }}" onChange="{{ onEventTitle }}" style="background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:13px var(--font-body);padding:9px 12px" />
         <input type="text" placeholder="Date (optional), e.g. Sat 18 Oct" value="{{ eventDate }}" onChange="{{ onEventDate }}" style="background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:13px var(--font-body);padding:9px 12px" />
@@ -3729,6 +3781,7 @@ class Component extends DCLogic {
     events: [],
     savedTeams: [],
     eventDraft: { title: '', date: '', species: '' },
+    feed: null,
     snapshots: [],
     snapshotBusy: false,
     snapshotError: '',
@@ -3761,6 +3814,7 @@ class Component extends DCLogic {
     // this entirely, leaving swipe/long-press with no listeners at all.
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     this.loadLocalSecrets();
+    this.loadFeed();
     // A new service worker takes over without reloading the page, so the code on
     // screen can be older than the app. Tell the person instead of letting them
     // test a stale build, and check for updates whenever the app comes forward.
@@ -11182,6 +11236,102 @@ class Component extends DCLogic {
     return rows.sort((a, b) => a.km - b.km).slice(0, 3);
   }
 
+  // ---- Live feed: events + GO Battle League (data/feed.json) ----------------
+  // Written daily by the "Update Events & GBL" workflow from community mirrors
+  // (not pokemongo.com). Falls back to the last copy kept on this device.
+  validFeed(f) {
+    return !!(f && Array.isArray(f.events) && Array.isArray(f.gbl) && f.gbl.every(w => w && w.start && w.end && Array.isArray(w.leagues)));
+  }
+
+  loadFeed() {
+    try {
+      const raw = localStorage.getItem('scout.feed.v1');
+      const cached = raw ? JSON.parse(raw) : null;
+      if (this.validFeed(cached)) this.setState({ feed: cached });
+    } catch (e) {}
+    const urls = ['data/feed.json?t=' + Date.now(),
+      'https://raw.githubusercontent.com/stupid-picasso/scout-dashboard/main/data/feed.json?t=' + Date.now()];
+    const attempt = (i) => {
+      if (i >= urls.length) return;
+      fetch(urls[i], { cache: 'no-store' })
+        .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+        .then(f => {
+          if (!this.validFeed(f)) throw new Error('bad feed');
+          this.setState({ feed: f });
+          try { localStorage.setItem('scout.feed.v1', JSON.stringify(f)); } catch (e) {}
+        })
+        .catch(() => attempt(i + 1));
+    };
+    attempt(0);
+  }
+
+  // Strongest species for a league CP cap, from the imported PvPoke rankings.
+  // Only the open Great/Ultra tables exist; cups and Mega editions return null.
+  leagueTopSpecies(cp, n) {
+    const m = this.mechanics;
+    const table = cp === 1500 ? m && m.PVP_TIER_GREAT : (cp === 2500 ? m && m.PVP_TIER_ULTRA : null);
+    if (!table) return null;
+    const tidy = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return Object.keys(table).sort((a, b) => table[b].score - table[a].score).slice(0, n || 6).map(id => ({
+      name: tidy(id), tier: table[id].tier, score: table[id].score,
+      moves: String(table[id].moves || '').split('|').filter(Boolean).map(x => x.replace(/\b\w/g, c => c.toUpperCase())).join(' / ')
+    }));
+  }
+
+  // Current and next GBL week with rules, top species and (for open
+  // Great/Ultra) the squad built from the user's own roster.
+  gblWeeks(now) {
+    const f = this.state.feed;
+    if (!this.validFeed(f)) return [];
+    const t = now || Date.now();
+    const weeks = f.gbl.filter(w => new Date(w.end).getTime() > t).sort((a, b) => new Date(a.start) - new Date(b.start)).slice(0, 2);
+    const fmt = iso => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    const squads = {};
+    return weeks.map((w, wi) => ({
+      title: (new Date(w.start).getTime() <= t ? 'THIS WEEK' : 'NEXT WEEK') + ' · ' + fmt(w.start) + ' – ' + fmt(w.end),
+      season: w.season || '',
+      leagues: w.leagues.map(l => {
+        const open = !l.mega && /^(Great League|Ultra League)$/.test(l.name);
+        const league = l.cp === 1500 ? 'great' : (l.cp === 2500 ? 'ultra' : null);
+        const top = l.mega ? null : this.leagueTopSpecies(l.cp, 5);
+        let squad = null;
+        if (wi === 0 && league && !l.mega) {
+          if (!(league in squads)) squads[league] = this.pvpTeamFor(league);
+          squad = squads[league];
+        }
+        const note = l.mega ? 'Mega rankings are not in the imported data — build from your own Megas.'
+          : (!open && l.cp <= 2500 && top ? 'Cup rules may exclude some of these — check the rules above.' : '');
+        return {
+          name: l.name, cap: l.cp >= 10000 ? 'No CP cap' : '≤' + l.cp + ' CP',
+          rules: (l.rules || []).join(' '),
+          top: top || [], hasTop: !!(top && top.length),
+          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' · ') : (wi === 0 && league && !l.mega ? 'Squad: not enough measured, in-cap Pokemon of A tier or better yet.' : ''),
+          note
+        };
+      })
+    }));
+  }
+
+  // Events running now or starting within 14 days, with a verdict per featured species.
+  feedEvents(now) {
+    const f = this.state.feed;
+    if (!this.validFeed(f)) return [];
+    const t = now || Date.now();
+    const horizon = t + 14 * 86400000;
+    const fmt = iso => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    const bare = n => String(n || '').replace(/\s*\(.*\)\s*$/, '').trim();
+    return f.events.filter(e => e.type !== 'season' && new Date(e.end).getTime() > t && new Date(e.start).getTime() < horizon)
+      .sort((a, b) => new Date(a.start) - new Date(b.start)).slice(0, 10).map(e => {
+        const names = [...new Set([...(e.spawns || []), ...(e.bosses || []), ...(e.spotlight && e.spotlight.name ? [e.spotlight.name] : [])].map(bare).filter(Boolean))].slice(0, 4);
+        const live = new Date(e.start).getTime() <= t;
+        return {
+          title: e.name, when: (live ? 'LIVE · until ' + fmt(e.end) : fmt(e.start) + ' – ' + fmt(e.end)),
+          bonus: [e.spotlight && e.spotlight.bonus, ...(e.bonuses || [])].filter(Boolean).join(' · '),
+          species: names.map(n => this.eventSpeciesVerdict(n))
+        };
+      });
+  }
+
   // ---- Events: manual planner (there is no event feed to read) -------------
   setEventDraft(field, value) {
     this.setState({ eventDraft: { ...(this.state.eventDraft || {}), [field]: value } });
@@ -14108,6 +14258,11 @@ class Component extends DCLogic {
           onClick: () => this.toggleRaidType(t)
         };
       }),
+      gblWeekRows: this.gblWeeks(),
+      hasGbl: this.gblWeeks().length > 0,
+      feedEventRows: this.feedEvents(),
+      hasFeedEvents: this.feedEvents().length > 0,
+      feedStamp: this.validFeed(this.state.feed) ? 'Community data (not official) \u00b7 refreshed ' + new Date(this.state.feed.fetchedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Feed not loaded yet.',
       eventRows: (this.state.events || []).map(e => ({
         id: e.id, title: e.title, date: e.date,
         species: (e.species || []).map(n => this.eventSpeciesVerdict(n)),

@@ -1,0 +1,38 @@
+name: Update Events & GBL
+
+# Refreshes data/feed.json (events + GO Battle League cup rotation) from
+# community mirrors. Data-only file, so it is committed straight to main; the
+# script refuses to overwrite the file when the upstream parse looks wrong.
+
+on:
+  schedule:
+    - cron: '15 */6 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: update-events-gbl
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Refresh feed
+        run: python scripts/update_events_gbl.py
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/feed.json
+          git diff --cached --quiet && { echo "feed unchanged"; exit 0; }
+          git commit -m "Refresh events and GBL feed ($(date -u +%Y-%m-%d))"
+          git pull --rebase origin main
+          git push origin HEAD:main

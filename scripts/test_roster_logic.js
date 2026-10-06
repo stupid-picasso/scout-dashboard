@@ -728,6 +728,33 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Live feed: validation, GBL weeks, top species
+// ---------------------------------------------------------------------------
+(() => {
+  const ctx = { mechanics: m, state: {} };
+  ['validFeed(f)', 'leagueTopSpecies(cp, n)', 'gblWeeks(now)'].forEach(sig => {
+    const name = sig.slice(0, sig.indexOf('(')), args = sig.slice(sig.indexOf('(') + 1, -1);
+    ctx[name] = new Function(...(args ? args.split(', ') : []), extractMethodBody(SRC, sig + ' {')).bind(ctx);
+  });
+  ctx.pvpTeamFor = () => null;
+  check('feed without gbl is rejected', ctx.validFeed({ events: [] }), false);
+  check('feed with a malformed week is rejected', ctx.validFeed({ events: [], gbl: [{ start: 'x' }] }), false);
+  const t = Date.parse('2026-10-08T00:00:00Z');
+  ctx.state.feed = { events: [], gbl: [
+    { start: '2026-09-29T20:00:00Z', end: '2026-10-06T20:00:00Z', leagues: [{ name: 'Master League', cp: 10000, rules: [] }] },
+    { start: '2026-10-06T20:00:00Z', end: '2026-10-13T20:00:00Z', season: 'S', leagues: [
+      { name: 'Great League', cp: 1500, rules: ['r'] }, { name: 'Great League: Mega Edition', cp: 1500, mega: true, rules: [] }] },
+    { start: '2026-10-13T20:00:00Z', end: '2026-10-20T20:00:00Z', leagues: [{ name: 'Little Cup', cp: 500, rules: [] }] }] };
+  check('expired weeks are dropped, current + next kept', ctx.validFeed(ctx.state.feed) && ctx.gblWeeks(t).length, 2);
+  const wk = ctx.gblWeeks(t);
+  check('first shown week is labelled THIS WEEK', /^THIS WEEK/.test(wk[0].title) && /^NEXT WEEK/.test(wk[1].title), true);
+  check('open Great League gets top species, Mega edition does not', wk[0].leagues[0].hasTop && !wk[0].leagues[1].hasTop, true);
+  check('Little Cup has no ranking data and says nothing false', wk[1].leagues[0].hasTop, false);
+  const top = ctx.leagueTopSpecies(2500, 3);
+  check('top species are sorted by score', top.length === 3 && top[0].score >= top[1].score && top[1].score >= top[2].score, true);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));
