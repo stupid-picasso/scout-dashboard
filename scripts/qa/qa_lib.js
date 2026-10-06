@@ -57,7 +57,12 @@ async function session(opts = {}) {
     const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(500);
   };
   s.text = () => page.evaluate(() => document.body.innerText);
-  s.load = async csv => { await page.setInputFiles('input[type=file][accept=".csv"]', csv); await page.waitForTimeout(900); };
+  // Importing over an existing roster asks first; tests that just want the data in confirm it.
+  s.load = async (csv, opts = {}) => {
+    await page.setInputFiles('input[type=file][accept=".csv"]', csv); await page.waitForTimeout(700);
+    if (opts.noConfirm) return;
+    const b = page.getByText('REPLACE', { exact: true }); if (await b.count()) { await b.first().click(); await page.waitForTimeout(500); }
+  };
   s.state = () => page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.state) return JSON.parse(JSON.stringify(f.stateNode.logic.state, (kk, v) => (typeof v === 'function' ? undefined : v))); } return null; });
   s.set = patch => page.evaluate(p => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) { f.stateNode.logic.setState(p); return true; } } return false; }, patch);
   s.call = (method, ...args) => page.evaluate(([mth, a]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic[mth]) return f.stateNode.logic[mth](...a); } return undefined; }, [method, args]);

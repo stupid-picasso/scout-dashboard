@@ -36,7 +36,8 @@ const check = (name, ok, extra) => {
   check('the bundle ships current mechanics (Mega rules, cup tables)', await page.evaluate(() => { const m = window.PokemonMechanics; return !!(m && m.megaFormsFor && m.PVP_CUP_TABLES && m.pvpTableFor('cup:mega@1500')); }));
   check('app boots and shows a version', !!version, String(version));
 
-  await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
+  async function loadCsv() { await page.setInputFiles('input[type=file][accept=".csv"]', CSV); await page.waitForTimeout(700); const b = page.getByText('REPLACE', { exact: true }); if (await b.count()) { await b.first().click(); await page.waitForTimeout(500); } }
+  await loadCsv();
   await page.waitForTimeout(1500);
   // Types normally come from a lookup that needs the network; inject them.
   await page.evaluate(() => {
@@ -87,7 +88,7 @@ const check = (name, ok, extra) => {
   // detail sheet
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(2500);
-  await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
+  await loadCsv();
   await page.waitForTimeout(1200);
   await go('ROSTER');
   await page.locator('[data-swipe-row]').first().click();
@@ -102,7 +103,7 @@ const check = (name, ok, extra) => {
   for (const label of ['PVP', 'ATTACK', 'RAID', 'TODAY', 'HOME', 'INTEL', 'RECS', 'LOG']) {
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(2200);
-    await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
+    await loadCsv();
     await page.waitForTimeout(1000);
     await go(label);
     const text = await page.locator('body').innerText();
@@ -113,7 +114,7 @@ const check = (name, ok, extra) => {
   // PvP list: a sprite on every row, and nothing over the league's CP cap.
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(2200);
-  await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
+  await loadCsv();
   await page.waitForTimeout(1000);
   await go('PVP');
   const pvpText = await page.locator('body').innerText();
@@ -136,7 +137,7 @@ const check = (name, ok, extra) => {
   // Planners: add an event, save a team and tally a result.
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(2200);
-  await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
+  await loadCsv();
   await page.waitForTimeout(1000);
   await go('TODAY');
   await page.getByPlaceholder('Event name, e.g. Community Day').fill('Smoke Day');

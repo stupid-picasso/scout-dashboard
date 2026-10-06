@@ -11,6 +11,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#171b26"/><circle cx="100" cy="70" r="34" fill="#54c8ff"/><rect x="60" y="120" width="80" height="46" rx="10" fill="#3a4258"/><text x="100" y="150" font-family="monospace" font-size="20" font-weight="800" fill="#e8ecf5" text-anchor="middle">S</text></svg>
 </template>
 <helmet>
+<title>Professor</title>
 <link rel="stylesheet" href="./ds/styles-dashboard.css">
 <link rel="stylesheet" href="./ds/tokens/colors-dark.css">
 <link rel="manifest" href="./manifest.json">
@@ -130,11 +131,11 @@
     --surface-page:#000;
     --surface:#1c1c1e; --surface-card:#1c1c1e; --surface-muted:#2c2c2e; --surface-sunken:#0b0b0d; --surface-field:#2c2c2e;
     --ink-900:#fff; --ink-700:rgba(255,255,255,.9); --ink-600:rgba(235,235,245,.78); --ink-500:rgba(235,235,245,.66);
-    --ink-400:rgba(235,235,245,.62); --ink-300:rgba(235,235,245,.34);
+    --ink-400:rgba(235,235,245,.64); --ink-300:rgba(235,235,245,.56);
     --line-100:rgba(84,84,88,.28); --line-200:rgba(84,84,88,.42); --line-300:rgba(84,84,88,.62);
     --brand-primary-strong:#0a84ff; --grass-500:#30d158; --grass-600:#30d158; --grass-700:#32d74b;
     --type-electric:#ffd60a; --type-fighting:#ff453a;
-    --ios-blue:#0a84ff; --ios-green:#30d158; --ios-red:#ff453a; --ios-yellow:#ffd60a; --ios-fill:rgba(120,120,128,.24);
+    --ios-blue:#0a84ff; --ios-blue-fill:#0a64d6; --ios-green:#30d158; --ios-red:#ff453a; --ios-yellow:#ffd60a; --ios-fill:rgba(120,120,128,.24);
     --ios-spring:cubic-bezier(.32,.72,0,1);
   }
   html{font-family:var(--font-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -151,8 +152,13 @@
   input[type=text],input[type=password],input:not([type]),textarea,select{background:var(--ios-fill) !important;border:0 !important;border-radius:12px !important;color:var(--ink-900) !important;min-height:44px;box-sizing:border-box;padding:10px 14px !important}
   input::placeholder,textarea::placeholder{color:var(--ink-300) !important}
   /* Primary action: system blue capsule. */
-  [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
+  [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue-fill) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
   [style*="background: var(--grass-500)"]{background:var(--ios-green) !important;color:#000 !important}
+  /* Coloured type names used as text: lifted so they clear 4.5:1 on the dark cards. */
+  [style*="color: var(--type-dragon)"]{color:#aaa0f4 !important}[style*="color: var(--type-ghost)"]{color:#bdb2ec !important}[style*="color: var(--type-poison)"]{color:#d6a9ee !important}[style*="color: var(--type-dark)"]{color:#b0abbd !important}[style*="color: var(--type-psychic)"]{color:#ff9db8 !important}[style*="color: var(--type-fairy)"]{color:#f5a8d6 !important}
+  [style*="color: var(--type-fighting)"]{color:#ff8a80 !important}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:inherit;cursor:pointer}
   /* Focus ring for keyboard and switch users. */
   :focus-visible{outline:3px solid color-mix(in oklab,var(--ios-blue) 80%,#fff);outline-offset:2px;border-radius:10px}
   /* Press feedback: scale + dim, the way a UIButton responds. */
@@ -177,33 +183,37 @@
 <div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100dvh;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(46% 0.10 50 / .22), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(48% 0.09 25 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(44% 0.08 90 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
 
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
-  <div style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
+  <header style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
     <sc-if value="{{ statusBanner }}" hint-placeholder-val="{{ false }}">
       <div role="status" aria-live="polite" class="ios-toast">
         <div style="width:10px;height:10px;border-radius:50%;background:{{ statusBanner.dot }};flex-shrink:0"></div>
-        <div style="text-wrap:pretty;min-width:0">{{ statusBanner.text }}</div>
+        <div style="text-wrap:pretty;min-width:0;flex:1">{{ statusBanner.text }}</div>
+        <sc-if value="{{ statusBanner.action }}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{ statusBanner.action.run }}" style="flex-shrink:0;font:600 16px var(--font-body);color:var(--ios-blue);padding:6px 4px">{{ statusBanner.action.label }}</button>
+        </sc-if>
       </div>
     </sc-if>
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
-        <div style="font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</div>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.135</span></div>
+        <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.136</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
-        <label class="ios-icon-btn om-press" aria-label="Import CSV" title="Import CSV">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
+        <label class="ios-icon-btn om-press" title="Import CSV">
+          <span class="sr-only">Import CSV</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
           <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
         </label>
-        <div onClick="{{ exportCsv }}" class="ios-icon-btn om-press" aria-label="Export CSV" title="Export CSV">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M4 20h16"/></svg>
-        </div>
-        <div onClick="{{ startListening }}" class="ios-icon-btn om-press" aria-label="{{ micLabel }}" title="{{ micLabel }}" style="background:{{ micBg }};animation:{{ micAnim }}">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
-        </div>
+        <button type="button" onClick="{{ exportCsv }}" class="ios-icon-btn om-press" aria-label="Export CSV" title="Export CSV">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 20h16"/></svg>
+        </button>
+        <button type="button" onClick="{{ startListening }}" class="ios-icon-btn om-press" aria-label="{{ micLabel }}" title="{{ micLabel }}" style="background:{{ micBg }};animation:{{ micAnim }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+        </button>
       </div>
     </div>
 
-  </div>
+  </header>
 
   <sc-if value="{{ evoFlash }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;inset:0;z-index:90;pointer-events:none;display:flex;align-items:center;justify-content:center;background:oklch(98% 0.02 90 / .1)">
@@ -265,18 +275,18 @@
       <span>A new version is ready</span><span style="letter-spacing:.05em">TAP TO RELOAD</span>
     </div>
   </sc-if>
-  <div data-navbar="1" class="ios-nav" role="tablist" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(22,22,24,.78);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid rgba(84,84,88,.6)">
+  <nav data-navbar="1" class="ios-nav" aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(22,22,24,.78);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid rgba(84,84,88,.6)">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="5">
-      <div onClick="{{ t.onClick }}" class="om-press" role="tab" aria-label="{{ t.label }}" style="cursor:pointer;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.iconPath }}"/></svg>
-        <div style="font:600 11px var(--font-body);letter-spacing:.01em;color:{{ t.color }};white-space:nowrap">{{ t.navLabel }}</div>
-      </div>
+      <button type="button" onClick="{{ t.onClick }}" class="om-press" aria-label="{{ t.label }}" aria-current="{{ t.current }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.iconPath }}"/></svg>
+        <span style="font:600 10.5px var(--font-body);letter-spacing:.01em;color:{{ t.color }};white-space:nowrap">{{ t.navLabel }}</span>
+      </button>
     </sc-for>
-  </div>
+  </nav>
 
   <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ closeMore }}" style="position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:scrimIn .25s ease both"></div>
-    <div role="menu" style="position:fixed;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:46;background:rgba(44,44,46,.92);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);border-radius:20px;overflow:hidden;animation:sheetUp .38s var(--ios-spring) backwards;box-shadow:0 14px 40px rgba(0,0,0,.55)">
+    <div role="menu" aria-label="More" style="position:fixed;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:46;background:rgba(44,44,46,.92);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);border-radius:20px;overflow:hidden;animation:sheetUp .38s var(--ios-spring) backwards;box-shadow:0 14px 40px rgba(0,0,0,.55)">
       <sc-for list="{{ moreTabs }}" as="m" hint-placeholder-count="5">
         <div onClick="{{ m.onClick }}" class="om-press" role="menuitem" aria-label="{{ m.label }}" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 18px;min-height:48px;border-top:.5px solid rgba(84,84,88,.5)">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{ m.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ m.iconPath }}"/></svg>
@@ -289,7 +299,7 @@
 
   <sc-if value="{{ fileFallback }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;z-index:60;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:14px;padding-bottom:max(14px, env(safe-area-inset-bottom));animation:scrimIn .2s ease">
-    <div style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-300);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;animation:sheetUp .28s cubic-bezier(.22,1,.36,1)">
+    <div role="dialog" aria-modal="true" aria-label="Save or copy file" tabindex="-1" style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-300);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;animation:sheetUp .28s cubic-bezier(.22,1,.36,1)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
         <div style="font:700 11.5px var(--font-display);color:var(--type-electric);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fileFallback.filename }}</div>
         <div onClick="{{ closeFileFallback }}" class="om-press" style="cursor:pointer;flex-shrink:0;font:600 11.5px var(--font-display);color:var(--ink-500)">&times; CLOSE</div>
@@ -306,7 +316,7 @@
 
   <sc-if value="{{ pendingConfirm }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;z-index:65;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:14px;padding-bottom:max(14px, env(safe-area-inset-bottom));animation:scrimIn .2s ease">
-    <div style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-300);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;animation:sheetUp .28s cubic-bezier(.22,1,.36,1)">
+    <div role="alertdialog" aria-modal="true" aria-label="Confirm" tabindex="-1" style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-300);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;animation:sheetUp .28s cubic-bezier(.22,1,.36,1)">
       <div style="font:800 15px var(--font-display);color:var(--ink-900)">{{ pendingConfirm.title }}</div>
       <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ pendingConfirm.message }}</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
@@ -320,7 +330,7 @@
   </sc-if>
 
   <sc-if value="{{ isToday }}" hint-placeholder-val="{{ false }}">
-  <div style="display:flex;flex-direction:column;gap:14px;animation:fadeSlideIn .35s ease">
+  <div role="main" style="display:flex;flex-direction:column;gap:14px;animation:fadeSlideIn .35s ease">
 
     <div class="om-scroll" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;margin-bottom:2px">
       <sc-for list="{{ todayChips }}" as="c" hint-placeholder-count="4">
@@ -688,8 +698,17 @@
   </sc-if>
 
   <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
-  <div style="animation:fadeSlideIn .35s ease;display:flex;flex-direction:column;gap:20px">
-    <div style="font:800 20px var(--font-body)">{{ digest.greeting }}</div>
+  <div role="main" style="animation:fadeSlideIn .35s ease;display:flex;flex-direction:column;gap:20px">
+    <h2 style="margin:0;font:800 20px var(--font-body)">{{ digest.greeting }}</h2>
+    <div style="background:var(--surface-card);border-radius:18px;padding:14px 16px">
+      <div style="font:600 15px var(--font-body);margin-bottom:2px">Text size</div>
+      <div style="font:13px var(--font-body);color:var(--ink-400);margin-bottom:10px">Scales the whole app. Saved on this device.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ zoomChoices }}" as="z" hint-placeholder-count="5">
+          <button type="button" onClick="{{ z.onClick }}" class="om-press" aria-label="Text size {{ z.label }}" style="padding:9px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 14px var(--font-body);min-height:40px">{{ z.label }}</button>
+        </sc-for>
+      </div>
+    </div>
 
     <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:9px">
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
@@ -1576,14 +1595,25 @@
   </sc-if>
 
   <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ false }}">
-  <div style="animation:fadeSlideIn .35s ease">
+  <div role="main" style="animation:fadeSlideIn .35s ease">
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin:2px 2px 12px">
       <div style="font:800 20px var(--font-display);letter-spacing:.03em">POK&Eacute;MON</div>
       <div style="font:12px var(--font-display);color:var(--ink-300)">{{ rosterCountLabel }}</div>
     </div>
+    <sc-if value="{{ hasImportReport }}" hint-placeholder-val="{{ false }}">
+      <details style="background:var(--surface-card);border-radius:16px;padding:12px 16px;margin-bottom:14px">
+        <summary style="cursor:pointer;font:600 15px var(--font-body);list-style:none;display:flex;justify-content:space-between;align-items:center"><span>{{ importReportTitle }}</span><span style="color:var(--ios-blue);font:500 14px var(--font-body)">Details</span></summary>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ importReportLines }}" as="ir" hint-placeholder-count="3">
+            <div style="font:13px/1.4 var(--font-body);color:{{ ir.color }}">{{ ir.text }}</div>
+          </sc-for>
+          <button type="button" onClick="{{ dismissImportReport }}" style="align-self:flex-start;margin-top:6px;font:500 14px var(--font-body);color:var(--ios-blue);padding:6px 0">Dismiss</button>
+        </div>
+      </details>
+    </sc-if>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center">
       <input type="text" placeholder="🔍 Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:14px var(--font-display);padding:10px 18px;border-radius:999px;flex:1 1 160px;min-width:140px" />
-      <select onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-display);padding:10px 14px;border-radius:999px;flex:0 1 150px;min-width:0;max-width:150px">
+      <select aria-label="Sort roster" onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-display);padding:10px 14px;border-radius:999px;flex:0 1 150px;min-width:0;max-width:150px">
         <option value="cp">Sort: CP</option>
         <option value="ivAvg">Sort: IV%</option>
         <option value="rank">Sort: Best league rank</option>
@@ -1666,7 +1696,7 @@
               <span style="color:{{ p.rowSpreadColor }};font-variant-numeric:tabular-nums;flex-shrink:0">{{ p.rowSpread }}</span>
               <sc-if value="{{ p.typeChips }}" hint-placeholder-val="{{ false }}">
                 <span style="color:var(--ink-300)">&middot;</span>
-                <span style="color:{{ p.typeAccent }};font-weight:500;text-transform:capitalize">{{ p.primaryTypeLabel }}</span>
+                <span style="color:color-mix(in oklab, {{ p.typeAccent }} 55%, white);font-weight:500;text-transform:capitalize">{{ p.primaryTypeLabel }}</span>
               </sc-if>
               <sc-if value="{{ p.bestLeagueLabel }}" hint-placeholder-val="{{ false }}">
                 <span style="color:var(--ink-300)">&middot;</span>
@@ -1676,21 +1706,6 @@
             <div style="height:3px;border-radius:2px;background:var(--ios-fill);margin-top:8px;overflow:hidden">
               <div class="om-bar" style="--i:{{ $index }};height:100%;width:{{ p.ivBarPct }};background:{{ p.rowSpreadColor }};border-radius:2px"></div>
             </div>
-            <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
-              <div onClick="{{ stopProp }}" style="margin-top:8px">
-                <sc-if value="{{ p.ivEditOpen }}" hint-placeholder-val="{{ false }}">
-                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                    <input type="text" inputmode="numeric" placeholder="Atk" aria-label="Attack IV" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
-                    <input type="text" inputmode="numeric" placeholder="Def" aria-label="Defense IV" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
-                    <input type="text" inputmode="numeric" placeholder="Sta" aria-label="Stamina IV" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
-                    <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:7px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:600 14px var(--font-body)">Save</div>
-                  </div>
-                </sc-if>
-                <sc-if value="{{ p.ivEditClosed }}" hint-placeholder-val="{{ true }}">
-                  <div onClick="{{ p.toggleIvEdit }}" class="om-tap" style="cursor:pointer;display:inline-block;font:500 14px var(--font-body);color:var(--ios-blue)">Enter IVs</div>
-                </sc-if>
-              </div>
-            </sc-if>
           </div>
           <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1">
             <sc-if value="{{ p.isFav }}" hint-placeholder-val="{{ false }}">
@@ -1699,6 +1714,21 @@
             <div style="white-space:nowrap;display:flex;align-items:baseline;gap:3px"><span style="font:500 11px var(--font-body);color:var(--ink-400)">CP</span><span style="font:700 24px var(--font-display);letter-spacing:-.02em;color:var(--ink-900);font-variant-numeric:tabular-nums">{{ p.cp }}</span></div>
           </div>
           </div>
+          <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface-card);border-radius:0 0 16px 16px;margin-top:-6px;padding:0 14px 12px 88px;position:relative">
+              <sc-if value="{{ p.ivEditOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  <input type="text" inputmode="numeric" placeholder="Atk" aria-label="Attack IV" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
+                  <input type="text" inputmode="numeric" placeholder="Def" aria-label="Defense IV" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
+                  <input type="text" inputmode="numeric" placeholder="Sta" aria-label="Stamina IV" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
+                  <button type="button" onClick="{{ p.saveManualIv }}" class="om-tap" style="padding:7px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:600 14px var(--font-body)">Save</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ p.ivEditClosed }}" hint-placeholder-val="{{ true }}">
+                <button type="button" onClick="{{ p.toggleIvEdit }}" class="om-tap" aria-label="Enter IVs for {{ p.displayName }}" style="font:500 14px var(--font-body);color:var(--ios-blue)">Enter IVs</button>
+              </sc-if>
+            </div>
+          </sc-if>
         </div>
       </sc-for>
     </div>
@@ -1713,7 +1743,7 @@
 
   <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
   <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.72);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
-    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
+    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" role="dialog" aria-modal="true" aria-label="Pokemon details" tabindex="-1" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
       <div style="position:relative;min-height:230px;background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
@@ -1834,7 +1864,7 @@
               <div style="margin-top:12px">
                 <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
                   <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }}">
-                    <span style="display:flex;gap:10px;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums;opacity:.85"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></span>
+                    <span style="display:flex;gap:10px;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></span>
                     <span style="font:800 13px var(--font-display);letter-spacing:.05em">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</span>
                   </div>
                 </sc-if>
@@ -2139,7 +2169,7 @@
   </sc-if>
 
   <sc-if value="{{ isPvp }}" hint-placeholder-val="{{ false }}">
-  <div style="animation:fadeSlideIn .35s ease">
+  <div role="main" style="animation:fadeSlideIn .35s ease">
     <div class="om-scroll" style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px">
       <sc-for list="{{ leagueList }}" as="lg" hint-placeholder-count="3">
         <div onClick="{{ lg.onClick }}" style="cursor:pointer;flex-shrink:0;padding:8px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
@@ -2244,7 +2274,7 @@
   </sc-if>
 
   <sc-if value="{{ isRaid }}" hint-placeholder-val="{{ false }}">
-  <div style="animation:fadeSlideIn .35s ease">
+  <div role="main" style="animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
       <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em">RAID COUNTERS</div>
       <div style="font:12.5px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types, and this ranks your own Pokemon against it by damage per second (STAB, type effectiveness and optional weather) weighted by how well each one survives the boss&rsquo;s own types. It assumes the boss uses moves of its own types, so it is an estimate, not a battle simulation. Pokemon whose moves aren&rsquo;t in the move database are left out rather than guessed.</div>
@@ -2304,7 +2334,7 @@
   </sc-if>
 
   <sc-if value="{{ isAttackers }}" hint-placeholder-val="{{ false }}">
-  <div style="animation:fadeSlideIn .35s ease">
+  <div role="main" style="animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
       <div style="font:800 13px var(--font-display);letter-spacing:.05em;color:var(--ink-900);margin-bottom:6px">BEST ATTACKER PER TYPE</div>
       <div style="font:12.5px var(--font-body);color:var(--ink-500);max-width:70ch;text-wrap:pretty">Ranked at level 50 by damage rate weighted by bulk (DPS &times; (HP &times; DEF)^0.4) with your CURRENT moves, STAB included and no particular boss in mind. &ldquo;Possible&rdquo; shows what the best legal moves for that species would add. Pokemon whose moves aren&rsquo;t in the database show their potential or fall back to raw stats, and say so.</div>
@@ -2333,7 +2363,7 @@
       <sc-for list="{{ attackerGroups }}" as="g" hint-placeholder-count="6">
         <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
-            <div style="font:800 14px var(--font-display);letter-spacing:.04em;color:{{ g.typeColor }}">{{ g.type }}</div>
+            <div style="font:800 14px var(--font-display);letter-spacing:.04em;color:color-mix(in oklab, {{ g.typeColor }} 55%, white)">{{ g.type }}</div>
             <div style="font:11px var(--font-display);color:var(--ink-300)">{{ g.count }} {{ g.countNoun }} &middot; {{ g.basisLabel }}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
@@ -2362,7 +2392,7 @@
   </sc-if>
 
   <sc-if value="{{ isRecommend }}" hint-placeholder-val="{{ false }}">
-  <div style="display:flex;flex-direction:column;gap:20px;animation:fadeSlideIn .35s ease">
+  <div role="main" style="display:flex;flex-direction:column;gap:20px;animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border-radius:var(--r-card);padding:20px">
       <div style="font:800 13px var(--font-display);color:var(--ink-900);letter-spacing:.05em;margin-bottom:4px">USE A TM</div>
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px;max-width:80ch;text-wrap:pretty">Search a Pokemon, then tap the TM you used on it in-game. Opens its move picker to log what it learned, and deducts 1 from your TM count on save. Greyed-out buttons mean you're logged as having none of that TM.</div>
@@ -2545,7 +2575,7 @@
   </sc-if>
 
   <sc-if value="{{ isIntel }}" hint-placeholder-val="{{ false }}">
-  <div style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;align-content:start;gap:16px;animation:fadeSlideIn .35s ease">
+  <div role="main" style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;align-content:start;gap:16px;animation:fadeSlideIn .35s ease">
     <div style="grid-column:1 / -1;background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px">
       <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">WHAT IS INCOMPLETE</div>
       <div style="font:12px/1.55 var(--font-body);color:var(--ink-500);margin-bottom:14px;text-wrap:pretty">Each gap below disables something specific. Listed by consequence, with the fix.</div>
@@ -2679,7 +2709,7 @@
   </sc-if>
 
   <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
-  <div style="animation:fadeSlideIn .35s ease">
+  <div role="main" style="animation:fadeSlideIn .35s ease">
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:10px 14px;margin-bottom:16px">
       <summary style="cursor:pointer;font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.05em;list-style:none">DIAGNOSTICS &middot; {{ diagSummary }}</summary>
       <sc-if value="{{ hasDiag }}" hint-placeholder-val="{{ false }}">
@@ -2882,6 +2912,9 @@ class Component extends DCLogic {
     eventDraft: { title: '', date: '', species: '' },
     feed: null,
     feedCheck: null,
+    importReport: [],
+    importUndoable: false,
+    uiZoom: 1,
     moreOpen: false,
     ivEditIdx: null,
     snapshots: [],
@@ -2918,6 +2951,8 @@ class Component extends DCLogic {
     this.loadLocalSecrets();
     this.loadFeed();
     try { this.enhanceAccessibility(); } catch (e) { console.error(e); }
+    try { this.bindCsvDrop(); } catch (e) { console.error(e); }
+    try { const z = parseFloat(localStorage.getItem('scout.uiZoom')); if (z >= 1 && z <= 2) this.setUiZoom(z); } catch (e) {}
     // Auth settles within a couple of seconds; only then is it clear nobody is signed in.
     setTimeout(() => this.restoreLocalSnapshot(), 2400);
     // A new service worker takes over without reloading the page, so the code on
@@ -3100,6 +3135,25 @@ class Component extends DCLogic {
     if (!root.lang) root.lang = 'en';
     const NATIVE = /^(A|BUTTON|INPUT|SELECT|TEXTAREA|SUMMARY)$/;
     const pass = () => {
+      // Form controls that only have a visible caption nearby: use it as the name.
+      document.querySelectorAll('input:not([type=file]):not([type=hidden]),textarea,select').forEach(el => {
+        if (el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.closest('label')) return;
+        let t = el.placeholder || '';
+        for (let n = el; !t && n && n.parentElement && n !== document.body; n = n.parentElement) {
+          const prev = n.previousElementSibling;
+          if (prev && (prev.innerText || '').trim() && (prev.innerText || '').trim().length < 60 && !prev.querySelector('input,select,textarea')) t = prev.innerText.trim();
+          if (t) break;
+        }
+        el.setAttribute('aria-label', (t || 'Field').replace(/\s+/g, ' ').slice(0, 60));
+      });
+      // Horizontally scrolling strips (chips, tabs) need a keyboard stop.
+      document.querySelectorAll('.om-scroll').forEach(el => {
+        if (el.dataset.a11yScroll) return;
+        const cs = getComputedStyle(el);
+        if ((/(auto|scroll)/.test(cs.overflowX) || /(auto|scroll)/.test(cs.overflowY)) && !el.querySelector('button,a,input,select,textarea,[tabindex]')) { el.tabIndex = 0; el.setAttribute('role', 'region'); el.setAttribute('aria-label', el.getAttribute('aria-label') || 'Scrollable list'); }
+        el.dataset.a11yScroll = '1';
+      });
+      document.querySelectorAll('img:not([alt])').forEach(i => i.setAttribute('alt', ''));
       document.querySelectorAll('[style*="cursor: pointer"]').forEach(el => {
         if (el.dataset.a11y || NATIVE.test(el.tagName) || el.closest('label')) return;
         el.dataset.a11y = '1';
@@ -3117,7 +3171,47 @@ class Component extends DCLogic {
     document.addEventListener('keydown', e => {
       if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button' && !NATIVE.test(e.target.tagName)) { e.preventDefault(); e.target.click(); }
     });
+    // Dialogs: focus moves in when one opens, Tab stays inside it, Escape closes it, and focus
+    // goes back to whatever opened it.
+    let openerEl = null, activeDialog = null;
+    const FOCUSABLE = 'button,a[href],input:not([type=hidden]):not([type=file]),select,textarea,[tabindex]:not([tabindex="-1"])';
+    const watchDialogs = () => {
+      const d = [...document.querySelectorAll('[role=dialog][aria-modal=true],[role=alertdialog]')].pop() || null;
+      if (d && d !== activeDialog) {
+        openerEl = document.activeElement && document.activeElement !== document.body ? document.activeElement : openerEl;
+        activeDialog = d;
+        setTimeout(() => { try { d.focus({ preventScroll: true }); } catch (e) {} }, 60);
+      } else if (!d && activeDialog) {
+        activeDialog = null;
+        const o = openerEl; openerEl = null;
+        if (o && o.isConnected) { try { o.focus({ preventScroll: true }); } catch (e) {} }
+      }
+    };
+    new MutationObserver(watchDialogs).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('keydown', e => {
+      if (!activeDialog || !activeDialog.isConnected) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (this.state.detailPoke) { try { this.closeDetail(); return; } catch (x) {} }
+        try { this.closeConfirm && this.closeConfirm(); } catch (x) {}
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = [...activeDialog.querySelectorAll(FOCUSABLE)].filter(x => x.offsetWidth || x.offsetHeight);
+      if (!items.length) { e.preventDefault(); activeDialog.focus(); return; }
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === activeDialog)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
     schedule();
+  }
+
+  // Text size. iOS Dynamic Type is not exposed to web apps, so this is the app's own control:
+  // it scales the whole interface (type, spacing, tap targets) and is remembered on this device.
+  setUiZoom(z) {
+    const v = Math.max(1, Math.min(2, Number(z) || 1));
+    try { document.documentElement.style.zoom = v === 1 ? '' : String(v); localStorage.setItem('scout.uiZoom', String(v)); } catch (e) {}
+    this.setState({ uiZoom: v });
   }
 
   // ---- Device copy of the roster and settings ----------------------------
@@ -3931,52 +4025,166 @@ class Component extends DCLogic {
     }
   }
 
-  parseCSV(text) {
-    const lines = text.split('\n').filter(l => l.trim().length > 0);
-    const rows = lines.slice(1).map(l => l.split(','));
+  // ---- CSV import: tolerant parsing, per-row validation, preview, undo ----------
+  // Header names other exporters use, normalised (lowercase, letters and digits only).
+  CSV_HEADER_FIELDS() {
+    return { name: 'name', pokemon: 'name', species: 'name', form: 'form', pokemonnumber: 'dex', dex: 'dex', dexnumber: 'dex', number: 'dex',
+      gender: 'gender', cp: 'cp', hp: 'hp', atkiv: 'atkIV', attackiv: 'atkIV', atk: 'atkIV', attack: 'atkIV', defiv: 'defIV', defenseiv: 'defIV',
+      def: 'defIV', defense: 'defIV', staiv: 'staIV', staminaiv: 'staIV', sta: 'staIV', stamina: 'staIV', hpiv: 'staIV', level: 'lvlMin',
+      levelmin: 'lvlMin', levelmax: 'lvlMax', quickmove: 'quickMove', fastmove: 'quickMove', fast: 'quickMove', chargemove: 'chargeMove',
+      chargedmove: 'chargeMove', chargemove2: 'chargeMove2', chargedmove2: 'chargeMove2', lucky: 'lucky', favorite: 'favorite', favourite: 'favorite',
+      catchdate: 'catchDate', caught: 'catchDate', scandate: 'scanDate', weight: 'weight', height: 'height', ivavg: 'ivAvg', iv: 'ivAvg', ivpercent: 'ivAvg' };
+  }
+
+  // One CSV line -> fields, honouring quotes ("Charizard, shiny") and doubled quotes.
+  splitCsvLine(line) {
+    const out = []; let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (q) { if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+    out.push(cur);
+    return out.map(x => x.replace(/\r$/, ''));
+  }
+
+  parseCSV(text, issues) {
+    const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (!lines.length) return [];
+    const header = this.splitCsvLine(lines[0]);
+    const norm = h => String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const map = this.CSV_HEADER_FIELDS();
+    const named = header.map(h => map[norm(h)]);
+    // Poke Genie's own layout is positional (47 columns, and its header has "Pokemon Number");
+    // anything else with recognisable column names is read by name.
+    const genie = header.length >= 40 || header.some(h => norm(h) === 'pokemonnumber') && header.length >= 40;
+    const mapped = !genie && named.filter(Boolean).length >= 3 && named.indexOf('name') >= 0;
     const pct = v => (v && v.trim() !== '') ? parseFloat(v.replace('%', '')) : null;
-    const num = v => { if (v === '' || v === undefined) return null; const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
-    return rows.map(cols => {
-      const g = i => (cols[i] !== undefined && cols[i] !== '') ? cols[i] : null;
-      return {
-        idx: num(g(0)), name: g(1), form: g(2), dex: num(g(3)), gender: g(4),
-        cp: num(g(5)), hp: num(g(6)), atkIV: num(g(7)), defIV: num(g(8)), staIV: num(g(9)),
-        ivAvg: num(g(10)), lvlMin: num(g(11)), lvlMax: num(g(12)),
-        quickMove: g(13), chargeMove: g(14), chargeMove2: g(15),
-        scanDate: g(16), catchDate: g(18), weight: g(19), height: g(20),
-        lucky: g(21) === '1', shadowPurified: g(22), favorite: g(23) === '1', dust: num(g(24)),
-        great: { rankPct: pct(g(25)), rankNum: num(g(26)), statProd: pct(g(27)), dustCost: num(g(28)), candyCost: num(g(29)), evolvesTo: g(30) },
-        ultra: { rankPct: pct(g(33)), rankNum: num(g(34)), statProd: pct(g(35)), dustCost: num(g(36)), candyCost: num(g(37)), evolvesTo: g(38) },
-        little: { rankPct: pct(g(41)), rankNum: num(g(42)), statProd: pct(g(43)), dustCost: num(g(44)), candyCost: num(g(45)), evolvesTo: g(46) },
-      };
+    const num = v => { if (v === '' || v === undefined || v === null) return null; const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+    const emptyLeague = () => ({ rankPct: null, rankNum: null, statProd: null, dustCost: null, candyCost: null, evolvesTo: null });
+    const rows = lines.slice(1).map((l, ri) => {
+      const cols = this.splitCsvLine(l);
+      let rec;
+      if (mapped) {
+        const g = f => { const i = named.indexOf(f); return i >= 0 && cols[i] !== undefined && cols[i].trim() !== '' ? cols[i].trim() : null; };
+        const tf = v => ['1', 'true', 'yes', 'y'].indexOf(String(v || '').toLowerCase()) >= 0;
+        rec = { idx: ri, name: g('name'), form: g('form'), dex: num(g('dex')), gender: g('gender'), cp: num(g('cp')), hp: num(g('hp')),
+          atkIV: num(g('atkIV')), defIV: num(g('defIV')), staIV: num(g('staIV')), ivAvg: pct(g('ivAvg') || ''), lvlMin: num(g('lvlMin')), lvlMax: num(g('lvlMax')) || num(g('lvlMin')),
+          quickMove: g('quickMove'), chargeMove: g('chargeMove'), chargeMove2: g('chargeMove2'), scanDate: g('scanDate'), catchDate: g('catchDate'), weight: g('weight'), height: g('height'),
+          lucky: tf(g('lucky')), shadowPurified: '0', favorite: tf(g('favorite')), dust: null, great: emptyLeague(), ultra: emptyLeague(), little: emptyLeague() };
+        if (rec.ivAvg == null && rec.atkIV != null && rec.defIV != null && rec.staIV != null) rec.ivAvg = Math.round((rec.atkIV + rec.defIV + rec.staIV) / 45 * 1000) / 10;
+      } else {
+        const g = i => (cols[i] !== undefined && cols[i] !== '') ? cols[i] : null;
+        rec = {
+          idx: num(g(0)) != null ? num(g(0)) : ri, name: g(1), form: g(2), dex: num(g(3)), gender: g(4),
+          cp: num(g(5)), hp: num(g(6)), atkIV: num(g(7)), defIV: num(g(8)), staIV: num(g(9)),
+          ivAvg: num(g(10)), lvlMin: num(g(11)), lvlMax: num(g(12)),
+          quickMove: g(13), chargeMove: g(14), chargeMove2: g(15),
+          scanDate: g(16), catchDate: g(18), weight: g(19), height: g(20),
+          lucky: g(21) === '1', shadowPurified: g(22), favorite: g(23) === '1', dust: num(g(24)),
+          great: { rankPct: pct(g(25)), rankNum: num(g(26)), statProd: pct(g(27)), dustCost: num(g(28)), candyCost: num(g(29)), evolvesTo: g(30) },
+          ultra: { rankPct: pct(g(33)), rankNum: num(g(34)), statProd: pct(g(35)), dustCost: num(g(36)), candyCost: num(g(37)), evolvesTo: g(38) },
+          little: { rankPct: pct(g(41)), rankNum: num(g(42)), statProd: pct(g(43)), dustCost: num(g(44)), candyCost: num(g(45)), evolvesTo: g(46) },
+        };
+      }
+      rec._row = ri + 2;
+      return rec;
     });
+    this._csvMode = mapped ? 'columns matched by name' : 'Poke Genie layout';
+    return rows;
+  }
+
+  // Range checks. A row with no name is skipped; a bad number is cleared (and reported) rather
+  // than letting 999 CP or a 99 IV into rankings.
+  validateImportRows(rows) {
+    const issues = [], valid = [];
+    rows.forEach(r => {
+      const where = 'Row ' + r._row + (r.name ? ' (' + r.name + ')' : '');
+      if (!r.name || !String(r.name).trim()) { issues.push({ fatal: true, text: where + ': no Pokemon name, row skipped' }); return; }
+      const out = { ...r }; delete out._row;
+      const clear = (k, why) => { issues.push({ fatal: false, text: where + ': ' + k + ' ' + JSON.stringify(r[k]) + ' ' + why + ', cleared' }); out[k] = null; };
+      if (out.cp != null && !(out.cp >= 10 && out.cp <= 10000)) clear('cp', 'is outside 10-10000');
+      if (out.hp != null && !(out.hp >= 1 && out.hp <= 1000)) clear('hp', 'is outside 1-1000');
+      ['atkIV', 'defIV', 'staIV'].forEach(k => { if (out[k] != null && !(Number.isInteger(out[k]) && out[k] >= 0 && out[k] <= 15)) clear(k, 'is not a whole number 0-15'); });
+      if (out.atkIV == null || out.defIV == null || out.staIV == null) { if (r.atkIV != null || r.defIV != null || r.staIV != null) { out.atkIV = out.defIV = out.staIV = null; out.ivAvg = null; } }
+      ['lvlMin', 'lvlMax'].forEach(k => { if (out[k] != null && !(out[k] >= 1 && out[k] <= 51)) clear(k, 'is outside level 1-51'); });
+      if (out.dex != null && !(Number.isInteger(out.dex) && out.dex >= 1 && out.dex <= 1200)) clear('dex', 'is not a valid Pokedex number');
+      valid.push(out);
+    });
+    return { valid, issues };
+  }
+
+  // Read a file, parse it, and either apply it or ask first when it would replace a roster.
+  importCsvText(text, filename) {
+    let parsed;
+    try { parsed = this.parseCSV(text); } catch (err) { this.setState({ csvError: 'Could not read that CSV: ' + ((err && err.message) || err), csvNotice: '' }); return; }
+    if (!Array.isArray(parsed) || !parsed.length) { this.setState({ csvError: 'No rows found \u2014 is this a Poke Genie CSV export?', csvNotice: '' }); return; }
+    const { valid, issues } = this.validateImportRows(parsed);
+    if (!valid.length) {
+      this.setState({ csvError: 'No usable rows in ' + filename + '. ' + (issues[0] ? issues[0].text : ''), csvNotice: '', importReport: issues.slice(0, 40) });
+      return;
+    }
+    const prev = (this.state.roster || []).length;
+    const skipped = issues.filter(x => x.fatal).length;
+    const apply = () => this.applyCsvImport(valid, issues, filename, prev);
+    if (prev > 0) {
+      const delta = valid.length - prev;
+      this.askConfirm({
+        title: 'Replace your roster?',
+        message: 'Your roster has ' + prev + ' Pokemon. ' + filename + ' has ' + valid.length + ' (' + (delta >= 0 ? '+' : '') + delta + ')'
+          + (skipped ? ', and ' + skipped + ' row' + (skipped > 1 ? 's were' : ' was') + ' skipped' : '') + '. You can undo right after.',
+        actions: [{ label: 'REPLACE', style: 'primary', run: () => { this.closeConfirm(); apply(); } }]
+      });
+      return;
+    }
+    apply();
+  }
+
+  applyCsvImport(valid, issues, filename, prev) {
+    const undo = { roster: this.state.roster || [], at: Date.now(), label: 'Import of ' + filename };
+    this._importUndo = undo;
+    this.setState({
+      roster: this.sanitizeRoster(valid),
+      syncedFrom: filename,
+      csvNotice: 'Loaded ' + valid.length + ' Pokemon from ' + filename + (prev ? ' (replaced ' + prev + ')' : '') + (issues.length ? ' \u00b7 ' + issues.length + ' issue' + (issues.length > 1 ? 's' : '') + ' noted' : '') + '.',
+      csvError: '', importReport: issues.slice(0, 40), importUndoable: prev > 0
+    });
+    clearTimeout(this._csvNoticeTimer);
+    this._csvNoticeTimer = setTimeout(() => this.setState({ csvNotice: '', importUndoable: false }), 9000);
+  }
+
+  undoImport() {
+    const u = this._importUndo;
+    if (!u) return;
+    this._importUndo = null;
+    this.setState({ roster: this.sanitizeRoster(u.roster), csvNotice: 'Restored your previous roster.', importUndoable: false, importReport: [] });
+    clearTimeout(this._csvNoticeTimer);
+    this._csvNoticeTimer = setTimeout(() => this.setState({ csvNotice: '' }), 5000);
   }
 
   onFileChange(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const parsed = this.parseCSV(ev.target.result);
-        if (!Array.isArray(parsed) || !parsed.length) {
-          throw new Error('No rows found — is this a Poke Genie CSV export?');
-        }
-        const prev = (this.state.roster || []).length;
-        this.setState({
-          roster: this.sanitizeRoster(parsed),
-          syncedFrom: file.name,
-          csvNotice: `Loaded ${parsed.length} Pokemon from ${file.name}${prev ? ` (replaced ${prev})` : ''}.`,
-          csvError: ''
-        });
-        clearTimeout(this._csvNoticeTimer);
-        this._csvNoticeTimer = setTimeout(() => this.setState({ csvNotice: '' }), 7000);
-      } catch (err) {
-        console.error('[Scout] CSV import failed:', err);
-        this.setState({ csvError: 'Could not read that CSV: ' + ((err && err.message) || err), csvNotice: '' });
-      }
-    };
+    reader.onload = (ev) => { try { this.importCsvText(ev.target.result, file.name); } catch (err) { console.error('[Scout] CSV import failed:', err); this.setState({ csvError: 'Could not read that CSV: ' + ((err && err.message) || err), csvNotice: '' }); } };
+    reader.onerror = () => this.setState({ csvError: 'Could not open ' + file.name + '.', csvNotice: '' });
     reader.readAsText(file);
+    try { e.target.value = ''; } catch (x) {}
+  }
+
+  // Drop a .csv anywhere on the page.
+  bindCsvDrop() {
+    if (this._dropBound) return;
+    this._dropBound = true;
+    window.addEventListener('dragover', e => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].indexOf('Files') >= 0) e.preventDefault(); });
+    window.addEventListener('drop', e => {
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f || !/\.csv$/i.test(f.name)) return;
+      e.preventDefault();
+      this.onFileChange({ target: { files: [f] } });
+    });
   }
 
   // Wipes the on-device roster so a fresh video import starts clean. Deliberately
@@ -4250,10 +4458,18 @@ class Component extends DCLogic {
 
   dsBadge(typeName) {
     const t = String(typeName || '').trim().toLowerCase();
-    return {
-      fill: this.BADGE_FILL_OVERRIDE()[t] || this.TYPE_COLORS()[t] || 'var(--surface-muted)',
-      ink: this.BADGE_WHITE_TYPES()[t] ? '#ffffff' : '#12151a'
-    };
+    const fill = this.BADGE_FILL_OVERRIDE()[t] || this.TYPE_COLORS()[t] || 'var(--surface-muted)';
+    let ink = this.BADGE_WHITE_TYPES()[t] ? '#ffffff' : '#12151a';
+    // Pick whichever of white / near-black reads better on the fill (WCAG contrast).
+    const m = /^#([0-9a-f]{6})$/i.exec(fill);
+    if (m) {
+      const n = parseInt(m[1], 16);
+      const lin = c => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
+      const L = .2126 * lin((n >> 16) & 255) + .7152 * lin((n >> 8) & 255) + .0722 * lin(n & 255);
+      const cw = 1.05 / (L + .05), cd = (L + .05) / (0.0075 + .05);
+      ink = cw >= cd ? '#ffffff' : '#12151a';
+    }
+    return { fill, ink };
   }
 
   rgbaHex(hex, a) {
@@ -11198,7 +11414,7 @@ class Component extends DCLogic {
       const h = this._headerEl;
       if (!h) return;
       h.style.boxShadow = stuck ? '0 10px 30px rgba(0,0,0,.42)' : 'none';
-      h.style.background = stuck ? 'oklch(15% 0.0121 50 / .99)' : 'oklch(17% 0.0138 50 / .98)';
+      h.style.background = stuck ? 'rgba(0,0,0,.86)' : 'rgba(0,0,0,.72)';
     }, { threshold: 0 });
     this._headerIO.observe(el);
   }
@@ -12348,12 +12564,13 @@ class Component extends DCLogic {
       const age = this.scanAgeDays(p);
       const vd = this.verdictFor(p);
       const vdColors = {
-        'KEEP': ['var(--grass-700)', 'var(--grass-500)', 'var(--grass-500)'],
-        'EVOLVE': ['var(--grass-700)', 'var(--grass-500)', 'var(--grass-500)'],
-        'POWER UP': ['var(--type-electric)', 'var(--brand-primary-strong)', 'var(--brand-primary-strong)'],
-        'COLLECT CANDY': ['var(--type-electric)', 'var(--surface-muted)', 'var(--brand-primary-strong)'],
-        'APPRAISE': ['var(--type-flying)', 'var(--type-flying)', 'var(--type-flying)'],
-        'TRANSFER': ['var(--type-fighting)', 'var(--type-fighting)', 'var(--type-fighting)']
+        // Tinted fill + bright text of the same hue: readable at any size.
+        'KEEP': ['var(--ios-green)', 'color-mix(in oklab, var(--ios-green) 16%, var(--surface-card))', 'color-mix(in oklab, var(--ios-green) 45%, var(--surface-card))'],
+        'EVOLVE': ['var(--ios-green)', 'color-mix(in oklab, var(--ios-green) 16%, var(--surface-card))', 'color-mix(in oklab, var(--ios-green) 45%, var(--surface-card))'],
+        'POWER UP': ['#64b5ff', 'color-mix(in oklab, var(--ios-blue) 20%, var(--surface-card))', 'color-mix(in oklab, var(--ios-blue) 50%, var(--surface-card))'],
+        'COLLECT CANDY': ['var(--ios-yellow)', 'var(--surface-muted)', 'color-mix(in oklab, var(--ios-yellow) 40%, var(--surface-card))'],
+        'APPRAISE': ['#8fd3ff', 'color-mix(in oklab, #54c8ff 16%, var(--surface-card))', 'color-mix(in oklab, #54c8ff 45%, var(--surface-card))'],
+        'TRANSFER': ['#ff8a80', 'color-mix(in oklab, var(--ios-red) 16%, var(--surface-card))', 'color-mix(in oklab, var(--ios-red) 45%, var(--surface-card))']
       };
       const vdc = vdColors[vd.verdict] || vdColors.KEEP;
       detail = {
@@ -12851,7 +13068,7 @@ class Component extends DCLogic {
     const tabDefs = [...barDefs, ...moreDefs];
     const tint = on => (on ? 'var(--ios-blue)' : 'var(--ink-400)');
     const tabList = [
-      ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
+      ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), current: (t.key === tab && !this.state.moreOpen) ? 'page' : undefined, onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
       { key: 'more', label: 'More', navLabel: 'More', iconPath: ICON.more, color: tint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), onClick: () => this.setState({ moreOpen: !this.state.moreOpen }) }
     ];
     const moreTabs = moreDefs.map(m => ({ key: m.key, label: m.label, iconPath: ICON[m.key], color: m.key === tab ? 'var(--ios-blue)' : 'var(--ink-900)', onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(m.key)) }));
@@ -12862,7 +13079,7 @@ class Component extends DCLogic {
         if (this.state.csvError) return { text: this.state.csvError, dot: 'var(--ios-red)' };
         if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         if (this.state.storageWarning) return { text: this.state.storageWarning, bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
-        if (this.state.csvNotice) return { text: this.state.csvNotice, bg: 'var(--grass-500)', fg: 'var(--grass-700)', dot: 'var(--grass-700)' };
+        if (this.state.csvNotice) return { text: this.state.csvNotice, dot: 'var(--ios-green)', action: this.state.importUndoable ? { label: 'Undo', run: () => this.undoImport() } : null };
         return null;
       })(),
       headerRef: (el) => { if (el) this._headerEl = el; },
@@ -13735,6 +13952,11 @@ class Component extends DCLogic {
         onClick: () => this.openDetail(r.p)
       })),
       hasMegaWorth: this.megaWorth(8).length > 0,
+      zoomChoices: [1, 1.15, 1.3, 1.5, 2].map(z => ({ label: Math.round(z * 100) + '%', on: Math.abs((this.state.uiZoom || 1) - z) < 0.01, bg: Math.abs((this.state.uiZoom || 1) - z) < 0.01 ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: Math.abs((this.state.uiZoom || 1) - z) < 0.01 ? '#fff' : 'var(--ink-700)', onClick: () => this.setUiZoom(z) })),
+      hasImportReport: (this.state.importReport || []).length > 0,
+      importReportTitle: (() => { const r = this.state.importReport || []; const f = r.filter(x => x.fatal).length; return 'Import notes: ' + (f ? f + ' row' + (f > 1 ? 's' : '') + ' skipped' : '') + (f && r.length - f ? ', ' : '') + (r.length - f ? (r.length - f) + ' value' + (r.length - f > 1 ? 's' : '') + ' cleared' : ''); })(),
+      importReportLines: (this.state.importReport || []).map(x => ({ text: x.text, color: x.fatal ? 'var(--ios-red)' : 'var(--ink-500)' })),
+      dismissImportReport: () => this.setState({ importReport: [] }),
       gblWeekRows: this.gblWeeks(),
       hasGbl: this.gblWeeks().length > 0,
       feedEventRows: this.feedEvents(),
