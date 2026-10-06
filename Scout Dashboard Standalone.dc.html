@@ -1160,7 +1160,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.120</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.122</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -3068,7 +3068,7 @@
         <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
             <div style="font:800 14px var(--font-display);letter-spacing:.04em;color:{{ g.typeColor }}">{{ g.type }}</div>
-            <div style="font:11px var(--font-display);color:var(--ink-300)">{{ g.count }} owned &middot; {{ g.basisLabel }}</div>
+            <div style="font:11px var(--font-display);color:var(--ink-300)">{{ g.count }} {{ g.countNoun }} &middot; {{ g.basisLabel }}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
             <sc-for list="{{ g.members }}" as="m" hint-placeholder-count="4">
@@ -5654,6 +5654,71 @@ class Component extends DCLogic {
     return { lucky, dupes: dupes.slice(0, 10) };
   }
 
+  // Which raid upgrades are worth the resources, using the same rating as the
+  // Attackers board (damage rate x bulk). Both lists only consider Pokemon whose
+  // current moves have damage data.
+  //
+  // Power-up payoff: rating gained going from the current level to 40 or 50,
+  // per 10,000 stardust. Best of the two targets per Pokemon; ignores gains
+  // under 2%.
+  powerUpPayoff(roster) {
+    const m = this.mechanics;
+    if (!m || !m.raidRating || !m.powerUpCostBetween) return [];
+    const have = this.state.stardustBalance;
+    const rows = [];
+    roster.forEach(p => {
+      const prof = this.raidProfile(p);
+      if (!prof || !prof.now) return;
+      const lv = this.evalLevelOf(p);
+      if (lv.level == null || lv.level >= m.MAX_POKEMON_LEVEL) return;
+      const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+      const f = this.lookupMove(prof.now.fast), c = this.lookupMove(prof.now.charged);
+      if (!base || !ivs || !f || !c) return;
+      const shadow = this.isShadow(p);
+      const opts = { ownTypes: this.typesOf(p), isShadow: shadow };
+      const r0 = m.raidRating(base, ivs, lv.level, f, c, opts);
+      if (!r0) return;
+      const costOpts = { lucky: !!p.lucky, shadow, purified: this.isPurified(p) };
+      let best = null;
+      [40, 50].filter(t => t > lv.level).forEach(t => {
+        const cost = m.powerUpCostBetween(lv.level, t, costOpts);
+        if (!cost || !cost.reachable || !(cost.dust > 0)) return;
+        const r1 = m.raidRating(base, ivs, t, f, c, opts);
+        if (!r1) return;
+        const gain = (r1.rating / r0.rating - 1) * 100;
+        const perK = gain / (cost.dust / 10000);
+        if (!best || perK > best.perK) best = { target: t, gain, perK, cost, dps0: r0.dps, dps1: r1.dps };
+      });
+      if (best && best.gain >= 2) rows.push({ p, lv, haveDust: have, ...best });
+    });
+    return rows.sort((a, b) => b.perK - a.perK).slice(0, 8);
+  }
+
+  // TM payoff: rating gained by learning the best legal moves, split into what a
+  // regular TM can reach and what needs an Elite TM.
+  tmTargets(roster) {
+    const norm = n => this.moveKey(n).replace(/\+$/, '');
+    const tidy = n => String(n).replace(/\b\w/g, ch => ch.toUpperCase());
+    const rows = [];
+    roster.forEach(p => {
+      const prof = this.raidProfile(p);
+      if (!prof || !prof.now || !prof.ceil) return;
+      const cur = new Set([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(norm));
+      const learn = opt => {
+        const need = [];
+        if (!cur.has(opt.fast)) need.push('fast: ' + tidy(opt.fast));
+        if (!cur.has(opt.charged)) need.push('charged: ' + tidy(opt.charged));
+        return need;
+      };
+      const gainOf = opt => (opt.rating / prof.now.rating - 1) * 100;
+      const normal = prof.ceilNoLegacy && gainOf(prof.ceilNoLegacy) >= 3 ? { opt: prof.ceilNoLegacy, gain: gainOf(prof.ceilNoLegacy) } : null;
+      const elite = prof.ceil.legacy && gainOf(prof.ceil) >= 3 ? { opt: prof.ceil, gain: gainOf(prof.ceil) } : null;
+      if (!normal && !elite) return;
+      rows.push({ p, normal, elite, need: normal ? learn(normal.opt) : [], eliteNeed: elite ? learn(elite.opt) : [], top: Math.max(normal ? normal.gain : 0, elite ? elite.gain : 0) });
+    });
+    return rows.sort((a, b) => b.top - a.top).slice(0, 8);
+  }
+
   attackerBoard(roster) {
     const m = this.mechanics;
     if (!m || !m.attackerScore) return [];
@@ -5721,7 +5786,7 @@ class Component extends DCLogic {
       return {
         type,
         typeColor: this.TYPE_COLORS()[String(type || '').toLowerCase()] || 'var(--ink-300)',
-        count: all.length,
+        count: all.length, countNoun: 'owned',
         basisLabel: o.rated.length ? (o.rated.length === all.length ? 'DPS \u00d7 BULK' : 'DPS \u00d7 BULK + stats') : (o.potential.length ? 'POTENTIAL' : 'stats only'),
         members: o.all.slice(0, 4).map((x, i) => member(x, i, o))
       };
@@ -5732,11 +5797,64 @@ class Component extends DCLogic {
     const overall = {
       type: 'BEST OVERALL',
       typeColor: 'var(--type-electric)',
-      count: everyone.length,
+      count: everyone.length, countNoun: 'owned',
       basisLabel: oAll.rated.length ? 'DPS \u00d7 BULK' : 'stats only',
       members: oAll.all.slice(0, 8).map((x, i) => member(x, i, oAll))
     };
-    return [overall, ...groups];
+    // Upgrade payoff lists (same card format, so they render as extra groups).
+    const fmtN = n => Number(n || 0).toLocaleString('en-US');
+    const res = this.state.resources || {};
+    const payoffRows = this.powerUpPayoff(roster);
+    const topPerK = payoffRows.length ? payoffRows[0].perK : 1;
+    const payoff = {
+      type: 'BEST POWER-UP PAYOFF',
+      typeColor: 'var(--grass-700)',
+      count: payoffRows.length, countNoun: 'listed',
+      basisLabel: 'RATING GAIN PER 10K STARDUST',
+      members: payoffRows.map((x, i) => ({
+        displayName: x.p.name + (x.p.form ? ' (' + x.p.form + ')' : ''),
+        spriteRef: this.makeSpriteRefByDex(x.p.dex, x.p.form),
+        badgeColor: this.dsTypeColor(x.p),
+        initial: (x.p.name || '?').charAt(0),
+        rankLabel: '#' + (i + 1),
+        cpLine: 'L' + x.lv.level + ' \u2192 L' + x.target + ' \u00b7 ' + fmtN(x.cost.dust) + ' dust \u00b7 ' + x.cost.candy + ' candy' + (x.cost.xlCandy ? ' \u00b7 ' + x.cost.xlCandy + ' XL' : ''),
+        ivLine: Number.isFinite(x.p.ivAvg) ? x.p.ivAvg.toFixed(0) + '% IV' : 'IV unknown',
+        dpsLine: '+' + x.gain.toFixed(0) + '% rating (' + x.dps0.toFixed(1) + ' \u2192 ' + x.dps1.toFixed(1) + ' DPS) \u00b7 ' + x.perK.toFixed(1) + ' per 10k dust'
+          + (x.haveDust != null ? (x.haveDust >= x.cost.dust ? ' \u00b7 dust covered' : ' \u00b7 short ' + fmtN(x.cost.dust - x.haveDust) + ' dust') : ''),
+        dpsColor: 'var(--grass-700)',
+        barWidth: Math.round(x.perK / topPerK * 100) + '%',
+        measured: !!x.p.ivMeasured,
+        onClick: () => this.openDetail(x.p)
+      }))
+    };
+    const tmRows = this.tmTargets(roster);
+    const topTm = tmRows.length ? tmRows[0].top : 1;
+    const tmBoard = {
+      type: 'BEST TM TARGETS',
+      typeColor: 'var(--type-electric)',
+      count: tmRows.length, countNoun: 'listed',
+      basisLabel: 'RATING GAIN',
+      members: tmRows.map((x, i) => {
+        const parts = [];
+        if (x.normal) parts.push('+' + x.normal.gain.toFixed(0) + '% with a TM (' + (x.need.join(', ') || 'swap moves') + ')');
+        if (x.elite) parts.push('+' + x.elite.gain.toFixed(0) + '% with an Elite TM (' + (x.eliteNeed.join(', ') || 'swap moves') + ')');
+        return {
+          displayName: x.p.name + (x.p.form ? ' (' + x.p.form + ')' : ''),
+          spriteRef: this.makeSpriteRefByDex(x.p.dex, x.p.form),
+          badgeColor: this.dsTypeColor(x.p),
+          initial: (x.p.name || '?').charAt(0),
+          rankLabel: '#' + (i + 1),
+          cpLine: (x.p.cp || '\u2014') + ' CP \u00b7 Lv ' + (x.p.lvlMin != null ? x.p.lvlMin : '?'),
+          ivLine: Number.isFinite(x.p.ivAvg) ? x.p.ivAvg.toFixed(0) + '% IV' : 'IV unknown',
+          dpsLine: parts.join(' \u00b7 ') + (res.chargedTM != null || res.eliteChargedTM != null ? ' \u00b7 you have ' + (res.chargedTM != null ? res.chargedTM + ' charged TM' : '?') + (res.eliteChargedTM != null ? ', ' + res.eliteChargedTM + ' elite' : '') : ''),
+          dpsColor: 'var(--type-electric)',
+          barWidth: Math.round(x.top / topTm * 100) + '%',
+          measured: !!x.p.ivMeasured,
+          onClick: () => this.openDetail(x.p)
+        };
+      })
+    };
+    return [overall, ...(payoff.members.length ? [payoff] : []), ...(tmBoard.members.length ? [tmBoard] : []), ...groups];
   }
 
   // Self-contained spread label for the duplicates list. The maintained build

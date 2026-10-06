@@ -610,6 +610,31 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Upgrade payoff lists: power-up payoff (rating gain per stardust) and TM targets.
+// ---------------------------------------------------------------------------
+(function testUpgradePayoff() {
+  const ctx = { mechanics: m, state: { moveDB: {}, stardustBalance: 5000, resources: {} } };
+  const sigs = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', evalLevelOf: 'p', powerUpPayoff: 'roster', tmTargets: 'roster', formatMoveName: 'name' };
+  Object.keys(sigs).forEach(n => { ctx[n] = new Function(...sigs[n].split(', '), extractMethodBody(SRC, `${n}(${sigs[n]}) {`)).bind(ctx); });
+  ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
+  ctx.ivsOf = p => [p.atkIV, p.defIV, p.staIV];
+  ctx.typesOf = p => p.types;
+  ctx.isShadow = () => false;
+  ctx.isPurified = () => false;
+  const mk = (over) => ({ idx: 1, name: 'Wartortle', dex: 8, types: ['Water'], atkIV: 15, defIV: 15, staIV: 15, lvlMin: 30, lvlMax: 30, quickMove: 'water gun', chargeMove: 'hydro pump', lucky: false, ...over });
+  const rows = ctx.powerUpPayoff([mk({})]);
+  check('a level-30 attacker has a power-up payoff row', rows.length, 1);
+  check('the payoff target is level 40 or 50 with positive gain and cost', !!rows[0] && [40, 50].includes(rows[0].target) && rows[0].gain > 0 && rows[0].cost.dust > 0 && rows[0].perK > 0, true);
+  check('a level-50 Pokemon has nothing to power up', ctx.powerUpPayoff([mk({ lvlMin: 50, lvlMax: 50 })]).length, 0);
+  const lucky = ctx.powerUpPayoff([mk({ lucky: true })]);
+  check('lucky halves the dust, so payoff per dust is higher', !!lucky[0] && lucky[0].perK > rows[0].perK, true);
+  check('a Pokemon without damage data for its moves is skipped', ctx.powerUpPayoff([mk({ quickMove: 'zzz not a move' })]).length, 0);
+  const tm = ctx.tmTargets([mk({ quickMove: 'water gun', chargeMove: 'hydro pump' })]);
+  check('TM targets return a list without throwing', Array.isArray(tm), true);
+  check('every TM target lists the move to learn and a gain of at least 3%', tm.every(r => r.top >= 3 && (r.need.length || r.eliteNeed.length)), true);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));
