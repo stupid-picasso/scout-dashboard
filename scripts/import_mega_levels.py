@@ -85,10 +85,33 @@ def main():
                 continue  # the same Mega appears on several templates (e.g. form variants)
             forms.setdefault(sp, []).append({"form": (m.group(1) or "").lower(), "base": [st["baseAttack"], st["baseDefense"], st["baseStamina"]], "types": types})
     out["forms"] = forms
+    # Base-form species data straight from the game master: stats, typing, buddy km and the
+    # stardust to unlock a second charged move. Applied over BASE_STATS and used as the
+    # fallback for speciesInfo(), so a species PvPoke's file lacks (Ditto, Gen 9...) is not blank.
+    sp_rows = {}
+    for x in gm:
+        mm = re.match(r"V(\d{4})_POKEMON_", x["templateId"])
+        ps = x.get("data", {}).get("pokemonSettings")
+        if not mm or not ps or ps.get("form") or not ps.get("stats"):
+            continue
+        st = ps["stats"]
+        types = "/".join(t.replace("POKEMON_TYPE_", "").title() for t in (ps.get("type"), ps.get("type2")) if t)
+        sp_rows[str(int(mm.group(1)))] = "%d,%d,%d|%s|%s|%s" % (st["baseAttack"], st["baseDefense"], st["baseStamina"], types,
+                                                                  int(ps.get("kmBuddyDistance", 0)), (ps.get("thirdMove") or {}).get("stardustToUnlock", ""))
+    gen_block = ("// GENERATED BLOCK: SPECIES_GM (import_mega_levels.py) — do not hand-edit\n"
+                 "const SPECIES_GM = " + json.dumps(sp_rows, separators=(",", ":")) + ";\n"
+                 "for (const _d in SPECIES_GM) { const _p = SPECIES_GM[_d].split('|')[0].split(',').map(Number); BASE_STATS[_d] = _p; }\n"
+                 "// END GENERATED BLOCK: SPECIES_GM")
     block = ("// GENERATED BLOCK: MEGA_LEVEL_DATA (import_mega_levels.py) — do not hand-edit\n"
              "const MEGA_LEVEL_DATA = " + json.dumps(out, separators=(",", ":")) + ";\n"
              "// END GENERATED BLOCK: MEGA_LEVEL_DATA")
     src = open(MECH_PATH, encoding="utf-8").read()
+    gpat = re.compile(r"// GENERATED BLOCK: SPECIES_GM.*?// END GENERATED BLOCK: SPECIES_GM", re.S)
+    if gpat.search(src):
+        src = gpat.sub(lambda _: gen_block, src)
+    else:
+        a0 = "// GENERATED BLOCK: MEGA_LEVEL_DATA"
+        src = src.replace(a0, gen_block + "\n\n" + a0, 1)
     pat = re.compile(r"// GENERATED BLOCK: MEGA_LEVEL_DATA.*?// END GENERATED BLOCK: MEGA_LEVEL_DATA", re.S)
     if pat.search(src):
         src = pat.sub(lambda _: block, src)

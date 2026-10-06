@@ -875,7 +875,7 @@ function buildLists(roster, bestRank) {
     ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
   });
   roster.push({ idx: 1, name: 'Beedrill', ivs: [10, 15, 15] }, { idx: 2, name: 'Sableye', ivs: [2, 15, 15] }, { idx: 3, name: 'Pikachu', ivs: [15, 15, 15] });
-  check('a Mega-capable species is tagged', ctx.megaTagFor(roster[0]), 'M\u2713');
+  check('a Mega-capable species is tagged', ctx.megaTagFor(roster[0]), 'MEGA \u2713');
   check('a species with no Mega has no tag', ctx.megaTagFor(roster[2]), '');
   const w = ctx.megaWorth(5);
   check('Mega worth-evolving rows are for Mega-capable species only', w.length >= 1 && w.every(r => ['beedrill', 'sableye'].indexOf(r.key) >= 0), true);

@@ -315,6 +315,17 @@ The sections above describe the original video/OCR pipeline. The app has since g
   - `\uXXXX` only works in JS strings; in template text use HTML entities.
   - The bundles are a different dialect (`sc-camel-on-click`, JSON-escaped); large markup edits that `apply` cannot place must be spliced in by hand and checked for div balance.
 
+## Engineering notes (v53.135+): QA suite, iOS layer, data sources
+
+- **QA:** `scripts/qa/` holds a deterministic fixture (`make_fixture.js`), a data audit against the game master and PvPoke (`qa_accuracy.js`), ~170 end-to-end cases in Chromium (`qa_run.js`, suites a/b/c), and `make_report.py` which writes `docs/QA_REPORT.md`. Run them before shipping UI or data changes.
+- **Propagate discipline:** `apply` diffs `.propagate_baseline/dc.html` against the current source. The baseline MUST equal what the bundles contain. If you `snapshot` before an earlier edit was applied, bundles silently miss it. When in doubt: `git checkout HEAD -- index.html "Scout Dashboard.html" "Scout Dashboard Standalone.dc.html" sw.js` then `apply`. `apply` also re-embeds `pokemon-mechanics.js` into both bundles every time (it used to skip when the embedded copy had drifted).
+- **Bundle dialect:** `sc-camel-on-click/change`, void elements not self-closed, character references stored as characters. `propagate_edits.py` has `FORWARD_NORMALIZATIONS` for this; the "marker mismatch" lines it prints for common words are false positives.
+- **Game-master data (single download, `scripts/import_mega_levels.py`):** Mega Level rules and Mega forms (`MEGA_LEVEL_DATA`) and base-form species rows (`SPECIES_GM`, applied over `BASE_STATS`). Evolution and movepool importers now key regional forms as `name|form`.
+- **Events/GBL:** `scripts/update_events_gbl.py` (every 6 h, `.github/workflows/update-events-gbl.yml`) writes `data/feed.json` with the weekly cups, their real rules from the game master (`COMBAT_LEAGUE_*`) and the PvPoke ranking each maps to. `verify_feed_official.py` cross-checks it against the pokemongo.com season page.
+- **iOS design layer:** the last block of the `<style>` in the dc file. Tokens (`--ios-*`), SF font stack, grouped surfaces and filled controls are CSS; attribute selectors must match the *serialised* inline style (`prop: value;`). The tab bar is five items plus a More sheet. Roster rows are the grouped-list design; manual IV entry is behind "Enter IVs".
+- **Persistence:** a device copy of the cloud blob lives in `localStorage` key `scout.local.v1` (no API keys); it is restored only when no cloud account has claimed the app.
+- **Accessibility:** `enhanceAccessibility()` adds role/name/tabindex to clickable divs at runtime. Prefer real buttons in new markup.
+
 ---
 
 ## Contact & Support

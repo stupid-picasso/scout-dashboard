@@ -109,9 +109,18 @@ def extract_movepools(gamemaster):
         if not quick and not cine:
             continue
         pokemon_id = ps.get("pokemonId")
-        if not pokemon_id or pokemon_id in found:
+        if not pokemon_id:
             continue
-        found[pretty_name(pokemon_id).lower()] = {
+        # Regional / alternate forms have their own pools (Paldean Wooper, Galarian Corsola)
+        # and must not overwrite the plain species: keyed "name|form", looked up by form.
+        form = ps.get("form")
+        suffix = None
+        if form and not form.endswith("_NORMAL"):
+            suffix = form[len(pokemon_id) + 1:].lower() if form.startswith(pokemon_id + "_") else form.lower()
+        row_key = pretty_name(pokemon_id).lower() + ("|" + suffix if suffix else "")
+        if row_key in found:
+            continue
+        found[row_key] = {
             "fast": sorted(set(move_key(m) for m in (quick or []) if isinstance(m, str))),
             "charge": sorted(set(move_key(m) for m in (cine or []) if isinstance(m, str))),
             "fastLegacy": sorted(set(move_key(m) for m in (ps.get("eliteQuickMove") or []) if isinstance(m, str))),

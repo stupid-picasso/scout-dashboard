@@ -133,7 +133,17 @@ def extract_evolutions(gamemaster):
         if not normal:
             continue
         pokemon_id = ps.get("pokemonId")
-        if not pokemon_id or pokemon_id in found:
+        if not pokemon_id:
+            continue
+        # A regional / alternate form (Galarian Mr. Mime, Alolan Rattata) has its own
+        # evolutions; it must never overwrite the plain species' row (plain Mr. Mime does
+        # not evolve at all). Such rows are keyed "name|form" and looked up by form.
+        form = ps.get("form")
+        suffix = None
+        if form and not form.endswith("_NORMAL"):
+            suffix = form[len(pokemon_id) + 1:].lower() if form.startswith(pokemon_id + "_") else form.lower()
+        row_key = pretty_name(pokemon_id).lower() + ("|" + suffix if suffix else "")
+        if row_key in found:
             continue
         # Branch selection: most branching species (Eevee, Wurmple, Tyrogue,
         # Kirlia, etc.) split on gender/nature/friendship, not items, and
@@ -152,7 +162,7 @@ def extract_evolutions(gamemaster):
         item_key = item_label = None
         if item_req and item_req in ITEM_LABELS:
             item_key, item_label = ITEM_LABELS[item_req]
-        found[pretty_name(pokemon_id).lower()] = {
+        found[row_key] = {
             "to": pretty_name(b["evolution"]),
             "candy": b["candyCost"],
             "itemKey": item_key,

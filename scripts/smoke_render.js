@@ -51,7 +51,12 @@ const check = (name, ok, extra) => {
       }
     }
   });
-  const go = async label => { const t = page.getByText(label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(1200); };
+  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RAID: 'Raid' };
+  const MORE = { HOME: 'Home & settings', RECS: 'Recommendations', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log' };
+  const go = async label => {
+    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(400); await page.getByText(MORE[label], { exact: true }).last().click(); await page.waitForTimeout(1200); return; }
+    const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(1200);
+  };
 
   await go('ROSTER');
   const rows = await page.locator('[data-swipe-row]').count();

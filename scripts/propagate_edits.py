@@ -78,8 +78,45 @@ NORMALIZATIONS = [
     (re.compile(r'\u201c'), '&ldquo;'),
     (re.compile(r'&rdquo;'), '\u201d'),
     (re.compile(r'\u201d'), '&rdquo;'),
+    # ... and character references are stored as the characters themselves.
+    (re.compile(r'&#(\d+);'), lambda m: chr(int(m.group(1)))),
+    (re.compile(r'&middot;'), '\u00b7'),
+    (re.compile(r'&times;'), '\u00d7'),
+    (re.compile(r'&rsaquo;'), '\u203a'),
+    (re.compile(r'&mdash;'), '\u2014'),
+    (re.compile(r'&ndash;'), '\u2013'),
+    # The bundled template is serialised HTML: void elements are not self-closed there.
+    (re.compile(r'(<(?:input|img)\b[^>]*?)\s*/>'), r'\1>'),
     (re.compile(r'&hellip;'), '\u2026'),
     (re.compile(r'\u2026'), '&hellip;'),
+]
+
+
+# dc dialect -> bundle dialect only (the NORMALIZATIONS above also hold the reverse rules).
+import html as _html
+
+
+def _unescape_entity(m):
+    # Markup-significant references must survive; everything else is stored as the character.
+    return m.group(0) if m.group(1).lower() in ('lt', 'gt', 'amp', 'quot', 'apos', 'nbsp', '#160') else _html.unescape(m.group(0))
+
+
+_ENTITY_RE = re.compile(r'&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);')
+
+FORWARD_NORMALIZATIONS = [
+    (_ENTITY_RE, _unescape_entity),
+    (re.compile(r'\bonClick='), 'sc-camel-on-click='),
+    (re.compile(r'\bonChange='), 'sc-camel-on-change='),
+    (re.compile(r'&ldquo;'), '\u201c'),
+    (re.compile(r'&rdquo;'), '\u201d'),
+    (re.compile(r'&hellip;'), '\u2026'),
+    (re.compile(r'(<(?:input|img)\b[^>]*?)\s*/>'), r'\1>'),
+    (re.compile(r'&#(\d+);'), lambda m: chr(int(m.group(1)))),
+    (re.compile(r'&middot;'), '\u00b7'),
+    (re.compile(r'&times;'), '\u00d7'),
+    (re.compile(r'&rsaquo;'), '\u203a'),
+    (re.compile(r'&mdash;'), '\u2014'),
+    (re.compile(r'&ndash;'), '\u2013'),
 ]
 
 
@@ -103,6 +140,15 @@ def normalized_variants(text):
     either direction. Small hunks only (exponential in distinct substitutions
     that actually appear)."""
     variants = [(text, [])]
+    # A big hunk touches many substitutions and would bail out of the combination search
+    # below, so try the fully bundle-dialect form (every forward rule applied) first.
+    full, full_ops = text, []
+    for pattern, repl in FORWARD_NORMALIZATIONS:
+        if pattern.search(full):
+            full = pattern.sub(repl, full)
+            full_ops.append((pattern, repl))
+    if full != text:
+        variants.append((full, full_ops))
     for pattern, repl in NORMALIZATIONS:
         if not pattern.search(text):
             continue

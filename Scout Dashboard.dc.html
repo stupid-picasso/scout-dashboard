@@ -116,6 +116,59 @@
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
   }
+
+  /* =====================================================================
+     iOS design layer. One place that gives the whole app the iOS dark look:
+     system font, true-black ground with elevated grouped surfaces, hairline
+     separators, system tint, large-title header, translucent bars, and 44pt
+     targets. Pokemon type colours stay as they are (they are the identity).
+     It sits at the end so it wins over the design-system tokens loaded above.
+     ===================================================================== */
+  :root{
+    --font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --font-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --surface-page:#000;
+    --surface:#1c1c1e; --surface-card:#1c1c1e; --surface-muted:#2c2c2e; --surface-sunken:#0b0b0d; --surface-field:#2c2c2e;
+    --ink-900:#fff; --ink-700:rgba(255,255,255,.9); --ink-600:rgba(235,235,245,.78); --ink-500:rgba(235,235,245,.66);
+    --ink-400:rgba(235,235,245,.62); --ink-300:rgba(235,235,245,.34);
+    --line-100:rgba(84,84,88,.28); --line-200:rgba(84,84,88,.42); --line-300:rgba(84,84,88,.62);
+    --brand-primary-strong:#0a84ff; --grass-500:#30d158; --grass-600:#30d158; --grass-700:#32d74b;
+    --type-electric:#ffd60a; --type-fighting:#ff453a;
+    --ios-blue:#0a84ff; --ios-green:#30d158; --ios-red:#ff453a; --ios-yellow:#ffd60a; --ios-fill:rgba(120,120,128,.24);
+    --ios-spring:cubic-bezier(.32,.72,0,1);
+  }
+  html{font-family:var(--font-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{font-family:var(--font-body);font-size:17px;letter-spacing:-.011em;background:#000 !important}
+  /* Grouped cards: no outline, continuous corners, the elevation is the surface colour.
+     The browser re-serialises inline styles as "prop: value;", so selectors match that form. */
+  [style*="background: var(--surface-card); border: 1px solid"]{border-color:transparent !important;border-radius:18px !important;box-shadow:none !important}
+  /* Chips and pills: filled, not outlined. */
+  [style*="border-radius: 999px"][style*="border: 1px solid"],[style*="border-radius: var(--r-pill)"][style*="border: 1px solid"]{border-color:transparent !important}
+  [style*="background: var(--surface-card)"][style*="border-radius: 999px"],[style*="background: var(--surface-card)"][style*="border-radius: var(--r-pill)"],[style*="background: var(--surface-muted)"][style*="border-radius: var(--r-pill)"]{background:var(--ios-fill) !important}
+  /* Section headings: grouped-list headers (footnote, secondary label) instead of loud yellow caps. */
+  [style*="color: var(--type-electric); letter-spacing: 0.05em"],[style*="color: var(--type-electric); letter-spacing: 0.06em"],[style*="color: var(--type-electric); letter-spacing: 0.04em"]{color:var(--ink-400) !important;font-weight:600 !important;font-size:12.5px !important;letter-spacing:.04em !important}
+  /* Inputs and fields: filled capsule, no border. */
+  input[type=text],input[type=password],input:not([type]),textarea,select{background:var(--ios-fill) !important;border:0 !important;border-radius:12px !important;color:var(--ink-900) !important;min-height:44px;box-sizing:border-box;padding:10px 14px !important}
+  input::placeholder,textarea::placeholder{color:var(--ink-300) !important}
+  /* Primary action: system blue capsule. */
+  [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
+  [style*="background: var(--grass-500)"]{background:var(--ios-green) !important;color:#000 !important}
+  /* Focus ring for keyboard and switch users. */
+  :focus-visible{outline:3px solid color-mix(in oklab,var(--ios-blue) 80%,#fff);outline-offset:2px;border-radius:10px}
+  /* Press feedback: scale + dim, the way a UIButton responds. */
+  .om-press{transition:transform .22s var(--ios-spring),opacity .22s ease}
+  .om-press:active{transform:scale(.96);filter:none;opacity:.7}
+  .om-tap:active{transform:scale(.985);opacity:.85}
+  /* Sheets and scrims: real blur materials. */
+  [style*="backdrop-filter: blur(6px)"]{-webkit-backdrop-filter:blur(24px) saturate(1.4) !important;backdrop-filter:blur(24px) saturate(1.4) !important;background:rgba(0,0,0,.45) !important}
+  /* Nav icons and the iOS toast */
+  .ios-nav svg{display:block}
+  .ios-icon-btn{cursor:pointer;width:38px;height:38px;border-radius:50%;background:var(--ios-fill);display:flex;align-items:center;justify-content:center;color:var(--ios-blue);flex-shrink:0}
+  .ios-icon-btn:active{opacity:.6}
+  .ios-toast{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);z-index:70;display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:18px;background:rgba(44,44,46,.86);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);color:#fff;font:15px/1.35 var(--font-body);box-shadow:0 10px 30px rgba(0,0,0,.5);animation:sheetUp .45s var(--ios-spring) backwards}
+  ::-webkit-scrollbar{width:0;height:0}
+  /* Dynamic Type: honour the user's text-size setting where the browser exposes it. */
+  @supports (font: -apple-system-body){ body{font:-apple-system-body} }
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
 <script type="module" src="./pokemon-data.js"></script>
@@ -126,28 +179,29 @@
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
   <div style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
     <sc-if value="{{ statusBanner }}" hint-placeholder-val="{{ false }}">
-      <div role="status" aria-live="polite" style="padding:9px {{ rootPadX }};background:{{ statusBanner.bg }};color:{{ statusBanner.fg }};font:600 11.5px var(--font-display);letter-spacing:.03em;display:flex;align-items:center;gap:9px">
-        <div style="width:7px;height:7px;border-radius:50%;background:{{ statusBanner.dot }};flex-shrink:0"></div>
-        <div style="text-wrap:pretty">{{ statusBanner.text }}</div>
+      <div role="status" aria-live="polite" class="ios-toast">
+        <div style="width:10px;height:10px;border-radius:50%;background:{{ statusBanner.dot }};flex-shrink:0"></div>
+        <div style="text-wrap:pretty;min-width:0">{{ statusBanner.text }}</div>
       </div>
     </sc-if>
-    <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
-    <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
-      <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.134</span></div>
-      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
-    </div>
-    <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
-      <label class="om-press" style="cursor:pointer;background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-700);font:600 11.5px var(--font-display);padding:9px 10px;border-radius:6px;flex:0 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;box-sizing:border-box;display:flex;align-items:center;justify-content:center">
-        SYNC CSV
-        <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
-      </label>
-      <div onClick="{{ exportCsv }}" style="cursor:pointer;background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-700);font:600 11.5px var(--font-display);padding:9px 10px;border-radius:var(--r-pill);flex:0 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;display:flex;align-items:center;justify-content:center" style-hover="background:var(--line-200);border-color:var(--ink-300)">{{ exportCsvLabel }}</div>
-      <div onClick="{{ startListening }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:{{ micBg }};border:1px solid var(--brand-primary-strong);color:var(--ink-900);font:700 11.5px var(--font-display);padding:9px 10px;border-radius:var(--r-pill);animation:{{ micAnim }};flex:0 1 auto;min-width:0;box-sizing:border-box;white-space:nowrap;overflow:hidden">
-        <span>&#127908;</span>{{ micLabel }}
+    <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
+      <div style="min-width:0">
+        <div style="font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.134</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
+        <label class="ios-icon-btn om-press" aria-label="Import CSV" title="Import CSV">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
+          <input type="file" accept=".csv" onChange="{{ onFileChange }}" style="display:none" />
+        </label>
+        <div onClick="{{ exportCsv }}" class="ios-icon-btn om-press" aria-label="Export CSV" title="Export CSV">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M4 20h16"/></svg>
+        </div>
+        <div onClick="{{ startListening }}" class="ios-icon-btn om-press" aria-label="{{ micLabel }}" title="{{ micLabel }}" style="background:{{ micBg }};animation:{{ micAnim }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+        </div>
       </div>
     </div>
-  </div>
 
   </div>
 
@@ -156,7 +210,7 @@
       <div style="position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--type-electric) 0%,oklch(92% 0.16 95 / .75) 45%,transparent 72%);animation:evoFlash .95s cubic-bezier(.3,0,.5,1) forwards"></div>
       <div style="position:absolute;width:200px;height:200px;border-radius:50%;border:3px solid oklch(95% 0.12 95 / .8);animation:evoRing .95s ease-out forwards"></div>
       <div style="position:relative;text-align:center;animation:evoName 1.4s ease forwards">
-        <div style="font:700 10.5px var(--font-display);letter-spacing:.16em;color:var(--surface-muted)">EVOLVED INTO</div>
+        <div style="font:700 11px var(--font-display);letter-spacing:.16em;color:var(--surface-muted)">EVOLVED INTO</div>
         <div style="font:800 30px var(--font-display);letter-spacing:-.01em;color:var(--surface-muted);margin-top:6px">{{ evoFlashName }}</div>
         <div style="font:700 13px var(--font-display);color:var(--brand-primary-strong);margin-top:6px">{{ evoFlashStats }}</div>
       </div>
@@ -165,13 +219,13 @@
 
   <sc-if value="{{ ptrVisible }}" hint-placeholder-val="{{ false }}">
     <div style="height:{{ ptrHeight }};display:flex;align-items:center;justify-content:center;overflow:hidden;transition:height .18s ease">
-      <div style="font:700 10.5px var(--font-display);letter-spacing:.08em;color:{{ ptrColor }}">{{ ptrLabel }}</div>
+      <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:{{ ptrColor }}">{{ ptrLabel }}</div>
     </div>
   </sc-if>
 
   <sc-if value="{{ syncAlert }}" hint-placeholder-val="{{ false }}">
     <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:5px">
-      <div style="font:700 10.5px var(--font-display);color:var(--type-fighting);letter-spacing:.06em">CLOUD SAVE FAILED</div>
+      <div style="font:700 11px var(--font-display);color:var(--type-fighting);letter-spacing:.06em">CLOUD SAVE FAILED</div>
       <div style="font:12px/1.5 var(--font-body);color:var(--ink-700);text-wrap:pretty">{{ syncAlert }}</div>
     </div>
   </sc-if>
@@ -186,23 +240,23 @@
   <div class="om-scroll" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;padding-bottom:2px">
     <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
       <span style="font:800 15px var(--font-display)">{{ stats.total }}</span>
-      <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ROSTER</span>
+      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ROSTER</span>
     </div>
     <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
       <span style="font:800 15px var(--font-display)">{{ stats.avgIV }}</span>
-      <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">AVG IV%</span>
+      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">AVG IV%</span>
     </div>
     <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
       <span style="font:800 15px var(--font-display);color:var(--type-electric)">{{ stats.lucky }}</span>
-      <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">LUCKY</span>
+      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">LUCKY</span>
     </div>
     <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
       <span style="font:800 15px var(--font-display);color:var(--type-fairy)">{{ stats.shadow }}</span>
-      <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">SHADOW</span>
+      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">SHADOW</span>
     </div>
     <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
       <span style="font:800 15px var(--font-display);color:var(--grass-700)">{{ stats.pvpReady }}</span>
-      <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">PVP READY</span>
+      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">PVP READY</span>
     </div>
   </div>
 
@@ -211,14 +265,27 @@
       <span>A new version is ready</span><span style="letter-spacing:.05em">TAP TO RELOAD</span>
     </div>
   </sc-if>
-  <div data-navbar="1" class="om-scroll" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:var(--surface-page);border-top:1px solid var(--line-300);box-shadow:0 -6px 18px rgba(0,0,0,.45);padding:8px 10px max(8px, env(safe-area-inset-bottom))">
-    <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="8">
-      <div onClick="{{ t.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 13px;border-radius:var(--r-pill);background:{{ t.navBg }};min-width:58px">
-        <div style="font-size:16px;line-height:1;color:{{ t.color }}">{{ t.icon }}</div>
-        <div style="font:700 9.5px var(--font-display);letter-spacing:.03em;color:{{ t.color }};white-space:nowrap">{{ t.navLabel }}</div>
+  <div data-navbar="1" class="ios-nav" role="tablist" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(22,22,24,.78);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid rgba(84,84,88,.6)">
+    <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="5">
+      <div onClick="{{ t.onClick }}" class="om-press" role="tab" aria-label="{{ t.label }}" style="cursor:pointer;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.iconPath }}"/></svg>
+        <div style="font:600 11px var(--font-body);letter-spacing:.01em;color:{{ t.color }};white-space:nowrap">{{ t.navLabel }}</div>
       </div>
     </sc-for>
   </div>
+
+  <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeMore }}" style="position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:scrimIn .25s ease both"></div>
+    <div role="menu" style="position:fixed;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:46;background:rgba(44,44,46,.92);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);border-radius:20px;overflow:hidden;animation:sheetUp .38s var(--ios-spring) backwards;box-shadow:0 14px 40px rgba(0,0,0,.55)">
+      <sc-for list="{{ moreTabs }}" as="m" hint-placeholder-count="5">
+        <div onClick="{{ m.onClick }}" class="om-press" role="menuitem" aria-label="{{ m.label }}" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 18px;min-height:48px;border-top:.5px solid rgba(84,84,88,.5)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{ m.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ m.iconPath }}"/></svg>
+          <div style="flex:1;font:17px var(--font-body);color:{{ m.color }}">{{ m.label }}</div>
+          <div style="color:var(--ink-300);font:17px var(--font-body)">&rsaquo;</div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
 
   <sc-if value="{{ fileFallback }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;z-index:60;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:14px;padding-bottom:max(14px, env(safe-area-inset-bottom));animation:scrimIn .2s ease">
@@ -228,7 +295,7 @@
         <div onClick="{{ closeFileFallback }}" class="om-press" style="cursor:pointer;flex-shrink:0;font:600 11.5px var(--font-display);color:var(--ink-500)">&times; CLOSE</div>
       </div>
       <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">This device blocked the download. Copy the text, or open it in a tab and use Share &rarr; Save to Files.</div>
-      <div class="om-scroll" style="max-height:34vh;overflow:auto;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;padding:10px;font:10.5px/1.5 var(--font-display);color:var(--ink-600);white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text">{{ fileFallback.preview }}</div>
+      <div class="om-scroll" style="max-height:34vh;overflow:auto;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;padding:10px;font:11px/1.5 var(--font-display);color:var(--ink-600);white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text">{{ fileFallback.preview }}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div onClick="{{ copyFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">{{ fileFallbackCopyLabel }}</div>
         <div onClick="{{ openFileFallback }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11.5px var(--font-display)">OPEN IN NEW TAB</div>
@@ -259,7 +326,7 @@
       <sc-for list="{{ todayChips }}" as="c" hint-placeholder-count="4">
         <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;display:flex;align-items:baseline;gap:7px;padding:9px 14px;border-radius:999px;background:{{ c.bg }};border:1px solid {{ c.border }};white-space:nowrap">
           <div style="font:800 15px var(--font-display);color:{{ c.color }}">{{ c.count }}</div>
-          <div style="font:700 10px var(--font-display);color:var(--ink-500);letter-spacing:.06em">{{ c.label }}</div>
+          <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em">{{ c.label }}</div>
         </div>
       </sc-for>
     </div>
@@ -277,7 +344,7 @@
               </div>
               <div style="flex:1;min-width:0">
                 <div style="font:600 13px var(--font-body)">{{ sq.displayName }} <span style="font:11px var(--font-display);color:var(--ink-400)">{{ sq.cp }}</span></div>
-                <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px;text-wrap:pretty">{{ sq.reasons }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-500);margin-top:2px;text-wrap:pretty">{{ sq.reasons }}</div>
               </div>
             </div>
           </sc-for>
@@ -297,8 +364,8 @@
               </div>
               <div style="flex:1;min-width:0">
                 <div style="font:600 13px var(--font-body)">{{ mw.displayName }}</div>
-                <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px">{{ mw.line }}</div>
-                <div style="font:10.5px var(--font-display);color:var(--ink-400)">{{ mw.costLine }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-500);margin-top:2px">{{ mw.line }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-400)">{{ mw.costLine }}</div>
               </div>
             </div>
           </sc-for>
@@ -317,7 +384,7 @@
               <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-200)">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
                   <div style="font:700 13px var(--font-display)">{{ lg.name }}</div>
-                  <div style="font:800 10.5px var(--font-display);color:var(--ink-400)">{{ lg.cap }}</div>
+                  <div style="font:800 11px var(--font-display);color:var(--ink-400)">{{ lg.cap }}</div>
                 </div>
                 <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ lg.rules }}</div>
                 <sc-if value="{{ lg.hasTop }}" hint-placeholder-val="{{ false }}">
@@ -348,7 +415,7 @@
               <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line-200)">
                 <div style="display:flex;justify-content:space-between;align-items:baseline">
                   <div style="font:700 12.5px var(--font-body)">{{ sp.name }}</div>
-                  <div style="font:800 10.5px var(--font-display);letter-spacing:.06em;color:{{ sp.color }}">{{ sp.verdict }}</div>
+                  <div style="font:800 11px var(--font-display);letter-spacing:.06em;color:{{ sp.color }}">{{ sp.verdict }}</div>
                 </div>
                 <sc-for list="{{ sp.lines }}" as="ln" hint-placeholder-count="3">
                   <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ ln }}</div>
@@ -374,13 +441,13 @@
             <div style="background:var(--surface-sunken);border-radius:10px;padding:12px">
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
                 <div style="font:700 13px var(--font-display)">{{ ev.title }} <span style="font:11px var(--font-body);color:var(--ink-400)">{{ ev.date }}</span></div>
-                <div onClick="{{ ev.onRemove }}" class="om-press" style="cursor:pointer;font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">REMOVE</div>
+                <div onClick="{{ ev.onRemove }}" class="om-press" style="cursor:pointer;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">REMOVE</div>
               </div>
               <sc-for list="{{ ev.species }}" as="sp" hint-placeholder-count="2">
                 <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-200)">
                   <div style="display:flex;justify-content:space-between;align-items:baseline">
                     <div style="font:700 12.5px var(--font-body)">{{ sp.name }}</div>
-                    <div style="font:800 10.5px var(--font-display);letter-spacing:.06em;color:{{ sp.color }}">{{ sp.verdict }}</div>
+                    <div style="font:800 11px var(--font-display);letter-spacing:.06em;color:{{ sp.color }}">{{ sp.verdict }}</div>
                   </div>
                   <sc-for list="{{ sp.lines }}" as="ln" hint-placeholder-count="3">
                     <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ ln }}</div>
@@ -398,7 +465,7 @@
         <div style="font:11.5px var(--font-body);color:var(--ink-400)">Recalculates great/ultra/little for your whole roster with the current ranking logic &mdash; run after any ranking fix, no re-import needed.</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-basis:100%">
-        <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em">MAX LEVEL FOR PVP RANKS</span>
+        <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">MAX LEVEL FOR PVP RANKS</span>
         <sc-for list="{{ pvpLevelChoices }}" as="lv" hint-placeholder-count="3">
           <div onClick="{{ lv.onClick }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);font:700 11px var(--font-display);background:{{ lv.bg }};color:{{ lv.fg }}">{{ lv.label }}</div>
         </sc-for>
@@ -436,9 +503,9 @@
           </div>
           <div style="font:800 22px var(--font-body);color:var(--ink-900);margin-top:8px">{{ triageCard.name }}</div>
           <div style="display:flex;gap:14px;margin-top:6px">
-            <div><div style="font:800 17px var(--font-display);color:var(--ink-900)">{{ triageCard.cp }}</div><div style="font:9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">CP</div></div>
-            <div><div style="font:800 17px var(--font-display);color:{{ triageCard.ivColor }}">{{ triageCard.iv }}</div><div style="font:9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">IV</div></div>
-            <div><div style="font:800 17px var(--font-display);color:var(--ink-600)">{{ triageCard.rank }}</div><div style="font:9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">RANK</div></div>
+            <div><div style="font:800 17px var(--font-display);color:var(--ink-900)">{{ triageCard.cp }}</div><div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">CP</div></div>
+            <div><div style="font:800 17px var(--font-display);color:{{ triageCard.ivColor }}">{{ triageCard.iv }}</div><div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">IV</div></div>
+            <div><div style="font:800 17px var(--font-display);color:var(--ink-600)">{{ triageCard.rank }}</div><div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">RANK</div></div>
           </div>
           <div style="font:12px/1.4 var(--font-body);color:var(--type-fighting);margin-top:10px;text-wrap:pretty">{{ triageCard.reason }}</div>
         </div>
@@ -446,7 +513,7 @@
           <div onClick="{{ triageTransfer }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:800 13px var(--font-display)">TRANSFER</div>
           <div onClick="{{ triageKeep }}" class="om-press" style="cursor:pointer;flex:1;text-align:center;padding:14px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--grass-700);font:800 13px var(--font-display)">KEEP</div>
         </div>
-        <div style="font:10.5px var(--font-display);color:var(--ink-300);text-align:center;margin-top:8px">or swipe the card</div>
+        <div style="font:11px var(--font-display);color:var(--ink-300);text-align:center;margin-top:8px">or swipe the card</div>
       </div>
     </sc-if>
 
@@ -472,10 +539,10 @@
                 <div style="flex:1;height:5px;border-radius:3px;background:var(--surface-muted);overflow:hidden;min-width:40px">
                   <div style="height:100%;width:{{ row.candyPct }};background:{{ row.candyColor }};border-radius:3px"></div>
                 </div>
-                <div style="font:700 10.5px var(--font-display);color:{{ row.candyColor }};white-space:nowrap">{{ row.candyLabel }}</div>
+                <div style="font:700 11px var(--font-display);color:{{ row.candyColor }};white-space:nowrap">{{ row.candyLabel }}</div>
               </div>
               <sc-if value="{{ row.dupNote }}" hint-placeholder-val="{{ false }}">
-                <div style="font:10.5px var(--font-display);color:{{ row.dupNoteColor }};margin-top:5px">{{ row.dupNote }}</div>
+                <div style="font:11px var(--font-display);color:{{ row.dupNoteColor }};margin-top:5px">{{ row.dupNote }}</div>
               </sc-if>
             </div>
             <div onClick="{{ row.onDone }}" class="om-press" style="cursor:pointer;flex-shrink:0;width:40px;height:40px;border-radius:50%;background:{{ row.doneBg }};border:1px solid {{ row.doneBorder }};display:flex;align-items:center;justify-content:center;font:800 15px var(--font-display);color:{{ row.doneColor }}">&#10003;</div>
@@ -499,7 +566,7 @@
         <div style="flex:1;height:6px;border-radius:3px;background:var(--surface-muted);overflow:hidden">
           <div style="height:100%;width:{{ dustSpendPct }};background:var(--type-electric);border-radius:3px"></div>
         </div>
-        <div style="font:10.5px var(--font-display);color:var(--ink-500);white-space:nowrap">{{ dustBudgetShort }}</div>
+        <div style="font:11px var(--font-display);color:var(--ink-500);white-space:nowrap">{{ dustBudgetShort }}</div>
       </div>
       <sc-if value="{{ dustPlanEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-400);text-wrap:pretty">{{ dustPlanEmpty }}</div>
@@ -510,7 +577,7 @@
             <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:4px">
               <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
                 <div style="font:800 12.5px var(--font-display);color:var(--ink-900)">{{ note.name }}</div>
-                <div style="font:700 9.5px var(--font-display);letter-spacing:.07em;color:{{ note.verdictColor }}">{{ note.verdict }}</div>
+                <div style="font:700 11px var(--font-display);letter-spacing:.07em;color:{{ note.verdictColor }}">{{ note.verdict }}</div>
               </div>
               <div style="font:11.5px/1.5 var(--font-body);color:var(--ink-600);text-wrap:pretty">{{ note.reason }}</div>
             </div>
@@ -533,7 +600,7 @@
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font:800 13px var(--font-display);color:var(--type-electric);white-space:nowrap">{{ row.costNow }}</div>
-              <div style="font:10px var(--font-display);color:var(--ink-300);margin-top:2px;white-space:nowrap">{{ row.costAt40 }}</div>
+              <div style="font:11px var(--font-display);color:var(--ink-300);margin-top:2px;white-space:nowrap">{{ row.costAt40 }}</div>
             </div>
           </div>
         </sc-for>
@@ -544,7 +611,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
         <div style="font:800 12px var(--font-display);color:var(--type-fighting);letter-spacing:.06em;white-space:nowrap">TRANSFER LIST</div>
         <sc-if value="{{ transferQueueCount }}" hint-placeholder-val="{{ false }}">
-          <div onClick="{{ clearTransferQueue }}" class="om-press" style="cursor:pointer;font:700 10.5px var(--font-display);color:var(--ink-500);white-space:nowrap">CLEAR ALL</div>
+          <div onClick="{{ clearTransferQueue }}" class="om-press" style="cursor:pointer;font:700 11px var(--font-display);color:var(--ink-500);white-space:nowrap">CLEAR ALL</div>
         </sc-if>
       </div>
 
@@ -579,17 +646,17 @@
             </div>
             <div onClick="{{ row.onOpen }}" style="cursor:pointer;flex:1;min-width:0">
               <div style="font:700 13.5px var(--font-body);color:var(--ink-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }}</div>
-              <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px">{{ row.sub }}</div>
+              <div style="font:11px var(--font-display);color:var(--ink-500);margin-top:2px">{{ row.sub }}</div>
             </div>
             <sc-if value="{{ row.warn }}" hint-placeholder-val="{{ false }}">
-              <div style="font:9.5px var(--font-display);color:var(--type-electric);background:var(--surface-muted);border-radius:5px;padding:4px 7px;white-space:nowrap;flex-shrink:0">{{ row.warn }}</div>
+              <div style="font:11px var(--font-display);color:var(--type-electric);background:var(--surface-muted);border-radius:5px;padding:4px 7px;white-space:nowrap;flex-shrink:0">{{ row.warn }}</div>
             </sc-if>
-            <div onClick="{{ row.onQueue }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:9px 13px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:800 10.5px var(--font-display);white-space:nowrap">{{ row.queueLabel }}</div>
+            <div onClick="{{ row.onQueue }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:9px 13px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:800 11px var(--font-display);white-space:nowrap">{{ row.queueLabel }}</div>
           </div>
         </sc-for>
       </div>
       <sc-if value="{{ transferPickMore }}" hint-placeholder-val="{{ false }}">
-        <div style="font:10.5px var(--font-display);color:var(--ink-300);margin-top:9px">{{ transferPickMore }}</div>
+        <div style="font:11px var(--font-display);color:var(--ink-300);margin-top:9px">{{ transferPickMore }}</div>
       </sc-if>
     </div>
 
@@ -607,7 +674,7 @@
               </div>
               <div style="min-width:0;flex:1">
                 <div style="font:700 12.5px var(--font-body);color:var(--ink-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.target }}</div>
-                <div style="font:10px var(--font-display);color:{{ row.candyColor }};margin-top:2px;white-space:nowrap">{{ row.candyLabel }}</div>
+                <div style="font:11px var(--font-display);color:{{ row.candyColor }};margin-top:2px;white-space:nowrap">{{ row.candyLabel }}</div>
               </div>
             </div>
           </sc-for>
@@ -626,7 +693,7 @@
 
     <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:9px">
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
-        <div style="font:10px var(--font-display);color:var(--ink-400)">POWER UP</div>
+        <div style="font:11px var(--font-display);color:var(--ink-400)">POWER UP</div>
         <div style="font:800 20px var(--font-display);color:var(--grass-700)">{{ digest.powerUpCount }}</div>
       </div>
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
@@ -694,7 +761,7 @@
           <div style="border-top:1px solid var(--type-water);padding-top:12px;display:flex;flex-direction:column;gap:9px">
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
               <div style="font:700 11px var(--font-display);color:var(--type-water);letter-spacing:.05em">AUTOMATIC SNAPSHOTS</div>
-              <div onClick="{{ takeSnapshotNow }}" class="om-press" style="cursor:pointer;padding:6px 12px;border-radius:var(--r-pill);background:var(--line-200);color:var(--ink-700);font:700 10.5px var(--font-display)">SNAPSHOT NOW</div>
+              <div onClick="{{ takeSnapshotNow }}" class="om-press" style="cursor:pointer;padding:6px 12px;border-radius:var(--r-pill);background:var(--line-200);color:var(--ink-700);font:700 11px var(--font-display)">SNAPSHOT NOW</div>
             </div>
             <div style="font:12px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">Taken automatically before every import, restore and CLEAR ROSTER, plus periodically. The five most recent are kept.</div>
             <sc-if value="{{ snapshotError }}" hint-placeholder-val="{{ false }}">
@@ -708,7 +775,7 @@
                       <div style="font:700 12px var(--font-display);color:var(--ink-900)">{{ s.when }}</div>
                       <div style="font:11px var(--font-body);color:var(--ink-500);margin-top:2px">{{ s.detail }}</div>
                     </div>
-                    <div onClick="{{ s.onRestore }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:7px 12px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-water) 18%, var(--surface-card));color:var(--type-water);font:700 10.5px var(--font-display)">RESTORE</div>
+                    <div onClick="{{ s.onRestore }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:7px 12px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-water) 18%, var(--surface-card));color:var(--type-water);font:700 11px var(--font-display)">RESTORE</div>
                   </div>
                 </sc-for>
               </div>
@@ -761,12 +828,12 @@
       <div style="font:12px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">Your trainer level caps every power-up at two levels above it, and the reserve is stardust the TODAY planner will never spend.</div>
       <div style="display:flex;gap:18px;flex-wrap:wrap">
         <div>
-          <div style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;margin-bottom:6px">TRAINER LEVEL</div>
+          <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;margin-bottom:6px">TRAINER LEVEL</div>
           <input type="number" min="1" max="50" value="{{ trainerLevelValue }}" onChange="{{ onTrainerLevelChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid var(--line-300);color:var(--ink-900);font:800 20px var(--font-display);padding:4px 0;width:90px" />
           <div style="font:11px var(--font-display);color:var(--ink-400);margin-top:5px">{{ levelCeilingNote }}</div>
         </div>
         <div>
-          <div style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;margin-bottom:6px">STARDUST RESERVE</div>
+          <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;margin-bottom:6px">STARDUST RESERVE</div>
           <input type="text" value="{{ dustReserveValue }}" onChange="{{ onDustReserveChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid var(--line-300);color:var(--type-electric);font:800 20px var(--font-display);padding:4px 0;width:150px" />
           <div style="font:11px var(--font-display);color:var(--ink-400);margin-top:5px">{{ dustBudgetNote }}</div>
         </div>
@@ -801,14 +868,14 @@
             </sc-if>
 
             <div style="border-top:1px solid var(--surface-muted);margin-top:4px;padding-top:10px;display:flex;flex-direction:column;gap:6px">
-              <div style="font:10.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em">TODAY'S USAGE</div>
+              <div style="font:11px var(--font-display);color:var(--ink-300);letter-spacing:.04em">TODAY'S USAGE</div>
               <sc-for list="{{ aiUsageRows }}" as="u" hint-placeholder-count="3">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:11.5px var(--font-display)">
                   <span style="color:{{ u.color }}">{{ u.label }}</span>
                   <span style="color:var(--ink-600)">{{ u.value }}</span>
                 </div>
               </sc-for>
-              <div style="font:10.5px var(--font-body);color:var(--ink-300)">Counts reset at midnight, this device only.</div>
+              <div style="font:11px var(--font-body);color:var(--ink-300)">Counts reset at midnight, this device only.</div>
             </div>
             </div>
           </div>
@@ -825,7 +892,7 @@
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Run the "Extract Pokemon Data" GitHub Actions workflow with your recording's Google Drive link, then tap below to pull the result straight in &mdash; no copy/paste needed.</div>
             <div style="border-top:1px solid var(--surface-muted);padding-top:8px;display:flex;flex-direction:column;gap:8px">
-              <div style="font:10.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em">RUN IT FROM HERE (needs GitHub Access above)</div>
+              <div style="font:11px var(--font-display);color:var(--ink-300);letter-spacing:.04em">RUN IT FROM HERE (needs GitHub Access above)</div>
               <div style="font:11.5px var(--font-body);color:var(--ink-500)">Drive link must be shared as "Anyone with the link".</div>
               <input type="text" placeholder="https://drive.google.com/file/d/…" value="{{ driveVideoLink }}" onChange="{{ onDriveVideoLinkChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:5px;font:12px var(--font-display)" />
               <div onClick="{{ runVideoWorkflow }}" style="cursor:pointer;align-self:flex-start;padding:9px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">{{ driveWorkflowVideoLabel }}</div>
@@ -852,7 +919,7 @@
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Step 2, after importing Pokemon above. Run the &ldquo;Extract IV Ratings&rdquo; workflow with your <b>appraisal</b> recording, then tap below. It measures the three appraisal bars to get the exact IV, matches each reading to a Pokemon you already imported by name, CP and HP, and pins it. Nothing is guessed and no new Pokemon are added.</div>
             <div style="border-top:1px solid color-mix(in oklab, var(--type-ghost) 30%, transparent);padding-top:8px;display:flex;flex-direction:column;gap:8px">
-              <div style="font:10.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em">RUN IT FROM HERE (needs GitHub Access above)</div>
+              <div style="font:11px var(--font-display);color:var(--ink-300);letter-spacing:.04em">RUN IT FROM HERE (needs GitHub Access above)</div>
               <div style="font:11.5px var(--font-body);color:var(--ink-500)">Drive link must be shared as "Anyone with the link".</div>
               <input type="text" placeholder="https://drive.google.com/file/d/…" value="{{ driveAppraisalLink }}" onChange="{{ onDriveAppraisalLinkChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:5px;font:12px var(--font-display)" />
               <div onClick="{{ runAppraisalWorkflow }}" style="cursor:pointer;align-self:flex-start;padding:9px 16px;border-radius:var(--r-pill);background:var(--type-ghost);color:white;font:700 11.5px var(--font-display)">{{ driveWorkflowAppraisalLabel }}</div>
@@ -909,9 +976,9 @@
       <div style="font:11.5px var(--font-body);color:var(--ink-300)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
       <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:7px;padding:9px 12px">
-          <div style="font:700 10.5px var(--font-display);color:var(--grass-700);letter-spacing:.05em">IMPORT PROGRESS</div>
+          <div style="font:700 11px var(--font-display);color:var(--grass-700);letter-spacing:.05em">IMPORT PROGRESS</div>
           <div style="font:12px var(--font-display);color:var(--ink-700)">{{ importProgressLine }}</div>
-          <div onClick="{{ resetImportProgress }}" style="cursor:pointer;margin-left:auto;font:10.5px var(--font-display);color:var(--ink-300);text-decoration:underline">RESET</div>
+          <div onClick="{{ resetImportProgress }}" style="cursor:pointer;margin-left:auto;font:11px var(--font-display);color:var(--ink-300);text-decoration:underline">RESET</div>
         </div>
       </sc-if>
       <sc-if value="{{ pendingImport }}" hint-placeholder-val="{{ false }}">
@@ -942,7 +1009,7 @@
             <div style="display:flex;flex-wrap:wrap;gap:14px">
               <sc-for list="{{ coverageStats }}" as="c" hint-placeholder-count="4">
                 <div style="display:flex;flex-direction:column;gap:2px;min-width:96px">
-                  <div style="font:10px var(--font-display);color:var(--ink-300);letter-spacing:.04em">{{ c.label }}</div>
+                  <div style="font:11px var(--font-display);color:var(--ink-300);letter-spacing:.04em">{{ c.label }}</div>
                   <div style="font:600 15px var(--font-display);color:{{ c.color }}">{{ c.value }}</div>
                 </div>
               </sc-for>
@@ -1007,14 +1074,14 @@
                 <div style="font:11px var(--font-display);color:var(--ink-400)">{{ reviewCountLine }}</div>
               </div>
               <div style="border:1px solid var(--line-200);border-radius:7px;overflow:hidden">
-                <div style="display:grid;grid-template-columns:1.7fr .7fr .6fr .9fr .8fr;gap:8px;padding:8px 10px;background:var(--surface-card);font:700 9.5px var(--font-display);color:var(--ink-500);letter-spacing:.05em">
+                <div style="display:grid;grid-template-columns:1.7fr .7fr .6fr .9fr .8fr;gap:8px;padding:8px 10px;background:var(--surface-card);font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.05em">
                   <div>NAME</div><div>CP</div><div>HP</div><div>IV</div><div>CANDY</div>
                 </div>
                 <sc-for list="{{ videoReviewRows }}" as="r" hint-placeholder-count="5">
                   <div style="display:grid;grid-template-columns:1.7fr .7fr .6fr .9fr .8fr;gap:8px;padding:9px 10px;border-top:1px solid var(--surface-muted);align-items:center;background:{{ r.rowBg }}">
                     <div style="min-width:0">
                       <div style="font:600 12px var(--font-body);color:var(--ink-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</div>
-                      <div style="font:9.5px var(--font-display);color:{{ r.tagColor }};letter-spacing:.04em">{{ r.tag }}</div>
+                      <div style="font:11px var(--font-display);color:{{ r.tagColor }};letter-spacing:.04em">{{ r.tag }}</div>
                     </div>
                     <div style="font:12px var(--font-display);color:var(--ink-700)">{{ r.cp }}</div>
                     <div style="font:12px var(--font-display);color:var(--ink-500)">{{ r.hp }}</div>
@@ -1036,12 +1103,12 @@
                 <div style="border:1px solid {{ r.border }};border-radius:7px;padding:10px 12px;background:{{ r.rowBg }};display:flex;flex-direction:column;gap:7px">
                   <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
                     <div style="font:600 13px var(--font-body);color:var(--ink-900)">{{ r.name }}</div>
-                    <div style="font:10px var(--font-display);color:{{ r.statusColor }};letter-spacing:.04em">{{ r.statusLabel }}</div>
+                    <div style="font:11px var(--font-display);color:{{ r.statusColor }};letter-spacing:.04em">{{ r.statusLabel }}</div>
                   </div>
                   <div style="font:11px var(--font-display);color:var(--ink-500)">{{ r.detail }}</div>
                   <sc-if value="{{ r.showChoices }}" hint-placeholder-val="{{ false }}">
                     <div style="display:flex;flex-direction:column;gap:6px">
-                      <div style="font:10.5px var(--font-body);color:var(--type-electric)">{{ r.choicePrompt }}</div>
+                      <div style="font:11px var(--font-body);color:var(--type-electric)">{{ r.choicePrompt }}</div>
                       <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <sc-for list="{{ r.choices }}" as="c" hint-placeholder-count="2">
                           <div onClick="{{ c.onClick }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));color:var(--type-ghost);font:600 11px var(--font-display)">{{ c.label }}</div>
@@ -1068,7 +1135,7 @@
           </sc-if>
           <sc-if value="{{ videoFrameThumbs }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;flex-direction:column;gap:6px">
-              <div style="font:10.5px var(--font-display);color:var(--ink-300)">{{ videoFrameLabel }}</div>
+              <div style="font:11px var(--font-display);color:var(--ink-300)">{{ videoFrameLabel }}</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap">
                 <sc-for list="{{ videoFrameThumbs }}" as="thumb" hint-placeholder-count="0">
                   <img ref="{{ thumb.ref }}" style="width:76px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--line-200);background:var(--surface-sunken)" />
@@ -1078,7 +1145,7 @@
           </sc-if>
           <sc-if value="{{ videoRawReply }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;flex-direction:column;gap:4px">
-              <div style="font:10.5px var(--font-display);color:var(--ink-300)">CLAUDE'S RAW REPLY</div>
+              <div style="font:11px var(--font-display);color:var(--ink-300)">CLAUDE'S RAW REPLY</div>
               <div style="font:11px var(--font-display);color:var(--ink-500);background:var(--surface-sunken);padding:8px;border-radius:5px;white-space:pre-wrap;max-height:140px;overflow-y:auto">{{ videoRawReply }}</div>
             </div>
           </sc-if>
@@ -1111,18 +1178,18 @@
             <div style="font:11px var(--font-display);color:var(--type-electric)">{{ ocrParsedDisplay.readerLine }}</div>
           </sc-if>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">NAME</div><input type="text" value="{{ ocrParsedDisplay.name }}" onChange="{{ onOcrName }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">CP</div><input type="number" value="{{ ocrParsedDisplay.cp }}" onChange="{{ onOcrCp }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">HP</div><input type="number" value="{{ ocrParsedDisplay.hp }}" onChange="{{ onOcrHp }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">TYPE</div><input type="text" value="{{ ocrParsedDisplay.type }}" onChange="{{ onOcrType }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">CANDY</div><input type="number" value="{{ ocrParsedDisplay.candy }}" onChange="{{ onOcrCandy }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">XL CANDY</div><input type="number" value="{{ ocrParsedDisplay.xlCandy }}" onChange="{{ onOcrXl }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div style="grid-column:1 / -1"><div style="font:10.5px var(--font-display);color:var(--ink-300)">STARDUST BALANCE</div><input type="number" value="{{ ocrParsedDisplay.stardust }}" onChange="{{ onOcrStardust }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">WEIGHT</div><input type="text" value="{{ ocrParsedDisplay.weight }}" onChange="{{ onOcrWeight }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">HEIGHT</div><input type="text" value="{{ ocrParsedDisplay.height }}" onChange="{{ onOcrHeight }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">FAST MOVE</div><input type="text" value="{{ ocrParsedDisplay.fastMove }}" onChange="{{ onOcrFastMove }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div><div style="font:10.5px var(--font-display);color:var(--ink-300)">CHARGE MOVE</div><input type="text" value="{{ ocrParsedDisplay.chargeMove1 }}" onChange="{{ onOcrChargeMove1 }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
-            <div style="grid-column:1 / -1"><div style="font:10.5px var(--font-display);color:var(--ink-300)">CHARGE MOVE 2 <span style="color:var(--ink-300)">(optional)</span></div><input type="text" value="{{ ocrParsedDisplay.chargeMove2 }}" onChange="{{ onOcrChargeMove2 }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">NAME</div><input type="text" value="{{ ocrParsedDisplay.name }}" onChange="{{ onOcrName }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">CP</div><input type="number" value="{{ ocrParsedDisplay.cp }}" onChange="{{ onOcrCp }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">HP</div><input type="number" value="{{ ocrParsedDisplay.hp }}" onChange="{{ onOcrHp }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">TYPE</div><input type="text" value="{{ ocrParsedDisplay.type }}" onChange="{{ onOcrType }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">CANDY</div><input type="number" value="{{ ocrParsedDisplay.candy }}" onChange="{{ onOcrCandy }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">XL CANDY</div><input type="number" value="{{ ocrParsedDisplay.xlCandy }}" onChange="{{ onOcrXl }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div style="grid-column:1 / -1"><div style="font:11px var(--font-display);color:var(--ink-300)">STARDUST BALANCE</div><input type="number" value="{{ ocrParsedDisplay.stardust }}" onChange="{{ onOcrStardust }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">WEIGHT</div><input type="text" value="{{ ocrParsedDisplay.weight }}" onChange="{{ onOcrWeight }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">HEIGHT</div><input type="text" value="{{ ocrParsedDisplay.height }}" onChange="{{ onOcrHeight }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">FAST MOVE</div><input type="text" value="{{ ocrParsedDisplay.fastMove }}" onChange="{{ onOcrFastMove }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div><div style="font:11px var(--font-display);color:var(--ink-300)">CHARGE MOVE</div><input type="text" value="{{ ocrParsedDisplay.chargeMove1 }}" onChange="{{ onOcrChargeMove1 }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
+            <div style="grid-column:1 / -1"><div style="font:11px var(--font-display);color:var(--ink-300)">CHARGE MOVE 2 <span style="color:var(--ink-300)">(optional)</span></div><input type="text" value="{{ ocrParsedDisplay.chargeMove2 }}" onChange="{{ onOcrChargeMove2 }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
           </div>
           <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
             <div onClick="{{ applyOcrResult }}" style="cursor:pointer;flex:1 1 120px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 12px var(--font-display)">SAVE CANDY/TYPE</div>
@@ -1130,23 +1197,23 @@
             <div onClick="{{ cancelOcr }}" style="cursor:pointer;flex:1 1 90px;text-align:center;padding:9px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 12px var(--font-display)">{{ ocrCancelLabel }}</div>
           </div>
           <details style="margin-top:2px">
-            <summary style="cursor:pointer;font:10.5px var(--font-display);color:var(--ink-300)">Raw read (debug)</summary>
-            <pre style="white-space:pre-wrap;font:10.5px var(--font-display);color:var(--ink-400);background:var(--surface-sunken);padding:8px;border-radius:6px;max-height:160px;overflow:auto">{{ ocrParsedDisplay.rawText }}</pre>
+            <summary style="cursor:pointer;font:11px var(--font-display);color:var(--ink-300)">Raw read (debug)</summary>
+            <pre style="white-space:pre-wrap;font:11px var(--font-display);color:var(--ink-400);background:var(--surface-sunken);padding:8px;border-radius:6px;max-height:160px;overflow:auto">{{ ocrParsedDisplay.rawText }}</pre>
           </details>
           <div style="border-top:1px solid var(--brand-primary-strong);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
-            <div style="font:10.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em">APPRAISAL HINT <span style="color:var(--ink-300)">(optional &mdash; narrows the solve)</span></div>
+            <div style="font:11px var(--font-display);color:var(--ink-300);letter-spacing:.04em">APPRAISAL HINT <span style="color:var(--ink-300)">(optional &mdash; narrows the solve)</span></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <sc-for list="{{ starOptions }}" as="s" hint-placeholder-count="6">
                 <div onClick="{{ s.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:999px;background:{{ s.bg }};border:1px solid {{ s.border }};color:{{ s.color }};font:600 11px var(--font-display);transition:background .12s ease,border-color .12s ease">{{ s.label }}</div>
               </sc-for>
             </div>
-            <div style="font:10.5px var(--font-body);color:var(--ink-300)">Which bars are completely full?</div>
+            <div style="font:11px var(--font-body);color:var(--ink-300)">Which bars are completely full?</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <sc-for list="{{ maxedOptions }}" as="m" hint-placeholder-count="4">
                 <div onClick="{{ m.onClick }}" style="cursor:pointer;padding:6px 11px;border-radius:var(--r-pill);background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.color }};font:600 11px var(--font-display);transition:background .12s ease,border-color .12s ease">{{ m.label }}</div>
               </sc-for>
             </div>
-            <div style="font:10.5px var(--font-body);color:var(--ink-300)">Stardust cost of the next Power Up (narrows the level)</div>
+            <div style="font:11px var(--font-body);color:var(--ink-300)">Stardust cost of the next Power Up (narrows the level)</div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <input type="text" inputmode="numeric" placeholder="e.g. 3500" value="{{ apprDust }}" onChange="{{ onApprDustChange }}" style="width:110px;background:transparent;border:none;border-bottom:1px solid var(--line-300);color:var(--ink-900);font:13px var(--font-display);padding:5px 2px;outline:none" />
               <sc-for list="{{ dustModOptions }}" as="d" hint-placeholder-count="3">
@@ -1202,35 +1269,35 @@
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
       <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">RESOURCES (enter manually)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">
-        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">RARE CANDY</div><input type="text" value="{{ resourcesDraft.rareCandy }}" onChange="{{ onResourceRareCandy }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">RARE CANDY XL</div><input type="text" value="{{ resourcesDraft.rareCandyXL }}" onChange="{{ onResourceRareCandyXL }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">FAST TM</div><input type="text" value="{{ resourcesDraft.fastTM }}" onChange="{{ onResourceFastTM }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">CHARGED TM</div><input type="text" value="{{ resourcesDraft.chargedTM }}" onChange="{{ onResourceChargedTM }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE FAST TM</div><input type="text" value="{{ resourcesDraft.eliteFastTM }}" onChange="{{ onResourceEliteFast }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-        <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE CHARGED TM</div><input type="text" value="{{ resourcesDraft.eliteChargedTM }}" onChange="{{ onResourceEliteCharged }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">RARE CANDY</div><input type="text" value="{{ resourcesDraft.rareCandy }}" onChange="{{ onResourceRareCandy }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">RARE CANDY XL</div><input type="text" value="{{ resourcesDraft.rareCandyXL }}" onChange="{{ onResourceRareCandyXL }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">FAST TM</div><input type="text" value="{{ resourcesDraft.fastTM }}" onChange="{{ onResourceFastTM }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">CHARGED TM</div><input type="text" value="{{ resourcesDraft.chargedTM }}" onChange="{{ onResourceChargedTM }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE FAST TM</div><input type="text" value="{{ resourcesDraft.eliteFastTM }}" onChange="{{ onResourceEliteFast }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+        <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">ELITE CHARGED TM</div><input type="text" value="{{ resourcesDraft.eliteChargedTM }}" onChange="{{ onResourceEliteCharged }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
       </div>
       <div onClick="{{ saveResources }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE RESOURCES</div>
 
       <div style="border-top:1px solid var(--surface-muted);padding-top:12px;display:flex;flex-direction:column;gap:8px">
-        <div style="font:10.5px var(--font-display);color:var(--ink-300)">EVOLUTION ITEMS</div>
+        <div style="font:11px var(--font-display);color:var(--ink-300)">EVOLUTION ITEMS</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SUN STONE</div><input type="text" value="{{ evolutionItemsDraft.sunStone }}" onChange="{{ onEvoItemSunStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">KING'S ROCK</div><input type="text" value="{{ evolutionItemsDraft.kingsRock }}" onChange="{{ onEvoItemKingsRock }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">METAL COAT</div><input type="text" value="{{ evolutionItemsDraft.metalCoat }}" onChange="{{ onEvoItemMetalCoat }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">DRAGON SCALE</div><input type="text" value="{{ evolutionItemsDraft.dragonScale }}" onChange="{{ onEvoItemDragonScale }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">UPGRADE</div><input type="text" value="{{ evolutionItemsDraft.upgrade }}" onChange="{{ onEvoItemUpgrade }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SINNOH STONE</div><input type="text" value="{{ evolutionItemsDraft.sinnohStone }}" onChange="{{ onEvoItemSinnohStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">UNOVA STONE</div><input type="text" value="{{ evolutionItemsDraft.unovaStone }}" onChange="{{ onEvoItemUnovaStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">GIMMIGHOUL COINS</div><input type="text" value="{{ evolutionItemsDraft.gimmighoulCoins }}" onChange="{{ onEvoItemGimmighoulCoins }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SWEET APPLE</div><input type="text" value="{{ evolutionItemsDraft.sweetApple }}" onChange="{{ onEvoItemSweetApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">TART APPLE</div><input type="text" value="{{ evolutionItemsDraft.tartApple }}" onChange="{{ onEvoItemTartApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
-          <div><div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">SYRUPY APPLE</div><input type="text" value="{{ evolutionItemsDraft.syrupyApple }}" onChange="{{ onEvoItemSyrupyApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">SUN STONE</div><input type="text" value="{{ evolutionItemsDraft.sunStone }}" onChange="{{ onEvoItemSunStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">KING'S ROCK</div><input type="text" value="{{ evolutionItemsDraft.kingsRock }}" onChange="{{ onEvoItemKingsRock }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">METAL COAT</div><input type="text" value="{{ evolutionItemsDraft.metalCoat }}" onChange="{{ onEvoItemMetalCoat }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">DRAGON SCALE</div><input type="text" value="{{ evolutionItemsDraft.dragonScale }}" onChange="{{ onEvoItemDragonScale }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">UPGRADE</div><input type="text" value="{{ evolutionItemsDraft.upgrade }}" onChange="{{ onEvoItemUpgrade }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">SINNOH STONE</div><input type="text" value="{{ evolutionItemsDraft.sinnohStone }}" onChange="{{ onEvoItemSinnohStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">UNOVA STONE</div><input type="text" value="{{ evolutionItemsDraft.unovaStone }}" onChange="{{ onEvoItemUnovaStone }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">GIMMIGHOUL COINS</div><input type="text" value="{{ evolutionItemsDraft.gimmighoulCoins }}" onChange="{{ onEvoItemGimmighoulCoins }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">SWEET APPLE</div><input type="text" value="{{ evolutionItemsDraft.sweetApple }}" onChange="{{ onEvoItemSweetApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">TART APPLE</div><input type="text" value="{{ evolutionItemsDraft.tartApple }}" onChange="{{ onEvoItemTartApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
+          <div><div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">SYRUPY APPLE</div><input type="text" value="{{ evolutionItemsDraft.syrupyApple }}" onChange="{{ onEvoItemSyrupyApple }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" /></div>
         </div>
         <div onClick="{{ saveEvolutionItems }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">SAVE EVOLUTION ITEMS</div>
       </div>
 
       <div style="border-top:1px solid var(--surface-muted);padding-top:12px;display:flex;flex-direction:column;gap:8px">
-        <div style="font:10.5px var(--font-display);color:var(--ink-300)">MEGA ENERGY (per species)</div>
+        <div style="font:11px var(--font-display);color:var(--ink-300)">MEGA ENERGY (per species)</div>
         <div style="display:flex;gap:8px">
           <input type="text" placeholder="species" value="{{ megaNameDraft }}" onChange="{{ onMegaNameChange }}" style="flex:1;min-width:0;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:12.5px var(--font-body)" />
           <input type="text" placeholder="amount" value="{{ megaAmountDraft }}" onChange="{{ onMegaAmountChange }}" style="width:80px;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:12.5px var(--font-display)" />
@@ -1245,12 +1312,12 @@
               </div>
               <sc-if value="{{ m.evolveForms }}" hint-placeholder-val="{{ false }}">
                 <sc-for list="{{ m.evolveForms }}" as="ef" hint-placeholder-count="0">
-                  <div style="display:flex;justify-content:space-between;align-items:center;font:10.5px var(--font-display);letter-spacing:.03em;padding-left:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;font:11px var(--font-display);letter-spacing:.03em;padding-left:8px">
                     <span style="color:var(--ink-400)">{{ ef.formLabel }} &middot; {{ ef.cost }} energy ({{ ef.costNote }})</span>
                     <span style="display:flex;align-items:center;gap:6px">
                       <span style="color:{{ ef.statusColor }};font-weight:700">{{ ef.statusLabel }}</span>
                       <sc-if value="{{ ef.evolve }}" hint-placeholder-val="{{ false }}">
-                        <div onClick="{{ ef.evolve }}" style="cursor:pointer;padding:4px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10px var(--font-display)">EVOLVE</div>
+                        <div onClick="{{ ef.evolve }}" style="cursor:pointer;padding:4px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11px var(--font-display)">EVOLVE</div>
                       </sc-if>
                     </span>
                   </div>
@@ -1263,13 +1330,13 @@
 
       <sc-if value="{{ eliteTmCandidates }}" hint-placeholder-val="{{ false }}">
         <div style="border-top:1px solid var(--surface-muted);padding-top:12px">
-          <div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:6px">ELITE CHARGED TM CANDIDATES (high rank, missing 2nd move)</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:6px">ELITE CHARGED TM CANDIDATES (high rank, missing 2nd move)</div>
           <sc-for list="{{ eliteTmCandidates }}" as="e" hint-placeholder-count="0">
             <div style="display:flex;justify-content:space-between;align-items:center;font:12.5px var(--font-body);color:var(--ink-600);padding:3px 0">
               <span>{{ e.name }}</span>
               <span style="display:flex;align-items:center;gap:8px">
                 <span style="font:var(--font-display);color:var(--grass-700)">{{ e.rankDisplay }}</span>
-                <span onClick="{{ e.markUsed }}" class="om-press" style="cursor:pointer;padding:3px 8px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 9.5px var(--font-display);letter-spacing:.03em">USED</span>
+                <span onClick="{{ e.markUsed }}" class="om-press" style="cursor:pointer;padding:3px 8px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 11px var(--font-display);letter-spacing:.03em">USED</span>
               </span>
             </div>
           </sc-for>
@@ -1281,7 +1348,7 @@
       <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">POKÉMON STORAGE</div>
       <div style="display:flex;gap:10px;align-items:flex-end">
         <div style="flex:1">
-          <div style="font:10.5px var(--font-display);color:var(--ink-300);margin-bottom:4px">BAG SIZE</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300);margin-bottom:4px">BAG SIZE</div>
           <input type="text" inputmode="numeric" placeholder="e.g. 1500" value="{{ bagCapacityDraft }}" onChange="{{ onBagCapacityChange }}" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:7px 9px;border-radius:5px;font:13px var(--font-display)" />
         </div>
         <div onClick="{{ saveBagCapacity }}" style="cursor:pointer;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);white-space:nowrap">SAVE</div>
@@ -1298,10 +1365,10 @@
       </sc-if>
       <div style="border-top:1px solid var(--surface-muted);padding-top:12px;display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-          <div style="font:10.5px var(--font-display);color:var(--ink-300)">KEEP BEST</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300)">KEEP BEST</div>
           <div style="display:flex;gap:8px;align-items:center">
             <input type="text" inputmode="numeric" value="{{ cutTargetDraft }}" onChange="{{ onCutTargetChange }}" style="width:70px;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-display);text-align:center" />
-            <div onClick="{{ saveCutTarget }}" style="cursor:pointer;padding:7px 13px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 10.5px var(--font-display)">SET</div>
+            <div onClick="{{ saveCutTarget }}" style="cursor:pointer;padding:7px 13px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11px var(--font-display)">SET</div>
           </div>
         </div>
         <div style="font:12.5px var(--font-body);color:var(--ink-500);line-height:1.4">{{ cutPlan.headline }}</div>
@@ -1319,7 +1386,7 @@
                 </div>
                 <div style="font:var(--font-display);font-size:11.5px;color:var(--type-fighting)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
                 <sc-if value="{{ p.movesetNote }}" hint-placeholder-val="{{ false }}">
-                  <div style="font:10.5px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }}</div>
+                  <div style="font:11px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }}</div>
                 </sc-if>
                 <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
               </div>
@@ -1359,7 +1426,7 @@
       <div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
           <div style="font:700 11px var(--font-display);color:var(--grass-700);letter-spacing:.05em">1. POWER UP THESE</div>
-          <div style="font:10.5px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.powerUpCount }}</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.powerUpCount }}</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.powerUp }}" as="p" hint-placeholder-count="3">
@@ -1376,7 +1443,7 @@
       <div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
           <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em">2. EVOLVE THESE NEXT EVENT</div>
-          <div style="font:10.5px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.evolveCount }}</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.evolveCount }}</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.evolveSoon }}" as="p" hint-placeholder-count="3">
@@ -1393,7 +1460,7 @@
       <div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
           <div style="font:700 11px var(--font-display);color:var(--type-fighting);letter-spacing:.05em">3. TRANSFER THESE SAFELY</div>
-          <div style="font:10.5px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.transferCount }}</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.transferCount }}</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.transferSafe }}" as="p" hint-placeholder-count="3">
@@ -1403,7 +1470,7 @@
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
               </div>
               <div style="font:11px var(--font-display);color:var(--ink-500)">{{ p.sub }}</div>
-              <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:5px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 10px var(--font-display)" style-hover="background:var(--type-fighting)">TRANSFERRED &mdash; REMOVE</div>
+              <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:5px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)" style-hover="background:var(--type-fighting)">TRANSFERRED &mdash; REMOVE</div>
             </div>
           </sc-for>
         </div>
@@ -1411,7 +1478,7 @@
       <div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
           <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em">4. LUCKY TRADE CANDIDATES</div>
-          <div style="font:10.5px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.luckyCount }} &middot; duplicate species</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.luckyCount }} &middot; duplicate species</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.luckyTrade }}" as="p" hint-placeholder-count="3">
@@ -1429,7 +1496,7 @@
         <div>
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
             <div style="font:700 11px var(--font-display);color:var(--type-ghost);letter-spacing:.05em">5. UNLOCK A SECOND CHARGE MOVE</div>
-            <div style="font:10.5px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.secondMoveCount }} &middot; cheapest PvP upgrade</div>
+            <div style="font:11px var(--font-display);color:var(--ink-300)">{{ optimizePlanDisplay.secondMoveCount }} &middot; cheapest PvP upgrade</div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
             <sc-for list="{{ optimizePlanDisplay.needsSecondMove }}" as="p" hint-placeholder-count="3">
@@ -1438,7 +1505,7 @@
                   <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
                   <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
                 </div>
-                <div style="font:10.5px var(--font-display);color:var(--type-ghost)">{{ p.moveLine }}</div>
+                <div style="font:11px var(--font-display);color:var(--type-ghost)">{{ p.moveLine }}</div>
                 <div style="font:11px var(--font-display);color:var(--ink-500)">{{ p.rankLine }}</div>
               </div>
             </sc-for>
@@ -1459,7 +1526,7 @@
                 <div style="flex:1;min-width:0">
                   <div style="font:600 13px var(--font-body)">{{ bp.displayName }}</div>
                   <div style="font:11px var(--font-display);color:var(--type-electric);margin-top:2px">{{ bp.line }}</div>
-                  <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px">{{ bp.reasons }}</div>
+                  <div style="font:11px var(--font-display);color:var(--ink-500);margin-top:2px">{{ bp.reasons }}</div>
                 </div>
               </div>
             </sc-for>
@@ -1491,7 +1558,7 @@
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
         <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ASK THE PROFESSOR ANYTHING</div>
-        <div onClick="{{ clearChat }}" style="cursor:pointer;padding:5px 11px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 10px var(--font-display);letter-spacing:.03em;white-space:nowrap">NEW CHAT</div>
+        <div onClick="{{ clearChat }}" style="cursor:pointer;padding:5px 11px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 11px var(--font-display);letter-spacing:.03em;white-space:nowrap">NEW CHAT</div>
       </div>
       <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{ chatMessagesDisplay }}" as="m" hint-placeholder-count="0">
@@ -1571,63 +1638,73 @@
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div style="position:relative;overflow:hidden;border-radius:12px">
+        <div style="position:relative;overflow:hidden;border-radius:16px">
           <div style="position:absolute;inset:0;display:flex;justify-content:flex-end;align-items:stretch">
             <div onClick="{{ p.markTransferredCandy }}" class="om-press" aria-label="Transfer, plus 1 candy" style="cursor:pointer;width:68px;flex-shrink:0;background:var(--surface-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-700)">
               <span style="font:700 18px var(--font-display)">&#8617;</span>
-              <span style="font:700 9px var(--font-display);letter-spacing:.04em">TRANSFER</span>
+              <span style="font:600 11px var(--font-body)">Transfer</span>
             </div>
             <div onClick="{{ p.removeDuplicate }}" class="om-press" aria-label="Remove, mistake, no candy" style="cursor:pointer;width:68px;flex-shrink:0;background:var(--type-fighting);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:white">
               <span style="font:700 18px var(--font-display)">&times;</span>
-              <span style="font:700 9px var(--font-display);letter-spacing:.04em">REMOVE</span>
+              <span style="font:600 11px var(--font-body)">Remove</span>
             </div>
           </div>
-          <div data-swipe-row="{{ p.idx }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;align-items:center;gap:10px;background:{{ p.cardTint }};border:1px solid {{ p.cardEdge }};border-left:4px solid {{ p.typeAccent }};border-radius:12px;padding:8px 10px;touch-action:pan-y">
-          <div style="flex-shrink:0;width:54px;height:54px;display:flex;align-items:center;justify-content:center;position:relative">
-            <span style="position:absolute;font:800 18px var(--font-display);color:rgba(255,255,255,.12)">{{ p.initial }}</span>
-            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 4px 8px {{ p.railGlow }})" />
+          <div data-swipe-row="{{ p.idx }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--surface-card);border-radius:16px;padding:12px 14px;touch-action:pan-y">
+          <div style="flex-shrink:0;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 50% 38%, color-mix(in oklab, {{ p.typeAccent }} 34%, transparent), color-mix(in oklab, {{ p.typeAccent }} 5%, transparent) 72%)">
+            <span style="position:absolute;font:700 20px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
+            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))" />
           </div>
           <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:6px">
-              <div style="font:600 14px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.displayName }}</div>
+            <div style="display:flex;align-items:center;gap:6px;min-width:0">
+              <div style="font:600 17px/1.2 var(--font-body);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.displayName }}</div>
               <sc-if value="{{ p.rowSpreadMeasured }}" hint-placeholder-val="{{ true }}">
-                <div style="flex-shrink:0;font:700 9px var(--font-display);color:var(--surface-page);background:var(--grass-700);border-radius:3px;padding:1px 4px">&#10003;</div>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ios-green)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-label="IVs measured" style="flex-shrink:0"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
               </sc-if>
-              <div style="font:11px;flex-shrink:0">{{ p.flags }}</div>
+              <div style="font:600 11px var(--font-body);color:var(--ios-blue);flex-shrink:0;letter-spacing:.02em">{{ p.flags }}</div>
             </div>
-            <div style="height:4px;border-radius:2px;background:var(--surface-sunken);margin:6px 0 5px;overflow:hidden">
-              <div class="om-bar" style="--i:{{ $index }};height:100%;width:{{ p.ivBarPct }};background:{{ p.rowSpreadColor }};border-radius:2px"></div>
-            </div>
-            <div style="display:flex;align-items:baseline;gap:6px;overflow:hidden;white-space:nowrap">
-              <span style="font:11.5px var(--font-display);color:{{ p.rowSpreadColor }};font-variant-numeric:tabular-nums;flex-shrink:0">{{ p.rowSpread }}</span>
+            <div style="font:13px/1.3 var(--font-body);color:var(--ink-400);margin-top:2px;display:flex;gap:6px;align-items:baseline;white-space:nowrap;overflow:hidden">
+              <span style="color:{{ p.rowSpreadColor }};font-variant-numeric:tabular-nums;flex-shrink:0">{{ p.rowSpread }}</span>
               <sc-if value="{{ p.typeChips }}" hint-placeholder-val="{{ false }}">
-                <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
-                <span style="font:10.5px var(--font-display);letter-spacing:.03em;color:{{ p.typeAccent }};text-transform:uppercase;flex-shrink:0">{{ p.primaryTypeLabel }}</span>
+                <span style="color:var(--ink-300)">&middot;</span>
+                <span style="color:{{ p.typeAccent }};font-weight:500;text-transform:capitalize">{{ p.primaryTypeLabel }}</span>
               </sc-if>
               <sc-if value="{{ p.bestLeagueLabel }}" hint-placeholder-val="{{ false }}">
-                <span style="font:11px var(--font-display);color:var(--ink-400);flex-shrink:0">&middot;</span>
-                <span style="font:700 11px var(--font-display);color:{{ p.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis">{{ p.bestLeagueLabel }}</span>
+                <span style="color:var(--ink-300)">&middot;</span>
+                <span style="color:{{ p.bestLeagueColor }};font-weight:600;overflow:hidden;text-overflow:ellipsis">{{ p.bestLeagueLabel }}</span>
               </sc-if>
             </div>
+            <div style="height:3px;border-radius:2px;background:var(--ios-fill);margin-top:8px;overflow:hidden">
+              <div class="om-bar" style="--i:{{ $index }};height:100%;width:{{ p.ivBarPct }};background:{{ p.rowSpreadColor }};border-radius:2px"></div>
+            </div>
             <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
-              <div onClick="{{ stopProp }}" style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
-                <input type="text" inputmode="numeric" placeholder="Atk" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:34px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                <input type="text" inputmode="numeric" placeholder="Def" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:34px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                <input type="text" inputmode="numeric" placeholder="Sta" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:34px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 11px var(--font-display);text-align:center;padding:4px 2px" />
-                <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:4px 9px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10px var(--font-display)">SAVE</div>
+              <div onClick="{{ stopProp }}" style="margin-top:8px">
+                <sc-if value="{{ p.ivEditOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <input type="text" inputmode="numeric" placeholder="Atk" aria-label="Attack IV" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" onClick="{{ stopProp }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
+                    <input type="text" inputmode="numeric" placeholder="Def" aria-label="Defense IV" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" onClick="{{ stopProp }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
+                    <input type="text" inputmode="numeric" placeholder="Sta" aria-label="Stamina IV" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" onClick="{{ stopProp }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:6px 2px" />
+                    <div onClick="{{ p.saveManualIv }}" class="om-tap" style="cursor:pointer;padding:7px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:600 14px var(--font-body)">Save</div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ p.ivEditClosed }}" hint-placeholder-val="{{ true }}">
+                  <div onClick="{{ p.toggleIvEdit }}" class="om-tap" style="cursor:pointer;display:inline-block;font:500 14px var(--font-body);color:var(--ios-blue)">Enter IVs</div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
-          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;line-height:1">
+          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1">
             <sc-if value="{{ p.isFav }}" hint-placeholder-val="{{ false }}">
-              <span style="color:#f2c14e;font-size:13px">&#9733;</span>
+              <span style="color:var(--ios-yellow);font-size:14px">&#9733;</span>
             </sc-if>
-            <div style="white-space:nowrap"><span style="font:700 10px var(--font-display);color:var(--ink-400);margin-right:2px">CP</span><span style="font:800 22px var(--font-display);color:{{ p.typeAccent }};font-variant-numeric:tabular-nums">{{ p.cp }}</span></div>
+            <div style="white-space:nowrap;display:flex;align-items:baseline;gap:3px"><span style="font:500 11px var(--font-body);color:var(--ink-400)">CP</span><span style="font:700 24px var(--font-display);letter-spacing:-.02em;color:var(--ink-900);font-variant-numeric:tabular-nums">{{ p.cp }}</span></div>
           </div>
           </div>
         </div>
       </sc-for>
     </div>
+    <sc-if value="{{ rosterEmptyMsg }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;padding:36px 20px;color:var(--ink-400);font:14px/1.5 var(--font-body)">{{ rosterEmptyMsg }}</div>
+    </sc-if>
     <sc-if value="{{ hasMore }}" hint-placeholder-val="{{ true }}">
       <div onClick="{{ loadMore }}" style="cursor:pointer;text-align:center;margin-top:20px;padding:12px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);font:700 12.5px var(--font-display);color:var(--type-electric)">LOAD 30 MORE</div>
     </sc-if>
@@ -1644,7 +1721,7 @@
         <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 10px 0">
           <div onClick="{{ closeDetail }}" class="om-press" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</div>
           <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
-            <div style="font:700 10.5px var(--font-display);color:rgba(255,255,255,.75);letter-spacing:.04em">{{ detail.navPositionLabel }}</div>
+            <div style="font:700 11px var(--font-display);color:rgba(255,255,255,.75);letter-spacing:.04em">{{ detail.navPositionLabel }}</div>
           </sc-if>
           <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</div>
         </div>
@@ -1676,10 +1753,10 @@
             <span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font-family:var(--font-display);font-weight:700;font-size:11px;line-height:1">{{ detail.cp }} CP</span>
           </div>
           <sc-if value="{{ detail.scanLine }}" hint-placeholder-val="{{ false }}">
-            <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);background:{{ detail.scanBg }};font:600 10.5px var(--font-display);color:{{ detail.scanColor }};letter-spacing:.03em">{{ detail.scanLine }}</div>
+            <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);background:{{ detail.scanBg }};font:600 11px var(--font-display);color:{{ detail.scanColor }};letter-spacing:.03em">{{ detail.scanLine }}</div>
           </sc-if>
           <sc-if value="{{ detail.catchLine }}" hint-placeholder-val="{{ false }}">
-            <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-sunken);font:600 10.5px var(--font-display);color:var(--ink-500);letter-spacing:.03em">{{ detail.catchLine }}</div>
+            <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-sunken);font:600 11px var(--font-display);color:var(--ink-500);letter-spacing:.03em">{{ detail.catchLine }}</div>
           </sc-if>
           <sc-if value="{{ detail.verdict }}" hint-placeholder-val="{{ false }}">
             <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:7px;padding:5px 12px;border-radius:var(--r-pill);background:{{ detail.verdict.bg }};border:1px solid {{ detail.verdict.border }}">
@@ -1688,11 +1765,11 @@
             </div>
           </sc-if>
           <details style="margin-top:2px">
-            <summary style="cursor:pointer;font:650 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.05em;list-style:none">WHY THIS VERDICT &#9662;</summary>
+            <summary style="cursor:pointer;font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;list-style:none">WHY THIS VERDICT &#9662;</summary>
             <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px">
               <sc-for list="{{ detail.verdictWhy }}" as="vw" hint-placeholder-count="6">
                 <div style="display:flex;gap:10px;align-items:baseline">
-                  <div style="flex-shrink:0;width:92px;font:700 9.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em">{{ vw.label }}</div>
+                  <div style="flex-shrink:0;width:92px;font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em">{{ vw.label }}</div>
                   <div style="flex:1;font:11.5px/1.45 var(--font-body);color:var(--ink-700)">{{ vw.text }}</div>
                 </div>
               </sc-for>
@@ -1703,13 +1780,13 @@
         <div class="om-rise" style="--i:0">
         <div style="background:var(--surface-card);border-radius:16px;padding:14px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-around;text-align:center">
-            <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.stardust }}</div><div style="font:650 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">STARDUST</div></div>
-            <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.xl }}</div><div style="font:650 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">XL CANDY</div></div>
-            <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.candy }}</div><div style="font:650 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">CANDY</div></div>
+            <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.stardust }}</div><div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">STARDUST</div></div>
+            <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.xl }}</div><div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">XL CANDY</div></div>
+            <div><div style="font:800 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.candy }}</div><div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">CANDY</div></div>
           </div>
           <sc-if value="{{ detail.levelBar }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin:12px 2px 5px">
-              <span style="font:650 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em">LEVEL</span>
+              <span style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">LEVEL</span>
               <span style="font:700 12px var(--font-display);color:var(--ink-700)">{{ detail.levelBar.label }}</span>
             </div>
             <div style="height:8px;background:var(--line-200);border-radius:4px;overflow:hidden">
@@ -1735,21 +1812,21 @@
                   </svg>
                   <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 12px var(--font-display);color:{{ r.color }}">{{ r.value }}</div>
                 </div>
-                <div style="font:650 10px var(--font-display);color:var(--ink-300);letter-spacing:.06em;margin-top:4px">{{ r.label }}</div>
+                <div style="font:650 11px var(--font-display);color:var(--ink-300);letter-spacing:.06em;margin-top:4px">{{ r.label }}</div>
               </div>
             </sc-for>
           </div>
           <sc-if value="{{ detail.ivSourceLine }}" hint-placeholder-val="{{ false }}">
-            <div style="margin-top:8px;font:600 10px var(--font-display);color:{{ detail.ivSourceColor }};letter-spacing:.04em;text-align:center">{{ detail.ivSourceLine }}</div>
+            <div style="margin-top:8px;font:600 11px var(--font-display);color:{{ detail.ivSourceColor }};letter-spacing:.04em;text-align:center">{{ detail.ivSourceLine }}</div>
           </sc-if>
         
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-200)">
-          <span style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">CANDY</span>
+          <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">CANDY</span>
           <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.candyDraft }}" onChange="{{ detail.onCandyChange }}" style="width:48px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
-          <span style="font:700 9.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">XL</span>
+          <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">XL</span>
           <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.xlDraft }}" onChange="{{ detail.onXlChange }}" style="width:44px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
-          <div onClick="{{ detail.saveCandy }}" class="om-tap" style="cursor:pointer;flex-shrink:0;padding:6px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">SET</div>
+          <div onClick="{{ detail.saveCandy }}" class="om-tap" style="cursor:pointer;flex-shrink:0;padding:6px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SET</div>
           <span style="flex:1;min-width:0;text-align:right;font:700 11px var(--font-display);color:{{ detail.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.bestLeagueLabel }}</span>
         </div>
           <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
@@ -1764,7 +1841,7 @@
                 <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-radius:var(--r-pill);background:var(--surface-muted)">
                     <span style="display:flex;gap:10px;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums;color:var(--ink-500)"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></span>
-                    <span style="font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</span>
+                    <span style="font:700 11px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</span>
                   </div>
                 </sc-if>
               </div>
@@ -1774,12 +1851,12 @@
         </div>
         <sc-if value="{{ detail.mega.has }}" hint-placeholder-val="{{ false }}">
           <div style="background:color-mix(in oklab, var(--type-electric) 14%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-electric) 40%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
-            <div style="font:700 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-bottom:8px">MEGA EVOLUTION</div>
+            <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-bottom:8px">MEGA EVOLUTION</div>
             <sc-for list="{{ detail.mega.rows }}" as="mg" hint-placeholder-count="1">
               <div style="padding:8px 0;border-top:1px solid var(--line-200)">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
                   <div style="font:700 12.5px var(--font-display)">{{ mg.label }}</div>
-                  <div style="font:800 10.5px var(--font-display);letter-spacing:.05em;color:{{ mg.statusColor }}">{{ mg.statusLabel }}</div>
+                  <div style="font:800 11px var(--font-display);letter-spacing:.05em;color:{{ mg.statusColor }}">{{ mg.statusLabel }}</div>
                 </div>
                 <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-top:2px">{{ mg.energyLine }} &middot; {{ mg.costLine }}</div>
                 <div style="font:11.5px var(--font-body);color:var(--ink-500)">{{ mg.levelLine }}</div>
@@ -1791,7 +1868,7 @@
                   <input type="text" inputmode="numeric" placeholder="total" value="{{ mg.totalVal }}" onChange="{{ mg.onTotal }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
                   <input type="text" inputmode="decimal" placeholder="rest days left" value="{{ mg.restVal }}" onChange="{{ mg.onRest }}" style="width:96px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;color:var(--ink-900);font:12px var(--font-body);padding:7px 8px" />
                   <sc-if value="{{ mg.evolve }}" hint-placeholder-val="{{ false }}">
-                    <div onClick="{{ mg.evolve }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">I MEGA EVOLVED</div>
+                    <div onClick="{{ mg.evolve }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11px var(--font-display)">I MEGA EVOLVED</div>
                   </sc-if>
                 </div>
               </div>
@@ -1802,8 +1879,8 @@
         <sc-if value="{{ detail.evo.hasEvo }}" hint-placeholder-val="{{ false }}">
           <div style="background:color-mix(in oklab, var(--grass-600) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-600) 42%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-              <div style="font:700 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.06em">EVOLVES TO {{ detail.evo.toName }}</div>
-              <div style="font:700 10px var(--font-display);letter-spacing:.05em;color:{{ detail.evo.statusColor }}">{{ detail.evo.statusLabel }}</div>
+              <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">EVOLVES TO {{ detail.evo.toName }}</div>
+              <div style="font:700 11px var(--font-display);letter-spacing:.05em;color:{{ detail.evo.statusColor }}">{{ detail.evo.statusLabel }}</div>
             </div>
             <div style="font:12px var(--font-display);color:var(--ink-500);margin-bottom:12px">{{ detail.evo.candyLine }}</div>
             <button onClick="{{ detail.evo.onEvolve }}" class="om-press" style="display:block;width:100%;cursor:pointer;text-align:center;padding:13px 24px;border:none;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 13px var(--font-display);letter-spacing:.03em">{{ detail.evo.buttonLabel }}</button>
@@ -1822,7 +1899,7 @@
         </div>
         <div class="om-rise" style="--i:3">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;background:var(--surface-card);border-radius:12px;padding:8px 12px">
-          <span style="flex:1;min-width:0;font:650 10.5px var(--font-display);letter-spacing:.05em;color:{{ detail.shinyControl.tone }}">{{ detail.shinyControl.title }}</span>
+          <span style="flex:1;min-width:0;font:650 11px var(--font-display);letter-spacing:.05em;color:{{ detail.shinyControl.tone }}">{{ detail.shinyControl.title }}</span>
           <sc-for list="{{ detail.shinyControl.buttons }}" as="sb" hint-placeholder-count="0">
             <div onClick="{{ sb.onClick }}" class="om-press" style="cursor:pointer;border-radius:var(--r-pill);padding:6px 12px;font:700 11px var(--font-display);letter-spacing:.04em;background:var(--surface-muted);color:var(--ink-700)">{{ sb.label }}</div>
           </sc-for>
@@ -1833,7 +1910,7 @@
           <div style="background:var(--surface-card);border-radius:16px;padding:14px;margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
               <span style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">PURIFY</span>
-              <span style="font:700 10.5px var(--font-display);color:{{ detail.purify.statusColor }}">{{ detail.purify.statusLabel }}</span>
+              <span style="font:700 11px var(--font-display);color:{{ detail.purify.statusColor }}">{{ detail.purify.statusLabel }}</span>
             </div>
             <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:10px">{{ detail.purify.costLine }} &middot; IVs +2 each (capped 15), level raised to at least 25, learns Return</div>
             <sc-if value="{{ detail.purify.onPurify }}" hint-placeholder-val="{{ false }}">
@@ -1859,21 +1936,21 @@
           </div>
           <sc-if value="{{ detail.bestMoves }}" hint-placeholder-val="{{ false }}">
             <div style="background:var(--surface-card);border-radius:10px;padding:9px 13px;margin-bottom:7px">
-              <div style="font:650 10.5px var(--font-display);color:var(--grass-700);letter-spacing:.05em;margin-bottom:3px">BEST FOR RAIDS &amp; GYMS</div>
+              <div style="font:650 11px var(--font-display);color:var(--grass-700);letter-spacing:.05em;margin-bottom:3px">BEST FOR RAIDS &amp; GYMS</div>
               <div style="font:600 12.5px var(--font-body);color:var(--ink-900)">{{ detail.bestMoves.best }}</div>
               <div style="font:11px var(--font-body);color:var(--ink-500);margin-top:2px">{{ detail.bestMoves.compare }}</div>
               <sc-if value="{{ detail.bestMoves.noLegacy }}" hint-placeholder-val="{{ false }}">
                 <div style="font:11px var(--font-body);color:var(--ink-500);margin-top:2px">{{ detail.bestMoves.noLegacy }}</div>
               </sc-if>
-              <div style="font:10.5px var(--font-body);color:var(--ink-400);margin-top:4px">Raid and gym numbers only &mdash; PvP sets are below.</div>
+              <div style="font:11px var(--font-body);color:var(--ink-400);margin-top:4px">Raid and gym numbers only &mdash; PvP sets are below.</div>
             </div>
           </sc-if>
           <sc-if value="{{ detail.pvpMoves }}" hint-placeholder-val="{{ false }}">
             <div style="background:var(--surface-card);border-radius:10px;padding:9px 13px;margin-bottom:7px">
-              <div style="font:650 10.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:6px">BEST FOR PVP</div>
+              <div style="font:650 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:6px">BEST FOR PVP</div>
               <sc-for list="{{ detail.pvpMoves }}" as="pv" hint-placeholder-count="2">
                 <div style="margin-bottom:9px">
-                  <div style="display:flex;justify-content:space-between;font:700 10.5px var(--font-display);letter-spacing:.05em;color:var(--ink-500)"><span>{{ pv.label }} LEAGUE</span><span style="color:{{ pv.tierColor }}">{{ pv.tier }}</span></div>
+                  <div style="display:flex;justify-content:space-between;font:700 11px var(--font-display);letter-spacing:.05em;color:var(--ink-500)"><span>{{ pv.label }} LEAGUE</span><span style="color:{{ pv.tierColor }}">{{ pv.tier }}</span></div>
                   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px">
                     <sc-for list="{{ pv.moves }}" as="pm" hint-placeholder-count="3">
                       <span style="padding:3px 10px;border-radius:var(--r-pill);font:600 11px var(--font-display);background:{{ pm.bg }};color:{{ pm.fg }}">{{ pm.mark }} {{ pm.name }}</span>
@@ -1882,13 +1959,13 @@
                   <div style="font:11px var(--font-body);color:var(--ink-500);margin-top:4px">{{ pv.status }}</div>
                 </div>
               </sc-for>
-              <div style="font:10.5px var(--font-body);color:var(--ink-400)">Recommended sets from PvPoke's simulated rankings.</div>
+              <div style="font:11px var(--font-body);color:var(--ink-400)">Recommended sets from PvPoke's simulated rankings.</div>
             </div>
           </sc-if>
           <div style="display:flex;flex-direction:column;gap:7px">
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">FAST</span>
+                <span style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">FAST</span>
                 <div onClick="{{ detail.openQuickMovePicker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
                   <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.quickMoveLabel }}</span>
                   <span style="color:var(--ink-400);flex-shrink:0">▾</span>
@@ -1916,7 +1993,7 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE</span>
+                <span style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE</span>
                 <div onClick="{{ detail.openChargeMovePicker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
                   <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.chargeMoveLabel }}</span>
                   <span style="color:var(--ink-400);flex-shrink:0">▾</span>
@@ -1944,7 +2021,7 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;background:var(--surface-card);border-radius:10px;padding:8px 13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-                <span style="font:10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE 2</span>
+                <span style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;flex-shrink:0">CHARGE 2</span>
                 <div onClick="{{ detail.openChargeMove2Picker }}" class="om-tap" style="cursor:pointer;flex:1;min-width:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:7px;color:var(--ink-900);font:600 12px var(--font-body);padding:7px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px">
                   <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.chargeMove2Label }}</span>
                   <span style="color:var(--ink-400);flex-shrink:0">▾</span>
@@ -2000,11 +2077,11 @@
             <div style="font:650 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:10px">{{ detail.breakpoints.title }}</div>
             <sc-for list="{{ detail.breakpoints.lines }}" as="bl" hint-placeholder-count="2">
               <div style="margin-bottom:10px">
-                <div style="font:700 10px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:3px">{{ bl.label }}</div>
+                <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:3px">{{ bl.label }}</div>
                 <div style="font:12px/1.5 var(--font-body);color:var(--ink-700);text-wrap:pretty">{{ bl.text }}</div>
               </div>
             </sc-for>
-            <div style="font:10.5px var(--font-body);color:var(--ink-400)">Fast-move damage against PvPoke&rsquo;s top-ranked species for this league, re-solving your level under the CP cap at each IV. It ignores shields, buffs and charged moves.</div>
+            <div style="font:11px var(--font-body);color:var(--ink-400)">Fast-move damage against PvPoke&rsquo;s top-ranked species for this league, re-solving your level under the CP cap at each IV. It ignores shields, buffs and charged moves.</div>
           </div>
         </sc-if>
         </div>
@@ -2030,7 +2107,7 @@
                 <sc-if value="{{ node.stepCandy }}" hint-placeholder-val="{{ false }}">
                   <div style="display:flex;align-items:center;gap:8px;padding-left:19px;margin:2px 0">
                     <div style="width:1.5px;height:16px;background:var(--line-300)"></div>
-                    <div style="font:600 10.5px var(--font-display);color:var(--ink-400)">{{ node.stepCandy }} candy<sc-if value="{{ node.stepItem }}" hint-placeholder-val="{{ false }}"> + {{ node.stepItem }}</sc-if></div>
+                    <div style="font:600 11px var(--font-display);color:var(--ink-400)">{{ node.stepCandy }} candy<sc-if value="{{ node.stepItem }}" hint-placeholder-val="{{ false }}"> + {{ node.stepItem }}</sc-if></div>
                   </div>
                 </sc-if>
                 <div style="display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:10px;background:{{ node.isCurrent ? 'var(--surface-sunken)' : 'transparent' }};border:1px solid {{ node.isCurrent ? 'var(--brand-primary-strong)' : 'transparent' }}">
@@ -2039,7 +2116,7 @@
                   </div>
                   <div style="font:600 13.5px var(--font-body);color:var(--ink-900)">{{ node.displayName }}</div>
                   <sc-if value="{{ node.isCurrent }}" hint-placeholder-val="{{ false }}">
-                    <span style="margin-left:auto;font:700 9.5px var(--font-display);letter-spacing:.05em;color:var(--brand-primary-strong)">CURRENT</span>
+                    <span style="margin-left:auto;font:700 11px var(--font-display);letter-spacing:.05em;color:var(--brand-primary-strong)">CURRENT</span>
                   </sc-if>
                 </div>
               </sc-for>
@@ -2049,7 +2126,7 @@
         </div>
         <div class="om-rise" style="--i:11">
         <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:16px;padding:14px 16px">
-          <div style="font:700 10.5px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
+          <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
           <div style="font:13.5px/1.45 var(--font-body);color:var(--ink-900)">{{ detail.recommendation }}</div>
         </div>
         </div>
@@ -2069,7 +2146,7 @@
       </sc-for>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 44px 74px 58px;gap:6px;padding:10px 12px;font:700 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
+      <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 44px 74px 58px;gap:6px;padding:10px 12px;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
         <div>#</div><div>POK&Eacute;MON</div><div>CP</div><div>IV RANK</div><div>LEVEL</div>
       </div>
       <sc-for list="{{ pvpList }}" as="p" hint-placeholder-count="8">
@@ -2083,16 +2160,16 @@
             <div style="min-width:0">
               <div style="font-weight:600;overflow-wrap:anywhere">{{ p.displayName }}</div>
               <sc-if value="{{ p.moveNote }}" hint-placeholder-val="{{ false }}">
-                <div style="font:600 10.5px var(--font-display);color:{{ p.moveNoteColor }};margin-top:2px;text-wrap:pretty">{{ p.moveNote }}</div>
+                <div style="font:600 11px var(--font-display);color:{{ p.moveNoteColor }};margin-top:2px;text-wrap:pretty">{{ p.moveNote }}</div>
               </sc-if>
               <sc-if value="{{ p.evolvesTo }}" hint-placeholder-val="{{ false }}">
-                <div style="font:10.5px var(--font-display);color:var(--ink-400);margin-top:2px">{{ p.evolvesTo }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-400);margin-top:2px">{{ p.evolvesTo }}</div>
               </sc-if>
             </div>
           </div>
           <div style="font:700 13px var(--font-display);font-variant-numeric:tabular-nums">{{ p.cp }}</div>
           <div style="display:flex;align-items:center;gap:5px">
-            <span style="flex-shrink:0;width:17px;height:17px;border-radius:5px;background:{{ p.tierColor }};color:var(--surface-page);font:800 10px var(--font-display);display:flex;align-items:center;justify-content:center">{{ p.tierLabel }}</span>
+            <span style="flex-shrink:0;width:17px;height:17px;border-radius:5px;background:{{ p.tierColor }};color:var(--surface-page);font:800 11px var(--font-display);display:flex;align-items:center;justify-content:center">{{ p.tierLabel }}</span>
             <span style="font:700 12.5px var(--font-display);color:var(--grass-700)">{{ p.rankPctDisplay }}</span>
           </div>
           <div style="font:600 11px var(--font-display);color:var(--ink-500)">{{ p.levelDisplay }}</div>
@@ -2112,7 +2189,7 @@
               </div>
               <div style="font:700 13px var(--font-body)">{{ tm.displayName }}</div>
               <div style="font:11px var(--font-display);color:var(--ink-500)">{{ tm.line }}</div>
-              <div style="font:600 10.5px var(--font-display);color:var(--type-electric)">{{ tm.moveLine }}</div>
+              <div style="font:600 11px var(--font-display);color:var(--type-electric)">{{ tm.moveLine }}</div>
             </div>
           </sc-for>
         </div>
@@ -2132,7 +2209,7 @@
             <div style="background:var(--surface-sunken);border-radius:10px;padding:12px">
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
                 <div style="font:700 13px var(--font-display)">{{ st.name }}</div>
-                <div onClick="{{ st.onRemove }}" class="om-press" style="cursor:pointer;font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.05em">REMOVE</div>
+                <div onClick="{{ st.onRemove }}" class="om-press" style="cursor:pointer;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">REMOVE</div>
               </div>
               <div style="font:12px var(--font-body);color:var(--ink-600);margin-top:4px">{{ st.members }}</div>
               <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
@@ -2175,18 +2252,18 @@
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:11px">
       <input type="text" placeholder="Boss name, e.g. Mega Gardevoir" value="{{ raidBossName }}" onChange="{{ onRaidBossName }}" style="background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:6px;color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
-      <div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em">BOSS TYPES (PICK UP TO 2)</div>
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">BOSS TYPES (PICK UP TO 2)</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
         <sc-for list="{{ raidTypeChips }}" as="c" hint-placeholder-count="18">
-          <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 10px var(--font-display);letter-spacing:.05em;padding:8px 12px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
+          <div onClick="{{ c.onClick }}" class="om-tap" style="cursor:pointer;font:700 11px var(--font-display);letter-spacing:.05em;padding:8px 12px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</div>
         </sc-for>
       </div>
     </div>
 
-    <div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin:-6px 0 6px">WEATHER (OPTIONAL, +20% DAMAGE TO MATCHING MOVE TYPES)</div>
+    <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin:-6px 0 6px">WEATHER (OPTIONAL, +20% DAMAGE TO MATCHING MOVE TYPES)</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">
       <sc-for list="{{ raidWeatherChips }}" as="w" hint-placeholder-count="7">
-        <div onClick="{{ w.onClick }}" class="om-tap" style="cursor:pointer;font:700 10px var(--font-display);letter-spacing:.05em;padding:8px 12px;border-radius:var(--r-pill);background:{{ w.bg }};color:{{ w.fg }}">{{ w.label }}</div>
+        <div onClick="{{ w.onClick }}" class="om-tap" style="cursor:pointer;font:700 11px var(--font-display);letter-spacing:.05em;padding:8px 12px;border-radius:var(--r-pill);background:{{ w.bg }};color:{{ w.fg }}">{{ w.label }}</div>
       </sc-for>
     </div>
 
@@ -2203,7 +2280,7 @@
                 <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap">
                   <div style="font:700 11px var(--font-display);color:var(--ink-400)">{{ r.rank }}</div>
                   <div style="font:600 14.5px var(--font-body);color:var(--ink-900)">{{ r.name }}</div>
-                  <div style="font:700 9.5px var(--font-display);letter-spacing:.05em;color:{{ r.effColor }}">{{ r.effLabel }}</div>
+                  <div style="font:700 11px var(--font-display);letter-spacing:.05em;color:{{ r.effColor }}">{{ r.effLabel }}</div>
                 </div>
                 <div style="font:11.5px var(--font-display);color:var(--ink-500);margin-top:4px">{{ r.moveLine }}</div>
                 <div style="font:11px var(--font-display);color:var(--ink-400);margin-top:3px">{{ r.levelLine }}</div>
@@ -2213,7 +2290,7 @@
               </div>
               <div style="text-align:right;flex-shrink:0">
                 <div style="font:800 20px var(--font-display);line-height:1;color:var(--type-electric)">{{ r.dps }}</div>
-                <div style="font:700 9px var(--font-display);color:var(--ink-400);letter-spacing:.1em;margin-top:3px">DPS</div>
+                <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.1em;margin-top:3px">DPS</div>
               </div>
             </div>
           </div>
@@ -2269,8 +2346,8 @@
                 </div>
                 <div style="flex:1;min-width:0">
                   <div style="font:600 12.5px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.displayName }}</div>
-                  <div style="font:10.5px var(--font-display);color:var(--ink-400)">{{ m.cpLine }} &middot; {{ m.ivLine }}</div>
-                  <div style="font:10.5px var(--font-display);color:{{ m.dpsColor }};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.dpsLine }}</div>
+                  <div style="font:11px var(--font-display);color:var(--ink-400)">{{ m.cpLine }} &middot; {{ m.ivLine }}</div>
+                  <div style="font:11px var(--font-display);color:{{ m.dpsColor }};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.dpsLine }}</div>
                   <div style="height:4px;border-radius:2px;background:var(--surface-muted);margin-top:5px;overflow:hidden">
                     <div style="height:100%;width:{{ m.barWidth }};background:{{ g.typeColor }};border-radius:2px"></div>
                   </div>
@@ -2301,28 +2378,28 @@
               <div style="font:11px var(--font-body);color:var(--ink-400)">Fast: {{ r.quickMoveLabel }} &middot; Charged: {{ r.chargeMoveLabel }}</div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">
                 <sc-if value="{{ r.fastTmReady }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ r.useFastTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">FAST TM</div>
+                  <div onClick="{{ r.useFastTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">FAST TM</div>
                 </sc-if>
                 <sc-if value="{{ !r.fastTmReady }}" hint-placeholder-val="{{ true }}">
-                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">FAST TM</div>
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 11px var(--font-display)">FAST TM</div>
                 </sc-if>
                 <sc-if value="{{ r.chargedTmReady }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ r.useChargedTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">CHARGED TM</div>
+                  <div onClick="{{ r.useChargedTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">CHARGED TM</div>
                 </sc-if>
                 <sc-if value="{{ !r.chargedTmReady }}" hint-placeholder-val="{{ true }}">
-                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">CHARGED TM</div>
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 11px var(--font-display)">CHARGED TM</div>
                 </sc-if>
                 <sc-if value="{{ r.eliteFastTmReady }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ r.useEliteFastTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">ELITE FAST TM</div>
+                  <div onClick="{{ r.useEliteFastTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11px var(--font-display)">ELITE FAST TM</div>
                 </sc-if>
                 <sc-if value="{{ !r.eliteFastTmReady }}" hint-placeholder-val="{{ true }}">
-                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">ELITE FAST TM</div>
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 11px var(--font-display)">ELITE FAST TM</div>
                 </sc-if>
                 <sc-if value="{{ r.eliteChargedTmReady }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ r.useEliteChargedTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 10.5px var(--font-display)">ELITE CHARGED TM</div>
+                  <div onClick="{{ r.useEliteChargedTm }}" class="om-press" style="cursor:pointer;padding:6px 10px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11px var(--font-display)">ELITE CHARGED TM</div>
                 </sc-if>
                 <sc-if value="{{ !r.eliteChargedTmReady }}" hint-placeholder-val="{{ true }}">
-                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 10.5px var(--font-display)">ELITE CHARGED TM</div>
+                  <div style="padding:6px 10px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-300);font:700 11px var(--font-display)">ELITE CHARGED TM</div>
                 </sc-if>
               </div>
             </div>
@@ -2335,8 +2412,8 @@
 
       <div style="border-top:1px solid var(--surface-muted);margin-top:16px;padding-top:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="font:10.5px var(--font-display);color:var(--ink-300)">AI RECOMMENDED PICKS</div>
-          <div onClick="{{ getTmAiRecommendations }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 10px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
+          <div style="font:11px var(--font-display);color:var(--ink-300)">AI RECOMMENDED PICKS</div>
+          <div onClick="{{ getTmAiRecommendations }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 11px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
         </div>
         <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Picked from your Lucky/Shadow/Favorite, genuinely Great/Ultra-ranked, or heavily-leveled Pokemon &mdash; your actual standouts, not Little Cup mons that rank high just because that league's pool is thin. The suggested move itself is the AI's general Pokemon GO knowledge, not verified against this app's own data &mdash; double check it before committing an Elite TM.</div>
         <sc-if value="{{ tmAiError }}" hint-placeholder-val="{{ false }}">
@@ -2348,13 +2425,13 @@
               <div style="background:var(--surface-page);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
                 <div style="display:flex;justify-content:space-between;align-items:baseline">
                   <span style="font:700 12px var(--font-display);color:var(--ink-900)">{{ rec.name }}</span>
-                  <span style="font:10px var(--font-display);color:var(--grass-700);letter-spacing:.03em">{{ rec.tmLabel }}</span>
+                  <span style="font:11px var(--font-display);color:var(--grass-700);letter-spacing:.03em">{{ rec.tmLabel }}</span>
                 </div>
                 <div style="font:11px var(--font-body);color:var(--ink-500)">{{ rec.why }}</div>
                 <sc-if value="{{ rec.suggestedMove }}" hint-placeholder-val="{{ false }}">
                   <div style="font:11px var(--font-display);color:var(--ink-400)">Suggested: {{ rec.suggestedMove }} {{ rec.verifiedNote }}</div>
                 </sc-if>
-                <div onClick="{{ rec.use }}" class="om-press" style="cursor:pointer;align-self:flex-start;margin-top:4px;padding:5px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 10.5px var(--font-display)">USE THIS TM</div>
+                <div onClick="{{ rec.use }}" class="om-press" style="cursor:pointer;align-self:flex-start;margin-top:4px;padding:5px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">USE THIS TM</div>
               </div>
             </sc-for>
           </div>
@@ -2380,7 +2457,7 @@
               </div>
               <div style="font:11px var(--font-display);color:var(--ink-600)">{{ d.loserLine }}</div>
               <div style="font:11px var(--font-body);color:var(--ink-400);text-wrap:pretty">{{ d.winnerLine }}</div>
-              <div onClick="{{ d.markTransferred }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:5px 10px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 10.5px var(--font-display);letter-spacing:.04em">MARK TRANSFERRED</div>
+              <div onClick="{{ d.markTransferred }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:5px 10px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">MARK TRANSFERRED</div>
             </div>
           </sc-for>
         </div>
@@ -2401,7 +2478,7 @@
             </div>
             <div style="font:var(--font-display);font-size:11.5px;color:var(--grass-700)">{{ p.bestLeagueLabel }} &middot; {{ p.bestRankDisplay }} &middot; {{ p.cp }} CP</div>
             <sc-if value="{{ p.movesetNote }}" hint-placeholder-val="{{ false }}">
-              <div style="font:10.5px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }} &mdash; stats-only rank</div>
+              <div style="font:11px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }} &mdash; stats-only rank</div>
             </sc-if>
             <div onClick="{{ p.markDone }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:var(--r-pill);background:var(--grass-500);color:var(--ink-900);font:700 11px var(--font-display)">MARK DONE</div>
           </div>
@@ -2494,7 +2571,7 @@
       <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">TRADE ADVISOR</div>
       <div style="font:12px/1.55 var(--font-body);color:var(--ink-500);margin-bottom:14px;text-wrap:pretty">A lucky trade re-rolls both Pokemon with every IV at 12 or above, so it can only improve one whose lowest IV is under 12. A regular trade re-rolls from 1, which is a gamble worth taking only on a duplicate you would otherwise transfer.</div>
 
-      <div style="font:700 10.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:8px">WORTH A LUCKY TRADE</div>
+      <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:8px">WORTH A LUCKY TRADE</div>
       <sc-if value="{{ tradeLuckyEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:14px">Nothing to suggest &mdash; your league-viable Pokemon already have a floor of 12 or better, or are already lucky.</div>
       </sc-if>
@@ -2514,7 +2591,7 @@
         </sc-for>
       </div>
 
-      <div style="font:700 10.5px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:8px">TRADE AWAY INSTEAD OF TRANSFERRING</div>
+      <div style="font:700 11px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:8px">TRADE AWAY INSTEAD OF TRANSFERRING</div>
       <sc-if value="{{ tradeDupeEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12px var(--font-body);color:var(--ink-500)">No clear duplicates &mdash; nothing is beaten outright by another of its species.</div>
       </sc-if>
@@ -2805,6 +2882,8 @@ class Component extends DCLogic {
     eventDraft: { title: '', date: '', species: '' },
     feed: null,
     feedCheck: null,
+    moreOpen: false,
+    ivEditIdx: null,
     snapshots: [],
     snapshotBusy: false,
     snapshotError: '',
@@ -2838,6 +2917,9 @@ class Component extends DCLogic {
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     this.loadLocalSecrets();
     this.loadFeed();
+    try { this.enhanceAccessibility(); } catch (e) { console.error(e); }
+    // Auth settles within a couple of seconds; only then is it clear nobody is signed in.
+    setTimeout(() => this.restoreLocalSnapshot(), 2400);
     // A new service worker takes over without reloading the page, so the code on
     // screen can be older than the app. Tell the person instead of letting them
     // test a stale build, and check for updates whenever the app comes forward.
@@ -2991,17 +3073,85 @@ class Component extends DCLogic {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // Credentials are the one thing kept on this device (see loadLocalSecrets).
+    // Credentials are the one thing kept apart from the roster (see loadLocalSecrets).
     this.persistSecretsIfChanged();
-    // Nothing else is persisted to this device. The roster (and everything else in
-    // SYNC_KEYS) only ever goes to Firestore, and only when signed in — the
-    // block below is the single choke point for that.
-    if (this._applyingRemote || !this.state.cloudUser) return;
+    if (this._applyingRemote) return;
     // The DC runtime calls componentDidUpdate(prevProps) only — prevState is never
-    // passed, so the previous values are tracked on the instance instead.
-    const sig = JSON.stringify(this.SYNC_KEYS().map(k => this.state[k]));
+    // passed, so the previous values are tracked on the instance instead. Compare by
+    // reference first: stringifying a large roster on every keystroke is the cost.
+    const refs = this.SYNC_KEYS().map(k => this.state[k]);
+    const prev = this._lastSyncRefs;
+    this._lastSyncRefs = refs;
+    if (prev && !refs.some((v, i) => v !== prev[i])) return;
+    this.queueLocalSave();
+    if (!this.state.cloudUser) return;
+    const sig = JSON.stringify(refs);
     if (this._lastSyncSig !== undefined && sig !== this._lastSyncSig) this.queueCloudPush();
     this._lastSyncSig = sig;
+  }
+
+  // The template builds tappable rows from plain divs, which VoiceOver, Switch Control and
+  // the keyboard cannot see. This gives every clickable element a role, a name taken from its
+  // text, keyboard focus and Enter/Space activation, and keeps doing so as the UI re-renders.
+  enhanceAccessibility() {
+    if (this._a11yBound) return;
+    this._a11yBound = true;
+    const root = document.documentElement;
+    if (!root.lang) root.lang = 'en';
+    const NATIVE = /^(A|BUTTON|INPUT|SELECT|TEXTAREA|SUMMARY)$/;
+    const pass = () => {
+      document.querySelectorAll('[style*="cursor: pointer"]').forEach(el => {
+        if (el.dataset.a11y || NATIVE.test(el.tagName) || el.closest('label')) return;
+        el.dataset.a11y = '1';
+        if (!el.getAttribute('role')) el.setAttribute('role', 'button');
+        if (el.tabIndex < 0) el.tabIndex = 0;
+        if (!el.getAttribute('aria-label')) {
+          const t = (el.innerText || el.getAttribute('title') || '').replace(/\s+/g, ' ').trim();
+          if (t && t.length <= 80) el.setAttribute('aria-label', t);
+        }
+      });
+    };
+    let queued = false;
+    const schedule = () => { if (queued) return; queued = true; (window.requestAnimationFrame || setTimeout)(() => { queued = false; try { pass(); } catch (e) {} }); };
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('keydown', e => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button' && !NATIVE.test(e.target.tagName)) { e.preventDefault(); e.target.click(); }
+    });
+    schedule();
+  }
+
+  // ---- Device copy of the roster and settings ----------------------------
+  // Without this, closing the app threw away the roster unless you were signed in
+  // to cloud sync. The same blob the cloud gets (minus API keys, which have their
+  // own store) is kept in localStorage and restored on launch when no cloud
+  // account has claimed the app. Cloud data still wins as soon as you sign in.
+  queueLocalSave() {
+    if (!this._localRestoreDone) return;  // never overwrite the copy before it was read
+    clearTimeout(this._localTimer);
+    this._localTimer = setTimeout(() => {
+      try {
+        const blob = this.buildCloudBlob();
+        ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
+        const text = JSON.stringify(blob);
+        if (text.length < 4200000) localStorage.setItem('scout.local.v1', text);
+      } catch (e) { /* storage full or blocked: the app still works, it just will not remember */ }
+    }, 1500);
+  }
+
+  restoreLocalSnapshot() {
+    this._localRestoreDone = true;
+    try {
+      if (this.state.cloudUser || (this.state.roster || []).length) return false;
+      const raw = localStorage.getItem('scout.local.v1');
+      if (!raw) return false;
+      const blob = JSON.parse(raw);
+      if (!blob || typeof blob !== 'object') return false;
+      this.applyRemote(blob);
+      // applyRemote marks the app hydrated for cloud sync; undo that so the first
+      // real sign-in still runs its snapshot protection.
+      setTimeout(() => { if (!this.state.cloudUser) this._hydrated = false; }, 400);
+      return true;
+    } catch (e) { return false; }
   }
 
   loadFirebaseSdk() {
@@ -4364,7 +4514,7 @@ class Component extends DCLogic {
       if (r && (!now || r.rating > now.rating)) now = { ...r, fast: p.quickMove, charged: cn };
     });
     let ceil = null, ceilNoLegacy = null;
-    const pool = m.movepoolFor ? m.movepoolFor(p.name) : null;
+    const pool = m.movepoolFor ? m.movepoolFor(p.name, p.form) : null;
     if (pool) {
       const fasts = [...(pool.fast || []).map(n => ({ n, legacy: false })), ...(pool.fastLegacy || []).map(n => ({ n, legacy: true }))];
       const charges = [...(pool.charge || []).map(n => ({ n, legacy: false })), ...(pool.chargeLegacy || []).map(n => ({ n, legacy: true }))];
@@ -5405,7 +5555,7 @@ class Component extends DCLogic {
   megaTagFor(p) {
     const info = this.megaEvolveInfoFor(String(p.name || '').toLowerCase());
     if (!info || !info.length) return '';
-    return info.some(f => f.evolve) ? 'M\u2713' : 'M';
+    return info.some(f => f.evolve) ? 'MEGA \u2713' : 'MEGA';
   }
 
   // Mega-capable species you own, ranked by how strong the Mega form is as a raid
@@ -9202,7 +9352,7 @@ class Component extends DCLogic {
   bestRaidMoveset(p) {
     const m = this.mechanics;
     if (!m || !m.cycleDps || !m.movepoolFor) return null;
-    const pool = m.movepoolFor(p.name);
+    const pool = m.movepoolFor(p.name, p.form);
     const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
     if (!pool || !base || !ivs) return null;
     const ownTypes = this.typesOf(p), isShadow = this.isShadow(p);
@@ -9735,7 +9885,7 @@ class Component extends DCLogic {
   evoRecordFor(p) {
     const name = String(p && p.name || '').toLowerCase();
     const m = this.mechanics;
-    const real = m && m.evolutionInfoFor ? m.evolutionInfoFor(name) : null;
+    const real = m && m.evolutionInfoFor ? m.evolutionInfoFor(name, p && p.form) : null;
     if (real) return { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey };
     const rec = (this.state.evoTable || {})[name];
     if (rec) return { to: rec.to, candy: rec.candy, item: rec.item || null, itemKey: null };
@@ -10066,7 +10216,7 @@ class Component extends DCLogic {
         const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
         const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
         const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null, p.shiny ? 'Shiny' : null].filter(Boolean).join(', ') || 'none';
-        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name) : null;
+        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
         const poolLine = pool
           ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
             + (pool.fastLegacy.length ? ', Elite-only fast: [' + pool.fastLegacy.join(', ') + ']' : '')
@@ -10113,7 +10263,7 @@ class Component extends DCLogic {
         // verify against, so its suggestion passes through as-is.
         let suggestedMove = item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null;
         let moveVerified = null;
-        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name) : null;
+        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
         if (suggestedMove && pool) {
           const isFastTm = tmType === 'fastTM' || tmType === 'eliteFastTM';
           const isElite = tmType === 'eliteFastTM' || tmType === 'eliteChargedTM';
@@ -11261,7 +11411,7 @@ class Component extends DCLogic {
       if (!el) {
         el = document.createElement('div');
         el.id = 'scout-swipe-trace';
-        el.style.cssText = 'position:fixed;left:6px;bottom:96px;z-index:9999;pointer-events:none;font:10px/1.3 monospace;color:#0f0;background:rgba(0,0,0,.75);padding:4px 6px;border-radius:6px;max-width:70vw;white-space:pre';
+        el.style.cssText = 'position:fixed;left:6px;bottom:96px;z-index:9999;pointer-events:none;font:11px/1.3 monospace;color:#0f0;background:rgba(0,0,0,.75);padding:4px 6px;border-radius:6px;max-width:70vw;white-space:pre';
         document.body.appendChild(el);
         this._traceLines = [];
       }
@@ -11311,6 +11461,8 @@ class Component extends DCLogic {
       }
       const tg = e.target;
       this._swipeTrace('touch ' + (tg && tg.tagName ? tg.tagName.toLowerCase() : '?') + ' row=' + (rowEl ? rowEl.getAttribute('data-swipe-row') : 'none'));
+      // iOS lists: touching anywhere else closes the open row, except its own action buttons.
+      if (this._openSwipeEl && rowEl !== this._openSwipeEl && !(tg && tg.closest && tg.closest('[aria-label^="Transfer"],[aria-label^="Remove"]'))) this.closeAnyRosterSwipe();
       if (!rowEl) { dragEl = null; dragging = false; clearLongPress(); return; }
       dragEl = rowEl;
       this._swipeTrace('start row ' + rowEl.getAttribute('data-swipe-row'));
@@ -11578,11 +11730,12 @@ class Component extends DCLogic {
     let filtered = roster.filter(p => {
       // Search now also covers type, so "fire" or "steel" finds a raid squad the
       // same way a name does.
-      if (search) {
-        const s = search.toLowerCase();
+      if (search && search.trim()) {
+        const s = search.toLowerCase().trim();
         const hit = (p.name || '').toLowerCase().includes(s)
           || (p.quickMove || '').toLowerCase().includes(s)
           || (p.chargeMove || '').toLowerCase().includes(s)
+          || (p.chargeMove2 || '').toLowerCase().includes(s)
           || this.typeOf(p).toLowerCase().includes(s);
         if (!hit) return false;
       }
@@ -11667,6 +11820,9 @@ class Component extends DCLogic {
         flags: flags,
         stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : '',
         showManualIv: !this.rowSpread(p).measured,
+        ivEditOpen: this.state.ivEditIdx === p.idx,
+        ivEditClosed: this.state.ivEditIdx !== p.idx,
+        toggleIvEdit: () => this.setState({ ivEditIdx: this.state.ivEditIdx === p.idx ? null : p.idx }),
         manualAtk: (this.state.ivManualDraft[p.idx] || {}).atk || '',
         manualDef: (this.state.ivManualDraft[p.idx] || {}).def || '',
         manualSta: (this.state.ivManualDraft[p.idx] || {}).sta || '',
@@ -12160,7 +12316,7 @@ class Component extends DCLogic {
     let detail = null;
     if (detailPoke) {
       const p = detailPoke;
-      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨ Shiny (unconfirmed)' : '✨ Shiny') : '', this.megaTagFor(p) ? (this.megaTagFor(p) === 'M\u2713' ? 'Mega ready' : 'Can Mega Evolve') : ''].filter(Boolean).join('  ');
+      const flags = [p.lucky ? '★ Lucky' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆ Shadow' : '', p.favorite ? '♥ Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨ Shiny (unconfirmed)' : '✨ Shiny') : '', this.megaTagFor(p) ? (this.megaTagFor(p) === 'MEGA \u2713' ? 'Mega ready' : 'Can Mega Evolve') : ''].filter(Boolean).join('  ');
       const statRings = [
         { label: 'ATK', value: Number.isFinite(p.atkIV) ? p.atkIV : '—', color: 'var(--type-fighting)', ...this.ringGeom((Number.isFinite(p.atkIV) ? p.atkIV : 0) / 15 * 100, 27) },
         { label: 'DEF', value: Number.isFinite(p.defIV) ? p.defIV : '—', color: accent(75, 0.15), ...this.ringGeom((Number.isFinite(p.defIV) ? p.defIV : 0) / 15 * 100, 27) },
@@ -12416,7 +12572,7 @@ class Component extends DCLogic {
           // already carry a legacy move from before this session. A species
           // GAME_MASTER doesn't cover falls back to the full unrestricted
           // search rather than blocking the picker on missing data.
-          const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name) : null;
+          const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
           const poolKey = mp.kind === 'fast' ? 'fast' : 'charge';
           const legacyKey = mp.kind === 'fast' ? 'fastLegacy' : 'chargeLegacy';
           const pending = this.state.pendingTmUse;
@@ -12665,32 +12821,45 @@ class Component extends DCLogic {
       };
     })();
 
-    const tabDefs = [
-      { key: 'today', label: 'TODAY', navLabel: 'TODAY', icon: '\u2739' },
-      { key: 'home', label: 'HOME', navLabel: 'HOME', icon: '\u25c8' },
-      { key: 'roster', label: 'ROSTER', navLabel: 'ROSTER', icon: '\u25a4' },
-      { key: 'recommend', label: 'RECOMMENDATIONS', navLabel: 'RECS', icon: '\u2605' },
-      { key: 'intel', label: 'COLLECTION INTEL', navLabel: 'INTEL', icon: '\u25cf' },
-      { key: 'raid', label: 'RAID COUNTERS', navLabel: 'RAID', icon: '\u2726' },
-      { key: 'pvp', label: 'PVP RANKINGS', navLabel: 'PVP', icon: '\u2694' },
-      { key: 'attackers', label: 'ATTACKERS', navLabel: 'ATTACK', icon: '\u25b2' },
-      { key: 'progress', label: 'PROGRESS LOG', navLabel: 'LOG', icon: '\u2261' }
+    // Five bar items like an iOS tab bar; the rest live under More.
+    const ICON = {
+      today: 'M12 3v2M12 19v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M3 12h2M19 12h2M4.6 19.4L6 18M18 6l1.4-1.4M12 8a4 4 0 100 8 4 4 0 000-8z',
+      roster: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
+      pvp: 'M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z',
+      raid: 'M13 2L4 14h7l-1 8 9-12h-7l1-8z',
+      more: 'M5 12h.01M12 12h.01M19 12h.01',
+      home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
+      recommend: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z',
+      intel: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
+      attackers: 'M12 12m-3 0a3 3 0 106 0 3 3 0 10-6 0M12 2v4M12 18v4M2 12h4M18 12h4',
+      progress: 'M12 7v5l3 2M12 21a9 9 0 100-18 9 9 0 000 18z'
+    };
+    const barDefs = [
+      { key: 'today', label: 'Today', navLabel: 'Today' },
+      { key: 'roster', label: 'Roster', navLabel: 'Roster' },
+      { key: 'pvp', label: 'PvP rankings', navLabel: 'PvP' },
+      { key: 'raid', label: 'Raid counters', navLabel: 'Raid' }
     ];
-    const tabList = tabDefs.map(t => ({
-      key: t.key,
-      label: t.label,
-      navLabel: t.navLabel,
-      icon: t.icon,
-      color: t.key === tab ? 'var(--grass-700)' : 'var(--ink-400)',
-      navBg: t.key === tab ? 'color-mix(in oklab, var(--grass-500) 22%, #181b20)' : 'transparent',
-      border: t.key === tab ? 'var(--grass-500)' : 'transparent',
-      onClick: () => this.goToTab(t.key)
-    }));
+    const moreDefs = [
+      { key: 'home', label: 'Home & settings' },
+      { key: 'recommend', label: 'Recommendations' },
+      { key: 'intel', label: 'Collection intel' },
+      { key: 'attackers', label: 'Attackers' },
+      { key: 'progress', label: 'Progress log' }
+    ];
+    const moreKeys = moreDefs.map(m => m.key);
+    const tabDefs = [...barDefs, ...moreDefs];
+    const tint = on => (on ? 'var(--ios-blue)' : 'var(--ink-400)');
+    const tabList = [
+      ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
+      { key: 'more', label: 'More', navLabel: 'More', iconPath: ICON.more, color: tint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), onClick: () => this.setState({ moreOpen: !this.state.moreOpen }) }
+    ];
+    const moreTabs = moreDefs.map(m => ({ key: m.key, label: m.label, iconPath: ICON[m.key], color: m.key === tab ? 'var(--ios-blue)' : 'var(--ink-900)', onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(m.key)) }));
 
     return {
       rootRef: (el) => this.rootRef(el),
       statusBanner: (() => {
-        if (this.state.csvError) return { text: this.state.csvError, bg: 'var(--type-fighting)', fg: 'var(--type-fighting)', dot: 'var(--type-fighting)' };
+        if (this.state.csvError) return { text: this.state.csvError, dot: 'var(--ios-red)' };
         if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         if (this.state.storageWarning) return { text: this.state.storageWarning, bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         if (this.state.csvNotice) return { text: this.state.csvNotice, bg: 'var(--grass-500)', fg: 'var(--grass-700)', dot: 'var(--grass-700)' };
@@ -12711,7 +12880,7 @@ class Component extends DCLogic {
       sheetAnim: isMobile
         ? 'sheetUp .42s cubic-bezier(.32,.72,0,1) backwards'
         : 'sheetRise .44s cubic-bezier(.22,1,.36,1) backwards',
-      rootPadding: isMobile ? 'max(54px, env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom))' : '28px 40px calc(96px + env(safe-area-inset-bottom))',
+      rootPadding: isMobile ? 'calc(env(safe-area-inset-top) + 10px) 14px calc(96px + env(safe-area-inset-bottom))' : '28px 40px calc(96px + env(safe-area-inset-bottom))',
       rootPadX: isMobile ? '14px' : '40px',
       statGridCols: isMobile ? 'repeat(auto-fit,minmax(88px,1fr))' : 'repeat(5,minmax(0,1fr))',
       rosterGridCols: isMobile ? '1fr' : 'repeat(auto-fill,minmax(380px,1fr))',
@@ -12736,6 +12905,9 @@ class Component extends DCLogic {
       isProgress: tab === 'progress',
       isRaid: tab === 'raid',
       tabList,
+      moreTabs,
+      moreOpen: !!this.state.moreOpen,
+      closeMore: () => this.setState({ moreOpen: false }),
       setTab: (t) => this.goToTab(t),
       search,
       onSearchChange: (e) => this.setState({ search: e.target.value, visibleCount: 30 }),
@@ -12831,6 +13003,7 @@ class Component extends DCLogic {
       })),
       rosterCountLabel: `${filteredRoster.length} of ${totalFiltered} shown`,
       filteredRoster,
+      rosterEmptyMsg: (this.state.loaded && filteredRoster.length === 0) ? (roster.length === 0 ? 'Your roster is empty. Use SYNC CSV above to import your Pokemon.' : 'No Pokemon match' + (search && search.trim() ? ' \u201c' + search.trim() + '\u201d' : ' this filter') + '. Clear the search or choose ALL.') : '',
       hasMore: visibleCount < totalFiltered,
       loadMore: () => this.loadMore(),
       league,
