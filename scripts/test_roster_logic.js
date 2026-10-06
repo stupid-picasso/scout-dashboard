@@ -635,6 +635,31 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Scan queue: only unmeasured Pokemon worth a scan, most valuable first.
+// ---------------------------------------------------------------------------
+(function testScanQueue() {
+  const roster = [];
+  const ctx = { mechanics: m, state: {}, effectiveRosterForMatch: () => roster, isShadow: p => !!p.shadow };
+  ctx.needsAppraisal = new Function('p', extractMethodBody(SRC, 'needsAppraisal(p) {')).bind(ctx);
+  ctx.scanQueue = new Function(extractMethodBody(SRC, 'scanQueue() {')).bind(ctx);
+  const mon = (over) => ({ idx: Math.random(), name: 'Pikachu', dex: 25, cp: 300, ivMeasured: false, atkIV: null, ...over });
+  roster.push(mon({ name: 'Azumarill', cp: 1498 }));              // S-tier species, no IVs
+  roster.push(mon({ name: 'Caterpie', cp: 300 }));                // junk, no IVs
+  roster.push(mon({ name: 'Azumarill', cp: 1400, ivMeasured: true, atkIV: 0, pendingPowerUps: 0 })); // already measured
+  roster.push(mon({ name: 'Dragonite', cp: 2648, ivMeasured: true, atkIV: 5, pendingPowerUps: 3 })); // powered up since scan
+  roster.push(mon({ name: 'Caterpie', cp: 3200 }));               // untiered but very high CP, no IVs
+  const q = ctx.scanQueue();
+  const names = q.rows.map(r => r.p.name + (r.p.ivMeasured ? '*' : ''));
+  check('junk with no IVs is not worth a scan', q.rows.some(r => r.p.name === 'Caterpie' && r.p.cp === 300), false);
+  check('a measured, unchanged Pokemon is not listed', q.rows.filter(r => r.p.name === 'Azumarill' && r.p.ivMeasured).length, 0);
+  check('an S/A/B-tier species with no IVs is listed first', names[0], 'Azumarill');
+  check('its reason names the tier', /tier/.test(q.rows[0].reasons.join(' ')), true);
+  check('a Pokemon powered up since its scan is listed', q.rows.some(r => r.p.name === 'Dragonite' && /powered up/.test(r.reasons.join(' '))), true);
+  check('high-CP unmeasured Pokemon are listed, after the tiered species', q.rows.some(r => r.p.cp === 3200) && names.indexOf('Azumarill') < names.findIndex(n => n === 'Caterpie'), true);
+  check('unmeasured count covers every unmeasured Pokemon', q.unmeasured, 3);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));

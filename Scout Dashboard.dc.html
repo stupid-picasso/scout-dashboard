@@ -134,7 +134,7 @@
     <div ref="{{ headerRef }}" style="transition:background .24s ease;padding:10px {{ rootPadX }};background:oklch(17% 0.0138 50 / .98);border-bottom:1px solid oklch(30% 0.0165 50 / .8);display:flex;justify-content:space-between;align-items:center;flex-wrap:{{ headerWrap }};gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 12px var(--grass-700);flex-shrink:0"></div>
-      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.122</span></div>
+      <div style="font:800 18px var(--font-display);letter-spacing:.05em;line-height:1.05;flex-shrink:0">PROFESSOR<span style="font:600 9px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-left:6px;vertical-align:super">v53.124</span></div>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:oklch(30% 0.05 150 / .35);border:1px solid oklch(50% 0.08 150 / .45);min-width:0"><div style="width:6px;height:6px;border-radius:50%;background:var(--grass-700);box-shadow:0 0 8px var(--grass-700);flex-shrink:0"></div><div style="font:600 10px var(--font-display);color:var(--grass-700);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ syncLabel }}</div></div>
     </div>
     <div style="display:flex;align-items:stretch;gap:8px;flex-basis:{{ headerActionsBasis }}">
@@ -264,10 +264,30 @@
       </sc-for>
     </div>
 
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
+      <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:3px">SCAN THESE NEXT</div>
+      <div style="font:11.5px var(--font-body);color:var(--ink-500);margin-bottom:10px">{{ scanQueueSummary }}. Ranked by how much a measured IV could change a decision, so low-value Pokemon never need a screenshot.</div>
+      <sc-if value="{{ hasScanQueue }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ scanQueueRows }}" as="sq" hint-placeholder-count="5">
+            <div onClick="{{ sq.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:{{ sq.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken)">{{ sq.initial }}</span>
+                <img ref="{{ sq.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font:600 13px var(--font-body)">{{ sq.displayName }} <span style="font:11px var(--font-display);color:var(--ink-400)">{{ sq.cp }}</span></div>
+                <div style="font:10.5px var(--font-display);color:var(--ink-500);margin-top:2px;text-wrap:pretty">{{ sq.reasons }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <div style="display:flex;flex-direction:column;gap:2px">
         <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.04em">PVP RANKS OUT OF DATE?</div>
-        <div style="font:11.5px var(--font-body);color:var(--ink-400)">Recalculates great/ultra/little for your whole roster with the current ranking logic \u2014 run after any ranking fix, no re-import needed.</div>
+        <div style="font:11.5px var(--font-body);color:var(--ink-400)">Recalculates great/ultra/little for your whole roster with the current ranking logic &mdash; run after any ranking fix, no re-import needed.</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-basis:100%">
         <span style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.06em">MAX LEVEL FOR PVP RANKS</span>
@@ -695,7 +715,7 @@
         <details style="background:var(--surface-page);border:1px solid var(--line-200);border-radius:6px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px var(--font-display);color:var(--ink-500);list-style:none">SERVER-SIDE VIDEO IMPORT · FREE</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-            <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Run the "Extract Pokemon Data" GitHub Actions workflow with your recording's Google Drive link, then tap below to pull the result straight in \u2014 no copy/paste needed.</div>
+            <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Run the "Extract Pokemon Data" GitHub Actions workflow with your recording's Google Drive link, then tap below to pull the result straight in &mdash; no copy/paste needed.</div>
             <div style="border-top:1px solid var(--surface-muted);padding-top:8px;display:flex;flex-direction:column;gap:8px">
               <div style="font:10.5px var(--font-display);color:var(--ink-300);letter-spacing:.04em">RUN IT FROM HERE (needs GitHub Access above)</div>
               <div style="font:11.5px var(--font-body);color:var(--ink-500)">Drive link must be shared as "Anyone with the link".</div>
@@ -1538,6 +1558,17 @@
               <span style="font:600 11px var(--font-display);color:var(--ink-700)">{{ detail.verdict.number }}</span>
             </div>
           </sc-if>
+          <details style="margin-top:2px">
+            <summary style="cursor:pointer;font:650 10.5px var(--font-display);color:var(--ink-400);letter-spacing:.05em;list-style:none">WHY THIS VERDICT &#9662;</summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ detail.verdictWhy }}" as="vw" hint-placeholder-count="6">
+                <div style="display:flex;gap:10px;align-items:baseline">
+                  <div style="flex-shrink:0;width:92px;font:700 9.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em">{{ vw.label }}</div>
+                  <div style="flex:1;font:11.5px/1.45 var(--font-body);color:var(--ink-700)">{{ vw.text }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </details>
         </div>
 
         <div class="om-rise" style="--i:0">
@@ -2122,7 +2153,7 @@
           <div style="font:10.5px var(--font-display);color:var(--ink-300)">AI RECOMMENDED PICKS</div>
           <div onClick="{{ getTmAiRecommendations }}" class="om-press" style="cursor:pointer;padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 10px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
         </div>
-        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Picked from your Lucky/Shadow/Favorite, genuinely Great/Ultra-ranked, or heavily-leveled Pokemon \u2014 your actual standouts, not Little Cup mons that rank high just because that league's pool is thin. The suggested move itself is the AI's general Pokemon GO knowledge, not verified against this app's own data \u2014 double check it before committing an Elite TM.</div>
+        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Picked from your Lucky/Shadow/Favorite, genuinely Great/Ultra-ranked, or heavily-leveled Pokemon &mdash; your actual standouts, not Little Cup mons that rank high just because that league's pool is thin. The suggested move itself is the AI's general Pokemon GO knowledge, not verified against this app's own data &mdash; double check it before committing an Elite TM.</div>
         <sc-if value="{{ tmAiError }}" hint-placeholder-val="{{ false }}">
           <div style="font:11.5px var(--font-display);color:var(--type-fighting)">{{ tmAiError }}</div>
         </sc-if>
@@ -2212,7 +2243,7 @@
       </div>
       <sc-if value="{{ showClosestMissButton }}" hint-placeholder-val="{{ false }}">
         <div style="margin-top:16px;border-top:1px solid color-mix(in oklab, var(--type-fighting) 30%, var(--surface-card));padding-top:12px">
-          <div onClick="{{ toggleClosestMiss }}" class="om-press" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">{{ closestMissRevealed }} REFRESH \u2014 SHOW CLOSEST CANDIDATE</div>
+          <div onClick="{{ toggleClosestMiss }}" class="om-press" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">{{ closestMissRevealed }} REFRESH &mdash; SHOW CLOSEST CANDIDATE</div>
           <sc-if value="{{ closestMissCard }}" hint-placeholder-val="{{ false }}">
             <div onClick="{{ closestMissCard.onClick }}" class="om-tap" style="cursor:pointer;margin-top:10px;background:var(--surface-muted);border:1px solid var(--line-200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:8px">
@@ -2358,7 +2389,7 @@
       <div style="font:800 30px var(--font-display);color:var(--grass-700)">{{ intelDisplay.pvpReadyCount }}</div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px">
-      <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">\u2728 SHINIES</div>
+      <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">&#10024; SHINIES</div>
       <div style="font:800 30px var(--font-display);color:var(--type-electric)">{{ intelDisplay.shinyCount }} <span style="font-size:12px;color:var(--ink-300)">{{ intelDisplay.shinyToConfirm }} to confirm</span></div>
       <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:4px">{{ intelDisplay.shinySpecies }}</div>
     </div>
@@ -9931,6 +9962,83 @@ class Component extends DCLogic {
   // ---- Verdict ----
   // Weighted in the order the trainer ranked them: Little Cup rank, raid DPS,
   // last-of-species, legacy move, then shiny/lucky/shadow status.
+  // Pokemon worth the effort of an appraisal scan, best first. Scanning every
+  // Pokemon is tiring and most of a box is not worth it, so this ranks the
+  // unmeasured ones by how much a measured IV could change a decision: a species
+  // PvPoke rates S/A/B, Lucky and Shadow Pokemon, high CP, and anything powered
+  // up enough since its scan that its level estimate has drifted. Low-CP,
+  // untiered, unflagged Pokemon are left off on purpose.
+  scanQueue() {
+    const m = this.mechanics;
+    if (!m || !m.pvpTierFor) return { rows: [], unmeasured: 0 };
+    const order = { S: 0, A: 1, B: 2, C: 3 };
+    const rows = [];
+    let unmeasured = 0;
+    this.effectiveRosterForMatch().forEach(p => {
+      const needs = this.needsAppraisal(p);
+      const drift = !!p.ivMeasured && Number.isFinite(p.pendingPowerUps) && p.pendingPowerUps >= 2;
+      if (needs) unmeasured++;
+      if (!needs && !drift) return;
+      let tierRank = 4, tier = null, league = null;
+      ['great', 'ultra'].forEach(k => {
+        const t = m.pvpTierFor(p.name, this.isShadow(p), k);
+        if (t && order[t.tier] < tierRank) { tierRank = order[t.tier]; tier = t.tier; league = k; }
+      });
+      const cp = Number.isFinite(p.cp) ? p.cp : 0;
+      const shadow = this.isShadow(p);
+      const reasons = [];
+      if (tierRank <= 2) reasons.push(tier + '-tier ' + (league === 'ultra' ? 'Ultra' : 'Great') + ' League species');
+      if (p.lucky) reasons.push('Lucky');
+      if (shadow) reasons.push('Shadow');
+      if (cp >= 1500) reasons.push(cp + ' CP');
+      reasons.push(drift && !needs ? 'powered up since its scan' : (Number.isFinite(p.atkIV) ? 'IVs only estimated' : 'no IVs yet'));
+      const score = (tierRank <= 2 ? (3 - tierRank) * 1000 : 0) + (p.lucky ? 300 : 0) + (shadow ? 200 : 0) + Math.min(cp, 4000) / 10 + (drift ? 150 : 0);
+      if (score < 150) return;
+      rows.push({ p, reasons, score });
+    });
+    rows.sort((a, b) => b.score - a.score);
+    return { rows: rows.slice(0, 15), unmeasured, listed: rows.length };
+  }
+
+  // Plain-language reasons behind a Pokemon's verdict: every input the rules
+  // read, so a KEEP or TRANSFER can be checked instead of trusted.
+  verdictWhyFor(p) {
+    const out = [];
+    const tidy = n => String(n).replace(/\b\w/g, c => c.toUpperCase());
+    const roster = this.effectiveRosterForMatch();
+    const best = this.bestLeagueInfo(p);
+    if (best) out.push({ label: 'IV RANK', text: best.rankPct.toFixed(1) + '% in ' + best.label.toLowerCase() + ' league \u2014 your IVs vs the best spread for this species.' });
+    else out.push({ label: 'IV RANK', text: 'Not available \u2014 IVs are missing.' });
+    const pvp = this.pvpBest(p);
+    if (pvp) {
+      out.push({ label: 'PVP SPECIES', text: (pvp.tier ? pvp.tier + ' tier' : 'not ranked by PvPoke') + ' in ' + pvp.league + ' league' + (pvp.tierScore != null ? ' (score ' + pvp.tierScore + ')' : '')
+        + (pvp.movesOk === true ? ' \u00b7 has the recommended moves' : (pvp.movesOk === false ? ' \u00b7 missing ' + pvp.missing.map(tidy).join(', ') : '')) + '.' });
+      out.push({ label: 'PVP READY', text: this.isPvpWorthy(p) ? 'Yes \u2014 measured IVs and 90%+ IV rank on an S/A/B species.'
+        : 'No \u2014 ' + (this.needsAppraisal(p) ? 'IVs are not measured yet.' : (pvp.tierRank > 2 ? 'the species is not S/A/B in the leagues.' : 'IV rank is under 90%.')) });
+    } else {
+      out.push({ label: 'PVP SPECIES', text: 'No league data for this species.' });
+    }
+    const prof = this.raidProfile(p);
+    if (prof && (prof.now || prof.ceil)) {
+      const role = this.hasRaidRole(p, this.raidRoleTypeBest(roster));
+      const bits = [];
+      if (prof.now) bits.push('now ' + prof.now.dps.toFixed(1) + ' DPS');
+      if (prof.ceil) bits.push('best possible ' + prof.ceil.dps.toFixed(1) + ' DPS' + (prof.ceil.legacy ? ' (needs an Elite TM)' : ''));
+      out.push({ label: 'RAID', text: (role ? 'Has a raid role \u2014 within 90% of your best attacker of its type' : 'No raid role \u2014 another of your attackers of its type rates clearly higher') + ' (' + bits.join(', ') + ').' });
+    } else {
+      out.push({ label: 'RAID', text: 'No damage data for its moves, so no raid rating.' });
+    }
+    const same = roster.filter(q => q.dex === p.dex && String(q.form || '') === String(p.form || '')).length;
+    out.push({ label: 'COPIES', text: 'You own ' + same + ' of this species and form.' });
+    const evo = this.evoInfoFor(p);
+    if (evo) out.push({ label: 'EVOLUTION', text: 'Evolves to ' + evo.to + (evo.need != null ? ' \u2014 ' + (evo.have != null ? evo.have : '?') + '/' + evo.need + ' candy' : '') + (evo.ready ? ' (ready)' : '') + '.' });
+    const flags = [p.lucky ? 'Lucky' : '', this.isShadow(p) ? 'Shadow' : '', p.favorite ? 'Favorite' : '', p.shiny ? 'Shiny' : ''].filter(Boolean);
+    out.push({ label: 'PROTECTED', text: flags.length ? flags.join(', ') + ' \u2014 never advised for transfer.' : 'No protecting flags.' });
+    const tri = this.triageQueue().find(t => t.p.idx === p.idx);
+    if (tri) out.push({ label: 'TRANSFER RULE', text: tri.reason });
+    return out;
+  }
+
   verdictFor(p) {
     const little = p.little && p.little.rankPct;
     const rank = this.bestRank(p);
@@ -11331,6 +11439,7 @@ class Component extends DCLogic {
       const vdc = vdColors[vd.verdict] || vdColors.KEEP;
       detail = {
         verdict: { verdict: vd.verdict, reason: vd.reason, number: vd.number, color: vdc[0], bg: vdc[1], border: vdc[2] },
+        verdictWhy: this.verdictWhyFor(p),
         // Stale scans matter because powering a Pokemon up changes its CP, and
         // nothing in the app can know that happened until it is re-scanned.
         scanLine: age == null ? '' : (age === 0 ? 'SCANNED TODAY' : age === 1 ? 'SCANNED YESTERDAY' : 'SCANNED ' + age + ' DAYS AGO'),
@@ -12670,6 +12779,23 @@ class Component extends DCLogic {
           onClick: () => this.toggleRaidType(t)
         };
       }),
+      scanQueueRows: (() => {
+        const q = this.scanQueue();
+        return q.rows.map(x => ({
+          displayName: x.p.name + (x.p.form ? ' (' + x.p.form + ')' : ''),
+          spriteRef: this.makeSpriteRefByDex(x.p.dex, x.p.form),
+          badgeColor: this.dsTypeColor(x.p),
+          initial: (x.p.name || '?').charAt(0),
+          cp: (x.p.cp || '\u2014') + ' CP',
+          reasons: x.reasons.join(' \u00b7 '),
+          onClick: () => this.openDetail(x.p)
+        }));
+      })(),
+      scanQueueSummary: (() => {
+        const q = this.scanQueue();
+        return q.listed ? (q.listed + ' worth scanning of ' + q.unmeasured + ' unmeasured') : (q.unmeasured ? 'None of your ' + q.unmeasured + ' unmeasured Pokemon is worth a scan yet' : 'Everything worth scanning is measured');
+      })(),
+      hasScanQueue: this.scanQueue().rows.length > 0,
       updateReady: this.state.updateReady,
       reloadApp: () => this.reloadApp(),
       diagRows: (this._diag || []).map(d => ({ line: d.at + ' \u00b7 ' + d.kind + ' \u00b7 ' + d.msg })),

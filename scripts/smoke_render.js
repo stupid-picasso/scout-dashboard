@@ -92,13 +92,16 @@ const check = (name, ok, extra) => {
     return !!s && s.style.transform === '';
   }));
 
-  for (const label of ['PVP', 'ATTACK', 'RAID', 'TODAY']) {
+  for (const label of ['PVP', 'ATTACK', 'RAID', 'TODAY', 'HOME', 'INTEL', 'RECS', 'LOG']) {
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(2200);
     await page.setInputFiles('input[type=file][accept=".csv"]', CSV);
     await page.waitForTimeout(1000);
     await go(label);
-    check(label + ' tab renders', (await page.locator('body').innerText()).length > 200);
+    const text = await page.locator('body').innerText();
+    check(label + ' tab renders', text.length > 200);
+    // A literal \\uXXXX in visible text means an escape was written into HTML (it only works in JS strings).
+    check(label + ' tab shows no raw \\u escapes', !/\\u[0-9a-fA-F]{4}/.test(text), (text.match(/.{0,30}\\u[0-9a-fA-F]{4}.{0,20}/) || [''])[0]);
   }
   check('no uncaught page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
