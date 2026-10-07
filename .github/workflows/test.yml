@@ -32,6 +32,7 @@ jobs:
           pip install -r requirements.txt
           python3 scripts/test_gemini_pool.py
           python3 scripts/test_extract_pipeline.py
+          python3 scripts/test_postprocess.py
 
       - name: Install Playwright
         run: |

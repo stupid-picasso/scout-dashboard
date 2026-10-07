@@ -711,6 +711,54 @@ def find_pokemon_name(text):
     return None
 
 
+_NAME_LOWER = None
+_POSITIVE_FLAGS = ("favorite",)  # a missed heart is likelier than an invented one, so any sighting that shows it wins
+
+
+def canonical_name(name):
+    """Fixes OCR near-misses in a species name ("Sheigon" -> "Shelgon"). A name that already is, or
+    contains, a known species (forms such as "Alolan Raichu") is left alone; so is anything with no
+    close match, because the species table is not exhaustive. Returns (name, changed)."""
+    global _NAME_LOWER
+    if not name or not isinstance(name, str):
+        return name, False
+    if _NAME_LOWER is None:
+        _NAME_LOWER = {n.lower(): n for n in NAME_TO_DEX}
+    low = name.strip().lower()
+    if low in _NAME_LOWER:
+        return _NAME_LOWER[low], _NAME_LOWER[low] != name
+    words = low.replace("-", " ").split()
+    if any(w in _NAME_LOWER for w in words):
+        return name, False
+    import difflib
+    best = difflib.get_close_matches(low, list(_NAME_LOWER), n=1, cutoff=0.82)
+    if best:
+        return _NAME_LOWER[best[0]], True
+    return name, False
+
+
+def normalize_type(value):
+    """"NORMAL / FLYING" and "normal/flying" both become "Normal / Flying"."""
+    if not isinstance(value, str) or not value.strip():
+        return value
+    return " / ".join(part.strip().title() for part in re.split(r"\s*[/,]\s*", value.strip()) if part.strip())
+
+
+def clean_video_items(items):
+    """Post-processing of model output: snap species names, normalise type casing."""
+    fixed = 0
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        new, changed = canonical_name(it.get("name"))
+        if changed:
+            print(f"[Clean] name {it.get('name')!r} -> {new!r}")
+            it["name"], fixed = new, fixed + 1
+        if it.get("type"):
+            it["type"] = normalize_type(it["type"])
+    return fixed
+
+
 def deduplicate_records(records):
     """Deduplicate by name + CP decade."""
     seen = set()
@@ -2273,6 +2321,8 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     collected = []
     for i in range(len(batches)):
         collected.extend(results.get(i) or [])
+    if prompt is VIDEO_IMPORT_PROMPT:
+        clean_video_items(collected)
 
     print(f"[Gemini] finished in {(time.time() - t_start) / 60:.1f} min. Lanes:")
     for row in pool.summary():
@@ -2294,6 +2344,8 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
             for k, v in item.items():
                 if prev.get(k) is None and v is not None:
                     prev[k] = v
+                elif k in _POSITIVE_FLAGS and v is True:
+                    prev[k] = True
     merged = [seen[k] for k in order]
     print(f"[Gemini] {len(collected)} raw sightings merged into {len(merged)} unique Pokemon")
     return merged
