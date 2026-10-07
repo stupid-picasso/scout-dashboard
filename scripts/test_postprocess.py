@@ -83,5 +83,21 @@ kept, dropped = px.drop_sparse([
     {"name": "Seedot", "cp": None, "hp": None, "weight": "4kg", "height": "0.5m", "gender": "M"}])
 check("sparse species dropped", dropped == ["Lucario", "Rhydon"], str(dropped))
 check("candy / CP / HP / richer rows kept", [r["name"] for r in kept] == ["Shuckle", "Pidgey", "Riolu", "Seedot"], str([r["name"] for r in kept]))
+
+# --- gender icon measured from pixels ------------------------------------------------------------
+FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "detail_screens")
+for fname, want in (("shieldon_male", "M"), ("salandit_male", "M"), ("sableye_male", "M"), ("sableye_scrolled", None)):
+    check("gender icon on %s" % fname, px.detect_gender(os.path.join(FIX, fname + ".png")) == want, str(px.detect_gender(os.path.join(FIX, fname + ".png"))))
+from PIL import ImageDraw, ImageFont
+_dj = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+if os.path.exists(_dj):
+    def _frame(sym, size):
+        img = Image.new("RGB", (1080, 2349), (250, 250, 250)); d = ImageDraw.Draw(img); d.rectangle((267, 1057, 806, 1071), fill=(160, 230, 195))
+        if sym:
+            d.text((922, 1020), sym, font=ImageFont.truetype(_dj, size), fill=(130, 150, 170))
+        pth = os.path.join(tmp, "g_%s_%d.png" % (ord(sym) if sym else 0, size)); img.save(pth); return pth
+    check("synthetic male symbol", all(px.detect_gender(_frame("\u2642", z)) == "M" for z in (66, 78, 88)))
+    check("synthetic female symbol", all(px.detect_gender(_frame("\u2640", z)) == "F" for z in (66, 78, 88)))
+    check("no symbol -> None", px.detect_gender(_frame(None, 78)) is None)
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

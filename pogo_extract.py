@@ -696,6 +696,67 @@ def detect_mega_dots(path):
     return out
 
 
+def detect_gender(path):
+    """Gender icon (male / female symbol right of the name and HP bar) measured from pixels.
+
+    The symbol is a few dozen pixels wide and the models misread it (a male read as female on the
+    same screen across runs), so it is classified from its shape: the male symbol carries its arrow
+    in the upper-right corner; the female symbol carries a cross at the bottom centre. Positioned
+    from the pale-green HP bar, which sits level with it. Returns "M", "F" or None (no icon on the
+    frame, partly hidden, or not clearly one or the other)."""
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        return None
+    img = cv2.imread(path)
+    if img is None:
+        return None
+    h0, w0 = img.shape[:2]
+    img = cv2.resize(img, (1080, max(1, int(h0 * 1080 / w0))))
+    h, w = img.shape[:2]
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    green = ((hsv[..., 0] > 60) & (hsv[..., 0] < 90) & (hsv[..., 1] > 40) & (hsv[..., 2] > 180)).astype(np.uint8)
+    rows = [y for y in range(h) if green[y].sum() > 0.35 * w]
+    if not rows:
+        return None
+    bar_y = rows[len(rows) // 2]
+    xs = np.where(green[bar_y] > 0)[0]
+    if xs.size == 0:
+        return None
+    right = int(xs.max())
+    x0, x1 = right + int(0.08 * w), min(w, right + int(0.21 * w))
+    y0, y1 = max(0, bar_y - int(0.06 * w)), min(h, bar_y + int(0.06 * w))
+    if x1 - x0 < 40 or y1 - y0 < 40:
+        return None
+    gray = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY)
+    ink = (gray < 205).astype(np.uint8)
+    if ink.sum() < 150:
+        return None
+    ys_, xs_ = np.where(ink > 0)
+    bx0, bx1, by0, by1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
+    bw, bh = bx1 - bx0 + 1, by1 - by0 + 1
+    if not (0.03 * w <= bw <= 0.09 * w and 0.6 <= bw / bh <= 1.25):
+        return None
+    if by0 == 0 or by1 == ink.shape[0] - 1 or bx0 == 0 or bx1 == ink.shape[1] - 1:
+        return None  # touches the search window: something else, or clipped
+    box = ink[by0:by1 + 1, bx0:bx1 + 1]
+    gy, gx = box.shape[0] / 3.0, box.shape[1] / 3.0
+
+    def cell(r, c):
+        part = box[int(r * gy):int((r + 1) * gy), int(c * gx):int((c + 1) * gx)]
+        return float(part.mean()) if part.size else 0.0
+
+    top_left, top_right, bottom_mid = cell(0, 0), cell(0, 2), cell(2, 1)
+    # Male: the circle sits low-left and the arrow fills the top-right, so the top-left cell is
+    # nearly empty. Female: the circle fills the top (top-left is inked) over a stem and cross.
+    if top_left < 0.2 and top_right >= 0.45:
+        return "M"
+    if top_left >= 0.25 and bottom_mid >= 0.4:
+        return "F"
+    return None
+
+
 def parse_pokemon_text(text):
     """Parse OCR text into structured record."""
     rec = {}
@@ -989,6 +1050,11 @@ VIDEO_IMPORT_PROMPT = (
     "is visible in any frame, use null. A shadow Pokemon shows a PURIFY button and the "
     "Frustration move. Moves come from the Gyms & Raids section: the first is "
     "fastMove, the rest are charge moves; names only, without the type in parentheses. "
+    "VISIBLE-ONLY RULE: weight, height, gender, type, moves, candy and stardust are copied ONLY from "
+    "text or symbols actually visible in a frame of that Pokemon. If a frame is scrolled so the "
+    "Gyms & Raids moves, the weight/height strip or the gender symbol are not on screen, leave those "
+    "fields null: never fill them from what that species usually knows or has, and never take a "
+    "value from a different Pokemon's frame. "
     "REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even "
     "if every other field is null. A partially-readable Pokemon is still a Pokemon "
     "\u2014 emit it with nulls. The null/never-guess rules below apply to individual "
@@ -2355,6 +2421,19 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                     rows = []
                 if rows:
                     hints.append(f"frame {k}: " + ", ".join(f"{r['filled']} of {r['total']} dots filled" for r in rows))
+        if prompt is VIDEO_IMPORT_PROMPT:
+            genders = []
+            for k, fp in enumerate(batch_paths[b_i], 1):
+                try:
+                    g = detect_gender(fp)
+                except Exception:
+                    g = None
+                if g:
+                    genders.append(f"frame {k}: {'Male' if g == 'M' else 'Female'}")
+            if genders:
+                note += (" MEASURED gender (software, from the symbol beside the name): " + "; ".join(genders)
+                         + ". Use these for the gender of the Pokemon on those frames instead of your own reading;"
+                         " for other frames read it yourself, or null if the symbol is not visible.")
         if hints:
             note += (" MEASURED Mega Level dots (software, top row first; use these for dotsFilled of the matching "
                      "MEGA EVOLVE button, in the same top-to-bottom order, instead of your own reading): "
