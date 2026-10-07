@@ -697,7 +697,7 @@ def detect_mega_dots(path):
     return out
 
 
-def detect_gender(path, why=None):
+def detect_gender(path, why=None, info=None):
     """Gender icon (male / female symbol right of the name and HP bar) measured from pixels.
 
     The symbol is a few dozen pixels wide and the models misread it (a male read as female on the
@@ -736,7 +736,12 @@ def detect_gender(path, why=None):
         if why is not None: why.append("window")
         return None
     gray = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY)
-    ink = (gray < 205).astype(np.uint8)
+    # Ink = clearly darker than the card behind the symbol. Relative to the window's own background
+    # (not a fixed level) because tone-mapped video frames are paler than phone screenshots.
+    bg = float(np.median(gray))
+    if info is not None:
+        info.update({"bg": round(bg, 1), "min": int(gray.min()), "bar_y": int(bar_y), "right": int(right), "w": int(w), "h": int(h)})
+    ink = (gray < min(215.0, bg - 28.0)).astype(np.uint8)
     if ink.sum() < 150:
         if why is not None: why.append("no_ink")
         return None
@@ -977,6 +982,19 @@ def merge_frames(seq, max_gap=4):
             groups.append(target)
         target["items"].append(it)
         target["last"] = gidx
+    # Groups of one species that read the SAME CP are one Pokemon (a mid-swipe frame can open its own
+    # group with the new header and the old card's body); pool them so the vote decides, not order.
+    pooled, by_cp = [], {}
+    for g in groups:
+        cp = _vote([x.get("cp") for x in g["items"]])
+        key = (g["name"], cp)
+        if cp is not None and key in by_cp:
+            by_cp[key]["items"].extend(g["items"])
+        else:
+            pooled.append(g)
+            if cp is not None:
+                by_cp[key] = g
+    groups = pooled
     out = []
     for g in groups:
         keys = []
@@ -2491,7 +2509,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         bulk_models, verify_models = verify_models, []
         tiers = {m: "bulk" for m in bulk_models}
     pool = gemini_pool.Pool(keys, bulk_models + verify_models, tiers=tiers)
-    workers = int(os.environ.get("GEMINI_WORKERS") or max(2, len(pool.alive("bulk")) * 2))
+    workers = int(os.environ.get("GEMINI_WORKERS") or max(2, len(pool.alive("bulk")) * (4 if frame_mode else 2)))
     print(f"[Gemini] bulk models: {bulk_models}; verify models: {verify_models}; "
           f"{len(keys)} key(s) -> {len(pool.lanes)} lanes, {workers} parallel requests")
 
@@ -2500,6 +2518,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     notes = []
     gender_hint_log = []
     gender_reasons = []
+    gender_infos = []
     for b_i, batch in enumerate(batches):
         note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
         if frame_mode:
@@ -2516,13 +2535,15 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         if video_mode:
             genders = []
             for k, fp in enumerate(batch_paths[b_i], 1):
-                reason = []
+                reason, dinfo = [], {}
                 try:
-                    g = detect_gender(fp, reason)
+                    g = detect_gender(fp, reason, dinfo)
                 except Exception:
                     g = None
                     reason = ["error"]
                 gender_reasons.append((reason[0] if reason else "measured", fp))
+                if reason and len(gender_infos) < 12 and reason[0] in ("no_ink", "window", "bad_box"):
+                    gender_infos.append((reason[0], os.path.basename(fp), dinfo))
                 if g:
                     genders.append(f"frame {k}: {'Male' if g == 'M' else 'Female'}")
             gender_hint_log.append({"batch": b_i + 1, "hints": list(genders)})
@@ -2593,10 +2614,12 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     if video_mode:
         total_hints = sum(len(h["hints"]) for h in gender_hint_log)
         print(f"[Measure] gender symbol measured on {total_hints} of {len(frame_paths)} frames")
+        for r, nm, di in gender_infos:
+            print(f"[Measure] detector sample {r} {nm}: {di}")
         counts = Counter(r for r, _ in gender_reasons)
         print("[Measure] gender detector outcomes: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
         try:  # a few downscaled frames so the detector can be tuned on what the pipeline really sees
-            os.makedirs(os.path.join(DEBUG_DIR, "frames"), exist_ok=True)
+            os.makedirs(os.path.join(DEBUG_DIR, "samples"), exist_ok=True)
             picks, seen_reason = [], Counter()
             for r, fp in gender_reasons:
                 if r != "measured" and seen_reason[r] < 3:
@@ -2605,7 +2628,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
             for r, fp in picks[:10]:
                 im = Image.open(fp).convert("RGB")
                 im.thumbnail((540, 1200))
-                im.save(os.path.join(DEBUG_DIR, "frames", f"{r}_{os.path.basename(fp).replace('.png', '')}.jpg"), quality=72)
+                im.save(os.path.join(DEBUG_DIR, "samples", f"{r}_{os.path.basename(fp).replace('.png', '')}.jpg"), quality=72)
         except Exception as exc:
             print(f"[Measure] could not save sample frames: {exc}")
         try:

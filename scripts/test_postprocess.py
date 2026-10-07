@@ -114,7 +114,20 @@ check("two same-species Pokemon on adjacent frames stay apart", len(sab) == 2, s
 check("each keeps only its own moves", sab[0]["fastMove"] == "Feint Attack" and sab[0]["chargeMove1"] == "Power Gem" and sab[1]["fastMove"] == "Shadow Claw" and sab[1]["chargeMove1"] == "Foul Play", json.dumps(sab) if False else str(sab))
 check("scrolled frame joins its Pokemon (CP kept)", sab[0]["cp"] == 818 and sab[1]["cp"] == 829)
 pk = [o for o in out if o["name"] == "Pikachu"]
-check("gap larger than max_gap starts a new group", len(pk) == 2, str(len(pk)))
+check("same species and CP far apart are one Pokemon", len(pk) == 1, str(len(pk)))
+far = px.merge_frames([(20, {"name": "Pikachu", "cp": 500, "hp": 60}), (60, {"name": "Pikachu", "cp": 510, "hp": 61})])
+check("different CP far apart stay separate", len(far) == 2, str(len(far)))
 check("vote: majority gender wins; favorite true wins", pk[0]["gender"] == "M" and pk[0]["favorite"] is True, str(pk[0]))
+
+# pooling: a mid-swipe frame (new header, old card's body) must not outvote the Pokemon's own frames
+seqy = [(1, {"name": "Sableye", "cp": 829, "hp": 90, "gender": "F", "height": "0.62m", "weight": "15.99kg"}),
+        (2, {"name": "Sableye", "cp": 818, "hp": 89, "gender": "F", "height": "0.62m", "weight": "8.64kg"}),
+        (3, {"name": "Sableye", "cp": 818, "hp": 89, "gender": "M", "height": "0.39m", "weight": "8.64kg"}),
+        (4, {"name": "Sableye", "cp": 818, "hp": 89, "gender": "M", "height": "0.39m", "weight": "8.64kg"}),
+        (5, {"name": "Sableye", "hp": 89, "gender": "M", "height": "0.39m", "weight": "8.64kg", "fastMove": "Feint Attack", "chargeMove1": "Power Gem"})]
+outy = px.merge_frames(seqy)
+s818 = [o for o in outy if o.get("cp") == 818]
+check("same-CP groups are pooled", len(s818) == 1, str(outy))
+check("pooled vote beats the mid-swipe frame", s818 and s818[0]["gender"] == "M" and s818[0]["height"] == "0.39m" and s818[0].get("fastMove") == "Feint Attack", str(s818))
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)
