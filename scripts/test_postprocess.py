@@ -2,6 +2,8 @@
 """Offline tests for the video-import post-processing (name snapping, type casing, merge flags)."""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import tempfile as _tf
+os.environ.setdefault("POGO_DEBUG_DIR", _tf.mkdtemp())
 import pogo_extract as px
 
 passed = failed = 0

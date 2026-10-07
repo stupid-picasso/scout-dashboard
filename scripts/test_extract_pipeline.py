@@ -5,6 +5,8 @@ import io, json, os, sys, tempfile, threading, time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ["GEMINI_API_KEY_1"] = "keyAAAAAA111"
 os.environ["GEMINI_API_KEY_2"] = "keyBBBBBB222"
+import tempfile as _tf
+os.environ.setdefault("POGO_DEBUG_DIR", _tf.mkdtemp())
 import pogo_extract as px
 from PIL import Image
 

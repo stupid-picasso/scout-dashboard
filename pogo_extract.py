@@ -1207,6 +1207,7 @@ APPRAISAL_PROMPT = (
 MAX_FRAMES_PER_BATCH = 10
 BATCH_CHAR_BUDGET = 1600000
 REQUEST_TIMEOUT_S = 180
+DEBUG_DIR = os.environ.get("POGO_DEBUG_DIR", "data/debug")  # diagnostics from the video import; tests point this at a temp dir
 BULK_BUDGET_S = 1800   # the main pass may take this long to ride out a Google-side overload
 VERIFY_BUDGET_S = 360  # wall-clock cap for the optional second-opinion pass
 BATCH_PACE_S = 1.5
@@ -2595,7 +2596,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         counts = Counter(r for r, _ in gender_reasons)
         print("[Measure] gender detector outcomes: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
         try:  # a few downscaled frames so the detector can be tuned on what the pipeline really sees
-            os.makedirs("data/debug/frames", exist_ok=True)
+            os.makedirs(os.path.join(DEBUG_DIR, "frames"), exist_ok=True)
             picks, seen_reason = [], Counter()
             for r, fp in gender_reasons:
                 if r != "measured" and seen_reason[r] < 3:
@@ -2604,15 +2605,15 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
             for r, fp in picks[:10]:
                 im = Image.open(fp).convert("RGB")
                 im.thumbnail((540, 1200))
-                im.save(os.path.join("data/debug/frames", f"{r}_{os.path.basename(fp).replace('.png', '')}.jpg"), quality=72)
+                im.save(os.path.join(DEBUG_DIR, "frames", f"{r}_{os.path.basename(fp).replace('.png', '')}.jpg"), quality=72)
         except Exception as exc:
             print(f"[Measure] could not save sample frames: {exc}")
         try:
-            os.makedirs("data/debug", exist_ok=True)
+            os.makedirs(DEBUG_DIR, exist_ok=True)
             dump = [{"batch": i + 1, "frames": [os.path.basename(f) for f in batch_paths[i]],
                      "gender_hints": (gender_hint_log[i]["hints"] if i < len(gender_hint_log) else []),
                      "model": answered.get(i), "items": results.get(i)} for i in range(len(batches))]
-            with open("data/debug/raw_batches.json", "w") as fh:
+            with open(os.path.join(DEBUG_DIR, "raw_batches.json"), "w") as fh:
                 json.dump(dump, fh, indent=1)
         except Exception as exc:  # diagnostics must never break an import
             print(f"[Measure] could not write the raw-batch dump: {exc}")
