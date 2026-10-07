@@ -4,6 +4,7 @@ pogo_extract.py v2 — Fixed regex, scene detection, full dex lookup.
 CRITICAL FIX: Word boundaries now use single backslash (was double = backspace char).
 """
 
+from collections import Counter
 import argparse, csv, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
@@ -696,7 +697,7 @@ def detect_mega_dots(path):
     return out
 
 
-def detect_gender(path):
+def detect_gender(path, why=None):
     """Gender icon (male / female symbol right of the name and HP bar) measured from pixels.
 
     The symbol is a few dozen pixels wide and the models misread it (a male read as female on the
@@ -708,9 +709,11 @@ def detect_gender(path):
         import cv2
         import numpy as np
     except ImportError:
+        if why is not None: why.append("no_cv2")
         return None
     img = cv2.imread(path)
     if img is None:
+        if why is not None: why.append("unreadable")
         return None
     h0, w0 = img.shape[:2]
     img = cv2.resize(img, (1080, max(1, int(h0 * 1080 / w0))))
@@ -719,26 +722,32 @@ def detect_gender(path):
     green = ((hsv[..., 0] > 60) & (hsv[..., 0] < 90) & (hsv[..., 1] > 40) & (hsv[..., 2] > 180)).astype(np.uint8)
     rows = [y for y in range(h) if green[y].sum() > 0.35 * w]
     if not rows:
+        if why is not None: why.append("no_bar")
         return None
     bar_y = rows[len(rows) // 2]
     xs = np.where(green[bar_y] > 0)[0]
     if xs.size == 0:
+        if why is not None: why.append("no_bar")
         return None
     right = int(xs.max())
     x0, x1 = right + int(0.08 * w), min(w, right + int(0.21 * w))
     y0, y1 = max(0, bar_y - int(0.06 * w)), min(h, bar_y + int(0.06 * w))
     if x1 - x0 < 40 or y1 - y0 < 40:
+        if why is not None: why.append("window")
         return None
     gray = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY)
     ink = (gray < 205).astype(np.uint8)
     if ink.sum() < 150:
+        if why is not None: why.append("no_ink")
         return None
     ys_, xs_ = np.where(ink > 0)
     bx0, bx1, by0, by1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
     bw, bh = bx1 - bx0 + 1, by1 - by0 + 1
     if not (0.03 * w <= bw <= 0.09 * w and 0.6 <= bw / bh <= 1.25):
+        if why is not None: why.append("bad_box")
         return None
     if by0 == 0 or by1 == ink.shape[0] - 1 or bx0 == 0 or bx1 == ink.shape[1] - 1:
+        if why is not None: why.append("touches_window")
         return None  # touches the search window: something else, or clipped
     box = ink[by0:by1 + 1, bx0:bx1 + 1]
     gy, gx = box.shape[0] / 3.0, box.shape[1] / 3.0
@@ -754,6 +763,7 @@ def detect_gender(path):
         return "M"
     if top_left >= 0.25 and bottom_mid >= 0.4:
         return "F"
+    if why is not None: why.append("unclear")
     return None
 
 
@@ -2488,6 +2498,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     # from pixels and hand the numbers over, per frame of this batch.
     notes = []
     gender_hint_log = []
+    gender_reasons = []
     for b_i, batch in enumerate(batches):
         note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
         if frame_mode:
@@ -2504,10 +2515,13 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         if video_mode:
             genders = []
             for k, fp in enumerate(batch_paths[b_i], 1):
+                reason = []
                 try:
-                    g = detect_gender(fp)
+                    g = detect_gender(fp, reason)
                 except Exception:
                     g = None
+                    reason = ["error"]
+                gender_reasons.append((reason[0] if reason else "measured", fp))
                 if g:
                     genders.append(f"frame {k}: {'Male' if g == 'M' else 'Female'}")
             gender_hint_log.append({"batch": b_i + 1, "hints": list(genders)})
@@ -2578,6 +2592,21 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     if video_mode:
         total_hints = sum(len(h["hints"]) for h in gender_hint_log)
         print(f"[Measure] gender symbol measured on {total_hints} of {len(frame_paths)} frames")
+        counts = Counter(r for r, _ in gender_reasons)
+        print("[Measure] gender detector outcomes: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+        try:  # a few downscaled frames so the detector can be tuned on what the pipeline really sees
+            os.makedirs("data/debug/frames", exist_ok=True)
+            picks, seen_reason = [], Counter()
+            for r, fp in gender_reasons:
+                if r != "measured" and seen_reason[r] < 3:
+                    seen_reason[r] += 1
+                    picks.append((r, fp))
+            for r, fp in picks[:10]:
+                im = Image.open(fp).convert("RGB")
+                im.thumbnail((540, 1200))
+                im.save(os.path.join("data/debug/frames", f"{r}_{os.path.basename(fp).replace('.png', '')}.jpg"), quality=72)
+        except Exception as exc:
+            print(f"[Measure] could not save sample frames: {exc}")
         try:
             os.makedirs("data/debug", exist_ok=True)
             dump = [{"batch": i + 1, "frames": [os.path.basename(f) for f in batch_paths[i]],
