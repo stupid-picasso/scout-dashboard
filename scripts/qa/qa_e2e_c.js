@@ -133,6 +133,34 @@ module.exports = async function suiteC() {
   await T('HOM-08', 'Home', 'CLEAR ROSTER needs a second confirmation tap', async () => { await s.page.getByText('CLEAR ROSTER', { exact: true }).click(); await s.page.waitForTimeout(300); expect((await s.state()).roster.length === 64, 'cleared on first tap'); });
   await T('HOM-09', 'Home', 'Storage planner reports whether the roster is within the keep target', async () => expect(/keep-target|within target|over/i.test(await s.text())));
   await T('HOM-10', 'Home', 'Evolution items and TM resources sections are present', async () => { const t = await s.text(); expect(/EVOLUTION ITEMS/.test(t) && /RESOURCES/.test(t)); });
+  await T('HOM-11', 'Home', 'Trainer level is a working field: clamped to 1-50, junk ignored', async () => {
+    const f = s.page.locator('input[type=number][max="50"]'); await s.go('HOME'); await f.fill('99'); await f.blur(); await s.page.waitForTimeout(250); expect((await s.state()).trainerLevel === 50, 'high ' + (await s.state()).trainerLevel);
+    await f.fill('0'); await f.blur(); await s.page.waitForTimeout(250); expect((await s.state()).trainerLevel === 1, 'low'); await f.fill('38'); await f.blur(); await s.page.waitForTimeout(250); expect((await s.state()).trainerLevel === 38, 'normal');
+    expect((await s.call('setTrainerLevel', 'abc')) === null && (await s.state()).trainerLevel === 38, 'junk changed it');
+  }, 'high');
+  await T('HOM-12', 'Home', 'Dust reserve accepts commas, clamps negatives to 0, ignores junk', async () => {
+    expect((await s.call('setDustReserve', '1,200,000')) === 1200000 && (await s.state()).dustReserve === 1200000, 'commas'); await s.call('setDustReserve', '-5'); expect((await s.state()).dustReserve === 0, 'negative');
+    await s.call('setDustReserve', 'x'); expect((await s.state()).dustReserve === 0, 'junk'); await s.call('setDustReserve', '9999999999'); expect((await s.state()).dustReserve === 500000000, 'cap'); await s.call('setDustReserve', '100000');
+  }, 'medium');
+  await T('HOM-13', 'Home', 'Stardust balance rejects negatives and absurd values', async () => {
+    await s.call('setStardust', '1,480,000'); expect((await s.state()).stardustBalance === 1480000, 'valid'); await s.call('setStardust', '-10'); expect((await s.state()).stardustBalance === null, 'negative kept');
+    await s.call('setStardust', '999999999999'); expect((await s.state()).stardustBalance === null, 'huge kept'); await s.call('setStardust', '250000'); expect((await s.state()).stardustBalance === 250000);
+  }, 'medium');
+  await T('HOM-14', 'Home', 'Device backup is offered without an account and never contains API keys', async () => {
+    await s.go('HOME'); expect(await s.page.getByRole('button', { name: 'Back up this device' }).count() === 1, 'no button'); await s.set({ geminiKey: 'SECRET-KEY-123', githubToken: 'ghp_SECRET' });
+    const text = await s.call('deviceBackupText'); expect(!/SECRET/.test(text), 'secret leaked'); const j = JSON.parse(text); expect(j._backup.kind === 'device' && j._backup.count === 64 && (Array.isArray(j.data.roster) || typeof j.data.roster === 'string'), JSON.stringify(j._backup));
+  }, 'critical');
+  await T('HOM-15', 'Home', 'A device backup restores the roster after it was cleared (with a confirmation step)', async () => {
+    const text = await s.call('deviceBackupText'); const f = path.join(require('os').tmpdir(), 'qa-backup.json'); fs.writeFileSync(f, text);
+    await s.set({ roster: [], addedPokemon: [], removedIds: [] }); await s.page.waitForTimeout(300); expect((await s.state()).roster.length === 0, 'not cleared');
+    await s.page.setInputFiles('input[aria-label="Restore from backup file"]', f); await s.page.waitForTimeout(500); expect(/Confirm restore|will replace|Restore/.test(await s.text()), 'no confirm');
+    expect((await s.state()).roster.length === 0, 'restored before confirming'); await s.page.getByRole('button', { name: 'Restore', exact: true }).click(); await s.page.waitForTimeout(600);
+    expect((await s.state()).roster.length === 64, 'roster ' + (await s.state()).roster.length);
+  }, 'critical');
+  await T('HOM-16', 'Home', 'A broken backup file is refused with a message and changes nothing', async () => {
+    const f = path.join(require('os').tmpdir(), 'qa-bad.json'); fs.writeFileSync(f, '{"hello": 1}'); const n0 = (await s.state()).roster.length;
+    await s.page.setInputFiles('input[aria-label="Restore from backup file"]', f); await s.page.waitForTimeout(500); expect(/Could not read that backup/.test(await s.text()), 'no message'); expect((await s.state()).roster.length === n0, 'changed');
+  }, 'high');
   await s.close();
 
   // ------------------------------------------------------------------ SECURITY

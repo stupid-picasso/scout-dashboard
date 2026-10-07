@@ -204,7 +204,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.142</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.143</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -754,6 +754,29 @@
         <div style="font:800 20px var(--font-display);color:var(--type-electric)">{{ digest.greatProjects }}</div>
       </div>
     </div>
+
+    <sc-if value="{{ deviceBackupShown }}" hint-placeholder-val="{{ false }}">
+      <section aria-label="Backup and restore on this device" style="background:var(--surface-card);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:600 17px var(--font-body)">Backup &amp; restore</div>
+        <div style="font:14px/1.45 var(--font-body);color:var(--ink-500);text-wrap:pretty">Saves your roster, IV overrides, candy, stardust and log as one file you keep. API keys are never included. Take one before importing or clearing anything.</div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+          <button type="button" onClick="{{ backupDevice }}" style="font:600 16px var(--font-body);color:var(--ios-blue);padding:6px 0">Back up this device</button>
+          <label style="font:600 16px var(--font-body);color:var(--ios-blue);padding:6px 0;cursor:pointer">Restore from file<input type="file" accept=".json,application/json" onChange="{{ onRestoreFile }}" aria-label="Restore from backup file" style="display:none" /></label>
+        </div>
+        <sc-if value="{{ restorePendingDisplay }}" hint-placeholder-val="{{ false }}">
+          <div role="alertdialog" aria-label="Confirm restore" style="background:var(--surface-muted);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:14px/1.45 var(--font-body);text-wrap:pretty">{{ restorePendingDisplay.summary }}</div>
+            <div style="display:flex;gap:18px">
+              <button type="button" onClick="{{ confirmRestore }}" style="font:600 16px var(--font-body);color:#ff8a80;padding:6px 0">Restore</button>
+              <button type="button" onClick="{{ cancelRestore }}" style="font:500 16px var(--font-body);color:var(--ios-blue);padding:6px 0">Cancel</button>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ backupError }}" hint-placeholder-val="{{ false }}">
+          <div style="font:13px var(--font-body);color:#ff8a80;text-wrap:pretty">{{ backupError }}</div>
+        </sc-if>
+      </section>
+    </sc-if>
 
     <div style="background:color-mix(in oklab, var(--type-water) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-water) 42%, var(--surface-card));border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
       <div style="font:700 11px var(--font-display);color:var(--type-water);letter-spacing:.05em">CLOUD SYNC (across your devices)</div>
@@ -6838,9 +6861,30 @@ class Component extends DCLogic {
     if (p.stardust != null) this.setStardust(p.stardust);
   }
 
+  // Settings are validated on the way in: out-of-range values are rejected (stardust) or
+  // clamped (level, reserve) instead of reaching the power-up and recommendation maths.
+  parseWhole(value, min, max) {
+    const n = parseInt(String(value == null ? '' : value).replace(/[,\s]/g, ''), 10);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(min, Math.min(max, n));
+  }
+
   setStardust(value) {
-    const n = value === '' ? null : parseInt(String(value).replace(/,/g, ''), 10);
-    this.setState({ stardustBalance: Number.isNaN(n) ? null : n });
+    const raw = value === '' ? null : parseInt(String(value).replace(/,/g, ''), 10);
+    const ok = raw != null && Number.isFinite(raw) && raw >= 0 && raw <= 500000000;
+    this.setState({ stardustBalance: ok ? raw : null });
+  }
+
+  setTrainerLevel(value) {
+    const n = this.parseWhole(value, 1, 50);
+    if (n != null) this.setState({ trainerLevel: n });
+    return n;
+  }
+
+  setDustReserve(value) {
+    const n = this.parseWhole(value, 0, 500000000);
+    if (n != null) this.setState({ dustReserve: n });
+    return n;
   }
 
   saveStardustDraft() {
@@ -6966,6 +7010,22 @@ class Component extends DCLogic {
         });
       })
       .catch(err => this.setState({ backupBusy: false, backupError: 'Backup failed: ' + ((err && err.message) || err) }));
+  }
+
+  // Whole-app backup that works without a cloud account: the same blob the cloud copy holds,
+  // minus every credential. Restore reads it back through onRestoreFile.
+  deviceBackupText() {
+    const blob = this.buildCloudBlob();
+    ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
+    const count = (this.effectiveRosterForMatch() || []).length;
+    return JSON.stringify({ _backup: { app: 'Professor', kind: 'device', takenAt: new Date().toISOString(), count }, data: blob }, null, 2);
+  }
+
+  backupDevice() {
+    const text = this.deviceBackupText();
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    this.saveTextFile('professor-backup-' + stamp + '.json', text, 'application/json');
+    this.setState({ backupError: '' });
   }
 
   saveBackupFile() {
@@ -14605,6 +14665,12 @@ class Component extends DCLogic {
       signUp: () => this.signUp(),
       authError: this.state.authError,
       hasCloudUser: !!this.state.cloudUser,
+      trainerLevelValue: String(this.state.trainerLevel == null ? '' : this.state.trainerLevel),
+      onTrainerLevelChange: (e) => this.setTrainerLevel(e.target.value),
+      dustReserveValue: String(this.state.dustReserve == null ? '' : this.state.dustReserve),
+      onDustReserveChange: (e) => this.setDustReserve(e.target.value),
+      deviceBackupShown: !this.state.cloudUser,
+      backupDevice: () => this.backupDevice(),
       cloudUserEmail: this.state.cloudUser && this.state.cloudUser.email,
       syncStatusLabel: this.state.syncStatus || 'idle',
       // One-glance check that measured spreads actually persisted: reload and
