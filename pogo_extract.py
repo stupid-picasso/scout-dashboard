@@ -442,7 +442,7 @@ def dedupe_similar_frames(frames, threshold=4.0, sig_size=24):
     return kept
 
 
-def plan_batches(sigs, sizes, max_frames, budget, lookback=2, min_frames=4, ratio=1.5):
+def plan_batches(sigs, sizes, max_frames, budget, lookback=2, min_frames=4, ratio=2.5):
     """Groups frame indexes into batches, avoiding a cut through the middle of a screen.
 
     A batch is cut when it is full. The cut slides back (up to `lookback` frames) only to a visual
