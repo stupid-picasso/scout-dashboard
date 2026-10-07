@@ -985,7 +985,17 @@ Object.keys(DEX_NAMES).forEach(dex => { NAME_TO_DEX[normalizeSpeciesName(DEX_NAM
 // only has a hyphenated form name (e.g. "Shaymin" -> "shaymin-land", not
 // "shaymin-sky"). Order is priority: first suffix found among the candidates wins.
 const DEFAULT_FORM_SUFFIXES = ['land', 'normal', 'incarnate', 'standard', 'altered', 'average', 'red-striped', 'aria', 'ordinary', 'shield', 'disguised', 'plant', 'male', 'baile', 'midday', 'solo', 'z'];
+// Results are cached: the loose/prefix fallbacks scan the whole name table, and the app calls this
+// for every Pokemon on every render.
+const _dexByNameCache = new Map();
 function resolveDexByName(name) {
+  const k = typeof name === 'string' ? name : String(name);
+  if (_dexByNameCache.has(k)) return _dexByNameCache.get(k);
+  const v = _resolveDexByNameRaw(name);
+  if (_dexByNameCache.size < 5000) _dexByNameCache.set(k, v);
+  return v;
+}
+function _resolveDexByNameRaw(name) {
   const norm = normalizeSpeciesName(name);
   if (NAME_TO_DEX[norm] != null) return NAME_TO_DEX[norm];
   const loose = norm.replace(/-/g, '');
@@ -5121,7 +5131,15 @@ function _speciesKeys(name, form) {
 
 // { types: ['Grass','Poison'], buddyKm, thirdMoveCost } or null. `thirdMoveCost`
 // is the stardust to unlock the second charged move.
+const _speciesInfoCache = new Map();
 function speciesInfo(name, form) {
+  const k = String(name) + '|' + String(form || '');
+  if (_speciesInfoCache.has(k)) return _speciesInfoCache.get(k);
+  const v = _speciesInfoRaw(name, form);
+  if (_speciesInfoCache.size < 5000) _speciesInfoCache.set(k, v);
+  return v;
+}
+function _speciesInfoRaw(name, form) {
   for (const k of _speciesKeys(name, form)) {
     const raw = SPECIES_META[k];
     if (!raw) continue;

@@ -1230,7 +1230,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.145</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.147</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -11060,6 +11060,57 @@ class Component extends DCLogic {
     return '';
   }
 
+  // ---- Derived-data cache ----
+  // renderVals runs on every state change (a keystroke, a selection tick, a toast) and used to
+  // recompute every tab's analysis each time (~45 ms for 500 Pokemon, 4x that on a phone). The
+  // analyses below only depend on the data, not on UI state, so they are cached against every
+  // state value that is not known UI-only. Anything new that the analyses read is picked up
+  // automatically; only the listed UI keys are ignored.
+  MEMO_UI_KEYS() {
+    return new Set(['undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+  }
+
+  memoDeps() {
+    const st = this.state;
+    if (this._memoDepsFor === st) return this._memoDeps;
+    const ui = this._memoUi || (this._memoUi = this.MEMO_UI_KEYS());
+    const deps = [];
+    for (const k in st) if (!ui.has(k)) deps.push(st[k]);
+    deps.push(!!this.mechanics, Math.floor(Date.now() / 60000));
+    this._memoDepsFor = st; this._memoDeps = deps;
+    return deps;
+  }
+
+  sameDeps(a, b) {
+    if (a === b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  // Wraps the named methods so repeated calls with unchanged data return the same result.
+  // `roster`-style arguments are part of the key by length only: every caller passes the same
+  // merged roster, derived from the same state.
+  installDerivedCache() {
+    if (this._derivedCacheOn) return;
+    this._derivedCacheOn = true;
+    this._memoStore = {};
+    const names = ['attackerBoard', 'buddyPlan', 'raidRoleTypeBest', 'dataQualityIssues', 'dustPlan', 'evolveQueue', 'megaWorth', 'buildOptimizePlan', 'actionableDexGaps', 'tmAiCandidates', 'tradeAdvice', 'dominatedDuplicates', 'triageQueue', 'raidCounters', 'missingMoveNames', 'missingEvoNames', 'effectiveRosterForMatch'];
+    names.forEach(n => {
+      const orig = this[n];
+      if (typeof orig !== 'function') return;
+      this[n] = (...args) => {
+        const deps = this.memoDeps();
+        const argKey = args.map(a => (Array.isArray(a) ? 'a' + a.length : String(a))).join('|');
+        const e = this._memoStore[n];
+        if (e && e.argKey === argKey && this.sameDeps(e.deps, deps)) return e.val;
+        const val = orig.apply(this, args);
+        this._memoStore[n] = { argKey, deps, val };
+        return val;
+      };
+    });
+  }
+
   // One-step undo for destructive roster actions. Snapshots the named state keys
   // before the change; the toast offers Undo for 8 seconds.
   offerUndo(label, keys) {
@@ -13547,6 +13598,7 @@ class Component extends DCLogic {
   }
 
   renderVals() {
+    this.installDerivedCache();
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
     // Overrides must reach addedPokemon too. Pokemon created by the video
