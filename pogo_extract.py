@@ -2410,6 +2410,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     # Mega Level dots are drawn icons the model reads poorly; measure them
     # from pixels and hand the numbers over, per frame of this batch.
     notes = []
+    gender_hint_log = []
     for b_i, batch in enumerate(batches):
         note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
         hints = []
@@ -2430,6 +2431,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                     g = None
                 if g:
                     genders.append(f"frame {k}: {'Male' if g == 'M' else 'Female'}")
+            gender_hint_log.append({"batch": b_i + 1, "hints": list(genders)})
             if genders:
                 note += (" MEASURED gender (software, from the symbol beside the name): " + "; ".join(genders)
                          + ". Use these for the gender of the Pokemon on those frames instead of your own reading;"
@@ -2494,6 +2496,18 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                     swapped += 1
             print(f"[Gemini] verification replaced {swapped} of {len(suspects)} suspect batch(es)")
 
+    if prompt is VIDEO_IMPORT_PROMPT:
+        total_hints = sum(len(h["hints"]) for h in gender_hint_log)
+        print(f"[Measure] gender symbol measured on {total_hints} of {len(frame_paths)} frames")
+        try:
+            os.makedirs("data/debug", exist_ok=True)
+            dump = [{"batch": i + 1, "frames": [os.path.basename(f) for f in batch_paths[i]],
+                     "gender_hints": (gender_hint_log[i]["hints"] if i < len(gender_hint_log) else []),
+                     "model": answered.get(i), "items": results.get(i)} for i in range(len(batches))]
+            with open("data/debug/raw_batches.json", "w") as fh:
+                json.dump(dump, fh, indent=1)
+        except Exception as exc:  # diagnostics must never break an import
+            print(f"[Measure] could not write the raw-batch dump: {exc}")
     unread = [i for i in range(len(batches)) if results.get(i) is None]
     if len(unread) > 0.3 * len(batches):
         print(f"[Gemini] ERROR: {len(unread)} of {len(batches)} batches could not be read "
