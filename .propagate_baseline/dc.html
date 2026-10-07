@@ -204,7 +204,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.152</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.153</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -6468,7 +6468,7 @@ class Component extends DCLogic {
       + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
       + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,'
-      + '"dynamax":true|null,"gigantamax":true|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
+      + '"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
       + 'Rules: '
       + 'CP is the number in the badge at the very TOP of the screen. If the top of the card is scrolled off and no CP badge is visible, return null — never substitute another number. '
       + 'CP is NEVER the stardust amount: stardust is the large comma-grouped number next to the stardust icon (e.g. 148,482). '
@@ -6479,7 +6479,7 @@ class Component extends DCLogic {
       + 'powerUpStardust/powerUpCandy are the two costs on the POWER UP button; evolveCandy is the candy cost on the EVOLVE button. '
       + 'gender: "M" for the male symbol, "F" for the female symbol, null if neither. '
       + 'sizeClass: "XL" or "XS" only if that tag appears next to height/weight. '
-      + 'Max (Dynamax): a Pokemon that can Dynamax shows a "Dynamax" logo under its height and weight on the detail screen (and a small icon at the top right of its picture in the collection list). Set dynamax true ONLY if you can see that logo or icon. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move. If a Max Moves section is shown, maxAttackLevel, maxGuardLevel and maxSpiritLevel are the level numbers on the Max Attack, Max Guard and Max Spirit rows (null when the row is locked or not visible); maxParticles is the Max Particles balance if shown. Never guess these. '
+      + 'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '
       + 'A shadow Pokemon shows a PURIFY button and the Frustration move; set shadow true then. Set purified true only if the screen says Purified. '
       + 'Moves are listed under Gyms & Raids: the first is fastMove, the rest are chargeMove1/chargeMove2. Give move names only, without the type in parentheses. '
       + 'Only report atkIV/defIV/staIV if exact 0-15 numbers are visible; never infer them from appraisal bars or stars. '
@@ -6520,7 +6520,7 @@ class Component extends DCLogic {
       mega_energy_x: num(o.megaEnergyX), mega_energy_y: num(o.megaEnergyY), mega_forms: Array.isArray(o.megaForms) ? o.megaForms : undefined,
       attack_iv: num(o.atkIV), defense_iv: num(o.defIV), stamina_iv: num(o.staIV),
       lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, shiny_icon: !!o.shinyIcon, favorite: !!o.favorite,
-      dynamax: !!o.dynamax, gigantamax: !!o.gigantamax, max_attack_level: num(o.maxAttackLevel), max_guard_level: num(o.maxGuardLevel), max_spirit_level: num(o.maxSpiritLevel), max_particles: num(o.maxParticles),
+      dynamax: !!o.dynamax, gigantamax: !!o.gigantamax, max_move_name: o.maxMoveName || undefined, max_attack_level: num(o.maxAttackLevel), max_guard_level: num(o.maxGuardLevel), max_spirit_level: num(o.maxSpiritLevel), max_particles: num(o.maxParticles),
       _source: 'vision'
     };
   }
@@ -8101,9 +8101,9 @@ class Component extends DCLogic {
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
         + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, '
         + '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, "megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}], '
-        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "dynamax": true|null, "gigantamax": true|null, "maxAttackLevel": number|null, "maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, "favorite": boolean}. '
+        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "dynamax": true|null, "gigantamax": true|null, "maxMoveName": string|null, "maxAttackLevel": number|null, "maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, "favorite": boolean}. '
         + 'Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array if no MEGA EVOLVE button. '
-        + 'Max (Dynamax): a Pokemon that can Dynamax shows a "Dynamax" logo under its height and weight on the detail screen (and a small icon at the top right of its picture in the collection list). Set dynamax true ONLY if you can see that logo or icon. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move. If a Max Moves section is shown, maxAttackLevel, maxGuardLevel and maxSpiritLevel are the level numbers on the Max Attack, Max Guard and Max Spirit rows (null when the row is locked or not visible); maxParticles is the Max Particles balance if shown. Never guess these. '
+        + 'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
         + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring or the small sparkles icon on the card, never guess from name or CP alone. Set shinyIcon true ONLY if you can actually see that sparkles icon. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
@@ -8472,7 +8472,7 @@ class Component extends DCLogic {
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
       + '"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
-      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"dynamax":true|null,"gigantamax":true|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}\n\n'
+      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}\n\n'
       + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
       + 'Rules:\n'
       + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
@@ -8482,7 +8482,7 @@ class Component extends DCLogic {
       + '- evolveCandy is the candy cost on the EVOLVE button.\n'
       + '- Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = the number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array when there is no MEGA EVOLVE button.\n'
       + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
-      + '- '+'Max (Dynamax): a Pokemon that can Dynamax shows a "Dynamax" logo under its height and weight on the detail screen (and a small icon at the top right of its picture in the collection list). Set dynamax true ONLY if you can see that logo or icon. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move. If a Max Moves section is shown, maxAttackLevel, maxGuardLevel and maxSpiritLevel are the level numbers on the Max Attack, Max Guard and Max Spirit rows (null when the row is locked or not visible); maxParticles is the Max Particles balance if shown. Never guess these. '+'\n'
+      + '- '+'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '+'\n'
       + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
       + '- A shiny Pokemon has a visibly different color palette from its normal coloring and/or shows a small sparkles icon on its card. Set shiny true only when that is actually visible \u2014 never guess from name or CP alone. Set shinyIcon true ONLY if the sparkles icon itself is visible.\n'
       + '- Only give atkIV/defIV/staIV if exact 0-15 numbers are visible. Never infer them from appraisal bars or stars.\n'
@@ -10097,6 +10097,8 @@ class Component extends DCLogic {
     if (o.gigantamax === true) out.gigantamax = true;
     const lvl = v => { const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) && n >= 1 && n <= 4 ? Math.floor(n) : null; };
     const a = lvl(pick('maxAttackLevel', 'max_attack_level')), g = lvl(pick('maxGuardLevel', 'max_guard_level')), sp = lvl(pick('maxSpiritLevel', 'max_spirit_level'));
+    const mn = pick('maxMoveName', 'max_move_name');
+    if (typeof mn === 'string' && /^(g-?max|max)\s+[a-z]/i.test(mn.trim())) out.maxMoveName = mn.trim().replace(/\s+/g, ' ').slice(0, 40);
     if (a != null) out.maxAttackLevel = a;
     if (g != null) out.maxGuardLevel = g;
     if (sp != null) out.maxSpiritLevel = sp;
@@ -10151,12 +10153,13 @@ class Component extends DCLogic {
     if (!m || !m.maxAttackPower || !this.isMaxCapable(p)) return null;
     const gm = p.gigantamax && m.gmaxFor ? m.gmaxFor(p.name) : null;
     const fast = this.lookupMove(p.quickMove);
-    const moveType = gm ? gm.type : (fast && fast.kind === 'fast' ? fast.type : null);
+    const named = p.maxMoveName && m.maxMoveType ? m.maxMoveType(p.maxMoveName) : null;
+    const moveType = gm ? gm.type : (named || (fast && fast.kind === 'fast' ? fast.type : null));
     const level = Number(p.maxAttackLevel) || 1;
     const guard = Number(p.maxGuardLevel) || 0, spirit = Number(p.maxSpiritLevel) || 0;
     return {
       moveType, gmax: !!gm, level, guard, spirit,
-      moveName: gm ? gm.move : (moveType && m.MAX_MOVE_BY_TYPE ? m.MAX_MOVE_BY_TYPE[moveType] : null),
+      moveName: gm ? gm.move : (p.maxMoveName || (moveType && m.MAX_MOVE_BY_TYPE ? m.MAX_MOVE_BY_TYPE[moveType] : null)),
       power: m.maxAttackPower(level, !!gm),
       guardHp: m.maxGuardHp(guard), spiritPct: m.maxSpiritPct(spirit),
       levelsKnown: p.maxAttackLevel != null

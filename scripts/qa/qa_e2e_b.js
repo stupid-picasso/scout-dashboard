@@ -180,6 +180,20 @@ module.exports = async function suiteB() {
     const top = rows[0]; expect(top.eff >= 1, 'top attacker should not be resisted: ' + top.p.name + ' ' + top.eff);
     await s.go('RAID'); await s.page.waitForTimeout(500); expect(/MAX ATTACKERS vs THIS BOSS/.test(await s.text()), 'section missing'); expect(/PER MAX HIT/.test(await s.text()), 'no ranked rows shown: ' + names.join());
   }, 'high');
+  await T('MAX-11', 'Max', 'Real screen (Arcanine, Dynamax, Max Darkness Lv 1, Guard and Spirit locked): type comes from the tile name, not a guess', async () => {
+    const patch = await s.call('maxPatch', { dynamax: true, maxMoveName: 'Max Darkness', maxAttackLevel: 1, maxGuardLevel: null, maxSpiritLevel: null });
+    expect(patch.dynamax === true && patch.maxMoveName === 'Max Darkness' && patch.maxAttackLevel === 1 && !('maxGuardLevel' in patch), JSON.stringify(patch));
+    const arc = { idx: 'qa-arc', name: 'Arcanine', quickMove: 'Snarl', ...patch };
+    const info = await s.call('maxInfoFor', arc); expect(info && info.moveType === 'Dark' && info.moveName === 'Max Darkness' && info.power === 250 && info.guard === 0 && info.spirit === 0 && info.levelsKnown === true, JSON.stringify(info));
+    const odd = await s.call('maxInfoFor', { ...arc, quickMove: 'Fire Fang', maxMoveName: 'Max Darkness' }); expect(odd.moveType === 'Dark', 'tile name must win over the fast move: ' + odd.moveType);
+    expect(await s.page.evaluate(() => [window.PokemonMechanics.maxMoveType('Max Flare'), window.PokemonMechanics.maxMoveType('G-Max Wildfire'), window.PokemonMechanics.maxMoveType('Max Nothing')].join()) === 'Fire,Fire,', 'maxMoveType');
+    expect(Object.keys(await s.call('maxPatch', { maxMoveName: 'Tackle' })).length === 0, 'a non-Max move name must be ignored');
+  }, 'critical');
+  await T('CAN-08', 'Candy', 'The candy row on an Arcanine screen reads "GROWLITHE CANDY": the whole Growlithe family shares it', async () => {
+    const k = async n => s.call('candyKey', n); expect(await k('Arcanine') === await k('Growlithe'), 'family');
+    await s.set({ candyInventory: {}, ocrParsed: { name: 'Arcanine', matchedName: 'Arcanine', candy: 207, xlCandy: 28, _rec: {} } }); await s.call('applyOcrResult'); await s.page.waitForTimeout(200);
+    const g = await s.call('candyStockFor', { name: 'Growlithe' }); expect(g.candy === 207 && g.xlCandy === 28, JSON.stringify(g));
+  }, 'high');
   await T('MAX-09', 'Max', 'All three readers ask for the Dynamax fields (screenshot, video frames, pasted-AI prompt) and the server does too', async () => {
     const src = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8'); const n = (src.match(/dynamax\\?":\s?true\|null/g) || []).length; expect(n >= 3, 'prompts with the field: ' + n);
     expect((src.match(/maxAttackLevel/g) || []).length >= 8, 'levels not wired'); const py = fs.readFileSync(path.join(REPO, 'pogo_extract.py'), 'utf8'); expect(/"dynamax": true\|null/.test(py) && /maxAttackLevel/.test(py), 'server prompt');

@@ -5152,7 +5152,7 @@ function candyFamilyKey(name) {
 const MAX_DYNAMAX_SEED = ['bulbasaur', 'ivysaur', 'venusaur', 'charmander', 'charmeleon', 'charizard', 'squirtle', 'wartortle', 'blastoise',
   'caterpie', 'metapod', 'butterfree', 'gastly', 'haunter', 'gengar', 'beldum', 'metang', 'metagross',
   'wooloo', 'dubwool', 'skwovet', 'greedent', 'falinks', 'grookey', 'thwackey', 'rillaboom', 'scorbunny', 'raboot', 'cinderace',
-  'sobble', 'drizzile', 'inteleon', 'pikachu', 'meowth', 'machamp', 'kingler', 'lapras', 'snorlax', 'garbodor', 'toxtricity', 'grimmsnarl'];
+  'sobble', 'drizzile', 'inteleon', 'arcanine', 'pikachu', 'meowth', 'machamp', 'kingler', 'lapras', 'snorlax', 'garbodor', 'toxtricity', 'grimmsnarl'];
 // Gigantamax: the species-fixed G-Max Move and its type.
 const MAX_GMAX = {
   venusaur: ['G-Max Vine Lash', 'Grass'], charizard: ['G-Max Wildfire', 'Fire'], blastoise: ['G-Max Cannonade', 'Water'],
@@ -5180,6 +5180,13 @@ function isMaxSeedSpecies(name) { return MAX_DYNAMAX_SEED.indexOf(maxBaseName(na
 function gmaxFor(name) {
   const r = MAX_GMAX[maxBaseName(name)];
   return r ? { move: r[0], type: r[1] } : null;
+}
+// Type of a Max Attack from the name on its tile ("Max Darkness" -> Dark, "G-Max Wildfire" -> Fire).
+function maxMoveType(name) {
+  const n = String(name || '').trim().toLowerCase();
+  for (const t in MAX_MOVE_BY_TYPE) if (MAX_MOVE_BY_TYPE[t].toLowerCase() === n) return t;
+  for (const sp in MAX_GMAX) if (MAX_GMAX[sp][0].toLowerCase() === n) return MAX_GMAX[sp][1];
+  return null;
 }
 function maxAttackPower(level, gmax) {
   const t = gmax ? MAX_ATTACK_POWER.gmax : MAX_ATTACK_POWER.max;
@@ -5368,7 +5375,7 @@ if (typeof window !== 'undefined') {
   window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
-    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, isMaxSeedSpecies, gmaxFor, maxAttackPower, maxGuardHp, maxSpiritPct, maxRating,
+    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxRating,
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,
