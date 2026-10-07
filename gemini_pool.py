@@ -89,6 +89,8 @@ def choose_models(avail, max_bulk=3, max_verify=5, env=os.environ):
         rows = found[tier]
         stable = [r for r in rows if not r[2]]
         rows = stable or rows                      # previews only when nothing stable exists
+        modern = [r for r in rows if r[1] >= (3,)]
+        rows = modern or rows                      # 2.x models are listed after Google retires them (404); only fall back to them
         rows.sort(key=lambda r: r[1], reverse=True)
         return [r[0] for r in rows[:limit]]
 
@@ -171,8 +173,12 @@ class Pool:
                     lane.next_ok = max(lane.next_ok, now + 60.0)
             elif status in (500, 502, 503, 504) or transient:
                 lane.streak += 1
-                if lane.streak >= 5:           # overloaded for good measure: stop hammering it this run
-                    lane.dead, lane.dead_reason = True, "overloaded (%d failures in a row)" % lane.streak
+                if lane.streak >= 5:
+                    if lane.tier == "bulk":    # the bulk tier must outlast a Google-side overload: long pause, not retirement
+                        lane.next_ok = max(lane.next_ok, now + 120.0)
+                        lane.streak = 0
+                    else:                      # the verify tier is optional: stop hammering it this run
+                        lane.dead, lane.dead_reason = True, "overloaded (%d failures in a row)" % lane.streak
                 backoff = min(60.0, 6.0 * (2 ** (lane.streak - 1)))
                 lane.next_ok = max(lane.next_ok, now + backoff)
 

@@ -124,5 +124,15 @@ check("run completes with a dead model and a dead lane", len(items) == 5, str(le
 lane_calls = [(m, k) for m, k, c in calls if m == "gemini-3.5-flash-lite" and k == "keyAAAAAA111"]
 check("out-of-quota lane not hammered", len(lane_calls) <= 3, str(len(lane_calls)))
 
+
+# --- run 4: every lane out of daily quota -> the import refuses to write a partial result
+calls.clear(); BEHAVE["bad_model"] = None
+BEHAVE["daily"] = {(m, k) for m in ("gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.7-flash") for k in ("keyAAAAAA111", "keyBBBBBB222")}
+try:
+    px.run_gemini_video_ocr(frames)
+    check("total failure aborts instead of writing a partial import", False, "no SystemExit")
+except SystemExit as e:
+    check("total failure aborts instead of writing a partial import", e.code == 1, str(e.code))
+
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

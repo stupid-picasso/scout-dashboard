@@ -66,5 +66,12 @@ plan2 = px.plan_batches([[0] * 4] * 25, [1] * 25, max_frames=10, budget=10**9)
 check("uniform frames cut at the limit", [len(g) for g in plan2] == [10, 10, 5], str([len(g) for g in plan2]))
 plan3 = px.plan_batches([[0] * 4] * 6, [5] * 6, max_frames=10, budget=12)
 check("byte budget respected", all(sum(5 for _ in g) <= 12 or len(g) == 1 for g in plan3), str(plan3))
+
+# planner: no needless shortening, only a clear screen change moves the cut
+import random
+random.seed(1)
+noisy = [[random.randint(0, 40)] * 4 for _ in range(300)]
+pl = px.plan_batches(noisy, [1] * 300, max_frames=10, budget=10**9)
+check("planner keeps batches near full on noisy frames", len(pl) <= 36, str(len(pl)))
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

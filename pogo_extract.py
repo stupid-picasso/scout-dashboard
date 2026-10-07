@@ -442,12 +442,13 @@ def dedupe_similar_frames(frames, threshold=4.0, sig_size=24):
     return kept
 
 
-def plan_batches(sigs, sizes, max_frames, budget, lookback=3, min_frames=4):
-    """Groups frame indexes into batches without cutting through the middle of a screen.
+def plan_batches(sigs, sizes, max_frames, budget, lookback=2, min_frames=4, ratio=1.5):
+    """Groups frame indexes into batches, avoiding a cut through the middle of a screen.
 
-    A batch is cut when it is full, but the cut slides back (up to `lookback` frames) to the biggest
-    visual jump between neighbouring frames, so the frames of one Pokemon's detail screen stay in the
-    same request and the model can merge them into one entry instead of two half-readings."""
+    A batch is cut when it is full. The cut slides back (up to `lookback` frames) only to a visual
+    jump at least `ratio` times bigger than the jump at the natural cut, i.e. a clear change of
+    screen, so the frames of one Pokemon's detail screen tend to share a request. Sliding is
+    deliberately rare: every frame moved back makes batches shorter and the request count larger."""
     n = len(sigs)
 
     def jump(i):  # change between frame i-1 and i
@@ -461,7 +462,9 @@ def plan_batches(sigs, sizes, max_frames, budget, lookback=3, min_frames=4):
             end += 1
         if end < n and end - start > min_frames:
             lo = max(start + min_frames, end - lookback)
-            end = max(range(lo, end + 1), key=lambda i: (jump(i), i))
+            cand = max(range(lo, end), key=lambda i: (jump(i), i))
+            if jump(cand) > ratio * max(jump(end), 1e-9):
+                end = cand
         batches.append(list(range(start, end)))
         start = end
     return batches
@@ -1036,6 +1039,7 @@ APPRAISAL_PROMPT = (
 MAX_FRAMES_PER_BATCH = 10
 BATCH_CHAR_BUDGET = 1600000
 REQUEST_TIMEOUT_S = 180
+BULK_BUDGET_S = 1800   # the main pass may take this long to ride out a Google-side overload
 VERIFY_BUDGET_S = 360  # wall-clock cap for the optional second-opinion pass
 BATCH_PACE_S = 1.5
 
@@ -2351,7 +2355,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
 
     results, answered = gemini_pool.run_batches(
         pool, range(len(batches)), make_call, "bulk", workers,
-        max_attempts=len(pool.lanes) * 2 + 2, log=print)
+        max_attempts=len(pool.lanes) * 6, log=print, deadline=time.time() + BULK_BUDGET_S)
     for i in range(len(batches)):
         arr = results.get(i)
         if arr is None:
@@ -2394,6 +2398,13 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                     swapped += 1
             print(f"[Gemini] verification replaced {swapped} of {len(suspects)} suspect batch(es)")
 
+    unread = [i for i in range(len(batches)) if results.get(i) is None]
+    if len(unread) > 0.3 * len(batches):
+        print(f"[Gemini] ERROR: {len(unread)} of {len(batches)} batches could not be read "
+              "(models overloaded or out of quota). Refusing to write a partial import; re-run later.")
+        for row in pool.summary():
+            print("   " + row)
+        raise SystemExit(1)
     collected = []
     for i in range(len(batches)):
         collected.extend(results.get(i) or [])

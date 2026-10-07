@@ -167,5 +167,15 @@ def _slow(i, m, k):
     return [{"name": "x"}]
 _res, _ = gp.run_batches(_p2, range(10), _slow, "bulk", 1, deadline=250)
 check("deadline stops new work", sum(1 for v in _res.values() if v) < 10, str(_res))
+
+# bulk lanes survive an overload spell (cooldown, never retired)
+_t3 = [0.0]
+_p3 = gp.Pool(["k1"], ["gemini-3.5-flash-lite"], clock=lambda: _t3[0], sleep=lambda d: _t3.__setitem__(0, _t3[0] + d))
+_bl = _p3.lanes[0]
+for _ in range(12):
+    _p3.report(_bl, False, status=503)
+check("bulk lane is never retired by overload", not _bl.dead and _bl.next_ok >= 120, "%s %s" % (_bl.dead, _bl.next_ok))
+check("retired 2.x models are skipped when 3.x exist", gp.choose_models({"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3.5-flash-lite"}, env={}) == (["gemini-3.5-flash-lite"], ["gemini-3.5-flash"]))
+check("2.x used when it is all there is", gp.choose_models({"gemini-2.5-flash-lite"}, env={})[0] == ["gemini-2.5-flash-lite"])
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)
