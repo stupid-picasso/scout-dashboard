@@ -54,3 +54,18 @@ Status today (from `docs/QA_REPORT.md`): 9 = PvP, Intel, Boot, Ranks, Security. 
 
 ## Not verifiable from here
 Real iPhone rendering and SF font, VoiceOver, push/local notifications, the GitHub-run feed refresh and official-page cross-check, the AI screenshot/video readers (need your keys).
+
+## Status (v53.142)
+Automated suite: 211 end-to-end cases + 15 axe/keyboard cases, all passing; roster logic 191, ranking 71.
+
+| Phase | State |
+|---|---|
+| 1 Foundations | Done (axe, Lighthouse with gzip like GitHub Pages, WebKit option, CI workflow) |
+| 2 Accessibility | Done: axe clean on every screen, select mode and detail; Lighthouse a11y 100 |
+| 3 Import / Roster / Gestures | Done except two items not measured: 2,000-row 16 ms/frame target, WebKit touch run |
+| 4 Detail / Recs / Log / Today | Done: named prev/next, "why" lines, undo, daily snapshot, growth charts, log export/import, raid-boss one-tap, .ics, reminders (foreground only) |
+| 5 PWA | Done in code: maskable/any icons, 180 px opaque touch icon, 10 splash sizes, install steps, Professor manifest. Needs your Home Screen check (docs/DEVICE_CHECKS.md) |
+| 5 Performance | Partial: Lighthouse mobile 24 -> 47 (gzip-fair baseline 36). Transfer 2.1 MB -> 0.67 MB, FCP 3.9 s, LCP 5.2 s, TBT 1.2 s, TTI 7.0 s. Target of 90 / TTI < 3 s NOT met |
+| 6 Raid sim / Home | Not started (raid simulation deferred by you) |
+
+Why performance stops near 50: the app is shipped through a generated unpacker that decodes everything, then an in-browser template compiler builds the UI (profile: unpacker 340 ms, template compile 160 ms, style/layout ~1 s at 4x CPU). Mechanics data itself is cheap (about 40 ms). Further gains need a different build (precompiled templates, code split per tab, Firebase loaded on idle), which is a re-architecture, not tuning.
