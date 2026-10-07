@@ -11,7 +11,7 @@ Run after `propagate_edits.py apply`; idempotent. What it does:
 import base64, json, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BUNDLES = ['index.html', 'Scout Dashboard.html']
+BUNDLES = ['Scout Dashboard.html']  # index.html is derived from it (scripts/build_index.js)
 SPLASH = [  # (css width, css height, pixel ratio, file)
     (440, 956, 3, 'icons/splash/1320x2868.png'), (402, 874, 3, 'icons/splash/1206x2622.png'),
     (430, 932, 3, 'icons/splash/1290x2796.png'), (393, 852, 3, 'icons/splash/1179x2556.png'),

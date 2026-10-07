@@ -43,6 +43,7 @@ repo (not gitignored) so a fresh session/clone can diff from exactly where
 the last one left off. Running `apply` diffs against that baseline, patches
 the other 3 files, then updates the baseline to the new state.
 """
+import subprocess
 import sys
 import os
 import re
@@ -61,7 +62,9 @@ BUNDLE_HTML = os.path.join(REPO, 'Scout Dashboard.html')
 MECHANICS_JS = os.path.join(REPO, 'pokemon-mechanics.js')
 SW_JS = os.path.join(REPO, 'sw.js')
 
-BUNDLE_FILES = [INDEX_HTML, BUNDLE_HTML]
+# index.html is no longer patched: it is derived from Scout Dashboard.html by scripts/build_index.js
+# (minified class script), so only the one bundle is a propagate target.
+BUNDLE_FILES = [BUNDLE_HTML]
 
 # ---------------------------------------------------------------------------
 # Text normalization — the known cosmetic differences between dc.html's own
@@ -652,6 +655,12 @@ def cmd_verify():
     print("\n--- Embedded mechanics ---")
     emb = sync_embedded_mechanics(fix=False)
     print("Bundles embed the current pokemon-mechanics.js." if not emb else '\n'.join(emb))
+    print("\n--- index.html (derived, minified) ---")
+    try:
+        r = subprocess.run(['node', os.path.join(REPO, 'scripts', 'build_index.js'), '--check'], capture_output=True, text=True, timeout=120)
+        print((r.stdout + r.stderr).strip() if r.returncode else "index.html matches Scout Dashboard.html.")
+    except Exception as ex:
+        print("could not run build_index.js: %s" % ex)
     print("\n--- Syntax verification ---")
     syntax_problems = verify_syntax()
     print("All files pass node --check." if not syntax_problems else '\n'.join(syntax_problems))

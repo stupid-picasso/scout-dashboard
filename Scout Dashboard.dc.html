@@ -204,7 +204,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.147</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.150</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3053,6 +3053,7 @@ class Component extends DCLogic {
     ptrRefreshing: false
   };
 
+  // Waits up to 30 s: the mechanics file may still be downloading on a slow link.
   waitForGlobal(prop, evt) {
     return new Promise((resolve) => {
       if (window[prop]) { resolve(window[prop]); return; }
@@ -3060,7 +3061,7 @@ class Component extends DCLogic {
       window.addEventListener(evt, handler);
       let tries = 0;
       const poll = setInterval(() => {
-        if (window[prop] || tries++ > 100) { clearInterval(poll); window.removeEventListener(evt, handler); resolve(window[prop]); }
+        if (window[prop] || tries++ > 600) { clearInterval(poll); window.removeEventListener(evt, handler); resolve(window[prop]); }
       }, 50);
     });
   }
@@ -3082,7 +3083,9 @@ class Component extends DCLogic {
     setTimeout(() => this.checkReminders(), 4000);
     try { const z = parseFloat(localStorage.getItem('scout.uiZoom')); if (z >= 1 && z <= 2) this.setUiZoom(z); } catch (e) {}
     // Auth settles within a couple of seconds; only then is it clear nobody is signed in.
-    setTimeout(() => this.restoreLocalSnapshot(), 2400);
+    // The device copy is restored once sign-in has settled with nobody signed in (see authSettled);
+    // this timer only covers a sign-in that never answers.
+    setTimeout(() => this.authSettled(), 6000);
     // A new service worker takes over without reloading the page, so the code on
     // screen can be older than the app. Tell the person instead of letting them
     // test a stale build, and check for updates whenever the app comes forward.
@@ -3130,7 +3133,9 @@ class Component extends DCLogic {
     this.updateWidth = () => this.setState({ viewportWidth: window.innerWidth });
     this.updateWidth();
     window.addEventListener('resize', this.updateWidth);
-    this.initFirebase();
+    // Firebase (three scripts from gstatic) loads once the first screen is drawn, not during it.
+    const startFirebase = () => { try { this.initFirebase(); } catch (e) { this.authSettled(); } };
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(startFirebase, { timeout: 1200 }); else setTimeout(startFirebase, 600);
     this.checkPendingImport();
     this.bindPullToRefresh();
   }
@@ -3411,14 +3416,22 @@ class Component extends DCLogic {
     };
   }
 
+  // Sign-in has answered (user, nobody, or no way to ask). The first call triggers the one-time
+  // restore of the device copy; restoring earlier than this would be wiped by the sign-out reset.
+  authSettled() {
+    if (this._authSettledOnce) return;
+    this._authSettledOnce = true;
+    setTimeout(() => this.restoreLocalSnapshot(), 0);
+  }
+
   initFirebase() {
     this.loadFirebaseSdk().then(() => this.setupFirebaseApp(this.FIREBASE_CONFIG()))
-      .catch(e => this.setState({ firebaseConfigError: e.message }));
+      .catch(e => { this.setState({ firebaseConfigError: e.message }); this.authSettled(); });
   }
 
   setupFirebaseApp(config) {
     try {
-      if (typeof firebase === 'undefined') { this.setState({ firebaseConfigError: 'Firebase SDK did not load \u2014 check your connection and retry.' }); return; }
+      if (typeof firebase === 'undefined') { this.setState({ firebaseConfigError: 'Firebase SDK did not load \u2014 check your connection and retry.' }); this.authSettled(); return; }
       const app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(config);
       this.auth = firebase.auth(app);
       this.db = firebase.firestore(app);
@@ -3431,6 +3444,7 @@ class Component extends DCLogic {
       );
     } catch (e) {
       this.setState({ firebaseConfigError: 'Could not initialize Firebase with that config: ' + (e && e.message) });
+      this.authSettled();
     }
   }
 
@@ -3498,6 +3512,7 @@ class Component extends DCLogic {
   }
 
   onAuthChange(user) {
+    this.authSettled();
     if (user) {
       this.setState({ cloudUser: { uid: user.uid, email: user.email }, authError: '', authPassword: '' });
       this.subscribeCloudDoc(user.uid);
