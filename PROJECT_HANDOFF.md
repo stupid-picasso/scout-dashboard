@@ -345,7 +345,7 @@ The sections above describe the original video/OCR pipeline. The app has since g
 
 ## Gemini video import pipeline (parallel, tiered)
 - `gemini_pool.py`: lanes per (model, key), per-lane RPM, dead-lane handling, bulk/verify tiers, `suspicion()`.
-- Bulk tier: `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite` (shuts down 2027-05-07; replace with a newer lite model). Verify tier: stronger flash models, only for suspect batches.
+- Model names are discovered, not hardcoded: `choose_models()` takes the newest stable `gemini-<ver>-flash-lite` (bulk, max 3) and `-flash` (verify, max 5) from ListModels; previews/tts/image/live are skipped. Built-in names are only a fallback if ListModels fails. Override with env `GEMINI_BULK_MODELS` / `GEMINI_VERIFY_MODELS` (comma lists). Retired models vanish from ListModels or 404 and their lanes are dropped; unread batches fall to the verify tier.
 - Thinking is minimal (ladder in `call_gemini`). HDR tone-map downscales inside the first zscale.
 - Tests: `scripts/test_gemini_pool.py`, `scripts/test_extract_pipeline.py` (run in Tests workflow).
 - Accuracy per model: run the "Benchmark Gemini Models" workflow; output `data/benchmark_models.md`.

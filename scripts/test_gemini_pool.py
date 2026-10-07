@@ -140,5 +140,17 @@ check("verify does not replace with a worse one", not gp.pick_replacement(good, 
 check("empty verify answer never replaces", not gp.pick_replacement(good, [], known))
 check("verify fills a failed batch", gp.pick_replacement(None, good, known))
 
+# --- dynamic model choice -------------------------------------------------------------------
+import gemini_pool as _g
+_av = {"gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-4-flash-lite", "gemini-3.9-flash",
+       "gemini-3.5-flash-image", "gemini-2.5-flash-preview-tts", "gemini-3.5-pro", "gemini-3.1-flash-live",
+       "gemini-3-flash-preview"}
+_b, _v = _g.choose_models(_av, env={})
+check("dyn: newest lite first, junk excluded", _b == ["gemini-4-flash-lite", "gemini-3.5-flash-lite"], str(_b))
+check("dyn: stable flash preferred over preview", _v == ["gemini-3.9-flash", "gemini-3.5-flash"], str(_v))
+check("dyn: previews used when nothing stable", _g.choose_models({"gemini-3-flash-preview"}, env={})[1] == ["gemini-3-flash-preview"])
+check("dyn: fallback when discovery empty", _g.choose_models(set(), env={})[0] == _g.BULK_MODELS)
+check("dyn: env override", _g.choose_models(_av, env={"GEMINI_BULK_MODELS": "gemini-3.5-flash"})[0] == ["gemini-3.5-flash"])
+check("dyn: unknown new lite is bulk", _g.profile_for("gemini-9-flash-lite")["tier"] == "bulk")
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

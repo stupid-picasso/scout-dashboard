@@ -18,6 +18,8 @@ Two tiers:
 No network code lives here: callers pass a function that makes one request, so the scheduling can
 be tested offline (scripts/test_gemini_pool.py).
 """
+import os
+import re
 import threading
 import time
 from collections import Counter
@@ -42,8 +44,57 @@ VERIFY_MODELS = [m for m, p in MODEL_PROFILES.items() if p["tier"] == "verify"]
 NEVER = float("inf")
 
 
+_FLASH_RE = re.compile(r"^gemini-(\d+(?:\.\d+)?)-flash(-lite)?(?:-(\d{3}|preview[\w.-]*))?$")
+_SKIP_RE = re.compile(r"(tts|image|live|audio|embed|thinking|robotics|computer|customtools|native|exp)")
+
+
+def classify(name):
+    """(tier, rpm, version tuple, is_preview) for a text flash model name, else None.
+    Names are never listed here: any gemini-<ver>-flash[-lite] the API reports is understood, so a
+    new generation joins the rotation by itself and a retired one drops out when ListModels stops
+    returning it."""
+    m = _FLASH_RE.match(name or "")
+    if not m or _SKIP_RE.search(name):
+        return None
+    ver = tuple(int(x) for x in m.group(1).split("."))
+    lite = bool(m.group(2))
+    preview = bool(m.group(3) and m.group(3).startswith("preview"))
+    return ("bulk", 12) if lite else ("verify", 5), ver, preview
+
+
 def profile_for(model):
-    return MODEL_PROFILES.get(model, DEFAULT_PROFILE)
+    if model in MODEL_PROFILES:
+        return MODEL_PROFILES[model]
+    c = classify(model)
+    if c:
+        return {"tier": c[0][0], "rpm": c[0][1]}
+    return DEFAULT_PROFILE
+
+
+def choose_models(avail, max_bulk=3, max_verify=5, env=os.environ):
+    """Picks (bulk, verify) model lists, newest first, from what the keys can call.
+    GEMINI_BULK_MODELS / GEMINI_VERIFY_MODELS (comma lists) override the choice.
+    With no discovery result (API unreachable) the built-in defaults are returned."""
+    ov_b = [x.strip() for x in (env.get("GEMINI_BULK_MODELS") or "").split(",") if x.strip()]
+    ov_v = [x.strip() for x in (env.get("GEMINI_VERIFY_MODELS") or "").split(",") if x.strip()]
+    if not avail:
+        return ov_b or list(BULK_MODELS), ov_v or list(VERIFY_MODELS)
+    found = {"bulk": [], "verify": []}
+    for name in avail:
+        c = classify(name)
+        if c:
+            found[c[0][0]].append((name, c[1], c[2]))
+
+    def pick(tier, limit):
+        rows = found[tier]
+        stable = [r for r in rows if not r[2]]
+        rows = stable or rows                      # previews only when nothing stable exists
+        rows.sort(key=lambda r: r[1], reverse=True)
+        return [r[0] for r in rows[:limit]]
+
+    bulk = [m for m in ov_b if m in avail] or pick("bulk", max_bulk)
+    verify = [m for m in ov_v if m in avail] or pick("verify", max_verify)
+    return bulk, verify
 
 
 class Lane:

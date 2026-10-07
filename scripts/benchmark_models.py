@@ -187,7 +187,7 @@ def main():
     if a.models:
         models = [m.strip() for m in a.models.split(",") if m.strip()]
     else:
-        models = sorted(m for m in avail if MODEL_RE.match(m)) or list(gp.BULK_MODELS + gp.VERIFY_MODELS)
+        models = sorted(m for m in avail if gp.classify(m) or MODEL_RE.match(m)) or list(gp.BULK_MODELS + gp.VERIFY_MODELS)
     print("[bench] models:", models)
     with tempfile.TemporaryDirectory() as tmp:
         frames = px.extract_frames(a.video, tmp, a.fps, False, 0.3)

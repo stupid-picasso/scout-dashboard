@@ -61,7 +61,7 @@ def fake_post(url, json=None, timeout=None):
     tc = cfg.get("thinkingConfig") or {}
     if model.startswith("gemini-3") and "thinkingBudget" in tc:
         return Resp(400, {"error": {"message": "thinkingBudget unsupported"}})
-    if tc.get("thinkingLevel") == "minimal" and model == "gemini-3.5-flash":
+    if tc.get("thinkingLevel") == "minimal" and not model.endswith("-lite"):
         return Resp(400, {"error": {"message": "minimal not supported"}})
     if (model, key) in BEHAVE["daily"]:
         return Resp(429, {"error": {"message": "quota exceeded PerDay"}})
@@ -114,7 +114,7 @@ verify_calls = [(m, c) for m, k, c in calls if m in px.gemini_pool.VERIFY_MODELS
 check("suspect batch sent to a verify model", len(verify_calls) >= 1, str({m for m, k, c in calls}))
 check("verify model's good reading kept", any(it.get("marker") in px.gemini_pool.VERIFY_MODELS for it in items), json.dumps(items)[:300])
 check("no empty-CP Pokemon left after verification", all(it.get("cp") is not None for it in items), json.dumps(items)[:300])
-check("ladder stepped down on a 400", any(c.get("thinkingConfig") == {"thinkingLevel": "low"} for m, c in verify_calls if m == "gemini-3.5-flash"), str([c.get("thinkingConfig") for m, c in verify_calls]))
+check("ladder stepped down on a 400", any(c.get("thinkingConfig") == {"thinkingLevel": "low"} for m, c in verify_calls), str([c.get("thinkingConfig") for m, c in verify_calls]))
 
 # --- run 3: one lite model absent from the account (404) and one lane out of daily quota
 calls.clear(); BEHAVE["suspect_batches"] = set(); BEHAVE["bad_model"] = "gemini-3.1-flash-lite"; BEHAVE["daily"] = {("gemini-3.5-flash-lite", "keyAAAAAA111")}

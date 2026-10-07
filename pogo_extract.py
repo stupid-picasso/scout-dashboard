@@ -2037,7 +2037,8 @@ _THINK_RUNG = {}
 
 
 def _think_ladder(model):
-    if model.startswith("gemini-3"):
+    m = re.match(r"gemini-(\d+)", model)
+    if m and int(m.group(1)) >= 3:  # Gemini 3 and later use thinkingLevel; 2.x used thinkingBudget
         return [{"thinkingLevel": "minimal"}, {"thinkingLevel": "low"}, None]
     return [{"thinkingBudget": 0}, None]
 
@@ -2181,8 +2182,10 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     if avail:
         print("[Gemini] models callable with these keys (flash family): "
               + ", ".join(sorted(m for m in avail if "flash" in m)))
-    usable = lambda ms: [m for m in ms if not avail or m in avail]
-    bulk_models, verify_models = usable(gemini_pool.BULK_MODELS), usable(gemini_pool.VERIFY_MODELS)
+    # Model names are not hardcoded: the newest flash / flash-lite models the keys can call are
+    # chosen from ListModels (gemini_pool.choose_models). Built-in names are only the fallback
+    # when ListModels is unreachable.
+    bulk_models, verify_models = gemini_pool.choose_models(avail)
     tiers = {}
     if not bulk_models:  # no cheap model available: let the stronger ones carry the bulk work
         bulk_models, verify_models = verify_models, []
@@ -2230,6 +2233,17 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
             print(f"[Gemini] batch {i + 1}/{len(batches)} exhausted all retries \u2014 skipping")
         else:
             print(f"[Gemini] batch {i + 1}/{len(batches)} -> {len(arr)} Pokemon (model={answered.get(i)})")
+
+    # Batches no bulk lane could read (models retired or out of quota mid-run) go to the stronger tier.
+    missing = [i for i in range(len(batches)) if results.get(i) is None]
+    if missing and pool.alive("verify"):
+        print(f"[Gemini] {len(missing)} batch(es) unread by the bulk tier; trying the verify tier")
+        rres, rans = gemini_pool.run_batches(
+            pool, missing, make_call, "verify", len(pool.alive("verify")),
+            max_attempts=len(pool.lanes) + 1, max_wait=120, log=print)
+        for i in missing:
+            if rres.get(i) is not None:
+                results[i], answered[i] = rres[i], rans.get(i)
 
     # Second opinion: the stronger models (about 20 requests a day each on the free tier) re-read
     # only the batches whose bulk answer looks unreliable or never arrived.
