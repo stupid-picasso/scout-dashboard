@@ -98,10 +98,22 @@ def main():
         types = "/".join(t.replace("POKEMON_TYPE_", "").title() for t in (ps.get("type"), ps.get("type2")) if t)
         sp_rows[str(int(mm.group(1)))] = "%d,%d,%d|%s|%s|%s" % (st["baseAttack"], st["baseDefense"], st["baseStamina"], types,
                                                                   int(ps.get("kmBuddyDistance", 0)), (ps.get("thirdMove") or {}).get("stardustToUnlock", ""))
+    # Candy is shared by a whole evolution family (Pichu, Pikachu and Raichu all spend Pichu candy).
+    # The game master names it: pokemonSettings.familyId. dex -> family key, lowercase, no prefix.
+    fam = {}
+    for x in gm:
+        mm = re.match(r"V(\d{4})_POKEMON_", x["templateId"])
+        ps = x.get("data", {}).get("pokemonSettings")
+        if mm and ps and ps.get("familyId"):
+            fam.setdefault(str(int(mm.group(1))), re.sub(r"^FAMILY_", "", ps["familyId"]).lower())
+    fam_block = ("// GENERATED BLOCK: SPECIES_FAMILY (import_mega_levels.py) — do not hand-edit\n"
+                 "const SPECIES_FAMILY = " + json.dumps(fam, separators=(",", ":")) + ";\n"
+                 "// END GENERATED BLOCK: SPECIES_FAMILY")
     gen_block = ("// GENERATED BLOCK: SPECIES_GM (import_mega_levels.py) — do not hand-edit\n"
                  "const SPECIES_GM = " + json.dumps(sp_rows, separators=(",", ":")) + ";\n"
                  "for (const _d in SPECIES_GM) { const _p = SPECIES_GM[_d].split('|')[0].split(',').map(Number); BASE_STATS[_d] = _p; }\n"
                  "// END GENERATED BLOCK: SPECIES_GM")
+    fpat0 = None
     block = ("// GENERATED BLOCK: MEGA_LEVEL_DATA (import_mega_levels.py) — do not hand-edit\n"
              "const MEGA_LEVEL_DATA = " + json.dumps(out, separators=(",", ":")) + ";\n"
              "// END GENERATED BLOCK: MEGA_LEVEL_DATA")
@@ -112,6 +124,11 @@ def main():
     else:
         a0 = "// GENERATED BLOCK: MEGA_LEVEL_DATA"
         src = src.replace(a0, gen_block + "\n\n" + a0, 1)
+    fpat = re.compile(r"// GENERATED BLOCK: SPECIES_FAMILY.*?// END GENERATED BLOCK: SPECIES_FAMILY", re.S)
+    if fpat.search(src):
+        src = fpat.sub(lambda _: fam_block, src)
+    else:
+        src = src.replace("// END GENERATED BLOCK: SPECIES_GM", "// END GENERATED BLOCK: SPECIES_GM\n\n" + fam_block, 1)
     pat = re.compile(r"// GENERATED BLOCK: MEGA_LEVEL_DATA.*?// END GENERATED BLOCK: MEGA_LEVEL_DATA", re.S)
     if pat.search(src):
         src = pat.sub(lambda _: block, src)

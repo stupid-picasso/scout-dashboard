@@ -204,7 +204,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.150</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.151</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3123,6 +3123,7 @@ class Component extends DCLogic {
     try {
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
       this.mechanics = mechanics;
+      try { const ci = this.normalizeCandyInventory(this.state.candyInventory || {}); if (ci !== this.state.candyInventory) this.setState({ candyInventory: ci }); } catch (e) {}
       // Nothing is cached on this device. The roster and every counter start
       // empty; signing in and getting the first Firestore snapshot is the only
       // way any of this ever gets filled in (see onAuthChange/applyRemote).
@@ -3619,7 +3620,7 @@ class Component extends DCLogic {
       roster: this.sanitizeRoster(remote.roster || []),
       ivOverrides: this.mergeIvOverrides(this.state.ivOverrides, remote.ivOverrides),
       addedPokemon: this.sanitizeRoster(remote.addedPokemon || []),
-      candyInventory: remote.candyInventory || {},
+      candyInventory: this.normalizeCandyInventory(remote.candyInventory || {}),
       typeTable: remote.typeTable || {},
       moveDB: remote.moveDB || {},
       evoTable: remote.evoTable || {},
@@ -5088,7 +5089,7 @@ class Component extends DCLogic {
     const level = Math.min(m.MAX_POKEMON_LEVEL, scannedLevel + pending * 0.5);
     const levelKnown = !Number.isFinite(p.lvlMax) || p.lvlMax === p.lvlMin;
     const opts = { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) };
-    const inv = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()] || {};
+    const inv = this.candyRecFor(p.name) || {};
     const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
     const haveXL = Number.isFinite(inv.xlCandy) ? inv.xlCandy : null;
     const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
@@ -6834,15 +6835,16 @@ class Component extends DCLogic {
   applyOcrResult() {
     const p = this.state.ocrParsed;
     if (!p) return;
-    const key = (p.matchedName || p.name || '').trim().toLowerCase();
+    const key = this.candyKey((p.matchedName || p.name || '').trim());
     const candyInv = { ...this.state.candyInventory };
     const types = { ...this.state.typeTable };
     const rec = p._rec || {};
     if (key) {
       if (p.candy != null || p.xlCandy != null) {
-        candyInv[key] = { name: p.matchedName || p.name, candy: p.candy, xlCandy: p.xlCandy };
+        const prevRec = candyInv[key] || {};
+        candyInv[key] = { name: p.matchedName || p.name, candy: p.candy != null ? p.candy : prevRec.candy, xlCandy: p.xlCandy != null ? p.xlCandy : prevRec.xlCandy, at: Date.now() };
       }
-      if (p.type) types[key] = p.type;
+      if (p.type) types[(p.matchedName || p.name || '').trim().toLowerCase()] = p.type;
     }
     // Species-level costs and moves read off the same screen, applied to the
     // matched roster entry so power-up planning can use real numbers.
@@ -7086,6 +7088,7 @@ class Component extends DCLogic {
       if (this.RESTORE_EXCLUDED_KEYS.indexOf(k) >= 0) return;
       if (d[k] !== undefined) next[k] = d[k];
     });
+    if (next.candyInventory) next.candyInventory = this.normalizeCandyInventory(next.candyInventory);
     next.roster = this.sanitizeRoster(d.roster || []);
     // Identical gap: a backup or snapshot holding bare records crashes the
     // render exactly as an unsanitized cloud read did.
@@ -9195,10 +9198,12 @@ class Component extends DCLogic {
         inserted++;
       }
       if (item.candy != null || item.xlCandy != null) {
-        candyInv[nameLower] = {
+        const famKey = this.candyKey(item.name);
+        candyInv[famKey] = {
           name: item.name,
-          candy: item.candy != null ? item.candy : (candyInv[nameLower] && candyInv[nameLower].candy),
-          xlCandy: item.xlCandy != null ? item.xlCandy : (candyInv[nameLower] && candyInv[nameLower].xlCandy)
+          candy: item.candy != null ? item.candy : (candyInv[famKey] && candyInv[famKey].candy),
+          xlCandy: item.xlCandy != null ? item.xlCandy : (candyInv[famKey] && candyInv[famKey].xlCandy),
+          at: Date.now()
         };
       }
       if (item.type) types[nameLower] = item.type;
@@ -9992,6 +9997,42 @@ class Component extends DCLogic {
     return '';
   }
 
+  // ---- Candy is per evolution family ----
+  // Pichu, Pikachu and Raichu spend one shared pool, so the inventory is keyed by the game
+  // master's family (mechanics.candyFamilyKey), not by species name. A scan of any member
+  // therefore updates what every member shows, and spending from one reduces them all.
+  candyKey(name) {
+    const m = this.mechanics;
+    const n = String(name || '').toLowerCase().trim();
+    return (m && m.candyFamilyKey) ? m.candyFamilyKey(name) : n;
+  }
+
+  candyRecFor(name) {
+    const inv = this.state.candyInventory || {};
+    return inv[this.candyKey(name)] || null;
+  }
+
+  // Older data was keyed by species name. Fold those entries into their family; when two members
+  // disagree the newer scan wins (entries now carry `at`), else the larger count.
+  normalizeCandyInventory(inv) {
+    const m = this.mechanics;
+    if (!inv || !m || !m.candyFamilyKey) return inv || {};
+    const out = {};
+    let changed = false;
+    Object.keys(inv).forEach(k => {
+      const rec = inv[k];
+      if (!rec) { changed = true; return; }
+      const fk = m.candyFamilyKey(rec.name || k);
+      if (fk !== k) changed = true;
+      const cur = out[fk];
+      if (!cur) { out[fk] = rec; return; }
+      changed = true;
+      const ta = Number(rec.at) || 0, tb = Number(cur.at) || 0;
+      out[fk] = ta !== tb ? (ta > tb ? rec : cur) : ((Number(rec.candy) || 0) >= (Number(cur.candy) || 0) ? rec : cur);
+    });
+    return changed ? out : inv;
+  }
+
   // ---- Derived-data cache ----
   // renderVals runs on every state change (a keystroke, a selection tick, a toast) and used to
   // recompute every tab's analysis each time (~45 ms for 500 Pokemon, 4x that on a phone). The
@@ -10086,7 +10127,7 @@ class Component extends DCLogic {
     sel.forEach(i => removed.add(i));
     const inv = { ...(this.state.candyInventory || {}) };
     if (withCandy) picked.forEach(p => {
-      const key = String(p.name || '').toLowerCase();
+      const key = this.candyKey(p.name);
       const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
       inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1 };
     });
@@ -10194,7 +10235,7 @@ class Component extends DCLogic {
   transferPokemon(p, gotXl) {
     this.offerUndo('Transferred ' + (p.name || 'Pokemon'), ['removedIds', 'candyInventory']);
     this.removePokemon(p.idx);
-    const key = String(p.name || '').toLowerCase();
+    const key = this.candyKey(p.name);
     const inv = { ...(this.state.candyInventory || {}) };
     const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
     inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1, xlCandy: gotXl ? (Number(cur.xlCandy) || 0) + 1 : cur.xlCandy };
@@ -10218,7 +10259,7 @@ class Component extends DCLogic {
     });
   }
 
-  candyKeyFor(p) { return String((p && p.name) || '').toLowerCase(); }
+  candyKeyFor(p) { return this.candyKey((p && p.name) || ''); }
 
   candyDraftFor(p, field) {
     const key = this.candyKeyFor(p);
@@ -10583,7 +10624,7 @@ class Component extends DCLogic {
     // candyInventory is keyed by lowercase species name everywhere it's written
     // (OCR import, appraisal merge) — a dex-number lookup here never hit,
     // which is why every evolve candidate fell through to "candy unknown".
-    const byName = inv[String(p.name || '').toLowerCase()];
+    const byName = inv[this.candyKey(p.name)];
     if (byName && byName.candy != null) return { candy: byName.candy, xlCandy: byName.xlCandy != null ? byName.xlCandy : null };
     // Per-Pokemon candy columns from a CSV import are a fallback when no
     // family-level inventory has been recorded yet.
@@ -11174,7 +11215,7 @@ class Component extends DCLogic {
     // Spend the candy this evolution actually cost.
     const evo = this.evoInfoFor(p);
     const need = (evo && Number(evo.need)) || 0;
-    const fromKey = String(p.name || '').toLowerCase();
+    const fromKey = this.candyKey(p.name);
     const inv = { ...(this.state.candyInventory || {}) };
     if (need > 0 && inv[fromKey]) {
       const cur = inv[fromKey];
@@ -11802,7 +11843,7 @@ class Component extends DCLogic {
         const dominatedByIdx = {};
         this.dominatedDuplicates(roster).forEach(({ loser, winner }) => { dominatedByIdx[loser.idx] = winner; });
         const candyFor = p => {
-          const rec = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()];
+          const rec = this.candyRecFor(p.name);
           return rec ? (Number(rec.candy) || 0) : null;
         };
         const chatLine = p => {
@@ -13308,7 +13349,7 @@ class Component extends DCLogic {
           const cost = m && m.purifyCostFor ? m.purifyCostFor(p.name) : null;
           if (!cost) return null;
           const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
-          const inv = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()] || {};
+          const inv = this.candyRecFor(p.name) || {};
           const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
           const short = [];
           if (haveDust != null && cost.stardust > haveDust) short.push('stardust');
@@ -13386,7 +13427,7 @@ class Component extends DCLogic {
           return rows.length ? rows : null;
         })(),
         resources: (() => {
-          const inv = (this.state.candyInventory || {})[String(p.name || '').toLowerCase()] || {};
+          const inv = this.candyRecFor(p.name) || {};
           const f = n => Number.isFinite(n) ? Number(n).toLocaleString('en-US') : '\u2014';
           return { stardust: f(this.state.stardustBalance), candy: f(inv.candy), xl: f(inv.xlCandy) };
         })(),

@@ -91,5 +91,40 @@ module.exports = async function suiteB() {
   await T('INT-05', 'Intel', 'Trade advisor names Pokemon whose lowest IV is under 12', async () => { const t = await s.text(); if (!/WORTH A LUCKY TRADE/.test(t)) skip('none'); expect(/lowest IV is \d+/.test(t)); });
   await T('INT-06', 'Intel', 'Missing-from-dex list excludes owned species', async () => { const t = await s.text(); const seg = (t.split('MISSING FROM YOUR DEX')[1] || ''); expect(!/\bPikachu\b/.test(seg) && !/\bDragonite\b/.test(seg)); });
   await T('INT-07', 'Intel', 'Data confidence reflects measured vs guessed IVs', async () => expect(/DATA CONFIDENCE/.test(await s.text())));
+
+  // ------------------------------------------------------------------ CANDY (shared by evolution family)
+  await T('CAN-01', 'Candy', 'Pichu, Pikachu and Raichu share one candy key; Eevee branches (Jolteon, Sylveon) share Eevee\'s', async () => {
+    const k = async n => s.call('candyKey', n); const a = await k('Pichu'), b = await k('Pikachu'), c = await k('Raichu');
+    expect(a === b && b === c, [a, b, c].join()); const e = await k('Eevee'); expect(e === await k('Jolteon') && e === await k('Sylveon') && e === await k('Vaporeon'), 'eevee family');
+    expect((await k('Pikachu')) !== (await k('Eevee')), 'different families collided'); expect((await k('Notamon')) === 'notamon', 'unknown name');
+  }, 'critical');
+  await T('CAN-02', 'Candy', 'A scan of Pikachu with 103 candy updates what Pichu and Raichu show (and replaces the old 100)', async () => {
+    await s.set({ candyInventory: { pikachu: { name: 'Pikachu', candy: 100, xlCandy: 4, at: 1 } } });
+    await s.set({ ocrParsed: { name: 'Pikachu', matchedName: 'Pikachu', candy: 103, xlCandy: 5, _rec: {} } }); await s.call('applyOcrResult'); await s.page.waitForTimeout(300);
+    for (const n of ['Pichu', 'Pikachu', 'Raichu']) { const st = await s.call('candyStockFor', { name: n }); expect(st.candy === 103 && st.xlCandy === 5, n + ' shows ' + JSON.stringify(st)); }
+    const inv = (await s.state()).candyInventory; expect(Object.keys(inv).filter(k => /pikachu|pichu|raichu/.test(k)).length === 1, 'duplicate family entries: ' + Object.keys(inv).join());
+  }, 'critical');
+  await T('CAN-03', 'Candy', 'A scan that reads only regular candy keeps the XL candy already on file', async () => {
+    await s.set({ ocrParsed: { name: 'Raichu', matchedName: 'Raichu', candy: 98, xlCandy: null, _rec: {} } }); await s.call('applyOcrResult'); await s.page.waitForTimeout(200);
+    const st = await s.call('candyStockFor', { name: 'Pichu' }); expect(st.candy === 98 && st.xlCandy === 5, JSON.stringify(st));
+  }, 'high');
+  await T('CAN-04', 'Candy', 'Video import of any family member writes the family entry', async () => {
+    await s.set({ candyInventory: {} }); await s.call('mergeVideoImport', [{ name: 'Jolteon', cp: 1500, hp: 120, candy: 77, xlCandy: 2, atkIV: 10, defIV: 10, staIV: 10 }]); await s.page.waitForTimeout(300);
+    const st = await s.call('candyStockFor', { name: 'Eevee' }); expect(st.candy === 77 && st.xlCandy === 2, JSON.stringify(st));
+  }, 'high');
+  await T('CAN-05', 'Candy', 'Transferring a Raichu adds its candy to the family pool Pikachu shows', async () => {
+    await s.set({ candyInventory: { pikachu: { name: 'Pikachu', candy: 50, xlCandy: null, at: 1 } } });
+    await s.call('transferPokemon', { idx: 999999, name: 'Raichu' }, false); await s.page.waitForTimeout(300);
+    const st = await s.call('candyStockFor', { name: 'Pikachu' }); expect(st.candy === 51, JSON.stringify(st));
+  }, 'high');
+  await T('CAN-06', 'Candy', 'Old per-species entries are folded into their family; the newer scan wins, else the larger count', async () => {
+    const out = await s.call('normalizeCandyInventory', { pikachu: { name: 'Pikachu', candy: 100, at: 1 }, raichu: { name: 'Raichu', candy: 50, at: 5 }, jolteon: { name: 'Jolteon', candy: 30 }, eevee: { name: 'Eevee', candy: 44 }, abra: { name: 'Abra', candy: 9 } });
+    expect(Object.keys(out).sort().join() === 'abra,eevee,pikachu', Object.keys(out).join()); expect(out.pikachu.candy === 50, 'newer should win'); expect(out.eevee.candy === 44, 'larger should win without timestamps');
+    const same = { pikachu: { name: 'Pikachu', candy: 1 } }; expect((await s.call('normalizeCandyInventory', same)).pikachu.candy === 1, 'single family entry changed');
+  }, 'high');
+  await T('CAN-07', 'Candy', 'Evolve readiness uses the shared pool: Pichu and Raichu see the Pikachu scan', async () => {
+    await s.set({ candyInventory: { pikachu: { name: 'Pikachu', candy: 103, at: 9 } } });
+    const a = await s.call('candyStockFor', { name: 'Raichu' }); const b = await s.call('candyStockFor', { name: 'Pichu' }); expect(a.candy === 103 && b.candy === 103, JSON.stringify([a, b]));
+  }, 'medium');
   await s.close();
 };
