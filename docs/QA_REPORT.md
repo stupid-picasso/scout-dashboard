@@ -1,9 +1,9 @@
 # Professor PWA - QA report
 
-Generated 2026-10-06 against build v53.x. Two independent test layers:
+Generated 2026-10-07 against build v53.x. Two independent test layers:
 
 - **Accuracy audit** - 19 checks comparing the app's data and math to Niantic's game master and to PvPoke: **10,712 of 10,770 comparisons match (99.46%)**.
-- **Feature tests** - 173 end-to-end cases in a real Chromium at iPhone size: **172 pass, 0 fail, 1 skipped**.
+- **Feature tests** - 232 end-to-end cases in a real Chromium at iPhone size: **232 pass, 0 fail, 0 skipped**.
 
 ## 1. Scorecard
 
@@ -11,24 +11,24 @@ Rating = how far this area can be trusted, 1-10. It blends the measured result w
 
 | Area | Rating | Tests | Pass | Notes |
 |---|---|---|---|---|
-| Boot | **9/10** `█████████░` | 11 | 11/11 | Loads clean at 320-1280 px with no page errors; every tab renders on an empty roster. |
-| Import | **8/10** `████████░░` | 12 | 12/12 | Poke Genie CSV, CRLF, accents, 800 rows and hostile HTML in names all handled; no script execution. |
-| Roster | **8/10** `████████░░` | 20 | 20/20 | Search, 8 sorts, 5 filters, paging and counts are correct; search now covers every move and trims input. |
-| Gestures | **8/10** `████████░░` | 5 | 5/5 | Swipe, long-press and tap-elsewhere-to-close behave like an iOS list. |
-| Detail | **8/10** `████████░░` | 12 | 11/11 | Header, moves, weaknesses, power-up, evolve and the Mega card work; Mega data persists. |
+| Boot | **9/10** `█████████░` | 11 | 11/11 | Loads clean at 320-1280 px with no page errors; every tab renders on an empty roster; first content in ~6.0 s on a 4x-CPU, 1.6 Mbps simulation. |
+| Import | **9/10** `█████████░` | 18 | 18/18 | Rows are range-checked with a notes card, a replace preview shows before/after counts, Replace can be undone, files read by column name (quoted names too), drag and drop works, and 200 corrupted files never crash it. |
+| Roster | **8/10** `████████░░` | 28 | 28/28 | Search, 9 sorts (incl. Mega ready), filters, saved views, select mode with bulk transfer/remove/favourite, undo, infinite scroll to 150 rows, correct counts. |
+| Gestures | **8/10** `████████░░` | 7 | 7/7 | Swipe, long-press and tap-elsewhere-to-close behave like an iOS list; Transfer/Remove show Undo; a one-time hint shows the swipe. |
+| Detail | **9/10** `█████████░` | 15 | 15/15 | Header, moves, weaknesses, power-up path with costs, best-spread target next to yours, evolve and the Mega card work; Previous/Next are named after the neighbouring Pokemon; heart is a real toggle; swipe and drag-to-dismiss exist. |
 | Ranks | **9/10** `█████████░` | 1 | 1/1 | Recalculation fills Great/Ultra/Little for every Pokemon with IVs; rank-1 spreads match PvPoke 100%. |
-| PvP | **9/10** `█████████░` | 18 | 18/18 | No over-cap Pokemon in any league list; team is legal, distinct and cup-aware; sprites on every row. |
+| PvP | **9/10** `█████████░` | 18 | 18/18 | No over-cap Pokemon in any league list; team is legal, distinct and cup-aware, including Mega editions and cups; sprites on every row. |
 | Attackers | **7/10** `███████░░░` | 6 | 6/6 | Ranked by a documented DPS x bulk score using real move data. |
-| Raid | **7/10** `███████░░░` | 7 | 7/7 | Type effectiveness, weather and survivability behave correctly (Fire boss favours Water/Rock/Ground; Grass/Bug never at the top). |
-| Recs | **8/10** `████████░░` | 6 | 6/6 | Transfer candidates never include Lucky, Shadow or Favourite Pokemon; MARK DONE advances the list. |
+| Raid | **7/10** `███████░░░` | 7 | 7/7 | Type effectiveness and weather behave correctly; this week's boss from the feed opens the Raid tab with its types (Mega X/Y, forms and shadows handled). |
+| Recs | **9/10** `█████████░` | 9 | 9/9 | Every card states the rule behind it with the Pokemon's own numbers (tested to reproduce); MARK DONE and Transferred offer Undo; transfer lists never include Lucky, Shadow or Favourite. |
 | Intel | **9/10** `█████████░` | 7 | 7/7 | Living Dex, Kanto dex, hundo and flag counters all equal the data. |
-| Today | **8/10** `████████░░` | 28 | 28/28 | Feed-driven GBL and event cards are correct: expired weeks hidden, cups filter the squad by type, cached feed works offline, malformed feeds are ignored. |
-| Home | **7/10** `███████░░░` | 10 | 10/10 | Settings, resources, Mega energy admin, storage planner and the two-tap clear all work; secrets stay on device. |
-| Log | **8/10** `████████░░` | 2 | 2/2 | Snapshots and the diagnostics panel work. |
-| Security | **9/10** `█████████░` | 6 | 6/6 | No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload, no XSS from names. |
-| PWA | **8/10** `████████░░` | 7 | 7/7 | Manifest, icons, service worker and offline reload verified over HTTP. |
-| Accessibility | **6/10** `██████░░░░` | 10 | 10/10 | Contrast passes AA for most text and tap targets are 44 pt. |
-| Performance | **8/10** `████████░░` | 5 | 5/5 | Tab switches and long-task checks pass; heap stays flat over 40 switches. |
+| Today | **8/10** `████████░░` | 33 | 33/33 | Live feed verified; cups cross-checked against the official page (later-season cups noted, not flagged); boss one-tap, calendar export, per-species verdicts, offline cache. |
+| Home | **8/10** `████████░░` | 16 | 16/16 | Device backup/restore without an account (no API keys inside, confirm step, bad files refused); trainer level, dust reserve and stardust validated; two-tap clear. |
+| Log | **9/10** `█████████░` | 7 | 7/7 | Daily automatic snapshot (once a day), four growth charts checked on 30 synthetic days, export/import round-trips exactly and rejects junk. |
+| Security | **9/10** `█████████░` | 6 | 6/6 | No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload or the device backup, no XSS from names. |
+| PWA | **8/10** `████████░░` | 13 | 13/13 | Manifest (Professor, black theme, any + maskable icons with verified sizes), 180 px opaque touch icon, 10 iPhone splash images, install steps on iPhone Safari, service worker and offline reload verified over HTTP. |
+| Accessibility | **9/10** `█████████░` | 25 | 25/25 | axe-core clean on every screen, the More menu, select mode and the detail sheet; Lighthouse accessibility 100; keyboard-only paths pass; real buttons and named controls. |
+| Performance | **6/10** `██████░░░░` | 5 | 5/5 | A state change takes ~14 ms at 500 Pokemon (was 45); minified app code and dropped fonts cut the download from 2.1 MB to ~0.6 MB gzip; ready time fell 6.5 s -> 6.0 s in a throttled A/B. |
 
 Data accuracy areas:
 
@@ -96,7 +96,7 @@ Notes on the audit:
 | BOOT-03 | Empty state: header says 0 Pokemon and invites a sync | PASS |  |
 | BOOT-04 | Five tab-bar items plus a More menu holding the other five destinations | PASS |  |
 | BOOT-05 | Every tab renders on an empty roster without throwing | PASS |  |
-| BOOT-06 | Initial load completes in under 4 seconds | PASS | 764 ms |
+| BOOT-06 | Initial load completes in under 4 seconds | PASS | 768 ms |
 | BOOT-07 | No horizontal overflow at 430 px width | PASS |  |
 | BOOT-W320 | No horizontal overflow and no error at 320px width | PASS |  |
 | BOOT-W390 | No horizontal overflow and no error at 390px width | PASS |  |
@@ -110,14 +110,20 @@ Notes on the audit:
 | IMP-01 | CSV of 64 Pokemon loads and the header count updates | PASS |  |
 | IMP-02 | Success notice names the file and the count | PASS |  |
 | IMP-03 | Header stat tiles show roster count, average IV, lucky and shadow counts | PASS |  |
-| IMP-04 | Re-importing the same file replaces rather than duplicates | PASS | count stays 64 (notice does not mention the replacement) |
+| IMP-04 | Re-importing the same file replaces rather than duplicates | PASS | notice says replaced |
 | IMP-05 | CRLF line endings import cleanly (Windows exports) | PASS |  |
 | IMP-06 | A header-only file shows a readable error, not a crash | PASS |  |
 | IMP-07 | A garbage file does not crash or corrupt the roster | PASS |  |
 | IMP-08 | HTML in a Pokemon name is rendered as text (no script execution) | PASS |  |
 | IMP-09 | Names with accents and symbols (Flabébé, Nidoran♀, Farfetch'd) import | PASS |  |
 | IMP-10 | A file with missing trailing columns still imports the Pokemon | PASS |  |
-| IMP-11 | 800-row import renders in under 5 seconds | PASS | 1022 ms |
+| IMP-11 | 800-row import renders in under 5 seconds | PASS | 1746 ms |
+| IMP-13 | Importing over an existing roster asks first, showing the before/after counts | PASS |  |
+| IMP-14 | Replacing can be undone from the toast | PASS |  |
+| IMP-15 | Out-of-range values are cleared and listed; a row with no name is skipped | PASS |  |
+| IMP-16 | A different exporter's CSV is read by column name, including quoted names | PASS |  |
+| IMP-17 | Dropping a .csv file on the page imports it | PASS |  |
+| IMP-18 | 200 randomly corrupted files never crash the app or leave it unusable | PASS |  |
 | IMP-12 | Roster is persisted: a reload keeps the imported Pokemon | PASS |  |
 
 ### Roster
@@ -144,6 +150,14 @@ Notes on the audit:
 | ROS-09 | Lucky filter count matches the Lucky stat tile | PASS | lucky in data: 5 |
 | ROS-10 | Every row shows name, CP, IV triple and a type label | PASS |  |
 | ROS-11 | Row opens the detail sheet on tap | PASS |  |
+| ROS-12 | Select mode: rows toggle on tap, the bar shows the count, Done exits | PASS |  |
+| ROS-13 | Bulk transfer removes the selection, adds 1 candy per Pokemon, and Undo restores it all | PASS |  |
+| ROS-14 | Bulk favourite marks the selection, and Undo reverses it | PASS |  |
+| ROS-15 | Bulk remove asks first and grants no candy | PASS |  |
+| ROS-16 | Saved views: save the current filter + sort, reapply it, delete it, and it survives a reload | PASS |  |
+| ROS-17 | Sort "Mega ready" lists Mega-capable Pokemon first | PASS |  |
+| ROS-18 | Scrolling to the bottom loads the next page without tapping | PASS |  |
+| ROS-19 | Rows skip off-screen rendering (content-visibility) so long lists scroll smoothly | PASS |  |
 
 ### Gestures
 
@@ -154,13 +168,18 @@ Notes on the audit:
 | GES-03 | Long press opens the action menu | PASS |  |
 | GES-04 | Vertical scrolling is not hijacked by the swipe handler | PASS |  |
 | GES-05 | Transfer removes the Pokemon and the count drops by one | PASS |  |
+| GES-06 | Single transfer offers Undo and restores the Pokemon and candy | PASS |  |
+| GES-07 | One-time swipe hint nudges the first row once, then never again | PASS |  |
 
 ### Detail
 
 | ID | Case | Result | Note |
 |---|---|---|---|
 | DET-01 | Detail header shows name, CP and a position counter ("1 of N") | PASS |  |
-| DET-02 | Next arrow moves to the following Pokemon | skip | no next control found by text |
+| DET-02 | Next arrow moves to the following Pokemon | PASS |  |
+| DET-15 | Previous and Next are named after the neighbouring Pokemon, and Previous returns | PASS |  |
+| DET-16 | The heart is a real toggle button with a pressed state | PASS |  |
+| DET-17 | Close is a named button | PASS |  |
 | DET-03 | Detail sheet shows moves with a best-moves suggestion | PASS |  |
 | DET-04 | Detail shows type weaknesses | PASS |  |
 | DET-05 | Detail shows league rank chips (Great/Ultra/Little) | PASS |  |
@@ -234,6 +253,9 @@ Notes on the audit:
 | REC-04 | MARK DONE removes an item from the power-up list | PASS |  |
 | REC-05 | USE A TM search finds a Pokemon by name | PASS |  |
 | REC-06 | AI recommendations without a key explain what is missing instead of failing | PASS |  |
+| REC-07 | Every recommendation card states the rule behind it | PASS |  |
+| REC-08 | The reason reproduces from the Pokemon's own numbers (IV and rank) | PASS |  |
+| REC-09 | MARK DONE offers Undo that puts the item back | PASS |  |
 
 ### Intel
 
@@ -273,6 +295,11 @@ Notes on the audit:
 | TOD-20 | Event planner rejects an event with no species | PASS |  |
 | TOD-21 | Scan queue lists Pokemon whose IVs are unmeasured, with reasons | PASS |  |
 | TOD-22 | Stats strip shows TO EVOLVE / QUEUED / NEW DEX | PASS |  |
+| TOD-40 | A raid-boss event offers "Best six vs <boss>" and opens the Raid tab with the boss's types filled in | PASS |  |
+| TOD-41 | Boss names map to types: Mega X/Y, forms, shadows | PASS |  |
+| TOD-42 | Add to calendar downloads a valid .ics for the event | PASS |  |
+| TOD-43 | Reminders: events starting within the hour and finished Mega rests are listed once | PASS |  |
+| TOD-44 | Turning reminders on asks for permission, and each reminder fires only once | PASS |  |
 | TOD-23 | No page errors after the whole Today session | PASS |  |
 | TOD-30 | Feed unreachable: no GBL card, no error, rest of Today still works | PASS |  |
 | TOD-31 | Malformed feed JSON is ignored safely | PASS |  |
@@ -294,6 +321,12 @@ Notes on the audit:
 | HOM-08 | CLEAR ROSTER needs a second confirmation tap | PASS |  |
 | HOM-09 | Storage planner reports whether the roster is within the keep target | PASS |  |
 | HOM-10 | Evolution items and TM resources sections are present | PASS |  |
+| HOM-11 | Trainer level is a working field: clamped to 1-50, junk ignored | PASS |  |
+| HOM-12 | Dust reserve accepts commas, clamps negatives to 0, ignores junk | PASS |  |
+| HOM-13 | Stardust balance rejects negatives and absurd values | PASS |  |
+| HOM-14 | Device backup is offered without an account and never contains API keys | PASS |  |
+| HOM-15 | A device backup restores the roster after it was cleared (with a confirmation step) | PASS |  |
+| HOM-16 | A broken backup file is refused with a message and changes nothing | PASS |  |
 
 ### Log
 
@@ -301,6 +334,11 @@ Notes on the audit:
 |---|---|---|---|
 | LOG-01 | Snapshot logging adds a dated row with roster size | PASS |  |
 | LOG-02 | Diagnostics panel captures a runtime error | PASS |  |
+| LOG-03 | A daily snapshot is taken automatically once, with hundo and species counts | PASS |  |
+| LOG-04 | Thirty synthetic days draw four correct growth charts | PASS |  |
+| LOG-05 | Export then import round-trips the log exactly | PASS |  |
+| LOG-06 | Junk files are rejected without touching the log | PASS |  |
+| LOG-07 | Export and Import controls are present and named | PASS |  |
 
 ### Security
 
@@ -324,101 +362,114 @@ Notes on the audit:
 | PWA-05 | Offline reload still boots the app (shell cached) | PASS |  |
 | PWA-06 | Safe-area insets are used so the tab bar clears the iPhone home indicator | PASS |  |
 | PWA-07 | viewport-fit=cover is set for the notch/Dynamic Island | PASS |  |
+| PWA-08 | Manifest: named Professor, black theme, any + maskable icons whose real sizes match | PASS |  |
+| PWA-09 | apple-touch-icon is 180x180 and opaque (iOS paints transparency black) | PASS |  |
+| PWA-10 | Every iPhone splash image exists at the size its media query promises | PASS |  |
+| PWA-11 | Head tags: one theme-color, one apple-touch-icon, title Professor | PASS |  |
+| PWA-12 | Offline bundle carries no unused-script fonts (Devanagari) and stays under 1.7 MB raw | PASS | 1.25 MB |
+| PWA-13 | Install steps show on iPhone Safari, not in the installed app, and not after Not now | PASS |  |
 
 ### Accessibility
 
 | ID | Case | Result | Note |
 |---|---|---|---|
 | A11Y-01 | Bottom-nav tap targets are at least 44x44 px | PASS |  |
-| A11Y-02 | Interactive elements expose a role or accessible name (VoiceOver) | PASS | 65/65 |
-| A11Y-03 | Interactive elements are reachable by keyboard (tabindex or native) | PASS | 65/65 |
-| A11Y-04 | Body text is at least 11 px (count of smaller text runs) | PASS | 0/270 |
-| A11Y-05 | Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs | PASS | 8/261 below 4.5:1 |
+| A11Y-02 | Interactive elements expose a role or accessible name (VoiceOver) | PASS | 60/60 |
+| A11Y-03 | Interactive elements are reachable by keyboard (tabindex or native) | PASS | 60/60 |
+| A11Y-04 | Body text is at least 11 px (count of smaller text runs) | PASS | 5/276 |
+| A11Y-05 | Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs | PASS | 4/266 below 4.5:1 |
 | A11Y-06 | prefers-reduced-motion is honoured by animations | PASS |  |
 | A11Y-07 | html lang attribute is set | PASS |  |
 | A11Y-08 | Form inputs have labels or placeholders | PASS |  |
 | A11Y-09 | Images have alt text (decorative alt="" allowed) | PASS |  |
 | A11Y-10 | Page zoom is not disabled (user-scalable) | PASS |  |
+| AXE-TODAY | axe-core: no serious or critical violations on TODAY | PASS | 1 lower-impact issues: landmark-unique |
+| AXE-ROSTER | axe-core: no serious or critical violations on ROSTER | PASS | 1 lower-impact issues: landmark-unique |
+| AXE-PVP | axe-core: no serious or critical violations on PVP | PASS | 1 lower-impact issues: landmark-unique |
+| AXE-RAID | axe-core: no serious or critical violations on RAID | PASS | 0 lower-impact issues:  |
+| AXE-HOME | axe-core: no serious or critical violations on HOME | PASS | 1 lower-impact issues: region |
+| AXE-RECS | axe-core: no serious or critical violations on RECS | PASS | 0 lower-impact issues:  |
+| AXE-INTEL | axe-core: no serious or critical violations on INTEL | PASS | 0 lower-impact issues:  |
+| AXE-ATTACK | axe-core: no serious or critical violations on ATTACK | PASS | 0 lower-impact issues:  |
+| AXE-LOG | axe-core: no serious or critical violations on LOG | PASS | 0 lower-impact issues:  |
+| AXE-MORE | axe-core: the More menu is clean | PASS |  |
+| AXE-DETAIL | axe-core: the detail sheet (with the Mega card) is clean | PASS |  |
+| AXE-SELECT | axe-core: roster select mode with a selection and the bulk bar is clean | PASS |  |
+| KEY-01 | Keyboard only: Tab reaches the tab bar and Enter switches screens | PASS |  |
+| KEY-02 | Keyboard only: a roster row opens its detail with Enter and Escape-free close works | PASS |  |
+| KEY-03 | Every control on the tab bar and header has an accessible name | PASS |  |
 
 ### Performance
 
 | ID | Case | Result | Note |
 |---|---|---|---|
-| PERF-01 | Average tab switch is under 400 ms with 64 Pokemon | PASS | 136 ms avg (re-measured with the corrected method) |
+| PERF-01 | Average tab switch (click to new content) is under 400 ms with 64 Pokemon | PASS | 209 ms avg |
 | PERF-02 | No long tasks over 200 ms during a full tab tour | PASS | 0 long tasks |
-| PERF-03 | JS heap does not grow by more than 50% over 40 tab switches (leak check) | PASS | 50.4 -> 50.4 MB |
-| PERF-04 | Page weight: index.html under 3 MB gzipped | PASS | 1.08 MB gz |
+| PERF-03 | JS heap does not grow by more than 50% over 40 tab switches (leak check) | PASS | 18.2 -> 18.2 MB |
+| PERF-04 | Page weight: index.html under 3 MB gzipped | PASS | 0.58 MB gz |
 | PERF-05 | Mechanics data (pokemon-mechanics.js) under 1.5 MB raw | PASS | 1.27 MB |
 
 ## 4. Per-area strengths, gaps and suggestions
 
 ### Boot - 9/10
 
-- **Solid:** Loads clean at 320-1280 px with no page errors; every tab renders on an empty roster.
-- **Weak or unseen:** Cold start on a throttled phone not measured.
-- Next: Add a first-run empty state that explains what to import and how.
+- **Solid:** Loads clean at 320-1280 px with no page errors; every tab renders on an empty roster; first content in ~6.0 s on a 4x-CPU, 1.6 Mbps simulation.
+- **Weak or unseen:** Real-phone cold start not measured.
+- Next: Check cold start on your phone and compare with the simulation.
 
-### Import - 8/10
+### Import - 9/10
 
-- **Solid:** Poke Genie CSV, CRLF, accents, 800 rows and hostile HTML in names all handled; no script execution.
-- **Weak or unseen:** Only the Poke Genie column layout is understood; rows are not range-validated (an IV of 99 is accepted).
-- Next: Validate each row (IV 0-15, CP, dex) and show a per-row error report.
-- Next: Accept drag and drop and a second CSV layout; show an import preview before replacing.
-- Next: Say "replaced N" in the notice when a roster is overwritten.
+- **Solid:** Rows are range-checked with a notes card, a replace preview shows before/after counts, Replace can be undone, files read by column name (quoted names too), drag and drop works, and 200 corrupted files never crash it.
+- **Weak or unseen:** Only CSV; no JSON or second exporter layout beyond named columns.
+- Next: Accept the app's own JSON backup through the same import path.
 
 ### Roster - 8/10
 
-- **Solid:** Search, 8 sorts, 5 filters, paging and counts are correct; search now covers every move and trims input.
-- **Weak or unseen:** Lists are paged by 30, not virtualised; no multi-select.
-- Next: Virtualise the list for 1,000+ rows.
-- Next: Multi-select with bulk transfer / favourite / tag.
-- Next: Saved filters ("PvP ready Great, unfavourited").
+- **Solid:** Search, 9 sorts (incl. Mega ready), filters, saved views, select mode with bulk transfer/remove/favourite, undo, infinite scroll to 150 rows, correct counts.
+- **Weak or unseen:** Not a true virtual list: each new page hitches ~100-130 ms and auto-load stops at 150 rows; the 2,000-row 16 ms/frame target was measured and not met.
+- Next: Replace the list with a windowed renderer so only visible rows exist in the DOM.
 
 ### Gestures - 8/10
 
-- **Solid:** Swipe, long-press and tap-elsewhere-to-close behave like an iOS list.
-- **Weak or unseen:** Real-device haptics and scroll-vs-swipe arbitration could only be tested with synthetic touches.
-- Next: Add a one-time hint the first time a list is shown.
+- **Solid:** Swipe, long-press and tap-elsewhere-to-close behave like an iOS list; Transfer/Remove show Undo; a one-time hint shows the swipe.
+- **Weak or unseen:** Real-device haptics and scroll-vs-swipe arbitration only tested with synthetic touches; no WebKit run.
+- Next: Run the suite on WebKit in CI and do a hands-on pass on the phone.
 
-### Detail - 8/10
+### Detail - 9/10
 
-- **Solid:** Header, moves, weaknesses, power-up, evolve and the Mega card work; Mega data persists.
-- **Weak or unseen:** The prev/next control has no accessible name so tests cannot find it.
-- Next: Name the prev/next controls; add swipe between Pokemon.
-- Next: Show the IV-rank spread target (best IVs for the league) next to the Pokemon's own.
+- **Solid:** Header, moves, weaknesses, power-up path with costs, best-spread target next to yours, evolve and the Mega card work; Previous/Next are named after the neighbouring Pokemon; heart is a real toggle; swipe and drag-to-dismiss exist.
+- **Weak or unseen:** Spread target is checked against the app's own optimiser, not re-derived from PvPoke each release.
+- Next: Add a PvPoke rank-1 comparison to the accuracy audit for every league.
 
 ### Ranks - 9/10
 
 - **Solid:** Recalculation fills Great/Ultra/Little for every Pokemon with IVs; rank-1 spreads match PvPoke 100%.
-- **Weak or unseen:** Little and Master only know PvPoke's top 80 species.
+- **Weak or unseen:** Little and Master only know PvPoke's top species.
 - Next: Import the full Little and Master tables lazily.
 
 ### PvP - 9/10
 
-- **Solid:** No over-cap Pokemon in any league list; team is legal, distinct and cup-aware; sprites on every row.
+- **Solid:** No over-cap Pokemon in any league list; team is legal, distinct and cup-aware, including Mega editions and cups; sprites on every row.
 - **Weak or unseen:** No shield or charge-move simulation: it trusts PvPoke's simulated tiers.
 - Next: Add a matchup simulator for two chosen Pokemon.
-- Next: Show the power-up path to the next IV-rank breakpoint with its cost.
 
 ### Attackers - 7/10
 
 - **Solid:** Ranked by a documented DPS x bulk score using real move data.
-- **Weak or unseen:** The 0.4 bulk exponent is a modelling choice; no dodging, no boss moves, no party boosts.
+- **Weak or unseen:** The 0.4 bulk exponent is a modelling choice; no dodging, no boss moves, no party boosts. Simulation deferred by you.
 - Next: Replace the proxy with a per-boss simulation using game-master boss movesets.
-- Next: Show confidence (how many of the Pokemon's moves have real data).
 
 ### Raid - 7/10
 
-- **Solid:** Type effectiveness, weather and survivability behave correctly (Fire boss favours Water/Rock/Ground; Grass/Bug never at the top).
-- **Weak or unseen:** Assumes the boss uses its own types; no real boss movesets or enrage timer.
-- Next: Pull this week's raid bosses from the events feed and rank your team for each with one tap.
-- Next: Add party size and the Mega attack boost for the team.
+- **Solid:** Type effectiveness and weather behave correctly; this week's boss from the feed opens the Raid tab with its types (Mega X/Y, forms and shadows handled).
+- **Weak or unseen:** Assumes the boss uses its own types; no real boss movesets or enrage timer. Simulation deferred by you.
+- Next: Add party size and the Mega attack boost; validate against published sims for 5 bosses.
 
-### Recs - 8/10
+### Recs - 9/10
 
-- **Solid:** Transfer candidates never include Lucky, Shadow or Favourite Pokemon; MARK DONE advances the list.
+- **Solid:** Every card states the rule behind it with the Pokemon's own numbers (tested to reproduce); MARK DONE and Transferred offer Undo; transfer lists never include Lucky, Shadow or Favourite.
 - **Weak or unseen:** AI recommendations need a key and were not exercised.
-- Next: Explain why each Pokemon is on a list in one line.
+- Next: Exercise the AI path with a test key in CI.
 
 ### Intel - 9/10
 
@@ -428,52 +479,47 @@ Notes on the audit:
 
 ### Today - 8/10
 
-- **Solid:** Feed-driven GBL and event cards are correct: expired weeks hidden, cups filter the squad by type, cached feed works offline, malformed feeds are ignored.
-- **Weak or unseen:** Feed data is community-sourced and only cross-checked against pokemongo.com by a workflow that has not yet run.
-- Next: Schedule the cross-check and show its result prominently.
-- Next: Local notifications for events and Mega rest timers.
-- Next: Calendar export for events.
+- **Solid:** Live feed verified; cups cross-checked against the official page (later-season cups noted, not flagged); boss one-tap, calendar export, per-species verdicts, offline cache.
+- **Weak or unseen:** Reminders only fire while the app is open or returns to the front (iOS cannot wake a web app); feed is community data.
+- Next: Add web push through a small server if closed-app reminders matter.
 
-### Home - 7/10
+### Home - 8/10
 
-- **Solid:** Settings, resources, Mega energy admin, storage planner and the two-tap clear all work; secrets stay on device.
-- **Weak or unseen:** Sign-in needs the network; Firestore sync was not exercised end to end.
-- Next: Move Mega Energy entry onto the Mega card only and retire the admin list.
-- Next: Add a backup/restore JSON file.
+- **Solid:** Device backup/restore without an account (no API keys inside, confirm step, bad files refused); trainer level, dust reserve and stardust validated; two-tap clear.
+- **Weak or unseen:** Trainer level and dust reserve fields were silently dead before this pass; settings are not yet grouped like iOS Settings; Firestore sync not exercised end to end.
+- Next: Group settings into iOS-style sections; run a signed-in sync test against a test project.
 
-### Log - 8/10
+### Log - 9/10
 
-- **Solid:** Snapshots and the diagnostics panel work.
-- **Weak or unseen:** Snapshots are manual.
-- Next: Chart roster growth over time.
+- **Solid:** Daily automatic snapshot (once a day), four growth charts checked on 30 synthetic days, export/import round-trips exactly and rejects junk.
+- **Weak or unseen:** Charts are small sparklines with no axis or date scale.
+- Next: Add a tap-to-inspect point value on the charts.
 
 ### Security - 9/10
 
-- **Solid:** No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload, no XSS from names.
+- **Solid:** No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload or the device backup, no XSS from names.
 - **Weak or unseen:** The Firebase web key should be restricted to this origin in the Google console.
 - Next: Restrict the Firebase key by HTTP referrer.
 - Next: Add a Content-Security-Policy.
 
 ### PWA - 8/10
 
-- **Solid:** Manifest, icons, service worker and offline reload verified over HTTP.
-- **Weak or unseen:** Install flow and home-screen icon rendering need a real iPhone.
-- Next: Add maskable icons and a splash screen per device size.
+- **Solid:** Manifest (Professor, black theme, any + maskable icons with verified sizes), 180 px opaque touch icon, 10 iPhone splash images, install steps on iPhone Safari, service worker and offline reload verified over HTTP.
+- **Weak or unseen:** Install flow, home-screen icon and splash rendering need a real iPhone.
+- Next: Do the Add to Home Screen check in docs/DEVICE_CHECKS.md.
 
-### Accessibility - 6/10
+### Accessibility - 9/10
 
-- **Solid:** Contrast passes AA for most text and tap targets are 44 pt.
-- **Weak or unseen:** Before this pass: no roles, no keyboard access, no lang, small text. A runtime enhancer now adds roles, names, tabindex and Enter/Space activation.
-- Next: Use real <button>/<a> elements in the template instead of the runtime enhancer.
-- Next: Support Dynamic Type with rem units end to end.
-- Next: Test with VoiceOver on a device.
+- **Solid:** axe-core clean on every screen, the More menu, select mode and the detail sheet; Lighthouse accessibility 100; keyboard-only paths pass; real buttons and named controls.
+- **Weak or unseen:** No VoiceOver pass on a device yet; Dynamic Type not tested on a phone.
+- Next: Do the VoiceOver pass in docs/DEVICE_CHECKS.md.
 
-### Performance - 8/10
+### Performance - 6/10
 
-- **Solid:** Tab switches and long-task checks pass; heap stays flat over 40 switches.
-- **Weak or unseen:** pokemon-mechanics.js is 1.27 MB and loads up front.
-- Next: Split mechanics by feature and lazy-load PvP/Mega tables.
-- Next: Virtualise long lists.
+- **Solid:** A state change takes ~14 ms at 500 Pokemon (was 45); minified app code and dropped fonts cut the download from 2.1 MB to ~0.6 MB gzip; ready time fell 6.5 s -> 6.0 s in a throttled A/B.
+- **Weak or unseen:** Lighthouse mobile reads 33-47 depending on host load; the remaining cost is bandwidth plus the runtime (React, the template engine, 650 KB of app logic). Measured and rejected: separate mechanics file (no gain), precompiled templates (~4%).
+- Next: Split the app logic per tab and replace the in-browser template engine.
+- Next: Windowed roster list.
 
 ## 5. Roadmap to the best version of this app
 

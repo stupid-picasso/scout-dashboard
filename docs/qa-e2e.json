@@ -6,7 +6,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 6
+  "ms": 4
  },
  {
   "id": "BOOT-02",
@@ -15,7 +15,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 3
  },
  {
   "id": "BOOT-03",
@@ -24,7 +24,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 3
  },
  {
   "id": "BOOT-04",
@@ -33,7 +33,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 814
+  "ms": 841
  },
  {
   "id": "BOOT-05",
@@ -42,7 +42,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 7989
+  "ms": 8152
  },
  {
   "id": "BOOT-06",
@@ -50,7 +50,7 @@
   "name": "Initial load completes in under 4 seconds",
   "sev": "normal",
   "status": "pass",
-  "note": "764 ms",
+  "note": "768 ms",
   "ms": 0
  },
  {
@@ -60,7 +60,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 4
  },
  {
   "id": "BOOT-W320",
@@ -78,7 +78,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 6
+  "ms": 2
  },
  {
   "id": "BOOT-W768",
@@ -96,7 +96,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 5
  },
  {
   "id": "IMP-01",
@@ -105,7 +105,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 15
+  "ms": 9
  },
  {
   "id": "IMP-02",
@@ -114,7 +114,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 12
+  "ms": 10
  },
  {
   "id": "IMP-03",
@@ -123,7 +123,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 11
  },
  {
   "id": "IMP-04",
@@ -131,8 +131,8 @@
   "name": "Re-importing the same file replaces rather than duplicates",
   "sev": "normal",
   "status": "pass",
-  "note": "count stays 64 (notice does not mention the replacement)",
-  "ms": 912
+  "note": "notice says replaced",
+  "ms": 1382
  },
  {
   "id": "IMP-05",
@@ -141,7 +141,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 963
+  "ms": 768
  },
  {
   "id": "IMP-06",
@@ -150,7 +150,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 915
+  "ms": 725
  },
  {
   "id": "IMP-07",
@@ -159,7 +159,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 1838
+  "ms": 2647
  },
  {
   "id": "IMP-08",
@@ -168,7 +168,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 1533
+  "ms": 1940
  },
  {
   "id": "IMP-09",
@@ -177,7 +177,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 916
+  "ms": 1324
  },
  {
   "id": "IMP-10",
@@ -186,7 +186,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 923
+  "ms": 1321
  },
  {
   "id": "IMP-11",
@@ -194,8 +194,62 @@
   "name": "800-row import renders in under 5 seconds",
   "sev": "high",
   "status": "pass",
-  "note": "1022 ms",
-  "ms": 1022
+  "note": "1746 ms",
+  "ms": 1746
+ },
+ {
+  "id": "IMP-13",
+  "area": "Import",
+  "name": "Importing over an existing roster asks first, showing the before/after counts",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2624
+ },
+ {
+  "id": "IMP-14",
+  "area": "Import",
+  "name": "Replacing can be undone from the toast",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2089
+ },
+ {
+  "id": "IMP-15",
+  "area": "Import",
+  "name": "Out-of-range values are cleared and listed; a row with no name is skipped",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 1931
+ },
+ {
+  "id": "IMP-16",
+  "area": "Import",
+  "name": "A different exporter's CSV is read by column name, including quoted names",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1314
+ },
+ {
+  "id": "IMP-17",
+  "area": "Import",
+  "name": "Dropping a .csv file on the page imports it",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1501
+ },
+ {
+  "id": "IMP-18",
+  "area": "Import",
+  "name": "200 randomly corrupted files never crash the app or leave it unusable",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 816
  },
  {
   "id": "IMP-12",
@@ -204,7 +258,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 7404
+  "ms": 7568
  },
  {
   "id": "ROS-01",
@@ -213,7 +267,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 6
+  "ms": 11
  },
  {
   "id": "ROS-02",
@@ -222,7 +276,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 716
+  "ms": 784
  },
  {
   "id": "ROS-03",
@@ -231,7 +285,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 536
+  "ms": 541
  },
  {
   "id": "ROS-04",
@@ -240,7 +294,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 520
+  "ms": 521
  },
  {
   "id": "ROS-05",
@@ -249,7 +303,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 537
+  "ms": 529
  },
  {
   "id": "ROS-06",
@@ -258,7 +312,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 524
+  "ms": 532
  },
  {
   "id": "ROS-07",
@@ -267,7 +321,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 524
+  "ms": 532
  },
  {
   "id": "ROS-08",
@@ -276,7 +330,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 0
  },
  {
   "id": "ROS-S-cp",
@@ -285,7 +339,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 536
+  "ms": 534
  },
  {
   "id": "ROS-S-name",
@@ -294,7 +348,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 563
+  "ms": 575
  },
  {
   "id": "ROS-S-iv",
@@ -303,7 +357,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 541
+  "ms": 564
  },
  {
   "id": "ROS-S-dex",
@@ -312,7 +366,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 533
+  "ms": 537
  },
  {
   "id": "ROS-F-MEASURED",
@@ -321,7 +375,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "0 rows",
-  "ms": 1118
+  "ms": 1199
  },
  {
   "id": "ROS-F-NEEDSAPPRAISAL",
@@ -330,7 +384,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "0 rows",
-  "ms": 1148
+  "ms": 1170
  },
  {
   "id": "ROS-F-PVPREADY",
@@ -339,7 +393,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "30 rows",
-  "ms": 1011
+  "ms": 1093
  },
  {
   "id": "ROS-F-LUCKY",
@@ -348,7 +402,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "30 rows",
-  "ms": 1014
+  "ms": 1034
  },
  {
   "id": "ROS-F-SHADOW",
@@ -357,7 +411,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "30 rows",
-  "ms": 1017
+  "ms": 1027
  },
  {
   "id": "ROS-09",
@@ -366,7 +420,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "lucky in data: 5",
-  "ms": 615
+  "ms": 696
  },
  {
   "id": "ROS-10",
@@ -375,7 +429,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 8
+  "ms": 16
  },
  {
   "id": "ROS-11",
@@ -384,7 +438,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1020
+  "ms": 1043
  },
  {
   "id": "DET-01",
@@ -393,16 +447,43 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "DET-02",
   "area": "Detail",
   "name": "Next arrow moves to the following Pokemon",
   "sev": "normal",
-  "status": "skip",
-  "note": "no next control found by text",
-  "ms": 11
+  "status": "pass",
+  "note": "",
+  "ms": 878
+ },
+ {
+  "id": "DET-15",
+  "area": "Detail",
+  "name": "Previous and Next are named after the neighbouring Pokemon, and Previous returns",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 743
+ },
+ {
+  "id": "DET-16",
+  "area": "Detail",
+  "name": "The heart is a real toggle button with a pressed state",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 755
+ },
+ {
+  "id": "DET-17",
+  "area": "Detail",
+  "name": "Close is a named button",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 26
  },
  {
   "id": "DET-03",
@@ -411,7 +492,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 5
+  "ms": 9
  },
  {
   "id": "DET-04",
@@ -420,7 +501,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "DET-05",
@@ -429,7 +510,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "DET-06",
@@ -438,7 +519,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1724
+  "ms": 1769
  },
  {
   "id": "DET-07",
@@ -447,7 +528,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 606
+  "ms": 608
  },
  {
   "id": "DET-10",
@@ -456,7 +537,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "DET-11",
@@ -465,7 +546,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 334
+  "ms": 347
  },
  {
   "id": "DET-12",
@@ -474,7 +555,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 347
+  "ms": 355
  },
  {
   "id": "DET-13",
@@ -483,7 +564,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 357
+  "ms": 373
  },
  {
   "id": "DET-14",
@@ -492,7 +573,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 7449
+  "ms": 7566
  },
  {
   "id": "GES-01",
@@ -501,7 +582,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 728
+  "ms": 740
  },
  {
   "id": "GES-02",
@@ -510,7 +591,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 418
+  "ms": 417
  },
  {
   "id": "GES-03",
@@ -519,7 +600,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 1257
+  "ms": 1281
  },
  {
   "id": "GES-04",
@@ -528,7 +609,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 313
+  "ms": 333
  },
  {
   "id": "GES-05",
@@ -537,7 +618,97 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 33121
+  "ms": 33185
+ },
+ {
+  "id": "ROS-12",
+  "area": "Roster",
+  "name": "Select mode: rows toggle on tap, the bar shows the count, Done exits",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1225
+ },
+ {
+  "id": "ROS-13",
+  "area": "Roster",
+  "name": "Bulk transfer removes the selection, adds 1 candy per Pokemon, and Undo restores it all",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 1371
+ },
+ {
+  "id": "ROS-14",
+  "area": "Roster",
+  "name": "Bulk favourite marks the selection, and Undo reverses it",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 1192
+ },
+ {
+  "id": "ROS-15",
+  "area": "Roster",
+  "name": "Bulk remove asks first and grants no candy",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1415
+ },
+ {
+  "id": "ROS-16",
+  "area": "Roster",
+  "name": "Saved views: save the current filter + sort, reapply it, delete it, and it survives a reload",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 6506
+ },
+ {
+  "id": "ROS-17",
+  "area": "Roster",
+  "name": "Sort \"Mega ready\" lists Mega-capable Pokemon first",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 5890
+ },
+ {
+  "id": "ROS-18",
+  "area": "Roster",
+  "name": "Scrolling to the bottom loads the next page without tapping",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1567
+ },
+ {
+  "id": "ROS-19",
+  "area": "Roster",
+  "name": "Rows skip off-screen rendering (content-visibility) so long lists scroll smoothly",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 13
+ },
+ {
+  "id": "GES-06",
+  "area": "Gestures",
+  "name": "Single transfer offers Undo and restores the Pokemon and candy",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1498
+ },
+ {
+  "id": "GES-07",
+  "area": "Gestures",
+  "name": "One-time swipe hint nudges the first row once, then never again",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 2350
  },
  {
   "id": "RNK-01",
@@ -546,7 +717,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 85
+  "ms": 103
  },
  {
   "id": "PVP-L-GREAT",
@@ -555,7 +726,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "20 rows",
-  "ms": 616
+  "ms": 605
  },
  {
   "id": "PVP-L-ULTRA",
@@ -564,7 +735,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "20 rows",
-  "ms": 620
+  "ms": 667
  },
  {
   "id": "PVP-L-LITTLE",
@@ -573,7 +744,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "2 rows",
-  "ms": 606
+  "ms": 611
  },
  {
   "id": "PVP-L-MASTER",
@@ -582,7 +753,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "20 rows",
-  "ms": 685
+  "ms": 701
  },
  {
   "id": "PVP-01",
@@ -591,7 +762,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 9
+  "ms": 5
  },
  {
   "id": "PVP-02",
@@ -600,7 +771,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "PVP-03",
@@ -609,7 +780,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 5
  },
  {
   "id": "PVP-04",
@@ -618,7 +789,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 2
  },
  {
   "id": "PVP-05",
@@ -627,7 +798,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 41
+  "ms": 61
  },
  {
   "id": "PVP-06",
@@ -636,7 +807,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "PVP-07",
@@ -645,7 +816,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 6
+  "ms": 8
  },
  {
   "id": "PVP-08",
@@ -663,7 +834,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1246
+  "ms": 1274
  },
  {
   "id": "PVP-10",
@@ -672,7 +843,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 1231
+  "ms": 1271
  },
  {
   "id": "PVP-11",
@@ -681,7 +852,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 473
+  "ms": 482
  },
  {
   "id": "PVP-12",
@@ -690,7 +861,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3258
+  "ms": 4645
  },
  {
   "id": "PVP-13",
@@ -699,7 +870,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1867
+  "ms": 1996
  },
  {
   "id": "PVP-14",
@@ -717,7 +888,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 4
  },
  {
   "id": "ATK-02",
@@ -726,7 +897,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "ATK-03",
@@ -744,7 +915,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 3
  },
  {
   "id": "ATK-05",
@@ -753,7 +924,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "ATK-06",
@@ -771,7 +942,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 784
+  "ms": 851
  },
  {
   "id": "RAI-02",
@@ -789,7 +960,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 2
  },
  {
   "id": "RAI-04",
@@ -798,7 +969,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 825
+  "ms": 868
  },
  {
   "id": "RAI-05",
@@ -807,7 +978,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 766
+  "ms": 804
  },
  {
   "id": "RAI-06",
@@ -816,7 +987,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 653
+  "ms": 776
  },
  {
   "id": "RAI-07",
@@ -825,7 +996,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 4
+  "ms": 5
  },
  {
   "id": "REC-01",
@@ -834,7 +1005,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "REC-02",
@@ -852,7 +1023,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 1
  },
  {
   "id": "REC-04",
@@ -861,7 +1032,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 474
+  "ms": 609
  },
  {
   "id": "REC-05",
@@ -879,7 +1050,34 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 774
+  "ms": 775
+ },
+ {
+  "id": "REC-07",
+  "area": "Recs",
+  "name": "Every recommendation card states the rule behind it",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 11
+ },
+ {
+  "id": "REC-08",
+  "area": "Recs",
+  "name": "The reason reproduces from the Pokemon's own numbers (IV and rank)",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 56
+ },
+ {
+  "id": "REC-09",
+  "area": "Recs",
+  "name": "MARK DONE offers Undo that puts the item back",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 1048
  },
  {
   "id": "INT-01",
@@ -888,7 +1086,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "INT-02",
@@ -897,7 +1095,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "INT-03",
@@ -906,7 +1104,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 2
  },
  {
   "id": "INT-04",
@@ -951,7 +1149,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 5
  },
  {
   "id": "TOD-02",
@@ -960,7 +1158,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 5
  },
  {
   "id": "TOD-03",
@@ -969,7 +1167,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 2
  },
  {
   "id": "TOD-04",
@@ -987,7 +1185,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 2
  },
  {
   "id": "TOD-06",
@@ -996,7 +1194,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "no squad (not enough eligible): Squad: not enough measured, in-cap, legal Pokemon of A tier or better yet.",
-  "ms": 9
+  "ms": 8
  },
  {
   "id": "TOD-07",
@@ -1005,7 +1203,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 4
  },
  {
   "id": "TOD-08",
@@ -1023,7 +1221,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 7
+  "ms": 8
  },
  {
   "id": "TOD-10",
@@ -1032,7 +1230,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 3
  },
  {
   "id": "TOD-11",
@@ -1050,7 +1248,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "TOD-13",
@@ -1077,7 +1275,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 2
  },
  {
   "id": "TOD-16",
@@ -1104,7 +1302,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 691
+  "ms": 736
  },
  {
   "id": "TOD-19",
@@ -1113,7 +1311,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 488
+  "ms": 509
  },
  {
   "id": "TOD-20",
@@ -1122,7 +1320,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 463
+  "ms": 496
  },
  {
   "id": "TOD-21",
@@ -1131,7 +1329,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 4
  },
  {
   "id": "TOD-22",
@@ -1143,13 +1341,58 @@
   "ms": 2
  },
  {
+  "id": "TOD-40",
+  "area": "Today",
+  "name": "A raid-boss event offers \"Best six vs <boss>\" and opens the Raid tab with the boss's types filled in",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1565
+ },
+ {
+  "id": "TOD-41",
+  "area": "Today",
+  "name": "Boss names map to types: Mega X/Y, forms, shadows",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 11
+ },
+ {
+  "id": "TOD-42",
+  "area": "Today",
+  "name": "Add to calendar downloads a valid .ics for the event",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 786
+ },
+ {
+  "id": "TOD-43",
+  "area": "Today",
+  "name": "Reminders: events starting within the hour and finished Mega rests are listed once",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 75
+ },
+ {
+  "id": "TOD-44",
+  "area": "Today",
+  "name": "Turning reminders on asks for permission, and each reminder fires only once",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1389
+ },
+ {
   "id": "TOD-23",
   "area": "Today",
   "name": "No page errors after the whole Today session",
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 0
+  "ms": 1
  },
  {
   "id": "TOD-30",
@@ -1167,7 +1410,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 4
  },
  {
   "id": "TOD-32",
@@ -1176,7 +1419,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 4
  },
  {
   "id": "TOD-33",
@@ -1185,7 +1428,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 804
+  "ms": 805
  },
  {
   "id": "TOD-34",
@@ -1203,7 +1446,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 3
+  "ms": 4
  },
  {
   "id": "HOM-02",
@@ -1212,7 +1455,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 1591
+  "ms": 1664
  },
  {
   "id": "HOM-03",
@@ -1221,7 +1464,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 62
+  "ms": 60
  },
  {
   "id": "HOM-04",
@@ -1230,7 +1473,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 48
+  "ms": 57
  },
  {
   "id": "HOM-05",
@@ -1239,7 +1482,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 611
+  "ms": 629
  },
  {
   "id": "HOM-06",
@@ -1248,7 +1491,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 411
+  "ms": 424
  },
  {
   "id": "HOM-07",
@@ -1257,7 +1500,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 4
+  "ms": 6
  },
  {
   "id": "HOM-08",
@@ -1266,7 +1509,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 391
+  "ms": 397
  },
  {
   "id": "HOM-09",
@@ -1275,7 +1518,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 2
+  "ms": 3
  },
  {
   "id": "HOM-10",
@@ -1287,13 +1530,67 @@
   "ms": 2
  },
  {
+  "id": "HOM-11",
+  "area": "Home",
+  "name": "Trainer level is a working field: clamped to 1-50, junk ignored",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2185
+ },
+ {
+  "id": "HOM-12",
+  "area": "Home",
+  "name": "Dust reserve accepts commas, clamps negatives to 0, ignores junk",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 218
+ },
+ {
+  "id": "HOM-13",
+  "area": "Home",
+  "name": "Stardust balance rejects negatives and absurd values",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 211
+ },
+ {
+  "id": "HOM-14",
+  "area": "Home",
+  "name": "Device backup is offered without an account and never contains API keys",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 1150
+ },
+ {
+  "id": "HOM-15",
+  "area": "Home",
+  "name": "A device backup restores the roster after it was cleared (with a confirmation step)",
+  "sev": "critical",
+  "status": "pass",
+  "note": "",
+  "ms": 1707
+ },
+ {
+  "id": "HOM-16",
+  "area": "Home",
+  "name": "A broken backup file is refused with a message and changes nothing",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 613
+ },
+ {
   "id": "SEC-01",
   "area": "Security",
   "name": "API keys are kept in on-device storage",
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 2190
+  "ms": 2047
  },
  {
   "id": "SEC-02",
@@ -1302,7 +1599,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 943
+  "ms": 776
  },
  {
   "id": "SEC-03",
@@ -1311,7 +1608,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 8
+  "ms": 12
  },
  {
   "id": "SEC-04",
@@ -1320,7 +1617,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "only the Firebase web config key (public by design) is present; restrict it by referrer in the Google console",
-  "ms": 12
+  "ms": 8
  },
  {
   "id": "SEC-05",
@@ -1329,7 +1626,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 11
+  "ms": 7
  },
  {
   "id": "SEC-06",
@@ -1338,7 +1635,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 9
+  "ms": 6
  },
  {
   "id": "PWA-01",
@@ -1347,7 +1644,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 0
+  "ms": 1
  },
  {
   "id": "PWA-02",
@@ -1356,7 +1653,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 1
+  "ms": 0
  },
  {
   "id": "PWA-03",
@@ -1365,7 +1662,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 21
+  "ms": 7
  },
  {
   "id": "PWA-04",
@@ -1383,7 +1680,7 @@
   "sev": "critical",
   "status": "pass",
   "note": "",
-  "ms": 4816
+  "ms": 5066
  },
  {
   "id": "PWA-06",
@@ -1392,7 +1689,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 8
+  "ms": 6
  },
  {
   "id": "PWA-07",
@@ -1401,7 +1698,61 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 8
+  "ms": 6
+ },
+ {
+  "id": "PWA-08",
+  "area": "PWA",
+  "name": "Manifest: named Professor, black theme, any + maskable icons whose real sizes match",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1
+ },
+ {
+  "id": "PWA-09",
+  "area": "PWA",
+  "name": "apple-touch-icon is 180x180 and opaque (iOS paints transparency black)",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 0
+ },
+ {
+  "id": "PWA-10",
+  "area": "PWA",
+  "name": "Every iPhone splash image exists at the size its media query promises",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 14
+ },
+ {
+  "id": "PWA-11",
+  "area": "PWA",
+  "name": "Head tags: one theme-color, one apple-touch-icon, title Professor",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 11
+ },
+ {
+  "id": "PWA-12",
+  "area": "PWA",
+  "name": "Offline bundle carries no unused-script fonts (Devanagari) and stays under 1.7 MB raw",
+  "sev": "medium",
+  "status": "pass",
+  "note": "1.25 MB",
+  "ms": 10
+ },
+ {
+  "id": "PWA-13",
+  "area": "PWA",
+  "name": "Install steps show on iPhone Safari, not in the installed app, and not after Not now",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 39
  },
  {
   "id": "A11Y-01",
@@ -1410,7 +1761,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 182
+  "ms": 2039
  },
  {
   "id": "A11Y-02",
@@ -1418,8 +1769,8 @@
   "name": "Interactive elements expose a role or accessible name (VoiceOver)",
   "sev": "high",
   "status": "pass",
-  "note": "65/65",
-  "ms": 33
+  "note": "60/60",
+  "ms": 46
  },
  {
   "id": "A11Y-03",
@@ -1427,8 +1778,8 @@
   "name": "Interactive elements are reachable by keyboard (tabindex or native)",
   "sev": "medium",
   "status": "pass",
-  "note": "65/65",
-  "ms": 28
+  "note": "60/60",
+  "ms": 47
  },
  {
   "id": "A11Y-04",
@@ -1436,8 +1787,8 @@
   "name": "Body text is at least 11 px (count of smaller text runs)",
   "sev": "normal",
   "status": "pass",
-  "note": "0/270",
-  "ms": 32
+  "note": "5/276",
+  "ms": 40
  },
  {
   "id": "A11Y-05",
@@ -1445,8 +1796,8 @@
   "name": "Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs",
   "sev": "high",
   "status": "pass",
-  "note": "8/261 below 4.5:1",
-  "ms": 34
+  "note": "4/266 below 4.5:1",
+  "ms": 48
  },
  {
   "id": "A11Y-06",
@@ -1455,7 +1806,7 @@
   "sev": "high",
   "status": "pass",
   "note": "",
-  "ms": 9
+  "ms": 7
  },
  {
   "id": "A11Y-07",
@@ -1464,7 +1815,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 37
+  "ms": 50
  },
  {
   "id": "A11Y-08",
@@ -1473,7 +1824,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 45
+  "ms": 42
  },
  {
   "id": "A11Y-09",
@@ -1482,7 +1833,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 41
+  "ms": 37
  },
  {
   "id": "A11Y-10",
@@ -1491,16 +1842,16 @@
   "sev": "medium",
   "status": "pass",
   "note": "",
-  "ms": 12
+  "ms": 10
  },
  {
   "id": "PERF-01",
   "area": "Performance",
-  "name": "Average tab switch is under 400 ms with 64 Pokemon",
+  "name": "Average tab switch (click to new content) is under 400 ms with 64 Pokemon",
   "sev": "normal",
   "status": "pass",
-  "note": "136 ms avg (re-measured with the corrected method)",
-  "ms": 8592
+  "note": "209 ms avg",
+  "ms": 1729
  },
  {
   "id": "PERF-02",
@@ -1509,7 +1860,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "0 long tasks",
-  "ms": 2814
+  "ms": 2826
  },
  {
   "id": "PERF-03",
@@ -1517,8 +1868,8 @@
   "name": "JS heap does not grow by more than 50% over 40 tab switches (leak check)",
   "sev": "normal",
   "status": "pass",
-  "note": "50.4 -> 50.4 MB",
-  "ms": 26155
+  "note": "18.2 -> 18.2 MB",
+  "ms": 27373
  },
  {
   "id": "PERF-04",
@@ -1526,8 +1877,8 @@
   "name": "Page weight: index.html under 3 MB gzipped",
   "sev": "normal",
   "status": "pass",
-  "note": "1.08 MB gz",
-  "ms": 73
+  "note": "0.58 MB gz",
+  "ms": 33
  },
  {
   "id": "PERF-05",
@@ -1545,7 +1896,7 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 560
+  "ms": 563
  },
  {
   "id": "LOG-02",
@@ -1554,6 +1905,186 @@
   "sev": "normal",
   "status": "pass",
   "note": "",
-  "ms": 906
+  "ms": 907
+ },
+ {
+  "id": "LOG-03",
+  "area": "Log",
+  "name": "A daily snapshot is taken automatically once, with hundo and species counts",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 170
+ },
+ {
+  "id": "LOG-04",
+  "area": "Log",
+  "name": "Thirty synthetic days draw four correct growth charts",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 732
+ },
+ {
+  "id": "LOG-05",
+  "area": "Log",
+  "name": "Export then import round-trips the log exactly",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 188
+ },
+ {
+  "id": "LOG-06",
+  "area": "Log",
+  "name": "Junk files are rejected without touching the log",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 116
+ },
+ {
+  "id": "LOG-07",
+  "area": "Log",
+  "name": "Export and Import controls are present and named",
+  "sev": "medium",
+  "status": "pass",
+  "note": "",
+  "ms": 516
+ },
+ {
+  "id": "AXE-TODAY",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on TODAY",
+  "sev": "high",
+  "status": "pass",
+  "note": "1 lower-impact issues: landmark-unique",
+  "ms": 4932
+ },
+ {
+  "id": "AXE-ROSTER",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on ROSTER",
+  "sev": "high",
+  "status": "pass",
+  "note": "1 lower-impact issues: landmark-unique",
+  "ms": 2553
+ },
+ {
+  "id": "AXE-PVP",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on PVP",
+  "sev": "high",
+  "status": "pass",
+  "note": "1 lower-impact issues: landmark-unique",
+  "ms": 2041
+ },
+ {
+  "id": "AXE-RAID",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on RAID",
+  "sev": "high",
+  "status": "pass",
+  "note": "0 lower-impact issues: ",
+  "ms": 1625
+ },
+ {
+  "id": "AXE-HOME",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on HOME",
+  "sev": "high",
+  "status": "pass",
+  "note": "1 lower-impact issues: region",
+  "ms": 2386
+ },
+ {
+  "id": "AXE-RECS",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on RECS",
+  "sev": "high",
+  "status": "pass",
+  "note": "0 lower-impact issues: ",
+  "ms": 2237
+ },
+ {
+  "id": "AXE-INTEL",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on INTEL",
+  "sev": "high",
+  "status": "pass",
+  "note": "0 lower-impact issues: ",
+  "ms": 2228
+ },
+ {
+  "id": "AXE-ATTACK",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on ATTACK",
+  "sev": "high",
+  "status": "pass",
+  "note": "0 lower-impact issues: ",
+  "ms": 2806
+ },
+ {
+  "id": "AXE-LOG",
+  "area": "Accessibility",
+  "name": "axe-core: no serious or critical violations on LOG",
+  "sev": "high",
+  "status": "pass",
+  "note": "0 lower-impact issues: ",
+  "ms": 2224
+ },
+ {
+  "id": "AXE-MORE",
+  "area": "Accessibility",
+  "name": "axe-core: the More menu is clean",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1822
+ },
+ {
+  "id": "AXE-DETAIL",
+  "area": "Accessibility",
+  "name": "axe-core: the detail sheet (with the Mega card) is clean",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2777
+ },
+ {
+  "id": "AXE-SELECT",
+  "area": "Accessibility",
+  "name": "axe-core: roster select mode with a selection and the bulk bar is clean",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 2085
+ },
+ {
+  "id": "KEY-01",
+  "area": "Accessibility",
+  "name": "Keyboard only: Tab reaches the tab bar and Enter switches screens",
+  "sev": "high",
+  "status": "pass",
+  "note": "",
+  "ms": 1326
+ },
+ {
+  "id": "KEY-02",
+  "area": "Accessibility",
+  "name": "Keyboard only: a roster row opens its detail with Enter and Escape-free close works",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 1643
+ },
+ {
+  "id": "KEY-03",
+  "area": "Accessibility",
+  "name": "Every control on the tab bar and header has an accessible name",
+  "sev": "normal",
+  "status": "pass",
+  "note": "",
+  "ms": 21
  }
 ]
