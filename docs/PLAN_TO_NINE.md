@@ -69,3 +69,9 @@ Automated suite: 211 end-to-end cases + 15 axe/keyboard cases, all passing; rost
 | 6 Raid sim / Home | Not started (raid simulation deferred by you) |
 
 Why performance stops near 50: the app is shipped through a generated unpacker that decodes everything, then an in-browser template compiler builds the UI (profile: unpacker 340 ms, template compile 160 ms, style/layout ~1 s at 4x CPU). Mechanics data itself is cheap (about 40 ms). Further gains need a different build (precompiled templates, code split per tab, Firebase loaded on idle), which is a re-architecture, not tuning.
+
+## Performance rewrite, step 1 (v53.145)
+- Profile of one trivial state change at 500 Pokemon: 45 ms, of which 44 ms was `renderVals` recomputing every tab's analysis (attacker board, buddy plan, raid roles, data quality, dust plan...). Those only depend on data, so they are now cached against every non-UI state value (`installDerivedCache`, `memoDeps`); species/dex lookups in `pokemon-mechanics.js` are memoised. Result: 45 -> 14 ms per state change (the rest is React).
+- Roster page-load hitch at 500 and 2,000 rows: 150-270 ms -> 100-130 ms. Scrolling loaded rows holds p50 16.7 ms. A true virtual list is still not done.
+- First load: unchanged by this step. A/B of the previous and current build under identical conditions gave the same time to ready (~4.1 s at 4x CPU on a busy host). Lighthouse scores in this sandbox drift between 33 and 47 with host load; compare builds only side by side.
+- What is left on first load is the delivery format: ~2 s of 4x-CPU "program" time (parsing the 1.3 MB mechanics script, support runtime, React) plus the in-browser template compile. Next options, each needing your go-ahead: (a) precompile the template to JS at build time instead of in the browser; (b) split mechanics by tab and load PvP/Mega/cup tables on first use; (c) load Firebase on idle.
