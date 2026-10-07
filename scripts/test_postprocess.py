@@ -129,5 +129,10 @@ outy = px.merge_frames(seqy)
 s818 = [o for o in outy if o.get("cp") == 818]
 check("same-CP groups are pooled", len(s818) == 1, str(outy))
 check("pooled vote beats the mid-swipe frame", s818 and s818[0]["gender"] == "M" and s818[0]["height"] == "0.39m" and s818[0].get("fastMove") == "Feint Attack", str(s818))
+
+check("weight that is a height swaps into an empty height", px.fix_units({"weight": "1.18m", "height": None}) == {"weight": None, "height": "1.18m"})
+check("weight that is a height is dropped when height is set", px.fix_units({"weight": "1.18m", "height": "0.4m"}) == {"weight": None, "height": "0.4m"})
+check("good units untouched", px.fix_units({"weight": "45.42kg", "height": "0.45m"}) == {"weight": "45.42kg", "height": "0.45m"})
+check("junk units dropped", px.fix_units({"weight": "heavy", "height": "12"}) == {"weight": None, "height": None})
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

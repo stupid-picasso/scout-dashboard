@@ -882,6 +882,30 @@ def normalize_type(value):
     return " / ".join(part.strip().title() for part in re.split(r"\s*[/,]\s*", value.strip()) if part.strip())
 
 
+_KG = re.compile(r"^\d{1,4}(?:\.\d{1,2})?\s?kg$", re.I)
+_M = re.compile(r"^\d{1,2}(?:\.\d{1,2})?\s?m$", re.I)
+
+
+def fix_units(it):
+    """Weight is kilograms and height is metres. A weight that reads like a height (and the reverse) is a
+    field mix-up: swap it when the other field is empty, otherwise drop it. Anything that is not a plausible
+    number with its unit is dropped rather than imported."""
+    w, h = it.get("weight"), it.get("height")
+    w = w.strip() if isinstance(w, str) else w
+    h = h.strip() if isinstance(h, str) else h
+    if isinstance(w, str) and _M.match(w) and not _KG.match(w):
+        if h in (None, ""):
+            h = w
+        w = None
+    if isinstance(h, str) and _KG.match(h) and not _M.match(h):
+        if w in (None, ""):
+            w = h
+        h = None
+    it["weight"] = w if isinstance(w, str) and _KG.match(w) else None
+    it["height"] = h if isinstance(h, str) and _M.match(h) else None
+    return it
+
+
 def clean_video_items(items):
     """Post-processing of model output: snap species names, normalise type casing."""
     fixed = 0
@@ -894,6 +918,7 @@ def clean_video_items(items):
             it["name"], fixed = new, fixed + 1
         if it.get("type"):
             it["type"] = normalize_type(it["type"])
+        fix_units(it)
     return fixed
 
 
