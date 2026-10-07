@@ -27,6 +27,12 @@ jobs:
           node scripts/test_ranking.js
           node scripts/test_roster_logic.js
 
+      - name: Gemini pipeline tests
+        run: |
+          pip install -r requirements.txt
+          python3 scripts/test_gemini_pool.py
+          python3 scripts/test_extract_pipeline.py
+
       - name: Install Playwright
         run: |
           npm install --no-save playwright

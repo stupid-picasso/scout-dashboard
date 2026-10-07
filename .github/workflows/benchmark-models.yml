@@ -1,0 +1,75 @@
+name: Benchmark Gemini Models
+
+# Sends the same frames of one recording to every Gemini flash model the keys can call and
+# reports success rate, latency, field fill and agreement. Results: data/benchmark_models.md/.json
+
+concurrency:
+  group: pogo-data-commit
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      drive_link:
+        description: 'Google Drive share link to a screen recording ("Anyone with the link")'
+        required: true
+      truth_csv:
+        description: 'Optional repo path to a CSV of the true values (name, cp, hp, atk/def/sta)'
+        required: false
+        default: ''
+      batches:
+        description: 'Number of batches to compare'
+        required: false
+        default: '6'
+      fps:
+        description: 'Frames per second for extraction'
+        required: false
+        default: '3'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install -r requirements.txt
+
+      - name: Download video
+        run: |
+          mkdir -p /tmp/drive_video
+          gdown "${{ inputs.drive_link }}" -O /tmp/drive_video/clip.mp4
+
+      - name: Run benchmark
+        run: |
+          ARGS="--video /tmp/drive_video/clip.mp4 --batches ${{ inputs.batches || '6' }} --fps ${{ inputs.fps || '3' }}"
+          if [ -n "${{ inputs.truth_csv }}" ]; then ARGS="$ARGS --truth ${{ inputs.truth_csv }}"; fi
+          mkdir -p data
+          python scripts/benchmark_models.py $ARGS
+        env:
+          PYTHONUNBUFFERED: "1"
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/benchmark_models.md data/benchmark_models.json
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Model benchmark results [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            git push && break
+            git pull --rebase origin main || true
+          done

@@ -7,6 +7,8 @@ CRITICAL FIX: Word boundaries now use single backslash (was double = backspace c
 import argparse, csv, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
+import gemini_pool
+
 try:
     from PIL import Image, ImageEnhance, ImageFilter
     import requests
@@ -410,6 +412,10 @@ TONEMAP_CHAIN = (
     "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,"
     "tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=full,format=rgb24"
 )
+# Same chain, but the downscale to 1080 px wide happens inside the first zscale step. Gemini only
+# ever sees the 1080 px copy, so tone-mapping a 4K frame in 32-bit float first (4x the pixels) is
+# wasted work; the measured/native path keeps the full-size chain above.
+TONEMAP_CHAIN_1080 = TONEMAP_CHAIN.replace("zscale=t=linear:npl=100", "zscale=w=1080:h=-2:t=linear:npl=100", 1)
 HDR_TRANSFERS = {"smpte2084", "arib-std-b67", "smpte428", "bt2020-10", "bt2020-12"}
 
 
@@ -473,21 +479,22 @@ def extract_frames(video_path, output_dir, fps=6, scene_detect=False, scene_thre
     scale = "scale=iw:ih:out_range=full" if native else "scale=1080:-1:out_range=full"
     tags = _probe_colour(video_path)
     hdr = any(t in HDR_TRANSFERS for t in tags)
+    chain = TONEMAP_CHAIN if native else TONEMAP_CHAIN_1080
     if hdr:
         print("[Extract] HDR source detected \u2014 tone-mapping to BT.709 before measuring")
-        scale = f"{TONEMAP_CHAIN},{scale}"
+        scale = f"{chain},{scale}"
 
     def _extract(vf, vfr=False):
         """Run ffmpeg; if the tone-map chain is unavailable, retry without it."""
         try:
             return _run_ffmpeg_extract(video_path, output_dir, vf, vfr_mode=vfr)
         except RuntimeError:
-            if TONEMAP_CHAIN not in vf:
+            if chain not in vf:
                 raise
             print("[Extract] tone-map filter unavailable (no libzimg?) \u2014 "
                   "retrying without it; measurement accuracy will suffer")
             return _run_ffmpeg_extract(
-                video_path, output_dir, vf.replace(TONEMAP_CHAIN + ",", ""),
+                video_path, output_dir, vf.replace(chain + ",", ""),
                 vfr_mode=vfr)
 
     if scene_detect:
@@ -783,9 +790,9 @@ def record_to_csv_row(rec):
 # batch. Only the confirmed-working 3.x generation is listed. run_gemini_
 # video_ocr() also blacklists any model that 404s at runtime, so a future
 # deprecation degrades gracefully instead of stalling the whole import.
-GEMINI_MODELS = [
-    "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite",
-]
+# Bulk models read every batch; verify models re-read only the suspect ones (see gemini_pool.py).
+# GEMINI_MODELS is kept as the union for the appraisal paths and the benchmark.
+GEMINI_MODELS = gemini_pool.BULK_MODELS + gemini_pool.VERIFY_MODELS
 
 VIDEO_IMPORT_PROMPT = (
     "These are frames sampled from a Pokemon GO screen recording (collection list "
@@ -2021,6 +2028,20 @@ def extract_json_array(reply):
     return objs if objs else None
 
 
+# Thinking control. Gemini 3 models think by default (the API default level is HIGH), which on a
+# plain "read this screen" task only adds latency and burns output tokens. Gemini 3 takes
+# `thinkingLevel`; older models take `thinkingBudget`. Sending both is a 400, so each model walks a
+# short ladder from the cheapest setting down to "send nothing", and remembers the first rung the
+# API accepts.
+_THINK_RUNG = {}
+
+
+def _think_ladder(model):
+    if model.startswith("gemini-3"):
+        return [{"thinkingLevel": "minimal"}, {"thinkingLevel": "low"}, None]
+    return [{"thinkingBudget": 0}, None]
+
+
 def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
     """POSTs one batch of frames to Gemini. Raises GeminiError on failure so
     the caller can rotate keys/models; returns the raw text reply on success."""
@@ -2031,37 +2052,44 @@ def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
         "https://generativelanguage.googleapis.com/v1beta/models/"
         + model + ":generateContent?key=" + api_key
     )
+    ladder = _think_ladder(model)
 
-    def build_body(extras):
+    def build_body(thinking, json_mime):
         cfg = {"maxOutputTokens": 4096, "temperature": 0}
-        if extras:
+        if json_mime:
             cfg["responseMimeType"] = "application/json"
-            cfg["thinkingConfig"] = {"thinkingBudget": 0}
+        if thinking:
+            cfg["thinkingConfig"] = thinking
         return {"contents": [{"role": "user", "parts": parts}], "generationConfig": cfg}
 
-    def post(extras):
+    def post(thinking, json_mime):
         # A read timeout or dropped connection is a TRANSPORT failure, not a
         # bad request: it says nothing about this model or key, and the next
-        # attempt may well succeed. Previously these escaped as raw
-        # requests exceptions and killed the whole run mid-batch, throwing away
-        # every batch already read. Convert to GeminiError so the caller's
-        # existing rotate-and-retry path handles them like any other failure.
+        # attempt may well succeed. Convert to GeminiError so the caller's
+        # rotate-and-retry path handles it like any other failure.
         try:
-            return requests.post(url, json=build_body(extras), timeout=REQUEST_TIMEOUT_S)
+            return requests.post(url, json=build_body(thinking, json_mime), timeout=REQUEST_TIMEOUT_S)
         except requests.exceptions.RequestException as exc:
             raise GeminiError(f"Gemini transport error: {type(exc).__name__}", transient=True)
 
-    resp = post(False)
+    # A 400 means this combination of settings is not accepted (not that the batch is bad):
+    # step down the thinking ladder, then drop the JSON mime type as a last resort.
+    rung = _THINK_RUNG.get(model, 0)
+    resp = post(ladder[rung], True)
+    while resp.status_code == 400 and rung < len(ladder) - 1:
+        rung += 1
+        resp = post(ladder[rung], True)
     if resp.status_code == 400:
-        # Some models need the JSON mime type to return parseable output.
-        resp = post(True)
+        resp = post(ladder[rung], False)
+    if resp.status_code != 400:
+        _THINK_RUNG[model] = rung
 
     if resp.ok:
         data = resp.json()
         cands = data.get("candidates") or []
         cand = cands[0] if cands else None
         text_parts = (cand or {}).get("content", {}).get("parts", [])
-        text = "".join(p.get("text", "") for p in text_parts)
+        text = "".join(p.get("text", "") for p in text_parts if not p.get("thought"))
         if not text:
             raise GeminiError("Gemini returned no text")
         return text
@@ -2076,6 +2104,22 @@ def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
                            "Language API for this key at aistudio.google.com.", status=403)
     raise GeminiError(f"Gemini {model} error {resp.status_code}: {err_text[:200]}",
                        status=resp.status_code)
+
+
+def discover_models(keys):
+    """Asks the API which models these keys can actually call (one cheap request per key), so a
+    model name that does not exist for the account is skipped instead of costing retries."""
+    found = set()
+    for k in keys:
+        try:
+            r = requests.get("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=" + k, timeout=30)
+            if r.ok:
+                for m in r.json().get("models", []):
+                    if "generateContent" in (m.get("supportedGenerationMethods") or []):
+                        found.add(m.get("name", "").replace("models/", ""))
+        except requests.exceptions.RequestException:
+            pass
+    return found
 
 
 def _video_merge_key(item):
@@ -2130,30 +2174,29 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         batch_paths.append(current_paths)
     print(f"[Gemini] {len(batches)} batch(es) of up to {MAX_FRAMES_PER_BATCH} frames each")
 
-    model_idx = 0
-    dead_models = set()  # models that returned 404 "no longer available" this run
-    # Cooldown tracked per (model, key) pair, not per key alone: Gemini's
-    # per-minute AND per-day request caps are counted separately per model
-    # (see the account's own rate-limit page \u2014 each model has its own
-    # RPD bucket). A key hitting its daily cap on one model still has full
-    # headroom on the others, so a whole-key cooldown was wasting quota.
-    pair_cooldowns = {(m, k): 0 for m in GEMINI_MODELS for k in keys}
-    collected = []
+    t_start = time.time()
+    # Which models can these keys actually call? A name that does not exist for the account is
+    # dropped up front instead of costing a 404 and a retry on every batch.
+    avail = discover_models(keys)
+    if avail:
+        print("[Gemini] models callable with these keys (flash family): "
+              + ", ".join(sorted(m for m in avail if "flash" in m)))
+    usable = lambda ms: [m for m in ms if not avail or m in avail]
+    bulk_models, verify_models = usable(gemini_pool.BULK_MODELS), usable(gemini_pool.VERIFY_MODELS)
+    tiers = {}
+    if not bulk_models:  # no cheap model available: let the stronger ones carry the bulk work
+        bulk_models, verify_models = verify_models, []
+        tiers = {m: "bulk" for m in bulk_models}
+    pool = gemini_pool.Pool(keys, bulk_models + verify_models, tiers=tiers)
+    workers = int(os.environ.get("GEMINI_WORKERS") or max(2, len(pool.alive("bulk")) * 2))
+    print(f"[Gemini] bulk models: {bulk_models}; verify models: {verify_models}; "
+          f"{len(keys)} key(s) -> {len(pool.lanes)} lanes, {workers} parallel requests")
 
-    def next_live_model_idx(start_idx):
-        """First rotation slot, starting at start_idx, that isn't blacklisted.
-        Returns None if every model has 404'd this run."""
-        n = len(GEMINI_MODELS)
-        for step in range(n):
-            idx = (start_idx + step) % n
-            if GEMINI_MODELS[idx] not in dead_models:
-                return idx
-        return None
-
+    # Mega Level dots are drawn icons the model reads poorly; measure them
+    # from pixels and hand the numbers over, per frame of this batch.
+    notes = []
     for b_i, batch in enumerate(batches):
         note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
-        # Mega Level dots are drawn icons the model reads poorly; measure them
-        # from pixels and hand the numbers over, per frame of this batch.
         hints = []
         if prompt is VIDEO_IMPORT_PROMPT:
             for k, fp in enumerate(batch_paths[b_i], 1):
@@ -2167,86 +2210,57 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
             note += (" MEASURED Mega Level dots (software, top row first; use these for dotsFilled of the matching "
                      "MEGA EVOLVE button, in the same top-to-bottom order, instead of your own reading): "
                      + "; ".join(hints) + ".")
-        attempts = 0
-        no_capacity_streak = 0
-        max_attempts = len(GEMINI_MODELS) * len(keys) * 2 + 4
-        succeeded = False
-        while attempts < max_attempts and not succeeded:
-            idx = next_live_model_idx(model_idx)
-            if idx is None:
-                print("[Gemini] Every model in GEMINI_MODELS returned 404 for this "
-                      "API key/account \u2014 aborting. Check available model names "
-                      "at aistudio.google.com.")
-                break
-            model = GEMINI_MODELS[idx]
-            now = time.time()
-            usable_keys = [k for k in keys if pair_cooldowns[(model, k)] <= now]
-            if not usable_keys:
-                # This model has no usable key right now, but a *different*
-                # model may still have headroom \u2014 try that before waiting.
-                model_idx = idx + 1
-                attempts += 1
-                no_capacity_streak += 1
-                if no_capacity_streak >= len(GEMINI_MODELS):
-                    live = [m for m in GEMINI_MODELS if m not in dead_models]
-                    pending = [pair_cooldowns[(m, k)] for m in live for k in keys]
-                    wait = max(0, (min(pending) if pending else now + 60) - now)
-                    print(f"[Gemini] No model/key combo has capacity \u2014 waiting {wait:.0f}s")
-                    time.sleep(min(wait, 60) + 1)
-                    no_capacity_streak = 0
-                continue
-            no_capacity_streak = 0
-            key = usable_keys[attempts % len(usable_keys)]
-            try:
-                reply = call_gemini(prompt, batch, model, key, note)
-                arr = extract_json_array(reply)
-                if arr is None:
-                    # Unparseable text is NOT a success \u2014 it's indistinguishable
-                    # from a truncated/garbled response. Retrying on a different
-                    # model/key catches the (common) case where one model just had
-                    # a bad day; only after max_attempts is this batch actually
-                    # given up on, same as a real GeminiError.
-                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} returned unparseable output "
-                          f"on {model} \u2014 retrying with a different model/key")
-                    attempts += 1
-                    model_idx = idx + 1
-                    continue
-                elif arr:
-                    collected.extend(arr)
-                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} -> {len(arr)} Pokemon (model={model})")
-                else:
-                    print(f"[Gemini] batch {b_i + 1}/{len(batches)} -> 0 Pokemon (model={model})")
-                model_idx = idx + 1  # advance rotation only on a real answer
-                succeeded = True
-            except GeminiError as e:
-                print(f"[Gemini] batch {b_i + 1}/{len(batches)} failed on {model}/{key[:8]}...: {e}")
-                if e.status == 404:
-                    # Permanent failure (model doesn't exist / not available to
-                    # this account) \u2014 blacklist it for the rest of the run
-                    # instead of burning retries on it every batch.
-                    dead_models.add(model)
-                    print(f"[Gemini] {model} returned 404 \u2014 removing it from "
-                          f"rotation for the rest of this run")
-                elif e.status == 429:
-                    pair_cooldowns[(model, key)] = now + (86400 if e.daily else 60)
-                elif e.transient:
-                    # Short cooldown only: the endpoint was slow or the socket
-                    # dropped, so give this pair a moment and let the rotation
-                    # try another model/key immediately rather than hammering
-                    # the one that just timed out.
-                    pair_cooldowns[(model, key)] = now + 15
-                attempts += 1
-            except Exception as e:  # noqa: BLE001 — last-resort net
-                # Nothing unexpected should reach here, but if it does it must
-                # not take the whole run down: 70-odd batches of already-read
-                # Pokemon are worth far more than this one batch.
-                print(f"[Gemini] batch {b_i + 1}/{len(batches)} hit an unexpected "
-                      f"{type(e).__name__}: {e} — skipping this batch")
-                attempts += 1
-                model_idx = idx + 1
-        if not succeeded:
-            print(f"[Gemini] batch {b_i + 1}/{len(batches)} exhausted all retries \u2014 skipping")
-        time.sleep(BATCH_PACE_S)
+        notes.append(note)
+
+    def make_call(i, model, key):
+        reply = call_gemini(prompt, batches[i], model, key, notes[i])
+        arr = extract_json_array(reply)
+        if arr is None:
+            # Unparseable text is NOT a success: it is indistinguishable from a truncated or
+            # garbled answer, so another lane gets the batch.
+            raise GeminiError("unparseable output", status=-1)
+        return arr
+
+    results, answered = gemini_pool.run_batches(
+        pool, range(len(batches)), make_call, "bulk", workers,
+        max_attempts=len(pool.lanes) * 2 + 2, log=print)
+    for i in range(len(batches)):
+        arr = results.get(i)
+        if arr is None:
+            print(f"[Gemini] batch {i + 1}/{len(batches)} exhausted all retries \u2014 skipping")
+        else:
+            print(f"[Gemini] batch {i + 1}/{len(batches)} -> {len(arr)} Pokemon (model={answered.get(i)})")
+
+    # Second opinion: the stronger models (about 20 requests a day each on the free tier) re-read
+    # only the batches whose bulk answer looks unreliable or never arrived.
+    if verify_models and prompt is VIDEO_IMPORT_PROMPT:
+        known = lambda n: bool(find_pokemon_name(str(n)))
+        suspects = sorted(
+            ((gemini_pool.suspicion(results.get(i), known) if results.get(i) is not None else 99, i)
+             for i in range(len(batches))), reverse=True)
+        suspects = [i for score, i in suspects if score >= 2]
+        lanes = pool.alive("verify")
+        suspects = suspects[: 12 * max(1, len(lanes))]
+        if suspects and lanes:
+            print(f"[Gemini] {len(suspects)} suspect batch(es); re-reading with {sorted({l.model for l in lanes})}")
+            vres, vans = gemini_pool.run_batches(
+                pool, suspects, make_call, "verify", len(lanes),
+                max_attempts=len(lanes) + 1, max_wait=90, log=print)
+            swapped = 0
+            for i in suspects:
+                if gemini_pool.pick_replacement(results.get(i), vres.get(i), known):
+                    results[i] = vres[i]
+                    answered[i] = vans.get(i)
+                    swapped += 1
+            print(f"[Gemini] verification replaced {swapped} of {len(suspects)} suspect batch(es)")
+
+    collected = []
+    for i in range(len(batches)):
+        collected.extend(results.get(i) or [])
+
+    print(f"[Gemini] finished in {(time.time() - t_start) / 60:.1f} min. Lanes:")
+    for row in pool.summary():
+        print("   " + row)
 
     # Merge duplicate sightings across batches (same name + CP), same rule as
     # the client: keep the first sighting, backfill any nulls from later ones.
