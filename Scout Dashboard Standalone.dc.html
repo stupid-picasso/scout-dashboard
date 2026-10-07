@@ -1230,7 +1230,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.143</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.145</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -8078,7 +8078,8 @@ class Component extends DCLogic {
   // Whole-app backup that works without a cloud account: the same blob the cloud copy holds,
   // minus every credential. Restore reads it back through onRestoreFile.
   deviceBackupText() {
-    const blob = this.buildCloudBlob();
+    // Unpacked like the cloud backup: plain readable arrays, not the chunked storage form.
+    const blob = this.unpackCloudBlob(this.buildCloudBlob());
     ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
     const count = (this.effectiveRosterForMatch() || []).length;
     return JSON.stringify({ _backup: { app: 'Professor', kind: 'device', takenAt: new Date().toISOString(), count }, data: blob }, null, 2);
@@ -11156,7 +11157,9 @@ class Component extends DCLogic {
     if (this._autoLoadObs) { this._autoLoadObs.disconnect(); this._autoLoadObs = null; }
     if (!el || typeof IntersectionObserver === 'undefined') return;
     this._autoLoadObs = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) this.loadMore();
+      // Auto-load stops at 150 rows: past that the whole list re-renders on every page, so the
+      // rest is behind the LOAD MORE button (and search/filters) instead of scroll.
+      if (entries.some(e => e.isIntersecting) && this.state.visibleCount < 150) this.loadMore();
     }, { rootMargin: '300px 0px' });
     this._autoLoadObs.observe(el);
   }
@@ -13630,6 +13633,7 @@ class Component extends DCLogic {
     const pagedFiltered = filtered.slice(0, visibleCount);
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
+      const rs = this.rowSpread(p), tl = this.typeLook(p), tcol = this.dsTypeColor(p);
       const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p)].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
@@ -13648,7 +13652,7 @@ class Component extends DCLogic {
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         initial: (p.name || '?').charAt(0),
         dex: p.dex,
-        badgeColor: this.dsTypeColor(p),
+        badgeColor: tcol,
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
         delay: Math.min(i, 24) * 15,
         cp: p.cp,
@@ -13658,23 +13662,23 @@ class Component extends DCLogic {
         ringDasharray: ring.dasharray,
         ringDashoffset: ring.dashoffset,
         spread: this.spreadText(p),
-        rowSpread: this.rowSpread(p).text,
-        rowSpreadMeasured: this.rowSpread(p).measured,
-        rowSpreadColor: this.rowSpread(p).measured ? 'var(--ink-900)' : 'var(--ink-500)',
-        rail: this.typeLook(p).rail,
-        railGlow: this.typeLook(p).glow,
-        typeAccent: this.dsTypeColor(p),
+        rowSpread: rs.text,
+        rowSpreadMeasured: rs.measured,
+        rowSpreadColor: rs.measured ? 'var(--ink-900)' : 'var(--ink-500)',
+        rail: tl.rail,
+        railGlow: tl.glow,
+        typeAccent: tcol,
         cardTint: this.dsTypeTint(p),
         cardEdge: this.dsTypeEdge(p),
-        typeChips: this.typeLook(p).chips,
+        typeChips: tl.chips,
         primaryTypeLabel: this.primaryTypeOf(p),
         moves: [p.quickMove, p.chargeMove].filter(Boolean).map(n => this.formatMoveName(n)).join(' / ') || '—',
         bestLeagueLabel: (best && Number.isFinite(best.rankPct)) ? best.label + ' ' + best.rankPct.toFixed(0) + '%' : '—',
         bestLeagueColor: best ? leagueColor(best.label) : 'var(--ink-300)',
         flags: flags,
         stardustLine: this.state.stardustBalance != null ? '\u2727 ' + this.state.stardustBalance.toLocaleString() : '',
-        showManualIv: !this.rowSpread(p).measured,
-        rowRadius: !this.rowSpread(p).measured ? '16px 16px 0 0' : '16px',
+        showManualIv: !rs.measured,
+        rowRadius: !rs.measured ? '16px 16px 0 0' : '16px',
         ivEditOpen: this.state.ivEditIdx === p.idx,
         ivEditClosed: this.state.ivEditIdx !== p.idx,
         toggleIvEdit: () => this.setState({ ivEditIdx: this.state.ivEditIdx === p.idx ? null : p.idx }),

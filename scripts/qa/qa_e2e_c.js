@@ -148,7 +148,7 @@ module.exports = async function suiteC() {
   }, 'medium');
   await T('HOM-14', 'Home', 'Device backup is offered without an account and never contains API keys', async () => {
     await s.go('HOME'); expect(await s.page.getByRole('button', { name: 'Back up this device' }).count() === 1, 'no button'); await s.set({ geminiKey: 'SECRET-KEY-123', githubToken: 'ghp_SECRET' });
-    const text = await s.call('deviceBackupText'); expect(!/SECRET/.test(text), 'secret leaked'); const j = JSON.parse(text); expect(j._backup.kind === 'device' && j._backup.count === 64 && (Array.isArray(j.data.roster) || typeof j.data.roster === 'string'), JSON.stringify(j._backup));
+    const text = await s.call('deviceBackupText'); expect(!/SECRET/.test(text), 'secret leaked'); const j = JSON.parse(text); expect(j._backup.kind === 'device' && j._backup.count === 64 && (Array.isArray(j.data.roster)), JSON.stringify(j._backup));
   }, 'critical');
   await T('HOM-15', 'Home', 'A device backup restores the roster after it was cleared (with a confirmation step)', async () => {
     const text = await s.call('deviceBackupText'); const f = path.join(require('os').tmpdir(), 'qa-backup.json'); fs.writeFileSync(f, text);
