@@ -926,6 +926,68 @@ def drop_sparse(records):
     return kept, dropped
 
 
+_SCALAR_KEYS = ("cp", "hp", "weight", "height")
+_FLAG_KEYS = ("favorite", "lucky", "shadow", "dynamax", "gigantamax", "shiny")
+
+
+def _vote(values):
+    """Most common non-null value; ties go to the earliest reading."""
+    vals = [v for v in values if v is not None and v != ""]
+    if not vals:
+        return None
+    counts = {}
+    for v in vals:
+        counts.setdefault(json.dumps(v, sort_keys=True), [0, v])[0] += 1
+    return max(counts.values(), key=lambda c: c[0])[1]
+
+
+def merge_frames(seq, max_gap=4):
+    """Turns per-frame readings [(frame_number, item), ...] into one record per Pokemon.
+
+    Frames belong to the same Pokemon when the species matches, they are within `max_gap` frames of
+    each other and nothing they both show disagrees (CP, HP, weight, height). Two Pokemon of one
+    species with different CP/HP/size therefore stay apart even on adjacent frames, which is the case
+    a model merging frames on its own gets wrong. Each field is then decided by a vote across the
+    group's frames; true flags win (a missed icon is likelier than an invented one)."""
+    groups = []
+    for gidx, it in sorted(seq, key=lambda p: p[0]):
+        if not isinstance(it, dict) or not it.get("name"):
+            continue
+        name = str(it["name"]).strip().lower()
+        target = None
+        for g in reversed(groups[-4:]):
+            if g["name"] != name or gidx - g["last"] > max_gap:
+                continue
+            if all(it.get(k) is None or _vote([x.get(k) for x in g["items"]]) is None
+                   or _vote([x.get(k) for x in g["items"]]) == it.get(k) for k in _SCALAR_KEYS):
+                target = g
+                break
+        if target is None:
+            target = {"name": name, "items": [], "last": gidx}
+            groups.append(target)
+        target["items"].append(it)
+        target["last"] = gidx
+    out = []
+    for g in groups:
+        keys = []
+        for x in g["items"]:
+            for k in x:
+                if k not in keys and k != "frame":
+                    keys.append(k)
+        rec = {}
+        for k in keys:
+            vals = [x.get(k) for x in g["items"]]
+            if k in _FLAG_KEYS:
+                rec[k] = True if any(v is True for v in vals) else (False if any(v is False for v in vals) else None)
+            elif k == "megaForms":
+                rich = [v for v in vals if isinstance(v, list) and v]
+                rec[k] = max(rich, key=lambda v: sum(1 for f in v for fv in f.values() if fv is not None)) if rich else (vals[0] if vals else [])
+            else:
+                rec[k] = _vote(vals)
+        out.append(rec)
+    return out
+
+
 def deduplicate_records(records):
     """Deduplicate by name + CP decade."""
     seen = set()
@@ -1087,6 +1149,19 @@ VIDEO_IMPORT_PROMPT = (
 # completely full (never a 0-15 IV number off a partial bar), matching the
 # phone app's appraisalPrompt(). The client's mergeAppraisalImport() turns
 # star tier + full bars + CP/HP into the exact spread.
+_FRAME_HEAD = (
+    "These are consecutive frames, in order, sampled from a Pokemon GO screen recording. They are "
+    "numbered 1, 2, 3 ... in the order given. Read EACH frame entirely on its own: never combine or "
+    "carry values from one frame to another, never take a value from a different Pokemon's frame, and "
+    "never fill a value from what that species usually has. Respond with ONLY a JSON array, no "
+    "markdown fences, no commentary: one object per frame that shows a Pokemon (leave out frames that "
+    "show none), in frame order. Each object has \"frame\" (the frame number) and then only the fields "
+    "below that are VISIBLE in that frame; leave out every field you cannot see (a left-out field counts "
+    "as null). Fields: "
+)
+_rest = VIDEO_IMPORT_PROMPT.split(" Each item: ", 1)[1]
+VIDEO_FRAME_PROMPT = _FRAME_HEAD + _rest.replace('{"name": string,', '{"frame": number, "name": string,', 1).replace("in any frame", "in that frame")
+
 APPRAISAL_PROMPT = (
     "These are frames from a Pokemon GO APPRAISAL screen recording. Each Pokemon is "
     "shown on its appraisal view: a team-leader badge with a star rating, and three "
@@ -2278,7 +2353,7 @@ def call_gemini(prompt_text, images_b64, model, api_key, batch_note="", timeout=
     ladder = _think_ladder(model)
 
     def build_body(thinking, json_mime):
-        cfg = {"maxOutputTokens": 4096, "temperature": 0}
+        cfg = {"maxOutputTokens": 8192, "temperature": 0}
         if json_mime:
             cfg["responseMimeType"] = "application/json"
         if thinking:
@@ -2369,6 +2444,8 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     merge=False returns every object the model produced, unmerged and in
     order — needed when the caller sends N frames and must get N answers back
     (identifying N different Pokemon), rather than a deduplicated set."""
+    frame_mode = prompt is VIDEO_FRAME_PROMPT
+    video_mode = frame_mode or prompt is VIDEO_IMPORT_PROMPT
     if merge_key is None:
         merge_key = _video_merge_key if merge else (lambda it: id(it))
     keys = get_gemini_keys()
@@ -2413,8 +2490,10 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     gender_hint_log = []
     for b_i, batch in enumerate(batches):
         note = f" (This is batch {b_i + 1} of {len(batches)} from the same recording.)" if len(batches) > 1 else ""
+        if frame_mode:
+            note += f" This batch has {len(batch)} frames, numbered 1 to {len(batch)}."
         hints = []
-        if prompt is VIDEO_IMPORT_PROMPT:
+        if video_mode:
             for k, fp in enumerate(batch_paths[b_i], 1):
                 try:
                     rows = detect_mega_dots(fp)
@@ -2422,7 +2501,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                     rows = []
                 if rows:
                     hints.append(f"frame {k}: " + ", ".join(f"{r['filled']} of {r['total']} dots filled" for r in rows))
-        if prompt is VIDEO_IMPORT_PROMPT:
+        if video_mode:
             genders = []
             for k, fp in enumerate(batch_paths[b_i], 1):
                 try:
@@ -2496,7 +2575,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                     swapped += 1
             print(f"[Gemini] verification replaced {swapped} of {len(suspects)} suspect batch(es)")
 
-    if prompt is VIDEO_IMPORT_PROMPT:
+    if video_mode:
         total_hints = sum(len(h["hints"]) for h in gender_hint_log)
         print(f"[Measure] gender symbol measured on {total_hints} of {len(frame_paths)} frames")
         try:
@@ -2516,10 +2595,26 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
             print("   " + row)
         raise SystemExit(1)
     collected = []
-    for i in range(len(batches)):
-        collected.extend(results.get(i) or [])
-    if prompt is VIDEO_IMPORT_PROMPT:
-        clean_video_items(collected)
+    if frame_mode:
+        seq = []
+        offset = 0
+        for i in range(len(batches)):
+            size = len(batches[i])
+            for pos, obj in enumerate(results.get(i) or [], 1):
+                if not isinstance(obj, dict):
+                    continue
+                f = obj.get("frame")
+                f = f if isinstance(f, int) and 1 <= f <= size else min(pos, size)
+                seq.append((offset + f, obj))
+            offset += size
+        clean_video_items([o for _, o in seq])
+        collected = merge_frames(seq)
+        print(f"[Frames] {len(seq)} per-frame readings grouped into {len(collected)} Pokemon")
+    else:
+        for i in range(len(batches)):
+            collected.extend(results.get(i) or [])
+        if video_mode:
+            clean_video_items(collected)
 
     print(f"[Gemini] finished in {(time.time() - t_start) / 60:.1f} min. Lanes:")
     for row in pool.summary():
@@ -2544,7 +2639,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                 elif k in _POSITIVE_FLAGS and v is True:
                     prev[k] = True
     merged = [seen[k] for k in order]
-    if prompt is VIDEO_IMPORT_PROMPT:
+    if video_mode:
         merged, folded = absorb_cpless(merged)
         if folded:
             print(f"[Clean] folded {folded} CP-less sighting(s) into the same Pokemon read with a CP")
@@ -2639,7 +2734,8 @@ def main():
             if not frames:
                 print("[Main] No frames extracted \u2014 nothing to do.")
                 sys.exit(1)
-            items = run_gemini_video_ocr(frames)
+            items = run_gemini_video_ocr(
+                frames, prompt=(VIDEO_IMPORT_PROMPT if os.environ.get("PER_FRAME") == "0" else VIDEO_FRAME_PROMPT))
 
         out_path = args.out
         if out_path.endswith(".csv"):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Offline tests for the video-import post-processing (name snapping, type casing, merge flags)."""
-import os, sys
+import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pogo_extract as px
 
@@ -99,5 +99,20 @@ if os.path.exists(_dj):
     check("synthetic male symbol", all(px.detect_gender(_frame("\u2642", z)) == "M" for z in (66, 78, 88)))
     check("synthetic female symbol", all(px.detect_gender(_frame("\u2640", z)) == "F" for z in (66, 78, 88)))
     check("no symbol -> None", px.detect_gender(_frame(None, 78)) is None)
+
+# --- per-frame merge ------------------------------------------------------------------------------
+seqx = [(1, {"name": "Sableye", "cp": 818, "hp": 89, "weight": "8.64kg"}), (2, {"name": "Sableye", "hp": 89, "weight": "8.64kg", "fastMove": "Feint Attack", "chargeMove1": "Power Gem", "gender": "M"}),
+        (3, {"name": "Sableye", "cp": 829, "hp": 90, "weight": "9.1kg", "fastMove": "Shadow Claw"}),
+        (4, {"name": "Sableye", "hp": 90, "weight": "9.1kg", "fastMove": "Shadow Claw", "chargeMove1": "Foul Play", "gender": "F"}),
+        (20, {"name": "Pikachu", "cp": 500, "hp": 60, "gender": "M", "favorite": False}), (21, {"name": "Pikachu", "cp": 500, "gender": "M", "favorite": True}), (22, {"name": "Pikachu", "cp": 500, "gender": "F"}),
+        (60, {"name": "Pikachu", "cp": 500, "hp": 60})]
+out = px.merge_frames(seqx)
+sab = [o for o in out if o["name"] == "Sableye"]
+check("two same-species Pokemon on adjacent frames stay apart", len(sab) == 2, str(len(sab)))
+check("each keeps only its own moves", sab[0]["fastMove"] == "Feint Attack" and sab[0]["chargeMove1"] == "Power Gem" and sab[1]["fastMove"] == "Shadow Claw" and sab[1]["chargeMove1"] == "Foul Play", json.dumps(sab) if False else str(sab))
+check("scrolled frame joins its Pokemon (CP kept)", sab[0]["cp"] == 818 and sab[1]["cp"] == 829)
+pk = [o for o in out if o["name"] == "Pikachu"]
+check("gap larger than max_gap starts a new group", len(pk) == 2, str(len(pk)))
+check("vote: majority gender wins; favorite true wins", pk[0]["gender"] == "M" and pk[0]["favorite"] is True, str(pk[0]))
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

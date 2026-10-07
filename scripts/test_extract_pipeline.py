@@ -41,6 +41,12 @@ def reply_for(model, key, body):
     m = re.search(r"batch (\d+) of", note)
     b = int(m.group(1)) if m else 1
     name = "Pikachu"
+    if "numbered 1, 2, 3" in note:   # per-frame prompt: one object per frame, nothing merged by the model
+        items = [{"frame": 1, "name": name, "cp": 100 + b, "hp": 50, "fastMove": "Quick Attack"},
+                 {"frame": 2, "name": name, "hp": 50, "weight": "2kg", "gender": "M"},
+                 {"frame": 3, "name": name, "cp": 100 + b, "favorite": False},
+                 {"frame": 4, "name": "Eevee", "cp": 300 + b, "hp": 70}, {"frame": 5, "name": "Eevee", "hp": 70, "height": "0.3m"}]
+        return {"candidates": [{"content": {"parts": [{"text": json.dumps(items)}]}}]}
     # a bad reading (no CP/HP) from the cheap models on chosen batches; the verify model reads it properly
     if b in BEHAVE["suspect_batches"] and model in px.gemini_pool.BULK_MODELS:
         items = [{"name": name, "cp": None, "hp": None}, {"name": name, "cp": None, "hp": None}]
@@ -133,6 +139,15 @@ try:
     check("total failure aborts instead of writing a partial import", False, "no SystemExit")
 except SystemExit as e:
     check("total failure aborts instead of writing a partial import", e.code == 1, str(e.code))
+
+# --- run 5: per-frame mode merges frames in code (voting, adjacency)
+calls.clear(); BEHAVE["bad_model"] = None; BEHAVE["daily"] = set(); BEHAVE["suspect_batches"] = set()
+items = px.run_gemini_video_ocr(frames, prompt=px.VIDEO_FRAME_PROMPT)
+pik = [i for i in items if i["name"] == "Pikachu"]; eev = [i for i in items if i["name"] == "Eevee"]
+check("per-frame: one Pokemon per batch per species", len(pik) == 5 and len(eev) == 5, "%d %d" % (len(pik), len(eev)))
+check("per-frame: fields from scrolled frames are attached", all(i.get("weight") == "2kg" and i.get("gender") == "M" and i.get("fastMove") == "Quick Attack" for i in pik), json.dumps(pik[:1]))
+check("per-frame: CP-less frame joins its Pokemon", all(i.get("height") == "0.3m" and i.get("cp") for i in eev), json.dumps(eev[:1]))
+check("per-frame: no frame key leaks", all("frame" not in i for i in items))
 
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)
