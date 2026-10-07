@@ -1230,7 +1230,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.151</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.152</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1474,6 +1474,9 @@
             <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px">
               <sc-for list="{{ fe.raidActions }}" as="ra" hint-placeholder-count="0">
                 <button type="button" onClick="{{ ra.run }}" style="font:600 14px var(--font-body);color:var(--ios-blue);padding:4px 0">{{ ra.label }} &rsaquo;</button>
+              </sc-for>
+              <sc-for list="{{ fe.maxActions }}" as="ma" hint-placeholder-count="0">
+                <button type="button" onClick="{{ ma.run }}" style="font:600 14px var(--font-body);color:#d7a8ff;padding:4px 0">{{ ma.label }} &rsaquo;</button>
               </sc-for>
               <button type="button" onClick="{{ fe.addToCalendar }}" aria-label="{{ fe.calLabel }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:4px 0">Add to calendar</button>
             </div>
@@ -2997,6 +3000,19 @@
           </sc-if>
         </div>
         </div>
+        <section aria-label="Max Battles" style="margin:14px 16px 0;background:color-mix(in oklab, #bf5af2 14%, var(--surface-card));border-radius:16px;padding:12px 14px">
+          <sc-if value="{{ detail.maxCard.capable }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">MAX BATTLES</div>
+              <div style="font:800 11px var(--font-display);letter-spacing:.06em;color:#d7a8ff">{{ detail.maxCard.title }}</div>
+            </div>
+            <div style="font:14px/1.4 var(--font-body);margin-top:6px">{{ detail.maxCard.attackLine }}</div>
+            <div style="font:13px/1.4 var(--font-body);color:var(--ink-500);margin-top:2px">{{ detail.maxCard.guardLine }}</div>
+            <div style="font:13px/1.4 var(--font-body);color:var(--ink-500)">{{ detail.maxCard.spiritLine }}</div>
+            <div style="font:12px/1.4 var(--font-body);color:var(--ink-400);margin-top:6px">{{ detail.maxCard.sourceLine }} {{ detail.maxCard.particles }}</div>
+          </sc-if>
+          <button type="button" onClick="{{ detail.maxCard.toggle }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:6px 0;margin-top:2px">{{ detail.maxCard.toggleLabel }}</button>
+        </section>
         <sc-if value="{{ detail.mega.has }}" hint-placeholder-val="{{ false }}">
           <div style="background:color-mix(in oklab, var(--type-electric) 14%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-electric) 40%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
             <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-bottom:8px">MEGA EVOLUTION</div>
@@ -3444,6 +3460,24 @@
           </div>
         </sc-for>
       </div>
+      <section aria-label="Max Battle attackers" style="margin-top:22px">
+        <div style="font:800 13px var(--font-display);letter-spacing:.05em">MAX ATTACKERS vs THIS BOSS</div>
+        <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-500);margin:4px 0 10px;text-wrap:pretty">Your Dynamax and Gigantamax Pokemon ranked by one Max Attack (STAB, type effectiveness, the Max Attack level you scanned) weighted by bulk. An estimate: it ignores Max Energy timing and party effects.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ maxRows }}" as="mr" hint-placeholder-count="0">
+            <button type="button" onClick="{{ mr.onClick }}" style="text-align:left;display:flex;align-items:center;gap:12px;background:var(--surface-card);border-radius:16px;padding:10px 14px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span style="font:700 11px var(--font-display);color:var(--ink-400)">{{ mr.rank }}</span><span style="font:600 15px var(--font-body)">{{ mr.name }}</span><span style="font:700 11px var(--font-display);letter-spacing:.05em;color:{{ mr.effColor }}">{{ mr.effLabel }}</span></div>
+                <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-top:2px">{{ mr.moveLine }}</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0"><div style="font:800 20px var(--font-display);color:#d7a8ff">{{ mr.damage }}</div><div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.1em">PER MAX HIT</div></div>
+            </button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ maxEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border-radius:14px;padding:14px;font:13px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">No Max-capable Pokemon to rank. A Pokemon needs measured IVs, a fast move on file and the Max tag: import a screenshot that shows the Dynamax mark, or tag one by hand on its detail screen.</div>
+        </sc-if>
+      </section>
       <sc-if value="{{ raidEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;font:12.5px/1.6 var(--font-body);color:var(--ink-500);text-wrap:pretty">No counters to rank yet. This needs move damage numbers &mdash; run MOVE DATABASE on the Attackers tab first.</div>
       </sc-if>
@@ -7460,7 +7494,8 @@ class Component extends DCLogic {
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,'
       + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
-      + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,"favorite":boolean}. '
+      + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,'
+      + '"dynamax":true|null,"gigantamax":true|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
       + 'Rules: '
       + 'CP is the number in the badge at the very TOP of the screen. If the top of the card is scrolled off and no CP badge is visible, return null — never substitute another number. '
       + 'CP is NEVER the stardust amount: stardust is the large comma-grouped number next to the stardust icon (e.g. 148,482). '
@@ -7471,6 +7506,7 @@ class Component extends DCLogic {
       + 'powerUpStardust/powerUpCandy are the two costs on the POWER UP button; evolveCandy is the candy cost on the EVOLVE button. '
       + 'gender: "M" for the male symbol, "F" for the female symbol, null if neither. '
       + 'sizeClass: "XL" or "XS" only if that tag appears next to height/weight. '
+      + 'Max (Dynamax): a Pokemon that can Dynamax shows a "Dynamax" logo under its height and weight on the detail screen (and a small icon at the top right of its picture in the collection list). Set dynamax true ONLY if you can see that logo or icon. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move. If a Max Moves section is shown, maxAttackLevel, maxGuardLevel and maxSpiritLevel are the level numbers on the Max Attack, Max Guard and Max Spirit rows (null when the row is locked or not visible); maxParticles is the Max Particles balance if shown. Never guess these. '
       + 'A shadow Pokemon shows a PURIFY button and the Frustration move; set shadow true then. Set purified true only if the screen says Purified. '
       + 'Moves are listed under Gyms & Raids: the first is fastMove, the rest are chargeMove1/chargeMove2. Give move names only, without the type in parentheses. '
       + 'Only report atkIV/defIV/staIV if exact 0-15 numbers are visible; never infer them from appraisal bars or stars. '
@@ -7511,6 +7547,7 @@ class Component extends DCLogic {
       mega_energy_x: num(o.megaEnergyX), mega_energy_y: num(o.megaEnergyY), mega_forms: Array.isArray(o.megaForms) ? o.megaForms : undefined,
       attack_iv: num(o.atkIV), defense_iv: num(o.defIV), stamina_iv: num(o.staIV),
       lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, shiny_icon: !!o.shinyIcon, favorite: !!o.favorite,
+      dynamax: !!o.dynamax, gigantamax: !!o.gigantamax, max_attack_level: num(o.maxAttackLevel), max_guard_level: num(o.maxGuardLevel), max_spirit_level: num(o.maxSpiritLevel), max_particles: num(o.maxParticles),
       _source: 'vision'
     };
   }
@@ -7887,6 +7924,7 @@ class Component extends DCLogic {
         cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
         lvlMin: r.level, lvlMax: r.level, quickMove: null, chargeMove: null, chargeMove2: null,
         catchDate: null, lucky: false, shadowPurified: '0', favorite: false, shiny: !!shinyItem.shiny, shinyState: shinyItem.shiny && !shinyItem.shinyIcon ? 'suspected' : null, dust: null,
+        ...(p._rec ? this.maxPatch(p._rec) : {}),
         great: patch.great, ultra: patch.ultra, little: patch.little
       };
       const added = [...this.state.addedPokemon, newRec];
@@ -7926,6 +7964,7 @@ class Component extends DCLogic {
       put('weight', p.weight || rec.weight);
       put('height', p.height || rec.height);
       put('sizeClass', rec.size_class);
+      const mp = this.maxPatch(rec); Object.keys(mp).forEach(k => { patch[k] = mp[k]; touched = true; });
       const sp = this.shinyPatch({ shiny: !!rec.shiny, shinyIcon: !!rec.shiny_icon }, this.monWithOverrides(p.matchedIdx));
       Object.keys(sp).forEach(k => { patch[k] = sp[k]; touched = true; });
       if (touched) {
@@ -7934,6 +7973,7 @@ class Component extends DCLogic {
       }
     }
     try { this.logMegaScans([{ ...rec, name: p.matchedName || p.name }]); } catch (e) {}
+    try { this.noteMaxParticles(rec); } catch (e) {}
     this.setState({ candyInventory: candyInv, typeTable: types }, () => this.advanceOcrQueue({ name: p.matchedName || p.name, action: 'updated' }));
     this.resetAppraisalHint();
     // Stardust is the first thing the importer promises to update — it was being
@@ -9121,8 +9161,9 @@ class Component extends DCLogic {
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
         + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, '
         + '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, "megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}], '
-        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "favorite": boolean}. '
+        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "dynamax": true|null, "gigantamax": true|null, "maxAttackLevel": number|null, "maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, "favorite": boolean}. '
         + 'Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array if no MEGA EVOLVE button. '
+        + 'Max (Dynamax): a Pokemon that can Dynamax shows a "Dynamax" logo under its height and weight on the detail screen (and a small icon at the top right of its picture in the collection list). Set dynamax true ONLY if you can see that logo or icon. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move. If a Max Moves section is shown, maxAttackLevel, maxGuardLevel and maxSpiritLevel are the level numbers on the Max Attack, Max Guard and Max Spirit rows (null when the row is locked or not visible); maxParticles is the Max Particles balance if shown. Never guess these. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
         + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring or the small sparkles icon on the card, never guess from name or CP alone. Set shinyIcon true ONLY if you can actually see that sparkles icon. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
@@ -9491,7 +9532,7 @@ class Component extends DCLogic {
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
       + '"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
-      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"favorite":boolean}\n\n'
+      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"dynamax":true|null,"gigantamax":true|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}\n\n'
       + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
       + 'Rules:\n'
       + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
@@ -9501,6 +9542,7 @@ class Component extends DCLogic {
       + '- evolveCandy is the candy cost on the EVOLVE button.\n'
       + '- Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = the number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array when there is no MEGA EVOLVE button.\n'
       + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
+      + '- '+'Max (Dynamax): a Pokemon that can Dynamax shows a "Dynamax" logo under its height and weight on the detail screen (and a small icon at the top right of its picture in the collection list). Set dynamax true ONLY if you can see that logo or icon. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move. If a Max Moves section is shown, maxAttackLevel, maxGuardLevel and maxSpiritLevel are the level numbers on the Max Attack, Max Guard and Max Spirit rows (null when the row is locked or not visible); maxParticles is the Max Particles balance if shown. Never guess these. '+'\n'
       + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
       + '- A shiny Pokemon has a visibly different color palette from its normal coloring and/or shows a small sparkles icon on its card. Set shiny true only when that is actually visible \u2014 never guess from name or CP alone. Set shinyIcon true ONLY if the sparkles icon itself is visible.\n'
       + '- Only give atkIV/defIV/staIV if exact 0-15 numbers are visible. Never infer them from appraisal bars or stars.\n'
@@ -10059,6 +10101,7 @@ class Component extends DCLogic {
 
   mergeVideoImport(rawItems) {
     try { this.logMegaScans(rawItems || []); } catch (e) {}
+    try { (rawItems || []).forEach(o => this.noteMaxParticles(o)); } catch (e) {}
     const items = this.coalesceFragments(rawItems || []);
     const overrides = { ...this.state.ivOverrides };
     const candyInv = { ...this.state.candyInventory };
@@ -10252,6 +10295,7 @@ class Component extends DCLogic {
           ...(item.chargeMove2 ? { chargeMove2: item.chargeMove2 } : {}),
           ...(item.weight ? { weight: item.weight } : {}),
           ...(item.height ? { height: item.height } : {}),
+          ...this.maxPatch(item),
           scanDate: today,
           ...ivPatch
         };
@@ -10271,6 +10315,7 @@ class Component extends DCLogic {
           evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
           catchDate: null, scanDate: today,
           lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
+          ...this.maxPatch(item),
           // Never null — the render path reads p.great.rankPct directly.
           great: ivPatch.great || this.emptyLeague(),
           ultra: ivPatch.ultra || this.emptyLeague(),
@@ -10983,6 +11028,12 @@ class Component extends DCLogic {
     return { name: label, types: types.map(t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()) };
   }
 
+  // "Dynamax Uxie, Mesprit, and Azelf Max Battle Day" -> ['Uxie', 'Mesprit', 'Azelf'].
+  maxBossNames(title) {
+    const t = String(title || '').replace(/^.*?\bdynamax\s+/i, '').replace(/\s+(during|max battle|max monday)\b.*$/i, '');
+    return t.split(/\s*,\s*(?:and\s+)?|\s+and\s+/i).map(x => x.trim()).filter(Boolean);
+  }
+
   openRaidVs(target) {
     this.setState({ raidBossName: target.name, raidBossTypes: target.types, moreOpen: false }, () => this.goToTab('raid'));
   }
@@ -11116,6 +11167,109 @@ class Component extends DCLogic {
     return changed ? out : inv;
   }
 
+  // ---- Max (Dynamax / Gigantamax) ----
+  // What a scan can prove about Max: the "Dynamax" mark, a Gigantamax form, and the levels of the
+  // three Max Moves. Only positive evidence is stored: a missing mark on a cropped screenshot is
+  // not proof that a Pokemon cannot Dynamax. Accepts the camelCase JSON of the readers and the
+  // snake_case records of the server import.
+  maxPatch(o) {
+    const out = {};
+    if (!o) return out;
+    const pick = (a, b) => (o[a] != null ? o[a] : o[b]);
+    if (o.dynamax === true || o.gigantamax === true) out.dynamax = true;
+    if (o.gigantamax === true) out.gigantamax = true;
+    const lvl = v => { const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) && n >= 1 && n <= 4 ? Math.floor(n) : null; };
+    const a = lvl(pick('maxAttackLevel', 'max_attack_level')), g = lvl(pick('maxGuardLevel', 'max_guard_level')), sp = lvl(pick('maxSpiritLevel', 'max_spirit_level'));
+    if (a != null) out.maxAttackLevel = a;
+    if (g != null) out.maxGuardLevel = g;
+    if (sp != null) out.maxSpiritLevel = sp;
+    return out;
+  }
+
+  // Account-wide Max Particles balance, kept with the other resources.
+  noteMaxParticles(o) {
+    const v = o ? (o.maxParticles != null ? o.maxParticles : o.max_particles) : null;
+    const n = v == null || v === '' ? NaN : Number(String(v).replace(/,/g, ''));
+    if (!Number.isFinite(n) || n < 0 || n > 100000000) return;
+    this.setState({ resources: { ...(this.state.resources || {}), maxParticles: Math.floor(n) } });
+  }
+
+  // Species proven Max-capable by the person's own scans (the built-in list is partial).
+  learnedMaxSpecies() {
+    const m = this.mechanics;
+    const base = m && m.gmaxFor ? null : null;
+    const set = new Set();
+    this.effectiveRosterForMatch().forEach(p => { if (p.dynamax || p.gigantamax) set.add(String(p.name || '').toLowerCase()); });
+    return set;
+  }
+
+  isMaxCapable(p) {
+    if (!p) return false;
+    if (p.dynamax === false) return false;  // set by hand: this one is not Max-capable
+    if (p.dynamax || p.gigantamax) return true;
+    const m = this.mechanics;
+    if (m && m.isMaxSeedSpecies && m.isMaxSeedSpecies(p.name)) return true;
+    return this.learnedMaxSpecies().has(String(p.name || '').toLowerCase());
+  }
+
+  // Manual correction for species the built-in list does not know (or knows wrongly).
+  toggleMaxCapable(p) {
+    const ov = { ...(this.state.ivOverrides || {}) };
+    const now = !this.isMaxCapable(p);
+    ov[p.idx] = { ...(ov[p.idx] || {}), dynamax: now, ...(now ? {} : { gigantamax: false }) };
+    const dp = this.state.detailPoke;
+    this.haptic('light');
+    this.setState({ ivOverrides: ov, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, ...ov[p.idx] } } : {}) });
+  }
+
+  maxTagFor(p) {
+    if (p && p.gigantamax) return 'G-MAX';
+    return this.isMaxCapable(p) ? 'MAX' : '';
+  }
+
+  // The Max attack a Pokemon would use: type of its fast move (a Gigantamax Pokemon uses its
+  // species-fixed G-Max Move), power from its scanned Max Attack level (level 1 when unread).
+  maxInfoFor(p) {
+    const m = this.mechanics;
+    if (!m || !m.maxAttackPower || !this.isMaxCapable(p)) return null;
+    const gm = p.gigantamax && m.gmaxFor ? m.gmaxFor(p.name) : null;
+    const fast = this.lookupMove(p.quickMove);
+    const moveType = gm ? gm.type : (fast && fast.kind === 'fast' ? fast.type : null);
+    const level = Number(p.maxAttackLevel) || 1;
+    const guard = Number(p.maxGuardLevel) || 0, spirit = Number(p.maxSpiritLevel) || 0;
+    return {
+      moveType, gmax: !!gm, level, guard, spirit,
+      moveName: gm ? gm.move : (moveType && m.MAX_MOVE_BY_TYPE ? m.MAX_MOVE_BY_TYPE[moveType] : null),
+      power: m.maxAttackPower(level, !!gm),
+      guardHp: m.maxGuardHp(guard), spiritPct: m.maxSpiritPct(spirit),
+      levelsKnown: p.maxAttackLevel != null
+    };
+  }
+
+  // Ranks the person's Max-capable Pokemon against the boss chosen on the Raid tab.
+  maxAttackers() {
+    const m = this.mechanics;
+    const defenderTypes = this.state.raidBossTypes || [];
+    if (!m || !m.maxRating || !defenderTypes.length) return [];
+    const weatherTypes = (m.WEATHER_TYPES && m.WEATHER_TYPES[this.state.raidWeather]) || null;
+    const rows = [];
+    this.effectiveRosterForMatch().forEach(p => {
+      if (!this.isMaxCapable(p)) return;
+      const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+      if (!base || !ivs) return;
+      const lv = this.evalLevelOf(p);
+      if (lv.level == null) return;
+      const info = this.maxInfoFor(p);
+      if (!info || !info.moveType) return;
+      const ownTypes = this.typesOf(p);
+      const incoming = defenderTypes.reduce((a, bt) => a + m.typeMultiplier(bt, ownTypes), 0) / defenderTypes.length;
+      const r = m.maxRating(base, ivs, lv.level, { moveType: info.moveType, ownTypes, defenderTypes, weatherTypes, attackLevel: info.level, gmax: info.gmax, incoming, isShadow: this.isShadow(p) });
+      if (!r) return;
+      rows.push({ p, info, r, level: lv.level, eff: m.typeMultiplier(info.moveType, defenderTypes), incoming });
+    });
+    return rows.sort((a, b) => b.r.score - a.r.score).slice(0, 12);
+  }
+
   // ---- Derived-data cache ----
   // renderVals runs on every state change (a keystroke, a selection tick, a toast) and used to
   // recompute every tab's analysis each time (~45 ms for 500 Pokemon, 4x that on a phone). The
@@ -11151,7 +11305,7 @@ class Component extends DCLogic {
     if (this._derivedCacheOn) return;
     this._derivedCacheOn = true;
     this._memoStore = {};
-    const names = ['attackerBoard', 'buddyPlan', 'raidRoleTypeBest', 'dataQualityIssues', 'dustPlan', 'evolveQueue', 'megaWorth', 'buildOptimizePlan', 'actionableDexGaps', 'tmAiCandidates', 'tradeAdvice', 'dominatedDuplicates', 'triageQueue', 'raidCounters', 'missingMoveNames', 'missingEvoNames', 'effectiveRosterForMatch'];
+    const names = ['attackerBoard', 'buddyPlan', 'raidRoleTypeBest', 'dataQualityIssues', 'dustPlan', 'evolveQueue', 'megaWorth', 'buildOptimizePlan', 'actionableDexGaps', 'tmAiCandidates', 'tradeAdvice', 'dominatedDuplicates', 'triageQueue', 'raidCounters', 'missingMoveNames', 'missingEvoNames', 'effectiveRosterForMatch', 'learnedMaxSpecies', 'maxAttackers'];
     names.forEach(n => {
       const orig = this[n];
       if (typeof orig !== 'function') return;
@@ -11235,7 +11389,7 @@ class Component extends DCLogic {
   }
 
   currentViewName() {
-    const f = { all: 'All', measured: 'Measured', needsAppraisal: 'Needs appraisal', pvp: 'PvP ready', lucky: 'Lucky', shadow: 'Shadow', shiny: 'Shiny', shinyCheck: 'Shiny to confirm' }[this.state.rosterFilter || 'all'] || 'View';
+    const f = { all: 'All', measured: 'Measured', needsAppraisal: 'Needs appraisal', pvp: 'PvP ready', lucky: 'Lucky', shadow: 'Shadow', shiny: 'Shiny', shinyCheck: 'Shiny to confirm', max: 'Max' }[this.state.rosterFilter || 'all'] || 'View';
     const so = { cp: 'CP', ivAvg: 'IV%', rank: 'League rank', ivFloor: 'IV floor', name: 'Name', dex: 'Dex', catchDate: 'Newest', scanDate: 'Scanned', megaReady: 'Mega ready' }[this.state.sortField] || '';
     const q = (this.state.search || '').trim();
     return [f, q ? '“' + q + '”' : '', so].filter(Boolean).join(' · ');
@@ -12608,6 +12762,7 @@ class Component extends DCLogic {
           bonus: [e.spotlight && e.spotlight.bonus, ...(e.bonuses || [])].filter(Boolean).join(' · '),
           species: names.map(n => this.eventSpeciesVerdict(n)),
           raidActions: e.type === 'raid-battles' ? (e.bosses || []).map(b => ({ b, t: this.raidBossTarget(b) })).filter(x => x.t).slice(0, 2).map(x => ({ label: 'Best six vs ' + x.t.name, run: () => this.openRaidVs(x.t) })) : [],
+          maxActions: (e.type === 'max-battles' || e.type === 'max-mondays') ? this.maxBossNames(e.name).map(n => ({ n, t: this.raidBossTarget(n) })).filter(x => x.t).slice(0, 3).map(x => ({ label: 'Best Max attackers vs ' + x.t.name, run: () => this.openRaidVs(x.t) })) : [],
           addToCalendar: () => this.downloadIcs(e),
           calLabel: 'Add ' + e.name + ' to calendar'
         };
@@ -13702,6 +13857,7 @@ class Component extends DCLogic {
       if (rosterFilter === 'shiny') return !!p.shiny;
       if (rosterFilter === 'shinyCheck') return !!p.shiny && p.shinyState === 'suspected';
       if (rosterFilter === 'pvp') return this.isPvpWorthy(p);
+      if (rosterFilter === 'max') return this.isMaxCapable(p);
       return true;
     });
     filtered = filtered.slice().sort((a, b) => {
@@ -13742,7 +13898,7 @@ class Component extends DCLogic {
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
       const rs = this.rowSpread(p), tl = this.typeLook(p), tcol = this.dsTypeColor(p);
-      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p)].filter(Boolean).join(' ');
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p), this.maxTagFor(p)].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
@@ -14636,6 +14792,21 @@ class Component extends DCLogic {
         favPressed: !!p.favorite,
         favAria: (p.favorite ? 'Remove ' : 'Mark ') + (p.name || 'Pokemon') + (p.favorite ? ' from favourites' : ' as favourite'),
         mega: this.megaCardFor(p),
+        maxCard: (() => {
+          const cap = this.isMaxCapable(p), info = this.maxInfoFor(p);
+          const lv = n => (n ? 'Lv ' + n : 'locked / not scanned');
+          return {
+            capable: cap, canToggle: true,
+            toggleLabel: cap ? 'Not Max-capable? Remove the tag' : 'Mark as Dynamax-capable',
+            toggle: () => this.toggleMaxCapable(p),
+            title: info && info.gmax ? 'GIGANTAMAX' : 'DYNAMAX',
+            attackLine: info ? ((info.moveName || 'Max attack') + (info.moveType ? ' (' + info.moveType + ')' : ' (needs a fast move on file)') + ' \u00b7 level ' + info.level + (info.levelsKnown ? '' : ' (assumed)') + ' \u00b7 power ' + info.power) : '',
+            guardLine: info ? 'Max Guard: ' + lv(info.guard) + (info.guardHp ? ' \u00b7 ' + info.guardHp + ' HP per shield' : '') : '',
+            spiritLine: info ? 'Max Spirit: ' + lv(info.spirit) + (info.spiritPct ? ' \u00b7 heals ' + info.spiritPct + '% of max HP' : '') : '',
+            sourceLine: p.dynamax ? 'Seen on your scan.' : 'From the built-in species list (partial); a scan of the Dynamax mark confirms it.',
+            particles: Number.isFinite((this.state.resources || {}).maxParticles) ? Number(this.state.resources.maxParticles).toLocaleString('en-US') + ' Max Particles' : ''
+          };
+        })(),
         evo: evoInfo ? {
           hasEvo: true,
           toName: evoInfo.to,
@@ -14977,6 +15148,7 @@ class Component extends DCLogic {
         { key: 'needsAppraisal', label: 'NEEDS APPRAISAL' },
         { key: 'pvp', label: 'PVP READY' },
         { key: 'lucky', label: 'LUCKY' },
+        { key: 'max', label: 'MAX' },
         { key: 'shadow', label: 'SHADOW / PURIFIED' },
         { key: 'shiny', label: '\u2728 SHINY' },
         ...(roster.some(p => p.shiny && p.shinyState === 'suspected') ? [{ key: 'shinyCheck', label: '\u2728? TO CONFIRM' }] : [])
@@ -15823,6 +15995,15 @@ class Component extends DCLogic {
           : '',
         onClick: () => this.openDetail(r.p)
       })),
+      maxRows: (() => this.maxAttackers().map((r, i) => ({
+        rank: '#' + (i + 1), name: (r.p.name || '?') + (r.info.gmax ? ' (G-Max)' : ''),
+        moveLine: (r.info.moveName || 'Max attack') + ' \u00b7 Lv ' + r.info.level + (r.info.levelsKnown ? '' : ' assumed') + ' \u00b7 power ' + r.info.power + ' \u00b7 L' + r.level,
+        damage: String(r.r.damage),
+        effLabel: r.eff >= 2.5 ? 'DOUBLE SUPER' : r.eff >= 1.55 ? 'SUPER EFFECTIVE' : r.eff <= 0.4 ? 'DOUBLE RESISTED' : r.eff <= 0.65 ? 'RESISTED' : 'NEUTRAL',
+        effColor: r.eff >= 1.55 ? 'var(--grass-700)' : r.eff <= 0.65 ? 'var(--type-fighting)' : 'var(--ink-400)',
+        onClick: () => this.openDetail(r.p)
+      })))(),
+      maxEmpty: (this.state.raidBossTypes || []).length > 0 && this.maxAttackers().length === 0,
       raidEmpty: raidRowsRaw.length === 0,
       snapshotError: this.state.snapshotError || '',
       hasSnapshots: (this.state.snapshots || []).length > 0,

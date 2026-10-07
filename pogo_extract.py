@@ -738,6 +738,8 @@ def record_to_csv_row(rec):
         "type_2": rec.get("type_2", ""),
         "favorite": "1" if rec.get("favorite") else "",
         "shiny": "1" if rec.get("shiny") else "",
+        "dynamax": "1" if rec.get("dynamax") else "",
+        "gigantamax": "1" if rec.get("gigantamax") else "",
         "shadow": "1" if rec.get("shadow") else "",
         "purified": "1" if rec.get("purified") else "",
         "lucky": "1" if rec.get("lucky") else "",
@@ -800,7 +802,18 @@ VIDEO_IMPORT_PROMPT = (
     '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, '
     '"megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,'
     '"dotsTotal":number|null,"rest":string|null}], '
-    '"staIV": number|null, "lucky": boolean, "shadow": boolean, "favorite": boolean}. '
+    '"staIV": number|null, "lucky": boolean, "shadow": boolean, '
+    '"dynamax": true|null, "gigantamax": true|null, "maxAttackLevel": number|null, '
+    '"maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, '
+    '"favorite": boolean}. '
+    "Max (Dynamax): a Pokemon that can Dynamax shows a \"Dynamax\" logo under its height "
+    "and weight on the detail screen (and a small icon at the top right of its picture in "
+    "the collection list). Set dynamax true ONLY if you can see that logo or icon, else "
+    "null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max "
+    "move, else null. If a Max Moves section is shown, maxAttackLevel, maxGuardLevel and "
+    "maxSpiritLevel are the level numbers on the Max Attack, Max Guard and Max Spirit rows "
+    "(null when the row is locked or not visible); maxParticles is the Max Particles "
+    "balance if shown. Never guess these. "
     "Mega: a single \"<SPECIES> MEGA ENERGY\" count is megaEnergy; \"MEGA ENERGY X\" and "
     "\"MEGA ENERGY Y\" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA "
     "EVOLVE button: form X or Y from the \"MEGA <SPECIES> X/Y\" label, cost = the number "

@@ -5145,6 +5145,69 @@ function candyFamilyKey(name) {
   return fam || n;
 }
 
+// ---- Max (Dynamax / Gigantamax) data ----------------------------------------------------------
+// The game master carries none of this, so it is curated by hand from public Max Battle guides
+// (Oct 2026) and is PARTIAL by design: scans of the "Dynamax" mark on a Pokemon's screen add
+// species this list does not know. Names are lowercase species names.
+const MAX_DYNAMAX_SEED = ['bulbasaur', 'ivysaur', 'venusaur', 'charmander', 'charmeleon', 'charizard', 'squirtle', 'wartortle', 'blastoise',
+  'caterpie', 'metapod', 'butterfree', 'gastly', 'haunter', 'gengar', 'beldum', 'metang', 'metagross',
+  'wooloo', 'dubwool', 'skwovet', 'greedent', 'falinks', 'grookey', 'thwackey', 'rillaboom', 'scorbunny', 'raboot', 'cinderace',
+  'sobble', 'drizzile', 'inteleon', 'pikachu', 'meowth', 'machamp', 'kingler', 'lapras', 'snorlax', 'garbodor', 'toxtricity', 'grimmsnarl'];
+// Gigantamax: the species-fixed G-Max Move and its type.
+const MAX_GMAX = {
+  venusaur: ['G-Max Vine Lash', 'Grass'], charizard: ['G-Max Wildfire', 'Fire'], blastoise: ['G-Max Cannonade', 'Water'],
+  butterfree: ['G-Max Befuddle', 'Bug'], pikachu: ['G-Max Volt Crash', 'Electric'], meowth: ['G-Max Gold Rush', 'Normal'],
+  machamp: ['G-Max Chi Strike', 'Fighting'], gengar: ['G-Max Terror', 'Ghost'], kingler: ['G-Max Foam Burst', 'Water'],
+  lapras: ['G-Max Resonance', 'Ice'], snorlax: ['G-Max Replenish', 'Normal'], garbodor: ['G-Max Malodor', 'Poison'],
+  rillaboom: ['G-Max Drum Solo', 'Grass'], cinderace: ['G-Max Fireball', 'Fire'], inteleon: ['G-Max Hydrosnipe', 'Water'],
+  toxtricity: ['G-Max Stun Shock', 'Electric'], grimmsnarl: ['G-Max Snooze', 'Dark']
+};
+// Max Move base power by move level (index 0 = level 1); a Gigantamax attack starts at what a Max
+// attack reaches at level 3. Max Guard = HP per shield, Max Spirit = % of max HP healed.
+const MAX_ATTACK_POWER = { max: [250, 300, 350, 450], gmax: [350, 400, 450, 550] };
+const MAX_GUARD_HP = [20, 40, 60, 80];
+const MAX_SPIRIT_PCT = [8, 12, 16, 20];
+// A Max attack takes the type of the Pokemon's fast move.
+const MAX_MOVE_BY_TYPE = { Normal: 'Max Strike', Fire: 'Max Flare', Water: 'Max Geyser', Electric: 'Max Lightning', Grass: 'Max Overgrowth',
+  Ice: 'Max Hailstorm', Fighting: 'Max Knuckle', Poison: 'Max Ooze', Ground: 'Max Quake', Flying: 'Max Airstream', Psychic: 'Max Mindstorm',
+  Bug: 'Max Flutterby', Rock: 'Max Rockfall', Ghost: 'Max Phantasm', Dragon: 'Max Wyrmwind', Dark: 'Max Darkness', Steel: 'Max Steelspike', Fairy: 'Max Starfall' };
+
+function maxBaseName(name) {
+  return String(name || '').toLowerCase().replace(/^(g-?max|gigantamax|dynamax|max)\s+/, '').replace(/\s*\(.*\)\s*$/, '').trim();
+}
+// True when the species is on the seed list (a scan can also prove a species this list lacks).
+function isMaxSeedSpecies(name) { return MAX_DYNAMAX_SEED.indexOf(maxBaseName(name)) >= 0; }
+function gmaxFor(name) {
+  const r = MAX_GMAX[maxBaseName(name)];
+  return r ? { move: r[0], type: r[1] } : null;
+}
+function maxAttackPower(level, gmax) {
+  const t = gmax ? MAX_ATTACK_POWER.gmax : MAX_ATTACK_POWER.max;
+  const l = Math.max(1, Math.min(t.length, Math.floor(level) || 1));
+  return t[l - 1];
+}
+function maxGuardHp(level) { return level >= 1 ? MAX_GUARD_HP[Math.min(MAX_GUARD_HP.length, Math.floor(level)) - 1] : 0; }
+function maxSpiritPct(level) { return level >= 1 ? MAX_SPIRIT_PCT[Math.min(MAX_SPIRIT_PCT.length, Math.floor(level)) - 1] : 0; }
+
+// Estimate of a Max attacker against a boss. damage = one Max Attack (STAB, effectiveness, the
+// Pokemon's real attack stat, move level; G-Max when the Pokemon is Gigantamax). bulk = how long it
+// lasts, from HP x DEF against the boss's own types. score = damage x bulk^0.25: the same kind of
+// proxy as raidRating, and just as approximate (no Max Energy timing, dodging or party effects).
+function maxRating(base, ivs, level, opts) {
+  opts = opts || {};
+  const cpm = CPM[level != null ? level : 40];
+  if (!cpm || !opts.moveType) return null;
+  const sBase = shadowAdjustedBase(base, opts.isShadow);
+  const atk = (sBase[0] + ivs[0]) * cpm;
+  const def = (sBase[1] + ivs[1]) * cpm;
+  const hp = Math.max(10, Math.floor((sBase[2] + ivs[2]) * cpm));
+  const power = maxAttackPower(opts.attackLevel || 1, !!opts.gmax);
+  const damage = moveDamage({ type: opts.moveType, power }, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat, opts.weatherTypes);
+  const incoming = opts.incoming > 0 ? opts.incoming : 1;
+  const score = damage * Math.pow((hp * def) / incoming, 0.25);
+  return { damage, hp, def, power, score };
+}
+
 const _speciesInfoCache = new Map();
 function speciesInfo(name, form) {
   const k = String(name) + '|' + String(form || '');
@@ -5305,6 +5368,7 @@ if (typeof window !== 'undefined') {
   window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
+    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, isMaxSeedSpecies, gmaxFor, maxAttackPower, maxGuardHp, maxSpiritPct, maxRating,
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,

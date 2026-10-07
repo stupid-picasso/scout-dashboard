@@ -19,6 +19,7 @@ function feed(now = Date.now()) {
     events: [
       { id: 'cd', name: 'QA Community Day', type: 'community-day', start: iso(now + day), end: iso(now + 2 * day), link: '', spawns: ['Zorua'], bonuses: ['3x Catch XP'] },
       { id: 'rb', name: 'QA Raid Boss', type: 'raid-battles', start: iso(now - day), end: iso(now + 3 * day), link: '', bosses: ['Mewtwo (Armored)'] },
+      { id: 'mb', name: 'Dynamax Uxie, Mesprit, and Azelf Max Battle Day', type: 'max-battles', start: iso(now + 2 * day), end: iso(now + 2 * day + 3 * 3600000), link: '' },
       { id: 'far', name: 'Far Future Event', type: 'event', start: iso(now + 60 * day), end: iso(now + 61 * day), link: '' },
       { id: 'old', name: 'Expired Event', type: 'event', start: iso(now - 20 * day), end: iso(now - 19 * day), link: '' }]
   };
@@ -84,6 +85,12 @@ module.exports = async function suiteC() {
     await s.go('TODAY'); const [dl] = await Promise.all([s.page.waitForEvent('download', { timeout: 8000 }), s.page.getByRole('button', { name: /Add QA Raid Boss to calendar/ }).click()]);
     const txt = fs.readFileSync(await dl.path(), 'utf8'); expect(/BEGIN:VCALENDAR[\s\S]*BEGIN:VEVENT[\s\S]*SUMMARY:QA Raid Boss[\s\S]*END:VEVENT/.test(txt) && /DTSTART:\d{8}T\d{6}\r\n/.test(txt) && /DTEND:\d{8}T\d{6}\r\n/.test(txt), txt.slice(0, 300));
   }, 'medium');
+  await T('MAX-10', 'Max', 'A Max Battle event names its bosses and offers "Best Max attackers vs <boss>" that opens the Raid tab', async () => {
+    const names = await s.call('maxBossNames', 'Dynamax Uxie, Mesprit, and Azelf Max Battle Day'); expect(names.join('|') === 'Uxie|Mesprit|Azelf', names.join('|'));
+    expect((await s.call('maxBossNames', 'Dynamax Rookidee during Max Monday')).join('|') === 'Rookidee', 'max monday title');
+    await s.go('TODAY'); const b = s.page.getByRole('button', { name: /^Best Max attackers vs Uxie/ }); expect(await b.count() >= 1, 'no button'); await b.first().click(); await s.page.waitForTimeout(600);
+    const st = await s.state(); expect(st.tab === 'raid' && st.raidBossName === 'Uxie' && st.raidBossTypes.join() === 'Psychic', JSON.stringify([st.tab, st.raidBossName, st.raidBossTypes]));
+  }, 'high');
   await T('TOD-43', 'Today', 'Reminders: events starting within the hour and finished Mega rests are listed once', async () => {
     const now = Date.now(); const items = await s.call('reminderItems', now + 86400000 - 1800000); expect(items.some(i => i.id === 'ev:cd' && /starts soon/.test(i.title)), JSON.stringify(items));
     expect(!(await s.call('reminderItems', now)).some(i => i.id === 'ev:cd'), 'listed too early');

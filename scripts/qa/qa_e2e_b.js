@@ -1,3 +1,4 @@
+const fs = require('fs');
 // QA suite B: PvP, Attackers, Raid, Recs, Intel.
 const path = require('path');
 const { T, expect, skip, session, REPO } = require('./qa_lib');
@@ -125,6 +126,63 @@ module.exports = async function suiteB() {
   await T('CAN-07', 'Candy', 'Evolve readiness uses the shared pool: Pichu and Raichu see the Pikachu scan', async () => {
     await s.set({ candyInventory: { pikachu: { name: 'Pikachu', candy: 103, at: 9 } } });
     const a = await s.call('candyStockFor', { name: 'Raichu' }); const b = await s.call('candyStockFor', { name: 'Pichu' }); expect(a.candy === 103 && b.candy === 103, JSON.stringify([a, b]));
+  }, 'medium');
+
+  // ------------------------------------------------------------------ MAX (Dynamax / Gigantamax)
+  await T('MAX-01', 'Max', 'Scans store only positive Max evidence and read levels 1-4 from camelCase or snake_case', async () => {
+    const a = await s.call('maxPatch', { dynamax: true, gigantamax: true, maxAttackLevel: 2, maxGuardLevel: '3', maxSpiritLevel: null });
+    expect(a.dynamax === true && a.gigantamax === true && a.maxAttackLevel === 2 && a.maxGuardLevel === 3 && !('maxSpiritLevel' in a), JSON.stringify(a));
+    const b = await s.call('maxPatch', { dynamax: false, gigantamax: false, max_attack_level: 4, max_guard_level: 0, max_spirit_level: 9 });
+    expect(!('dynamax' in b) && b.maxAttackLevel === 4 && !('maxGuardLevel' in b) && !('maxSpiritLevel' in b), 'false/zero/out-of-range must be ignored: ' + JSON.stringify(b));
+    expect(Object.keys(await s.call('maxPatch', null)).length === 0 && Object.keys(await s.call('maxPatch', { dynamax: 'yes', maxAttackLevel: 'x' })).length === 0, 'junk');
+  }, 'critical');
+  await T('MAX-02', 'Max', 'Mechanics: species list, G-Max moves and the Max Move tables', async () => {
+    const r = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { seed: m.isMaxSeedSpecies('Charizard') && m.isMaxSeedSpecies('G-Max Gengar') && !m.isMaxSeedSpecies('Magikarp'), g: m.gmaxFor('Lapras'), none: m.gmaxFor('Pidgey'), p: [m.maxAttackPower(1, false), m.maxAttackPower(3, false), m.maxAttackPower(1, true), m.maxAttackPower(9, true)], guard: [m.maxGuardHp(1), m.maxGuardHp(3), m.maxGuardHp(0)], spirit: [m.maxSpiritPct(2), m.maxSpiritPct(0)], mv: m.MAX_MOVE_BY_TYPE.Fire }; });
+    expect(r.seed, 'seed'); expect(r.g.move === 'G-Max Resonance' && r.g.type === 'Ice' && r.none === null, JSON.stringify(r.g));
+    expect(r.p.join() === '250,350,350,550', r.p.join()); expect(r.guard.join() === '20,60,0' && r.spirit.join() === '12,0', 'guard/spirit'); expect(r.mv === 'Max Flare');
+  }, 'high');
+  await T('MAX-03', 'Max', 'Roster shows MAX on capable species and the MAX filter lists only those', async () => {
+    await s.go('ROSTER'); await s.page.locator('.om-press', { hasText: /^MAX$/ }).click(); await s.page.waitForTimeout(500);
+    const rows = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.map(e => /\bMAX\b|G-MAX/.test(e.innerText)));
+    expect(rows.length > 0 && rows.every(Boolean), 'rows ' + rows.length + ' tagged ' + rows.filter(Boolean).length);
+    await s.page.locator('.om-press', { hasText: /^ALL$/ }).click(); await s.page.waitForTimeout(300);
+  }, 'high');
+  await T('MAX-04', 'Max', 'Screenshot import: the Dynamax mark, Gigantamax and Max Move levels land on the matched Pokemon', async () => {
+    const st = await s.state(); const g = st.roster.find(p => p.name === 'Gengar'); expect(g, 'no Gengar in fixture');
+    await s.set({ ocrParsed: { name: 'Gengar', matchedName: 'Gengar', matchedIdx: g.idx, candy: 10, _rec: { dynamax: true, gigantamax: true, max_attack_level: 2, max_guard_level: 1, max_spirit_level: null, max_particles: 1234 } } });
+    await s.call('applyOcrResult'); await s.page.waitForTimeout(300);
+    const o = (await s.state()).ivOverrides[g.idx]; expect(o && o.dynamax === true && o.gigantamax === true && o.maxAttackLevel === 2 && o.maxGuardLevel === 1 && o.maxSpiritLevel === undefined, JSON.stringify(o));
+    expect((await s.state()).resources.maxParticles === 1234, 'Max Particles not stored');
+    expect(await s.call('maxTagFor', { name: 'Gengar', gigantamax: true }) === 'G-MAX', 'tag');
+  }, 'critical');
+  await T('MAX-05', 'Max', 'Video import: a new Pokemon seen with the Dynamax mark is stored as Max-capable', async () => {
+    await s.call('mergeVideoImport', [{ name: 'Wooloo', cp: 412, hp: 60, atkIV: 5, defIV: 6, staIV: 7, dynamax: true, maxAttackLevel: 3, maxParticles: 99 }]); await s.page.waitForTimeout(300);
+    const st = await s.state(); const w = (st.addedPokemon || []).find(p => p.name === 'Wooloo'); expect(w && w.dynamax === true && w.maxAttackLevel === 3, JSON.stringify(w && [w.dynamax, w.maxAttackLevel]));
+    expect(st.resources.maxParticles === 99, 'particles');
+  }, 'critical');
+  await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
+    const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
+    expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');
+    expect(await s.call('isMaxCapable', { name: 'Charizard', dynamax: false }) === false, 'explicit denial must beat the list');
+    const st = await s.state(); const m = st.roster.find(p => p.name === 'Magikarp'); await s.call('toggleMaxCapable', m); expect((await s.state()).ivOverrides[m.idx].dynamax === true, 'tag not added');
+    await s.call('toggleMaxCapable', { ...m, dynamax: true }); expect((await s.state()).ivOverrides[m.idx].dynamax === false, 'tag not removed');
+  }, 'high');
+  await T('MAX-07', 'Max', 'Max attack info: type from the fast move, G-Max move for Gigantamax, power from the scanned level', async () => {
+    const st = await s.state(); const ch = st.roster.find(p => p.name === 'Charizard');
+    const plain = await s.call('maxInfoFor', { ...ch, quickMove: 'Fire Spin', gigantamax: false, maxAttackLevel: 2 }); expect(plain && plain.moveType === 'Fire' && plain.moveName === 'Max Flare' && plain.power === 300 && plain.gmax === false, JSON.stringify(plain));
+    const gm = await s.call('maxInfoFor', { ...ch, quickMove: 'Fire Spin', gigantamax: true, maxAttackLevel: null }); expect(gm.gmax === true && gm.moveName === 'G-Max Wildfire' && gm.power === 350 && gm.levelsKnown === false, JSON.stringify(gm));
+    expect(await s.call('maxInfoFor', { name: 'Magikarp', dynamax: false, idx: 'x' }) === null, 'non-capable must be null');
+  }, 'high');
+  await T('MAX-08', 'Max', 'Max attackers vs a boss: sorted, capable only, super-effective moves rank above resisted ones', async () => {
+    await s.set({ raidBossTypes: ['Water'], raidBossName: 'Test' }); const rows = await s.call('maxAttackers'); expect(rows.length > 0, 'no rows');
+    const sc = rows.map(r => r.r.score); expect(sc.every((v, i) => i === 0 || sc[i - 1] >= v), 'not sorted');
+    expect(rows.every(r => r.info.moveType && r.r.damage > 0), 'row without move/damage'); const names = rows.map(r => r.p.name);
+    const top = rows[0]; expect(top.eff >= 1, 'top attacker should not be resisted: ' + top.p.name + ' ' + top.eff);
+    await s.go('RAID'); await s.page.waitForTimeout(500); expect(/MAX ATTACKERS vs THIS BOSS/.test(await s.text()), 'section missing'); expect(/PER MAX HIT/.test(await s.text()), 'no ranked rows shown: ' + names.join());
+  }, 'high');
+  await T('MAX-09', 'Max', 'All three readers ask for the Dynamax fields (screenshot, video frames, pasted-AI prompt) and the server does too', async () => {
+    const src = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8'); const n = (src.match(/dynamax\\?":\s?true\|null/g) || []).length; expect(n >= 3, 'prompts with the field: ' + n);
+    expect((src.match(/maxAttackLevel/g) || []).length >= 8, 'levels not wired'); const py = fs.readFileSync(path.join(REPO, 'pogo_extract.py'), 'utf8'); expect(/"dynamax": true\|null/.test(py) && /maxAttackLevel/.test(py), 'server prompt');
   }, 'medium');
   await s.close();
 };
