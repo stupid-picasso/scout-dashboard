@@ -377,35 +377,94 @@ def _run_ffmpeg_extract(video_path, output_dir, vf_filter, vfr_mode=False):
     return sorted(output_dir.glob("frame_*.png"))
 
 
+_STATS_CACHE = {}
+
+
+def _frame_stats(path, size=24):
+    """(grayscale fingerprint, sharpness) from ONE decode of the frame, cached by path. The
+    fingerprint is a small thumbnail used as a cheap perceptual hash; sharpness is the mean edge
+    strength of a 192 px copy (higher = crisper, lower = motion blur or a half-faded transition)."""
+    from PIL import ImageFilter, ImageStat
+    key = (str(path), size)
+    hit = _STATS_CACHE.get(key)
+    if hit is None:
+        img = Image.open(path).convert("L")
+        mid = img.resize((192, max(1, int(192 * img.height / img.width))))
+        sharp = ImageStat.Stat(mid.filter(ImageFilter.FIND_EDGES)).mean[0]
+        hit = (list(img.resize((size, size)).getdata()), sharp)
+        _STATS_CACHE[key] = hit
+    return hit
+
+
 def _frame_signature(path, size=24):
     """Small grayscale thumbnail used as a cheap perceptual fingerprint."""
-    img = Image.open(path).convert("L").resize((size, size))
-    return list(img.getdata())
+    return _frame_stats(path, size)[0]
+
+
+def _sharpness(path, size=24):
+    return _frame_stats(path, size)[1]
 
 
 def dedupe_similar_frames(frames, threshold=4.0, sig_size=24):
-    """Drop frames that are near-identical to the previously kept frame.
+    """Collapse runs of near-identical frames to ONE frame each, the crispest of the run.
 
-    Fixed-fps sampling of a slow scroll/pan produces many consecutive frames
-    that show almost the same content (the sample rate outruns how fast the
-    screen actually changes). Feeding all of them to Gemini multiplies batch
-    count (and API quota use) for zero extra information. This keeps the
-    first frame, then keeps any later frame whose mean per-pixel grayscale
-    difference against the last *kept* frame is >= threshold (0-255 scale),
-    which is enough to catch real scroll/content changes while collapsing
-    runs of static duplicates.
+    Fixed-fps sampling of a slow scroll/pan produces many consecutive frames that show almost the
+    same content. Feeding all of them to Gemini multiplies batch count (and API quota use) for zero
+    extra information. A new run starts when a frame's mean per-pixel grayscale difference against
+    the run's first frame reaches `threshold` (0-255 scale). Within a run the frame with the highest
+    sharpness is kept (ties go to the later frame, which is the settled one), so a read is not made
+    on the blurred or half-faded frame that happened to come first.
     """
     if len(frames) <= 1:
         return frames
-    kept = [frames[0]]
-    prev_sig = _frame_signature(frames[0], sig_size)
+    runs = [[frames[0]]]
+    ref_sig = _frame_signature(frames[0], sig_size)
     for f in frames[1:]:
         sig = _frame_signature(f, sig_size)
-        diff = sum(abs(a - b) for a, b in zip(sig, prev_sig)) / len(sig)
+        diff = sum(abs(a - b) for a, b in zip(sig, ref_sig)) / len(sig)
         if diff >= threshold:
-            kept.append(f)
-            prev_sig = sig
+            runs.append([f])
+            ref_sig = sig
+        else:
+            runs[-1].append(f)
+    kept = []
+    for run in runs:
+        if len(run) == 1:
+            kept.append(run[0])
+            continue
+        try:
+            scores = [_sharpness(f) for f in run]
+        except Exception:
+            kept.append(run[0])
+            continue
+        best = max(range(len(run)), key=lambda i: (round(scores[i], 3), i))
+        kept.append(run[best])
     return kept
+
+
+def plan_batches(sigs, sizes, max_frames, budget, lookback=3, min_frames=4):
+    """Groups frame indexes into batches without cutting through the middle of a screen.
+
+    A batch is cut when it is full, but the cut slides back (up to `lookback` frames) to the biggest
+    visual jump between neighbouring frames, so the frames of one Pokemon's detail screen stay in the
+    same request and the model can merge them into one entry instead of two half-readings."""
+    n = len(sigs)
+
+    def jump(i):  # change between frame i-1 and i
+        return sum(abs(a - b) for a, b in zip(sigs[i], sigs[i - 1])) / max(1, len(sigs[i]))
+
+    batches, start = [], 0
+    while start < n:
+        end, total = start, 0
+        while end < n and end - start < max_frames and (end == start or total + sizes[end] <= budget):
+            total += sizes[end]
+            end += 1
+        if end < n and end - start > min_frames:
+            lo = max(start + min_frames, end - lookback)
+            end = max(range(lo, end + 1), key=lambda i: (jump(i), i))
+        batches.append(list(range(start, end)))
+        start = end
+    return batches
 
 
 TONEMAP_CHAIN = (
@@ -2235,20 +2294,10 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     print(f"[Gemini] Encoding {len(frame_paths)} frames as base64 JPEG...")
     encoded = [image_to_base64_jpeg(p) for p in frame_paths]
 
-    batches = []
-    batch_paths = []
-    current, current_size, current_paths = [], 0, []
-    for data, fpath in zip(encoded, frame_paths):
-        if current and (current_size + len(data) > BATCH_CHAR_BUDGET or len(current) >= MAX_FRAMES_PER_BATCH):
-            batches.append(current)
-            batch_paths.append(current_paths)
-            current, current_size, current_paths = [], 0, []
-        current.append(data)
-        current_paths.append(fpath)
-        current_size += len(data)
-    if current:
-        batches.append(current)
-        batch_paths.append(current_paths)
+    sigs = [_frame_signature(p) for p in frame_paths]
+    plan = plan_batches(sigs, [len(d) for d in encoded], MAX_FRAMES_PER_BATCH, BATCH_CHAR_BUDGET)
+    batches = [[encoded[i] for i in grp] for grp in plan]
+    batch_paths = [[frame_paths[i] for i in grp] for grp in plan]
     print(f"[Gemini] {len(batches)} batch(es) of up to {MAX_FRAMES_PER_BATCH} frames each")
 
     t_start = time.time()

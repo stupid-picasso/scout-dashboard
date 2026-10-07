@@ -36,5 +36,35 @@ check("unique match folded", n == 1 and len(out) == 6, str(n))
 check("folded record gains fields", [r for r in out if r["name"] == "Pidgeot"][0].get("weight") == "30kg" and [r for r in out if r["name"] == "Pidgeot"][0]["favorite"] is True)
 check("ambiguous match kept", sum(1 for r in out if r["name"] == "Pidgey") == 3)
 check("conflicting weight kept", sum(1 for r in out if r["name"] == "Mankey") == 2)
+
+# --- frame selection and batch planning ---------------------------------------------------------
+import tempfile
+from PIL import Image, ImageFilter
+tmp = tempfile.mkdtemp()
+def mk(name, blur):
+    img = Image.new("L", (400, 800), 40)
+    for y in range(0, 800, 20):
+        for x in range(0, 400, 40):
+            img.paste(220, (x, y, x + 12, y + 8))
+    if blur:
+        img = img.filter(ImageFilter.GaussianBlur(blur))
+    path = os.path.join(tmp, name + ".png")
+    img.convert("RGB").save(path)
+    return path
+f0, f1, f2 = mk("a_blur", 3), mk("b_sharp", 0), mk("c_blur", 2)
+kept = px.dedupe_similar_frames([f0, f1, f2], threshold=60)
+check("sharpest of a run is kept, not the first", kept == [f1], str(kept))
+other = Image.new("RGB", (400, 800), (200, 30, 30)); op = os.path.join(tmp, "z.png"); other.save(op)
+check("different screens both kept", len(px.dedupe_similar_frames([f1, op], threshold=4)) == 2)
+
+sigs = [[0] * 4 for _ in range(10)] + [[200] * 4 for _ in range(10)]   # screen change before index 10
+sizes = [1] * 20
+plan = px.plan_batches(sigs, sizes, max_frames=12, budget=10**9, lookback=3, min_frames=4)
+check("every frame planned once, in order", [i for g in plan for i in g] == list(range(20)), str(plan))
+check("cut slides back to the screen change", plan[0] == list(range(10)), str(plan))
+plan2 = px.plan_batches([[0] * 4] * 25, [1] * 25, max_frames=10, budget=10**9)
+check("uniform frames cut at the limit", [len(g) for g in plan2] == [10, 10, 5], str([len(g) for g in plan2]))
+plan3 = px.plan_batches([[0] * 4] * 6, [5] * 6, max_frames=10, budget=12)
+check("byte budget respected", all(sum(5 for _ in g) <= 12 or len(g) == 1 for g in plan3), str(plan3))
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)
