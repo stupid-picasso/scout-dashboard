@@ -160,6 +160,13 @@ module.exports = async function suiteB() {
     const st = await s.state(); const w = (st.addedPokemon || []).find(p => p.name === 'Wooloo'); expect(w && w.dynamax === true && w.maxAttackLevel === 3, JSON.stringify(w && [w.dynamax, w.maxAttackLevel]));
     expect(st.resources.maxParticles === 99, 'particles');
   }, 'critical');
+  await T('IMP-20', 'Import', 'A video import can set favorite/lucky but never clear them', async () => {
+    const st0 = await s.state(); const base = st0.roster.find(p => p.cp != null && p.hp != null); expect(base, 'no roster row with cp+hp');
+    await s.call('mergeVideoImport', [{ name: base.name, cp: base.cp, hp: base.hp, favorite: true, lucky: true }]); await s.page.waitForTimeout(300);
+    let o = (await s.state()).ivOverrides[base.idx] || {}; expect(o.favorite === true && o.lucky === true, 'not set: ' + JSON.stringify([o.favorite, o.lucky]));
+    await s.call('mergeVideoImport', [{ name: base.name, cp: base.cp, hp: base.hp, favorite: false, lucky: false }]); await s.page.waitForTimeout(300);
+    o = (await s.state()).ivOverrides[base.idx] || {}; expect(o.favorite === true && o.lucky === true, 'cleared by a run that missed the icon: ' + JSON.stringify([o.favorite, o.lucky]));
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

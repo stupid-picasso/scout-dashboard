@@ -1230,7 +1230,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.153</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.154</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -10286,8 +10286,8 @@ class Component extends DCLogic {
         overrides[match.idx] = {
           ...overrides[match.idx], cp: item.cp,
           hp: item.hp != null ? item.hp : match.hp,
-          lucky: item.lucky != null ? !!item.lucky : match.lucky,
-          favorite: item.favorite != null ? !!item.favorite : match.favorite,
+          lucky: item.lucky ? true : !!before.lucky,
+          favorite: item.favorite ? true : !!before.favorite,
           ...this.shinyPatch(item, before),
           ...(item.gender ? { gender: item.gender } : {}),
           ...(item.fastMove ? { quickMove: item.fastMove } : {}),

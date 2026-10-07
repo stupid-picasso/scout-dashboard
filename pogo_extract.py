@@ -848,6 +848,23 @@ def absorb_cpless(records):
     return kept, dropped
 
 
+_IDENTITY_FIELDS = ("weight", "height", "gender", "type", "fastMove", "chargeMove1", "chargeMove2")
+
+
+def drop_sparse(records):
+    """A sighting with no CP, no HP, no candy count and at most two identifying fields is not
+    something a roster entry can be built from, and is how a species the player never owned gets in
+    (an evolution preview or a move list read as a Pokemon). Dropped, with a note in the log."""
+    kept, dropped = [], []
+    for rec in records:
+        ident = sum(1 for k in _IDENTITY_FIELDS if rec.get(k) is not None)
+        if rec.get("cp") is None and rec.get("hp") is None and rec.get("candy") is None and ident <= 2:
+            dropped.append(rec.get("name"))
+        else:
+            kept.append(rec)
+    return kept, dropped
+
+
 def deduplicate_records(records):
     """Deduplicate by name + CP decade."""
     seen = set()
@@ -2438,6 +2455,9 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         merged, folded = absorb_cpless(merged)
         if folded:
             print(f"[Clean] folded {folded} CP-less sighting(s) into the same Pokemon read with a CP")
+        merged, sparse = drop_sparse(merged)
+        if sparse:
+            print(f"[Clean] dropped {len(sparse)} sparse sighting(s) with no CP/HP/candy: {', '.join(map(str, sparse))}")
     print(f"[Gemini] {len(collected)} raw sightings merged into {len(merged)} unique Pokemon")
     return merged
 

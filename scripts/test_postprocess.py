@@ -73,5 +73,15 @@ random.seed(1)
 noisy = [[random.randint(0, 40)] * 4 for _ in range(300)]
 pl = px.plan_batches(noisy, [1] * 300, max_frames=10, budget=10**9)
 check("planner keeps batches near full on noisy frames", len(pl) <= 36, str(len(pl)))
+
+kept, dropped = px.drop_sparse([
+    {"name": "Lucario", "cp": None, "hp": None, "fastMove": "Counter", "chargeMove1": "Power-Up Punch"},
+    {"name": "Rhydon", "cp": None, "hp": None, "height": "1.9m", "gender": "M"},
+    {"name": "Shuckle", "cp": None, "hp": None, "candy": 50, "fastMove": "Rock Throw", "chargeMove1": "Rock Blast"},
+    {"name": "Pidgey", "cp": 100, "hp": None},
+    {"name": "Riolu", "cp": None, "hp": 60},
+    {"name": "Seedot", "cp": None, "hp": None, "weight": "4kg", "height": "0.5m", "gender": "M"}])
+check("sparse species dropped", dropped == ["Lucario", "Rhydon"], str(dropped))
+check("candy / CP / HP / richer rows kept", [r["name"] for r in kept] == ["Shuckle", "Pidgey", "Riolu", "Seedot"], str([r["name"] for r in kept]))
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)
