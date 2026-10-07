@@ -328,6 +328,7 @@ The sections above describe the original video/OCR pipeline. The app has since g
 
 ## Engineering notes (v53.141+): rebuild flow, bundle slimming, Phase 3-5 features
 
+- **Deployed `index.html` is derived:** `node scripts/build_index.js` minifies the class script of `Scout Dashboard.html` (terser; `npm i` once). Only `Scout Dashboard.html` is patched by propagate; never edit `index.html` by hand. `propagate_edits.py verify` checks it is current.
 - **Rebuild flow that works:** `git checkout HEAD -- .propagate_baseline "Scout Dashboard Standalone.dc.html" index.html "Scout Dashboard.html" sw.js`, then `python3 scripts/propagate_edits.py apply` (it bumps the version and overwrites the baseline on success, so ALWAYS restore the baseline from HEAD first when re-running), then `python3 scripts/slim_bundles.py`. The helmet hunks never apply to the bundles (their head differs), so `apply` reports "partially patched" and does not update the baseline; after verifying, run `snapshot` and commit baseline + bundles together.
 - **`scripts/slim_bundles.py`:** idempotent. Removes Devanagari Poppins fonts, embeds the 180 px apple-touch-icon, normalises the bundle head (`<html lang>`, one theme-color, startup images, title).
 - **Method names:** `autoSnapshot(reason, opts)` is the roster backup; the daily log entry is `dailyLogSnapshot`. A duplicate method name silently overrides the earlier one in the class.

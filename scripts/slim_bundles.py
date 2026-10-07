@@ -38,9 +38,11 @@ def slim(path):
         if u: drop.append(u.group(1))
         return ''
     tpl = re.sub(r'/\* devanagari \*/\s*@font-face \{[^}]*\}\s*', kill, tpl)
+    # Poppins Italic is never used by the app (no italic styles or <em>), so its files are dead weight too.
+    tpl = re.sub(r'/\* [\w-]+ \*/\s*@font-face \{[^}]*font-style: italic;[^}]*\}\s*', kill, tpl)
     for u in drop:
         if u in manifest and u not in tpl: del manifest[u]
-    if drop: notes.append('dropped %d devanagari fonts' % len(drop))
+    if drop: notes.append('dropped %d unused font files' % len(drop))
     # 2. apple-touch-icon
     m = re.search(r'<link rel="apple-touch-icon" href="([0-9a-f-]{36})">', tpl)
     if m and m.group(1) in manifest:

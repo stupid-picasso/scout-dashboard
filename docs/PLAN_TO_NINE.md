@@ -75,3 +75,18 @@ Why performance stops near 50: the app is shipped through a generated unpacker t
 - Roster page-load hitch at 500 and 2,000 rows: 150-270 ms -> 100-130 ms. Scrolling loaded rows holds p50 16.7 ms. A true virtual list is still not done.
 - First load: unchanged by this step. A/B of the previous and current build under identical conditions gave the same time to ready (~4.1 s at 4x CPU on a busy host). Lighthouse scores in this sandbox drift between 33 and 47 with host load; compare builds only side by side.
 - What is left on first load is the delivery format: ~2 s of 4x-CPU "program" time (parsing the 1.3 MB mechanics script, support runtime, React) plus the in-browser template compile. Next options, each needing your go-ahead: (a) precompile the template to JS at build time instead of in the browser; (b) split mechanics by tab and load PvP/Mega/cup tables on first use; (c) load Firebase on idle.
+
+## Performance rewrite, step 2 (v53.151): the three options, measured
+Method: interleaved A/B on the same host, CPU 4x, network 1.6 Mbps / 150 ms, gzip like GitHub Pages, median of 3 (`/tmp`-style harness; time until the app shows "Pokemon loaded").
+
+| Option | Result | Shipped |
+|---|---|---|
+| 3. Firebase on idle | Not measurable here (gstatic is blocked in the sandbox); on a phone it removes three script loads from the first seconds. Device restore now waits for sign-in to settle instead of a fixed 2.4 s | Yes |
+| 2. Mechanics as a separate lazy file | 6.75 s vs 6.65 s: no gain (parse is ~40 ms; bytes are the same either way) | No, reverted |
+| 1. Precompiled templates | Template compile is ~250 ms of ~6,000 ms at 4x (about 4%); not worth a new build pipeline | No |
+| New: minified class script in deployed `index.html` | 6.5 s -> 6.0 s ready; class script 192 KB -> 114 KB gzip | Yes |
+| New: drop unused fonts (Devanagari, Italic) | -7 font files, ~60 KB of the download | Yes |
+
+Build change: `index.html` is derived from `Scout Dashboard.html` by `node scripts/build_index.js` (terser, local names only). Only `Scout Dashboard.html` is patched by propagate now. Order after an edit: restore baseline from HEAD, `propagate_edits.py apply`, `slim_bundles.py`, `build_index.js`.
+
+What is left is bandwidth and the runtime itself (React + the template engine + 650 KB of app logic). Reaching Lighthouse 90 would mean splitting the app's logic per tab and replacing the runtime; that is a rewrite of the app's structure, not tuning.
