@@ -759,6 +759,33 @@ def clean_video_items(items):
     return fixed
 
 
+def absorb_cpless(records):
+    """A detail screen whose CP was hidden (scrolling, a sheet sliding over the header) is keyed
+    differently from the clear read of the same Pokemon and would show up twice. A CP-less record
+    is folded into the one record of the same species and HP that has a CP, only when that match is
+    unique and nothing else the two share disagrees (weight, height, moves)."""
+    kept, dropped = list(records), 0
+    for rec in list(records):
+        if rec.get("cp") is not None or rec.get("hp") is None:
+            continue
+        cands = [o for o in kept if o is not rec and o.get("cp") is not None
+                 and str(o.get("name")).lower() == str(rec.get("name")).lower() and o.get("hp") == rec.get("hp")]
+        if len(cands) != 1:
+            continue
+        tgt = cands[0]
+        if any(rec.get(k) is not None and tgt.get(k) is not None and rec.get(k) != tgt.get(k)
+               for k in ("weight", "height", "fastMove", "chargeMove1", "chargeMove2")):
+            continue
+        for k, v in rec.items():
+            if tgt.get(k) is None and v is not None:
+                tgt[k] = v
+            elif k in _POSITIVE_FLAGS and v is True:
+                tgt[k] = True
+        kept.remove(rec)
+        dropped += 1
+    return kept, dropped
+
+
 def deduplicate_records(records):
     """Deduplicate by name + CP decade."""
     seen = set()
@@ -2347,6 +2374,10 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                 elif k in _POSITIVE_FLAGS and v is True:
                     prev[k] = True
     merged = [seen[k] for k in order]
+    if prompt is VIDEO_IMPORT_PROMPT:
+        merged, folded = absorb_cpless(merged)
+        if folded:
+            print(f"[Clean] folded {folded} CP-less sighting(s) into the same Pokemon read with a CP")
     print(f"[Gemini] {len(collected)} raw sightings merged into {len(merged)} unique Pokemon")
     return merged
 
