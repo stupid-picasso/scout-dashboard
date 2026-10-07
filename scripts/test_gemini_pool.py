@@ -152,5 +152,20 @@ check("dyn: previews used when nothing stable", _g.choose_models({"gemini-3-flas
 check("dyn: fallback when discovery empty", _g.choose_models(set(), env={})[0] == _g.BULK_MODELS)
 check("dyn: env override", _g.choose_models(_av, env={"GEMINI_BULK_MODELS": "gemini-3.5-flash"})[0] == ["gemini-3.5-flash"])
 check("dyn: unknown new lite is bulk", _g.profile_for("gemini-9-flash-lite")["tier"] == "bulk")
+
+# --- overload circuit breaker and deadline ----------------------------------------------------
+_t = [0.0]
+_pool = gp.Pool(["k1"], ["gemini-3.5-flash"], clock=lambda: _t[0], sleep=lambda d: _t.__setitem__(0, _t[0] + d))
+_ln = _pool.lanes[0]
+for _ in range(5):
+    _pool.report(_ln, False, status=503)
+check("5 overloads in a row retire the lane", _ln.dead and "overloaded" in _ln.dead_reason, _ln.dead_reason)
+_t2 = [0.0]
+_p2 = gp.Pool(["k1"], ["gemini-3.5-flash-lite"], clock=lambda: _t2[0], sleep=lambda d: _t2.__setitem__(0, _t2[0] + d))
+def _slow(i, m, k):
+    _t2[0] += 100
+    return [{"name": "x"}]
+_res, _ = gp.run_batches(_p2, range(10), _slow, "bulk", 1, deadline=250)
+check("deadline stops new work", sum(1 for v in _res.values() if v) < 10, str(_res))
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

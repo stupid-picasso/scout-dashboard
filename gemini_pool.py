@@ -171,6 +171,8 @@ class Pool:
                     lane.next_ok = max(lane.next_ok, now + 60.0)
             elif status in (500, 502, 503, 504) or transient:
                 lane.streak += 1
+                if lane.streak >= 5:           # overloaded for good measure: stop hammering it this run
+                    lane.dead, lane.dead_reason = True, "overloaded (%d failures in a row)" % lane.streak
                 backoff = min(60.0, 6.0 * (2 ** (lane.streak - 1)))
                 lane.next_ok = max(lane.next_ok, now + backoff)
 
@@ -187,7 +189,8 @@ class Pool:
         return rows
 
 
-def run_batches(pool, indexes, make_call, tier, workers, max_attempts=8, max_wait=300.0, log=print):
+def run_batches(pool, indexes, make_call, tier, workers, max_attempts=8, max_wait=300.0, log=print,
+                deadline=None):
     """Runs make_call(index, model, key) -> list for every index, many at once.
 
     make_call must raise an exception carrying .status / .daily / .transient (GeminiError) on
@@ -197,6 +200,8 @@ def run_batches(pool, indexes, make_call, tier, workers, max_attempts=8, max_wai
     def work(i):
         avoid, attempts = set(), 0
         while attempts < max_attempts:
+            if deadline is not None and pool.clock() > deadline:
+                return i, None, None           # out of time: the caller keeps what it has
             lane = pool.acquire(tier, avoid, max_wait)
             if lane is None:
                 return i, None, None

@@ -43,7 +43,7 @@ def reply_for(model, key, body):
     name = "Pikachu"
     # a bad reading (no CP/HP) from the cheap models on chosen batches; the verify model reads it properly
     if b in BEHAVE["suspect_batches"] and model in px.gemini_pool.BULK_MODELS:
-        items = [{"name": name, "cp": None, "hp": None}]
+        items = [{"name": name, "cp": None, "hp": None}, {"name": name, "cp": None, "hp": None}]
     else:
         items = [{"name": name, "cp": 100 + b, "hp": 50, "marker": model}]
     return {"candidates": [{"content": {"parts": [{"text": json.dumps(items)}]}}]}

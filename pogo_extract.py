@@ -902,6 +902,7 @@ APPRAISAL_PROMPT = (
 MAX_FRAMES_PER_BATCH = 10
 BATCH_CHAR_BUDGET = 1600000
 REQUEST_TIMEOUT_S = 180
+VERIFY_BUDGET_S = 360  # wall-clock cap for the optional second-opinion pass
 BATCH_PACE_S = 1.5
 
 
@@ -2043,7 +2044,7 @@ def _think_ladder(model):
     return [{"thinkingBudget": 0}, None]
 
 
-def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
+def call_gemini(prompt_text, images_b64, model, api_key, batch_note="", timeout=None):
     """POSTs one batch of frames to Gemini. Raises GeminiError on failure so
     the caller can rotate keys/models; returns the raw text reply on success."""
     parts = [{"text": prompt_text + batch_note}]
@@ -2069,7 +2070,7 @@ def call_gemini(prompt_text, images_b64, model, api_key, batch_note=""):
         # attempt may well succeed. Convert to GeminiError so the caller's
         # rotate-and-retry path handles it like any other failure.
         try:
-            return requests.post(url, json=build_body(thinking, json_mime), timeout=REQUEST_TIMEOUT_S)
+            return requests.post(url, json=build_body(thinking, json_mime), timeout=timeout or REQUEST_TIMEOUT_S)
         except requests.exceptions.RequestException as exc:
             raise GeminiError(f"Gemini transport error: {type(exc).__name__}", transient=True)
 
@@ -2215,8 +2216,8 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
                      + "; ".join(hints) + ".")
         notes.append(note)
 
-    def make_call(i, model, key):
-        reply = call_gemini(prompt, batches[i], model, key, notes[i])
+    def make_call(i, model, key, timeout=None):
+        reply = call_gemini(prompt, batches[i], model, key, notes[i], timeout=timeout)
         arr = extract_json_array(reply)
         if arr is None:
             # Unparseable text is NOT a success: it is indistinguishable from a truncated or
@@ -2240,7 +2241,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         print(f"[Gemini] {len(missing)} batch(es) unread by the bulk tier; trying the verify tier")
         rres, rans = gemini_pool.run_batches(
             pool, missing, make_call, "verify", len(pool.alive("verify")),
-            max_attempts=len(pool.lanes) + 1, max_wait=120, log=print)
+            max_attempts=4, max_wait=60, log=print, deadline=time.time() + VERIFY_BUDGET_S)
         for i in missing:
             if rres.get(i) is not None:
                 results[i], answered[i] = rres[i], rans.get(i)
@@ -2252,14 +2253,15 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         suspects = sorted(
             ((gemini_pool.suspicion(results.get(i), known) if results.get(i) is not None else 99, i)
              for i in range(len(batches))), reverse=True)
-        suspects = [i for score, i in suspects if score >= 2]
+        suspects = [i for score, i in suspects if score >= 3]
         lanes = pool.alive("verify")
-        suspects = suspects[: 12 * max(1, len(lanes))]
+        # The verify tier is a bonus, never a blocker: few batches, short calls, a hard time budget.
+        suspects = suspects[: min(16, 6 * max(1, len(lanes)))]
         if suspects and lanes:
             print(f"[Gemini] {len(suspects)} suspect batch(es); re-reading with {sorted({l.model for l in lanes})}")
             vres, vans = gemini_pool.run_batches(
-                pool, suspects, make_call, "verify", len(lanes),
-                max_attempts=len(lanes) + 1, max_wait=90, log=print)
+                pool, suspects, lambda i, m, k: make_call(i, m, k, timeout=60), "verify", len(lanes),
+                max_attempts=3, max_wait=45, log=print, deadline=time.time() + VERIFY_BUDGET_S)
             swapped = 0
             for i in suspects:
                 if gemini_pool.pick_replacement(results.get(i), vres.get(i), known):
