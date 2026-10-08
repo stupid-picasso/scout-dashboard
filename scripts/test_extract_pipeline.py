@@ -151,5 +151,29 @@ check("per-frame: fields from scrolled frames are attached", all(i.get("weight")
 check("per-frame: CP-less frame joins its Pokemon", all(i.get("height") == "0.3m" and i.get("cp") for i in eev), json.dumps(eev[:1]))
 check("per-frame: no frame key leaks", all("frame" not in i for i in items))
 
+# --- preflight: a day with no quota left fails in seconds; a healthy day passes
+class _R429:
+    status_code = 429
+    ok = False
+    text = '{"error":{"code":429,"details":[{"violations":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}'
+    def json(self): return {}
+_orig_post = px.requests.post
+px.requests.post = lambda url, json=None, timeout=None: _R429()
+try:
+    px.preflight_gemini(["keyAAAAAA111", "keyBBBBBB222"])
+    check("preflight aborts when every bulk lane is out of daily quota", False, "no SystemExit")
+except SystemExit as e:
+    check("preflight aborts when every bulk lane is out of daily quota", e.code == 2, str(e.code))
+px.requests.post = _orig_post
+BEHAVE["daily"] = set(); BEHAVE["bad_model"] = None
+try:
+    px.preflight_gemini(["keyAAAAAA111", "keyBBBBBB222"])
+    check("preflight passes on a healthy day", True)
+except SystemExit:
+    check("preflight passes on a healthy day", False, "aborted")
+check("quota id says per-day", px._quota_info(_R429.text)[0] is True)
+check("quota id says per-minute", px._quota_info('{"quotaId":"GenerateRequestsPerMinutePerProjectPerModel-FreeTier"} see documentation of daily limits')[0] is False)
+check("no ids falls back to words", px._quota_info("You exceeded your daily quota")[0] is True)
+
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

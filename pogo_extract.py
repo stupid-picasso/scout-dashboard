@@ -2290,6 +2290,17 @@ class GeminiError(Exception):
         self.transient = transient
 
 
+def _quota_info(err_text):
+    """(is_daily, short reason) for a 429 body. Uses the quota ids Google lists in the error details
+    (…PerDay… vs …PerMinute…); falls back to scanning the text only when the body has no such ids."""
+    ids = re.findall(r"[A-Za-z]+(?:Per|per)(?:Day|Minute|Second)[A-Za-z_\-]*", err_text or "")
+    if ids:
+        daily = any("perday" in i.lower() for i in ids)
+        return daily, ", ".join(sorted({i for i in ids}))[:90]
+    daily = bool(re.search(r"PerDay|per day|daily", err_text or "", re.IGNORECASE))
+    return daily, ""
+
+
 def get_gemini_keys():
     """Reads GEMINI_API_KEY_1 / GEMINI_API_KEY_2 (or single GEMINI_API_KEY)."""
     keys = []
@@ -2448,8 +2459,8 @@ def call_gemini(prompt_text, images_b64, model, api_key, batch_note="", timeout=
 
     err_text = resp.text or ""
     if resp.status_code == 429:
-        daily = bool(re.search(r"PerDay|per day|daily", err_text, re.IGNORECASE))
-        raise GeminiError("Gemini 429" + (" (daily quota)" if daily else " (per-minute)"),
+        daily, why = _quota_info(err_text)
+        raise GeminiError("Gemini 429" + (" (daily quota)" if daily else " (per-minute)") + (f" [{why}]" if why else ""),
                            status=429, daily=daily)
     if resp.status_code == 403:
         raise GeminiError("Gemini refused the key (403) \u2014 enable the Generative "
@@ -2485,6 +2496,36 @@ def _appraisal_merge_key(item):
     return (str(item["name"]).lower() + "|"
             + ("?" if item.get("cp") is None else str(item.get("cp")))
             + "|" + ("?" if item.get("hp") is None else str(item.get("hp"))))
+
+
+def preflight_gemini(keys):
+    """Cheap check before any heavy work: can at least one cheap (bulk) lane answer right now? A tiny
+    text request per lane, so a run started after the daily free quota is used up fails in seconds with a
+    clear message instead of after ten minutes of frame extraction. Skipped with PREFLIGHT=0."""
+    if os.environ.get("PREFLIGHT") == "0":
+        return
+    avail = discover_models(keys)
+    bulk, verify = gemini_pool.choose_models(avail)
+    usable, notes = 0, []
+    for model in bulk:
+        for key in keys:
+            try:
+                call_gemini("Reply with the single word OK.", [], model, key, timeout=30)
+                usable += 1
+            except GeminiError as exc:
+                if exc.status == 429:
+                    notes.append(f"{model}/{key[:6]}: {'daily quota used up' if exc.daily else 'rate-limited right now'}")
+                elif exc.status in (403, 404):
+                    notes.append(f"{model}/{key[:6]}: unavailable ({exc.status})")
+                else:
+                    usable += 1  # a transient failure says nothing about quota; let the run try
+            except Exception:  # noqa: BLE001
+                usable += 1
+    print(f"[Preflight] {usable} of {len(bulk) * len(keys)} bulk lane(s) answered" + (": " + "; ".join(notes) if notes else ""))
+    if bulk and usable == 0:
+        print("[Preflight] ERROR: no bulk model can answer right now. If the lines above say the daily quota is "
+              "used up, the free-tier quota resets at midnight Pacific time (about 07:00 UTC). Not starting.")
+        raise SystemExit(2)
 
 
 def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None,
@@ -2745,6 +2786,9 @@ def main():
         # IVs are MEASURED off the bars locally (exact, free, no model), and
         # Gemini is used only for the name/CP/HP printed on the same frame.
         print(f"[Main] Processing appraisal recording: {args.appraisal}")
+        _keys = get_gemini_keys()
+        if _keys:
+            preflight_gemini(_keys)
         with tempfile.TemporaryDirectory() as tmpdir:
             frames = extract_frames(args.appraisal, tmpdir, args.fps, args.scene_detect,
                                     args.scene_threshold, native=True)
@@ -2807,6 +2851,9 @@ def main():
         # data/pokemon_import.json for "IMPORT FROM SERVER" / paste-import to
         # pick up client-side — no dex/IV/rank math happens here by design.
         print(f"[Main] Processing video: {args.video}")
+        _keys = get_gemini_keys()
+        if _keys:
+            preflight_gemini(_keys)
         with tempfile.TemporaryDirectory() as tmpdir:
             frames = extract_frames(args.video, tmpdir, args.fps, args.scene_detect, args.scene_threshold)
             if not frames:
