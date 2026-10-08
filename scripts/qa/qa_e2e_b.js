@@ -177,6 +177,19 @@ module.exports = async function suiteB() {
     expect(await s.call('typeOf', k) === 'Fire', 'kantonian type'); expect(await s.call('typeOf', a) === 'Ice / Fairy', 'alolan type: ' + await s.call('typeOf', a));
     expect(await s.call('typeOf', { name: 'Ninetales', dex: 38, form: 'alola' }) === 'Ice / Fairy', 'form-only lookup');
   }, 'critical');
+  await T('BULK-01', 'Bulk', 'Bulk tab lists regional-form species with options; choosing one sets form, type and re-ranks; undo restores', async () => {
+    await s.call('mergeVideoImport', [{ name: 'Vulpix', dex: 37, cp: 555, hp: 60, atkIV: 8, defIV: 9, staIV: 10 }]); await s.page.waitForTimeout(300);
+    await s.set({ tab: 'bulk' }); await s.page.waitForTimeout(500);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/REGIONAL FORM/.test(txt) && /Vulpix/.test(txt) && /Alolan/.test(txt), 'bulk tab content missing: ' + txt.slice(0, 200));
+    const v = ((await s.state()).addedPokemon || []).find(p => p.name === 'Vulpix' && p.cp === 555); expect(v, 'seed row');
+    await s.call('bulkPickForm', v, 'alola'); await s.page.waitForTimeout(300);
+    const o = (await s.state()).ivOverrides[v.idx] || {};
+    expect(o.form === 'alola' && o.type === 'Ice' && o.formReviewed === true, JSON.stringify([o.form, o.type, o.formReviewed]));
+    expect(o.great && Number.isFinite(o.great.rankPct), 'rank not recomputed');
+    expect(await s.call('typeOf', { ...v, ...o }) === 'Ice', 'typeOf');
+    const txt2 = await s.page.evaluate(() => document.body.innerText); expect(!/Vulpix\s*CP 555/.test(txt2), 'reviewed row should leave the list');
+  }, 'critical');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

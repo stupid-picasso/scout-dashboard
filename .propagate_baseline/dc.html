@@ -204,7 +204,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.155</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.157</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2836,6 +2836,56 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ isBulk }}" hint-placeholder-val="{{ false }}">
+  <div role="main" style="animation:fadeSlideIn .35s ease">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
+      <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em">BULK UPDATE</div>
+      <div style="font:12.5px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Checks that need your eye on many Pokemon at once. Nothing is changed automatically: you choose for each one, and every choice can be undone right after.</div>
+    </div>
+    <sc-for list="{{ bulkChecks }}" as="chk" hint-placeholder-count="1">
+      <div style="margin-bottom:24px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px">
+          <div style="font:700 13px var(--font-display);color:var(--ink-900);letter-spacing:.04em">{{ chk.title }}</div>
+          <div style="font:700 11px var(--font-display);color:var(--ink-400)">{{ chk.count }} TO REVIEW</div>
+        </div>
+        <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-500);margin-bottom:12px;text-wrap:pretty">{{ chk.blurb }}</div>
+        <sc-if value="{{ chk.empty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:22px;text-align:center;border:1px dashed var(--line-300);border-radius:12px;font:14px var(--font-body);color:var(--ink-500)">Nothing to review here.</div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ chk.rows }}" as="row" hint-placeholder-count="0">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 14px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:52px;height:52px;border-radius:50%;background:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 18px var(--font-display);color:var(--ink-400)">{{ row.initial }}</span>
+                  <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font:700 15px var(--font-body);color:var(--ink-900)">{{ row.name }} <span style="font:600 12px var(--font-display);color:var(--ink-500)">{{ row.cp }} &middot; {{ row.hp }}</span></div>
+                  <div style="font:11.5px var(--font-display);color:var(--ink-500);margin-top:2px">IV {{ row.ivText }}</div>
+                  <div style="font:11.5px var(--font-display);color:var(--ink-500)">{{ row.scanned }} &middot; {{ row.current }}</div>
+                </div>
+                <button type="button" onClick="{{ row.onSkip }}" class="om-press" aria-label="Skip for now" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:8px 4px;min-height:44px">Later</button>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+                <sc-for list="{{ row.options }}" as="opt" hint-placeholder-count="2">
+                  <button type="button" onClick="{{ opt.onPick }}" class="om-press" aria-label="{{ opt.aria }}" style="text-align:left;display:flex;flex-direction:column;gap:2px;padding:10px 12px;min-height:44px;border-radius:12px;background:var(--surface-sunken);border:1.5px solid {{ opt.border }}">
+                    <span style="display:flex;justify-content:space-between;gap:8px;font:700 14px var(--font-body);color:var(--ink-900)"><span>{{ opt.label }} &middot; {{ opt.types }}</span><span style="font:700 10px var(--font-display);color:var(--ios-blue);letter-spacing:.05em">{{ opt.tag }}</span></span>
+                    <span style="font:11.5px var(--font-display);color:var(--ink-500)">Base {{ opt.stats }} &middot; <span style="color:{{ opt.fitColor }}">{{ opt.fit }}</span></span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ chk.more }}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{ chk.showMore }}" class="om-press" style="display:block;margin:14px auto 0;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more ({{ chk.remaining }} left)</button>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn .35s ease">
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:10px 14px;margin-bottom:16px">
@@ -2926,6 +2976,8 @@ class Component extends DCLogic {
     syncedFrom: '',
     detailPoke: null,
     visibleCount: 30,
+    bulkSkip: [],
+    bulkVisible: 12,
     selectMode: false,
     selectedIdx: [],
     savedViews: [],
@@ -4109,6 +4161,128 @@ class Component extends DCLogic {
   // Tabs are separate pages that happen to share one scroll container. Without
   // this, switching from a 300-row roster lands you deep inside a short tab —
   // which reads as a huge empty gap above content that is actually there.
+  // ---- Bulk update tab -------------------------------------------------------------------
+  // A home for "this fix needs a human look at many Pokemon" jobs. Each check lists the roster
+  // rows it is unsure about, with the options to choose from; nothing is ever applied in bulk.
+  // Add a check by returning another entry from bulkChecks().
+  bulkFormLabel(f) {
+    const k = String(f || 'normal').toLowerCase();
+    return k === 'normal' ? 'Default' : k === 'alola' ? 'Alolan' : k === 'galarian' ? 'Galarian' : k === 'hisuian' ? 'Hisuian' : k === 'paldea' ? 'Paldean' : k;
+  }
+
+  bulkFormOptionsFor(p) {
+    const m = this.mechanics;
+    if (!m || p.dex == null) return [];
+    const keys = ['normal'];
+    ['alola', 'galarian', 'hisuian', 'paldea'].forEach(f => { if (m.BASE_STATS_BY_FORM[p.dex + '_' + f]) keys.push(f); });
+    return keys;
+  }
+
+  // Does this form's base stats reproduce the CP and HP read off the screen? Cached: it is a
+  // brute-force solve over every level and IV spread.
+  bulkFormFits(p, key) {
+    const m = this.mechanics;
+    if (!m || !m.solveIVs || !p.cp || !p.hp) return null;
+    const base = key === 'normal' ? m.BASE_STATS[p.dex] : m.BASE_STATS_BY_FORM[p.dex + '_' + key];
+    if (!base) return null;
+    this._bulkFit = this._bulkFit || {};
+    const ck = p.dex + '|' + key + '|' + p.cp + '|' + p.hp;
+    if (this._bulkFit[ck] === undefined) {
+      try { this._bulkFit[ck] = m.solveIVs(base, p.cp, p.hp).length > 0; } catch (e) { this._bulkFit[ck] = null; }
+    }
+    return this._bulkFit[ck];
+  }
+
+  bulkFormPending() {
+    const m = this.mechanics;
+    if (!m || !m.hasRegionalForms) return [];
+    const skip = new Set(this.state.bulkSkip || []);
+    return this.effectiveRosterForMatch().filter(p => p.dex != null && !p.formReviewed && !skip.has(p.idx) && m.hasRegionalForms(p.name, p.dex))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
+  }
+
+  bulkChecks() {
+    const m = this.mechanics;
+    const pending = this.bulkFormPending();
+    const visible = pending.slice(0, this.state.bulkVisible || 12);
+    const rows = visible.map(p => {
+      const cur = p.form ? String(p.form).toLowerCase() : 'normal';
+      const suggested = p.type && m.formForTypes ? m.formForTypes(p.name, p.type, p.dex) : null;
+      const ivs = this.ivsOf(p);
+      return {
+        key: String(p.idx), name: p.name, cp: p.cp != null ? 'CP ' + p.cp : 'CP ?', hp: p.hp != null ? 'HP ' + p.hp : '',
+        ivText: ivs ? ivs.join(' / ') + (p.ivMeasured ? '' : ' (solved)') : 'IVs not known',
+        scanned: p.type ? 'Scanned type: ' + p.type : 'No scanned type on file',
+        current: cur === 'normal' ? 'Currently: Default' + (p.form ? '' : ' (never set)') : 'Currently: ' + this.bulkFormLabel(cur),
+        spriteRef: this.makeSpriteRefByDex(p.dex, cur === 'normal' ? '' : cur),
+        initial: String(p.name || '?').charAt(0),
+        onSkip: () => this.setState({ bulkSkip: [...(this.state.bulkSkip || []), p.idx] }),
+        options: this.bulkFormOptionsFor(p).map(k => {
+          const info = m.speciesInfo(p.name, k === 'normal' ? '' : k);
+          const base = k === 'normal' ? m.BASE_STATS[p.dex] : m.BASE_STATS_BY_FORM[p.dex + '_' + k];
+          const fits = this.bulkFormFits(p, k);
+          const isCur = k === cur && !!p.form === (k !== 'normal') ;
+          return {
+            key: k, label: this.bulkFormLabel(k), aria: 'Set ' + p.name + ' to ' + this.bulkFormLabel(k),
+            types: info ? info.types.join(' / ') : '?',
+            stats: base ? base.join(' / ') : '',
+            fit: fits === true ? 'Fits CP/HP' : fits === false ? 'Does not fit CP/HP' : '',
+            fitColor: fits === false ? 'var(--ios-red)' : 'var(--ios-green)',
+            tag: (suggested === k ? 'MATCHES SCANNED TYPE' : '') || (isCur ? 'CURRENT' : ''),
+            border: suggested === k ? 'var(--ios-blue)' : 'var(--line-200)',
+            onPick: () => this.bulkPickForm(p, k)
+          };
+        })
+      };
+    });
+    return [{
+      key: 'form', title: 'REGIONAL FORM', count: pending.length,
+      blurb: 'Same name, different form: Kantonian vs Alolan Ninetales have different types, base stats, moves and PvP/raid ranks. Pick the right form for each Pokemon. Compare the sprite, the types and whether the CP/HP fit.',
+      empty: pending.length === 0, rows,
+      more: pending.length > visible.length, remaining: pending.length - visible.length,
+      showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
+    }];
+  }
+
+  // Sets one Pokemon's form, then re-derives everything that depended on its base stats.
+  bulkPickForm(p, key) {
+    const m = this.mechanics;
+    if (!m) return;
+    const form = key === 'normal' ? null : key;
+    const info = m.speciesInfo(p.name, form || '');
+    const type = info ? info.types.join(' / ') : (p.type || null);
+    this.offerUndo(p.name + ' set to ' + this.bulkFormLabel(key), ['ivOverrides']);
+    const patch = { form, type, formReviewed: true };
+    const base = key === 'normal' ? m.BASE_STATS[p.dex] : m.BASE_STATS_BY_FORM[p.dex + '_' + key];
+    if (base) {
+      let ivs = this.ivsOf(p);
+      // Spreads that were SOLVED from CP/HP depended on the old base stats, so re-solve them.
+      // A measured (appraised) spread is a fact and is kept.
+      if (!p.ivMeasured && p.cp && p.hp && (p.ivSolved || p.ivRange || !ivs) && m.solveIVs) {
+        const cands = m.solveIVs(base, p.cp, p.hp);
+        if (cands.length === 1) {
+          const c = cands[0];
+          ivs = [c.atkIV, c.defIV, c.staIV];
+          Object.assign(patch, { atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg: (ivs[0] + ivs[1] + ivs[2]) / 45 * 100, lvlMin: c.level, lvlMax: c.level, ivSolved: true, ivCandidates: 1, ivRange: null });
+        } else if (cands.length > 1) {
+          ivs = null;
+          const rng = k => { let lo = 15, hi = 0; cands.forEach(c => { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }); return [lo, hi]; };
+          const lv = cands.map(c => c.level);
+          Object.assign(patch, { atkIV: null, defIV: null, staIV: null, ivAvg: null, ivRange: { atk: rng('atkIV'), def: rng('defIV'), sta: rng('staIV') }, ivCandidates: cands.length, ivSolved: false, lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv), great: null, ultra: null, little: null });
+        }
+      }
+      if (ivs) {
+        const shadow = this.isShadow(p);
+        const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
+        patch.great = { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name };
+        patch.ultra = { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name };
+        patch.little = { rankPct: littlePct, evolvesTo: p.name };
+      }
+    }
+    const overrides = { ...this.state.ivOverrides, [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], ...patch } };
+    this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); } catch (e) {} });
+  }
+
   goToTab(key) {
     this.setState({ tab: key }, () => {
       try { window.scrollTo(0, 0); } catch (e) {}
@@ -13924,6 +14098,7 @@ class Component extends DCLogic {
       roster: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
       pvp: 'M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z',
       raid: 'M13 2L4 14h7l-1 8 9-12h-7l1-8z',
+      bulk: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5',
       more: 'M5 12h.01M12 12h.01M19 12h.01',
       home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
       recommend: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z',
@@ -13935,7 +14110,8 @@ class Component extends DCLogic {
       { key: 'today', label: 'Today', navLabel: 'Today' },
       { key: 'roster', label: 'Roster', navLabel: 'Roster' },
       { key: 'pvp', label: 'PvP rankings', navLabel: 'PvP' },
-      { key: 'raid', label: 'Raid counters', navLabel: 'Raid' }
+      { key: 'raid', label: 'Raid counters', navLabel: 'Raid' },
+      { key: 'bulk', label: 'Bulk update', navLabel: 'Bulk' }
     ];
     const moreDefs = [
       { key: 'home', label: 'Home & settings' },
@@ -14002,6 +14178,8 @@ class Component extends DCLogic {
       isToday: tab === 'today',
       isProgress: tab === 'progress',
       isRaid: tab === 'raid',
+      isBulk: tab === 'bulk',
+      bulkChecks: tab === 'bulk' ? this.bulkChecks() : [],
       tabList,
       moreTabs,
       moreOpen: !!this.state.moreOpen,

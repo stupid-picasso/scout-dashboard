@@ -5125,7 +5125,7 @@ function _speciesKeys(name, form) {
   // Display names vary ("Ho-Oh", "Mr. Mime", "Type: Null", "Nidoran♀"); PvPoke ids are
   // lowercase with underscores ("ho_oh", "mr_mime", "type_null", "nidoran_female").
   const norm = v => String(v || '').toLowerCase().trim().replace(/\u2640/g, '_female').replace(/\u2642/g, '_male')
-    .replace(/-f$/, '_female').replace(/-m$/, '_male').replace(/[\s.':\-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    .replace(/-f$/, '_female').replace(/-m$/, '_male').replace(/['\u2019]/g, '').replace(/[\s.:\-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
   const n = norm(name);
   // BASE_STATS_BY_FORM / movepools say "alola" and "paldea"; PvPoke ids say "alolan" and "paldean".
   const FORM_ALIAS = { alola: 'alolan', paldea: 'paldean', hisui: 'hisuian', galar: 'galarian' };
