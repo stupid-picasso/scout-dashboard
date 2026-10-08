@@ -190,6 +190,19 @@ module.exports = async function suiteB() {
     expect(await s.call('typeOf', { ...v, ...o }) === 'Ice', 'typeOf');
     const txt2 = await s.page.evaluate(() => document.body.innerText); expect(!/Vulpix\s*CP 555/.test(txt2), 'reviewed row should leave the list');
   }, 'critical');
+  await T('TOOLS-01', 'Tools', 'Rename strings fit the 12-char limit and encode form/IV/ranks; search builder emits GO syntax', async () => {
+    const p = { name: 'Ninetales', form: 'alola', atkIV: 15, defIV: 14, staIV: 13, great: { rankPct: 97.2 }, ultra: { rankPct: 70.6 }, cp: 1801 };
+    expect(await s.call('renameFor', p, '{form}{iv}G{g}U{u}') === 'A93G97U71', await s.call('renameFor', p, '{form}{iv}G{g}U{u}'));
+    expect(await s.call('renameFor', p, '{ivs}') === 'FED', 'hex ivs');
+    expect(await s.call('starsOf', p) === 3 && await s.call('starsOf', { atkIV: 15, defIV: 15, staIV: 15 }) === 4 && await s.call('starsOf', { atkIV: 0, defIV: 0, staIV: 0 }) === 0, 'stars');
+    await s.set({ srchName: 'ninetales, vulpix', srchTypes: ['Ice'], srchForm: 'alola', srchFlags: { shadow: -1, lucky: 1 }, srchStars: [3, 4], srchCpMin: '', srchCpMax: '1500' });
+    const out = await s.call('searchStringFromBuilder');
+    expect(out === 'ninetales,vulpix&ice&alola&!shadow&lucky&3*,4*&cp-1500', out);
+    await s.set({ tab: 'tools', toolsMode: 'rename' }); await s.page.waitForTimeout(500);
+    expect(/Rename/.test(await s.page.evaluate(() => document.body.innerText)), 'rename ui');
+    await s.set({ toolsMode: 'search' }); await s.page.waitForTimeout(400);
+    expect(/ninetales,vulpix&ice/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

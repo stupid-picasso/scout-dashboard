@@ -1184,6 +1184,9 @@
   /* Inputs and fields: filled capsule, no border. */
   input[type=text],input[type=password],input:not([type]),textarea,select{background:var(--ios-fill) !important;border:0 !important;border-radius:12px !important;color:var(--ink-900) !important;min-height:44px;box-sizing:border-box;padding:10px 14px !important}
   input::placeholder,textarea::placeholder{color:var(--ink-300) !important}
+  .go-card input:not([type]){background:#f4fbfb !important;color:#17353b !important;border:1.5px solid #cfe3e6 !important;border-radius:12px !important}
+  .go-card input:not([type])::placeholder{color:#8aa5ab !important}
+  .go-card button{text-align:center;display:inline-flex;align-items:center;justify-content:center}
   /* Primary action: system blue capsule. */
   [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue-fill) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
   [style*="background: var(--grass-500)"]{background:var(--ios-green) !important;color:#000 !important}
@@ -1230,7 +1233,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.157</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.159</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3913,6 +3916,55 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ isTools }}" hint-placeholder-val="{{ false }}">
+  <div role="main" class="go-card" style="animation:fadeSlideIn .35s ease">
+    <div style="display:flex;gap:4px;padding:4px;border-radius:999px;background:#e6f4f4;margin-bottom:14px" role="group" aria-label="Tool">
+      <sc-for list="{{ modeChips }}" as="m" hint-placeholder-count="2"><button type="button" onClick="{{ m.onClick }}" class="om-press" style="flex:1;min-height:40px;border-radius:999px;background:{{ m.bg }};color:{{ m.fg }};font:700 14px var(--font-body)">{{ m.label }}</button></sc-for>
+    </div>
+
+    <sc-if value="{{ isRenameMode }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#ffffff;border-radius:22px;padding:18px 16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+        <div style="font:800 18px var(--font-display);text-align:center;color:#17353b">Rename</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 12px">Build a nickname template. Tap Copy on a Pokemon, then paste it in the game's rename box (12 characters max).</div>
+        <input value="{{ renameTpl }}" onInput="{{ onTplChange }}" aria-label="Rename template" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" />
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font:600 12px var(--font-display)"><span style="color:#5b7d84">Example: {{ sampleText }}</span><span style="color:{{ sampleColor }}">{{ sampleCount }}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+          <sc-for list="{{ tokenChips }}" as="t" hint-placeholder-count="4"><button type="button" onClick="{{ t.onClick }}" class="om-press" style="padding:6px 11px;min-height:32px;border-radius:999px;background:#e6f4f4;color:#1b6e66;font:600 12px var(--font-display)">{{ t.label }}</button></sc-for>
+        </div>
+        <div style="font:11.5px/1.5 var(--font-body);color:#5b7d84;margin-top:10px">{iv} IV% &middot; {ivs} IVs in hex (F = 15) &middot; {g} {u} {l} Great/Ultra/Little rank% &middot; {form} A/G/H/P &middot; {stars} 0-4 &middot; {shadow} S &middot; {lucky} L</div>
+      </div>
+      <input value="{{ renameQuery }}" onInput="{{ onQueryChange }}" placeholder="Search your Pokemon" aria-label="Filter Pokemon" style="width:100%;box-sizing:border-box;margin:14px 0 10px;padding:12px 14px;min-height:44px;border-radius:999px;border:1.5px solid #cfe3e6;background:#ffffff;color:#17353b;font:500 16px var(--font-body)" />
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);margin-bottom:8px">{{ renameTotal }} POKEMON WITH KNOWN IVS</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ renameRows }}" as="row" hint-placeholder-count="0">
+          <div style="background:#ffffff;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:11px;color:#17353b">
+            <div style="width:48px;height:48px;border-radius:50%;background:#e6f4f4;position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 17px var(--font-display);color:#5b7d84">{{ row.initial }}</span><img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+            <div style="flex:1;min-width:0">
+              <div style="font:600 12px var(--font-body);color:#5b7d84;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }} &middot; {{ row.cp }}</div>
+              <div style="font:800 18px var(--font-display);color:#17353b;word-break:break-all">{{ row.text }} <span style="font:600 11px var(--font-display);color:{{ row.countColor }}">{{ row.count }}</span></div>
+            </div>
+            <button type="button" onClick="{{ row.onCopy }}" class="om-press" aria-label="Copy name for {{ row.name }}" style="min-width:68px;min-height:44px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ row.copyLabel }}</button>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ renameMore }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ renameShowMore }}" class="om-press" style="display:block;margin:14px auto 0;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more ({{ renameLeft }} left)</button></sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isSearchMode }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+        <div style="font:800 18px var(--font-display);text-align:center">Search</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;min-height:48px;border-radius:999px;background:#f4fbfb;border:1.5px solid #cfe3e6">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5b7d84" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <div style="flex:1;min-width:0;font:600 15px var(--font-display);color:#17353b;word-break:break-all">{{ searchOut }}</div>
+          <button type="button" onClick="{{ onSearchCopy }}" class="om-press" aria-label="Copy search string" style="min-width:64px;min-height:36px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ searchCopyLabel }}</button>
+        </div>
+        <div style="font:12px var(--font-body);color:#5b7d84;margin-top:6px">{{ searchMatches }} (counts what this app can evaluate; the game has the final say)</div>
+        <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">QUICK SEARCHES</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ presetChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">NAME (COMMA = OR)</div><input value="{{ srchName }}" onInput="{{ onSrchName }}" aria-label="Name filter" autocapitalize="off" placeholder="ninetales, vulpix" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">TYPE</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">REGIONAL FORM</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ formChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">STATUS (TAP ONCE = HAS, TWICE = NOT)</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ flagChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">APPRAISAL STARS</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ starChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">CP RANGE</div><div style="display:flex;gap:8px;align-items:center"><input value="{{ srchCpMin }}" onInput="{{ onCpMin }}" inputmode="numeric" placeholder="min" aria-label="Minimum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /><span style="color:#5b7d84">to</span><input value="{{ srchCpMax }}" onInput="{{ onCpMax }}" inputmode="numeric" placeholder="max" aria-label="Maximum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /></div>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn .35s ease">
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:10px 14px;margin-bottom:16px">
@@ -4004,6 +4056,18 @@ class Component extends DCLogic {
     detailPoke: null,
     visibleCount: 30,
     bulkSkip: [],
+    toolsMode: 'rename',
+    renameTpl: '{form}{iv}G{g}U{u}',
+    renameQuery: '',
+    renameVisible: 20,
+    copiedKey: '',
+    srchName: '',
+    srchTypes: [],
+    srchForm: '',
+    srchFlags: {},
+    srchStars: [],
+    srchCpMin: '',
+    srchCpMax: '',
     bulkVisible: 12,
     selectMode: false,
     selectedIdx: [],
@@ -5308,6 +5372,154 @@ class Component extends DCLogic {
     }
     const overrides = { ...this.state.ivOverrides, [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], ...patch } };
     this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); } catch (e) {} });
+  }
+
+  // ---- Rename & search tools ---------------------------------------------------------------
+  // Pokemon GO caps a nickname at 12 characters, so templates are checked against that live.
+  copyText(text, key) {
+    const done = () => { this.haptic('light'); this.setState({ copiedKey: key }); clearTimeout(this._copiedT); this._copiedT = setTimeout(() => this.setState({ copiedKey: '' }), 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(() => this.setState({ fileFallback: { filename: 'Copy this text', text, preview: text }, fileFallbackCopied: false }));
+    else this.setState({ fileFallback: { filename: 'Copy this text', text, preview: text }, fileFallbackCopied: false });
+  }
+
+  starsOf(p) {
+    const ivs = this.ivsOf(p);
+    if (!ivs) return null;
+    const sum = ivs[0] + ivs[1] + ivs[2];
+    return sum >= 45 ? 4 : sum >= 37 ? 3 : sum >= 30 ? 2 : sum >= 23 ? 1 : 0;
+  }
+
+  renameFor(p, tpl) {
+    const ivs = this.ivsOf(p);
+    const form = p.form ? String(p.form).toLowerCase() : '';
+    const letter = form === 'alola' ? 'A' : form === 'galarian' ? 'G' : form === 'hisuian' ? 'H' : form === 'paldea' ? 'P' : '';
+    const pct = v => (v == null || !Number.isFinite(v)) ? '' : String(Math.round(v));
+    const m = this.mechanics, base = this.baseStatsOf(p);
+    const live = lg => { if (!ivs || !base || !m || !m.rankPctForLeague) return null; try { return m.rankPctForLeague(base, ivs, lg, this.isShadow(p)); } catch (e) { return null; } };
+    const rk = (lg, own) => (own && Number.isFinite(own.rankPct)) ? own.rankPct : live(lg);
+    const hex = n => Number(n).toString(16).toUpperCase();
+    const map = {
+      name: String(p.name || ''), form: letter,
+      iv: ivs ? String(Math.round((ivs[0] + ivs[1] + ivs[2]) / 45 * 100)) : '',
+      ivs: ivs ? hex(ivs[0]) + hex(ivs[1]) + hex(ivs[2]) : '',
+      g: pct(rk('great', p.great)), u: pct(rk('ultra', p.ultra)), l: pct(rk('little', p.little)),
+      cp: p.cp != null ? String(p.cp) : '', shadow: this.isShadow(p) ? 'S' : '', lucky: p.lucky ? 'L' : '', stars: this.starsOf(p) != null ? String(this.starsOf(p)) : ''
+    };
+    return String(tpl || '').replace(/\{(\w+)\}/g, (m0, k) => (k in map ? map[k] : m0));
+  }
+
+  renameRows() {
+    const q = String(this.state.renameQuery || '').toLowerCase().trim();
+    const tpl = this.state.renameTpl;
+    const all = this.effectiveRosterForMatch().filter(p => this.ivsOf(p) && (!q || String(p.name || '').toLowerCase().indexOf(q) >= 0))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
+    const shown = all.slice(0, this.state.renameVisible || 20);
+    return { total: all.length, rows: shown.map(p => {
+      const text = this.renameFor(p, tpl);
+      const over = text.length > 12;
+      return { key: String(p.idx), name: p.name + (p.form ? ' (' + p.form + ')' : ''), cp: p.cp != null ? 'CP ' + p.cp : '', text: text || '—', count: text.length + '/12',
+        countColor: over ? '#e5484d' : '#6b7f86', copyLabel: this.state.copiedKey === 'r' + p.idx ? 'Copied' : 'Copy',
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form), initial: String(p.name || '?').charAt(0),
+        onCopy: () => this.copyText(text, 'r' + p.idx) };
+    }) };
+  }
+
+  // Search string in Pokemon GO syntax: "," is OR, "&" is AND, "!" is NOT.
+  searchStringFromBuilder() {
+    const st = this.state, parts = [];
+    const names = String(st.srchName || '').split(/[,\n]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
+    if (names.length) parts.push(names.join(','));
+    if ((st.srchTypes || []).length) parts.push(st.srchTypes.map(t => t.toLowerCase()).join(','));
+    if (st.srchForm) parts.push(st.srchForm);
+    const flags = st.srchFlags || {};
+    Object.keys(flags).forEach(k => { if (flags[k] === 1) parts.push(k); else if (flags[k] === -1) parts.push('!' + k); });
+    if ((st.srchStars || []).length) parts.push([...st.srchStars].sort().map(n => n + '*').join(','));
+    const lo = String(st.srchCpMin || '').trim(), hi = String(st.srchCpMax || '').trim();
+    if (lo || hi) parts.push('cp' + lo + '-' + hi);
+    return parts.join('&');
+  }
+
+  // Which roster rows the builder's selection would catch. Only filters this app can evaluate
+  // are counted; the game's own evaluation is the final word.
+  searchMatchCount() {
+    const st = this.state, flags = st.srchFlags || {};
+    const names = String(st.srchName || '').split(/[,\n]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
+    const lo = parseInt(st.srchCpMin, 10), hi = parseInt(st.srchCpMax, 10);
+    const formKey = { alola: 'alola', galar: 'galarian', hisui: 'hisuian', paldea: 'paldea' }[st.srchForm];
+    const get = { shadow: p => this.isShadow(p), lucky: p => !!p.lucky, shiny: p => !!p.shiny, favorite: p => !!p.favorite };
+    return this.effectiveRosterForMatch().filter(p => {
+      if (names.length && !names.some(n => String(p.name || '').toLowerCase().indexOf(n) >= 0)) return false;
+      if ((st.srchTypes || []).length) { const t = this.typesOf(p).map(x => x.toLowerCase()); if (!st.srchTypes.some(x => t.indexOf(x.toLowerCase()) >= 0)) return false; }
+      if (formKey && String(p.form || '').toLowerCase() !== formKey) return false;
+      for (const k of Object.keys(get)) { if (flags[k] === 1 && !get[k](p)) return false; if (flags[k] === -1 && get[k](p)) return false; }
+      if ((st.srchStars || []).length) { const sx = this.starsOf(p); if (sx == null || st.srchStars.indexOf(sx) < 0) return false; }
+      if (Number.isFinite(lo) && !(p.cp >= lo)) return false;
+      if (Number.isFinite(hi) && !(p.cp <= hi)) return false;
+      return true;
+    }).length;
+  }
+
+  applySearchPreset(key) {
+    const P = {
+      transfer: { srchName: '', srchTypes: [], srchForm: '', srchFlags: { favorite: -1, lucky: -1, shadow: -1, shiny: -1, legendary: -1, mythical: -1, costume: -1 }, srchStars: [0, 1, 2], srchCpMin: '', srchCpMax: '' },
+      keep: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [3, 4], srchCpMin: '', srchCpMax: '' },
+      great: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '', srchCpMax: '1500' },
+      ultra: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '1501', srchCpMax: '2500' },
+      little: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '', srchCpMax: '500' },
+      evolve: { srchName: '', srchTypes: [], srchForm: '', srchFlags: { evolve: 1 }, srchStars: [], srchCpMin: '', srchCpMax: '' },
+      clear: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '', srchCpMax: '' }
+    };
+    if (P[key]) this.setState(P[key]);
+  }
+
+  toggleSearchFlag(k) {
+    const f = { ...(this.state.srchFlags || {}) };
+    const v = f[k] || 0;
+    const nv = v === 0 ? 1 : v === 1 ? -1 : 0;
+    if (nv === 0) delete f[k]; else f[k] = nv;
+    this.setState({ srchFlags: f });
+  }
+
+  toggleInList(key, val) {
+    const cur = [...(this.state[key] || [])];
+    const i = cur.indexOf(val);
+    if (i >= 0) cur.splice(i, 1); else cur.push(val);
+    this.setState({ [key]: cur });
+  }
+
+  toolsVals() {
+    const st = this.state;
+    const R = this.renameRows();
+    const sample = this.renameFor({ name: 'Ninetales', form: 'alola', atkIV: 15, defIV: 14, staIV: 13, great: { rankPct: 97 }, ultra: { rankPct: 71 }, little: { rankPct: 40 }, cp: 1801 }, st.renameTpl);
+    const mkChip = (label, on, onClick, extra) => ({ label, onClick, bg: on === 1 ? '#1fb5a5' : on === -1 ? '#e5484d' : '#ffffff', fg: on ? '#ffffff' : '#2a4a50', bd: on === 1 ? '#1fb5a5' : on === -1 ? '#e5484d' : '#cfe3e6', pressed: on ? 'true' : 'false' });
+    const flagDefs = [['shadow', 'Shadow'], ['purified', 'Purified'], ['lucky', 'Lucky'], ['shiny', 'Shiny'], ['favorite', 'Favorite'], ['legendary', 'Legendary'], ['mythical', 'Mythical'], ['costume', 'Costume'], ['evolve', 'Can evolve']];
+    const flags = st.srchFlags || {};
+    const types = ['Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
+    const forms = [['', 'Any'], ['alola', 'Alolan'], ['galar', 'Galarian'], ['hisui', 'Hisuian'], ['paldea', 'Paldean']];
+    const out = this.searchStringFromBuilder();
+    const presetDefs = [['transfer', 'Transfer candidates'], ['keep', '3★ and 4★'], ['great', 'Great League CP'], ['ultra', 'Ultra League CP'], ['little', 'Little Cup CP'], ['evolve', 'Can evolve'], ['clear', 'Clear']];
+    return {
+      isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search',
+      modeChips: [['rename', 'Rename'], ['search', 'Search']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
+      renameTpl: st.renameTpl, onTplChange: e => this.setState({ renameTpl: e.target.value }),
+      renameQuery: st.renameQuery, onQueryChange: e => this.setState({ renameQuery: e.target.value, renameVisible: 20 }),
+      sampleText: sample || '—', sampleCount: (sample || '').length + '/12', sampleColor: (sample || '').length > 12 ? '#e5484d' : '#6b7f86',
+      tokenChips: ['name', 'form', 'iv', 'ivs', 'g', 'u', 'l', 'cp', 'stars', 'shadow', 'lucky'].map(t => ({ label: '{' + t + '}', onClick: () => this.setState({ renameTpl: (st.renameTpl || '') + '{' + t + '}' }) })),
+      renameRows: R.rows, renameTotal: R.total, renameMore: R.total > R.rows.length, renameLeft: R.total - R.rows.length,
+      renameShowMore: () => this.setState({ renameVisible: (st.renameVisible || 20) + 20 }),
+      presetChips: presetDefs.map(([k, l]) => ({ label: l, bg: '#ffffff', fg: '#2a4a50', bd: '#cfe3e6', pressed: 'false', onClick: () => this.applySearchPreset(k) })),
+      srchName: st.srchName, onSrchName: e => this.setState({ srchName: e.target.value }),
+      typeChips: types.map(t => mkChip(t, (st.srchTypes || []).indexOf(t) >= 0 ? 1 : 0, () => this.toggleInList('srchTypes', t))),
+      formChips: forms.map(([k, l]) => mkChip(l, st.srchForm === k ? 1 : 0, () => this.setState({ srchForm: k }))),
+      flagChips: flagDefs.map(([k, l]) => mkChip(l + (flags[k] === -1 ? ' (not)' : ''), flags[k] || 0, () => this.toggleSearchFlag(k))),
+      starChips: [0, 1, 2, 3, 4].map(n => mkChip(n + '★', (st.srchStars || []).indexOf(n) >= 0 ? 1 : 0, () => this.toggleInList('srchStars', n))),
+      srchCpMin: st.srchCpMin, srchCpMax: st.srchCpMax,
+      onCpMin: e => this.setState({ srchCpMin: e.target.value.replace(/\D/g, '') }), onCpMax: e => this.setState({ srchCpMax: e.target.value.replace(/\D/g, '') }),
+      searchOut: out || '(nothing selected)', hasSearchOut: !!out,
+      searchMatches: out ? this.searchMatchCount() + ' of your Pokemon match' : 'Pick filters above',
+      searchCopyLabel: st.copiedKey === 'search' ? 'Copied' : 'Copy',
+      onSearchCopy: () => out && this.copyText(out, 'search')
+    };
   }
 
   goToTab(key) {
@@ -15184,7 +15396,8 @@ class Component extends DCLogic {
       recommend: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z',
       intel: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
       attackers: 'M12 12m-3 0a3 3 0 106 0 3 3 0 10-6 0M12 2v4M12 18v4M2 12h4M18 12h4',
-      progress: 'M12 7v5l3 2M12 21a9 9 0 100-18 9 9 0 000 18z'
+      progress: 'M12 7v5l3 2M12 21a9 9 0 100-18 9 9 0 000 18z',
+      tools: 'M4 7h16M4 12h10M4 17h6M17 14l3 3-3 3'
     };
     const barDefs = [
       { key: 'today', label: 'Today', navLabel: 'Today' },
@@ -15198,7 +15411,8 @@ class Component extends DCLogic {
       { key: 'recommend', label: 'Recommendations' },
       { key: 'intel', label: 'Collection intel' },
       { key: 'attackers', label: 'Attackers' },
-      { key: 'progress', label: 'Progress log' }
+      { key: 'progress', label: 'Progress log' },
+      { key: 'tools', label: 'Rename & search' }
     ];
     const moreKeys = moreDefs.map(m => m.key);
     const tabDefs = [...barDefs, ...moreDefs];
@@ -15259,6 +15473,8 @@ class Component extends DCLogic {
       isProgress: tab === 'progress',
       isRaid: tab === 'raid',
       isBulk: tab === 'bulk',
+      isTools: tab === 'tools',
+      ...(tab === 'tools' ? this.toolsVals() : {}),
       bulkChecks: tab === 'bulk' ? this.bulkChecks() : [],
       tabList,
       moreTabs,
