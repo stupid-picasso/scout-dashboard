@@ -43,6 +43,11 @@ def reply_for(model, key, body):
     m = re.search(r"batch (\d+) of", note)
     b = int(m.group(1)) if m else 1
     name = "Pikachu"
+    if "separate frames from a Pokemon GO appraisal" in note:   # IV import: batched name/CP/HP read
+        items = [{"i": k, "name": "Pikachu", "cp": 100 + k, "hp": 50} for k in range(n_images) if not (BEHAVE.get("drop_id") and k == 1)]
+        return {"candidates": [{"content": {"parts": [{"text": json.dumps(items)}]}}]}
+    if "one frame from a Pokemon GO appraisal" in note:
+        return {"candidates": [{"content": {"parts": [{"text": json.dumps([{"name": "Eevee", "cp": 200, "hp": 60}])}]}}]}
     if "numbered 1, 2, 3" in note:   # per-frame prompt: one object per frame, nothing merged by the model
         items = [{"frame": 1, "name": name, "cp": 100 + b, "hp": 50, "fastMove": "Quick Attack"},
                  {"frame": 2, "name": name, "hp": 50, "weight": "2kg", "gender": "M"},
@@ -174,6 +179,22 @@ except SystemExit:
 check("quota id says per-day", px._quota_info(_R429.text)[0] is True)
 check("quota id says per-minute", px._quota_info('{"quotaId":"GenerateRequestsPerMinutePerProjectPerModel-FreeTier"} see documentation of daily limits')[0] is False)
 check("no ids falls back to words", px._quota_info("You exceeded your daily quota")[0] is True)
+
+# --- IV import: batched identification runs side by side on one shared pool, singles fill the gaps
+px._SHARED_POOL.clear(); calls.clear(); BEHAVE["drop_id"] = True
+os.environ["ID_WORKERS"] = "4"
+ident = px._identify_frames(frames[:20])
+check("every frame identified", all(ident) and len(ident) == 20, str(sum(1 for o in ident if o)))
+check("dropped entries re-read as single frames", sum(1 for o in ident if o["name"] == "Eevee") == 3, str(sum(1 for o in ident if o["name"] == "Eevee")))
+check("batch entries land on their own frame", ident[0]["cp"] == 100 and ident[2]["cp"] == 102 and ident[8]["cp"] == 100, str([o["cp"] for o in ident[:3]]))
+check("one shared pool, models listed once", len(px._SHARED_POOL) > 0 and px._SHARED_POOL["pool"] is not None)
+BEHAVE["drop_id"] = False
+px._SHARED_POOL.clear()
+# bar measuring across processes
+blank = []
+for i in range(60):
+    pth = os.path.join(tmp, "b%02d.png" % i); Image.new("RGB", (64, 64), (255, 255, 255)).save(pth); blank.append(pth)
+check("parallel bar measuring returns one result per frame", len(px._measure_all(blank)) == 60)
 
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

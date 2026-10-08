@@ -5,6 +5,7 @@ CRITICAL FIX: Word boundaries now use single backslash (was double = backspace c
 """
 
 from collections import Counter
+import threading
 import argparse, csv, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
@@ -2034,6 +2035,20 @@ def _dump_bar_diagnostics(frames, out_dir="data/debug_bars", hits=None):
         print(f"[Bars][debug] diagnostics failed: {e}")
 
 
+def _measure_all(frames):
+    """measure_appraisal_bars_any over every frame, spread across the runner's CPU cores. Pure per-frame
+    pixel work, so processes scale it almost linearly; any trouble falls back to the plain loop."""
+    n = min(os.cpu_count() or 1, 8)
+    if n > 1 and len(frames) > 40:
+        try:
+            from concurrent.futures import ProcessPoolExecutor
+            with ProcessPoolExecutor(max_workers=n) as ex:
+                return list(ex.map(measure_appraisal_bars_any, frames, chunksize=16))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[Bars] parallel measuring unavailable ({exc}); measuring one frame at a time")
+    return [measure_appraisal_bars_any(p) for p in frames]
+
+
 def run_appraisal_pipeline(frames):
     """Measure IVs off every frame's appraisal bars, collapse consecutive frames
     showing the same Pokemon, then ask Gemini only for the name/CP/HP on each
@@ -2043,9 +2058,10 @@ def run_appraisal_pipeline(frames):
     measured from a specific image, so the name it is joined to has to come from
     that same image. Batching would merge sightings and could pair a spread with
     the wrong Pokemon."""
-    readings = []
-    for idx, path in enumerate(frames):
-        readings.append((idx, path, measure_appraisal_bars_any(path)))
+    t_bars = time.time()
+    measured = _measure_all(frames)
+    readings = [(idx, path, m) for idx, (path, m) in enumerate(zip(frames, measured))]
+    print(f"[Bars] measured {len(frames)} frames in {(time.time() - t_bars) / 60:.1f} min")
     hits = [(i, p, m) for i, p, m in readings if m]
     print(f"[Bars] Measured appraisal bars on {len(hits)}/{len(frames)} frames")
     # Dump evidence whenever the read is WEAK, not only when it fails outright.
@@ -2126,51 +2142,56 @@ def run_appraisal_pipeline(frames):
 def _identify_frames(paths):
     """Read name/CP/HP for a list of frames, one entry per frame, order kept.
 
-    Identification used to be one Gemini call per sighting: 81 sightings meant
-    81 requests carrying a single image each, which burned the per-minute cap
-    within seconds and then the daily one, so most of the run was spent in 429
-    retries and fallbacks to weaker models. Nothing about the task needs one
-    call per frame - the model only reads three printed values - so frames go
-    up in batches and come back indexed. A batch that fails or returns the
-    wrong length falls back to per-frame calls for that batch alone, so one bad
-    response cannot cost the other seven.
-    """
+    Frames go up in batches of APPRAISAL_ID_BATCH_SIZE and come back indexed; a batch that fails or returns
+    the wrong length is re-read frame by frame for that batch alone. The batches run side by side on one
+    shared model pool (ID_WORKERS at a time, default 6), because the old one-after-another loop made the IV
+    import spend most of its 40+ minutes waiting on single requests."""
     out = [None] * len(paths)
-    for start in range(0, len(paths), APPRAISAL_ID_BATCH_SIZE):
+
+    def do_chunk(start):
         chunk = paths[start:start + APPRAISAL_ID_BATCH_SIZE]
+        placed_here = {}
         got = None
         if len(chunk) > 1:
             prompt = APPRAISAL_ID_BATCH_PROMPT.format(n=len(chunk))
             try:
-                got = run_gemini_video_ocr(chunk, prompt=prompt, merge=False)
+                got = run_gemini_video_ocr(chunk, prompt=prompt, merge=False, shared=True, strict=False)
             except Exception as e:
-                print(f"[Bars] batched identification failed ({e}) - "
-                      f"falling back to one call per frame")
+                print(f"[Bars] batched identification failed ({e}) - falling back to one call per frame")
                 got = None
         if got is not None:
-            placed = 0
             for obj in got:
                 try:
                     i = int(obj.get("i"))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, AttributeError):
                     continue
-                if 0 <= i < len(chunk) and out[start + i] is None:
-                    out[start + i] = obj
-                    placed += 1
-            if placed == len(chunk):
-                continue
-            print(f"[Bars] batch of {len(chunk)} returned {placed} usable entries - "
-                  f"re-reading the rest individually")
+                if 0 <= i < len(chunk) and i not in placed_here:
+                    placed_here[i] = obj
+            if len(placed_here) != len(chunk):
+                print(f"[Bars] batch of {len(chunk)} returned {len(placed_here)} usable entries - "
+                      f"re-reading the rest individually")
         for n, p in enumerate(chunk):
-            if out[start + n] is not None:
+            if n in placed_here:
                 continue
             try:
-                one = run_gemini_video_ocr([p], prompt=APPRAISAL_ID_PROMPT,
-                                           merge_key=_appraisal_merge_key)
-                out[start + n] = one[0] if one else None
+                one = run_gemini_video_ocr([p], prompt=APPRAISAL_ID_PROMPT, merge_key=_appraisal_merge_key,
+                                           shared=True, strict=False)
+                placed_here[n] = one[0] if one else None
             except Exception as e:
                 print(f"[Bars] identification failed for one frame ({e})")
-                out[start + n] = None
+                placed_here[n] = None
+        return start, placed_here
+
+    starts = list(range(0, len(paths), APPRAISAL_ID_BATCH_SIZE))
+    workers = max(1, int(os.environ.get("ID_WORKERS") or 6))
+    from concurrent.futures import ThreadPoolExecutor
+    t0 = time.time()
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for start, placed in ex.map(do_chunk, starts):
+            for n, obj in placed.items():
+                out[start + n] = obj
+    print(f"[Bars] identified {sum(1 for o in out if o)} of {len(paths)} frames in {(time.time() - t0) / 60:.1f} min")
+    print_shared_pool_summary()
     return out
 
 
@@ -2498,6 +2519,50 @@ def _appraisal_merge_key(item):
             + "|" + ("?" if item.get("hp") is None else str(item.get("hp"))))
 
 
+_SHARED_POOL = {}
+_SHARED_LOCK = threading.Lock()
+
+
+def _build_pool(keys, announce=True):
+    # Which models can these keys actually call? A name that does not exist for the account is
+    # dropped up front instead of costing a 404 and a retry on every batch.
+    avail = discover_models(keys)
+    if avail and announce:
+        print("[Gemini] models callable with these keys (flash family): "
+              + ", ".join(sorted(m for m in avail if "flash" in m)))
+    # Model names are not hardcoded: the newest flash / flash-lite models the keys can call are
+    # chosen from ListModels (gemini_pool.choose_models). Built-in names are only the fallback
+    # when ListModels is unreachable.
+    bulk_models, verify_models = gemini_pool.choose_models(avail)
+    tiers = {}
+    if not bulk_models:  # no cheap model available: let the stronger ones carry the bulk work
+        bulk_models, verify_models = verify_models, []
+        tiers = {m: "bulk" for m in bulk_models}
+    return bulk_models, verify_models, gemini_pool.Pool(keys, bulk_models + verify_models, tiers=tiers)
+
+
+def _model_pool(keys, shared):
+    """(bulk models, verify models, pool). shared=True reuses ONE pool for the whole process, so many small
+    calls (the IV import makes hundreds) list models once, share per-lane pacing and remember which lanes are
+    out of quota instead of rediscovering that on every call."""
+    if not shared:
+        return _build_pool(keys)
+    with _SHARED_LOCK:
+        if _SHARED_POOL.get("keys") != tuple(keys):
+            bulk, verify, pool = _build_pool(keys)
+            _SHARED_POOL.update(keys=tuple(keys), bulk=bulk, verify=verify, pool=pool)
+            print(f"[Gemini] shared pool: bulk {bulk}; verify {verify}; {len(pool.lanes)} lanes")
+        return _SHARED_POOL["bulk"], _SHARED_POOL["verify"], _SHARED_POOL["pool"]
+
+
+def print_shared_pool_summary():
+    pool = _SHARED_POOL.get("pool")
+    if pool:
+        print("[Gemini] lanes after the import:")
+        for row in pool.summary():
+            print("   " + row)
+
+
 def preflight_gemini(keys):
     """Cheap check before any heavy work: can at least one cheap (bulk) lane answer right now? A tiny
     text request per lane, so a run started after the daily free quota is used up fails in seconds with a
@@ -2529,7 +2594,7 @@ def preflight_gemini(keys):
 
 
 def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None,
-                         merge=True):
+                         merge=True, shared=False, strict=True):
     """Batches frames, rotates 5 models x N keys the same way the phone app
     does, and merges duplicate sightings across batches. `prompt` and
     `merge_key` are swapped out for the appraisal path; everything else
@@ -2550,34 +2615,23 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
             "GEMINI_API_KEY_2) as GitHub Actions secrets."
         )
 
-    print(f"[Gemini] Encoding {len(frame_paths)} frames as base64 JPEG...")
+    if not shared:
+        print(f"[Gemini] Encoding {len(frame_paths)} frames as base64 JPEG...")
     encoded = [image_to_base64_jpeg(p) for p in frame_paths]
 
     sigs = [_frame_signature(p) for p in frame_paths]
     plan = plan_batches(sigs, [len(d) for d in encoded], MAX_FRAMES_PER_BATCH, BATCH_CHAR_BUDGET)
     batches = [[encoded[i] for i in grp] for grp in plan]
     batch_paths = [[frame_paths[i] for i in grp] for grp in plan]
-    print(f"[Gemini] {len(batches)} batch(es) of up to {MAX_FRAMES_PER_BATCH} frames each")
+    if not shared:
+        print(f"[Gemini] {len(batches)} batch(es) of up to {MAX_FRAMES_PER_BATCH} frames each")
 
     t_start = time.time()
-    # Which models can these keys actually call? A name that does not exist for the account is
-    # dropped up front instead of costing a 404 and a retry on every batch.
-    avail = discover_models(keys)
-    if avail:
-        print("[Gemini] models callable with these keys (flash family): "
-              + ", ".join(sorted(m for m in avail if "flash" in m)))
-    # Model names are not hardcoded: the newest flash / flash-lite models the keys can call are
-    # chosen from ListModels (gemini_pool.choose_models). Built-in names are only the fallback
-    # when ListModels is unreachable.
-    bulk_models, verify_models = gemini_pool.choose_models(avail)
-    tiers = {}
-    if not bulk_models:  # no cheap model available: let the stronger ones carry the bulk work
-        bulk_models, verify_models = verify_models, []
-        tiers = {m: "bulk" for m in bulk_models}
-    pool = gemini_pool.Pool(keys, bulk_models + verify_models, tiers=tiers)
+    bulk_models, verify_models, pool = _model_pool(keys, shared)
     workers = int(os.environ.get("GEMINI_WORKERS") or max(2, len(pool.alive("bulk")) * (4 if frame_mode else 2)))
-    print(f"[Gemini] bulk models: {bulk_models}; verify models: {verify_models}; "
-          f"{len(keys)} key(s) -> {len(pool.lanes)} lanes, {workers} parallel requests")
+    if not shared:
+        print(f"[Gemini] bulk models: {bulk_models}; verify models: {verify_models}; "
+              f"{len(keys)} key(s) -> {len(pool.lanes)} lanes, {workers} parallel requests")
 
     # Mega Level dots are drawn icons the model reads poorly; measure them
     # from pixels and hand the numbers over, per frame of this batch.
@@ -2707,7 +2761,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         except Exception as exc:  # diagnostics must never break an import
             print(f"[Measure] could not write the raw-batch dump: {exc}")
     unread = [i for i in range(len(batches)) if results.get(i) is None]
-    if len(unread) > 0.3 * len(batches):
+    if strict and len(unread) > 0.3 * len(batches):
         print(f"[Gemini] ERROR: {len(unread)} of {len(batches)} batches could not be read "
               "(models overloaded or out of quota). Refusing to write a partial import; re-run later.")
         for row in pool.summary():
@@ -2735,9 +2789,10 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
         if video_mode:
             clean_video_items(collected)
 
-    print(f"[Gemini] finished in {(time.time() - t_start) / 60:.1f} min. Lanes:")
-    for row in pool.summary():
-        print("   " + row)
+    if not shared:
+        print(f"[Gemini] finished in {(time.time() - t_start) / 60:.1f} min. Lanes:")
+        for row in pool.summary():
+            print("   " + row)
 
     # Merge duplicate sightings across batches (same name + CP), same rule as
     # the client: keep the first sighting, backfill any nulls from later ones.
