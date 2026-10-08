@@ -5126,7 +5126,11 @@ function _speciesKeys(name, form) {
   // lowercase with underscores ("ho_oh", "mr_mime", "type_null", "nidoran_female").
   const norm = v => String(v || '').toLowerCase().trim().replace(/\u2640/g, '_female').replace(/\u2642/g, '_male')
     .replace(/-f$/, '_female').replace(/-m$/, '_male').replace(/[\s.':\-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-  const n = norm(name), f = norm(form);
+  const n = norm(name);
+  // BASE_STATS_BY_FORM / movepools say "alola" and "paldea"; PvPoke ids say "alolan" and "paldean".
+  const FORM_ALIAS = { alola: 'alolan', paldea: 'paldean', hisui: 'hisuian', galar: 'galarian' };
+  let f = norm(form);
+  f = FORM_ALIAS[f] || f;
   const keys = [];
   if (f && f !== 'normal') keys.push(n + '_' + f);
   keys.push(n);
@@ -5245,6 +5249,27 @@ function _speciesInfoRaw(name, form) {
     }
   }
   return null;
+}
+
+// Regional forms share a dex number and a printed name with the default form but differ in
+// typing, base stats, moves and rankings. Given the typing read off the screen ("Ice / Fairy"),
+// return the BASE_STATS_BY_FORM suffix ('alola', 'galarian', 'hisuian', 'paldea') whose typing
+// matches, 'normal' when the default form matches, or null when it cannot be told apart.
+function hasRegionalForms(name, dex) {
+  const d = dex != null ? dex : resolveDexByName(name);
+  return d != null && ['alola', 'galarian', 'hisuian', 'paldea'].some(f => !!BASE_STATS_BY_FORM[d + '_' + f]);
+}
+function formForTypes(name, typeText, dex) {
+  const seen = String(typeText || '').split(/[\/,&]+/).map(t => t.trim().toLowerCase()).filter(Boolean).sort().join('/');
+  if (!seen) return null;
+  const d = dex != null ? dex : resolveDexByName(name);
+  if (d == null) return null;
+  const typesOf = form => { const i = speciesInfo(name, form); return i ? i.types.map(t => t.toLowerCase()).sort().join('/') : null; };
+  const cands = ['normal'];
+  ['alola', 'galarian', 'hisuian', 'paldea'].forEach(f => { if (BASE_STATS_BY_FORM[d + '_' + f]) cands.push(f); });
+  if (cands.length === 1) return null;
+  const hits = cands.filter(f => typesOf(f === 'normal' ? '' : f) === seen);
+  return hits.length === 1 ? hits[0] : null;
 }
 
 function pvpFastMoveFor(id) {
@@ -5382,6 +5407,6 @@ if (typeof window !== 'undefined') {
     PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
-    speciesInfo, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
+    speciesInfo, formForTypes, hasRegionalForms, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

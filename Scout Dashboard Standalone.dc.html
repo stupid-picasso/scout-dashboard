@@ -1230,7 +1230,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.154</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.155</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -5881,8 +5881,12 @@ class Component extends DCLogic {
 
   typeOf(p) {
     if (!p) return '';
-    const fromTable = (this.state.typeTable || {})[String(p.name || '').toLowerCase()];
-    let raw = fromTable || p.type || [p.type1, p.type2].filter(Boolean).join(' / ') || '';
+    // A species with regional forms (Ninetales: Fire / Ice+Fairy) cannot be typed by name, so the
+    // name-keyed table is skipped for it: the Pokemon's own scanned type, then its form's typing.
+    const m = this.mechanics;
+    const regional = !!(m && m.hasRegionalForms && m.hasRegionalForms(p.name, p.dex));
+    const fromTable = regional ? '' : (this.state.typeTable || {})[String(p.name || '').toLowerCase()];
+    let raw = p.type || fromTable || [p.type1, p.type2].filter(Boolean).join(' / ') || '';
     // PvPoke's game master (bundled) knows every released species' typing,
     // including regional forms, so the AI type lookup is only a last resort.
     if (!raw && this.mechanics && this.mechanics.speciesInfo) {
@@ -7945,7 +7949,7 @@ class Component extends DCLogic {
         const prevRec = candyInv[key] || {};
         candyInv[key] = { name: p.matchedName || p.name, candy: p.candy != null ? p.candy : prevRec.candy, xlCandy: p.xlCandy != null ? p.xlCandy : prevRec.xlCandy, at: Date.now() };
       }
-      if (p.type) types[(p.matchedName || p.name || '').trim().toLowerCase()] = p.type;
+      if (p.type && !(this.mechanics && this.mechanics.hasRegionalForms && this.mechanics.hasRegionalForms(p.matchedName || p.name))) types[(p.matchedName || p.name || '').trim().toLowerCase()] = p.type;
     }
     // Species-level costs and moves read off the same screen, applied to the
     // matched roster entry so power-up planning can use real numbers.
@@ -10130,7 +10134,13 @@ class Component extends DCLogic {
         if (seenStardust == null || item.stardust > seenStardust) seenStardust = item.stardust;
       }
       const nameLower = item.name.toLowerCase();
-      const dupeKey = nameLower + '|' + (item.cp == null ? '?' : item.cp);
+      // The detail screen prints the type badges but not "Alolan". Same name, different typing
+      // means a different form (own base stats, moves and rankings), so read the form off the type.
+      if (item.type && !item.matchedForm && mechanics && mechanics.formForTypes) {
+        const f = mechanics.formForTypes(item.name, item.type, item.dex);
+        if (f) item.matchedForm = f;
+      }
+      const dupeKey = nameLower + '|' + (item.cp == null ? '?' : item.cp) + (item.matchedForm && item.matchedForm !== 'normal' ? '|' + item.matchedForm : '');
       if (seenThisImport.has(dupeKey)) {
         dupes.push({ name: item.name, cp: item.cp });
       }
@@ -10141,7 +10151,11 @@ class Component extends DCLogic {
       // CP is part of a Pokemon's identity for import purposes: same species
       // + same CP is "the same catch seen again"; same species + different
       // CP is a different individual and must become its own entry.
-      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet))
+      const itemForm = item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : '';
+      const formOk = p => !item.type || !item.matchedForm || String(p.form || '').toLowerCase() === itemForm;
+      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && formOk(p) && !this.isRemoved(p, removedSet))
+        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && formOk(p) && !this.isRemoved(p, removedSet))
+        || roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet))
         || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet));
       let ivPatch = {};
       let solvedFrom = null;
@@ -10288,6 +10302,8 @@ class Component extends DCLogic {
           hp: item.hp != null ? item.hp : match.hp,
           lucky: item.lucky ? true : !!before.lucky,
           favorite: item.favorite ? true : !!before.favorite,
+          ...(item.matchedForm ? { form: itemForm || null } : {}),
+          ...(item.type ? { type: item.type } : {}),
           ...this.shinyPatch(item, before),
           ...(item.gender ? { gender: item.gender } : {}),
           ...(item.fastMove ? { quickMove: item.fastMove } : {}),
@@ -10302,7 +10318,8 @@ class Component extends DCLogic {
         updated++;
       } else {
         const newRec = {
-          idx: 'video-' + Date.now() + '-' + i, name: item.name, form: null, dex: item.dex,
+          idx: 'video-' + Date.now() + '-' + i, name: item.name, form: item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : null, dex: item.dex,
+          type: item.type || null,
           gender: item.gender || null,
           cp: item.cp, hp: item.hp != null ? item.hp : null,
           atkIV: ivPatch.atkIV != null ? ivPatch.atkIV : null, defIV: ivPatch.defIV != null ? ivPatch.defIV : null,
@@ -10334,7 +10351,7 @@ class Component extends DCLogic {
           at: Date.now()
         };
       }
-      if (item.type) types[nameLower] = item.type;
+      if (item.type && !(mechanics && mechanics.hasRegionalForms && mechanics.hasRegionalForms(item.name, item.dex))) types[nameLower] = item.type;
     });
     this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds });
     if (seenStardust != null) this.setStardust(seenStardust);
@@ -14105,7 +14122,7 @@ class Component extends DCLogic {
     const suggestedTeam = [];
     suggestedTeamPool.forEach(p => {
       if (suggestedTeam.length >= 6) return;
-      const t = (typeTableRef[p.name.toLowerCase()] || this.typeOf(p) || '').split('/')[0].trim();
+      const t = (this.typeOf(p) || typeTableRef[p.name.toLowerCase()] || '').split('/')[0].trim();
       const key = t || 'unknown-' + p.dex;
       if (teamTypes[key]) return;
       teamTypes[key] = true;

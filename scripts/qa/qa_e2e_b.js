@@ -167,6 +167,16 @@ module.exports = async function suiteB() {
     await s.call('mergeVideoImport', [{ name: base.name, cp: base.cp, hp: base.hp, favorite: false, lucky: false }]); await s.page.waitForTimeout(300);
     o = (await s.state()).ivOverrides[base.idx] || {}; expect(o.favorite === true && o.lucky === true, 'cleared by a run that missed the icon: ' + JSON.stringify([o.favorite, o.lucky]));
   }, 'high');
+  await T('IMP-21', 'Import', 'Same-name Pokemon with different typing become different forms (Kantonian vs Alolan Ninetales)', async () => {
+    await s.call('mergeVideoImport', [
+      { name: 'Ninetales', dex: 38, cp: 1801, hp: 140, type: 'Fire', atkIV: 10, defIV: 10, staIV: 10 },
+      { name: 'Ninetales', dex: 38, cp: 1802, hp: 141, type: 'Ice / Fairy', atkIV: 10, defIV: 10, staIV: 10 }]); await s.page.waitForTimeout(300);
+    const st = await s.state(); const rows = (st.addedPokemon || []).filter(p => p.name === 'Ninetales' && (p.cp === 1801 || p.cp === 1802));
+    const k = rows.find(p => p.cp === 1801), a = rows.find(p => p.cp === 1802);
+    expect(k && a, 'both rows should exist'); expect(!k.form && a.form === 'alola', JSON.stringify([k && k.form, a && a.form]));
+    expect(await s.call('typeOf', k) === 'Fire', 'kantonian type'); expect(await s.call('typeOf', a) === 'Ice / Fairy', 'alolan type: ' + await s.call('typeOf', a));
+    expect(await s.call('typeOf', { name: 'Ninetales', dex: 38, form: 'alola' }) === 'Ice / Fairy', 'form-only lookup');
+  }, 'critical');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');
