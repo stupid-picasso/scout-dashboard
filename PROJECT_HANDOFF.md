@@ -345,7 +345,7 @@ The sections above describe the original video/OCR pipeline. The app has since g
 
 ## Gemini video import pipeline (parallel, tiered)
 - `gemini_pool.py`: lanes per (model, key), per-lane RPM, dead-lane handling, bulk/verify tiers, `suspicion()`.
-- Model names are discovered, not hardcoded: `choose_models()` takes the newest stable `gemini-<ver>-flash-lite` (bulk, max 3) and `-flash` (verify, max 5) from ListModels; previews/tts/image/live are skipped. Built-in names are only a fallback if ListModels fails. Override with env `GEMINI_BULK_MODELS` / `GEMINI_VERIFY_MODELS` (comma lists). Retired models vanish from ListModels or 404 and their lanes are dropped; unread batches fall to the verify tier.
+- Model names are discovered, not hardcoded: `choose_models()` takes the newest stable `gemini-<ver>-flash-lite` (bulk, max 3) and `-flash` (verify, max 5) from ListModels; previews/tts/image/live are skipped. Built-in names are only a fallback if ListModels fails. Override with env `GEMINI_BULK_MODELS` / `GEMINI_VERIFY_MODELS` (comma lists). Retired models vanish from ListModels or 404 and their lanes are dropped; unread batches fall to the verify tier. Every run (extract, IV import, preflight) first calls `active_models()`: ListModels, then a free `countTokens` check per model; a model answering 404/403 on every key (Google keeps listing retired models) is left out of the cycle, up to 6 per tier, newest first. The log prints the active and dropped models.
 - Thinking is minimal (ladder in `call_gemini`). HDR tone-map downscales inside the first zscale.
 - Tests: `scripts/test_gemini_pool.py`, `scripts/test_extract_pipeline.py` (run in Tests workflow).
 - Accuracy per model: run the "Benchmark Gemini Models" workflow; output `data/benchmark_models.md`.

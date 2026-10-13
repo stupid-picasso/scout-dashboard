@@ -2506,6 +2506,48 @@ def discover_models(keys):
     return found
 
 
+def probe_dead_models(keys, models, timeout=15):
+    """Models that no key can call right now. ListModels keeps listing a model for a while after Google
+    retires it (the call then answers 404), so every run checks each candidate with a countTokens
+    request: it needs no generation quota, and 404/403 on every key means the model is gone for us.
+    Anything else (429, 5xx, timeout) says nothing about existence, so that model stays in the cycle."""
+    def one(model):
+        for k in keys:
+            url = ("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":countTokens?key=" + k)
+            try:
+                r = requests.post(url, json={"contents": [{"parts": [{"text": "hi"}]}]}, timeout=timeout)
+            except requests.exceptions.RequestException:
+                return False
+            if r.status_code not in (403, 404):
+                return False
+        return True
+    models = list(models)
+    if not models or not keys:
+        return set()
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=min(8, len(models))) as ex:
+        return {m for m, dead in zip(models, ex.map(one, models)) if dead}
+
+
+def active_models(keys, announce=True, per_tier=6):
+    """(bulk, verify) models to cycle through, decided fresh on every run: everything the keys can list,
+    minus whatever answers 404/403 to a live check. Newest first, up to `per_tier` per tier, so a model
+    Google retires drops out and a new one joins without any edit here."""
+    avail = discover_models(keys)
+    if avail and announce:
+        print("[Gemini] models listed for these keys (flash family): "
+              + ", ".join(sorted(m for m in avail if "flash" in m)))
+    bulk, verify = gemini_pool.choose_models(avail, max_bulk=per_tier + 4, max_verify=per_tier + 4)
+    dead = probe_dead_models(keys, bulk + verify) if avail else set()
+    if dead and announce:
+        print("[Gemini] retired / unavailable, left out of the cycle: " + ", ".join(sorted(dead)))
+    bulk = [m for m in bulk if m not in dead][:per_tier]
+    verify = [m for m in verify if m not in dead][:per_tier]
+    if announce:
+        print("[Gemini] active models: bulk " + (", ".join(bulk) or "-") + " | verify " + (", ".join(verify) or "-"))
+    return bulk, verify
+
+
 def _video_merge_key(item):
     return str(item["name"]).lower() + "|" + ("?" if item.get("cp") is None else str(item.get("cp")))
 
@@ -2526,14 +2568,10 @@ _SHARED_LOCK = threading.Lock()
 def _build_pool(keys, announce=True):
     # Which models can these keys actually call? A name that does not exist for the account is
     # dropped up front instead of costing a 404 and a retry on every batch.
-    avail = discover_models(keys)
-    if avail and announce:
-        print("[Gemini] models callable with these keys (flash family): "
-              + ", ".join(sorted(m for m in avail if "flash" in m)))
-    # Model names are not hardcoded: the newest flash / flash-lite models the keys can call are
-    # chosen from ListModels (gemini_pool.choose_models). Built-in names are only the fallback
+    # Model names are not hardcoded: active_models() lists what the keys can call, drops models Google
+    # has retired (live check) and returns the rest newest first. Built-in names are only the fallback
     # when ListModels is unreachable.
-    bulk_models, verify_models = gemini_pool.choose_models(avail)
+    bulk_models, verify_models = active_models(keys, announce=announce)
     tiers = {}
     if not bulk_models:  # no cheap model available: let the stronger ones carry the bulk work
         bulk_models, verify_models = verify_models, []
@@ -2569,8 +2607,7 @@ def preflight_gemini(keys):
     clear message instead of after ten minutes of frame extraction. Skipped with PREFLIGHT=0."""
     if os.environ.get("PREFLIGHT") == "0":
         return
-    avail = discover_models(keys)
-    bulk, verify = gemini_pool.choose_models(avail)
+    bulk, verify = active_models(keys)
     usable, notes = 0, []
     for model in bulk:
         for key in keys:

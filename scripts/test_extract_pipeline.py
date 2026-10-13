@@ -65,6 +65,8 @@ def reply_for(model, key, body):
 def fake_post(url, json=None, timeout=None):
     model = url.split("/models/")[1].split(":")[0]
     key = url.split("key=")[1]
+    if ":countTokens" in url:      # the liveness probe: free, never recorded as a generation call
+        return Resp(404, {"error": {"message": "not found"}}) if model == BEHAVE["bad_model"] or model in BEHAVE.get("retired", ()) else Resp(200, {"totalTokens": 1})
     cfg = json["generationConfig"]
     with lock:
         calls.append((model, key, dict(cfg)))
@@ -176,6 +178,13 @@ try:
     check("preflight passes on a healthy day", True)
 except SystemExit:
     check("preflight passes on a healthy day", False, "aborted")
+BEHAVE["retired"] = {"gemini-3.5-flash-lite"}
+_bk, _vf = px.active_models(["keyAAAAAA111", "keyBBBBBB222"], announce=False)
+check("active models: a model that answers 404 is left out of the cycle", "gemini-3.5-flash-lite" not in _bk and _bk, str(_bk))
+BEHAVE["retired"] = set()
+_bk2, _ = px.active_models(["keyAAAAAA111", "keyBBBBBB222"], announce=False)
+check("active models: it is back once the live check passes again", "gemini-3.5-flash-lite" in _bk2, str(_bk2))
+check("probe: no keys or models means nothing is dead", px.probe_dead_models([], ["x"]) == set() and px.probe_dead_models(["k"], []) == set())
 check("quota id says per-day", px._quota_info(_R429.text)[0] is True)
 check("quota id says per-minute", px._quota_info('{"quotaId":"GenerateRequestsPerMinutePerProjectPerModel-FreeTier"} see documentation of daily limits')[0] is False)
 check("no ids falls back to words", px._quota_info("You exceeded your daily quota")[0] is True)
