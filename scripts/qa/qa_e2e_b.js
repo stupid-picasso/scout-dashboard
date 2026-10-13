@@ -203,6 +203,30 @@ module.exports = async function suiteB() {
     await s.set({ toolsMode: 'search' }); await s.page.waitForTimeout(400);
     expect(/ninetales,vulpix&ice/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
   }, 'high');
+  await T('GEM-01', 'AI', 'In-app Gemini cycle is live: retired models dropped, a 503 moves to the next model', async () => {
+    const r = await s.page.evaluate(async () => {
+      const gen = []; const orig = window.fetch;
+      const J = (status, obj) => ({ status, ok: status < 400, json: async () => obj, text: async () => JSON.stringify(obj) });
+      window.fetch = async (url, opt) => {
+        url = String(url);
+        if (url.indexOf('generativelanguage') < 0) return orig(url, opt);
+        if (/\/models\?/.test(url)) return J(200, { models: ['gemini-3.9-flash', 'gemini-3.5-flash-lite', 'gemini-3.4-flash', 'gemini-2.5-flash', 'gemini-3.9-flash-image'].map(n => ({ name: 'models/' + n, supportedGenerationMethods: ['generateContent'] })) });
+        const m = /models\/([^:]+):(\w+)/.exec(url);
+        if (m[2] === 'countTokens') return J(m[1] === 'gemini-3.5-flash-lite' ? 404 : 200, {});
+        gen.push(m[1]);
+        if (m[1] === 'gemini-3.9-flash') return J(503, { error: { message: 'high demand' } });
+        return J(200, { candidates: [{ content: { parts: [{ text: 'OK' }] }, finishReason: 'STOP' }] });
+      };
+      try {
+        let logic = null;
+        for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGeminiWithKey) { logic = f.stateNode.logic; break; } if (logic) break; }
+        const out = await logic.callGeminiWithKey({ messages: [{ content: 'hi' }] }, 'QAKEY-' + Date.now());
+        return { out, gen, rot: await logic.geminiRotation('QAKEY-x', false).catch(() => null) };
+      } finally { window.fetch = orig; }
+    });
+    expect(r.out === 'OK', JSON.stringify(r));
+    expect(r.gen[0] === 'gemini-3.9-flash' && r.gen[1] === 'gemini-3.4-flash' && r.gen.indexOf('gemini-3.5-flash-lite') < 0 && r.gen.indexOf('gemini-3.9-flash-image') < 0, 'order: ' + r.gen.join(','));
+  }, 'critical');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

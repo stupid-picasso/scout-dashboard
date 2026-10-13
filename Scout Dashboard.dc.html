@@ -7696,6 +7696,55 @@ class Component extends DCLogic {
     this.forceUpdate();
   }
 
+  // ---- Live Gemini model list ------------------------------------------------------------------
+  // flash / flash-lite text models only; previews rank after stable ones, 2.x is used only when nothing
+  // newer exists (Google keeps listing retired models, so each one is checked with a free countTokens call).
+  geminiClassify(name) {
+    const m = /^gemini-(\d+(?:\.\d+)?)-flash(-lite)?(?:-(\d{3}|preview[\w.-]*))?$/.exec(name || '');
+    if (!m || /(tts|image|live|audio|embed|thinking|robotics|computer|customtools|native|exp)/.test(name)) return null;
+    return { name, ver: m[1].split('.').map(Number), lite: !!m[2], preview: !!(m[3] && m[3].indexOf('preview') === 0) };
+  }
+
+  geminiForget(key, model) {
+    const c = this._gemRot && this._gemRot[key];
+    if (c) { c.vision = c.vision.filter(x => x !== model); c.text = c.text.filter(x => x !== model); }
+  }
+
+  async geminiRotation(key, hasImage) {
+    this._gemRot = this._gemRot || {};
+    let c = this._gemRot[key];
+    if (!c || Date.now() - c.at > 3 * 3600 * 1000) {
+      c = this._gemRot[key] = c || { at: 0, vision: [], text: [] };
+      c.at = Date.now();    // set first: a failing lookup is not retried on every call
+      try {
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' + encodeURIComponent(key));
+        if (res.ok) {
+          const data = await res.json();
+          let rows = (data.models || []).filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
+            .map(m => this.geminiClassify(String(m.name || '').replace('models/', ''))).filter(Boolean);
+          const modern = rows.filter(r => r.ver[0] >= 3);
+          rows = modern.length ? modern : rows;
+          // Live check: a retired model answers 404/403 to countTokens (which needs no generation quota).
+          const alive = await Promise.all(rows.map(async r => {
+            try {
+              const t = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + r.name + ':countTokens?key=' + encodeURIComponent(key), {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
+              });
+              return t.status !== 404 && t.status !== 403;
+            } catch (e) { return true; }
+          }));
+          rows = rows.filter((r, i) => alive[i]);
+          const cmp = (a, b) => (b.ver[0] - a.ver[0]) || ((b.ver[1] || 0) - (a.ver[1] || 0));
+          const order = list => list.sort((a, b) => (a.preview - b.preview) || cmp(a, b)).map(r => r.name).slice(0, 8);
+          // Screenshots and video frames: the accurate (non-lite) models first. Text: the cheap ones first.
+          c.vision = order(rows.filter(r => !r.lite)).concat(order(rows.filter(r => r.lite)));
+          c.text = order(rows.filter(r => r.lite)).concat(order(rows.filter(r => !r.lite)));
+        }
+      } catch (e) { /* offline or blocked: the caller falls back to its built-in list */ }
+    }
+    return hasImage ? c.vision : c.text;
+  }
+
   async callGeminiWithKey(body, key) {
     const parts = [];
     (body.messages || []).forEach(m => {
@@ -7716,13 +7765,18 @@ class Component extends DCLogic {
     // pipeline; text-only calls (chat/evolve/moves/types/candy-ai) use a
     // different 3 so the two workloads don't compete for the same daily quota.
     const hasImage = parts.some(p => p.inline_data);
-    const visionRotation = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
-    const textRotation = ['gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-    const modelRotation = hasImage ? visionRotation : textRotation;
+    // The lists are no longer fixed: geminiRotation() asks Google which flash models this key can call
+    // right now (and drops retired ones), so a model Google shuts down leaves the cycle by itself.
+    // The names below are only the fallback when that lookup is unreachable.
+    const visionFallback = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+    const textFallback = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+    const live = await this.geminiRotation(key, hasImage);
+    const modelRotation = live.length ? live : (hasImage ? visionFallback : textFallback);
     const idxKey = hasImage ? '_geminiModelIdxVision' : '_geminiModelIdxText';
-    const candidates = this._geminiModel
-      ? [this._geminiModel]
-      : [modelRotation[this[idxKey] ? this[idxKey] % modelRotation.length : 0]].concat(modelRotation.filter((m, i) => i !== (this[idxKey] || 0) % modelRotation.length));
+    // Every model is a candidate, starting where the round-robin left off, so one overloaded model
+    // (503) moves on to the next instead of failing the whole batch.
+    const start = (this[idxKey] || 0) % modelRotation.length;
+    const candidates = modelRotation.slice(start).concat(modelRotation.slice(0, start));
     let lastErr = null;
     for (const model of candidates) {
       const buildConfig = (extras) => {
@@ -7764,7 +7818,6 @@ class Component extends DCLogic {
           // 10 requests/minute for nothing.
           throw new Error('Gemini reply was cut off (MAX_TOKENS).');
         }
-        this._geminiModel = model;
         this._lastEngine = 'Gemini (' + model + ')';
         // Advance this workload's rotation index for next batch (round-robin)
         this[idxKey] = ((this[idxKey] || 0) + 1) % modelRotation.length;
@@ -7797,14 +7850,18 @@ class Component extends DCLogic {
       // arg, not enabled on the key) — try the next candidate rather than
       // giving up on Gemini entirely.
       lastErr = new Error('[' + this.GEMINI_REQ_VERSION + '] Gemini ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
-      if (res.status !== 404 && res.status !== 400) throw lastErr;
+      // 404 = the model is gone for this key: leave it out of the cycle from now on.
+      if (res.status === 404) this.geminiForget(key, model);
+      // 400/404 (this model will not serve it) and 5xx (this model is overloaded right now) are per-model
+      // problems: try the next model. Anything else is not going to improve by switching.
+      if (res.status !== 404 && res.status !== 400 && res.status < 500) throw lastErr;
     }
     throw lastErr || new Error('No Gemini model available for this key.');
   }
 
   // Bump on every change to callGemini's request shape, so a stale cached build
   // is identifiable from the error text alone.
-  get GEMINI_REQ_VERSION() { return 'g3'; }
+  get GEMINI_REQ_VERSION() { return 'g4'; }
 
 
   // Per-day call counters, so the free-tier budgets are visible before they run out.
