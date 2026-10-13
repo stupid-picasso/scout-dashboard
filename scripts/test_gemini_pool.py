@@ -177,5 +177,24 @@ for _ in range(12):
 check("bulk lane is never retired by overload", not _bl.dead and _bl.next_ok >= 120, "%s %s" % (_bl.dead, _bl.next_ok))
 check("retired 2.x models are skipped when 3.x exist", gp.choose_models({"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3.5-flash-lite"}, env={}) == (["gemini-3.5-flash-lite"], ["gemini-3.5-flash"]))
 check("2.x used when it is all there is", gp.choose_models({"gemini-2.5-flash-lite"}, env={})[0] == ["gemini-2.5-flash-lite"])
+
+# overload spill: when the cheap models keep answering 503, idle flash lanes take over bulk work
+pool = fast(gp.Pool(KEYS, ["gemini-3.5-flash-lite", "gemini-3.5-flash"]))
+def lite_overloaded(i, model, key):
+    if "lite" in model:
+        raise Err("503 high demand", status=503)
+    return [{"name": "ok%d" % i}]
+for l in pool.lanes:            # no waiting between retries in the test
+    pass
+import time as _t
+_t0 = _t.time()
+res, who = gp.run_batches(pool, range(12), lite_overloaded, "bulk", 4, max_attempts=40, max_wait=2.0)
+spilled = sum(l.ok for l in pool.lanes if l.tier == "verify")
+check("overload: flash lanes finish the bulk work", spilled > 0 and sum(1 for i in range(12) if res.get(i)) > 0, "spilled=%d" % spilled)
+check("overload: spill respects the per-lane cap", all(l.calls <= gp.SPILL_CAP for l in pool.lanes if l.tier == "verify"))
+pool = fast(gp.Pool(KEYS, ["gemini-3.5-flash-lite", "gemini-3.5-flash"]))
+res, who = gp.run_batches(pool, range(12), lambda i, m, k: [{"name": "x"}], "bulk", 4)
+check("healthy day: verify lanes stay unused", all(l.calls == 0 for l in pool.lanes if l.tier == "verify"))
+
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

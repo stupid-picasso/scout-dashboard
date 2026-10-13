@@ -42,6 +42,7 @@ BULK_MODELS = [m for m, p in MODEL_PROFILES.items() if p["tier"] == "bulk"]
 VERIFY_MODELS = [m for m, p in MODEL_PROFILES.items() if p["tier"] == "verify"]
 
 NEVER = float("inf")
+SPILL_CAP = 14               # most calls one verify lane lends to bulk work (free tier: 20 requests a day)
 
 
 _FLASH_RE = re.compile(r"^gemini-(\d+(?:\.\d+)?)-flash(-lite)?(?:-(\d{3}|preview[\w.-]*))?$")
@@ -129,9 +130,13 @@ class Pool:
         with self.lock:
             return [l for l in self.lanes if l.tier == tier and not l.dead]
 
-    def acquire(self, tier, avoid=(), max_wait=300.0):
+    def acquire(self, tier, avoid=(), max_wait=300.0, spill=False):
         """Reserve the next request slot on a lane of `tier`. Waits for a lane to be ready;
-        returns None when no lane is left alive or the wait would exceed max_wait."""
+        returns None when no lane is left alive or the wait would exceed max_wait.
+
+        spill=True lets bulk work borrow an idle lane of another tier while the tier itself is
+        struggling (every lane's latest call failed, or 40%+ of its calls did, and none is ready right now). A Google-side overload of the
+        cheap models then moves the work onto the other models instead of leaving them idle."""
         deadline = self.clock() + max_wait
         while True:
             with self.lock:
@@ -146,6 +151,19 @@ class Pool:
                     lane.next_ok = now + 60.0 / lane.rpm
                     lane.calls += 1
                     return lane
+                if spill:
+                    calls = sum(l.calls for l in self.lanes if l.tier == tier)
+                    errs = sum(sum(l.errors.values()) for l in self.lanes if l.tier == tier)
+                    failing = all(l.streak > 0 for l in alive)       # every cheap lane's latest call failed
+                    if failing or (calls >= 10 and errs / calls >= 0.4):
+                        spare = [l for l in self.lanes if l.tier != tier and not l.dead
+                                 and l.next_ok <= now and l.calls < SPILL_CAP]
+                        if spare:
+                            spare.sort(key=lambda l: (l.id in avoid, l.calls))
+                            lane = spare[0]
+                            lane.next_ok = now + 60.0 / lane.rpm
+                            lane.calls += 1
+                            return lane
                 wait = min(l.next_ok for l in alive) - now
             if wait == NEVER or self.clock() + min(wait, 1.0) > deadline:
                 return None
@@ -208,7 +226,7 @@ def run_batches(pool, indexes, make_call, tier, workers, max_attempts=8, max_wai
         while attempts < max_attempts:
             if deadline is not None and pool.clock() > deadline:
                 return i, None, None           # out of time: the caller keeps what it has
-            lane = pool.acquire(tier, avoid, max_wait)
+            lane = pool.acquire(tier, avoid, max_wait, spill=(tier == "bulk"))
             if lane is None:
                 return i, None, None
             t0 = pool.clock()
