@@ -6951,6 +6951,72 @@ class Component extends DCLogic {
       ocrParsed: null, ocrPreview: null, ocrError: '' });
   }
 
+  // ---- Screenshot read clean-up (same rules as the server pipeline's post-processing) -----------
+  // Edit distance based similarity in [0,1].
+  nameSimilarity(a, b) {
+    if (a === b) return 1;
+    const m = a.length, n = b.length;
+    if (!m || !n) return 0;
+    let prev = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return 1 - prev[n] / Math.max(m, n);
+  }
+
+  // "Sheigon" -> "Shelgon". A name that already resolves (or contains a known species, as in
+  // "Alolan Raichu") is kept; so is anything with no clearly-best close match.
+  snapSpeciesName(name) {
+    const m = this.mechanics;
+    const raw = String(name || '').trim();
+    if (!raw || !m || !m.NAME_TO_DEX) return { name: raw, changed: false };
+    if (m.resolveDexByName && m.resolveDexByName(raw) != null) return { name: raw, changed: false };
+    const low = raw.toLowerCase();
+    const words = low.replace(/-/g, ' ').split(/\s+/);
+    if (m.resolveDexByName && words.some(w => w.length > 2 && m.resolveDexByName(w) != null)) return { name: raw, changed: false };
+    let best = null, bestScore = 0, second = 0;
+    Object.keys(m.NAME_TO_DEX).forEach(k => {
+      const sc = this.nameSimilarity(low, String(k).toLowerCase());
+      if (sc > bestScore) { second = bestScore; bestScore = sc; best = k; } else if (sc > second) second = sc;
+    });
+    if (best && bestScore >= 0.8 && bestScore - second >= 0.05) return { name: this.capitalizeName(best), changed: true };
+    return { name: raw, changed: false };
+  }
+
+  // Cleans one AI read of a detail screen: species spelling, type casing, weight/height units, and the
+  // regional form (same name, different typing) from the type badges.
+  cleanScreenshotRecord(rec) {
+    const out = { ...rec };
+    const notes = [];
+    const m = this.mechanics;
+    if (out.pokemon_name) {
+      const sn = this.snapSpeciesName(out.pokemon_name);
+      if (sn.changed) { notes.push('name "' + out.pokemon_name + '" → "' + sn.name + '"'); out.pokemon_name = sn.name; }
+    }
+    ['type_1', 'type_2'].forEach(k => {
+      if (typeof out[k] === 'string' && out[k].trim()) out[k] = out[k].trim().charAt(0).toUpperCase() + out[k].trim().slice(1).toLowerCase();
+    });
+    // Weight is kilograms, height is metres: a weight that reads like a height (or the reverse) is a
+    // field mix-up. Swap when the other field is empty, otherwise drop it.
+    const KG = /^\d{1,4}(?:\.\d{1,2})?\s?kg$/i, M = /^\d{1,2}(?:\.\d{1,2})?\s?m$/i;
+    let w = typeof out.weight === 'string' ? out.weight.trim() : out.weight, h = typeof out.height === 'string' ? out.height.trim() : out.height;
+    if (typeof w === 'string' && M.test(w) && !KG.test(w)) { if (!h) { h = w; } w = null; notes.push('weight read as a height'); }
+    if (typeof h === 'string' && KG.test(h) && !M.test(h)) { if (!w) { w = h; } h = null; notes.push('height read as a weight'); }
+    if (typeof w === 'string' && w && !KG.test(w)) { notes.push('weight "' + w + '" dropped'); w = null; }
+    if (typeof h === 'string' && h && !M.test(h)) { notes.push('height "' + h + '" dropped'); h = null; }
+    out.weight = w || null; out.height = h || null;
+    // Regional form from the typing: Alolan Ninetales is Ice/Fairy, Kantonian is Fire.
+    if (m && m.formForTypes && out.pokemon_name && out.type_1 && !out.form) {
+      const types = out.type_2 ? out.type_1 + ' / ' + out.type_2 : out.type_1;
+      const f = m.formForTypes(out.pokemon_name, types, out.dex_number);
+      if (f && f !== 'normal') { out.form = f; notes.push('form ' + f + ' (from types ' + types + ')'); }
+      out._formKnown = !!f;
+    }
+    return { rec: out, notes };
+  }
+
   async handleScreenshotUpload(file) {
     if (!file) return;
     this._lastAiError = '';
@@ -6965,7 +7031,9 @@ class Component extends DCLogic {
       // its numeric misreads landed stardust digits in CP. A wrong record is
       // worse than no record, so a failed read now surfaces as an error.
       const rec0 = await this.readScreenshotWithVision(file);
-      let rec = rec0;
+      const cleaned = this.cleanScreenshotRecord(rec0);
+      let rec = cleaned.rec;
+      if (cleaned.notes.length) console.info('[Scout] screenshot read cleaned: ' + cleaned.notes.join('; '));
       const text = '[read by ' + (this._lastEngine || 'AI vision') + ']';
       const readerUsed = 'vision';
       if (rec.pokemon_name) {
@@ -6974,6 +7042,10 @@ class Component extends DCLogic {
                 type_1: rec.type_1 || dexInfo.type_1, type_2: rec.type_2 || dexInfo.type_2 };
       }
 
+      if (!rec.form && rec.pokemon_name && rec.type_1 && this.mechanics && this.mechanics.formForTypes) {
+        const f = this.mechanics.formForTypes(rec.pokemon_name, rec.type_2 ? rec.type_1 + ' / ' + rec.type_2 : rec.type_1, rec.dex_number);
+        if (f && f !== 'normal') { rec = { ...rec, form: f }; cleaned.notes.push('form ' + f + ' (from types)'); }
+      }
       // Still try to match an existing roster row (keeps IV-solving working), but
       // no longer require one — an unmatched read becomes a new record.
       // CP-alone matching is ONLY safe when OCR genuinely couldn't read a name at
@@ -6983,8 +7055,10 @@ class Component extends DCLogic {
       // silently attributing one Pokemon's scan to a totally different one.
       const roster = this.state.roster || [];
       const nameLower = (rec.pokemon_name || '').toLowerCase();
+      const formOf = f => String(f || '').toLowerCase();
       const matched = nameLower
-        ? roster.find(p => p.cp === rec.cp && p.name.toLowerCase() === nameLower)
+        ? (roster.find(p => p.cp === rec.cp && p.name.toLowerCase() === nameLower && (!rec.form || formOf(p.form) === formOf(rec.form)))
+          || roster.find(p => p.cp === rec.cp && p.name.toLowerCase() === nameLower))
         : roster.find(p => p.cp === rec.cp);
 
       this.setState({
@@ -6995,7 +7069,7 @@ class Component extends DCLogic {
           dex: rec.dex_number || (matched ? matched.dex : null),
           matchedIdx: matched ? matched.idx : null,
           matchedName: matched ? matched.name : null,
-          matchedForm: matched ? matched.form : null,
+          matchedForm: matched ? (matched.form || rec.form || null) : (rec.form || null),
           candy: rec.candy != null ? rec.candy : null,
           xlCandy: rec.xl_candy != null ? rec.xl_candy : null,
           stardust: rec.stardust != null ? rec.stardust : null,
@@ -7012,6 +7086,7 @@ class Component extends DCLogic {
           _rec: rec,
           readerUsed,
           aiError: this._lastAiError || '',
+          cleanNotes: cleaned.notes,
           rawText: text.slice(0, 1200)
         }
       });
@@ -7288,6 +7363,7 @@ class Component extends DCLogic {
       put('chargeMove', p.chargeMove1 || rec.charged_move_1);
       put('chargeMove2', p.chargeMove2 || rec.charged_move_2);
       put('gender', rec.gender);
+      if (rec.form) put('form', rec.form);
       put('weight', p.weight || rec.weight);
       put('height', p.height || rec.height);
       put('sizeClass', rec.size_class);

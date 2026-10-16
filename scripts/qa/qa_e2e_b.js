@@ -227,6 +227,20 @@ module.exports = async function suiteB() {
     expect(r.out === 'OK', JSON.stringify(r));
     expect(r.gen[0] === 'gemini-3.9-flash' && r.gen[1] === 'gemini-3.4-flash' && r.gen.indexOf('gemini-3.5-flash-lite') < 0 && r.gen.indexOf('gemini-3.9-flash-image') < 0, 'order: ' + r.gen.join(','));
   }, 'critical');
+  await T('OCR-CLEAN-01', 'Import', 'Screenshot read: species typos snapped, types cased, units fixed, regional form from types', async () => {
+    const c = async r => (await s.call('cleanScreenshotRecord', r));
+    let r = await c({ pokemon_name: 'Sheigon', type_1: 'DRAGON', weight: '1.2m', height: null, cp: 500 });
+    expect(r.rec.pokemon_name === 'Shelgon' && r.rec.type_1 === 'Dragon', JSON.stringify(r));
+    expect(r.rec.height === '1.2m' && r.rec.weight === null, 'unit swap: ' + JSON.stringify(r.rec));
+    r = await c({ pokemon_name: 'Ninetales', dex_number: 38, type_1: 'ice', type_2: 'FAIRY' });
+    expect(r.rec.form === 'alola' && r.rec.type_1 === 'Ice' && r.rec.type_2 === 'Fairy', JSON.stringify(r));
+    r = await c({ pokemon_name: 'Ninetales', dex_number: 38, type_1: 'Fire' });
+    expect(!r.rec.form, 'kantonian must stay formless: ' + JSON.stringify(r));
+    r = await c({ pokemon_name: 'Pikachu', type_1: 'Electric', weight: '6kg', height: '0.4m' });
+    expect(r.rec.pokemon_name === 'Pikachu' && r.rec.weight === '6kg' && r.rec.height === '0.4m' && r.notes.length === 0, JSON.stringify(r));
+    r = await c({ pokemon_name: 'Zzzzzzzz' });
+    expect(r.rec.pokemon_name === 'Zzzzzzzz', 'unknown names are left alone');
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');
