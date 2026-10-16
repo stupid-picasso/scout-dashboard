@@ -1144,7 +1144,8 @@ VIDEO_IMPORT_PROMPT = (
     '"dynamax": true|null, "gigantamax": true|null, "maxMoveName": string|null, "maxAttackLevel": number|null, '
     '"maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, '
     '"favorite": boolean}. '
-    "Type: read EVERY type badge printed on the screen, as \"Type1 / Type2\" (for example \"Ice / Fairy\"); "
+    "Type: the type names are printed as TEXT next to each type icon; read the words, not the icon artwork. "
+    "Read EVERY type printed on the screen, as \"Type1 / Type2\" (for example \"Ice / Fairy\"); "
     "a Pokemon has one or two. Read it from the screen, never from the name: a regional form shares the "
     "name of the normal form but has different types (Alolan Ninetales is Ice / Fairy, Ninetales is Fire). "
     "Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge "

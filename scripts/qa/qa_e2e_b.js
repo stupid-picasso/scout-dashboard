@@ -277,6 +277,17 @@ module.exports = async function suiteB() {
     await s.call('mergeVideoImport', [{ name: 'Landorus', dex: 645, cp: 3001, hp: 150, type: 'Flying', atkIV: 10, defIV: 10, staIV: 10 }]); await s.page.waitForTimeout(300);
     const l = ((await s.state()).addedPokemon || []).find(p => p.name === 'Landorus' && p.cp === 3001); expect(l && l.type === 'Ground / Flying', JSON.stringify(l && l.type));
   }, 'high');
+  await T('BULK-02', 'Bulk', 'Pokemon with no known type are listed in Bulk; picking types saves them and removes the row', async () => {
+    await s.call('mergeVideoImport', [{ name: 'Qazwsxmon', cp: 777, hp: 70, atkIV: 5, defIV: 5, staIV: 5 }]); await s.page.waitForTimeout(300);
+    const row = ((await s.state()).addedPokemon || []).find(p => p.name === 'Qazwsxmon'); expect(row, 'seed row');
+    await s.set({ tab: 'bulk', bulkVisible: 100 }); await s.page.waitForTimeout(500);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/NO TYPE ON FILE/.test(txt) && /Qazwsxmon/.test(txt), 'type check missing: ' + txt.slice(0, 200));
+    await s.call('bulkSaveType', row, ['Fire', 'Flying']); await s.page.waitForTimeout(300);
+    const o = (await s.state()).ivOverrides[row.idx] || {}; expect(o.type === 'Fire / Flying' && o.typeReviewed === true, JSON.stringify(o));
+    expect(await s.call('typeOf', { ...row, ...o }) === 'Fire / Flying', 'typeOf');
+    expect(!(await s.call('bulkTypePending')).some(p => p.name === 'Qazwsxmon'), 'reviewed row should leave the list');
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

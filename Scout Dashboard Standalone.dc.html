@@ -1233,7 +1233,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.161</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.162</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3883,6 +3883,27 @@
           <div style="padding:22px;text-align:center;border:1px dashed var(--line-300);border-radius:12px;font:14px var(--font-body);color:var(--ink-500)">Nothing to review here.</div>
         </sc-if>
         <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ chk.typeRows }}" as="trow" hint-placeholder-count="0">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 14px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:52px;height:52px;border-radius:50%;background:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 18px var(--font-display);color:var(--ink-400)">{{ trow.initial }}</span>
+                  <img ref="{{ trow.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font:700 15px var(--font-body);color:var(--ink-900)">{{ trow.name }} <span style="font:600 12px var(--font-display);color:var(--ink-500)">{{ trow.cp }} &middot; {{ trow.hp }}</span></div>
+                  <div style="font:11.5px var(--font-display);color:var(--ink-500);margin-top:2px">{{ trow.picked }}</div>
+                </div>
+                <button type="button" onClick="{{ trow.onSkip }}" class="om-press" aria-label="Skip for now" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:8px 4px;min-height:44px">Later</button>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+                <sc-for list="{{ trow.typeChips }}" as="tc" hint-placeholder-count="4"><button type="button" onClick="{{ tc.onClick }}" aria-pressed="{{ tc.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ tc.bg }};color:{{ tc.fg }};border:1.5px solid {{ tc.bd }};font:600 13px var(--font-body)">{{ tc.label }}</button></sc-for>
+              </div>
+              <button type="button" onClick="{{ trow.onSave }}" class="om-press" style="margin-top:10px;min-height:44px;padding:0 20px;border-radius:999px;background:var(--ios-blue);color:#fff;font:700 14px var(--font-body);opacity:{{ trow.saveOpacity }}">Save type</button>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
           <sc-for list="{{ chk.rows }}" as="row" hint-placeholder-count="0">
             <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 14px">
               <div style="display:flex;align-items:center;gap:12px">
@@ -4056,6 +4077,7 @@ class Component extends DCLogic {
     detailPoke: null,
     visibleCount: 30,
     bulkSkip: [],
+    bulkTypePick: {},
     toolsMode: 'rename',
     renameTpl: '{form}{iv}G{g}U{u}',
     renameQuery: '',
@@ -5326,13 +5348,51 @@ class Component extends DCLogic {
         })
       };
     });
+    const typeRows = this.bulkTypePending().slice(0, 12).map(p => {
+      const pick = (this.state.bulkTypePick || {})[p.idx] || [];
+      const all = ['Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
+      return {
+        key: 't' + p.idx, name: p.name, cp: p.cp != null ? 'CP ' + p.cp : 'CP ?', hp: p.hp != null ? 'HP ' + p.hp : '',
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form), initial: String(p.name || '?').charAt(0),
+        picked: pick.length ? 'Selected: ' + pick.join(' / ') : 'Pick one or two types',
+        canSave: pick.length > 0, saveOpacity: pick.length ? 1 : .4,
+        typeChips: all.map(t => ({ label: t, bg: pick.indexOf(t) >= 0 ? '#1fb5a5' : '#ffffff', fg: pick.indexOf(t) >= 0 ? '#fff' : '#2a4a50', bd: pick.indexOf(t) >= 0 ? '#1fb5a5' : '#cfe3e6', pressed: pick.indexOf(t) >= 0 ? 'true' : 'false',
+          onClick: () => {
+            const cur = [...pick]; const i = cur.indexOf(t);
+            if (i >= 0) cur.splice(i, 1); else { if (cur.length >= 2) cur.shift(); cur.push(t); }
+            this.setState({ bulkTypePick: { ...(this.state.bulkTypePick || {}), [p.idx]: cur } });
+          } })),
+        onSave: () => { if (pick.length) this.bulkSaveType(p, pick); },
+        onSkip: () => this.setState({ bulkSkip: [...(this.state.bulkSkip || []), p.idx] })
+      };
+    });
+    const typeTotal = this.bulkTypePending().length;
     return [{
-      key: 'form', title: 'REGIONAL FORM', count: pending.length,
+      key: 'form', title: 'REGIONAL FORM', count: pending.length, isFormCheck: true, isTypeCheck: false, typeRows: [],
       blurb: 'Same name, different form: Kantonian vs Alolan Ninetales have different types, base stats, moves and PvP/raid ranks. Pick the right form for each Pokemon. Compare the sprite, the types and whether the CP/HP fit.',
       empty: pending.length === 0, rows,
       more: pending.length > visible.length, remaining: pending.length - visible.length,
       showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
+    }, {
+      key: 'type', title: 'NO TYPE ON FILE', count: typeTotal, isTypeCheck: true, isFormCheck: false,
+      blurb: 'These Pokemon have no type from a scan and none could be looked up from the species table. Pick their type(s). Pokemon scanned from a screenshot or recording get their type from the screen automatically.',
+      empty: typeTotal === 0, rows: [], typeRows,
+      more: typeTotal > typeRows.length, remaining: typeTotal - typeRows.length,
+      showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
     }];
+  }
+
+  // Rows whose type is unknown: no scanned type of their own and nothing in the species table.
+  bulkTypePending() {
+    const skip = new Set(this.state.bulkSkip || []);
+    return this.effectiveRosterForMatch().filter(p => !p.typeReviewed && !skip.has(p.idx) && !this.typeOf(p))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }
+
+  bulkSaveType(p, types) {
+    this.offerUndo(p.name + ' type set to ' + types.join(' / '), ['ivOverrides']);
+    const overrides = { ...this.state.ivOverrides, [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], type: types.join(' / '), typeReviewed: true } };
+    this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); } catch (e) {} });
   }
 
   // Sets one Pokemon's form, then re-derives everything that depended on its base stats.
@@ -7886,7 +7946,7 @@ class Component extends DCLogic {
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
       + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,'
       + '"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
-      + 'Rules: Types: the type badges next to the sprite show ONE or TWO types. Read every badge that is printed: type1 is the first, type2 the second (null only when there is a single badge). Read them from the screen, never from the Pokemon name, because a regional form shares its name with the normal form but has different types (Alolan Ninetales is Ice and Fairy, Ninetales is Fire). '
+      + 'Rules: Types: the type names are printed as TEXT next to each type icon (one or two of them). Read the words, not the icon artwork. Read every one that is printed: type1 is the first, type2 the second (null only when there is a single badge). Read them from the screen, never from the Pokemon name, because a regional form shares its name with the normal form but has different types (Alolan Ninetales is Ice and Fairy, Ninetales is Fire). '
       + 'CP is the number in the badge at the very TOP of the screen. If the top of the card is scrolled off and no CP badge is visible, return null — never substitute another number. '
       + 'CP is NEVER the stardust amount: stardust is the large comma-grouped number next to the stardust icon (e.g. 148,482). '
       + 'HP is the "NN / NN HP" line under the name; return the current (first) value. '
@@ -8432,6 +8492,7 @@ class Component extends DCLogic {
       put('chargeMove2', p.chargeMove2 || rec.charged_move_2);
       put('gender', rec.gender);
       if (rec.form) put('form', rec.form);
+      put('type', p.type);
       put('weight', p.weight || rec.weight);
       put('height', p.height || rec.height);
       put('sizeClass', rec.size_class);
