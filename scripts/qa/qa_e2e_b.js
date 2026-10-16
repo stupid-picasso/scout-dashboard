@@ -241,6 +241,32 @@ module.exports = async function suiteB() {
     r = await c({ pokemon_name: 'Zzzzzzzz' });
     expect(r.rec.pokemon_name === 'Zzzzzzzz', 'unknown names are left alone');
   }, 'high');
+  await T('GEM-02', 'AI', 'A model out of daily quota is parked alone: the key keeps working on the other models', async () => {
+    const r = await s.page.evaluate(async () => {
+      const gen = []; const orig = window.fetch;
+      const J = (status, obj) => ({ status, ok: status < 400, json: async () => obj, text: async () => JSON.stringify(obj) });
+      window.fetch = async (url) => {
+        url = String(url);
+        if (url.indexOf('generativelanguage') < 0) return orig(url);
+        if (/\/models\?/.test(url)) return J(200, { models: ['gemini-3.9-flash', 'gemini-3.5-flash-lite'].map(n => ({ name: 'models/' + n, supportedGenerationMethods: ['generateContent'] })) });
+        const m = /models\/([^:]+):(\w+)/.exec(url);
+        if (m[2] === 'countTokens') return J(200, {});
+        gen.push(m[1]);
+        if (m[1] === 'gemini-3.9-flash') return J(429, { error: { message: 'quota', details: [{ violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] } });
+        return J(200, { candidates: [{ content: { parts: [{ text: 'OK' }] }, finishReason: 'STOP' }] });
+      };
+      try {
+        let logic = null;
+        for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGeminiWithKey) { logic = f.stateNode.logic; break; } if (logic) break; }
+        const key = 'QAQUOTA-' + Date.now();
+        const img = { messages: [{ content: [{ type: 'text', text: 'x' }, { type: 'image', source: { data: 'AAAA', media_type: 'image/jpeg' } }] }] };
+        const a = await logic.callGeminiWithKey(img, key); const b = await logic.callGeminiWithKey(img, key);
+        return { a, b, gen };
+      } finally { window.fetch = orig; }
+    });
+    expect(r.a === 'OK' && r.b === 'OK', JSON.stringify(r));
+    expect(r.gen.filter(x => x === 'gemini-3.9-flash').length === 1, 'the exhausted model must not be retried: ' + r.gen.join(','));
+  }, 'critical');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

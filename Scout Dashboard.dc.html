@@ -207,7 +207,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.159</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.160</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -7852,7 +7852,17 @@ class Component extends DCLogic {
     // Every model is a candidate, starting where the round-robin left off, so one overloaded model
     // (503) moves on to the next instead of failing the whole batch.
     const start = (this[idxKey] || 0) % modelRotation.length;
-    const candidates = modelRotation.slice(start).concat(modelRotation.slice(0, start));
+    const ordered = modelRotation.slice(start).concat(modelRotation.slice(0, start));
+    // Free-tier limits are PER MODEL (the accurate flash models allow ~20 requests a day, the lite ones
+    // ~500), so a model that hit its limit is parked on its own and the next model carries on. Only when
+    // every model is parked does the key count as out of quota.
+    const coolOf = m => { const c = (this._modelCool || {})[key + '|' + m]; return c && c.until > Date.now() ? c : null; };
+    const candidates = ordered.filter(m => !coolOf(m));
+    if (!candidates.length) {
+      const anyDaily = ordered.some(m => { const c = coolOf(m); return c && c.daily; });
+      throw new Error(anyDaily ? 'Gemini daily quota exhausted for this key (429).' : 'Gemini rate limit (429) \u2014 every model is cooling down for a minute.');
+    }
+    let sawOther = false, sawDaily = false;
     let lastErr = null;
     for (const model of candidates) {
       const buildConfig = (extras) => {
@@ -7912,9 +7922,15 @@ class Component extends DCLogic {
           }
         }
         const daily = /PerDay|per day|daily/i.test(errText);
-        throw new Error(daily
+        // Park just this model (until midnight for a daily limit, a minute for a per-minute one) and try the next.
+        this._modelCool = this._modelCool || {};
+        const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
+        this._modelCool[key + '|' + model] = { until: daily ? midnight.getTime() : Date.now() + 60000, daily };
+        if (daily) sawDaily = true;
+        lastErr = new Error(daily
           ? 'Gemini daily quota exhausted for this key (429).'
           : 'Gemini rate limit (429) \u2014 10 requests/minute per key.');
+        continue;
       }
       if (res.status === 400 && /API.?key not valid|API_KEY_INVALID/i.test(errText)) {
         throw new Error('That Gemini API key was rejected \u2014 check it under AI ENGINE.');
@@ -7926,12 +7942,16 @@ class Component extends DCLogic {
       // arg, not enabled on the key) — try the next candidate rather than
       // giving up on Gemini entirely.
       lastErr = new Error('[' + this.GEMINI_REQ_VERSION + '] Gemini ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
+      sawOther = true;
       // 404 = the model is gone for this key: leave it out of the cycle from now on.
       if (res.status === 404) this.geminiForget(key, model);
       // 400/404 (this model will not serve it) and 5xx (this model is overloaded right now) are per-model
       // problems: try the next model. Anything else is not going to improve by switching.
       if (res.status !== 404 && res.status !== 400 && res.status < 500) throw lastErr;
     }
+    // Every model said 429: the key is out (daily) or cooling (per minute). If anything else failed
+    // too (overload, a bad request), report that instead so the key is not written off for the day.
+    if (!sawOther && lastErr && /429/.test(lastErr.message || '') && sawDaily) lastErr = new Error('Gemini daily quota exhausted for this key (429).');
     throw lastErr || new Error('No Gemini model available for this key.');
   }
 
