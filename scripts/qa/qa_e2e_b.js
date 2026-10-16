@@ -267,6 +267,16 @@ module.exports = async function suiteB() {
     expect(r.a === 'OK' && r.b === 'OK', JSON.stringify(r));
     expect(r.gen.filter(x => x === 'gemini-3.9-flash').length === 1, 'the exhausted model must not be retried: ' + r.gen.join(','));
   }, 'critical');
+  await T('TYPE-01', 'Import', 'A one-badge read of a two-type species is completed; real forms are untouched', async () => {
+    let r = await s.call('cleanScreenshotRecord', { pokemon_name: 'Landorus', dex_number: 645, type_1: 'Flying' });
+    expect(r.rec.type_1 === 'Ground' && r.rec.type_2 === 'Flying', JSON.stringify(r));
+    r = await s.call('cleanScreenshotRecord', { pokemon_name: 'Farfetchd', dex_number: 83, type_1: 'Fighting' });
+    expect(r.rec.form === 'galarian' && !r.rec.type_2, 'galarian farfetchd is Fighting only: ' + JSON.stringify(r));
+    r = await s.call('cleanScreenshotRecord', { pokemon_name: 'Pikachu', dex_number: 25, type_1: 'Electric' });
+    expect(!r.rec.type_2 && r.notes.length === 0, JSON.stringify(r));
+    await s.call('mergeVideoImport', [{ name: 'Landorus', dex: 645, cp: 3001, hp: 150, type: 'Flying', atkIV: 10, defIV: 10, staIV: 10 }]); await s.page.waitForTimeout(300);
+    const l = ((await s.state()).addedPokemon || []).find(p => p.name === 'Landorus' && p.cp === 3001); expect(l && l.type === 'Ground / Flying', JSON.stringify(l && l.type));
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

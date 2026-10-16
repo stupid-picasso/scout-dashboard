@@ -5272,6 +5272,29 @@ function formForTypes(name, typeText, dex) {
   return hits.length === 1 ? hits[0] : null;
 }
 
+// A screen read that caught only one of two type badges ("Flying" for a Ground/Flying Landorus) matches
+// no real form. When exactly one form of the species contains the types that were read, complete them
+// from it. Returns { types, form, repaired }; exact matches and unknown species come back unchanged.
+function completeTypes(name, typeText, dex) {
+  const seenArr = String(typeText || '').split(/[\/,&]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+  const same = { types: seenArr.map(t => t.charAt(0).toUpperCase() + t.slice(1)), form: null, repaired: false };
+  if (!seenArr.length) return same;
+  const d = dex != null ? dex : resolveDexByName(name);
+  if (d == null) return same;
+  const exact = formForTypes(name, typeText, d);
+  if (exact) return { types: same.types, form: exact === 'normal' ? null : exact, repaired: false };
+  if (seenArr.length >= 2) return same;
+  const forms = ['normal'];
+  ['alola', 'galarian', 'hisuian', 'paldea'].forEach(f => { if (BASE_STATS_BY_FORM[d + '_' + f]) forms.push(f); });
+  const hits = forms.filter(f => {
+    const i = speciesInfo(name, f === 'normal' ? '' : f);
+    return i && i.types.length > seenArr.length && seenArr.every(t => i.types.some(x => x.toLowerCase() === t));
+  });
+  if (hits.length !== 1) return same;
+  const info = speciesInfo(name, hits[0] === 'normal' ? '' : hits[0]);
+  return { types: info.types, form: hits[0] === 'normal' ? null : hits[0], repaired: true };
+}
+
 function pvpFastMoveFor(id) {
   const r = PVP_FAST_MOVES[String(id || '').toLowerCase().replace(/\+$/, '').replace(/[\s]+/g, '_')];
   return r ? { type: r[0], power: r[1], turns: r[2], energyGain: r[3] } : null;
@@ -5407,6 +5430,6 @@ if (typeof window !== 'undefined') {
     PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
-    speciesInfo, formForTypes, hasRegionalForms, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
+    speciesInfo, formForTypes, completeTypes, hasRegionalForms, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

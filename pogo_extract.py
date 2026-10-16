@@ -1144,6 +1144,9 @@ VIDEO_IMPORT_PROMPT = (
     '"dynamax": true|null, "gigantamax": true|null, "maxMoveName": string|null, "maxAttackLevel": number|null, '
     '"maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, '
     '"favorite": boolean}. '
+    "Type: read EVERY type badge printed on the screen, as \"Type1 / Type2\" (for example \"Ice / Fairy\"); "
+    "a Pokemon has one or two. Read it from the screen, never from the name: a regional form shares the "
+    "name of the normal form but has different types (Alolan Ninetales is Ice / Fairy, Ninetales is Fire). "
     "Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge "
     "(crossed swords) and the word \"Dynamax\" between the height/weight strip and the "
     "stardust/candy counts; the same badge and word sit in the top bar once the card is "

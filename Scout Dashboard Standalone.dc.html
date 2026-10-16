@@ -1233,7 +1233,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.160</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.161</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -7886,7 +7886,7 @@ class Component extends DCLogic {
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
       + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,'
       + '"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
-      + 'Rules: '
+      + 'Rules: Types: the type badges next to the sprite show ONE or TWO types. Read every badge that is printed: type1 is the first, type2 the second (null only when there is a single badge). Read them from the screen, never from the Pokemon name, because a regional form shares its name with the normal form but has different types (Alolan Ninetales is Ice and Fairy, Ninetales is Fire). '
       + 'CP is the number in the badge at the very TOP of the screen. If the top of the card is scrolled off and no CP badge is visible, return null — never substitute another number. '
       + 'CP is NEVER the stardust amount: stardust is the large comma-grouped number next to the stardust icon (e.g. 148,482). '
       + 'HP is the "NN / NN HP" line under the name; return the current (first) value. '
@@ -8070,6 +8070,11 @@ class Component extends DCLogic {
     if (typeof w === 'string' && w && !KG.test(w)) { notes.push('weight "' + w + '" dropped'); w = null; }
     if (typeof h === 'string' && h && !M.test(h)) { notes.push('height "' + h + '" dropped'); h = null; }
     out.weight = w || null; out.height = h || null;
+    // A read that caught one type badge of a two-type species is completed from the species table.
+    if (m && m.completeTypes && out.pokemon_name && out.type_1 && !out.type_2) {
+      const ct = m.completeTypes(out.pokemon_name, out.type_1, out.dex_number);
+      if (ct.repaired) { out.type_1 = ct.types[0]; out.type_2 = ct.types[1] || null; notes.push('second type completed: ' + ct.types.join(' / ')); }
+    }
     // Regional form from the typing: Alolan Ninetales is Ice/Fairy, Kantonian is Fire.
     if (m && m.formForTypes && out.pokemon_name && out.type_1 && !out.form) {
       const types = out.type_2 ? out.type_1 + ' / ' + out.type_2 : out.type_1;
@@ -10724,6 +10729,10 @@ class Component extends DCLogic {
       const nameLower = item.name.toLowerCase();
       // The detail screen prints the type badges but not "Alolan". Same name, different typing
       // means a different form (own base stats, moves and rankings), so read the form off the type.
+      if (item.type && mechanics && mechanics.completeTypes && String(item.type).indexOf('/') < 0) {
+        const ct = mechanics.completeTypes(item.name, item.type, item.dex);
+        if (ct.repaired) item.type = ct.types.join(' / ');
+      }
       if (item.type && !item.matchedForm && mechanics && mechanics.formForTypes) {
         const f = mechanics.formForTypes(item.name, item.type, item.dex);
         if (f) item.matchedForm = f;
