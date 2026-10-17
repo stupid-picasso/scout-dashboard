@@ -288,6 +288,19 @@ module.exports = async function suiteB() {
     expect(await s.call('typeOf', { ...row, ...o }) === 'Fire / Flying', 'typeOf');
     expect(!(await s.call('bulkTypePending')).some(p => p.name === 'Qazwsxmon'), 'reviewed row should leave the list');
   }, 'high');
+  await T('CANDY-01', 'Candy', 'One candy number per evolution family: tile, input and evolve card agree even without a saved count', async () => {
+    await s.set({ candyInventory: {} });
+    const mk = (idx, cp, candy, scanDate) => ({ idx, name: 'Bramblin', dex: 946, cp, hp: 60, candy, xlCandy: null, scanDate, atkIV: 10, defIV: 13, staIV: 13 });
+    const a = mk('qa-b1', 354, 16, '2026-10-17'), b = mk('qa-b2', 624, 13, '2026-10-16'), g = { idx: 'qa-b3', name: 'Brambleghast', dex: 947, cp: 900, hp: 90, candy: 7, scanDate: '2026-10-01' };
+    await s.set({ addedPokemon: [a, b, g], ivOverrides: {} }); await s.page.waitForTimeout(300);
+    const sa = await s.call('candyStockFor', a), sb = await s.call('candyStockFor', b), sg = await s.call('candyStockFor', g);
+    expect(sa.candy === 16 && sb.candy === 16 && sg.candy === 16, JSON.stringify([sa, sb, sg]));
+    expect((await s.call('candyDraftFor', b, 'candy')) === '16', 'input must show the family number');
+    expect((await s.call('familyCandyFor', b)).candy === 16, 'tile source');
+    await s.set({ candyInventory: { bramblin: { name: 'Bramblin', candy: 20, xlCandy: 3, at: Date.now() } } }); await s.page.waitForTimeout(200);
+    expect((await s.call('candyStockFor', a)).candy === 20 && (await s.call('candyStockFor', g)).candy === 20, 'a saved count wins for the whole family');
+    await s.set({ candyInventory: {}, addedPokemon: [] });
+  }, 'critical');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

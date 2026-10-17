@@ -1233,7 +1233,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.162</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.163</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -12043,7 +12043,7 @@ class Component extends DCLogic {
     const inv = { ...(this.state.candyInventory || {}) };
     if (withCandy) picked.forEach(p => {
       const key = this.candyKey(p.name);
-      const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
+      const cur = inv[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy != null ? f.candy : 0, xlCandy: f.xlCandy }; })();
       inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1 };
     });
     this.haptic('heavy');
@@ -12152,7 +12152,7 @@ class Component extends DCLogic {
     this.removePokemon(p.idx);
     const key = this.candyKey(p.name);
     const inv = { ...(this.state.candyInventory || {}) };
-    const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
+    const cur = inv[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy != null ? f.candy : 0, xlCandy: f.xlCandy }; })();
     inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1, xlCandy: gotXl ? (Number(cur.xlCandy) || 0) + 1 : cur.xlCandy };
     this.setState({ candyInventory: inv }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
@@ -12180,7 +12180,7 @@ class Component extends DCLogic {
     const key = this.candyKeyFor(p);
     const draft = (this.state.candyDraft || {})[key];
     if (draft && draft[field] != null) return draft[field];
-    const rec = (this.state.candyInventory || {})[key];
+    const rec = this.familyCandyFor(p);
     const cur = rec ? rec[field] : null;
     return cur == null ? '' : String(cur);
   }
@@ -12198,7 +12198,7 @@ class Component extends DCLogic {
     const key = this.candyKeyFor(p);
     const draft = (this.state.candyDraft || {})[key] || {};
     const inv = { ...(this.state.candyInventory || {}) };
-    const cur = inv[key] || { name: p.name, candy: 0, xlCandy: null };
+    const cur = inv[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy != null ? f.candy : 0, xlCandy: f.xlCandy }; })();
     const next = { ...cur, name: cur.name || p.name };
     if (draft.candy != null) next.candy = draft.candy === '' ? 0 : Number(draft.candy);
     if (draft.xlCandy != null) next.xlCandy = draft.xlCandy === '' ? null : Number(draft.xlCandy);
@@ -12225,7 +12225,7 @@ class Component extends DCLogic {
   applyPowerUp(p, cost, steps) {
     if (!cost || !steps) return;
     const key = this.candyKeyFor(p);
-    const inv = (this.state.candyInventory || {})[key] || {};
+    const inv = (this.state.candyInventory || {})[key] || this.familyCandyFor(p);
     const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
     const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
     const haveXL = Number.isFinite(inv.xlCandy) ? inv.xlCandy : null;
@@ -12235,7 +12235,7 @@ class Component extends DCLogic {
     this.haptic('light');
 
     const candyInv = { ...(this.state.candyInventory || {}) };
-    const curCandy = candyInv[key] || { name: p.name, candy: 0, xlCandy: null };
+    const curCandy = candyInv[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy != null ? f.candy : 0, xlCandy: f.xlCandy }; })();
     candyInv[key] = {
       ...curCandy, name: curCandy.name || p.name,
       candy: Math.max(0, (Number.isFinite(curCandy.candy) ? curCandy.candy : 0) - cost.candy),
@@ -12275,7 +12275,7 @@ class Component extends DCLogic {
   applyPurify(p, cost) {
     if (!cost) return;
     const key = this.candyKeyFor(p);
-    const inv = (this.state.candyInventory || {})[key] || {};
+    const inv = (this.state.candyInventory || {})[key] || this.familyCandyFor(p);
     const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
     const haveCandy = Number.isFinite(inv.candy) ? inv.candy : null;
     if (haveDust != null && cost.stardust > haveDust) return;
@@ -12283,7 +12283,7 @@ class Component extends DCLogic {
     this.haptic('medium');
 
     const candyInv = { ...(this.state.candyInventory || {}) };
-    const curCandy = candyInv[key] || { name: p.name, candy: 0, xlCandy: null };
+    const curCandy = candyInv[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy != null ? f.candy : 0, xlCandy: f.xlCandy }; })();
     candyInv[key] = { ...curCandy, name: curCandy.name || p.name, candy: Math.max(0, (Number.isFinite(curCandy.candy) ? curCandy.candy : 0) - cost.candy) };
     const nextDust = Number.isFinite(this.state.stardustBalance) ? Math.max(0, this.state.stardustBalance - cost.stardust) : this.state.stardustBalance;
 
@@ -12541,10 +12541,36 @@ class Component extends DCLogic {
     // which is why every evolve candidate fell through to "candy unknown".
     const byName = inv[this.candyKey(p.name)];
     if (byName && byName.candy != null) return { candy: byName.candy, xlCandy: byName.xlCandy != null ? byName.xlCandy : null };
-    // Per-Pokemon candy columns from a CSV import are a fallback when no
-    // family-level inventory has been recorded yet.
+    // No family count recorded yet: use the newest per-Pokemon candy column in the SAME family
+    // (CSV scans store the count as it was on the day of each scan). One number per family, never
+    // each Pokemon's own stale figure.
+    const fam = this.familyCandyMap()[this.candyKey(p.name)];
+    if (fam && fam.candy != null) return { candy: fam.candy, xlCandy: fam.xlCandy };
     if (p.candy != null) return { candy: Number(p.candy), xlCandy: p.xlCandy != null ? Number(p.xlCandy) : null };
     return { candy: null, xlCandy: null };
+  }
+
+  // Newest candy reading per evolution family from the roster's own candy columns. Cached on the
+  // data identities, since candyStockFor runs for every row.
+  familyCandyMap() {
+    const st = this.state, c = this._famCandy;
+    if (c && c.r === st.roster && c.a === st.addedPokemon && c.o === st.ivOverrides) return c.map;
+    const map = {};
+    this.effectiveRosterForMatch().forEach(p => {
+      if (p.candy == null && p.xlCandy == null) return;
+      const k = this.candyKey(p.name), at = String(p.scanDate || ''), cur = map[k];
+      if (!cur || at > cur.at || (at === cur.at && Number(p.candy || 0) > Number(cur.candy || 0))) {
+        map[k] = { candy: p.candy != null ? Number(p.candy) : null, xlCandy: p.xlCandy != null ? Number(p.xlCandy) : null, at };
+      }
+    });
+    this._famCandy = { r: st.roster, a: st.addedPokemon, o: st.ivOverrides, map };
+    return map;
+  }
+
+  // What this family has, from the saved count or, failing that, the newest roster reading.
+  familyCandyFor(p) {
+    const st = this.candyStockFor(p);
+    return { name: p.name, candy: st.candy, xlCandy: st.xlCandy };
   }
 
   // Real GAME_MASTER data (via mechanics.js) is preferred whenever this
@@ -15344,7 +15370,7 @@ class Component extends DCLogic {
           return rows.length ? rows : null;
         })(),
         resources: (() => {
-          const inv = this.candyRecFor(p.name) || {};
+          const inv = this.familyCandyFor(p);
           const f = n => Number.isFinite(n) ? Number(n).toLocaleString('en-US') : '\u2014';
           return { stardust: f(this.state.stardustBalance), candy: f(inv.candy), xl: f(inv.xlCandy) };
         })(),
