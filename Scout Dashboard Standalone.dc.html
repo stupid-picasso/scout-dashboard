@@ -1233,7 +1233,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.163</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.164</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2983,6 +2983,7 @@
           <div onClick="{{ detail.saveCandy }}" class="om-tap" style="cursor:pointer;flex-shrink:0;padding:6px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SET</div>
           <span style="flex:1;min-width:0;text-align:right;font:700 11px var(--font-display);color:{{ detail.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.bestLeagueLabel }}</span>
         </div>
+        <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-400);margin-top:8px">{{ detail.candyNote }}</div>
           <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
             <sc-if value="{{ detail.powerPlan.quickStep }}" hint-placeholder-val="{{ false }}">
               <div style="margin-top:12px">
@@ -8473,7 +8474,7 @@ class Component extends DCLogic {
     if (key) {
       if (p.candy != null || p.xlCandy != null) {
         const prevRec = candyInv[key] || {};
-        candyInv[key] = { name: p.matchedName || p.name, candy: p.candy != null ? p.candy : prevRec.candy, xlCandy: p.xlCandy != null ? p.xlCandy : prevRec.xlCandy, at: Date.now() };
+        candyInv[key] = { name: p.matchedName || p.name, candy: p.candy != null ? p.candy : prevRec.candy, xlCandy: p.xlCandy != null ? p.xlCandy : prevRec.xlCandy, at: Date.now(), source: 'scan' };
       }
       if (p.type && !(this.mechanics && this.mechanics.hasRegionalForms && this.mechanics.hasRegionalForms(p.matchedName || p.name))) types[(p.matchedName || p.name || '').trim().toLowerCase()] = p.type;
     }
@@ -11006,7 +11007,7 @@ class Component extends DCLogic {
           name: item.name,
           candy: item.candy != null ? item.candy : (candyInv[famKey] && candyInv[famKey].candy),
           xlCandy: item.xlCandy != null ? item.xlCandy : (candyInv[famKey] && candyInv[famKey].xlCandy),
-          at: Date.now()
+          at: Date.now(), source: 'scan'
         };
       }
       if (item.type && !(mechanics && mechanics.hasRegionalForms && mechanics.hasRegionalForms(item.name, item.dex))) types[nameLower] = item.type;
@@ -12199,7 +12200,7 @@ class Component extends DCLogic {
     const draft = (this.state.candyDraft || {})[key] || {};
     const inv = { ...(this.state.candyInventory || {}) };
     const cur = inv[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy != null ? f.candy : 0, xlCandy: f.xlCandy }; })();
-    const next = { ...cur, name: cur.name || p.name };
+    const next = { ...cur, name: cur.name || p.name, source: 'manual', at: Date.now() };
     if (draft.candy != null) next.candy = draft.candy === '' ? 0 : Number(draft.candy);
     if (draft.xlCandy != null) next.xlCandy = draft.xlCandy === '' ? null : Number(draft.xlCandy);
     inv[key] = next;
@@ -12570,7 +12571,24 @@ class Component extends DCLogic {
   // What this family has, from the saved count or, failing that, the newest roster reading.
   familyCandyFor(p) {
     const st = this.candyStockFor(p);
-    return { name: p.name, candy: st.candy, xlCandy: st.xlCandy };
+    const key = this.candyKey(p.name);
+    const rec = (this.state.candyInventory || {})[key];
+    if (rec && rec.candy != null) return { name: p.name, candy: st.candy, xlCandy: st.xlCandy, source: rec.source || 'saved', at: rec.at || null };
+    const fam = this.familyCandyMap()[key];
+    return { name: p.name, candy: st.candy, xlCandy: st.xlCandy, source: st.candy != null ? 'csv' : null, at: fam && fam.at ? fam.at : null };
+  }
+
+  // One line saying where the family's candy number comes from, so a stale figure is never mistaken
+  // for a fresh one. A scan or a manual SET is the number; the roster column is only a stand-in.
+  candyNoteFor(p) {
+    const f = this.familyCandyFor(p);
+    if (f.candy == null) return 'No candy count yet: scan it or type it above and press SET.';
+    const when = f.at ? (typeof f.at === 'number' ? new Date(f.at).toISOString().slice(0, 10) : String(f.at)) : '';
+    const day = when ? ' \u00b7 ' + when : '';
+    if (f.source === 'manual') return 'Candy for the whole family \u00b7 set by you' + day + '. A newer scan replaces it.';
+    if (f.source === 'scan') return 'Candy for the whole family \u00b7 from a scan' + day + '. Type a number and SET to correct it.';
+    if (f.source === 'csv') return 'Candy for the whole family \u00b7 taken from the newest roster row' + day + ' (may be out of date). Scan it or SET the real number.';
+    return 'Candy for the whole family' + day + '.';
   }
 
   // Real GAME_MASTER data (via mechanics.js) is preferred whenever this
@@ -15466,6 +15484,7 @@ class Component extends DCLogic {
         showAppraisal: () => this.setState({ detailTab: 'appraisal' }),
         showEvolution: () => this.setState({ detailTab: 'evolution' }),
         candyDraft: this.candyDraftFor(p, 'candy'),
+        candyNote: this.candyNoteFor(p),
         xlDraft: this.candyDraftFor(p, 'xlCandy'),
         onCandyChange: (e) => this.setCandyDraft(p, 'candy', e.target.value),
         onXlChange: (e) => this.setCandyDraft(p, 'xlCandy', e.target.value),

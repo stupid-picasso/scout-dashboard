@@ -301,6 +301,19 @@ module.exports = async function suiteB() {
     expect((await s.call('candyStockFor', a)).candy === 20 && (await s.call('candyStockFor', g)).candy === 20, 'a saved count wins for the whole family');
     await s.set({ candyInventory: {}, addedPokemon: [] });
   }, 'critical');
+  await T('CANDY-02', 'Candy', 'Manual SET and scans write the same family record; the newest wins and the note says which', async () => {
+    const a = { idx: 'qa-c1', name: 'Pidgey', dex: 16, cp: 300, hp: 40, candy: 5, scanDate: '2020-01-01', atkIV: 8, defIV: 8, staIV: 8 };
+    const b = { idx: 'qa-c2', name: 'Pidgeotto', dex: 17, cp: 700, hp: 70, candy: 9, scanDate: '2020-01-02', atkIV: 8, defIV: 8, staIV: 8 };
+    await s.set({ candyInventory: {}, addedPokemon: [a, b], ivOverrides: {}, candyDraft: {} }); await s.page.waitForTimeout(300);
+    expect(/roster row/.test(await s.call('candyNoteFor', a)) && (await s.call('candyStockFor', a)).candy === 9, 'csv stand-in must say so: ' + await s.call('candyNoteFor', a));
+    await s.call('setCandyDraft', a, 'candy', '31'); await s.call('saveCandyEdit', a); await s.page.waitForTimeout(300);
+    let inv = (await s.state()).candyInventory; const fam = Object.keys(inv).find(k => inv[k].candy === 31); expect(fam && inv[fam].source === 'manual', JSON.stringify(inv));
+    expect((await s.call('candyStockFor', b)).candy === 31 && /set by you/.test(await s.call('candyNoteFor', b)), 'manual number covers the family');
+    await s.call('mergeVideoImport', [{ name: 'Pidgeotto', dex: 17, cp: 700, hp: 70, candy: 44, atkIV: 8, defIV: 8, staIV: 8 }]); await s.page.waitForTimeout(300);
+    inv = (await s.state()).candyInventory; expect(inv[fam].candy === 44 && inv[fam].source === 'scan', 'a newer scan replaces it: ' + JSON.stringify(inv[fam]));
+    expect((await s.call('candyStockFor', a)).candy === 44 && /from a scan/.test(await s.call('candyNoteFor', a)), 'note');
+    await s.set({ candyInventory: {}, addedPokemon: [] });
+  }, 'critical');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');
