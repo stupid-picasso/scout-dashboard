@@ -1233,7 +1233,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.164</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.165</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -10921,7 +10921,7 @@ class Component extends DCLogic {
             // A fresh solved level is real evidence from CP/HP — it supersedes
             // any POWER UP taps logged in-app since the last scan, so the
             // pending counter clears rather than compounding on top of it.
-            ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level, pendingPowerUps: 0 } : {}),
+            ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level, pendingPowerUps: 0, powerUpsSinceScan: 0 } : {}),
             ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {}),
             great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: item.name },
             ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: item.name },
@@ -10939,7 +10939,7 @@ class Component extends DCLogic {
         ivPatch = {
           atkIV: null, defIV: null, staIV: null, ivAvg: null,
           ivRange: item._ivRange, ivCandidates: item._solvedCount, ivSolved: false,
-          lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1], pendingPowerUps: 0,
+          lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1], pendingPowerUps: 0, powerUpsSinceScan: 0,
           great: null, ultra: null, little: null
         };
       }
@@ -12248,8 +12248,25 @@ class Component extends DCLogic {
 
     const overrides = { ...(this.state.ivOverrides || {}) };
     const patch = { ...(overrides[p.idx] || {}) };
-    patch.pendingPowerUps = (Number.isFinite(patch.pendingPowerUps) ? patch.pendingPowerUps
-      : Number.isFinite(p.pendingPowerUps) ? p.pendingPowerUps : 0) + steps;
+    const prevPending = Number.isFinite(patch.pendingPowerUps) ? patch.pendingPowerUps
+      : Number.isFinite(p.pendingPowerUps) ? p.pendingPowerUps : 0;
+    // A power-up really changes the Pokemon: its level goes up half a level per step and its CP and HP
+    // follow from base stats + IVs + the new level. That needs a pinned level and known IVs; without
+    // them only the running count is kept (as before), because there is nothing to compute from.
+    const mech = this.mechanics, cur = { ...p, ...patch };
+    const base = this.baseStatsOf(cur), ivs = this.ivsOf(cur);
+    const pinned = Number.isFinite(cur.lvlMin) && cur.lvlMin === cur.lvlMax;
+    if (mech && mech.cpFor && base && ivs && pinned) {
+      const newLevel = Math.min(mech.MAX_POKEMON_LEVEL || 50, cur.lvlMin + prevPending * 0.5 + steps * 0.5);
+      patch.lvlMin = newLevel; patch.lvlMax = newLevel;
+      const cp = mech.cpFor(base, ivs, newLevel), hp = mech.hpFor ? mech.hpFor(base, ivs[2], newLevel) : null;
+      if (Number.isFinite(cp)) patch.cp = cp;
+      if (Number.isFinite(hp)) patch.hp = hp;
+      patch.pendingPowerUps = 0;
+      patch.powerUpsSinceScan = (Number.isFinite(cur.powerUpsSinceScan) ? cur.powerUpsSinceScan : 0) + steps;
+    } else {
+      patch.pendingPowerUps = prevPending + steps;
+    }
     overrides[p.idx] = patch;
 
     const stateUpdate = { candyInventory: candyInv, stardustBalance: nextDust, ivOverrides: overrides };
@@ -13580,7 +13597,7 @@ class Component extends DCLogic {
     let unmeasured = 0;
     this.effectiveRosterForMatch().forEach(p => {
       const needs = this.needsAppraisal(p);
-      const drift = !!p.ivMeasured && Number.isFinite(p.pendingPowerUps) && p.pendingPowerUps >= 2;
+      const drift = !!p.ivMeasured && ((Number.isFinite(p.pendingPowerUps) && p.pendingPowerUps >= 2) || (Number.isFinite(p.powerUpsSinceScan) && p.powerUpsSinceScan >= 2));
       if (needs) unmeasured++;
       if (!needs && !drift) return;
       let tierRank = 4, tier = null, league = null;

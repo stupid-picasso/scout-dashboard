@@ -314,6 +314,23 @@ module.exports = async function suiteB() {
     expect((await s.call('candyStockFor', a)).candy === 44 && /from a scan/.test(await s.call('candyNoteFor', a)), 'note');
     await s.set({ candyInventory: {}, addedPokemon: [] });
   }, 'critical');
+  await T('PWR-01', 'Power up', 'A power-up raises level, CP and HP (not just the candy count), and the next quote starts from the new level', async () => {
+    const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; const base = m.BASE_STATS[16]; const ivs = [10, 13, 13];
+      return { cp0: m.cpFor(base, ivs, 15), cp1: m.cpFor(base, ivs, 15.5), hp1: m.hpFor(base, 13, 15.5), cost: m.powerUpCostBetween(15, 15.5, {}) }; });
+    const p = { idx: 'qa-pw1', name: 'Pidgey', dex: 16, cp: info.cp0, hp: 40, lvlMin: 15, lvlMax: 15, atkIV: 10, defIV: 13, staIV: 13, ivMeasured: true, scanDate: '2026-10-01' };
+    await s.set({ addedPokemon: [p], ivOverrides: {}, candyInventory: { pidgey: { name: 'Pidgey', candy: 50, xlCandy: 0, at: Date.now(), source: 'manual' } }, stardustBalance: 100000 }); await s.page.waitForTimeout(300);
+    await s.call('applyPowerUp', p, info.cost, 1); await s.page.waitForTimeout(300);
+    const st = await s.state(); const o = st.ivOverrides['qa-pw1'] || {};
+    expect(o.lvlMin === 15.5 && o.lvlMax === 15.5, 'level: ' + JSON.stringify(o));
+    expect(o.cp === info.cp1 && info.cp1 > info.cp0, 'cp ' + o.cp + ' expected ' + info.cp1);
+    expect(o.hp === info.hp1, 'hp ' + o.hp + ' expected ' + info.hp1);
+    expect(o.pendingPowerUps === 0 && o.powerUpsSinceScan === 1, JSON.stringify([o.pendingPowerUps, o.powerUpsSinceScan]));
+    expect(st.candyInventory.pidgey.candy === 50 - info.cost.candy, 'candy spent');
+    const eff = (await s.state()).addedPokemon.find(x => x.idx === 'qa-pw1');
+    const plan = await s.call('powerUpPlan', { ...eff, ...o });
+    expect(plan && plan.quickStep && plan.quickStep.nextLevel === 'Lv 16', JSON.stringify(plan && plan.quickStep && plan.quickStep.nextLevel));
+    await s.set({ addedPokemon: [], candyInventory: {}, ivOverrides: {} });
+  }, 'critical');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');
