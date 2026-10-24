@@ -216,7 +216,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.171</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.172</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -792,6 +792,16 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <sc-for list="{{ zoomChoices }}" as="z" hint-placeholder-count="5">
           <button type="button" onClick="{{ z.onClick }}" class="om-press" aria-label="Text size {{ z.label }}" style="padding:9px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 14px var(--font-body);min-height:40px">{{ z.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font:600 15px var(--font-body);margin-bottom:2px">Keep candy numbers I type</div>
+      <div style="font:13px var(--font-body);color:var(--ink-400);margin-bottom:10px">On: a scan never replaces a candy count you set by hand. Off: the newest number wins, scan or hand.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ candyLockChoices }}" as="z" hint-placeholder-count="2">
+          <button type="button" onClick="{{ z.onClick }}" class="om-press" aria-pressed="{{ z.pressed }}" style="padding:9px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 14px var(--font-body);min-height:40px">{{ z.label }}</button>
         </sc-for>
       </div>
     </div>
@@ -3133,6 +3143,7 @@ class Component extends DCLogic {
     visibleCount: 30,
     bulkSkip: [],
     protectSizes: 'extreme',
+    candyLock: false,
     recentChanged: null,
     lastImport: null,
     importSheetOpen: false,
@@ -3330,6 +3341,7 @@ class Component extends DCLogic {
     // this entirely, leaving swipe/long-press with no listeners at all.
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
+    try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
     try { const ps = localStorage.getItem('scout.protectSizes'); if (ps === 'extreme' || ps === 'all' || ps === 'off') this.setState({ protectSizes: ps }); } catch (e) {}
     this.loadLocalSecrets();
     this.loadFeed();
@@ -4369,6 +4381,15 @@ class Component extends DCLogic {
     const t = this.sizeTagOf(p);
     return mode === 'all' ? !!t : (t === 'XXL' || t === 'XXS');
   }
+
+  // With the lock on, a number typed by hand under CANDY is kept: a later scan that reads a different
+  // number is remembered (ignoredScan) and mentioned under the box, but does not replace it.
+  setCandyLock(on) {
+    try { localStorage.setItem('scout.candyLock', on ? '1' : '0'); } catch (e) {}
+    this.setState({ candyLock: !!on });
+  }
+
+  candyLocked(rec) { return !!(this.state.candyLock && rec && rec.source === 'manual'); }
 
   setProtectSizes(v) {
     try { localStorage.setItem('scout.protectSizes', v); } catch (e) {}
@@ -7685,6 +7706,7 @@ class Component extends DCLogic {
     if (key) {
       if (p.candy != null || p.xlCandy != null) {
         const prevRec = candyInv[key] || {};
+        if (this.candyLocked(prevRec)) { candyInv[key] = { ...prevRec, ignoredScan: { candy: p.candy != null ? p.candy : null, xlCandy: p.xlCandy != null ? p.xlCandy : null, at: Date.now() } }; } else
         candyInv[key] = { name: p.matchedName || p.name, candy: p.candy != null ? p.candy : prevRec.candy, xlCandy: p.xlCandy != null ? p.xlCandy : prevRec.xlCandy, at: Date.now(), source: 'scan' };
       }
       if (p.type && !(this.mechanics && this.mechanics.hasRegionalForms && this.mechanics.hasRegionalForms(p.matchedName || p.name))) types[(p.matchedName || p.name || '').trim().toLowerCase()] = p.type;
@@ -8084,6 +8106,19 @@ class Component extends DCLogic {
       }
     }
     throw lastErr || new Error('All Gemini keys failed.');
+  }
+
+  // One plain line when every AI key is cooling down or out of quota, so a failed import or lookup is
+  // never a mystery. Server imports, manual entry and everything already on the phone keep working.
+  aiQuotaNote() {
+    const keys = this.state.geminiKeys || [];
+    if (!keys.length || this.activeGeminiKeys().length) return '';
+    const cd = this._keyCooldown || {};
+    const waits = keys.map(k => (cd[k] || 0) - Date.now()).filter(ms => ms > 0);
+    if (!waits.length) return '';
+    const soonest = Math.min.apply(null, waits);
+    const when = soonest < 5 * 60000 ? 'about ' + Math.max(1, Math.ceil(soonest / 60000)) + ' min' : soonest < 90 * 60000 ? Math.round(soonest / 60000) + ' min' : 'until midnight (about ' + Math.round(soonest / 3600000) + ' h)';
+    return 'AI reading is resting for ' + when + '. Server imports, manual entry and your roster still work.';
   }
 
   activeGeminiKeys() {
@@ -10153,6 +10188,10 @@ class Component extends DCLogic {
       }
       if (item.candy != null || item.xlCandy != null) {
         const famKey = this.candyKey(item.name);
+        if (this.candyLocked(candyInv[famKey])) {
+          const cur = candyInv[famKey];
+          if ((item.candy != null && item.candy !== cur.candy) || (item.xlCandy != null && item.xlCandy !== cur.xlCandy)) candyInv[famKey] = { ...cur, ignoredScan: { candy: item.candy != null ? item.candy : null, xlCandy: item.xlCandy != null ? item.xlCandy : null, at: Date.now() } };
+        } else
         candyInv[famKey] = {
           name: item.name,
           candy: item.candy != null ? item.candy : (candyInv[famKey] && candyInv[famKey].candy),
@@ -11752,7 +11791,11 @@ class Component extends DCLogic {
     if (f.candy == null) return 'No candy count yet: scan it or type it above and press SET.';
     const when = f.at ? (typeof f.at === 'number' ? new Date(f.at).toISOString().slice(0, 10) : String(f.at)) : '';
     const day = when ? ' \u00b7 ' + when : '';
-    if (f.source === 'manual') return 'Candy for the whole family \u00b7 set by you' + day + '. A newer scan replaces it.';
+    if (f.source === 'manual') {
+      const rec = (this.state.candyInventory || {})[this.candyKey(p.name)] || {};
+      if (this.state.candyLock) return 'Candy for the whole family \u00b7 set by you' + day + ' and locked' + (rec.ignoredScan && rec.ignoredScan.candy != null ? '. A newer scan read ' + rec.ignoredScan.candy + ' and was ignored' : '') + '.';
+      return 'Candy for the whole family \u00b7 set by you' + day + '. A newer scan replaces it.';
+    }
     if (f.source === 'scan') return 'Candy for the whole family \u00b7 from a scan' + day + '. Type a number and SET to correct it.';
     if (f.source === 'csv') return 'Candy for the whole family \u00b7 taken from the newest roster row' + day + ' (may be out of date). Scan it or SET the real number.';
     return 'Candy for the whole family' + day + '.';
@@ -14937,6 +14980,8 @@ class Component extends DCLogic {
       statusBanner: (() => {
         if (this.state.csvError) return { text: this.state.csvError, dot: 'var(--ios-red)' };
         if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
+        const aiNote = this.aiQuotaNote();
+        if (aiNote && !this.state.undoLabel && !this.state.csvNotice) return { text: aiNote, dot: 'var(--ios-yellow)' };
         if (this.state.storageWarning) return { text: this.state.storageWarning, bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         if (this.state.undoLabel) return { text: this.state.undoLabel + '.', dot: 'var(--ios-green)', action: { label: 'Undo', run: () => this.performUndo() } };
         if (this.state.csvNotice) return { text: this.state.csvNotice, dot: 'var(--ios-green)', action: this.state.importUndoable ? { label: 'Undo', run: () => this.undoImport() } : null };
@@ -15847,6 +15892,7 @@ class Component extends DCLogic {
       lastImportSub: 'See what changed for each Pokemon and undo any of it',
       openImportSheet: () => this.openImportSheet(), closeImportSheet: () => this.closeImportSheet(),
       importSheetRows: ((this.state.lastImport && this.state.lastImport.rows) || []).map(r => ({ name: r.name, cpLabel: r.cp != null ? 'CP ' + r.cp : '', text: r.text, color: r.kind === 'new' ? 'var(--ios-green)' : 'var(--ink-500)', onRevert: () => this.revertImportRow(r.idx) })),
+      candyLockChoices: [[false, 'Newest wins'], [true, 'Keep mine']].map(([k, l]) => ({ label: l, pressed: String(!!this.state.candyLock === k), bg: !!this.state.candyLock === k ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: !!this.state.candyLock === k ? '#fff' : 'var(--ink-600)', onClick: () => this.setCandyLock(k) })),
       protectChoices: [['extreme', 'XXL and XXS'], ['all', 'Also XL and XS'], ['off', 'Off']].map(([k, l]) => ({ label: l, pressed: String(this.state.protectSizes === k), bg: this.state.protectSizes === k ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: this.state.protectSizes === k ? '#fff' : 'var(--ink-600)', onClick: () => this.setProtectSizes(k) })),
       zoomChoices: [1, 1.15, 1.3, 1.5, 2].map(z => ({ label: Math.round(z * 100) + '%', on: Math.abs((this.state.uiZoom || 1) - z) < 0.01, bg: Math.abs((this.state.uiZoom || 1) - z) < 0.01 ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: Math.abs((this.state.uiZoom || 1) - z) < 0.01 ? '#fff' : 'var(--ink-700)', onClick: () => this.setUiZoom(z) })),
       hasImportReport: (this.state.importReport || []).length > 0,

@@ -130,12 +130,21 @@ jobs:
           GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
 
+      - name: Keep the debug dump as a build artifact (not in git)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extract-debug
+          path: data/debug
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Commit extracted data
         if: steps.check_videos.outputs.count > 0 || env.DRIVE_VIDEO_PATH != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/
+          git add data/ ':!data/debug'
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
@@ -159,7 +168,7 @@ jobs:
               git reset --hard origin/main
               cp -r "$STAGE/data/." data/
               rm -rf "$STAGE"
-              git add data/
+              git add data/ ':!data/debug'
               if git diff --cached --quiet; then
                 echo "Remote already has this output"
                 break

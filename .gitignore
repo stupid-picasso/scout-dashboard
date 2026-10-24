@@ -15,6 +15,9 @@ data/*.json
 # Same exception for the appraisal/IV pipeline's output, fetched by the app's
 # "IMPORT IV FROM SERVER" button.
 !data/appraisal_import.json
+# Debug dumps from the extractor are build artifacts, not source
+data/debug/
+
 # Python
 __pycache__/
 *.py[cod]
