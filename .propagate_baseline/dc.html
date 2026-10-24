@@ -128,6 +128,13 @@
   @media (hover:none){
     .om-tap:active{transform:scale(.98)}
   }
+  @keyframes heroFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.018)}}
+  @keyframes heroShadow{0%,100%{transform:translateX(-50%) scale(1);opacity:1}50%{transform:translateX(-50%) scale(.84);opacity:.7}}
+  @keyframes heroPop{0%{transform:scale(.55);opacity:0}55%{transform:scale(1.09);opacity:1}100%{transform:scale(1)}}
+  @keyframes heroSpin{to{transform:rotate(360deg)}}
+  @keyframes heroTwinkle{0%,100%{opacity:0;transform:scale(.3) rotate(0)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
+  .hero-img{transform:translateX(var(--tx,0px)) rotate(var(--rot,0deg));transition:transform .55s cubic-bezier(.2,.9,.3,1.25)}
+  .hero-drag .hero-img{transition:none}
   @keyframes scanSweep{0%{top:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:100%;opacity:0}}
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
@@ -216,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.173</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.175</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1932,6 +1939,7 @@
     <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" role="dialog" aria-modal="true" aria-label="Pokemon details" tabindex="-1" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
       <div style="position:relative;min-height:230px;background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
+        <div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:inherit"><div style="position:absolute;left:50%;top:62%;width:460px;height:460px;margin:-230px 0 0 -230px;background:repeating-conic-gradient(from 0deg, rgba(255,255,255,.13) 0 7deg, transparent 7deg 20deg);-webkit-mask:radial-gradient(circle, #000 0, transparent 66%);mask:radial-gradient(circle, #000 0, transparent 66%);animation:heroSpin 48s linear infinite"></div></div>
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
         <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 10px 0">
@@ -1952,8 +1960,24 @@
               <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5" stroke-linecap="round"></path>
               <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" class="om-arc" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" style="transition:stroke-dashoffset 1s ease"></path>
             </svg>
-            <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:100px;height:14px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.4), transparent 70%)"></div>
-            <img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:130px;height:130px;object-fit:contain;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35));animation:spritePop .85s cubic-bezier(.2,.9,.3,1.15) .1s backwards" />
+            <div ref="{{ detail.heroTiltRef }}" style="position:absolute;inset:0 -70px -6px;touch-action:pan-y">
+              <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:190px;height:190px;margin:-98px 0 0 -95px;border-radius:50%;background:radial-gradient(circle, {{ detail.auraColor }} 0%, transparent 68%);opacity:.8"></div>
+              <div aria-hidden="true" style="position:absolute;bottom:20px;left:50%;width:128px;height:18px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.5), transparent 70%);transform:translateX(-50%);animation:heroShadow 4.2s ease-in-out infinite"></div>
+              <div style="position:absolute;bottom:6px;left:50%;margin-left:-86px;width:172px;height:172px">
+                <div style="width:100%;height:100%;animation:heroPop .85s cubic-bezier(.2,.9,.3,1.15) .1s backwards">
+                  <div style="width:100%;height:100%;animation:heroFloat 4.2s ease-in-out infinite">
+                    <div class="hero-img" style="width:100%;height:100%"><img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" draggable="false" style="width:100%;height:100%;object-fit:contain;filter:{{ detail.heroFilter }};-webkit-user-drag:none;user-select:none" /></div>
+                  </div>
+                </div>
+                <sc-if value="{{ detail.heroShiny }}" hint-placeholder-val="{{ false }}">
+                  <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none">
+                    <i style="position:absolute;left:14%;top:12%;width:12px;height:12px;background:#fff;clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);filter:drop-shadow(0 0 4px #fff);animation:heroTwinkle 2.6s ease-in-out infinite"></i>
+                    <i style="position:absolute;right:10%;top:30%;width:16px;height:16px;background:#fff;clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);filter:drop-shadow(0 0 4px #fff);animation:heroTwinkle 2.6s ease-in-out .9s infinite"></i>
+                    <i style="position:absolute;left:24%;bottom:22%;width:9px;height:9px;background:#fff;clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);filter:drop-shadow(0 0 4px #fff);animation:heroTwinkle 2.6s ease-in-out 1.6s infinite"></i>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -6951,6 +6975,40 @@ class Component extends DCLogic {
     return p;
   }
 
+  // Detail-sheet hero: the same sprite pipeline, then the larger Pokemon HOME render swapped in for
+  // plain species (PokeAPI numbers regional forms separately, so those keep the form sprite).
+  makeHeroSpriteRef(p) {
+    const base = this.makeSpriteRefByDex(p.dex, p.form);
+    const plain = !p.form || /^normal$/i.test(String(p.form));
+    const url = plain && p.dex ? 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/' + (p.shiny ? 'shiny/' : '') + p.dex + '.png' : null;
+    return (el) => {
+      if (!el) return;
+      const key = p.dex + '|' + (p.form || '') + '|' + (p.shiny ? 's' : '');
+      if (el.dataset.heroKey === key) return;
+      el.dataset.heroKey = key; el.dataset.heroHome = '';
+      el.dataset.spriteDex = '';
+      base(el);
+      if (!url) return;
+      const hi = new Image();
+      hi.onload = () => { if (el.isConnected && el.dataset.heroKey === key) { el.dataset.heroHome = '1'; el.src = url; el.style.imageRendering = 'auto'; } };
+      hi.src = url;
+    };
+  }
+
+  // Drag the hero to lean it; it springs back on release. Pointer events only (no motion-sensor
+  // permission prompt on iOS) and nothing happens under Reduce Motion.
+  heroTiltRef(el) {
+    if (!el || el._tiltOn) return;
+    el._tiltOn = true;
+    const img = () => el.querySelector('.hero-img');
+    let x0 = null;
+    const set = (dx) => { const i = img(); if (!i) return; const c = Math.max(-40, Math.min(40, dx)); i.style.setProperty('--tx', (c * .35).toFixed(1) + 'px'); i.style.setProperty('--rot', (c * .2).toFixed(1) + 'deg'); };
+    el.addEventListener('pointerdown', e => { if (this.reducedMotion()) return; x0 = e.clientX; el.classList.add('hero-drag'); });
+    el.addEventListener('pointermove', e => { if (x0 != null) set(e.clientX - x0); });
+    const end = () => { if (x0 == null) return; x0 = null; el.classList.remove('hero-drag'); set(0); };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('pointerleave', end);
+  }
+
   makeSpriteRefByDex(dex, form) {
     const slug = this.formSlug(form);
     const key = slug ? dex + '-' + slug : String(dex);
@@ -6971,7 +7029,7 @@ class Component extends DCLogic {
         if (!src || !el.isConnected) return;
         const hi = new Image();
         hi.onload = () => {
-          if (el.isConnected && el.dataset.spriteDex === key) {
+          if (el.isConnected && el.dataset.spriteDex === key && el.dataset.heroHome !== '1') {
             el.src = src;
             el.style.imageRendering = 'auto';
           }
@@ -14545,7 +14603,10 @@ class Component extends DCLogic {
         headerGradient: `radial-gradient(ellipse 140% 95% at 50% 40%, ${this.rgbaHex(this.typeLook(p).accent, .5)} 0%, ${this.rgbaHex(this.typeLook(p).accent, .16)} 45%, var(--surface-sunken) 78%), var(--surface-sunken)`,
         typeChips: this.typeLook(p).chips,
         overallRing: this.threeQuarterRingGeom(p.ivAvg, 66),
-        spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
+        spriteRef: this.makeHeroSpriteRef(p),
+        heroTiltRef: el => this.heroTiltRef(el),
+        heroShiny: !!p.shiny,
+        heroFilter: (p.shadowPurified === '1' || p.shadowPurified === 1) ? 'drop-shadow(0 0 10px #8a2be2) drop-shadow(0 12px 10px rgba(0,0,0,.45))' : 'drop-shadow(0 12px 14px rgba(0,0,0,.35))',
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         dex: p.dex, cp: p.cp, hp: p.hp,
         statRings, leagues,

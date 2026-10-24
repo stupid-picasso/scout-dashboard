@@ -366,3 +366,4 @@ The sections above describe the original video/OCR pipeline. The app has since g
 - `data/debug/` is no longer committed; extract.yml uploads it as an artifact.
 - `.github/workflows/extract-auto.yml`: every 6h, needs repo variable `DRIVE_FOLDER_URL`; idle when unset. Tracks `data/processed_drive_files.txt`. Untested against a real folder.
 - Skipped on purpose: transfer-plan tool (triage queue and dominated duplicates already do it), power-up/buddy/PvP planners (exist).
+- Detail hero (option 2): Pokemon HOME render (PokeAPI `other/home`, `shiny/` when shiny) swapped in for plain species via `makeHeroSpriteRef`; spinning light burst, type aura, floating sprite + breathing floor shadow, spring pop-in, shiny sparkles, shadow glow, drag-to-tilt (`heroTiltRef`). Regional forms keep the local form sprite. All motion off under Reduce Motion.

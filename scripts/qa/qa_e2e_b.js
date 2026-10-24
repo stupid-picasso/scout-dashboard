@@ -362,6 +362,18 @@ module.exports = async function suiteB() {
     await s.set({ raidBossTypes: [] }); await s.page.waitForTimeout(300);
     expect(!/Party of 6/.test(await s.page.evaluate(() => document.body.innerText)), 'party shows with no boss');
   });
+  await T('HERO-01', 'Detail', 'Detail hero floats, drag tilts it and releasing springs it back; HOME render replaces the sprite for plain species', async () => {
+    await s.page.route('**/other/home/**', r => r.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64') }));
+    await s.set({ tab: 'roster' }); const st = await s.state(); const p = st.roster.find(x => x.dex && !x.form); await s.call('openDetail', p); await s.page.waitForTimeout(1200);
+    const info = await s.page.evaluate(() => { const i = document.querySelector('.hero-img'); const img = i && i.querySelector('img'); return { has: !!i, src: img && img.src, anim: !!i && getComputedStyle(i.parentElement).animationName }; });
+    expect(info.has && /other\/home\//.test(info.src) && /heroFloat/.test(info.anim), JSON.stringify(info));
+    const r = await s.page.evaluate(() => { const e = document.querySelector('.hero-img').parentElement.parentElement.parentElement.parentElement.getBoundingClientRect(); return { x: e.x + e.width / 2, y: e.y + e.height / 2 }; });
+    await s.page.mouse.move(r.x, r.y); await s.page.mouse.down(); await s.page.mouse.move(r.x + 60, r.y, { steps: 4 });
+    const leaned = await s.page.evaluate(() => document.querySelector('.hero-img').style.getPropertyValue('--rot'));
+    await s.page.mouse.up(); const back = await s.page.evaluate(() => document.querySelector('.hero-img').style.getPropertyValue('--rot'));
+    expect(parseFloat(leaned) > 0 && parseFloat(back) === 0, leaned + ' / ' + back);
+    await s.call('closeDetail');
+  });
   await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
     const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });
     expect(info.a.cls === 'XXL' && info.b.cls === 'M' && info.d.cls === 'XS' && info.e.cls === 'M', JSON.stringify(info));
