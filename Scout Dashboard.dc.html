@@ -441,8 +441,10 @@
     <sc-if value="{{ hasGbl }}" hint-placeholder-val="{{ false }}">
       <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
         <div style="font:650 19px var(--font-display);letter-spacing:-.012em;color:var(--ink-900);margin-bottom:4px">GO Battle League</div>
-        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:2px">{{ feedStamp }}</div>
-        <div style="font:11px var(--font-body);color:var(--ink-400);margin-bottom:10px">{{ feedVerify }}</div>
+        <details style="margin-bottom:10px"><summary class="om-tap" style="cursor:pointer;list-style:none;font:12px var(--font-body);color:var(--ink-500);display:flex;align-items:center;gap:6px;min-height:28px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ios-green,#30d158)"></span>{{ feedShort }} <span style="color:var(--ink-400)">&middot; details</span></summary>
+          <div style="font:12px/1.45 var(--font-body);color:var(--ink-500);margin-top:4px">{{ feedStamp }}</div>
+          <div style="font:12px/1.45 var(--font-body);color:var(--ink-500);margin-top:2px">{{ feedVerify }}</div>
+        </details>
         <sc-for list="{{ gblWeekRows }}" as="wk" hint-placeholder-count="2">
           <div style="background:var(--surface-sunken);border-radius:10px;padding:12px;margin-bottom:10px">
             <div style="font:800 11px var(--font-display);letter-spacing:.06em;color:var(--ink-500)">{{ wk.title }} <span style="color:var(--ink-400)">{{ wk.season }}</span></div>
@@ -452,17 +454,51 @@
                   <div style="font:700 13px var(--font-display)">{{ lg.name }}</div>
                   <div style="font:800 11px var(--font-display);color:var(--ink-400)">{{ lg.cap }}</div>
                 </div>
-                <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-600);margin-top:3px">{{ lg.rules }}</div>
-                <sc-if value="{{ lg.hasTop }}" hint-placeholder-val="{{ false }}">
-                  <div style="margin-top:6px">
-                    <sc-for list="{{ lg.top }}" as="tp" hint-placeholder-count="5">
-                      <div style="font:11.5px/1.45 var(--font-body);color:var(--ink-700)"><b>{{ tp.name }}</b> <span style="color:var(--ink-400)">{{ tp.tier }} &middot; {{ tp.moves }}</span></div>
+                <sc-if value="{{ lg.hasTopCards }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;justify-content:space-between;gap:4px;margin-top:12px">
+                    <sc-for list="{{ lg.topCards }}" as="tc" hint-placeholder-count="5">
+                      <button type="button" onClick="{{ tc.onClick }}" aria-label="{{ tc.label }}" aria-pressed="{{ tc.selected }}" class="om-tap" style="all:unset;box-sizing:border-box;cursor:pointer;text-align:center;width:19%;min-width:0">
+                        <span style="display:block;position:relative;width:52px;height:52px;margin:0 auto;border-radius:50%;background:var(--surface-card)"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:650 17px var(--font-display);color:var(--ink-400)">{{ tc.initial }}</span><img ref="{{ tc.spriteRef }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"><span style="position:absolute;right:-5px;top:-5px;font:800 11px var(--font-display);background:var(--ios-yellow);color:#000;border-radius:99px;padding:1px 6px;border:2px solid var(--surface-sunken)">{{ tc.tier }}</span></span>
+                        <span style="display:block;font:600 12px var(--font-body);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-700)">{{ tc.name }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ lg.hasSel }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-600);margin-top:8px;background:var(--surface-card);border-radius:8px;padding:8px 10px">{{ lg.selLine }}</div></sc-if>
+                </sc-if>
+                <sc-if value="{{ lg.hasSquadCards }}" hint-placeholder-val="{{ false }}">
+                  <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400);margin:14px 0 8px">YOUR SQUAD</div>
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <sc-for list="{{ lg.squadCards }}" as="sq" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ sq.onClick }}" aria-label="{{ sq.name }}" class="om-tap" style="all:unset;cursor:pointer;display:block;position:relative;width:52px;height:52px;border-radius:50%;background:var(--surface-card)"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:650 17px var(--font-display);color:var(--ink-400)">{{ sq.initial }}</span><img ref="{{ sq.spriteRef }}" alt="{{ sq.name }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></button>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ lg.squadNote }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ios-yellow);margin-top:6px">Check {{ lg.squadNote }}</div></sc-if>
+                </sc-if>
+                <sc-if value="{{ lg.hasSquadEmpty }}" hint-placeholder-val="{{ false }}">
+                  <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400);margin:14px 0 8px">YOUR SQUAD</div>
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <span style="width:52px;height:52px;border-radius:50%;border:2px dashed var(--line-200);flex:none"></span><span style="width:52px;height:52px;border-radius:50%;border:2px dashed var(--line-200);flex:none"></span><span style="width:52px;height:52px;border-radius:50%;border:2px dashed var(--line-200);flex:none"></span>
+                    <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);min-width:0">{{ lg.squadLine }}</div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ lg.hasMegaCards }}" hint-placeholder-val="{{ false }}">
+                  <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400);margin:14px 0 8px">MEGA-READY</div>
+                  <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px 2px">
+                    <sc-for list="{{ lg.megaCards }}" as="mc" hint-placeholder-count="3">
+                      <div style="flex:none;width:112px;background:var(--surface-card);border-radius:14px;padding:10px;text-align:center">
+                        <span style="display:block;position:relative;width:52px;height:52px;margin:0 auto"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:650 17px var(--font-display);color:var(--ink-400)">{{ mc.initial }}</span><img ref="{{ mc.spriteRef }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></span>
+                        <div style="font:650 12.5px var(--font-body);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mc.name }}</div>
+                        <span style="display:inline-block;font:800 12px var(--font-display);color:#000;background:var(--ios-yellow);border-radius:99px;padding:2px 8px;margin-top:4px">{{ mc.score }}</span>
+                        <sc-if value="{{ mc.hasBar }}" hint-placeholder-val="{{ false }}"><div style="height:6px;border-radius:3px;background:var(--line-200);overflow:hidden;margin-top:8px"><div style="height:100%;width:{{ mc.barW }};background:var(--ios-yellow)"></div></div></sc-if>
+                        <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:3px;font-variant-numeric:tabular-nums">{{ mc.energy }}</div>
+                      </div>
                     </sc-for>
                   </div>
                 </sc-if>
-                <div style="font:11.5px/1.45 var(--font-body);color:var(--brand-primary-strong);margin-top:4px">{{ lg.squadLine }}</div>
-                <div style="font:11.5px/1.45 var(--font-body);color:var(--type-electric);margin-top:2px">{{ lg.megaLine }}</div>
-                <div style="font:11px/1.45 var(--font-body);color:var(--ink-400);margin-top:2px">{{ lg.note }}</div>
+                <details style="margin-top:10px"><summary class="om-tap" style="cursor:pointer;list-style:none;font:12px var(--font-body);color:var(--ink-400);min-height:28px;display:flex;align-items:center">&#9432; Rules and how this is ranked</summary>
+                  <div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ lg.rules }}</div>
+                  <div style="font:12px/1.45 var(--font-body);color:var(--ink-500);margin-top:4px">{{ lg.note }}</div>
+                </details>
               </div>
             </sc-for>
           </div>
@@ -3165,6 +3201,7 @@ class Component extends DCLogic {
     importSheetOpen: false,
     bulkTypePick: {},
     toolsMode: 'rename',
+    leagueSel: null,
     showcaseVisible: 25,
     renameTpl: '{form}{iv}G{g}U{u}',
     renameQuery: '',
@@ -12590,6 +12627,21 @@ class Component extends DCLogic {
   // Strongest species for a league CP cap from the imported PvPoke rankings,
   // optionally filtered by a cup's rules. Only open Little/Great/Ultra/Master
   // tables exist; `mega` selects PvPoke's Mega Master table instead.
+  // PvPoke ids look like "mewtwo_mega_y" or "ninetales_alolan_shadow": the longest leading run of parts
+  // that names a species gives the dex number (null when nothing resolves).
+  dexFromPvpokeId(id) {
+    const m = this.mechanics;
+    if (!m || !m.resolveDexByName) return null;
+    const parts = String(id).replace(/_shadow$/, '').split('_');
+    for (let k = parts.length; k >= 1; k--) {
+      const d = m.resolveDexByName(parts.slice(0, k).join('').replace(/[^a-z0-9]/gi, ''));
+      if (d != null) return d;
+      const d2 = m.resolveDexByName(parts.slice(0, k).join('-'));
+      if (d2 != null) return d2;
+    }
+    return null;
+  }
+
   leagueTopSpecies(cp, n, cup, mega, tableKey) {
     const m = this.mechanics;
     const lk = tableKey || (mega && cp >= 10000 ? 'mega' : (cp === 1500 ? 'great' : cp === 2500 ? 'ultra' : cp === 500 ? 'little' : cp >= 10000 ? 'master' : null));
@@ -12606,7 +12658,7 @@ class Component extends DCLogic {
       return tries.some(([sp, fm]) => this.cupAllowsSpecies(cup, sp, fm, types)) && !(cup.ban && tries.some(([sp, fm]) => !this.cupAllowsSpecies({ ban: cup.ban }, sp, fm, [])));
     };
     return Object.keys(table).sort((a, b) => table[b].score - table[a].score).filter(ok).slice(0, n || 6).map(id => ({
-      name: tidy(id), tier: table[id].tier, score: table[id].score,
+      name: tidy(id), id, dex: this.dexFromPvpokeId(id), tier: table[id].tier, score: table[id].score,
       moves: String(table[id].moves || '').split('|').filter(Boolean).map(x => x.replace(/\b\w/g, c => c.toUpperCase())).join(' / ')
     }));
   }
@@ -12615,7 +12667,10 @@ class Component extends DCLogic {
   // cap. The Mega form is judged on its own game-master base stats: stat-product
   // rank of your IVs under the cap, the level it fits at, PvPoke's tier/score, and
   // your Mega Energy. Returns display strings, best score first.
-  megaReadyPicks(n, cp) {
+  megaReadyPicks(n, cp) { return this.megaReadyData(n, cp).map(x => x.text); }
+
+  // Same picks as structured rows for the Today cards.
+  megaReadyData(n, cp) {
     const m = this.mechanics;
     const ck = cp >= 10000 || !cp ? 10000 : cp;
     const table = m && m.pvpTableFor ? (m.pvpTableFor('cup:mega@' + ck) || (ck === 10000 ? m.pvpTableFor('mega') : null)) : null;
@@ -12644,10 +12699,13 @@ class Component extends DCLogic {
       });
       if (!best) return;
       const info = (this.megaEvolveInfoFor(mm[1]) || []).find(r => (r.form || '') === form.form);
-      out.push(mm[1].replace(/\b\w/g, c => c.toUpperCase()) + (form.form ? ' ' + form.form.toUpperCase() : '')
+      out.push({ dex: best.p.dex, name: mm[1].replace(/\b\w/g, c => c.toUpperCase()) + (form.form ? ' ' + form.form.toUpperCase() : ''),
+        tier: table[id].tier, score: table[id].score.toFixed(0),
+        have: info && info.have != null ? info.have : null, cost: info ? info.cost : null, ready: !!(info && info.evolve),
+        text: mm[1].replace(/\b\w/g, c => c.toUpperCase()) + (form.form ? ' ' + form.form.toUpperCase() : '')
         + ' \u2014 ' + table[id].tier + ' ' + table[id].score.toFixed(0)
         + (best.rank != null ? ' \u00b7 IV rank ' + best.rank.toFixed(0) + '% as Mega, fits at L' + best.level : ' \u00b7 IVs not measured')
-        + (info ? ' \u00b7 ' + (info.have == null ? 'energy not logged' : info.have + '/' + info.cost + ' energy' + (info.evolve ? ' (ready)' : '')) : ''));
+        + (info ? ' \u00b7 ' + (info.have == null ? 'energy not logged' : info.have + '/' + info.cost + ' energy' + (info.evolve ? ' (ready)' : '')) : '') });
     });
     return out.slice(0, n || 5);
   }
@@ -12684,12 +12742,26 @@ class Component extends DCLogic {
         if (l.cup && l.cup.caughtWindowUnknown) notes.push('Catch Cup: only Pokemon caught in this season\u2019s window are legal \u2014 not checked here.');
         if (l.cup && l.cup.caught) notes.push('Catch Cup: only Pokemon caught in the window are legal \u2014 checked against your catch dates.');
         if (l.cup && l.cup.level && l.cup.level.maxLevel) notes.push('Level cap ' + l.cup.level.maxLevel + ' applies \u2014 checked against your levels.');
-        const picks = l.mega ? this.megaReadyPicks(4, l.cp) : [];
+        const picks = l.mega ? this.megaReadyData(4, l.cp) : [];
+        const selKey = wi + '|' + l.name;
+        const sel = this.state.leagueSel && this.state.leagueSel.k === selKey ? this.state.leagueSel.n : null;
+        const topCards = (top || []).map(t => ({ name: t.name.replace(/ \(Shadow\)$/, '').replace(/ (Mega|Primal)\b/, ''), tier: t.tier, initial: t.dex != null ? '' : String(t.name).charAt(0),
+          spriteRef: t.dex != null ? this.makeSpriteRefByDex(t.dex, null) : null, selected: sel === t.name,
+          label: t.name + ', tier ' + t.tier, onClick: () => this.setState({ leagueSel: sel === t.name ? null : { k: selKey, n: t.name } }) }));
+        const selTop = (top || []).find(t => t.name === sel);
+        const squadCards = squad ? squad.members.map(c => ({ name: c.p.name, initial: c.p.dex != null ? '' : String(c.p.name || '?').charAt(0), spriteRef: this.makeSpriteRefByDex(c.p.dex, c.p.form), onClick: () => this.openDetail(c.p) })) : [];
+        const megaCards = picks.map(x => ({ name: x.name.replace(/ (Mega|Primal)\b/, ''), initial: x.dex != null ? '' : x.name.charAt(0), spriteRef: x.dex != null ? this.makeSpriteRefByDex(x.dex, null) : null,
+          score: x.tier + ' ' + x.score, barW: x.cost ? Math.min(100, Math.round(100 * (x.have || 0) / x.cost)) + '%' : '0%', hasBar: x.cost != null,
+          energy: x.have == null ? (x.cost != null ? 'not logged' : '') : x.have + ' / ' + x.cost, ready: x.ready }));
         return {
-          name: l.name, cap: l.cp >= 10000 ? 'No CP cap' : '\u2264' + l.cp + ' CP',
+          name: l.name, cap: l.cp >= 10000 ? 'No cap' : '\u2264 ' + l.cp + ' CP',
           rules: (l.rules || []).join(' '),
           top: top || [], hasTop: !!(top && top.length),
-          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ' for: ' + squad.members.filter(c => this.cupUnknown(cup, c.p).length).map(c => c.p.name).join(', ') + ')' : '') : (wi === 0 && canSquad ? 'Squad: not enough measured, in-cap, legal Pokemon of A tier or better yet.' : ''),
+          topCards, hasTopCards: topCards.length > 0, selLine: selTop ? selTop.name + ' \u00b7 ' + selTop.moves : '', hasSel: !!selTop,
+          squadNote: (/\(check .*\)$/.exec(squad ? squad.members.map(c => c.p.name).join('') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ')' : '') : '') || [''])[0].replace(/^\(|\)$/g, ''),
+          squadCards, hasSquadCards: squadCards.length > 0, squadSlots: squad ? [] : [1, 2, 3], hasSquadEmpty: !squad && canSquad,
+          megaCards, hasMegaCards: megaCards.length > 0,
+          squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ' for: ' + squad.members.filter(c => this.cupUnknown(cup, c.p).length).map(c => c.p.name).join(', ') + ')' : '') : (wi === 0 && canSquad ? 'Not enough measured, in-cap, legal A-tier Pokemon yet' : ''),
           megaLine: picks.length ? 'Mega-ready from your roster: ' + picks.join('; ') : '',
           note: notes.join(' ')
         };
@@ -15927,6 +15999,7 @@ class Component extends DCLogic {
       toggleReminders: () => this.toggleReminders(),
       hasFeedEvents: this.feedEvents().length > 0,
       feedVerify: this.feedVerifyLine(),
+      feedShort: this.validFeed(this.state.feed) ? 'Community data \u00b7 ' + new Date(this.state.feed.fetchedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Feed not loaded yet',
       feedStamp: this.validFeed(this.state.feed) ? 'Community data (not official) \u00b7 refreshed ' + new Date(this.state.feed.fetchedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Feed not loaded yet.',
       eventRows: (this.state.events || []).map(e => ({
         id: e.id, title: e.title, date: e.date,

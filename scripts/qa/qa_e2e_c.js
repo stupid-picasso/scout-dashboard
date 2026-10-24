@@ -42,12 +42,12 @@ module.exports = async function suiteC() {
   await s.set({ typeTable: {} });
   await s.go('TODAY'); await s.page.waitForTimeout(800);
   const roster = (await s.state()).roster;
-  const t0 = () => s.text();
+  const t0 = async () => { await s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; })); return s.text(); };
   await T('TOD-01', 'Today', 'GBL card appears when the feed has a current week', async () => expect(/GO Battle League/.test(await t0())));
   await T('TOD-02', 'Today', 'Current week is labelled THIS WEEK and the next NEXT WEEK', async () => { const t = await t0(); expect(/THIS WEEK/.test(t) && /NEXT WEEK/.test(t)); });
   await T('TOD-03', 'Today', 'An already-ended week is not shown', async () => expect(!/EXPIRED LEAGUE/.test(await t0())), 'critical');
-  await T('TOD-04', 'Today', 'Each league shows its CP cap and rules text', async () => { const t = await t0(); expect(/≤1500 CP/.test(t) && /No CP cap/.test(t) && /at or below 1,500 CP/.test(t)); });
-  await T('TOD-05', 'Today', 'Open Great League lists top species with tier and moves', async () => { const t = (await t0()).split('Great League')[1] || ''; expect(/[SAB] ·/.test(t.slice(0, 900)), t.slice(0, 300)); });
+  await T('TOD-04', 'Today', 'Each league shows its CP cap and rules text', async () => { const t = await t0(); expect(/≤ 1500 CP/.test(t) && /No cap/.test(t) && /at or below 1,500 CP/.test(t)); });
+  await T('TOD-05', 'Today', 'Open Great League lists top species with tier and moves', async () => { const btn = s.page.getByRole('button', { name: /, tier [SAB]/ }).first(); expect(await btn.count() > 0, 'no top-species buttons'); await btn.click(); await s.page.waitForTimeout(300); expect(/ · /.test(await t0()) && await s.page.getByRole('button', { name: /, tier [SAB]/ }).first().getAttribute('aria-pressed') === 'true', 'moves line missing after tap'); await btn.click(); });
   await T('TOD-06', 'Today', 'Cup squad only contains Pokemon of the cup\'s allowed types (Color Cup)', async () => {
     const team = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.gblWeeks) { const w = f.stateNode.logic.gblWeeks(); return w[0].leagues.map(l => ({ name: l.name, squad: l.squadLine, note: l.note })); } } return null; });
     expect(team, 'no weeks'); const cup = team.find(l => /Color Cup/.test(l.name)); expect(cup, 'cup missing');
@@ -58,7 +58,7 @@ module.exports = async function suiteC() {
     expect(spec.every(ts => ts && ts.some(t => types[t])), names.join(',') + ' → ' + JSON.stringify(spec));
   }, 'critical');
   await T('TOD-07', 'Today', 'Cup note says rankings are PvPoke\'s cup ranking (not an estimate) when a table exists', async () => expect(/colormega rankings/.test(await t0()), (await t0()).slice(0, 100)));
-  await T('TOD-08', 'Today', 'Mega Edition league shows a Mega-ready line for owned Mega-capable species', async () => expect(/Mega-ready from your roster/.test(await t0())));
+  await T('TOD-08', 'Today', 'Mega Edition league shows a Mega-ready line for owned Mega-capable species', async () => expect(/MEGA-READY/.test(await t0())));
   await T('TOD-09', 'Today', 'Squad members are all within the league CP cap', async () => { const team = await s.call('pvpTeamFor', 'great'); if (!team) skip('no team'); expect(team.members.every(c => c.p.cp <= 1500)); }, 'critical');
   await T('TOD-10', 'Today', 'Events within 14 days are listed; far-future and expired are not', async () => { const t = await t0(); expect(/QA Community Day/.test(t) && /QA Raid Boss/.test(t) && !/Far Future Event/.test(t) && !/Expired Event/.test(t)); }, 'high');
   await T('TOD-11', 'Today', 'Event shows bonuses and a per-species verdict (HUNT / POWER UP / SKIP)', async () => { const t = await t0(); expect(/3x Catch XP/.test(t) && /(HUNT|POWER UP|SKIP|MOVES ONLY)/.test(t)); });

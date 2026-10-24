@@ -732,11 +732,11 @@ function buildLists(roster, bestRank) {
 // ---------------------------------------------------------------------------
 (() => {
   const ctx = { mechanics: m, state: {} };
-  ['validFeed(f)', 'cupAllowsSpecies(cup, species, form, types)', 'cupAllows(cup, p)', 'cupUnknown(cup, p)', 'leagueTopSpecies(cp, n, cup, mega, tableKey)', 'megaReadyPicks(n, cp)', 'gblWeeks(now)'].forEach(sig => {
+  ['validFeed(f)', 'cupAllowsSpecies(cup, species, form, types)', 'cupAllows(cup, p)', 'cupUnknown(cup, p)', 'leagueTopSpecies(cp, n, cup, mega, tableKey)', 'megaReadyPicks(n, cp)', 'megaReadyData(n, cp)', 'dexFromPvpokeId(id)', 'gblWeeks(now)'].forEach(sig => {
     const name = sig.slice(0, sig.indexOf('(')), args = sig.slice(sig.indexOf('(') + 1, -1);
     ctx[name] = new Function(...(args ? args.split(', ') : []), extractMethodBody(SRC, sig + ' {')).bind(ctx);
   });
-  ctx.pvpTeamFor = () => null; ctx.typeOf = p => (m.speciesInfo(p.name, p.form) || { types: [] }).types.join(' / ');
+  ctx.pvpTeamFor = () => null; ctx.makeSpriteRefByDex = () => null; ctx.openDetail = () => {}; ctx.mechanics = ctx.mechanics || m; ctx.typeOf = p => (m.speciesInfo(p.name, p.form) || { types: [] }).types.join(' / ');
   ctx.effectiveRosterForMatch = () => []; ctx.megaEvolveInfoFor = () => null;
   ctx.feedVerifyLine = new Function(extractMethodBody(SRC, 'feedVerifyLine() {')).bind(ctx);
   check('no cross-check says so', /Not cross-checked/.test(ctx.feedVerifyLine()), true);
@@ -872,7 +872,7 @@ function buildLists(roster, bestRank) {
   const ctx = { mechanics: m, state, effectiveRosterForMatch: () => roster, needsAppraisal: () => false, ivsOf: p => p.ivs, isShadow: () => false,
     raidProfile: () => ({ now: { rating: 1000, fast: 'bug bite', charged: 'x scissor' } }),
     lookupMove: n => ({ ...m.AUTHORITATIVE_MOVES[n] }) };
-  ['megaEvolveInfoFor(key)', 'megaTagFor(p)', 'megaWorth(limit)', 'megaReadyPicks(n, cp)'].forEach(sig => {
+  ['megaEvolveInfoFor(key)', 'megaTagFor(p)', 'megaWorth(limit)', 'megaReadyPicks(n, cp)', 'megaReadyData(n, cp)'].forEach(sig => {
     const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
     ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
   });
