@@ -355,6 +355,13 @@ module.exports = async function suiteB() {
     await s.page.waitForTimeout(3200); expect(!(await s.state()).recentChanged, 'highlight must be forgotten after it played'); await s.set({ search: '' });
     await s.set({ addedPokemon: [], candyInventory: {}, ivOverrides: {} });
   }, 'high');
+  await T('RAID-PARTY-01', 'Raid', 'Party of 6 lists one of each species with a DPS total', async () => {
+    await s.set({ tab: 'raid', raidBossTypes: ['Water'], raidBossName: 'Test' }); await s.page.waitForTimeout(500);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/Party of 6/.test(txt) && /DPS total/.test(txt), 'party card missing: ' + txt.slice(0, 200));
+    await s.set({ raidBossTypes: [] }); await s.page.waitForTimeout(300);
+    expect(!/Party of 6/.test(await s.page.evaluate(() => document.body.innerText)), 'party shows with no boss');
+  });
   await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
     const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });
     expect(info.a.cls === 'XXL' && info.b.cls === 'M' && info.d.cls === 'XS' && info.e.cls === 'M', JSON.stringify(info));

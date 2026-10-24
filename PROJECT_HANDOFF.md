@@ -357,3 +357,12 @@ The sections above describe the original video/OCR pipeline. The app has since g
 - Bulk tab icon shows the number of Pokemon waiting for a form or type (`bulkBadge`). Roster has filters "Form to check" and "No type". A roster pill "Last import: N changed" opens a sheet with per-Pokemon Undo (`lastImport`, `revertImportRow`).
 - Motion: number roll-ups via `data-countup` (MutationObserver in `installCountUp`), Bulk row close (`bulkAnimateOut`, commit delayed 340 ms), import row flash (`data-changed`), press-scale on buttons, spring overshoot in `sheetUp`. All skip under Reduce Motion where they animate.
 - A readability floor (12px minimum) is applied by one CSS rule over inline font sizes; the design detector's 176 low-contrast flags are false alarms against the dark theme (axe color-contrast finds none on the real render).
+
+## Suggestion batch (candy lock, party, auto-import)
+- Candy lock (Home > Setup): a manual candy number can ignore later scans. State `candyLock`, localStorage `scout.candyLock`.
+- `aiQuotaNote()` puts an AI quota line in the status banner.
+- Raid tab: "Party of 6" card, best per species, total DPS.
+- Detail > Size: compares the size read on screen with the one computed from height.
+- `data/debug/` is no longer committed; extract.yml uploads it as an artifact.
+- `.github/workflows/extract-auto.yml`: every 6h, needs repo variable `DRIVE_FOLDER_URL`; idle when unset. Tracks `data/processed_drive_files.txt`. Untested against a real folder.
+- Skipped on purpose: transfer-plan tool (triage queue and dominated duplicates already do it), power-up/buddy/PvP planners (exist).
