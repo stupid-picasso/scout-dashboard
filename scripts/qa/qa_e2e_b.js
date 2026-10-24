@@ -374,6 +374,14 @@ module.exports = async function suiteB() {
     expect(parseFloat(leaned) > 0 && parseFloat(back) === 0, leaned + ' / ' + back);
     await s.call('closeDetail');
   });
+  await T('DOM-PVP-01', 'Roster', 'A duplicate that beats the other on every IV is not dominated when it ranks lower in a league', async () => {
+    const mk = (idx, iv, great, extra) => ({ idx, name: 'Pawmi', dex: 921, cp: 300, hp: 40, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: great }, scanDate: '2026-10-01', ...extra });
+    const winner = mk('qa-d1', [14, 13, 12], 80), lowAtk = mk('qa-d2', [0, 11, 12], 96), plain = mk('qa-d3', [0, 11, 12], 60);
+    const hit = async (list) => (await s.call('dominatedDuplicates', list)).map(x => x.loser.idx);
+    expect((await hit([winner, lowAtk])).indexOf('qa-d2') < 0, 'the 0/11/12 with the better Great rank must not be listed');
+    const other = { ...winner, idx: 'qa-d4', name: 'Pikachu', dex: 25 };  // different length: dominatedDuplicates is memoised on array length
+    expect((await hit([winner, plain, other])).indexOf('qa-d3') >= 0, 'a 0/11/12 that also ranks lower is still listed')
+  });
   await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
     const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });
     expect(info.a.cls === 'XXL' && info.b.cls === 'M' && info.d.cls === 'XS' && info.e.cls === 'M', JSON.stringify(info));

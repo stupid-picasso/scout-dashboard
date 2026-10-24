@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.176</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.177</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -7507,8 +7507,8 @@ class Component extends DCLogic {
   }
 
   // Duplicates that lose on every axis at once: same species and form, every IV
-  // equal or lower, level no higher, and none of the flags that make a Pokemon
-  // worth keeping regardless. Anything that wins on even one axis is left out \u2014
+  // equal or lower, level no higher, no better league rank in Great, Ultra or Little, and none of the
+  // flags that make a Pokemon worth keeping regardless. Anything that wins on even one axis is left out \u2014
   // this list is meant to be safe to act on without thinking.
   dominatedDuplicates(roster) {
     const groups = {};
@@ -7530,7 +7530,13 @@ class Component extends DCLogic {
           if (!b) return false;
           const qlv = Number.isFinite(q.lvlMin) ? q.lvlMin : 0;
           const strictlyBetter = b[0] > a[0] || b[1] > a[1] || b[2] > a[2] || qlv > lv;
-          return b[0] >= a[0] && b[1] >= a[1] && b[2] >= a[2] && qlv >= lv && strictlyBetter;
+          if (!(b[0] >= a[0] && b[1] >= a[1] && b[2] >= a[2] && qlv >= lv && strictlyBetter)) return false;
+          // A higher IV is not a higher PvP rank: under a CP cap a low Attack IV can reach a higher level
+          // and more bulk. If the "loser" ranks better than the "winner" in any league, it is not dominated.
+          return ['great', 'ultra', 'little'].every(lk => {
+            const mine = p[lk] && Number(p[lk].rankPct), theirs = q[lk] && Number(q[lk].rankPct);
+            return !Number.isFinite(mine) || (Number.isFinite(theirs) && theirs >= mine);
+          });
         });
         if (beater) out.push({ loser: p, winner: beater });
       });
