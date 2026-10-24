@@ -1242,7 +1242,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.169</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.171</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3020,13 +3020,13 @@
           </sc-if>
         
           </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-200)">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-200)">
           <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">CANDY</span>
-          <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.candyDraft }}" onChange="{{ detail.onCandyChange }}" style="width:48px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
+          <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.candyDraft }}" onChange="{{ detail.onCandyChange }}" style="width:92px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
           <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;flex-shrink:0">XL</span>
-          <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.xlDraft }}" onChange="{{ detail.onXlChange }}" style="width:44px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
+          <input type="text" inputmode="numeric" placeholder="0" value="{{ detail.xlDraft }}" onChange="{{ detail.onXlChange }}" style="width:78px;flex-shrink:0;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:5px;color:var(--ink-900);font:700 12px var(--font-display);text-align:center;padding:5px 2px" />
           <div onClick="{{ detail.saveCandy }}" class="om-tap" style="cursor:pointer;flex-shrink:0;padding:6px 12px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">SET</div>
-          <span style="flex:1;min-width:0;text-align:right;font:700 11px var(--font-display);color:{{ detail.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.bestLeagueLabel }}</span>
+          <span style="flex:1 1 90px;min-width:90px;text-align:right;font:700 11px var(--font-display);color:{{ detail.bestLeagueColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ detail.bestLeagueLabel }}</span>
         </div>
         <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-400);margin-top:8px">{{ detail.candyNote }}</div>
           <sc-if value="{{ detail.powerPlan }}" hint-placeholder-val="{{ false }}">
@@ -3034,13 +3034,13 @@
               <div style="margin-top:12px">
                 <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
                   <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }}">
-                    <span style="display:flex;gap:10px;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></span>
-                    <span style="font:800 13px var(--font-display);letter-spacing:.05em">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</span>
+                    <span style="display:flex;flex-wrap:wrap;gap:2px 10px;min-width:0;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums;white-space:nowrap"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><sc-if value="{{ detail.powerPlan.quickStep.hasXl }}" hint-placeholder-val="{{ false }}"><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></sc-if></span>
+                    <span style="font:800 13px var(--font-display);letter-spacing:.03em;white-space:nowrap;flex-shrink:0">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</span>
                   </div>
                 </sc-if>
                 <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-radius:var(--r-pill);background:var(--surface-muted)">
-                    <span style="display:flex;gap:10px;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums;color:var(--ink-500)"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></span>
+                    <span style="display:flex;flex-wrap:wrap;gap:2px 10px;min-width:0;font:600 11.5px var(--font-display);font-variant-numeric:tabular-nums;color:var(--ink-500);white-space:nowrap"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><sc-if value="{{ detail.powerPlan.quickStep.hasXl }}" hint-placeholder-val="{{ false }}"><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></sc-if></span>
                     <span style="font:700 11px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</span>
                   </div>
                 </sc-if>
@@ -6929,7 +6929,7 @@ class Component extends DCLogic {
       quickStep = {
         nextLevel: 'Lv ' + (level + 0.5),
         dust: step.dust.toLocaleString(), candy: step.candy > 0 ? String(step.candy) : '\u2014',
-        xlCandy: step.xlCandy > 0 ? String(step.xlCandy) : '\u2014',
+        xlCandy: step.xlCandy > 0 ? String(step.xlCandy) : '\u2014', hasXl: step.xlCandy > 0,
         blocked,
         statusLabel: blocked ? 'SHORT ON ' + short.join(' + ').toUpperCase() : 'TAP TO POWER UP',
         statusColor: blocked ? 'var(--type-fighting)' : 'var(--grass-700)',
