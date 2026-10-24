@@ -43,7 +43,7 @@ module.exports = async function suiteC() {
   await s.go('TODAY'); await s.page.waitForTimeout(800);
   const roster = (await s.state()).roster;
   const t0 = () => s.text();
-  await T('TOD-01', 'Today', 'GBL card appears when the feed has a current week', async () => expect(/GO BATTLE LEAGUE/.test(await t0())));
+  await T('TOD-01', 'Today', 'GBL card appears when the feed has a current week', async () => expect(/GO Battle League/.test(await t0())));
   await T('TOD-02', 'Today', 'Current week is labelled THIS WEEK and the next NEXT WEEK', async () => { const t = await t0(); expect(/THIS WEEK/.test(t) && /NEXT WEEK/.test(t)); });
   await T('TOD-03', 'Today', 'An already-ended week is not shown', async () => expect(!/EXPIRED LEAGUE/.test(await t0())), 'critical');
   await T('TOD-04', 'Today', 'Each league shows its CP cap and rules text', async () => { const t = await t0(); expect(/≤1500 CP/.test(t) && /No CP cap/.test(t) && /at or below 1,500 CP/.test(t)); });
@@ -66,12 +66,12 @@ module.exports = async function suiteC() {
   await T('TOD-13', 'Today', 'Raid boss with a form suffix "Mewtwo (Armored)" is judged as Mewtwo', async () => expect(/Mewtwo/.test((await t0()).split('QA Raid Boss')[1] || '')));
   await T('TOD-14', 'Today', 'Feed stamp says the data is community-sourced, not official', async () => expect(/Community data \(not official\)/.test(await t0())));
   await T('TOD-15', 'Today', 'Without a cross-check file the card says it is not cross-checked', async () => expect(/Not cross-checked/.test(await t0())));
-  await T('TOD-16', 'Today', 'MEGAS WORTH EVOLVING ranks Mega-capable Pokemon with a raid rating', async () => expect(/MEGAS WORTH EVOLVING/.test(await t0()) && /Mega raid rating \d+ vs \d+ now/.test(await t0())));
-  await T('TOD-17', 'Today', 'Mega ranking is sorted by Mega raid rating (descending)', async () => { const r = [...(await t0()).matchAll(/Mega raid rating (\d+) vs/g)].map(m => +m[1]); expect(r.length >= 2 && r.every((v, i) => i === 0 || r[i - 1] >= v), r.join(',')); });
+  await T('TOD-16', 'Today', 'Megas worth evolving ranks Mega-capable Pokemon with a raid gain', async () => expect(/Megas worth evolving/.test(await t0()) && /\+\d+%\s*\d+ \u2192 \d+/.test(await t0())));
+  await T('TOD-17', 'Today', 'Mega ranking is sorted by Mega raid rating (descending)', async () => { const r = [...(await t0()).matchAll(/\+\d+%\s*\d+ \u2192 (\d+)/g)].map(m => +m[1]); expect(r.length >= 2 && r.every((v, i) => i === 0 || r[i - 1] >= v), r.join(',')); });
   await T('TOD-18', 'Today', 'Event planner: adding an event judges each species', async () => { await s.page.getByPlaceholder('Event name, e.g. Community Day').fill('QA Day'); await s.page.getByPlaceholder('Featured species, comma separated').fill('Azumarill, Caterpie'); await s.page.getByText('ADD EVENT', { exact: true }).click(); await s.page.waitForTimeout(500); expect(/QA Day/.test(await t0()) && /REMOVE/.test(await t0())); });
   await T('TOD-19', 'Today', 'Event planner: REMOVE deletes the event', async () => { await s.page.getByText('REMOVE', { exact: true }).first().click(); await s.page.waitForTimeout(400); expect(!/QA Day/.test(await t0())); });
   await T('TOD-20', 'Today', 'Event planner rejects an event with no species', async () => { const n0 = ((await s.state()).events || []).length; await s.page.getByPlaceholder('Event name, e.g. Community Day').fill('No species'); await s.page.getByText('ADD EVENT', { exact: true }).click(); await s.page.waitForTimeout(300); expect(((await s.state()).events || []).length === n0); });
-  await T('TOD-21', 'Today', 'Scan queue lists Pokemon whose IVs are unmeasured, with reasons', async () => { const t = await t0(); expect(/SCAN THESE NEXT/.test(t)); });
+  await T('TOD-21', 'Today', 'Scan queue lists Pokemon whose IVs are unmeasured, with reasons', async () => { const t = await t0(); expect(/Scan these next/.test(t)); });
   await T('TOD-22', 'Today', 'Stats strip shows TO EVOLVE / QUEUED / NEW DEX', async () => { const t = await t0(); expect(/TO EVOLVE/.test(t) && /QUEUED/.test(t) && /NEW DEX/.test(t)); });
   await T('TOD-40', 'Today', 'A raid-boss event offers "Best six vs <boss>" and opens the Raid tab with the boss\'s types filled in', async () => {
     await s.go('TODAY'); const b = s.page.getByRole('button', { name: /^Best six vs Mewtwo/ }); expect(await b.count() >= 1, 'no button'); await b.first().click(); await s.page.waitForTimeout(700);
@@ -107,15 +107,15 @@ module.exports = async function suiteC() {
 
   s = await session({ feed: false });
   await s.load(QA); await s.go('TODAY');
-  await T('TOD-30', 'Today', 'Feed unreachable: no GBL card, no error, rest of Today still works', async () => { const t = await s.text(); expect(!/GO BATTLE LEAGUE/.test(t) && /EVENT PLANNER/.test(t) && s.errors.length === 0); }, 'high');
+  await T('TOD-30', 'Today', 'Feed unreachable: no GBL card, no error, rest of Today still works', async () => { const t = await s.text(); expect(!/GO Battle League/.test(t) && /Event planner/.test(t) && s.errors.length === 0); }, 'high');
   await s.close();
   s = await session({ feed: { gbl: 'oops', events: null } });
   await s.load(QA); await s.go('TODAY');
-  await T('TOD-31', 'Today', 'Malformed feed JSON is ignored safely', async () => { expect(!/GO BATTLE LEAGUE/.test(await s.text()) && s.errors.length === 0); }, 'high');
+  await T('TOD-31', 'Today', 'Malformed feed JSON is ignored safely', async () => { expect(!/GO Battle League/.test(await s.text()) && s.errors.length === 0); }, 'high');
   await s.close();
   s = await session({ feed: { ...feed(), gbl: feed().gbl.slice(2) } });
   await s.load(QA); await s.go('TODAY');
-  await T('TOD-32', 'Today', 'A feed whose weeks have all ended shows no league card (never stale as current)', async () => expect(!/GO BATTLE LEAGUE/.test(await s.text())), 'high');
+  await T('TOD-32', 'Today', 'A feed whose weeks have all ended shows no league card (never stale as current)', async () => expect(!/GO Battle League/.test(await s.text())), 'high');
   await s.close();
   s = await session({ feed: feed() });
   await s.load(QA);
@@ -124,7 +124,7 @@ module.exports = async function suiteC() {
   s = await session({ feed: false, init: null });
   await s.page.evaluate(f => localStorage.setItem('scout.feed.v1', JSON.stringify(f)), feed());
   await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(1500); await s.load(QA); await s.go('TODAY');
-  await T('TOD-34', 'Today', 'Offline: GBL card renders from the cached feed', async () => expect(/GO BATTLE LEAGUE/.test(await s.text()), 'card missing from cache'));
+  await T('TOD-34', 'Today', 'Offline: GBL card renders from the cached feed', async () => expect(/GO Battle League/.test(await s.text()), 'card missing from cache'));
   await s.close();
 
   // ------------------------------------------------------------------ HOME / settings

@@ -94,7 +94,7 @@ const check = (name, ok, extra) => {
   await page.locator('[data-swipe-row]').first().click();
   await page.waitForTimeout(1200);
   check('a Mega-capable Pokemon shows the Mega card', (await page.getByText('MEGA EVOLUTION', { exact: true }).count()) >= 1);
-  check('detail sheet opens with the count-up CP', (await page.locator('.om-count').count()) >= 1);
+  check('detail sheet opens with the rolling CP number', (await page.locator('[data-countup]').count()) >= 1);
   check('detail sheet leaves no inline transform behind', await page.evaluate(() => {
     const s = [...document.querySelectorAll('.om-scroll')].find(e => e.style.maxHeight && e.style.maxHeight.includes('calc'));
     return !!s && s.style.transform === '';
@@ -144,8 +144,8 @@ const check = (name, ok, extra) => {
   await page.getByPlaceholder('Featured species, comma separated').fill('Azumarill, Caterpie');
   await page.getByText('ADD EVENT', { exact: true }).click();
   await page.waitForTimeout(600);
-  check('Megas-worth-evolving card lists Mega-capable Pokemon', (await page.getByText('MEGAS WORTH EVOLVING', { exact: true }).count()) >= 1);
-  check('GBL card shows the cup rotation and rules', (await page.getByText('GO BATTLE LEAGUE', { exact: true }).count()) >= 1 && (await page.getByText('Mega Edition').count()) >= 1);
+  check('Megas-worth-evolving card lists Mega-capable Pokemon', (await page.getByText('Megas worth evolving', { exact: true }).count()) >= 1);
+  check('GBL card shows the cup rotation and rules', (await page.getByText('GO Battle League', { exact: true }).count()) >= 1 && (await page.getByText('Mega Edition').count()) >= 1);
   check('feed events show details and a verdict', (await page.getByText('Smoke Community Day').count()) >= 1 && (await page.getByText('3x Catch XP').count()) >= 1);
   check('event planner lists the event and judges each species', (await page.getByText('Smoke Day').count()) >= 1 && (await page.getByText('HUNT').count()) >= 1);
   await go('PVP');

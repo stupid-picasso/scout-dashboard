@@ -183,7 +183,7 @@ module.exports = async function suiteB() {
     const txt = await s.page.evaluate(() => document.body.innerText);
     expect(/REGIONAL FORM/.test(txt) && /Vulpix/.test(txt) && /Alolan/.test(txt), 'bulk tab content missing: ' + txt.slice(0, 200));
     const v = ((await s.state()).addedPokemon || []).find(p => p.name === 'Vulpix' && p.cp === 555); expect(v, 'seed row');
-    await s.call('bulkPickForm', v, 'alola'); await s.page.waitForTimeout(300);
+    await s.call('bulkPickForm', v, 'alola'); await s.page.waitForTimeout(700);
     const o = (await s.state()).ivOverrides[v.idx] || {};
     expect(o.form === 'alola' && o.type === 'Ice' && o.formReviewed === true, JSON.stringify([o.form, o.type, o.formReviewed]));
     expect(o.great && Number.isFinite(o.great.rankPct), 'rank not recomputed');
@@ -283,7 +283,7 @@ module.exports = async function suiteB() {
     await s.set({ tab: 'bulk', bulkVisible: 100 }); await s.page.waitForTimeout(500);
     const txt = await s.page.evaluate(() => document.body.innerText);
     expect(/NO TYPE ON FILE/.test(txt) && /Qazwsxmon/.test(txt), 'type check missing: ' + txt.slice(0, 200));
-    await s.call('bulkSaveType', row, ['Fire', 'Flying']); await s.page.waitForTimeout(300);
+    await s.call('bulkSaveType', row, ['Fire', 'Flying']); await s.page.waitForTimeout(700);
     const o = (await s.state()).ivOverrides[row.idx] || {}; expect(o.type === 'Fire / Flying' && o.typeReviewed === true, JSON.stringify(o));
     expect(await s.call('typeOf', { ...row, ...o }) === 'Fire / Flying', 'typeOf');
     expect(!(await s.call('bulkTypePending')).some(p => p.name === 'Qazwsxmon'), 'reviewed row should leave the list');
@@ -331,6 +331,30 @@ module.exports = async function suiteB() {
     expect(plan && plan.quickStep && plan.quickStep.nextLevel === 'Lv 16', JSON.stringify(plan && plan.quickStep && plan.quickStep.nextLevel));
     await s.set({ addedPokemon: [], candyInventory: {}, ivOverrides: {} });
   }, 'critical');
+  await T('MOTION-01', 'Motion', 'Numbers roll on change, changed rows flash once after an import, Bulk rows close before committing', async () => {
+    // count-up: change a marked number and look at it mid-animation
+    const p = { idx: 'qa-mo1', name: 'Pidgey', dex: 16, cp: 300, hp: 40, lvlMin: 10, lvlMax: 10, atkIV: 8, defIV: 8, staIV: 8, ivMeasured: true, scanDate: new Date().toISOString().slice(0, 10) };
+    await s.set({ addedPokemon: [p], ivOverrides: {}, candyInventory: { pidgey: { name: 'Pidgey', candy: 100, xlCandy: 0, at: Date.now(), source: 'manual' } }, stardustBalance: 5000, tab: 'roster' }); await s.page.waitForTimeout(400);
+    await s.call('openDetail', p); await s.page.waitForTimeout(900);
+    const seen = await s.page.evaluate(async () => {
+      const el = [...document.querySelectorAll('[data-countup]')].find(e => /^\s*100\s*$/.test(e.textContent)); if (!el) return { err: 'no candy tile' };
+      let logic = null; for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) { logic = f.stateNode.logic; break; } if (logic) break; }
+      logic.setState({ candyInventory: { pidgey: { name: 'Pidgey', candy: 40, xlCandy: 0, at: Date.now(), source: 'manual' } } });
+      const vals = []; for (let i = 0; i < 14; i++) { await new Promise(r => setTimeout(r, 40)); vals.push(el.textContent.trim()); }
+      return { vals, cls: el.className };
+    });
+    expect(!seen.err, seen.err);
+    const mids = seen.vals.filter(v => v !== '100' && v !== '40'); expect(mids.length > 0, 'no in-between values: ' + seen.vals.join(','));
+    expect(seen.vals[seen.vals.length - 1] === '40', 'must end exactly on 40: ' + seen.vals.join(','));
+    await s.call('closeDetail');
+    // flash: an import marks the rows it touched
+    await s.set({ search: 'pidgey', tab: 'roster' }); await s.page.waitForTimeout(300);
+    await s.call('mergeVideoImport', [{ name: 'Pidgey', dex: 16, cp: 300, hp: 41, atkIV: 8, defIV: 8, staIV: 8 }]); await s.page.waitForTimeout(250);
+    const rc = (await s.state()).recentChanged; expect(rc && rc.ids.indexOf('qa-mo1') >= 0, 'recentChanged: ' + JSON.stringify(rc));
+    expect(await s.page.evaluate(() => document.querySelectorAll('[data-changed="1"]').length) >= 1, 'row not flagged');
+    await s.page.waitForTimeout(3200); expect(!(await s.state()).recentChanged, 'highlight must be forgotten after it played'); await s.set({ search: '' });
+    await s.set({ addedPokemon: [], candyInventory: {}, ivOverrides: {} });
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');
