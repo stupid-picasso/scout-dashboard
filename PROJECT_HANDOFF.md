@@ -349,3 +349,11 @@ The sections above describe the original video/OCR pipeline. The app has since g
 - Thinking is minimal (ladder in `call_gemini`). HDR tone-map downscales inside the first zscale.
 - Tests: `scripts/test_gemini_pool.py`, `scripts/test_extract_pipeline.py` (run in Tests workflow).
 - Accuracy per model: run the "Benchmark Gemini Models" workflow; output `data/benchmark_models.md`.
+
+
+## Size classes, showcase protection and motion (added with the "do all 7" pass)
+- `scripts/import_size_data.py` writes the `SIZE_DATA` block in `pokemon-mechanics.js` from the game master (per species and form: Pokedex height, weight and the six size cut-offs; the refresh runs in `update-pvpoke-data.yml`). `sizeInfoFor(dex, form, heightM)` returns `{cls: XXS|XS|M|XL|XXL, ratio, valid, borderline}`. The cut-offs are read as heights in metres from their values (they match the Pokedex height times 0.49/0.5/0.75/1.25/1.5/1.75 for most species); the game does not document them and they are NOT yet confirmed against in-game screenshots.
+- App: `sizeOf / sizeTagOf / sizeProtected`. XXL and XXS (optionally XL/XS, setting `protectSizes` under Home > Setup) are never offered as transfer suggestions (verdict, triage queue, dominated duplicates, transfer-safe pools) and are KEEP with a showcase reason. A height outside what the species can have (`valid:false`) neither tags nor protects. Roster filters XXL/XXS and XL/XS, search builder terms, rename token `{size}`, and Tools > Showcase list.
+- Bulk tab icon shows the number of Pokemon waiting for a form or type (`bulkBadge`). Roster has filters "Form to check" and "No type". A roster pill "Last import: N changed" opens a sheet with per-Pokemon Undo (`lastImport`, `revertImportRow`).
+- Motion: number roll-ups via `data-countup` (MutationObserver in `installCountUp`), Bulk row close (`bulkAnimateOut`, commit delayed 340 ms), import row flash (`data-changed`), press-scale on buttons, spring overshoot in `sheetUp`. All skip under Reduce Motion where they animate.
+- A readability floor (12px minimum) is applied by one CSS rule over inline font sizes; the design detector's 176 low-contrast flags are false alarms against the dark theme (axe color-contrast finds none on the real render).

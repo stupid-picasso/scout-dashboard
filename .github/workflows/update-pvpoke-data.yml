@@ -38,6 +38,9 @@ jobs:
       - name: Refresh Mega Level rules (game master)
         run: python scripts/import_mega_levels.py
 
+      - name: Refresh size classes (game master)
+        run: python scripts/import_size_data.py
+
       - name: Open a PR if anything changed
         run: |
           git config user.name "github-actions[bot]"

@@ -355,6 +355,44 @@ module.exports = async function suiteB() {
     await s.page.waitForTimeout(3200); expect(!(await s.state()).recentChanged, 'highlight must be forgotten after it played'); await s.set({ search: '' });
     await s.set({ addedPokemon: [], candyInventory: {}, ivOverrides: {} });
   }, 'high');
+  await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
+    const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });
+    expect(info.a.cls === 'XXL' && info.b.cls === 'M' && info.d.cls === 'XS' && info.e.cls === 'M', JSON.stringify(info));
+    expect(info.c.valid === false, 'an impossible height must be flagged as invalid');
+    const mk = (idx, h, extra) => ({ idx, name: 'Bulbasaur', dex: 1, cp: 400, hp: 50, height: h, weight: '7kg', atkIV: 1, defIV: 1, staIV: 1, ivAvg: 6.7, scanDate: new Date().toISOString().slice(0, 10), ...extra });
+    const big = mk('qa-sz1', '1.2m'), avg = mk('qa-sz2', '0.7m', { cp: 401 }), bad = mk('qa-sz3', '0.3m', { cp: 402 });
+    await s.set({ addedPokemon: [big, avg, bad], ivOverrides: {}, protectSizes: 'extreme' }); await s.page.waitForTimeout(300);
+    expect(await s.call('sizeProtected', big) === true && await s.call('sizeProtected', avg) === false && await s.call('sizeProtected', bad) === false, 'protection: XXL yes, normal no, impossible height no');
+    const v = await s.call('verdictFor', big); expect(v.verdict === 'KEEP' && /showcase/.test(v.reason), JSON.stringify(v));
+    expect((await s.call('dominatedDuplicates', [big, mk('qa-sz4', '0.7m', { cp: 500, atkIV: 5, defIV: 5, staIV: 5, ivAvg: 30 })])).every(x => x.loser.idx !== 'qa-sz1'), 'XXL must never be the dominated duplicate');
+    await s.set({ protectSizes: 'off' }); expect(await s.call('sizeProtected', big) === false, 'off switches protection off');
+    await s.set({ protectSizes: 'extreme', tab: 'tools', toolsMode: 'showcase' }); await s.page.waitForTimeout(500);
+    const txt = await s.page.evaluate(() => document.body.innerText); expect(/Showcase picks/.test(txt) && /XXL/.test(txt), 'showcase list: ' + txt.slice(0, 160));
+    await s.set({ srchName: '', srchTypes: [], srchForm: '', srchStars: [], srchCpMin: '', srchCpMax: '', srchFlags: { xxl: -1, xxs: -1 }, toolsMode: 'search' }); expect((await s.call('searchStringFromBuilder')) === '!xxl&!xxs', await s.call('searchStringFromBuilder'));
+    expect((await s.call('renameFor', big, '{size}{iv}')) === 'XXL7', await s.call('renameFor', big, '{size}{iv}'));
+    await s.set({ addedPokemon: [], ivOverrides: {} });
+  }, 'critical');
+  await T('ADD-01', 'Additions', 'Bulk badge counts pending reviews; import sheet lists changes and Undo restores one Pokemon; evolve note names the shared pool; roster smart filters', async () => {
+    const mkp = (idx, name, dex, cp) => ({ idx, name, dex, cp, hp: 50, atkIV: 5, defIV: 5, staIV: 5, ivAvg: 33, candy: 12, scanDate: '2026-10-01' });
+    const a = mkp('qa-ad1', 'Vulpix', 37, 500), b = mkp('qa-ad2', 'Pidgey', 16, 300), c = mkp('qa-ad3', 'Pidgey', 16, 310);
+    await s.set({ addedPokemon: [a, b, c], ivOverrides: {}, candyInventory: { pidgey: { name: 'Pidgey', candy: 12, xlCandy: 0, at: Date.now(), source: 'manual' } }, tab: 'today' }); await s.page.waitForTimeout(500);
+    const badge = await s.page.evaluate(() => { const e = document.querySelector('[aria-label$="to review"]'); return e ? e.textContent.trim() : null; });
+    expect(badge && /^\d+\+?$/.test(badge), 'bulk badge: ' + badge);
+    // import sheet + revert
+    await s.call('mergeVideoImport', [{ name: 'Pidgey', dex: 16, cp: 300, hp: 61, atkIV: 5, defIV: 5, staIV: 5 }, { name: 'Rattata', dex: 19, cp: 222, hp: 40, atkIV: 4, defIV: 4, staIV: 4 }]); await s.page.waitForTimeout(400);
+    let li = (await s.state()).lastImport; expect(li && li.rows.length === 2 && li.rows.some(r => r.kind === 'new') && li.rows.some(r => r.kind === 'updated'), JSON.stringify(li && li.rows));
+    const newRow = li.rows.find(r => r.kind === 'new'), upRow = li.rows.find(r => r.kind === 'updated');
+    await s.call('revertImportRow', upRow.idx); await s.call('revertImportRow', newRow.idx); await s.page.waitForTimeout(400);
+    const st = await s.state(); expect(!(st.addedPokemon || []).some(p => p.name === 'Rattata'), 'new Pokemon removed by Undo'); expect(((st.ivOverrides || {})[upRow.idx] || {}).hp !== 61, 'updated Pokemon restored');
+    expect((await s.state()).lastImport === null, 'sheet data cleared when everything is undone');
+    // evolve note
+    const note = await s.call('evolveDupNote', { dupTotal: 3, candyPool: 62, affordable: 2, fundable: true, candyAfter: 12, limiting: { name: 'Pidgey', cp: 310, short: 8 } });
+    expect(/shared pool of 62 candy/.test(note) && /funds 2 of 3/.test(note) && /12 left after/.test(note) && /Pidgey 310 CP, 8 candy short/.test(note), note);
+    // smart filters
+    await s.set({ tab: 'roster', rosterFilter: 'formCheck', search: '' }); await s.page.waitForTimeout(500);
+    expect(/Vulpix/.test(await s.page.evaluate(() => document.body.innerText)), 'form-to-check filter should list the Vulpix'); await s.set({ rosterFilter: 'all' });
+    await s.set({ addedPokemon: [], candyInventory: {}, ivOverrides: {}, lastImport: null });
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');

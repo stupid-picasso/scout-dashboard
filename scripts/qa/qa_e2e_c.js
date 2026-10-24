@@ -131,7 +131,8 @@ module.exports = async function suiteC() {
   s = await session({ feed: false });
   await s.load(QA); await s.go('HOME');
   await T('HOM-01', 'Home', 'Greeting, Power Up, Evolve Soon and Great League Project counts render', async () => { const t = await s.text(); expect(/Trainer/.test(t) && /POWER UP/.test(t) && /EVOLVE SOON/.test(t) && /GREAT LEAGUE PROJECTS/.test(t)); });
-  await T('HOM-02', 'Home', 'Sign-in form is present and a bad login shows an error, not a crash', async () => { await s.page.getByPlaceholder('email').first().fill('not-an-email'); await s.page.getByPlaceholder('password').first().fill('x'); await s.page.getByText('SIGN IN', { exact: true }).first().click(); await s.page.waitForTimeout(1500); expect(s.errors.length === 0, s.errors[0]); }, 'high');
+  const openSetup = () => s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/Setup, sync and backup/.test(d.textContent.slice(0, 120))) d.open = true; }));
+    await T('HOM-02', 'Home', 'Sign-in form is present and a bad login shows an error, not a crash', async () => { await openSetup(); await s.page.getByPlaceholder('email').first().fill('not-an-email'); await s.page.getByPlaceholder('password').first().fill('x'); await s.page.getByText('SIGN IN', { exact: true }).first().click(); await s.page.waitForTimeout(1500); expect(s.errors.length === 0, s.errors[0]); }, 'high');
   await T('HOM-03', 'Home', 'Trainer level and stardust reserve save and survive state read-back', async () => { const inputs = s.page.locator('input[type=text]'); await s.call('setState', {}); const ok = await s.set({ trainerLevel: 42, dustReserve: 100000 }); expect(ok); expect((await s.state()).trainerLevel === 42); });
   await T('HOM-04', 'Home', 'Resources (TMs, rare candy) save', async () => { const ok = await s.set({ resources: { fastTM: 3, chargedTM: 2 } }); expect(ok && (await s.state()).resources.fastTM === 3); });
   await T('HOM-05', 'Home', 'Mega energy admin list: adding a species and amount creates an entry', async () => { await s.page.getByPlaceholder('species').fill('Beedrill'); await s.page.getByPlaceholder('amount').fill('215'); await s.page.getByText('ADD', { exact: true }).last().click(); await s.page.waitForTimeout(400); expect(/Beedrill/.test(await s.text()) && (await s.state()).megaEnergyInventory.beedrill.amount === 215); });
@@ -153,18 +154,18 @@ module.exports = async function suiteC() {
     await s.call('setStardust', '1,480,000'); expect((await s.state()).stardustBalance === 1480000, 'valid'); await s.call('setStardust', '-10'); expect((await s.state()).stardustBalance === null, 'negative kept');
     await s.call('setStardust', '999999999999'); expect((await s.state()).stardustBalance === null, 'huge kept'); await s.call('setStardust', '250000'); expect((await s.state()).stardustBalance === 250000);
   }, 'medium');
-  await T('HOM-14', 'Home', 'Device backup is offered without an account and never contains API keys', async () => {
+  await T('HOM-14', 'Home', 'Device backup is offered without an account and never contains API keys', async () => { await openSetup();
     await s.go('HOME'); expect(await s.page.getByRole('button', { name: 'Back up this device' }).count() === 1, 'no button'); await s.set({ geminiKey: 'SECRET-KEY-123', githubToken: 'ghp_SECRET' });
     const text = await s.call('deviceBackupText'); expect(!/SECRET/.test(text), 'secret leaked'); const j = JSON.parse(text); expect(j._backup.kind === 'device' && j._backup.count === 64 && (Array.isArray(j.data.roster)), JSON.stringify(j._backup));
   }, 'critical');
-  await T('HOM-15', 'Home', 'A device backup restores the roster after it was cleared (with a confirmation step)', async () => {
+  await T('HOM-15', 'Home', 'A device backup restores the roster after it was cleared (with a confirmation step)', async () => { await openSetup();
     const text = await s.call('deviceBackupText'); const f = path.join(require('os').tmpdir(), 'qa-backup.json'); fs.writeFileSync(f, text);
     await s.set({ roster: [], addedPokemon: [], removedIds: [] }); await s.page.waitForTimeout(300); expect((await s.state()).roster.length === 0, 'not cleared');
     await s.page.setInputFiles('input[aria-label="Restore from backup file"]', f); await s.page.waitForTimeout(500); expect(/Confirm restore|will replace|Restore/.test(await s.text()), 'no confirm');
     expect((await s.state()).roster.length === 0, 'restored before confirming'); await s.page.getByRole('button', { name: 'Restore', exact: true }).click(); await s.page.waitForTimeout(600);
     expect((await s.state()).roster.length === 64, 'roster ' + (await s.state()).roster.length);
   }, 'critical');
-  await T('HOM-16', 'Home', 'A broken backup file is refused with a message and changes nothing', async () => {
+  await T('HOM-16', 'Home', 'A broken backup file is refused with a message and changes nothing', async () => { await openSetup();
     const f = path.join(require('os').tmpdir(), 'qa-bad.json'); fs.writeFileSync(f, '{"hello": 1}'); const n0 = (await s.state()).roster.length;
     await s.page.setInputFiles('input[aria-label="Restore from backup file"]', f); await s.page.waitForTimeout(500); expect(/Could not read that backup/.test(await s.text()), 'no message'); expect((await s.state()).roster.length === n0, 'changed');
   }, 'high');

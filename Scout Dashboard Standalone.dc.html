@@ -1191,6 +1191,8 @@
   /* Inputs and fields: filled capsule, no border. */
   input[type=text],input[type=password],input:not([type]),textarea,select{background:var(--ios-fill) !important;border:0 !important;border-radius:12px !important;color:var(--ink-900) !important;min-height:44px;box-sizing:border-box;padding:10px 14px !important}
   input::placeholder,textarea::placeholder{color:var(--ink-300) !important}
+  /* Readability floor: secondary text was set at 11-11.5px in many places; nothing is read below 12px. */
+  [style*="font:11px"],[style*=" 11px var"],[style*=":11px var"],[style*="font-size:11px"],[style*="font:11.5px"],[style*=" 11.5px var"],[style*="font-size:11.5px"]{font-size:12px !important}
   .go-card input:not([type]){background:#f4fbfb !important;color:#17353b !important;border:1.5px solid #cfe3e6 !important;border-radius:12px !important}
   .go-card input:not([type])::placeholder{color:#8aa5ab !important}
   .go-card button{text-align:center;display:inline-flex;align-items:center;justify-content:center}
@@ -1322,7 +1324,10 @@
   <nav data-navbar="1" class="ios-nav" aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(22,22,24,.78);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid rgba(84,84,88,.6)">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="5">
       <button type="button" onClick="{{ t.onClick }}" class="om-press" aria-label="{{ t.label }}" aria-current="{{ t.current }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.iconPath }}"/></svg>
+        <span style="position:relative;display:inline-flex">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.iconPath }}"/></svg>
+          <sc-if value="{{ t.badge }}" hint-placeholder-val="{{ false }}"><span aria-label="{{ t.badge }} to review" style="position:absolute;top:-4px;right:-10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ios-red);color:#fff;font:700 11px/18px var(--font-body);text-align:center;box-sizing:border-box">{{ t.badge }}</span></sc-if>
+        </span>
         <span style="font:600 10.5px var(--font-body);letter-spacing:.01em;color:{{ t.color }};white-space:nowrap">{{ t.navLabel }}</span>
       </button>
     </sc-for>
@@ -1339,6 +1344,22 @@
         </div>
       </sc-for>
     </div>
+  </sc-if>
+
+  <sc-if value="{{ importSheetOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeImportSheet }}" style="position:fixed;inset:0;z-index:58;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:scrimIn .25s ease both"></div>
+  <div role="dialog" aria-modal="true" aria-label="What the last import changed" style="position:fixed;left:0;right:0;bottom:0;z-index:59;max-height:82vh;display:flex;flex-direction:column;background:var(--surface-card);border-radius:24px 24px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:sheetUp .42s cubic-bezier(.32,.72,0,1) backwards">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font:700 20px var(--font-display);letter-spacing:-.015em">What the import changed</div><button type="button" onClick="{{ closeImportSheet }}" class="om-press" style="font:600 16px var(--font-body);color:var(--ios-blue);min-height:44px;padding:0 6px">Done</button></div>
+    <div style="font:500 13px var(--font-body);color:var(--ink-400);margin-bottom:10px">Undo puts one Pokemon back as it was. Shared candy counts are not undone.</div>
+    <div class="om-scroll" style="overflow:auto;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ importSheetRows }}" as="r" hint-placeholder-count="0">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:.5px solid var(--line-200)">
+          <div style="flex:1;min-width:0"><div style="font:600 16px var(--font-body)">{{ r.name }} <span style="font:600 12px var(--font-display);color:var(--ink-500)">{{ r.cpLabel }}</span></div><div style="font:500 13px var(--font-body);color:{{ r.color }};margin-top:2px">{{ r.text }}</div></div>
+          <button type="button" onClick="{{ r.onRevert }}" class="om-press" aria-label="Undo the change to {{ r.name }}" style="flex-shrink:0;min-width:64px;min-height:44px;border-radius:999px;background:var(--ios-fill);color:var(--ink-700);font:600 14px var(--font-body)">Undo</button>
+        </div>
+      </sc-for>
+    </div>
+  </div>
   </sc-if>
 
   <sc-if value="{{ fileFallback }}" hint-placeholder-val="{{ false }}">
@@ -1773,16 +1794,6 @@
   <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn .35s ease;display:flex;flex-direction:column;gap:20px">
     <h2 style="margin:0;font:800 20px var(--font-body)">{{ digest.greeting }}</h2>
-    <div style="background:var(--surface-card);border-radius:18px;padding:14px 16px">
-      <div style="font:600 15px var(--font-body);margin-bottom:2px">Text size</div>
-      <div style="font:13px var(--font-body);color:var(--ink-400);margin-bottom:10px">Scales the whole app. Saved on this device.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <sc-for list="{{ zoomChoices }}" as="z" hint-placeholder-count="5">
-          <button type="button" onClick="{{ z.onClick }}" class="om-press" aria-label="Text size {{ z.label }}" style="padding:9px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 14px var(--font-body);min-height:40px">{{ z.label }}</button>
-        </sc-for>
-      </div>
-    </div>
-
     <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:9px">
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
         <div style="font:11px var(--font-display);color:var(--ink-400)">POWER UP</div>
@@ -1795,6 +1806,29 @@
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
         <div style="font:11px var(--font-display);color:var(--ink-400)">GREAT LEAGUE PROJECTS</div>
         <div style="font:800 20px var(--font-display);color:var(--type-electric)">{{ digest.greatProjects }}</div>
+      </div>
+    </div>
+
+    <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:4px 16px;margin-bottom:14px">
+      <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;min-height:48px;font:600 16px var(--font-body)">Setup, sync and backup<span style="font:500 13px var(--font-body);color:var(--ink-400)">Text size, size protection, cloud, backup</span></summary>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:6px 0 14px">
+    <div style="background:var(--surface-card);border-radius:18px;padding:14px 16px">
+      <div style="font:600 15px var(--font-body);margin-bottom:2px">Text size</div>
+      <div style="font:13px var(--font-body);color:var(--ink-400);margin-bottom:10px">Scales the whole app. Saved on this device.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ zoomChoices }}" as="z" hint-placeholder-count="5">
+          <button type="button" onClick="{{ z.onClick }}" class="om-press" aria-label="Text size {{ z.label }}" style="padding:9px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 14px var(--font-body);min-height:40px">{{ z.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font:600 15px var(--font-body);margin-bottom:2px">Protect big and small Pokemon</div>
+      <div style="font:13px var(--font-body);color:var(--ink-400);margin-bottom:10px">Pokestop showcases reward size. Protected Pokemon never appear as transfer suggestions.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ protectChoices }}" as="z" hint-placeholder-count="3">
+          <button type="button" onClick="{{ z.onClick }}" class="om-press" aria-pressed="{{ z.pressed }}" style="padding:9px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 14px var(--font-body);min-height:40px">{{ z.label }}</button>
+        </sc-for>
       </div>
     </div>
 
@@ -1937,6 +1971,8 @@
         </sc-if>
       </sc-if>
     </div>
+      </div>
+    </details>
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:14px">
       <div style="font:700 11px var(--font-display);color:var(--type-water);letter-spacing:.05em">PLANNING</div>
@@ -2741,6 +2777,12 @@
         <div onClick="{{ typeData.onFetch }}" class="om-press" style="cursor:pointer;flex-shrink:0;padding:0 18px;min-height:40px;display:inline-flex;align-items:center;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:#fff;font:600 14px var(--font-body);white-space:nowrap">{{ typeData.btn }}</div>
       </div>
     </sc-if>
+    <sc-if value="{{ lastImportHas }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ openImportSheet }}" class="om-press" role="button" aria-label="Review what the last import changed" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:12px 16px;margin-bottom:12px">
+        <div><div style="font:600 15px var(--font-body)">{{ lastImportTitle }}</div><div style="font:500 12.5px var(--font-body);color:var(--ink-400);margin-top:2px">{{ lastImportSub }}</div></div>
+        <div style="font:600 15px var(--font-body);color:var(--ios-blue)">Review</div>
+      </div>
+    </sc-if>
     <div class="om-scroll" style="display:flex;flex-wrap:nowrap;gap:8px;margin:0 -2px 14px;padding:2px;overflow-x:auto;scrollbar-width:none">
       <sc-for list="{{ rosterFilterChips }}" as="c" hint-placeholder-count="6">
         <div onClick="{{ c.onClick }}" class="om-press" style="cursor:pointer;flex-shrink:0;white-space:nowrap;padding:9px 14px;border-radius:999px;font:700 11px var(--font-display);letter-spacing:.05em;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}">{{ c.label }}</div>
@@ -2910,6 +2952,7 @@
                 <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.3);font-size:11px;line-height:1">{{ tb.icon }}</span>{{ tb.name }}</span>
             </sc-for>
             <span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font-family:var(--font-display);font-weight:700;font-size:11px;line-height:1"><span data-countup="1">{{ detail.cp }}</span>&nbsp;CP</span>
+            <sc-if value="{{ detail.sizeChip }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:{{ detail.sizeChip.bg }};color:{{ detail.sizeChip.fg }};font-family:var(--font-display);font-weight:800;font-size:11px;line-height:1" aria-label="Size {{ detail.sizeChip.label }}">{{ detail.sizeChip.label }}</span></sc-if>
           </div>
           <sc-if value="{{ detail.metaLine }}" hint-placeholder-val="{{ false }}">
             <div style="font:500 13px var(--font-body);color:{{ detail.metaColor }}">{{ detail.metaLine }}</div>
@@ -3310,7 +3353,7 @@
 
   <sc-if value="{{ isPvp }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn .35s ease">
-    <div class="om-scroll" style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px">
+    <div class="om-scroll" style="position:sticky;top:72px;z-index:20;background:var(--surface-page);display:flex;gap:8px;margin:-6px -14px 14px;padding:8px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch">
       <sc-for list="{{ leagueList }}" as="lg" hint-placeholder-count="3">
         <div onClick="{{ lg.onClick }}" style="cursor:pointer;flex-shrink:0;padding:8px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
       </sc-for>
@@ -3419,6 +3462,21 @@
       <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em">RAID COUNTERS</div>
       <div style="font:12.5px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types, and this ranks your own Pokemon against it by damage per second (STAB, type effectiveness and optional weather) weighted by how well each one survives the boss&rsquo;s own types. It assumes the boss uses moves of its own types, so it is an estimate, not a battle simulation. Pokemon whose moves aren&rsquo;t in the move database are left out rather than guessed.</div>
     </div>
+
+    <sc-if value="{{ raidTopHas }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:14px 16px;margin-bottom:18px">
+        <div style="font:650 17px var(--font-display);letter-spacing:-.01em;margin-bottom:8px">Your best right now</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ raidTop }}" as="t" hint-placeholder-count="3">
+            <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+              <div style="width:44px;height:44px;border-radius:50%;background:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--font-display);color:var(--ink-400)">{{ t.initial }}</span><img ref="{{ t.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+              <div style="flex:1;min-width:0"><div style="font:650 16px var(--font-body)">{{ t.name }}</div><div style="font:500 12.5px var(--font-body);color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.moveLine }}</div></div>
+              <div style="text-align:right;flex-shrink:0"><div style="font:750 17px var(--font-display);color:var(--grass-700);font-variant-numeric:tabular-nums">{{ t.dps }}</div><div style="font:500 11.5px var(--font-body);color:{{ t.effColor }}">{{ t.effLabel }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:11px">
       <input type="text" placeholder="Boss name, e.g. Mega Gardevoir" value="{{ raidBossName }}" onChange="{{ onRaidBossName }}" style="background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:6px;color:var(--ink-900);font:13px var(--font-body);padding:9px 11px" />
@@ -3955,7 +4013,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
           <sc-for list="{{ tokenChips }}" as="t" hint-placeholder-count="4"><button type="button" onClick="{{ t.onClick }}" class="om-press" style="padding:6px 11px;min-height:32px;border-radius:999px;background:#e6f4f4;color:#1b6e66;font:600 12px var(--font-display)">{{ t.label }}</button></sc-for>
         </div>
-        <div style="font:11.5px/1.5 var(--font-body);color:#5b7d84;margin-top:10px">{iv} IV% &middot; {ivs} IVs in hex (F = 15) &middot; {g} {u} {l} Great/Ultra/Little rank% &middot; {form} A/G/H/P &middot; {stars} 0-4 &middot; {shadow} S &middot; {lucky} L</div>
+        <div style="font:11.5px/1.5 var(--font-body);color:#5b7d84;margin-top:10px">{iv} IV% &middot; {ivs} IVs in hex (F = 15) &middot; {g} {u} {l} Great/Ultra/Little rank% &middot; {form} A/G/H/P &middot; {stars} 0-4 &middot; {size} XXL/XXS/XL/XS &middot; {shadow} S &middot; {lucky} L</div>
       </div>
       <input value="{{ renameQuery }}" onInput="{{ onQueryChange }}" placeholder="Search your Pokemon" aria-label="Filter Pokemon" style="width:100%;box-sizing:border-box;margin:14px 0 10px;padding:12px 14px;min-height:44px;border-radius:999px;border:1.5px solid #cfe3e6;background:#ffffff;color:#17353b;font:500 16px var(--font-body)" />
       <div style="font:700 11px var(--font-display);color:var(--ink-400);margin-bottom:8px">{{ renameTotal }} POKEMON WITH KNOWN IVS</div>
@@ -3985,6 +4043,27 @@
         <div style="font:12px var(--font-body);color:#5b7d84;margin-top:6px">{{ searchMatches }} (counts what this app can evaluate; the game has the final say)</div>
         <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">QUICK SEARCHES</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ presetChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">NAME (COMMA = OR)</div><input value="{{ srchName }}" onInput="{{ onSrchName }}" aria-label="Name filter" autocapitalize="off" placeholder="ninetales, vulpix" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">TYPE</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">REGIONAL FORM</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ formChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">STATUS (TAP ONCE = HAS, TWICE = NOT)</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ flagChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">APPRAISAL STARS</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ starChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">CP RANGE</div><div style="display:flex;gap:8px;align-items:center"><input value="{{ srchCpMin }}" onInput="{{ onCpMin }}" inputmode="numeric" placeholder="min" aria-label="Minimum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /><span style="color:#5b7d84">to</span><input value="{{ srchCpMax }}" onInput="{{ onCpMax }}" inputmode="numeric" placeholder="max" aria-label="Maximum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /></div>
       </div>
+    </sc-if>
+
+    <sc-if value="{{ isShowcaseMode }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+        <div style="font:800 18px var(--font-display);text-align:center">Showcase picks</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 4px">Your biggest and smallest Pokemon, first the XXL and XXS, then how far each is from its species' normal height. {{ showcaseTotal }} have a size on file. Showcase scoring itself isn't visible to this app, so this is raw size only.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+        <sc-for list="{{ showcaseList }}" as="r" hint-placeholder-count="0">
+          <div style="background:#ffffff;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:11px;color:#17353b">
+            <div style="width:48px;height:48px;border-radius:50%;background:#e6f4f4;position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 17px var(--font-display);color:#5b7d84">{{ r.initial }}</span><img ref="{{ r.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+            <div style="flex:1;min-width:0">
+              <div style="font:700 16px var(--font-body);color:#17353b">{{ r.name }} <span style="display:inline-block;padding:2px 9px;border-radius:999px;background:{{ r.clsBg }};color:{{ r.clsFg }};font:800 11px var(--font-display)">{{ r.cls }}</span></div>
+              <div style="font:12.5px var(--font-body);color:#5b7d84;margin-top:2px">{{ r.line }}</div>
+              <div style="font:600 12px var(--font-body);color:#1b6e66">{{ r.kept }}</div>
+            </div>
+            <button type="button" onClick="{{ r.onOpen }}" class="om-press" aria-label="Find {{ r.name }} in the roster" style="min-width:60px;min-height:44px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">Open</button>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ showcaseMore }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ showcaseShowMore }}" class="om-press" style="display:block;margin:14px auto 0;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more ({{ showcaseLeft }} left)</button></sc-if>
     </sc-if>
   </div>
   </sc-if>
@@ -4080,9 +4159,13 @@ class Component extends DCLogic {
     detailPoke: null,
     visibleCount: 30,
     bulkSkip: [],
+    protectSizes: 'extreme',
     recentChanged: null,
+    lastImport: null,
+    importSheetOpen: false,
     bulkTypePick: {},
     toolsMode: 'rename',
+    showcaseVisible: 25,
     renameTpl: '{form}{iv}G{g}U{u}',
     renameQuery: '',
     renameVisible: 20,
@@ -4274,6 +4357,7 @@ class Component extends DCLogic {
     // this entirely, leaving swipe/long-press with no listeners at all.
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
+    try { const ps = localStorage.getItem('scout.protectSizes'); if (ps === 'extreme' || ps === 'all' || ps === 'off') this.setState({ protectSizes: ps }); } catch (e) {}
     this.loadLocalSecrets();
     this.loadFeed();
     try { this.enhanceAccessibility(); } catch (e) { console.error(e); }
@@ -5288,6 +5372,50 @@ class Component extends DCLogic {
   // Tabs are separate pages that happen to share one scroll container. Without
   // this, switching from a 300-row roster lands you deep inside a short tab —
   // which reads as a huge empty gap above content that is actually there.
+  // ---- Size classes -------------------------------------------------------------------------
+  // XXS / XS / normal / XL / XXL from the Pokemon's height and the game master's per-species cut-offs
+  // (see mechanics.sizeInfoFor). Null when the height is unknown or the species has no size data.
+  sizeOf(p) {
+    const m = this.mechanics;
+    if (!m || !m.sizeInfoFor || !p || p.dex == null || !p.height) return null;
+    return m.sizeInfoFor(p.dex, p.form, p.height);
+  }
+
+  // The tag worth showing: only the four non-normal classes, and not when the height is impossible
+  // for the species (a misread must not protect, or label, a Pokemon).
+  sizeTagOf(p) {
+    const i = this.sizeOf(p);
+    return i && i.valid && i.cls !== 'M' ? i.cls : '';
+  }
+
+  // Protected from every transfer suggestion: the extremes always (XXL, XXS), and XL / XS when the
+  // setting says so. Showcases at Pokestops reward size, so these are never "safe to transfer".
+  sizeProtected(p) {
+    const mode = this.state.protectSizes || 'extreme';
+    if (mode === 'off') return false;
+    const t = this.sizeTagOf(p);
+    return mode === 'all' ? !!t : (t === 'XXL' || t === 'XXS');
+  }
+
+  setProtectSizes(v) {
+    try { localStorage.setItem('scout.protectSizes', v); } catch (e) {}
+    this.setState({ protectSizes: v });
+  }
+
+  // How far each Pokemon is from its species norm, for picking showcase entries. Raw numbers only:
+  // the showcase's own scoring is not something this app can see.
+  showcaseRows() {
+    const out = [];
+    this.effectiveRosterForMatch().forEach(p => {
+      const i = this.sizeOf(p);
+      if (!i || !i.valid) return;
+      const w = parseFloat(String(p.weight || '').replace(/[^0-9.]/g, ''));
+      out.push({ p, i, w: Number.isFinite(w) ? w : null });
+    });
+    const label = { XXL: 0, XXS: 1, XL: 2, XS: 3, M: 4 };
+    return out.sort((a, b) => (label[a.i.cls] - label[b.i.cls]) || Math.abs(Math.log(b.i.ratio)) - Math.abs(Math.log(a.i.ratio)));
+  }
+
   // ---- Motion helpers ----------------------------------------------------------------------
   reducedMotion() {
     try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
@@ -5360,6 +5488,24 @@ class Component extends DCLogic {
     setTimeout(commit, 340);
   }
 
+  openImportSheet() { this.setState({ importSheetOpen: true }); }
+  closeImportSheet() { this.setState({ importSheetOpen: false }); }
+
+  // Puts one Pokemon back the way it was before the last import: an updated one gets its previous
+  // values, a new one is removed. Shared things (candy counts, the type table) are not reverted.
+  revertImportRow(idx) {
+    const li = this.state.lastImport;
+    const r = li && li.revert && li.revert[idx];
+    if (!r) return;
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    let added = this.state.addedPokemon || [];
+    if (r.kind === 'insert') { added = added.filter(p => p.idx !== idx); delete overrides[idx]; }
+    else if (r.prev) overrides[idx] = r.prev; else delete overrides[idx];
+    const rows = li.rows.filter(x => x.idx !== idx), revert = { ...li.revert }; delete revert[idx];
+    this.setState({ ivOverrides: overrides, addedPokemon: added, lastImport: rows.length ? { ...li, rows, revert } : null, importSheetOpen: rows.length > 0 && this.state.importSheetOpen },
+      () => { try { this.queueCloudPush(); } catch (e) {} });
+  }
+
   recentChangedHas(idx) {
     const rc = this.state.recentChanged;
     return !!(rc && rc.ids && rc.ids.indexOf(idx) >= 0);
@@ -5403,6 +5549,17 @@ class Component extends DCLogic {
     const skip = new Set(this.state.bulkSkip || []);
     return this.effectiveRosterForMatch().filter(p => p.dex != null && !p.formReviewed && !skip.has(p.idx) && m.hasRegionalForms(p.name, p.dex))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
+  }
+
+  // Number shown on the Bulk tab icon: Pokemon waiting for a form or a type. Cached on the data
+  // identities because it is read on every render.
+  bulkBadge() {
+    const st = this.state, c = this._bulkBadge;
+    if (c && c.r === st.roster && c.a === st.addedPokemon && c.o === st.ivOverrides && c.k === st.bulkSkip && c.m === !!this.mechanics) return c.v;
+    let v = '';
+    try { const n = this.bulkFormPending().length + this.bulkTypePending().length; v = n > 0 ? String(n > 99 ? '99+' : n) : ''; } catch (e) {}
+    this._bulkBadge = { r: st.roster, a: st.addedPokemon, o: st.ivOverrides, k: st.bulkSkip, m: !!this.mechanics, v };
+    return v;
   }
 
   bulkChecks() {
@@ -5562,7 +5719,7 @@ class Component extends DCLogic {
       iv: ivs ? String(Math.round((ivs[0] + ivs[1] + ivs[2]) / 45 * 100)) : '',
       ivs: ivs ? hex(ivs[0]) + hex(ivs[1]) + hex(ivs[2]) : '',
       g: pct(rk('great', p.great)), u: pct(rk('ultra', p.ultra)), l: pct(rk('little', p.little)),
-      cp: p.cp != null ? String(p.cp) : '', shadow: this.isShadow(p) ? 'S' : '', lucky: p.lucky ? 'L' : '', stars: this.starsOf(p) != null ? String(this.starsOf(p)) : ''
+      cp: p.cp != null ? String(p.cp) : '', size: this.sizeTagOf(p), shadow: this.isShadow(p) ? 'S' : '', lucky: p.lucky ? 'L' : '', stars: this.starsOf(p) != null ? String(this.starsOf(p)) : ''
     };
     return String(tpl || '').replace(/\{(\w+)\}/g, (m0, k) => (k in map ? map[k] : m0));
   }
@@ -5605,7 +5762,7 @@ class Component extends DCLogic {
     const names = String(st.srchName || '').split(/[,\n]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
     const lo = parseInt(st.srchCpMin, 10), hi = parseInt(st.srchCpMax, 10);
     const formKey = { alola: 'alola', galar: 'galarian', hisui: 'hisuian', paldea: 'paldea' }[st.srchForm];
-    const get = { shadow: p => this.isShadow(p), lucky: p => !!p.lucky, shiny: p => !!p.shiny, favorite: p => !!p.favorite };
+    const get = { xxl: p => this.sizeTagOf(p) === 'XXL', xxs: p => this.sizeTagOf(p) === 'XXS', xl: p => this.sizeTagOf(p) === 'XL', xs: p => this.sizeTagOf(p) === 'XS', shadow: p => this.isShadow(p), lucky: p => !!p.lucky, shiny: p => !!p.shiny, favorite: p => !!p.favorite };
     return this.effectiveRosterForMatch().filter(p => {
       if (names.length && !names.some(n => String(p.name || '').toLowerCase().indexOf(n) >= 0)) return false;
       if ((st.srchTypes || []).length) { const t = this.typesOf(p).map(x => x.toLowerCase()); if (!st.srchTypes.some(x => t.indexOf(x.toLowerCase()) >= 0)) return false; }
@@ -5620,7 +5777,7 @@ class Component extends DCLogic {
 
   applySearchPreset(key) {
     const P = {
-      transfer: { srchName: '', srchTypes: [], srchForm: '', srchFlags: { favorite: -1, lucky: -1, shadow: -1, shiny: -1, legendary: -1, mythical: -1, costume: -1 }, srchStars: [0, 1, 2], srchCpMin: '', srchCpMax: '' },
+      transfer: { srchName: '', srchTypes: [], srchForm: '', srchFlags: { favorite: -1, lucky: -1, shadow: -1, shiny: -1, legendary: -1, mythical: -1, costume: -1, xxl: -1, xxs: -1 }, srchStars: [0, 1, 2], srchCpMin: '', srchCpMax: '' },
       keep: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [3, 4], srchCpMin: '', srchCpMax: '' },
       great: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '', srchCpMax: '1500' },
       ultra: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '1501', srchCpMax: '2500' },
@@ -5646,24 +5803,43 @@ class Component extends DCLogic {
     this.setState({ [key]: cur });
   }
 
+  showcaseVals() {
+    const rows = this.showcaseRows();
+    const shown = rows.slice(0, this.state.showcaseVisible || 25);
+    const col = { XXL: ['var(--type-electric)', '#1c1c1e'], XXS: ['var(--type-electric)', '#1c1c1e'], XL: ['#e6f4f4', '#1b6e66'], XS: ['#e6f4f4', '#1b6e66'], M: ['transparent', '#5b7d84'] };
+    return {
+      showcaseTotal: rows.length, showcaseMore: rows.length > shown.length, showcaseLeft: rows.length - shown.length,
+      showcaseShowMore: () => this.setState({ showcaseVisible: (this.state.showcaseVisible || 25) + 25 }),
+      showcaseList: shown.map(({ p, i, w }) => ({
+        key: String(p.idx), name: p.name + (p.form ? ' (' + p.form + ')' : ''), cls: i.cls === 'M' ? 'normal' : i.cls,
+        clsBg: col[i.cls][0], clsFg: col[i.cls][1],
+        line: p.height + (w != null ? ' \u00b7 ' + w + ' kg' : '') + ' \u00b7 ' + Math.round(i.ratio * 100) + '% of the species height' + (i.borderline ? ' \u00b7 borderline' : ''),
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form), initial: String(p.name || '?').charAt(0),
+        kept: this.sizeProtected(p) ? 'Protected from transfer' : '',
+        onOpen: () => { this.setState({ tab: 'roster', search: p.name }); }
+      }))
+    };
+  }
+
   toolsVals() {
     const st = this.state;
     const R = this.renameRows();
     const sample = this.renameFor({ name: 'Ninetales', form: 'alola', atkIV: 15, defIV: 14, staIV: 13, great: { rankPct: 97 }, ultra: { rankPct: 71 }, little: { rankPct: 40 }, cp: 1801 }, st.renameTpl);
     const mkChip = (label, on, onClick, extra) => ({ label, onClick, bg: on === 1 ? '#1fb5a5' : on === -1 ? '#e5484d' : '#ffffff', fg: on ? '#ffffff' : '#2a4a50', bd: on === 1 ? '#1fb5a5' : on === -1 ? '#e5484d' : '#cfe3e6', pressed: on ? 'true' : 'false' });
-    const flagDefs = [['shadow', 'Shadow'], ['purified', 'Purified'], ['lucky', 'Lucky'], ['shiny', 'Shiny'], ['favorite', 'Favorite'], ['legendary', 'Legendary'], ['mythical', 'Mythical'], ['costume', 'Costume'], ['evolve', 'Can evolve']];
+    const flagDefs = [['xxl', 'XXL'], ['xxs', 'XXS'], ['xl', 'XL'], ['xs', 'XS'], ['shadow', 'Shadow'], ['purified', 'Purified'], ['lucky', 'Lucky'], ['shiny', 'Shiny'], ['favorite', 'Favorite'], ['legendary', 'Legendary'], ['mythical', 'Mythical'], ['costume', 'Costume'], ['evolve', 'Can evolve']];
     const flags = st.srchFlags || {};
     const types = ['Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
     const forms = [['', 'Any'], ['alola', 'Alolan'], ['galar', 'Galarian'], ['hisui', 'Hisuian'], ['paldea', 'Paldean']];
     const out = this.searchStringFromBuilder();
     const presetDefs = [['transfer', 'Transfer candidates'], ['keep', '3★ and 4★'], ['great', 'Great League CP'], ['ultra', 'Ultra League CP'], ['little', 'Little Cup CP'], ['evolve', 'Can evolve'], ['clear', 'Clear']];
     return {
-      isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search',
-      modeChips: [['rename', 'Rename'], ['search', 'Search']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
+      isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search', isShowcaseMode: st.toolsMode === 'showcase',
+      ...(st.toolsMode === 'showcase' ? this.showcaseVals() : {}),
+      modeChips: [['rename', 'Rename'], ['search', 'Search'], ['showcase', 'Showcase']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
       renameTpl: st.renameTpl, onTplChange: e => this.setState({ renameTpl: e.target.value }),
       renameQuery: st.renameQuery, onQueryChange: e => this.setState({ renameQuery: e.target.value, renameVisible: 20 }),
       sampleText: sample || '—', sampleCount: (sample || '').length + '/12', sampleColor: (sample || '').length > 12 ? '#e5484d' : '#6b7f86',
-      tokenChips: ['name', 'form', 'iv', 'ivs', 'g', 'u', 'l', 'cp', 'stars', 'shadow', 'lucky'].map(t => ({ label: '{' + t + '}', onClick: () => this.setState({ renameTpl: (st.renameTpl || '') + '{' + t + '}' }) })),
+      tokenChips: ['name', 'form', 'iv', 'ivs', 'g', 'u', 'l', 'cp', 'stars', 'size', 'shadow', 'lucky'].map(t => ({ label: '{' + t + '}', onClick: () => this.setState({ renameTpl: (st.renameTpl || '') + '{' + t + '}' }) })),
       renameRows: R.rows, renameTotal: R.total, renameMore: R.total > R.rows.length, renameLeft: R.total - R.rows.length,
       renameShowMore: () => this.setState({ renameVisible: (st.renameVisible || 20) + 20 }),
       presetChips: presetDefs.map(([k, l]) => ({ label: l, bg: '#ffffff', fg: '#2a4a50', bd: '#cfe3e6', pressed: 'false', onClick: () => this.applySearchPreset(k) })),
@@ -7214,7 +7390,7 @@ class Component extends DCLogic {
     Object.values(groups).forEach(g => {
       if (g.length < 2) return;
       g.forEach(p => {
-        if (p.lucky || p.favorite || p.shiny || this.isShadow(p)) return;
+        if (p.lucky || p.favorite || p.shiny || this.isShadow(p) || this.sizeProtected(p)) return;
         const a = this.ivsOf(p);
         const lv = Number.isFinite(p.lvlMin) ? p.lvlMin : 0;
         const beater = g.find(q => {
@@ -10874,6 +11050,7 @@ class Component extends DCLogic {
     const removedSet = new Set(removedIds);
     let updated = 0, inserted = 0, solved = 0;
     const touchedIdx = [];
+    const sheetRows = [], revertMap = {};
     const dupes = [];
     const today = new Date().toISOString().split('T')[0];
     // Two frames of the SAME Pokemon merge silently by design. Two different
@@ -11075,6 +11252,8 @@ class Component extends DCLogic {
         };
         updated++;
         touchedIdx.push(match.idx);
+        revertMap[match.idx] = { kind: 'update', prev: (this.state.ivOverrides || {})[match.idx] ? { ...(this.state.ivOverrides || {})[match.idx] } : null };
+        sheetRows.push({ idx: match.idx, name: match.name + (match.form ? ' (' + match.form + ')' : ''), cp: item.cp, kind: 'updated', text: changes.length ? changes.join('  \u00b7  ') : 'Details refreshed' });
       } else {
         const newRec = {
           idx: 'video-' + Date.now() + '-' + i, name: item.name, form: item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : null, dex: item.dex,
@@ -11101,6 +11280,8 @@ class Component extends DCLogic {
         removedIds = this.removedIdsWithout(newRec, removedIds);
         inserted++;
         touchedIdx.push(newRec.idx);
+        revertMap[newRec.idx] = { kind: 'insert' };
+        sheetRows.push({ idx: newRec.idx, name: newRec.name + (newRec.form ? ' (' + newRec.form + ')' : ''), cp: item.cp, kind: 'new', text: 'New in your roster' });
       }
       if (item.candy != null || item.xlCandy != null) {
         const famKey = this.candyKey(item.name);
@@ -11113,7 +11294,7 @@ class Component extends DCLogic {
       }
       if (item.type && !(mechanics && mechanics.hasRegionalForms && mechanics.hasRegionalForms(item.name, item.dex))) types[nameLower] = item.type;
     });
-    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds, recentChanged: { ids: touchedIdx, at: Date.now(), shown: false } });
+    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds, recentChanged: { ids: touchedIdx, at: Date.now(), shown: false }, lastImport: { at: Date.now(), rows: sheetRows, revert: revertMap }, importSheetOpen: false });
     if (seenStardust != null) this.setStardust(seenStardust);
     const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
     return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
@@ -12169,7 +12350,7 @@ class Component extends DCLogic {
   }
 
   currentViewName() {
-    const f = { all: 'All', measured: 'Measured', needsAppraisal: 'Needs appraisal', pvp: 'PvP ready', lucky: 'Lucky', shadow: 'Shadow', shiny: 'Shiny', shinyCheck: 'Shiny to confirm', max: 'Max' }[this.state.rosterFilter || 'all'] || 'View';
+    const f = { all: 'All', measured: 'Measured', needsAppraisal: 'Needs appraisal', pvp: 'PvP ready', lucky: 'Lucky', shadow: 'Shadow', shiny: 'Shiny', shinyCheck: 'Shiny to confirm', max: 'Max', sizeXx: 'XXL / XXS', sizeX: 'XL / XS', formCheck: 'Form to check', noType: 'No type' }[this.state.rosterFilter || 'all'] || 'View';
     const so = { cp: 'CP', ivAvg: 'IV%', rank: 'League rank', ivFloor: 'IV floor', name: 'Name', dex: 'Dex', catchDate: 'Newest', scanDate: 'Scanned', megaReady: 'Mega ready' }[this.state.sortField] || '';
     const q = (this.state.search || '').trim();
     return [f, q ? '“' + q + '”' : '', so].filter(Boolean).join(' · ');
@@ -12510,7 +12691,7 @@ class Component extends DCLogic {
     if (!pvp && bestRank >= 85) return 'Strong IVs for Little Cup. Worth keeping for that league only.';
     if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
     if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
-    if ((!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !p.shiny && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
+    if ((!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
     return 'No urgent action. Keep as roster depth.';
   }
 
@@ -12870,9 +13051,11 @@ class Component extends DCLogic {
         const need = r.evo.need;
         if (remaining == null || need == null) { r.fundable = null; }
         else if (remaining >= need) { r.fundable = true; remaining -= need; }
-        else { r.fundable = false; }
+        else { r.fundable = false; r.shortBy = need - remaining; }
         r.candyAfter = remaining;
       });
+      const firstShort = group.find(r => r.fundable === false);
+      group.forEach(r => { r.limiting = firstShort ? { name: firstShort.p.name, cp: firstShort.p.cp, short: firstShort.shortBy } : null; });
       const fundedCount = group.filter(r => r.fundable === true).length;
       group.forEach(r => { r.dupTotal = group.length; r.affordable = fundedCount; r.candyPool = have; });
       // Show every fundable member, plus the single best pick even when
@@ -12888,10 +13071,12 @@ class Component extends DCLogic {
   // span multiple evolution stages, not just duplicates of one species).
   evolveDupNote(row) {
     if (!row || row.dupTotal == null || row.dupTotal < 2) return null;
-    const parts = ['shares candy with ' + (row.dupTotal - 1) + ' other family member' + (row.dupTotal - 1 === 1 ? '' : 's')];
+    const parts = ['one shared pool' + (row.candyPool != null ? ' of ' + row.candyPool + ' candy' : '') + ' for ' + row.dupTotal + ' Pokemon'];
     if (row.affordable == null) parts.push('candy stock unknown');
-    else if (row.affordable >= row.dupTotal) parts.push('candy funds all ' + row.dupTotal);
-    else parts.push('candy funds ' + row.affordable + ' of ' + row.dupTotal);
+    else if (row.affordable >= row.dupTotal) parts.push('funds all ' + row.dupTotal);
+    else parts.push('funds ' + row.affordable + ' of ' + row.dupTotal);
+    if (row.candyAfter != null && row.fundable === true) parts.push(row.candyAfter + ' left after this one');
+    if (row.limiting && row.limiting.short > 0) parts.push('next is ' + row.limiting.name + (row.limiting.cp != null ? ' ' + row.limiting.cp + ' CP' : '') + ', ' + row.limiting.short + ' candy short');
     return parts.join(' \u00b7 ');
   }
 
@@ -13194,7 +13379,7 @@ class Component extends DCLogic {
     const out = [];
     roster.forEach(p => {
       if (queued.has(p.idx)) return;
-      if (p.favorite || p.lucky || p.shiny || this.isShadow(p) || this.isPurified(p)) return;
+      if (p.favorite || p.lucky || p.shiny || this.isShadow(p) || this.isPurified(p) || this.sizeProtected(p)) return;
       const rank = this.bestRank(p);
       if (Number.isFinite(rank) && rank >= 70) return;
       if ((p.ivAvg || 0) >= 70) return;
@@ -13798,6 +13983,10 @@ class Component extends DCLogic {
     if (this.isShadow(p)) {
       return { verdict: 'KEEP', reason: 'Shadow Pokemon hit harder in raids', number: rank != null && Number.isFinite(rank) ? rank.toFixed(0) + '% rank' : 'shadow' };
     }
+    if (this.sizeProtected(p)) {
+      const t = this.sizeTagOf(p);
+      return { verdict: 'KEEP', reason: t + ' size \u2014 keep it for Pokestop showcases', number: p.height + ' \u00b7 ' + t };
+    }
     const tri = this.triageQueue().find(t => t.p.idx === p.idx);
     if (tri) {
       return { verdict: 'TRANSFER', reason: tri.reason, number: (p.ivAvg != null ? Number(p.ivAvg).toFixed(1) + '% IV' : 'unmeasured') };
@@ -13833,7 +14022,7 @@ class Component extends DCLogic {
     const powerUp = withRank.filter(x => x.rank >= 90 && !x.p.favorite && notDone(x.p)).sort((a, b) => b.rank - a.rank).slice(0, 5).map(x => x.p);
     const evolveSoon = roster.filter(p => this.evolvesToName(p) && (p.ivAvg || 0) >= 60 && notDone(p))
       .sort((a, b) => (b.ivAvg || 0) - (a.ivAvg || 0)).slice(0, 5);
-    const transferSafe = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
+    const transferSafe = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
       .slice(0, 10);
     const dexCounts = {};
     roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
@@ -14506,7 +14695,7 @@ class Component extends DCLogic {
       const top = roster.slice().sort((a, b) => (b.cp || 0) - (a.cp || 0))[0];
       answer = top ? `Your highest CP Pokemon is ${top.name} at ${top.cp} CP.` : 'No CP data.';
     } else if (q.includes('transfer')) {
-      const count = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
+      const count = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
       answer = `I count ${count} transfer candidates on the Recommendations tab.`;
     } else if (q.includes('how many') || q.includes('total')) {
       answer = `You have ${roster.length} Pokemon logged.`;
@@ -14698,6 +14887,10 @@ class Component extends DCLogic {
       if (rosterFilter === 'shinyCheck') return !!p.shiny && p.shinyState === 'suspected';
       if (rosterFilter === 'pvp') return this.isPvpWorthy(p);
       if (rosterFilter === 'max') return this.isMaxCapable(p);
+      if (rosterFilter === 'formCheck') return !p.formReviewed && !!(this.mechanics && this.mechanics.hasRegionalForms && p.dex != null && this.mechanics.hasRegionalForms(p.name, p.dex));
+      if (rosterFilter === 'noType') return !this.typeOf(p);
+      if (rosterFilter === 'sizeXx') { const t = this.sizeTagOf(p); return t === 'XXL' || t === 'XXS'; }
+      if (rosterFilter === 'sizeX') { const t = this.sizeTagOf(p); return t === 'XL' || t === 'XS'; }
       return true;
     });
     filtered = filtered.slice().sort((a, b) => {
@@ -14738,7 +14931,7 @@ class Component extends DCLogic {
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
       const rs = this.rowSpread(p), tl = this.typeLook(p), tcol = this.dsTypeColor(p);
-      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p), this.maxTagFor(p)].filter(Boolean).join(' ');
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p), this.maxTagFor(p), this.sizeTagOf(p)].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
@@ -14997,7 +15190,7 @@ class Component extends DCLogic {
     // exists, raidRoleTypeBest/hasRaidRole make it real: compared only
     // against your OWN roster, never an external tier list.
     const raidTypeBest = this.raidRoleTypeBest(roster);
-    const transferPool = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !this.hasRaidRole(p, raidTypeBest) && !p.lucky && !p.favorite && !p.shiny && !this.isShadow(p) && notDone(p));
+    const transferPool = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !this.hasRaidRole(p, raidTypeBest) && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !this.isShadow(p) && notDone(p));
     transferPool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const transferList = transferPool.slice(0, 12).map(p => ({
       idx: p.idx,
@@ -15015,7 +15208,7 @@ class Component extends DCLogic {
     // glance rather than an auto-flag, so this opens the detail sheet instead
     // of offering a one-tap remove.
     const transferIdxSet = new Set(transferPool.map(p => p.idx));
-    const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && (!Number.isFinite(p.ivAvg) || p.ivAvg < 58) && this.bestRank(p) < 78 && !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
+    const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && (!Number.isFinite(p.ivAvg) || p.ivAvg < 58) && this.bestRank(p) < 78 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
     borderlinePool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const borderlineList = borderlinePool.slice(0, 10).map(p => ({
       idx: p.idx,
@@ -15032,7 +15225,7 @@ class Component extends DCLogic {
 
     let closestMiss = null;
     if (!transferPool.length && !borderlinePool.length) {
-      const cmPool = roster.filter(p => !p.lucky && !p.favorite && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p) && Number.isFinite(p.ivAvg));
+      const cmPool = roster.filter(p => !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p) && Number.isFinite(p.ivAvg));
       cmPool.sort((a, b) => a.ivAvg - b.ivAvg);
       const cm = cmPool[0];
       if (cm) {
@@ -15343,6 +15536,7 @@ class Component extends DCLogic {
           return bits.join(' \u00b7 ');
         })(),
         metaColor: age != null && age > 30 ? 'var(--type-electric)' : 'var(--ink-400)',
+        sizeChip: (() => { const t = this.sizeTagOf(p); if (!t) return null; const big = t === 'XXL' || t === 'XL'; const ex = t === 'XXL' || t === 'XXS'; return { label: t + (this.sizeProtected(p) ? ' \u00b7 kept' : ''), bg: ex ? 'var(--type-electric)' : 'var(--surface-sunken)', fg: ex ? '#1c1c1e' : 'var(--ink-600)' }; })(),
         scanBg: age != null && age > 30 ? 'var(--brand-primary-strong)' : 'var(--surface-muted)',
         initial: (p.name || '?').charAt(0),
         badgeColor: this.dsTypeColor(p),
@@ -15862,7 +16056,7 @@ class Component extends DCLogic {
     const tabDefs = [...barDefs, ...moreDefs];
     const tint = on => (on ? 'var(--ios-blue)' : 'var(--ink-400)');
     const tabList = [
-      ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), current: (t.key === tab && !this.state.moreOpen) ? 'page' : undefined, onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
+      ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, badge: t.key === 'bulk' && t.key !== tab ? this.bulkBadge() : '', iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), current: (t.key === tab && !this.state.moreOpen) ? 'page' : undefined, onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
       { key: 'more', label: 'More', navLabel: 'More', iconPath: ICON.more, color: tint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), onClick: () => this.setState({ moreOpen: !this.state.moreOpen }) }
     ];
     const moreTabs = moreDefs.map(m => ({ key: m.key, label: m.label, iconPath: ICON[m.key], color: m.key === tab ? 'var(--ios-blue)' : 'var(--ink-900)', onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(m.key)) }));
@@ -16008,6 +16202,10 @@ class Component extends DCLogic {
         { key: 'pvp', label: 'PVP READY' },
         { key: 'lucky', label: 'LUCKY' },
         { key: 'max', label: 'MAX' },
+        { key: 'sizeXx', label: 'XXL / XXS' },
+        { key: 'formCheck', label: 'FORM TO CHECK' },
+        { key: 'noType', label: 'NO TYPE' },
+        { key: 'sizeX', label: 'XL / XS' },
         { key: 'shadow', label: 'SHADOW / PURIFIED' },
         { key: 'shiny', label: '\u2728 SHINY' },
         ...(roster.some(p => p.shiny && p.shinyState === 'suspected') ? [{ key: 'shinyCheck', label: '\u2728? TO CONFIRM' }] : [])
@@ -16773,6 +16971,12 @@ class Component extends DCLogic {
         onClick: () => this.openDetail(r.p)
       })),
       hasMegaWorth: this.megaWorth(8).length > 0,
+      lastImportHas: !!(this.state.lastImport && this.state.lastImport.rows.length),
+      lastImportTitle: (() => { const r = (this.state.lastImport && this.state.lastImport.rows) || []; const n = r.filter(x => x.kind === 'new').length; return 'Last import: ' + r.length + ' changed' + (n ? ', ' + n + ' new' : ''); })(),
+      lastImportSub: 'See what changed for each Pokemon and undo any of it',
+      openImportSheet: () => this.openImportSheet(), closeImportSheet: () => this.closeImportSheet(),
+      importSheetRows: ((this.state.lastImport && this.state.lastImport.rows) || []).map(r => ({ name: r.name, cpLabel: r.cp != null ? 'CP ' + r.cp : '', text: r.text, color: r.kind === 'new' ? 'var(--ios-green)' : 'var(--ink-500)', onRevert: () => this.revertImportRow(r.idx) })),
+      protectChoices: [['extreme', 'XXL and XXS'], ['all', 'Also XL and XS'], ['off', 'Off']].map(([k, l]) => ({ label: l, pressed: String(this.state.protectSizes === k), bg: this.state.protectSizes === k ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: this.state.protectSizes === k ? '#fff' : 'var(--ink-600)', onClick: () => this.setProtectSizes(k) })),
       zoomChoices: [1, 1.15, 1.3, 1.5, 2].map(z => ({ label: Math.round(z * 100) + '%', on: Math.abs((this.state.uiZoom || 1) - z) < 0.01, bg: Math.abs((this.state.uiZoom || 1) - z) < 0.01 ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: Math.abs((this.state.uiZoom || 1) - z) < 0.01 ? '#fff' : 'var(--ink-700)', onClick: () => this.setUiZoom(z) })),
       hasImportReport: (this.state.importReport || []).length > 0,
       importReportTitle: (() => { const r = this.state.importReport || []; const f = r.filter(x => x.fatal).length; return 'Import notes: ' + (f ? f + ' row' + (f > 1 ? 's' : '') + ' skipped' : '') + (f && r.length - f ? ', ' : '') + (r.length - f ? (r.length - f) + ' value' + (r.length - f > 1 ? 's' : '') + ' cleared' : ''); })(),
@@ -16865,6 +17069,8 @@ class Component extends DCLogic {
         onClick: () => this.openDetail(r.p)
       })))(),
       maxEmpty: (this.state.raidBossTypes || []).length > 0 && this.maxAttackers().length === 0,
+      raidTopHas: raidRowsRaw.length > 0 && (this.state.raidBossTypes || []).length > 0,
+      raidTop: raidRowsRaw.slice(0, 3).map(r => ({ name: r.p.name || '?', initial: (r.p.name || '?').charAt(0), spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form), dps: r.dps.toFixed(1) + ' DPS', moveLine: r.fast + ' / ' + r.charged, effLabel: r.eff >= 2.5 ? 'DOUBLE SUPER' : r.eff >= 1.55 ? 'SUPER EFFECTIVE' : r.eff <= 0.65 ? 'RESISTED' : 'NEUTRAL', effColor: r.eff >= 1.55 ? 'var(--grass-700)' : r.eff <= 0.65 ? 'var(--type-fighting)' : 'var(--ink-400)', onClick: () => this.openDetail(r.p) })),
       raidEmpty: raidRowsRaw.length === 0,
       snapshotError: this.state.snapshotError || '',
       hasSnapshots: (this.state.snapshots || []).length > 0,
