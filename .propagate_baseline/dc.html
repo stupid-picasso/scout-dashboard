@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.175</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.176</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -470,7 +470,7 @@
                       </button>
                     </sc-for>
                   </div>
-                  <sc-if value="{{ lg.hasSel }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-600);margin-top:8px;background:var(--surface-card);border-radius:8px;padding:8px 10px">{{ lg.selLine }}</div></sc-if>
+                  <sc-if value="{{ lg.hasSel }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-600);margin-top:8px;background:var(--surface-card);border-radius:8px;padding:8px 10px;white-space:pre-line">{{ lg.selLine }}</div></sc-if>
                 </sc-if>
                 <sc-if value="{{ lg.hasSquadCards }}" hint-placeholder-val="{{ false }}">
                   <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400);margin:14px 0 8px">YOUR SQUAD</div>
@@ -5861,6 +5861,39 @@ class Component extends DCLogic {
           || (covered.length === best.covered.length && avg > best.avg)))) best = cand;
     }
     return best ? { league: leagueKey, ...best } : null;
+  }
+
+  // Why a species is, or is not, in the squad pvpTeamFor picked. Mirrors that function's filters in the
+  // same order so the answer names the first rule that actually drops the Pokemon.
+  squadWhy(leagueKey, eligible, tableKey, species, team) {
+    const m = this.mechanics;
+    const want = String(species || '').toLowerCase();
+    const owned = this.effectiveRosterForMatch().filter(p => String(p.name || '').toLowerCase() === want);
+    if (!owned.length) return 'You do not own one.';
+    const inTeam = team && team.members.find(c => String(c.p.name || '').toLowerCase() === want);
+    if (inTeam) return 'In your squad (' + Math.round(inTeam.a.rank) + '% IV rank).';
+    const why = p => {
+      if (this.needsAppraisal(p)) return { n: 0, t: 'IVs not measured yet. Appraise it so the squad can use it.' };
+      if (eligible && !eligible(p)) return { n: 1, t: 'Not legal in this cup.' };
+      const a = this.pvpAssess(p, leagueKey, tableKey);
+      if (!a) return { n: 2, t: 'No league rank: it is over the CP cap or its stats are missing.' };
+      if (a.tierRank > 2) return { n: 3, t: 'Tier ' + (a.tier || '?') + ' here; the squad uses S, A or B.' };
+      if (a.rank < 90) return { n: 4, t: 'IV rank ' + a.rank.toFixed(1) + '%; the squad needs 90% or better.' };
+      const mu = m && m.pvpMatchupsFor ? m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey) : null;
+      if (!mu) return { n: 5, t: 'No matchup data for it yet.' };
+      return { n: 9, p, a, mu };
+    };
+    const rs = owned.map(why).sort((x, y) => y.n - x.n);
+    const top = rs[0];
+    if (top.n < 9) return top.t;
+    if (!team) return 'Eligible, but there are fewer than three eligible Pokemon, so no squad is formed.';
+    const mine = new Set(top.mu.counters.filter(t => t.rating < 500).map(t => t.id));
+    const clash = [];
+    team.members.forEach(c => c.mu.counters.forEach(t => { if (t.rating < 500 && mine.has(t.id) && clash.indexOf(t.id) < 0) clash.push(t.id); }));
+    const tidy = id => String(id).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return 'Eligible (' + Math.round(top.a.rank) + '% IV rank) but left out for team balance'
+      + (clash.length ? ': it loses to ' + clash.slice(0, 3).map(tidy).join(', ') + ', which already beat your squad' : '')
+      + (top.a.movesOk === false ? '. Missing ' + top.a.missing.join(', ') + ' also puts it behind others.' : '.');
   }
 
   // IV breakpoints for this Pokemon in its best league, from ivBreakpoints()
@@ -12815,7 +12848,7 @@ class Component extends DCLogic {
           name: l.name, cap: l.cp >= 10000 ? 'No cap' : '\u2264 ' + l.cp + ' CP',
           rules: (l.rules || []).join(' '),
           top: top || [], hasTop: !!(top && top.length),
-          topCards, hasTopCards: topCards.length > 0, selLine: selTop ? selTop.name + ' \u00b7 ' + selTop.moves : '', hasSel: !!selTop,
+          topCards, hasTopCards: topCards.length > 0, selLine: selTop ? selTop.name + ' \u00b7 ' + selTop.moves + (wi === 0 && canSquad ? '\n' + this.squadWhy(league, cup ? p => this.cupAllows(cup, p) : null, tableKey, selTop.name.replace(/ \(Shadow\)$/, '').replace(/ (Mega|Primal).*$/, ''), squad) : '') : '', hasSel: !!selTop,
           squadNote: (/\(check .*\)$/.exec(squad ? squad.members.map(c => c.p.name).join('') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ')' : '') : '') || [''])[0].replace(/^\(|\)$/g, ''),
           squadCards, hasSquadCards: squadCards.length > 0, squadSlots: squad ? [] : [1, 2, 3], hasSquadEmpty: !squad && canSquad,
           megaCards, hasMegaCards: megaCards.length > 0,

@@ -60,6 +60,16 @@ module.exports = async function suiteC() {
   await T('TOD-07', 'Today', 'Cup note says rankings are PvPoke\'s cup ranking (not an estimate) when a table exists', async () => expect(/colormega rankings/.test(await t0()), (await t0()).slice(0, 100)));
   await T('TOD-08', 'Today', 'Mega Edition league shows a Mega-ready line for owned Mega-capable species', async () => expect(/MEGA-READY/.test(await t0())));
   await T('TOD-09', 'Today', 'Squad members are all within the league CP cap', async () => { const team = await s.call('pvpTeamFor', 'great'); if (!team) skip('no team'); expect(team.members.every(c => c.p.cp <= 1500)); }, 'critical');
+  await T('SQUAD-WHY-01', 'PvP', 'squadWhy names the rule that drops a Pokemon from the squad', async () => {
+    const team = await s.call('pvpTeamFor', 'great');
+    expect(team, 'no squad on the QA roster');
+    const mem = team.members[0].p.name;
+    expect(/In your squad/.test(await s.call('squadWhy', 'great', null, null, mem, team)), 'member');
+    expect(/do not own/.test(await s.call('squadWhy', 'great', null, null, 'Missingno', team)), 'unowned');
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), { idx: 'qa-tk2', name: 'Tinkaton', dex: 959, cp: 1495, hp: 150, scanDate: '2026-10-01' }] }); await s.call('recalculateAllRanks');
+    expect(/IVs not measured/.test(await s.call('squadWhy', 'great', null, null, 'Tinkaton', team)), 'unmeasured');
+  });
   await T('TOD-10', 'Today', 'Events within 14 days are listed; far-future and expired are not', async () => { const t = await t0(); expect(/QA Community Day/.test(t) && /QA Raid Boss/.test(t) && !/Far Future Event/.test(t) && !/Expired Event/.test(t)); }, 'high');
   await T('TOD-11', 'Today', 'Event shows bonuses and a per-species verdict (HUNT / POWER UP / SKIP)', async () => { const t = await t0(); expect(/3x Catch XP/.test(t) && /(HUNT|POWER UP|SKIP|MOVES ONLY)/.test(t)); });
   await T('TOD-12', 'Today', 'Live event says LIVE with its end date', async () => expect(/LIVE · until/.test(await t0())));
