@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.180</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.182</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1403,6 +1403,22 @@
 
   <sc-if value="{{ isToday }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="display:flex;flex-direction:column;gap:14px;animation:fadeSlideIn .35s ease">
+    <sc-if value="{{ briefingCanAsk }}" hint-placeholder-val="{{ false }}">
+      <section aria-label="Morning briefing" style="background:linear-gradient(135deg,color-mix(in oklab, var(--ios-blue) 22%, var(--surface-card)),var(--surface-card));border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div><div style="font:650 17px var(--font-display)">Professor&rsquo;s briefing</div><div style="font:12px var(--font-body);color:var(--ink-500)">{{ briefingWhen }}</div></div>
+          <button type="button" onClick="{{ briefingRefresh }}" class="om-press" style="padding:10px 14px;border-radius:var(--r-pill);background:var(--surface-card);color:var(--ios-blue);font:700 12px var(--font-display);min-height:44px">{{ briefingLabel }}</button>
+        </div>
+        <sc-if value="{{ briefingHas }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ briefingBullets }}" as="bl" hint-placeholder-count="5"><div style="font:14px/1.45 var(--font-body);display:flex;gap:8px"><span style="color:var(--ios-blue)">&bull;</span><span style="flex:1">{{ bl.t }}</span></div></sc-for>
+          </div>
+          <div style="font:12px var(--font-body);color:var(--ink-400)">Suggestions only. Nothing changes until you confirm it.</div>
+        </sc-if>
+        <sc-if value="{{ briefingError }}" hint-placeholder-val="{{ false }}"><div style="font:12px var(--font-body);color:var(--ink-500)">Could not brief you just now: {{ briefingError }}</div></sc-if>
+        <label style="display:flex;gap:8px;align-items:center;font:12.5px var(--font-body);color:var(--ink-500);min-height:44px"><input type="checkbox" checked="{{ briefingSearchOn }}" onChange="{{ briefingSearchToggle }}" style="width:20px;height:20px"> Also check the live meta with Google Search (uses a little extra quota)</label>
+      </section>
+    </sc-if>
     <sc-if value="{{ installHint }}" hint-placeholder-val="{{ false }}">
       <section aria-label="Install on iPhone" style="background:var(--surface-card);border-radius:18px;padding:14px 16px">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
@@ -1851,6 +1867,30 @@
         <div style="font:800 20px var(--font-display);color:var(--type-electric)">{{ digest.greatProjects }}</div>
       </div>
     </div>
+
+    <section aria-label="Refresh everything" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1 1 220px;min-width:0"><div style="font:650 17px var(--font-display)">Refresh everything</div><div style="font:12.5px/1.4 var(--font-body);color:var(--ink-500)">Re-checks ranks, moves, keep and transfer lists, squads and the briefing. Nothing is deleted.</div></div>
+        <button type="button" onClick="{{ refreshStart }}" class="om-press" style="flex-shrink:0;padding:12px 16px;border-radius:var(--r-pill);background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-display);min-height:44px">{{ refreshLabel }}</button>
+      </div>
+      <sc-if value="{{ refreshRun }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ refreshSteps }}" as="st" hint-placeholder-count="9">
+            <div style="display:flex;gap:8px;align-items:baseline;font:13px/1.4 var(--font-body)"><span style="width:16px;text-align:center;font-weight:800;color:{{ st.color }}">{{ st.icon }}</span><span style="flex:1;min-width:0">{{ st.label }}</span><span style="color:var(--ink-500);font-size:12px;text-align:right;max-width:46%">{{ st.note }}</span></div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ refreshError }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--type-fighting)">Stopped: {{ refreshError }}</div></sc-if>
+      <sc-if value="{{ refreshHasSummary }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--surface-sunken);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+          <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400)">WHAT CHANGED</div>
+          <sc-for list="{{ refreshLines }}" as="ln" hint-placeholder-count="3"><div style="font:13px/1.4 var(--font-body)">{{ ln.t }}</div></sc-for>
+          <sc-if value="{{ refreshHasWarn }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ refreshWarn }}" as="w" hint-placeholder-count="1"><div style="font:600 13px/1.4 var(--font-body);color:var(--ios-red,#ff453a)">{{ w.t }}</div></sc-for></sc-if>
+          <button type="button" onClick="{{ refreshUndo }}" class="om-press" style="align-self:flex-start;margin-top:4px;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-card);color:var(--ink-700);font:700 12px var(--font-display);min-height:44px">UNDO THIS REFRESH</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ refreshUndone }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--grass-700)">Restored the ranks, evolution and move data from before this refresh.</div></sc-if>
+    </section>
 
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:4px 16px;margin-bottom:14px">
       <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;min-height:48px;font:600 16px var(--font-body)">Setup, sync and backup<span style="font:500 13px var(--font-body);color:var(--ink-400)">Text size, size protection, cloud, backup</span></summary>
@@ -4254,6 +4294,10 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     leagueSel: null,
+    refreshRun: null,
+    briefing: null,
+    briefingBusy: false,
+    briefingSearch: false,
     showcaseVisible: 25,
     renameTpl: '{form}{iv}G{g}U{u}',
     renameQuery: '',
@@ -4447,6 +4491,8 @@ class Component extends DCLogic {
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
     try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
+    try { const b = JSON.parse(localStorage.getItem('scout.briefing.v1') || 'null'); if (b && b.date && Array.isArray(b.bullets)) this.setState({ briefing: b }); } catch (e) {}
+    try { if (localStorage.getItem('scout.briefingSearch') === '1') this.setState({ briefingSearch: true }); } catch (e) {}
     try { const ps = localStorage.getItem('scout.protectSizes'); if (ps === 'extreme' || ps === 'all' || ps === 'off') this.setState({ protectSizes: ps }); } catch (e) {}
     this.loadLocalSecrets();
     this.loadFeed();
@@ -4456,7 +4502,8 @@ class Component extends DCLogic {
     try { const sv = JSON.parse(localStorage.getItem('scout.savedViews.v1') || '[]'); if (Array.isArray(sv)) this.setState({ savedViews: sv.filter(v => v && v.id && v.filter).slice(-8) }); } catch (e) {}
     setTimeout(() => this.maybeSwipeHint(), 3500);
     try { if (localStorage.getItem('scout.remind.v1') === '1' && typeof Notification !== 'undefined' && Notification.permission === 'granted') this.setState({ remindersOn: true }); } catch (e) {}
-    this._remindTimer = setInterval(() => this.checkReminders(), 60000);
+    this._remindTimer = setInterval(() => { this.checkReminders(); this.maybeBriefing(); }, 60000);
+    setTimeout(() => this.maybeBriefing(), 9000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.checkReminders(); this.dailyLogSnapshot(); } });
     setTimeout(() => this.checkReminders(), 4000);
     try { const z = parseFloat(localStorage.getItem('scout.uiZoom')); if (z >= 1 && z <= 2) this.setUiZoom(z); } catch (e) {}
@@ -7768,8 +7815,232 @@ class Component extends DCLogic {
     this.setState({ pvpMaxLevel: n }, () => this.recalculateAllRanks());
   }
 
-  recalculateAllRanks() {
-    if (!this.mechanics || this.state.recalcBusy) return;
+  // ---- Refresh everything -----------------------------------------------------------------------
+  // What the trainer would otherwise have to do by hand: check for a newer build, reload the feed, fill
+  // data gaps, recalculate every rank, rebuild the keep check, lists and squads, refresh the briefing. It
+  // notes every Pokemon's state first and reports what moved, flagging any Pokemon that just lost its
+  // protection, so a change that would expose a good Pokemon to a transfer list is seen, not discovered.
+  refreshSnapshot() {
+    const roster = this.effectiveRosterForMatch();
+    const ctx = this.keepContext(roster);
+    const rows = {};
+    roster.forEach(p => {
+      const r = k => (p[k] && Number.isFinite(p[k].rankPct) ? Math.round(p[k].rankPct * 10) / 10 : null);
+      rows[p.idx] = { name: p.name + (p.form ? ' (' + p.form + ')' : ''), great: r('great'), ultra: r('ultra'), little: r('little'), keep: this.keepReasons(p, ctx).length };
+    });
+    const squad = lg => { try { const t = this.pvpTeamFor(lg); return t ? t.members.map(c => c.p.name).join(', ') : ''; } catch (e) { return ''; } };
+    return { rows, count: roster.length, squads: { great: squad('great'), ultra: squad('ultra') } };
+  }
+
+  clearDerivedCaches() {
+    this._memoStore = {}; this._keepCtx = null; this._cutSum = null; this._raidCache = null;
+  }
+
+  async reloadFeedNow() {
+    const urls = ['data/feed.json?t=' + Date.now(), 'https://raw.githubusercontent.com/stupid-picasso/scout-dashboard/main/data/feed.json?t=' + Date.now()];
+    for (const u of urls) {
+      try {
+        const res = await fetch(u, { cache: 'no-store' });
+        if (!res.ok) continue;
+        const f = await res.json();
+        if (!this.validFeed(f)) continue;
+        this.setState({ feed: f });
+        try { localStorage.setItem('scout.feed.v1', JSON.stringify(f)); } catch (e) {}
+        return true;
+      } catch (e) { /* try the next source */ }
+    }
+    return false;
+  }
+
+  async refreshEverything() {
+    if (this._refreshing) return;
+    this._refreshing = true;
+    const defs = [['snapshot', 'Note where everything stands'], ['update', 'Check for a newer app version'], ['feed', 'Reload events and GBL feed'],
+      ['evo', 'Fill in missing evolution data'], ['moves', 'Fill in missing move data'], ['ranks', 'Recalculate every league rank'],
+      ['keep', 'Re-run the keep check and transfer lists'], ['squads', 'Rebuild PvP squads'], ['brief', 'Update today\u2019s briefing']];
+    const run = { running: true, steps: defs.map(([k, label]) => ({ k, label, status: 'wait', note: '' })), summary: null, undone: false };
+    const push = () => this.setState({ refreshRun: { ...run, steps: run.steps.map(x => ({ ...x })) } });
+    const step = (k, status, note) => { const x = run.steps.find(y => y.k === k); x.status = status; if (note != null) x.note = note; push(); };
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    push();
+    try {
+      step('snapshot', 'run'); await wait(60);
+      const before = this.refreshSnapshot();
+      this._refreshUndo = { ivOverrides: this.state.ivOverrides, evoTable: this.state.evoTable, moveDB: this.state.moveDB, typeTable: this.state.typeTable };
+      step('snapshot', 'done', before.count + ' Pokemon');
+
+      step('update', 'run');
+      try {
+        if ('serviceWorker' in navigator) { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.update(); }
+        await wait(1200);
+        step('update', 'done', this.state.updateReady ? 'A newer version is ready: reload to use it' : 'You have the latest');
+      } catch (e) { step('update', 'skip', 'Could not check'); }
+
+      step('feed', 'run');
+      step('feed', (await this.reloadFeedNow()) ? 'done' : 'skip', null);
+      run.steps.find(x => x.k === 'feed').note = this.validFeed(this.state.feed) ? 'Up to date' : 'Offline: using the saved copy';
+      push();
+
+      const gap = async (k, missingFn, fetchFn) => {
+        const n = missingFn.call(this).length;
+        if (!n) { step(k, 'skip', 'Nothing missing'); return; }
+        if (!this.state.geminiKey) { step(k, 'skip', n + ' missing: add an AI key to fill them'); return; }
+        step(k, 'run', n + ' missing');
+        try { await fetchFn.call(this); const left = missingFn.call(this).length; step(k, left ? 'skip' : 'done', left ? left + ' still missing (AI limit): run again later' : 'Filled in'); }
+        catch (e) { step(k, 'skip', 'AI unavailable right now'); }
+      };
+      await gap('evo', this.missingEvoNames, this.fetchEvoData);
+      await gap('moves', this.missingMoveNames, this.fetchMoveData);
+
+      step('ranks', 'run');
+      const sum = await new Promise(res => this.recalculateAllRanks(res));
+      step('ranks', sum ? 'done' : 'skip', sum || 'Already running');
+      await wait(80);
+      this.clearDerivedCaches();
+
+      step('keep', 'run'); await wait(60);
+      const after = this.refreshSnapshot();
+      const ids = Object.keys(after.rows);
+      const cut = (() => { try { const r = this.effectiveRosterForMatch(); return this.cutSafeSummary(r, Math.max(0, r.length - (Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300))); } catch (e) { return null; } })();
+      step('keep', 'done', ids.filter(i => after.rows[i].keep).length + ' protected' + (cut ? ' \u00b7 ' + cut.show.length + ' safe to cut' : ''));
+
+      step('squads', 'run'); await wait(60);
+      const squadNotes = [];
+      ['great', 'ultra'].forEach(lg => { if ((before.squads[lg] || '') !== (after.squads[lg] || '')) squadNotes.push((lg === 'great' ? 'Great' : 'Ultra') + ' League squad: ' + (after.squads[lg] || 'none') + ' (was ' + (before.squads[lg] || 'none') + ')'); });
+      step('squads', 'done', squadNotes.length ? squadNotes.length + ' changed' : 'No change');
+
+      step('brief', 'run');
+      try { const b = await this.generateBriefing(false); step('brief', b ? 'done' : 'skip', b ? 'Updated' : 'Needs an AI key or today\u2019s quota'); }
+      catch (e) { step('brief', 'skip', 'AI unavailable right now'); }
+
+      // What moved, with the dangerous direction (a Pokemon that just lost protection) called out.
+      const moved = ids.filter(i => before.rows[i] && ['great', 'ultra', 'little'].some(k => before.rows[i][k] != null && after.rows[i][k] != null && Math.abs(before.rows[i][k] - after.rows[i][k]) >= 1));
+      const lost = ids.filter(i => before.rows[i] && before.rows[i].keep && !after.rows[i].keep).map(i => after.rows[i].name);
+      const gained = ids.filter(i => before.rows[i] && !before.rows[i].keep && after.rows[i].keep).length;
+      const added = ids.filter(i => !before.rows[i]).length;
+      const lines = [];
+      lines.push(moved.length ? moved.length + ' Pokemon changed league rank' : 'No league ranks changed');
+      if (gained) lines.push(gained + ' became protected');
+      if (added) lines.push(added + ' new Pokemon checked');
+      squadNotes.forEach(n => lines.push(n));
+      run.summary = { lines, warn: lost.length ? [lost.length + ' Pokemon just lost their protection and could now appear in a transfer list: ' + lost.slice(0, 8).join(', ') + (lost.length > 8 ? '\u2026' : '') + '. Check them before transferring.'] : [] };
+    } catch (e) {
+      run.error = (e && e.message) || String(e);
+    }
+    run.running = false;
+    push();
+    this._refreshing = false;
+  }
+
+  undoRefresh() {
+    const u = this._refreshUndo;
+    if (!u) return;
+    this.setState({ ...u, refreshRun: { ...(this.state.refreshRun || {}), undone: true } }, () => { this.clearDerivedCaches(); this.queueCloudPush(); });
+  }
+
+  refreshVals() {
+    const r = this.state.refreshRun;
+    const icon = { wait: '\u25cb', run: '\u2026', done: '\u2713', skip: '\u2013', fail: '!' };
+    const color = { wait: 'var(--ink-300)', run: 'var(--ios-blue)', done: 'var(--grass-700)', skip: 'var(--ink-400)', fail: 'var(--type-fighting)' };
+    return {
+      refreshRun: r, refreshRunning: !!(r && r.running),
+      refreshLabel: r && r.running ? 'REFRESHING\u2026' : 'REFRESH EVERYTHING',
+      refreshStart: () => this.refreshEverything(),
+      refreshSteps: r ? r.steps.map(x => ({ label: x.label, note: x.note, icon: icon[x.status], color: color[x.status] })) : [],
+      refreshHasSummary: !!(r && r.summary && !r.undone),
+      refreshLines: r && r.summary ? r.summary.lines.map(t => ({ t })) : [],
+      refreshWarn: r && r.summary ? r.summary.warn.map(t => ({ t })) : [],
+      refreshHasWarn: !!(r && r.summary && r.summary.warn.length && !r.undone),
+      refreshError: r && r.error ? r.error : '',
+      refreshUndone: !!(r && r.undone),
+      refreshUndo: () => this.undoRefresh()
+    };
+  }
+
+  // ---- Morning briefing -------------------------------------------------------------------------
+  // One Gemini call a day, built only from this roster's own computed facts and the live feed. The AI
+  // advises; the keep check decides what may ever be called a transfer, and nothing here acts on its own.
+  briefingContext() {
+    const roster = this.effectiveRosterForMatch();
+    const plan = this.buildOptimizePlan(roster);
+    const nm = p => p.name + (p.form ? ' (' + p.form + ')' : '') + ' ' + (Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '% IV' : 'IV unknown') + ' CP ' + (p.cp || '?');
+    const lines = [];
+    lines.push('Date: ' + new Date().toDateString() + '. Roster size: ' + roster.length + '.');
+    lines.push('Power up first: ' + (plan.powerUp.map(nm).join('; ') || 'none') + '.');
+    lines.push('Evolve soon: ' + (plan.evolveSoon.map(nm).join('; ') || 'none') + '.');
+    lines.push('Needs a second charge move: ' + (plan.needsSecondMove.map(nm).join('; ') || 'none') + '.');
+    lines.push('Transfer candidates that PASSED the keep check (the only ones you may mention as transfers): ' + (plan.transferSafe.slice(0, 6).map(nm).join('; ') || 'none') + '.');
+    const events = this.feedEvents ? this.feedEvents().slice(0, 5).map(e => e.title + ' (' + e.when + ')' + (e.bonus ? ' bonus: ' + e.bonus : '')) : [];
+    lines.push('Events: ' + (events.join('; ') || 'none known') + '.');
+    const weeks = this.gblWeeks ? this.gblWeeks() : [];
+    if (weeks[0]) lines.push('GBL this week: ' + weeks[0].leagues.map(l => l.name + ' (' + l.cap + ')' + (l.hasTop ? ' top: ' + l.top.slice(0, 3).map(t => t.name).join(', ') : '')).join('; ') + '.');
+    try { ['great', 'ultra'].forEach(lg => { const t = this.pvpTeamFor(lg); if (t) lines.push(lg + ' league squad from the roster: ' + t.members.map(c => c.p.name).join(', ') + '.'); }); } catch (e) {}
+    return lines.join('\n');
+  }
+
+  async generateBriefing(force) {
+    const today = this.todayKey();
+    const cur = this.state.briefing;
+    if (!force && cur && cur.date === today) return cur;
+    if (!this.state.geminiKey) return null;
+    if (this.state.briefingBusy) return null;
+    const roster = this.effectiveRosterForMatch();
+    if (!roster.length) return null;
+    this.setState({ briefingBusy: true });
+    try {
+      const search = !!this.state.briefingSearch;
+      const text = await this.completeWithRetry({
+        search,
+        max_tokens: 700,
+        system: 'You are Professor, a concise Pokemon GO coach writing this trainer\u2019s morning briefing. Use ONLY the facts below for anything about their roster; never invent Pokemon, stats or moves. Write 4 to 6 bullets, each starting with "- ", each one short and specific (name real Pokemon from the data). Cover: what to power up, what to evolve, anything to hunt or trade given the events, the GBL focus, and' + (search ? ' one line on any recent meta or balance change you can confirm with search (say nothing if unsure)' : ' nothing about the wider meta') + '. Only mention a transfer for a Pokemon listed as having PASSED the keep check; otherwise say nothing about transfers. These are suggestions for the trainer to confirm, never instructions.',
+        messages: [{ role: 'user', content: this.briefingContext() }]
+      });
+      const bullets = String(text || '').split('\n').map(l => l.replace(/^[\s*\u2022-]+/, '').trim()).filter(l => l.length > 3).slice(0, 7);
+      if (!bullets.length) throw new Error('empty briefing');
+      const b = { date: today, bullets, at: Date.now(), search };
+      this.setState({ briefing: b, briefingBusy: false });
+      try { localStorage.setItem('scout.briefing.v1', JSON.stringify(b)); } catch (e) {}
+      return b;
+    } catch (e) {
+      this.setState({ briefingBusy: false, briefingError: ((e && e.message) || 'failed').slice(0, 140) });
+      throw e;
+    }
+  }
+
+  // Once per morning, the first time the Today tab is showing with a roster and a key.
+  maybeBriefing() {
+    try {
+      const today = this.todayKey();
+      if (this.state.tab !== 'today' || this._briefTriedDay === today) return;
+      const cur = this.state.briefing;
+      if (cur && cur.date === today) { this._briefTriedDay = today; return; }
+      if (!this.state.geminiKey || this.state.briefingBusy || !((this.state.roster || []).length + (this.state.addedPokemon || []).length)) return;
+      this._briefTriedDay = today;
+      this.generateBriefing(false).catch(() => {});
+    } catch (e) {}
+  }
+
+  briefingVals() {
+    const b = this.state.briefing;
+    const today = this.todayKey();
+    const fresh = !!(b && b.date === today);
+    return {
+      briefingHas: !!(b && b.bullets && b.bullets.length),
+      briefingBullets: b && b.bullets ? b.bullets.map(t => ({ t })) : [],
+      briefingStale: !!b && !fresh,
+      briefingWhen: b ? (fresh ? 'Today' : new Date(b.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })) + (b.search ? ' \u00b7 with live search' : '') : '',
+      briefingBusy: this.state.briefingBusy,
+      briefingCanAsk: !!this.state.geminiKey,
+      briefingRefresh: () => this.generateBriefing(true).catch(() => {}),
+      briefingError: this.state.briefingError || '',
+      briefingSearchOn: !!this.state.briefingSearch,
+      briefingSearchToggle: () => { const v = !this.state.briefingSearch; this.setState({ briefingSearch: v }); try { localStorage.setItem('scout.briefingSearch', v ? '1' : '0'); } catch (e) {} },
+      briefingLabel: this.state.briefingBusy ? 'Thinking\u2026' : (b ? 'Refresh' : 'Brief me')
+    };
+  }
+
+  recalculateAllRanks(done) {
+    if (!this.mechanics || this.state.recalcBusy) { if (typeof done === 'function') done(null); return; }
     this.setState({ recalcBusy: true, recalcSummary: '' });
     setTimeout(() => {
       const m = this.mechanics;
@@ -7794,7 +8065,7 @@ class Component extends DCLogic {
         updated++;
       });
       const summary = updated + ' recalculated' + (skipped ? ' \u00b7 ' + skipped + ' skipped (no IVs on file)' : '');
-      this.setState({ ivOverrides: overrides, recalcBusy: false, recalcSummary: summary }, () => this.queueCloudPush());
+      this.setState({ ivOverrides: overrides, recalcBusy: false, recalcSummary: summary }, () => { this.queueCloudPush(); if (typeof done === 'function') done(summary); });
       clearTimeout(this._recalcSummaryTimer);
       this._recalcSummaryTimer = setTimeout(() => this.setState({ recalcSummary: '' }), 9000);
     }, 30); // let the busy label paint before the roster walk blocks the thread
@@ -9670,12 +9941,15 @@ class Component extends DCLogic {
         }
         return cfg;
       };
-      const post = (extras) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+      const post = (extras, grounded) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras) })
+        body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras), ...(grounded ? { tools: [{ google_search: {} }] } : {}) })
       });
-      let res = await post(false);
+      // body.search asks for Google Search grounding (live meta and news). A model or key that refuses the
+      // tool falls straight back to a plain answer rather than failing the whole request.
+      let res = await post(false, !!body.search);
+      if (res.status === 400 && body.search) res = await post(false, false);
       if (res.status === 400) {
         // Some models need the JSON mime type to return parseable output.
         res = await post(true);
@@ -12799,9 +13073,35 @@ class Component extends DCLogic {
       message: (why.length ? 'The app would keep this one: ' + why.join(', ') + '. ' : '') + 'Removes it from your roster and adds 1 candy. Did the in-game toast also award an XL Candy?',
       actions: [
         { label: 'YES \u2014 GOT XL CANDY', style: 'primary', run: () => { this.transferPokemon(p, true); this.closeConfirm(); if (onDone) onDone(); } },
-        { label: 'NO XL CANDY', style: 'neutral', run: () => { this.transferPokemon(p, false); this.closeConfirm(); if (onDone) onDone(); } }
+        { label: 'NO XL CANDY', style: 'neutral', run: () => { this.transferPokemon(p, false); this.closeConfirm(); if (onDone) onDone(); } },
+        ...(this.state.geminiKey ? [{ label: 'ASK PROFESSOR FIRST', style: 'neutral', run: () => this.askProfessorTransfer(p) }] : [])
       ]
     });
+  }
+
+  // A second opinion on one transfer. Advice only: it can add reasons to keep, and the keep check's own
+  // reasons are given to it as facts it may not argue away.
+  async askProfessorTransfer(p) {
+    const cur = this.state.pendingConfirm;
+    if (!cur) return;
+    const say = message => this.setState({ pendingConfirm: { ...this.state.pendingConfirm, message } });
+    say('Professor is checking\u2026');
+    try {
+      const roster = this.effectiveRosterForMatch();
+      const why = this.keepReasons(p);
+      const dups = roster.filter(q => q.dex === p.dex && (q.form || '') === (p.form || '')).length;
+      const dps = this.bestDpsFor(p);
+      const facts = [p.name + (p.form ? ' (' + p.form + ')' : '') + ' CP ' + p.cp, 'IV ' + (Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : 'unmeasured') + ' (' + (p.atkIV ?? '?') + '/' + (p.defIV ?? '?') + '/' + (p.staIV ?? '?') + ')',
+        'League ranks: Great ' + ((p.great && p.great.rankPct) ?? '-') + ', Ultra ' + ((p.ultra && p.ultra.rankPct) ?? '-') + ', Little ' + ((p.little && p.little.rankPct) ?? '-'),
+        'Moves: ' + ([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).join(' / ') || 'not on file') + (dps ? ' (DPS ' + dps.dps.toFixed(1) + ')' : ''),
+        'Copies owned of this species and form: ' + dups, 'App keep-check reasons: ' + (why.length ? why.join('; ') : 'none')].join('\n');
+      const reply = await this.completeWithRetry({
+        max_tokens: 300,
+        system: 'You are Professor, advising whether to transfer ONE Pokemon. Reply in at most 3 short sentences: start with KEEP or TRANSFER, then the reason from the facts only. If the keep-check reasons are not "none", you must answer KEEP and restate the strongest reason. When unsure, answer KEEP. Never invent stats.',
+        messages: [{ role: 'user', content: facts }]
+      });
+      say(String(reply || '').trim().slice(0, 600) || 'No answer. Decide with the reasons above.');
+    } catch (e) { say('Professor is unavailable right now (' + ((e && e.message) || 'error').slice(0, 80) + '). Decide with the reasons above.'); }
   }
 
   candyKeyFor(p) { return this.candyKey((p && p.name) || ''); }
@@ -16880,6 +17180,8 @@ class Component extends DCLogic {
       driveWorkflowAppraisalError: this.state.driveWorkflowAppraisalError || '',
       driveWorkflowAppraisalSummary: this.state.driveWorkflowAppraisalSummary || '',
       recalculateAllRanks: () => this.recalculateAllRanks(),
+      ...this.refreshVals(),
+      ...this.briefingVals(),
       recalcLabel: this.state.recalcBusy ? 'RECALCULATING\u2026' : 'RECALCULATE ALL RANKS',
       recalcSummary: this.state.recalcSummary || '',
       aiUsageRows: (() => {

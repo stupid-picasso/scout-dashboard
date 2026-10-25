@@ -432,6 +432,51 @@ module.exports = async function suiteB() {
     const dom = await s.call('dominatedDuplicates', [...weak, mk('d1', 16, 'Pidgey', [15, 15, 15], 400), special[5]]);
     expect(dom.every(x => /^k/.test(x.loser.idx)), 'dominated list must only hold unprotected losers');
   });
+  await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
+    await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
+    await s.call('refreshEverything');
+    const st = await s.state();
+    const run = st.refreshRun;
+    expect(run && !run.running && run.steps.length === 9, 'run missing: ' + JSON.stringify(run).slice(0, 200));
+    expect(run.steps.every(x => x.status !== 'wait' && x.status !== 'run'), 'a step never finished: ' + run.steps.map(x => x.k + ':' + x.status).join());
+    expect(run.summary && run.summary.lines.length >= 1, 'no summary');
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/REFRESH EVERYTHING/.test(txt) && /WHAT CHANGED/.test(txt) && /UNDO THIS REFRESH/.test(txt), txt.slice(0, 200));
+    await s.call('undoRefresh'); await s.page.waitForTimeout(300);
+    expect((await s.state()).refreshRun.undone === true, 'undo flag');
+  });
+  await T('BRIEF-01', 'Today', 'Morning briefing is one cached AI call, shows as suggestions, and search grounding is sent only when switched on', async () => {
+    const seen = [];
+    await s.page.route('**/generativelanguage.googleapis.com/**', async r => {
+      const u = r.request().url();
+      if (/:generateContent/.test(u)) {
+        seen.push(r.request().postData() || '');
+        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '- Power up your best Great League pick first.\n- Evolve the Pokemon with enough candy.\n- Check this weekend event.' }] } }] }) });
+      }
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [] }) });
+    });
+    const key = 'k'.repeat(30);
+    await s.set({ geminiKey: key, geminiKeys: [key], briefing: null, briefingSearch: false, tab: 'today' });
+    await s.call('generateBriefing', true); await s.page.waitForTimeout(500);
+    let b = (await s.state()).briefing;
+    expect(b && b.bullets.length === 3 && b.date, 'no briefing: ' + JSON.stringify(b));
+    expect(seen.length === 1 && !/google_search/.test(seen[0]), 'search must be off by default: ' + seen.length);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/briefing/i.test(txt) && /Suggestions only/.test(txt) && /Power up your best/.test(txt), txt.slice(0, 300));
+    await s.call('generateBriefing', false);
+    expect(seen.length === 1, 'a second call on the same day must use the cache');
+    await s.set({ briefingSearch: true }); await s.call('generateBriefing', true);
+    expect(seen.length === 2 && /google_search/.test(seen[1]), 'search grounding must be sent when switched on');
+    // Second opinion on a transfer: advice only, shown inside the confirm sheet.
+    const st = await s.state(); const p = st.roster[0];
+    await s.call('askTransferConfirm', p); await s.page.waitForTimeout(200);
+    await s.call('askProfessorTransfer', p); await s.page.waitForTimeout(400);
+    const cf = (await s.state()).pendingConfirm;
+    expect(cf && /Power up|Evolve|event/.test(cf.message), 'professor reply not shown: ' + JSON.stringify(cf && cf.message));
+    await s.call('closeConfirm');
+    await s.page.unroute('**/generativelanguage.googleapis.com/**');
+    await s.set({ geminiKey: '', geminiKeys: [], briefing: null, briefingSearch: false });
+  });
   await T('CUT-03', 'Roster', 'An XXL or XXS is never in the cut list ahead of a normal-size duplicate; with protection off it can be', async () => {
     const mk = (idx, h, iv, cp) => ({ idx, name: 'Bulbasaur', dex: 1, cp, hp: 50, height: h, weight: '7kg', atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const xxl = mk('z1', '1.2m', 1, 200), a = mk('z2', '0.7m', 10, 300), b = mk('z3', '0.7m', 12, 320), c = mk('z4', '0.7m', 14, 340);
