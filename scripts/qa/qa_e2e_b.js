@@ -375,7 +375,7 @@ module.exports = async function suiteB() {
     await s.call('closeDetail');
   });
   await T('DOM-PVP-01', 'Roster', 'A duplicate that beats the other on every IV is not dominated when it ranks lower in a league', async () => {
-    const mk = (idx, iv, great, extra) => ({ idx, name: 'Pawmi', dex: 921, cp: 300, hp: 40, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: great }, scanDate: '2026-10-01', ...extra });
+    const mk = (idx, iv, great, extra) => ({ idx, name: 'Pawmi', dex: 921, cp: 300, hp: 40, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: great }, scanDate: '2026-10-01', ...extra });
     const winner = mk('qa-d1', [14, 13, 12], 80), lowAtk = mk('qa-d2', [0, 11, 12], 96), plain = mk('qa-d3', [0, 11, 12], 60);
     const hit = async (list) => (await s.call('dominatedDuplicates', list)).map(x => x.loser.idx);
     expect((await hit([winner, lowAtk])).indexOf('qa-d2') < 0, 'the 0/11/12 with the better Great rank must not be listed');
@@ -410,6 +410,28 @@ module.exports = async function suiteB() {
     expect(/Legendary/.test(r1) && /#1 of 3/.test(r1) && /raid role|no raid role/.test(r1), r1);
     expect(/only copy/.test(rows.find(r => r.p.idx === 'c7').reason), 'only-copy reason');
   });
+  await T('KEEP-01', 'Safety', 'The keep check protects every valuable kind of Pokemon from every transfer list, and still lets a plain weak duplicate through', async () => {
+    await s.set({ protectSizes: 'extreme' });
+    const mk = (idx, dex, name, iv, cp, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const weak = [mk('k1', 16, 'Pidgey', [2, 3, 2], 120), mk('k2', 16, 'Pidgey', [1, 2, 1], 100), mk('k3', 16, 'Pidgey', [0, 1, 1], 90), mk('k4', 16, 'Pidgey', [3, 2, 2], 130)];
+    const special = [
+      mk('s1', 19, 'Rattata', [1, 1, 1], 80, { lucky: true }), mk('s2', 21, 'Spearow', [1, 1, 1], 80, { favorite: true }), mk('s3', 23, 'Ekans', [1, 1, 1], 80, { shiny: true }),
+      mk('s4', 27, 'Sandshrew', [1, 1, 1], 80, { shadowPurified: '1' }), mk('s5', 1, 'Bulbasaur', [1, 1, 1], 80, { height: '1.2m', weight: '7kg' }),
+      mk('s6', 484, 'Palkia', [8, 8, 8], 2770), mk('s7', 29, 'Nidoran', [14, 14, 14], 300), mk('s8', 41, 'Zubat', [1, 1, 1], 80, { ivMeasured: false, ivSolved: true }),
+      mk('s9', 10, 'Caterpie', [1, 1, 1], 60)];
+    const roster = [...weak, ...special];
+    const ctxRows = await s.call('cutScoreRows', roster);
+    const keepOf = id => ctxRows.find(r => r.p.idx === id).keep;
+    const missing = special.map(p => p.idx).filter(id => !keepOf(id).length);
+    expect(!missing.length, 'valuable Pokemon with no keep reason: ' + missing.join() + ' ' + JSON.stringify(special.filter(p => missing.indexOf(p.idx) >= 0).map(p => p.name)));
+    expect(weak.every(p => !keepOf(p.idx).length), 'weak duplicates should pass: ' + JSON.stringify(weak.map(p => keepOf(p.idx))));
+    const sum = await s.call('cutSafeSummary', roster, 12);
+    expect(sum.show.length === 4 && sum.show.every(r => /^k/.test(r.p.idx)), 'cut list must offer only the 4 weak Pidgey, not pad to the target: ' + sum.show.map(r => r.p.idx).join());
+    const plan = await s.call('buildOptimizePlan', roster);
+    expect(plan.transferSafe.every(p => /^k/.test(p.idx)), 'Transfer-safe must exclude every protected one: ' + plan.transferSafe.map(p => p.idx).join());
+    const dom = await s.call('dominatedDuplicates', [...weak, mk('d1', 16, 'Pidgey', [15, 15, 15], 400), special[5]]);
+    expect(dom.every(x => /^k/.test(x.loser.idx)), 'dominated list must only hold unprotected losers');
+  });
   await T('CUT-03', 'Roster', 'An XXL or XXS is never in the cut list ahead of a normal-size duplicate; with protection off it can be', async () => {
     const mk = (idx, h, iv, cp) => ({ idx, name: 'Bulbasaur', dex: 1, cp, hp: 50, height: h, weight: '7kg', atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const xxl = mk('z1', '1.2m', 1, 200), a = mk('z2', '0.7m', 10, 300), b = mk('z3', '0.7m', 12, 320), c = mk('z4', '0.7m', 14, 340);
@@ -422,11 +444,15 @@ module.exports = async function suiteB() {
     expect(off[0] === 'z1', 'with protection off the weak XXL is cut first: ' + off.join());
     await s.set({ protectSizes: 'extreme' });
   });
-  await T('CUT-02', 'Roster', 'Revealed cut list renders cards with a reason and the renamed button, with no page error', async () => {
-    await s.set({ tab: 'home', cutTarget: 40, cutTargetDraft: '40', cutListRevealed: true }); await s.page.waitForTimeout(900);
+  await T('CUT-02', 'Roster', 'Revealed cut list renders cards with a reason and the renamed button, and says plainly when protection limits it', async () => {
+    const mk = (idx, iv, cp) => ({ idx, name: 'Pidgey', dex: 16, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), mk('w1', 1, 90), mk('w2', 2, 100), mk('w3', 3, 110)] }); await s.call('recalculateAllRanks');
+    await s.set({ tab: 'home', cutTarget: 1, cutTargetDraft: '1', cutListRevealed: true }); await s.page.waitForTimeout(1200);
     const txt = await s.page.evaluate(() => document.body.innerText);
-    expect(/I TRANSFERRED IT/.test(txt) && /(only copy|of \\d+ by IV)/.test(txt) && !/is not defined/.test(txt), txt.slice(0, 200));
-    await s.set({ cutListRevealed: false, cutTarget: 300, cutTargetDraft: '300' });
+    expect(/I TRANSFERRED IT/.test(txt) && /(only copy|of \d+ by IV)/.test(txt) && !/is not defined/.test(txt), txt.slice(0, 300));
+    expect(/can be cut safely|safest to transfer/.test(txt), 'headline must say how many are safe: ' + txt.slice(0, 300));
+    await s.set({ cutListRevealed: false, cutTarget: 300, cutTargetDraft: '300', addedPokemon: st0.addedPokemon || [] });
   });
   await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
     const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });

@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.179</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.180</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -5327,16 +5327,55 @@ class Component extends DCLogic {
     return Math.max(g, u, l);
   }
 
+  // ---- Keep check: the one gate every transfer suggestion must pass --------------------------------
+  // A Pokemon with ANY reason here is never suggested for transfer, by any list, verdict or AI answer.
+  // An empty array means nothing marks it as valuable. Deliberately generous: a missed transfer costs
+  // a little storage, a wrong one costs a Pokemon that may be needed later.
+  keepContext(roster) {
+    if (this._keepCtx && this._keepCtx.roster === roster) return this._keepCtx;
+    const groups = {};
+    roster.forEach(p => { const k = p.dex + '_' + (p.form || ''); (groups[k] = groups[k] || []).push(p); });
+    Object.values(groups).forEach(g => g.sort((a, b) => (Number.isFinite(b.ivAvg) ? b.ivAvg : 0) - (Number.isFinite(a.ivAvg) ? a.ivAvg : 0) || (b.cp || 0) - (a.cp || 0)));
+    this._keepCtx = { roster, groups, typeBest: this.raidRoleTypeBest(roster) };
+    return this._keepCtx;
+  }
+
+  keepReasons(p, ctx) {
+    const m = this.mechanics;
+    const c = ctx || this.keepContext(this.effectiveRosterForMatch());
+    const out = [];
+    if (p.lucky) out.push('Lucky');
+    if (p.favorite) out.push('Favourite');
+    if (p.shiny) out.push('Shiny');
+    if (this.isShadow(p)) out.push('Shadow');
+    if (this.isPurified(p)) out.push('Purified');
+    if (this.sizeProtected(p)) out.push(this.sizeTagOf(p) + ' size (showcases)');
+    const g = c.groups[p.dex + '_' + (p.form || '')] || [p];
+    const pos = Math.max(1, g.findIndex(q => q.idx === p.idx) + 1);
+    const cls = m && m.speciesClassFor ? m.speciesClassFor(p.dex) : '';
+    if (cls && pos <= 2) out.push(({ L: 'Legendary', M: 'Mythical', U: 'Ultra Beast' })[cls] + ', one of your best two');
+    if (this.needsAppraisal(p) || !Number.isFinite(p.ivAvg)) out.push('IVs not measured yet');
+    const iv = Number.isFinite(p.ivAvg) ? p.ivAvg : null;
+    if (iv != null && iv >= 90) out.push('IV ' + iv.toFixed(0) + '%');
+    if (this.isPvpWorthy(p)) out.push('PvP rank 90%+ on a ranked species');
+    const mr = this.masterRankFor(p);
+    const mt = m && m.pvpTierFor && mr && Number.isFinite(mr.rankPct) ? m.pvpTierFor(p.name, this.isShadow(p), 'master') : null;
+    if (mt && mr.rankPct >= 90 && ['S', 'A', 'B'].indexOf(mt.tier) >= 0) out.push('Master League tier ' + mt.tier);
+    if (this.hasRaidRole(p, c.typeBest)) out.push('Raid attacker role');
+    if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
+    if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
+    if (g.length === 1) out.push('Only copy');
+    return out;
+  }
+
   // Keep score for the "keep best N" cut list, lowest first. Protected flags dominate. After that a
   // Pokemon earns its place from ANY of: a PvP league rank, a Master League tier, a raid-attacker role,
   // being the only copy of its species, or (Legendary / Mythical / Ultra Beast) being one of the two
   // best copies. Each row carries a one-line reason so the list can be read, not just trusted.
   cutScoreRows(roster) {
     const m = this.mechanics;
-    const groups = {};
-    roster.forEach(p => { const k = p.dex + '_' + (p.form || ''); (groups[k] = groups[k] || []).push(p); });
-    Object.values(groups).forEach(g => g.sort((a, b) => (Number.isFinite(b.ivAvg) ? b.ivAvg : 0) - (Number.isFinite(a.ivAvg) ? a.ivAvg : 0) || (b.cp || 0) - (a.cp || 0)));
-    const typeBest = this.raidRoleTypeBest(roster);
+    const ctx = this.keepContext(roster);
+    const groups = ctx.groups, typeBest = ctx.typeBest;
     const CLASS = { L: 'Legendary', M: 'Mythical', U: 'Ultra Beast' };
     const rows = roster.map(p => {
       const g = groups[p.dex + '_' + (p.form || '')];
@@ -5377,9 +5416,18 @@ class Component extends DCLogic {
       bits.push(rank >= 1 ? 'league rank ' + rank.toFixed(0) + '%' : 'no league rank');
       if (masterTier) bits.push('Master tier ' + masterTier);
       bits.push(raidRole ? 'raid role' : 'no raid role');
-      return { p, score, reason: bits.join(' \u00b7 ') };
+      return { p, score, reason: bits.join(' \u00b7 '), keep: this.keepReasons(p, ctx) };
     });
     return rows.sort((a, b) => a.score - b.score);
+  }
+
+  // Rows the cut list may actually offer: the keep check has the last word, so the list can be shorter than the target.
+  cutSafeSummary(roster, overBy) {
+    if (this._cutSum && this._cutSum.roster === roster && this._cutSum.overBy === overBy) return this._cutSum;
+    const rows = this.cutScoreRows(roster);
+    const safe = rows.filter(r => !r.keep.length);
+    this._cutSum = { roster, overBy, safe, protectedCount: rows.length - safe.length, show: safe.slice(0, overBy) };
+    return this._cutSum;
   }
 
   masterRankFor(p) {
@@ -6599,10 +6647,11 @@ class Component extends DCLogic {
       (groups[key] = groups[key] || []).push(p);
     });
     const out = [];
+    const keepCtx = this.keepContext(roster);
     Object.values(groups).forEach(g => {
       if (g.length < 2) return;
       g.forEach(p => {
-        if (p.lucky || p.favorite || p.shiny || this.isShadow(p) || this.sizeProtected(p)) return;
+        if (this.keepReasons(p, keepCtx).length) return;
         const a = this.ivsOf(p);
         const lv = Number.isFinite(p.lvlMin) ? p.lvlMin : 0;
         const beater = g.find(q => {
@@ -11612,9 +11661,10 @@ class Component extends DCLogic {
   // an XL Candy, then calls transferPokemon() with the answer either way.
   askTransferConfirm(p, onDone) {
     const name = p.displayName || p.name || 'this Pokemon';
+    const why = p && p.idx != null ? this.keepReasons(p) : [];
     this.askConfirm({
-      title: 'Transfer ' + name + '?',
-      message: 'Removes it from your roster and adds 1 candy. Did the in-game toast also award an XL Candy?',
+      title: (why.length ? 'Are you sure? ' : '') + 'Transfer ' + name + '?',
+      message: (why.length ? 'The app would keep this one: ' + why.join(', ') + '. ' : '') + 'Removes it from your roster and adds 1 candy. Did the in-game toast also award an XL Candy?',
       actions: [
         { label: 'YES \u2014 GOT XL CANDY', style: 'primary', run: () => { this.transferPokemon(p, true); this.closeConfirm(); if (onDone) onDone(); } },
         { label: 'NO XL CANDY', style: 'neutral', run: () => { this.transferPokemon(p, false); this.closeConfirm(); if (onDone) onDone(); } }
@@ -11856,7 +11906,7 @@ class Component extends DCLogic {
     if (!pvp && bestRank >= 85) return 'Strong IVs for Little Cup. Worth keeping for that league only.';
     if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
     if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
-    if ((!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && bestRank < 70 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !isShadow) return 'Low IV, no league value — safe to transfer for candy.';
+    if (Number.isFinite(p.ivAvg) && p.ivAvg < 51 && bestRank < 70 && !this.keepReasons(p).length) return 'Low IV, no league value — safe to transfer for candy.';
     return 'No urgent action. Keep as roster depth.';
   }
 
@@ -12543,12 +12593,13 @@ class Component extends DCLogic {
     const roster = this.effectiveRosterForMatch();
     const kept = this.state.triageKeep || {};
     const queued = new Set(this.state.transferQueue || []);
+    const keepCtx = this.keepContext(roster);
     const byDex = {};
     roster.forEach(p => { (byDex[p.dex] = byDex[p.dex] || []).push(p); });
     const out = [];
     roster.forEach(p => {
       if (queued.has(p.idx)) return;
-      if (p.favorite || p.lucky || p.shiny || this.isShadow(p) || this.isPurified(p) || this.sizeProtected(p)) return;
+      if (this.keepReasons(p, keepCtx).length) return;
       const rank = this.bestRank(p);
       if (Number.isFinite(rank) && rank >= 70) return;
       if ((p.ivAvg || 0) >= 70) return;
@@ -13226,7 +13277,8 @@ class Component extends DCLogic {
     const powerUp = withRank.filter(x => x.rank >= 90 && !x.p.favorite && notDone(x.p)).sort((a, b) => b.rank - a.rank).slice(0, 5).map(x => x.p);
     const evolveSoon = roster.filter(p => this.evolvesToName(p) && (p.ivAvg || 0) >= 60 && notDone(p))
       .sort((a, b) => (b.ivAvg || 0) - (a.ivAvg || 0)).slice(0, 5);
-    const transferSafe = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p))
+    const keepCtx = this.keepContext(roster);
+    const transferSafe = roster.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && this.bestRank(p) < 70 && notDone(p) && !this.keepReasons(p, keepCtx).length)
       .slice(0, 10);
     const dexCounts = {};
     roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
@@ -13317,6 +13369,9 @@ class Component extends DCLogic {
           const rec = this.candyRecFor(p.name);
           return rec ? (Number(rec.candy) || 0) : null;
         };
+        const keepCtxChat = this.keepContext(roster);
+        const keepIdx = {};
+        roster.forEach(p => { keepIdx[p.idx] = this.keepReasons(p, keepCtxChat); });
         const chatLine = p => {
           const dps = this.bestDpsFor(p);
           const note = this.movesetDataNote(p);
@@ -13327,7 +13382,7 @@ class Component extends DCLogic {
           const winner = dominatedByIdx[p.idx];
           const dominated = winner ? `beaten by owned ${winner.cp || '?'}CP ${winner.name}` : 'no';
           const candy = candyFor(p);
-          return `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'}`;
+          return `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'} | keep:${keepIdx[p.idx] && keepIdx[p.idx].length ? keepIdx[p.idx].join('+') : 'none'}`;
         };
         const byRank = [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a));
         const top = byRank.slice(0, 90);
@@ -13356,7 +13411,7 @@ class Component extends DCLogic {
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, only copy, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false }, () => this.queueCloudPush());
@@ -15566,10 +15621,14 @@ class Component extends DCLogic {
       cutPlan: (() => {
         const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
         const overBy = Math.max(0, roster.length - target);
+        const sum = overBy > 0 ? this.cutSafeSummary(roster, overBy) : null;
+        const shown = sum ? sum.show.length : 0;
         const headline = overBy > 0
-          ? 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 ' + overBy + ' over \u2014 reevaluate to see the bottom ' + overBy + ' to transfer.'
+          ? 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 ' + overBy + ' over. ' + (shown >= overBy
+            ? 'Reevaluate to see the ' + overBy + ' safest to transfer.'
+            : 'Only ' + shown + ' can be cut safely: ' + sum.protectedCount + ' are protected (good IVs, PvP, raid, rare, size or only copy). Raise the target, or appraise more Pokemon, to cut further.')
           : 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 within target, nothing needs cutting.';
-        const buttonLabel = overBy > 0 ? ('REEVALUATE \u2014 SHOW BOTTOM ' + overBy) : 'REEVALUATE ROSTER';
+        const buttonLabel = overBy > 0 ? ('REEVALUATE \u2014 SHOW ' + (shown >= overBy ? 'BOTTOM ' + overBy : shown + ' SAFE')) : 'REEVALUATE ROSTER';
         return { target, overBy, headline, buttonLabel };
       })(),
       cutList: (() => {
@@ -15577,8 +15636,7 @@ class Component extends DCLogic {
         const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
         const overBy = Math.max(0, roster.length - target);
         if (!overBy) return null;
-        const scored = this.cutScoreRows(roster);
-        return scored.slice(0, overBy).map(({ p, reason }) => ({
+        return this.cutSafeSummary(roster, overBy).show.map(({ p, reason }) => ({
           idx: p.idx,
           displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
           spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
