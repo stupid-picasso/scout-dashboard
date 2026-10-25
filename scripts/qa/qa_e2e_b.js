@@ -463,6 +463,10 @@ module.exports = async function suiteB() {
     expect(seen.length === 1 && !/google_search/.test(seen[0]), 'search must be off by default: ' + seen.length);
     const txt = await s.page.evaluate(() => document.body.innerText);
     expect(/briefing/i.test(txt) && /Suggestions only/.test(txt) && /Power up your best/.test(txt), txt.slice(0, 300));
+    const ctx = await s.call('briefingContext');
+    const evo = ((ctx.match(/Evolve soon: ([^\n]*)/) || [, ''])[1]).split(';').map(x => x.trim().split(' ')[0]).filter(Boolean);
+    const sec = ((ctx.match(/second charge move \(fully evolved only\): ([^\n]*)/) || [, ''])[1]).split(';').map(x => x.trim().split(' ')[0]).filter(Boolean);
+    expect(/fully evolved only/.test(ctx) && !evo.some(n => sec.indexOf(n) >= 0), 'a Pokemon is in both the evolve and second-move lists: ' + ctx.slice(0, 400));
     await s.call('generateBriefing', false);
     expect(seen.length === 1, 'a second call on the same day must use the cache');
     await s.set({ briefingSearch: true }); await s.call('generateBriefing', true);

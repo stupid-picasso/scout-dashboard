@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.183</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.184</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -390,7 +390,7 @@
           <div style="font:12px var(--font-body);color:var(--ink-400)">Suggestions only. Nothing changes until you confirm it.</div>
           <button type="button" onClick="{{ refreshAllShortcut }}" class="om-press" style="align-self:flex-start;padding:8px 2px;color:var(--ios-blue);font:600 13px var(--font-body);min-height:44px">Refresh everything (ranks, moves, keep lists) &rsaquo;</button>
         </sc-if>
-        <sc-if value="{{ briefingError }}" hint-placeholder-val="{{ false }}"><div style="font:12px var(--font-body);color:var(--ink-500)">Could not brief you just now: {{ briefingError }}</div></sc-if>
+        <sc-if value="{{ briefingError }}" hint-placeholder-val="{{ false }}"><div style="font:12px var(--font-body);color:var(--ink-500)">{{ briefingError }}</div></sc-if>
         <label style="display:flex;gap:8px;align-items:center;font:12.5px var(--font-body);color:var(--ink-500);min-height:44px"><input type="checkbox" checked="{{ briefingSearchOn }}" onChange="{{ briefingSearchToggle }}" style="width:20px;height:20px"> Also check the live meta with Google Search (uses a little extra quota)</label>
       </section>
     </sc-if>
@@ -6939,10 +6939,17 @@ class Component extends DCLogic {
     const plan = this.buildOptimizePlan(roster);
     const nm = p => p.name + (p.form ? ' (' + p.form + ')' : '') + ' ' + (Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '% IV' : 'IV unknown') + ' CP ' + (p.cp || '?');
     const lines = [];
+    // One action per Pokemon, and evolving comes first: a Pokemon that can still evolve is not powered up or
+    // given moves in the same breath, which is contradictory advice.
+    const taken = new Set();
+    const evolve = plan.evolveSoon.filter(p => { taken.add(p.idx); return true; });
+    const power = plan.powerUp.filter(p => !taken.has(p.idx) && !this.evolvesToName(p)).slice(0, 4);
+    power.forEach(p => taken.add(p.idx));
+    const second = plan.needsSecondMove.filter(p => !taken.has(p.idx) && !this.evolvesToName(p)).slice(0, 4);
     lines.push('Date: ' + new Date().toDateString() + '. Roster size: ' + roster.length + '.');
-    lines.push('Power up first: ' + (plan.powerUp.map(nm).join('; ') || 'none') + '.');
-    lines.push('Evolve soon: ' + (plan.evolveSoon.map(nm).join('; ') || 'none') + '.');
-    lines.push('Needs a second charge move: ' + (plan.needsSecondMove.map(nm).join('; ') || 'none') + '.');
+    lines.push('Power up first (fully evolved only): ' + (power.map(nm).join('; ') || 'none') + '.');
+    lines.push('Evolve soon: ' + (evolve.map(nm).join('; ') || 'none') + '.');
+    lines.push('Needs a second charge move (fully evolved only): ' + (second.map(nm).join('; ') || 'none') + '.');
     lines.push('Transfer candidates that PASSED the keep check (the only ones you may mention as transfers): ' + (plan.transferSafe.slice(0, 6).map(nm).join('; ') || 'none') + '.');
     const events = this.feedEvents ? this.feedEvents().slice(0, 5).map(e => e.title + ' (' + e.when + ')' + (e.bonus ? ' bonus: ' + e.bonus : '')) : [];
     lines.push('Events: ' + (events.join('; ') || 'none known') + '.');
@@ -6966,7 +6973,7 @@ class Component extends DCLogic {
       const text = await this.completeWithRetry({
         search,
         max_tokens: 700,
-        system: 'You are Professor, a concise Pokemon GO coach writing this trainer\u2019s morning briefing. Use ONLY the facts below for anything about their roster; never invent Pokemon, stats or moves. Write 4 to 6 bullets, each starting with "- ", each one short and specific (name real Pokemon from the data). Cover: what to power up, what to evolve, anything to hunt or trade given the events, the GBL focus, and' + (search ? ' one line on any recent meta or balance change you can confirm with search (say nothing if unsure)' : ' nothing about the wider meta') + '. Only mention a transfer for a Pokemon listed as having PASSED the keep check; otherwise say nothing about transfers. These are suggestions for the trainer to confirm, never instructions.',
+        system: 'You are Professor, a concise Pokemon GO coach writing this trainer\u2019s morning briefing. Use ONLY the facts below for anything about their roster; never invent Pokemon, stats or moves. Write 4 to 6 bullets, each starting with "- ", each one short and specific (name real Pokemon from the data). Cover: what to power up, what to evolve, anything to hunt or trade given the events, the GBL focus, and' + (search ? ' one line on any recent meta or balance change you can confirm with search (say nothing if unsure)' : ' nothing about the wider meta') + '. Give each Pokemon at most one action in the whole briefing, and never advise powering up or teaching moves to a Pokemon you are also telling them to evolve. Only mention a transfer for a Pokemon listed as having PASSED the keep check; otherwise say nothing about transfers. These are suggestions for the trainer to confirm, never instructions.',
         messages: [{ role: 'user', content: this.briefingContext() }]
       });
       const bullets = String(text || '').split('\n').map(l => l.replace(/^[\s*\u2022-]+/, '').trim()).filter(l => l.length > 3).slice(0, 7);
@@ -7006,7 +7013,7 @@ class Component extends DCLogic {
       briefingBusy: this.state.briefingBusy,
       briefingCanAsk: !!this.state.geminiKey,
       briefingRefresh: () => this.generateBriefing(true).catch(() => {}),
-      briefingError: this.state.briefingError || '',
+      briefingError: this.state.briefingError ? (fresh ? 'The last update did not go through (AI limit), so this is the earlier briefing from today.' : 'Could not brief you just now: ' + this.state.briefingError) : '',
       refreshAllShortcut: () => { this.goToTab('home'); setTimeout(() => this.refreshEverything(), 350); },
       briefingSearchOn: !!this.state.briefingSearch,
       briefingSearchToggle: () => { const v = !this.state.briefingSearch; this.setState({ briefingSearch: v }); try { localStorage.setItem('scout.briefingSearch', v ? '1' : '0'); } catch (e) {} },
