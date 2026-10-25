@@ -382,6 +382,20 @@ module.exports = async function suiteB() {
     const other = { ...winner, idx: 'qa-d4', name: 'Pikachu', dex: 25 };  // different length: dominatedDuplicates is memoised on array length
     expect((await hit([winner, plain, other])).indexOf('qa-d3') >= 0, 'a 0/11/12 that also ranks lower is still listed')
   });
+  await T('CLOUD-LZ-01', 'Cloud', 'Packed cloud data round-trips through the compressor, shrinks, and old plain JSON still reads', async () => {
+    const r = await s.page.evaluate(() => {
+      const logic = (() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.lzPack) return f.stateNode.logic; } })();
+      const list = []; for (let i = 0; i < 3000; i++) list.push({ idx: 'p' + i, name: ['Flabébé', 'Nidoran♀', 'Pikachu', 'Mew'][i % 4], cp: 100 + (i * 7) % 900, atkIV: i % 16, defIV: (i * 3) % 16, staIV: (i * 5) % 16, great: { rankPct: (i % 100) + 0.5 }, note: '★ · — ' + i });
+      const json = JSON.stringify(list), packed = logic.lzPack(json), back = logic.lzUnpack(packed);
+      const blob = logic.buildCloudBlob();
+      const plain = logic.unpackCloudBlob({ rosterJson: [JSON.stringify([{ idx: 'x', name: 'Old' }])] });
+      const empty = logic.lzUnpack(logic.lzPack('x'));
+      return { same: back === json, ratio: packed.length / json.length, rosterOk: Array.isArray(logic.unpackCloudBlob(blob).roster), old: plain.roster && plain.roster[0].name, empty, chunks: (blob.rosterJson || []).every(c => new TextEncoder().encode(c).length <= 6000) };
+    });
+    expect(r.same, 'round trip differs');
+    expect(r.ratio < 0.5, 'packed/plain ratio ' + r.ratio);
+    expect(r.rosterOk && r.old === 'Old' && r.empty === 'x' && r.chunks, JSON.stringify(r));
+  });
   await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
     const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });
     expect(info.a.cls === 'XXL' && info.b.cls === 'M' && info.d.cls === 'XS' && info.e.cls === 'M', JSON.stringify(info));

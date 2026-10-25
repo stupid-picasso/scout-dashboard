@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.177</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.178</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -5238,6 +5238,59 @@ class Component extends DCLogic {
     return out.length ? out : ['null'];
   }
 
+  // Packed collections are LZW-compressed before they are chunked: a Firestore document is capped at
+  // 1 MiB and a roster of a thousand Pokemon is repetitive JSON that shrinks about 3-5x. Self-contained
+  // (no library, no async API) because pack and unpack both run inside synchronous paths. A "lz1:"
+  // prefix marks compressed text; anything else is plain JSON from an older save and is read as before.
+  lzPack(str) {
+    const bytes = new TextEncoder().encode(String(str));
+    const dict = new Map();
+    let next = 256, w = -1;
+    const codes = [];
+    for (let i = 0; i < bytes.length; i++) {
+      const c = bytes[i];
+      if (w < 0) { w = c; continue; }
+      const k = w * 256 + c;
+      const hit = dict.get(k);
+      if (hit !== undefined) { w = hit; continue; }
+      codes.push(w);
+      if (next < 65535) dict.set(k, next++);
+      w = c;
+    }
+    if (w >= 0) codes.push(w);
+    const raw = new Uint8Array(codes.length * 2);
+    for (let i = 0; i < codes.length; i++) { raw[2 * i] = codes[i] >> 8; raw[2 * i + 1] = codes[i] & 255; }
+    let bin = '';
+    for (let i = 0; i < raw.length; i += 0x8000) bin += String.fromCharCode.apply(null, raw.subarray(i, i + 0x8000));
+    return 'lz1:' + btoa(bin);
+  }
+
+  lzUnpack(text) {
+    const bin = atob(String(text).slice(4));
+    const n = bin.length >> 1;
+    const prefix = new Int32Array(65536), suffix = new Uint8Array(65536);
+    let next = 256, prev = -1, prevFirst = 0;
+    let out = new Uint8Array(Math.max(1024, n * 4)), len = 0;
+    const tmp = [];
+    for (let i = 0; i < n; i++) {
+      const code = (bin.charCodeAt(2 * i) << 8) | bin.charCodeAt(2 * i + 1);
+      tmp.length = 0;
+      let c = code < next ? code : prev;
+      while (c >= 256) { tmp.push(suffix[c]); c = prefix[c]; }
+      tmp.push(c);
+      tmp.reverse();
+      if (code >= next) tmp.push(prevFirst);   // the code that is only just being defined
+      if (prev >= 0 && next < 65535) { prefix[next] = prev; suffix[next] = tmp[0]; next++; }
+      if (len + tmp.length > out.length) { const bigger = new Uint8Array(Math.max(out.length * 2, len + tmp.length)); bigger.set(out.subarray(0, len)); out = bigger; }
+      for (let j = 0; j < tmp.length; j++) out[len++] = tmp[j];
+      prev = code; prevFirst = tmp[0];
+    }
+    return new TextDecoder().decode(out.subarray(0, len));
+  }
+
+  packText(json) { return json.length > 4000 ? this.lzPack(json) : json; }
+  unpackText(text) { return typeof text === 'string' && text.slice(0, 4) === 'lz1:' ? this.lzUnpack(text) : text; }
+
   buildCloudBlob() {
     const s = this.state;
     const raw = {
@@ -5262,7 +5315,7 @@ class Component extends DCLogic {
       if (this.PACKED_KEYS.indexOf(k) >= 0) {
         // Suffixed so an old client reading this document does not mistake a
         // packed value for the array it expects.
-        try { out[k + 'Json'] = this.chunkString(JSON.stringify(raw[k] == null ? null : raw[k])); }
+        try { out[k + 'Json'] = this.chunkString(this.packText(JSON.stringify(raw[k] == null ? null : raw[k]))); }
         catch (e) { out[k + 'Json'] = ['null']; }
       } else {
         out[k] = raw[k];
@@ -5284,7 +5337,7 @@ class Component extends DCLogic {
       const text = Array.isArray(packed) ? packed.join('') : (typeof packed === 'string' ? packed : null);
       if (text != null) {
         try {
-          const v = JSON.parse(text);
+          const v = JSON.parse(this.unpackText(text));
           if (v != null) out[k] = v;
         } catch (e) { /* leave the legacy value in place */ }
       }
@@ -5358,11 +5411,11 @@ class Component extends DCLogic {
       const raw = safeBlob[key + 'Json'];
       const text = Array.isArray(raw) ? raw.join('') : (typeof raw === 'string' ? raw : null);
       if (text == null) return safeBlob[key];
-      try { return JSON.parse(text); } catch (e) { return null; }
+      try { return JSON.parse(this.unpackText(text)); } catch (e) { return null; }
     };
     const setPacked = (key, val) => {
       if (safeBlob[key + 'Json'] !== undefined) {
-        try { safeBlob[key + 'Json'] = this.chunkString(JSON.stringify(val == null ? null : val)); } catch (e) {}
+        try { safeBlob[key + 'Json'] = this.chunkString(this.packText(JSON.stringify(val == null ? null : val))); } catch (e) {}
       } else {
         safeBlob[key] = val;
       }
@@ -5398,11 +5451,10 @@ class Component extends DCLogic {
     }
     this._lastBlobBytes = bytes;
     if (bytes > LIMIT) {
-      const parts = Object.entries({
-        roster: sizeOf(getPacked('roster')), moveDB: sizeOf(getPacked('moveDB')),
-        evoTable: sizeOf(getPacked('evoTable')), typeTable: sizeOf(getPacked('typeTable')),
-        history: sizeOf(getPacked('history')), ivOverrides: sizeOf(getPacked('ivOverrides'))
-      }).sort((a, b) => b[1] - a[1]).slice(0, 3)
+      // Every stored field, as it is stored (compressed when packed), so the biggest is never one that
+      // the report happened not to look at.
+      const parts = Object.keys(safeBlob).map(k => [k.replace(/Json$/, ''), blobBytes({ [k]: safeBlob[k] })])
+        .sort((a, b) => b[1] - a[1]).slice(0, 4)
         .map(([k, v]) => k + ' ' + Math.round(v / 1024) + 'kB').join(', ');
       this._dirtyUntilPush = true;
       this.setState({ syncStatus: 'TOO BIG to save: ' + Math.round(bytes / 1024) + 'kB of 1024kB limit — biggest: ' + parts });
