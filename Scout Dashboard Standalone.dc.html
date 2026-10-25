@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.182</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.183</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1414,6 +1414,7 @@
             <sc-for list="{{ briefingBullets }}" as="bl" hint-placeholder-count="5"><div style="font:14px/1.45 var(--font-body);display:flex;gap:8px"><span style="color:var(--ios-blue)">&bull;</span><span style="flex:1">{{ bl.t }}</span></div></sc-for>
           </div>
           <div style="font:12px var(--font-body);color:var(--ink-400)">Suggestions only. Nothing changes until you confirm it.</div>
+          <button type="button" onClick="{{ refreshAllShortcut }}" class="om-press" style="align-self:flex-start;padding:8px 2px;color:var(--ios-blue);font:600 13px var(--font-body);min-height:44px">Refresh everything (ranks, moves, keep lists) &rsaquo;</button>
         </sc-if>
         <sc-if value="{{ briefingError }}" hint-placeholder-val="{{ false }}"><div style="font:12px var(--font-body);color:var(--ink-500)">Could not brief you just now: {{ briefingError }}</div></sc-if>
         <label style="display:flex;gap:8px;align-items:center;font:12.5px var(--font-body);color:var(--ink-500);min-height:44px"><input type="checkbox" checked="{{ briefingSearchOn }}" onChange="{{ briefingSearchToggle }}" style="width:20px;height:20px"> Also check the live meta with Google Search (uses a little extra quota)</label>
@@ -7986,7 +7987,7 @@ class Component extends DCLogic {
     if (this.state.briefingBusy) return null;
     const roster = this.effectiveRosterForMatch();
     if (!roster.length) return null;
-    this.setState({ briefingBusy: true });
+    this.setState({ briefingBusy: true, briefingError: '' });
     try {
       const search = !!this.state.briefingSearch;
       const text = await this.completeWithRetry({
@@ -7998,7 +7999,7 @@ class Component extends DCLogic {
       const bullets = String(text || '').split('\n').map(l => l.replace(/^[\s*\u2022-]+/, '').trim()).filter(l => l.length > 3).slice(0, 7);
       if (!bullets.length) throw new Error('empty briefing');
       const b = { date: today, bullets, at: Date.now(), search };
-      this.setState({ briefing: b, briefingBusy: false });
+      this.setState({ briefing: b, briefingBusy: false, briefingError: '' });
       try { localStorage.setItem('scout.briefing.v1', JSON.stringify(b)); } catch (e) {}
       return b;
     } catch (e) {
@@ -8033,9 +8034,10 @@ class Component extends DCLogic {
       briefingCanAsk: !!this.state.geminiKey,
       briefingRefresh: () => this.generateBriefing(true).catch(() => {}),
       briefingError: this.state.briefingError || '',
+      refreshAllShortcut: () => { this.goToTab('home'); setTimeout(() => this.refreshEverything(), 350); },
       briefingSearchOn: !!this.state.briefingSearch,
       briefingSearchToggle: () => { const v = !this.state.briefingSearch; this.setState({ briefingSearch: v }); try { localStorage.setItem('scout.briefingSearch', v ? '1' : '0'); } catch (e) {} },
-      briefingLabel: this.state.briefingBusy ? 'Thinking\u2026' : (b ? 'Refresh' : 'Brief me')
+      briefingLabel: this.state.briefingBusy ? 'Thinking\u2026' : (b ? 'Update briefing' : 'Brief me')
     };
   }
 
