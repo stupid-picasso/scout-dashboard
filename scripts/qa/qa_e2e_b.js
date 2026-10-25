@@ -396,6 +396,26 @@ module.exports = async function suiteB() {
     expect(r.ratio < 0.5, 'packed/plain ratio ' + r.ratio);
     expect(r.rosterOk && r.old === 'Old' && r.empty === 'x' && r.chunks, JSON.stringify(r));
   });
+  await T('CUT-01', 'Roster', 'Keep-best cut list protects the best two legendaries, explains each row, and cuts weak commons first', async () => {
+    const cls = await s.page.evaluate(() => [window.PokemonMechanics.speciesClassFor(716), window.PokemonMechanics.speciesClassFor(151), window.PokemonMechanics.speciesClassFor(793), window.PokemonMechanics.speciesClassFor(16)]);
+    expect(cls.join() === 'L,M,U,', 'classes ' + cls.join());
+    const mk = (idx, dex, name, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 30, lvlMax: 30, ivSolved: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const list = [mk('c1', 716, 'Xerneas', [14, 14, 14], 2684), mk('c2', 716, 'Xerneas', [12, 12, 12], 2643), mk('c3', 716, 'Xerneas', [5, 5, 5], 2300),
+      mk('c4', 16, 'Pidgey', [15, 15, 15], 300), mk('c5', 16, 'Pidgey', [2, 2, 2], 100), mk('c6', 16, 'Pidgey', [1, 1, 1], 90), mk('c7', 19, 'Rattata', [3, 3, 3], 80)];
+    const rows = await s.call('cutScoreRows', list);
+    const order = rows.map(r => r.p.idx);
+    expect(order.indexOf('c1') > order.indexOf('c3') && order.indexOf('c2') > order.indexOf('c3'), 'best two Xerneas must outrank the third: ' + order.join());
+    expect(order.indexOf('c2') > order.indexOf('c5') && order.indexOf('c2') > order.indexOf('c6'), 'a kept legendary must outrank weak commons: ' + order.join());
+    const r1 = rows.find(r => r.p.idx === 'c1').reason;
+    expect(/Legendary/.test(r1) && /#1 of 3/.test(r1) && /raid role|no raid role/.test(r1), r1);
+    expect(/only copy/.test(rows.find(r => r.p.idx === 'c7').reason), 'only-copy reason');
+  });
+  await T('CUT-02', 'Roster', 'Revealed cut list renders cards with a reason and the renamed button, with no page error', async () => {
+    await s.set({ tab: 'home', cutTarget: 40, cutTargetDraft: '40', cutListRevealed: true }); await s.page.waitForTimeout(900);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/I TRANSFERRED IT/.test(txt) && /(only copy|of \\d+ by IV)/.test(txt) && !/is not defined/.test(txt), txt.slice(0, 200));
+    await s.set({ cutListRevealed: false, cutTarget: 300, cutTargetDraft: '300' });
+  });
   await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
     const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });
     expect(info.a.cls === 'XXL' && info.b.cls === 'M' && info.d.cls === 'XS' && info.e.cls === 'M', JSON.stringify(info));

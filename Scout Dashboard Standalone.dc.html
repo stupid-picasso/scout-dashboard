@@ -2590,10 +2590,11 @@
                   <div style="font:600 12.5px var(--font-body);line-height:1.2">{{ p.displayName }}</div>
                 </div>
                 <div style="font:var(--font-display);font-size:11.5px;color:var(--type-fighting)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
+                <div style="font:12px/1.4 var(--font-body);color:var(--ink-500)">{{ p.reason }}</div>
                 <sc-if value="{{ p.movesetNote }}" hint-placeholder-val="{{ false }}">
-                  <div style="font:11px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }}</div>
+                  <div style="font:12px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }}</div>
                 </sc-if>
-                <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:6px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 11px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
+                <div onClick="{{ p.markTransferred }}" role="button" style="cursor:pointer;text-align:center;padding:10px 6px;border-radius:var(--r-pill);background:var(--type-fighting);color:var(--ink-900);font:700 12px var(--font-display)">I TRANSFERRED IT &mdash; REMOVE</div>
               </div>
             </sc-for>
           </div>
@@ -6351,6 +6352,59 @@ class Component extends DCLogic {
     const u = (this.leagueUsable(p, 'ultra') && p.ultra && p.ultra.rankPct) || 0;
     const l = (this.leagueUsable(p, 'little') && p.little && p.little.rankPct) || 0;
     return Math.max(g, u, l);
+  }
+
+  // Keep score for the "keep best N" cut list, lowest first. Protected flags dominate. After that a
+  // Pokemon earns its place from ANY of: a PvP league rank, a Master League tier, a raid-attacker role,
+  // being the only copy of its species, or (Legendary / Mythical / Ultra Beast) being one of the two
+  // best copies. Each row carries a one-line reason so the list can be read, not just trusted.
+  cutScoreRows(roster) {
+    const m = this.mechanics;
+    const groups = {};
+    roster.forEach(p => { const k = p.dex + '_' + (p.form || ''); (groups[k] = groups[k] || []).push(p); });
+    Object.values(groups).forEach(g => g.sort((a, b) => (Number.isFinite(b.ivAvg) ? b.ivAvg : 0) - (Number.isFinite(a.ivAvg) ? a.ivAvg : 0) || (b.cp || 0) - (a.cp || 0)));
+    const typeBest = this.raidRoleTypeBest(roster);
+    const CLASS = { L: 'Legendary', M: 'Mythical', U: 'Ultra Beast' };
+    const rows = roster.map(p => {
+      const g = groups[p.dex + '_' + (p.form || '')];
+      const copies = g.length, pos = g.indexOf(p) + 1;
+      const cls = m && m.speciesClassFor ? m.speciesClassFor(p.dex) : '';
+      const rank = this.bestRank(p);
+      const iv = Number.isFinite(p.ivAvg) ? p.ivAvg : 0;
+      const shadow = this.isShadow(p);
+      // Master League: PvPoke's tier for the species, scaled by how good these IVs are for it.
+      let masterBonus = 0, masterTier = '';
+      const mr = this.masterRankFor(p);
+      const mt = m && m.pvpTierFor && mr && Number.isFinite(mr.rankPct) ? m.pvpTierFor(p.name, shadow, 'master') : null;
+      if (mt) { masterBonus = ({ S: 2500, A: 1800, B: 1000, C: 300 }[mt.tier] || 0) * (mr.rankPct / 100); masterTier = mt.tier; }
+      // Raid / Max: how close this is to the best attacker you own of one of its types.
+      let raidBonus = 0, raidShare = null;
+      const prof = this.raidProfile(p);
+      if (prof && prof.ceil) {
+        const best = Math.max(0, ...this.typesOf(p).map(t => typeBest.r[t] || 0));
+        if (best > 0) raidShare = prof.ceil.rating / best;
+      } else {
+        const sc = this.attackerCeilingOf(p);
+        const best = Math.max(0, ...this.typesOf(p).map(t => typeBest.s[t] || 0));
+        if (sc != null && best > 0) raidShare = sc / best;
+      }
+      const raidRole = this.hasRaidRole(p, typeBest);
+      if (raidShare != null) raidBonus = 2000 * Math.min(1, raidShare) * Math.min(1, raidShare) + (raidRole ? 1500 : 0);
+      const onlyCopy = copies === 1;
+      const movesetComplete = !this.movesetDataNote(p);
+      const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0)
+        + (shadow ? 20000 : 0) + (this.isPurified(p) ? 10000 : 0)
+        + (onlyCopy ? 5000 : 0) + (cls ? 4000 + (pos <= 2 ? 3000 : 0) : 0)
+        + masterBonus + raidBonus + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01;
+      const bits = [];
+      if (cls) bits.push(CLASS[cls]);
+      bits.push(onlyCopy ? 'only copy' : '#' + pos + ' of ' + copies + ' by IV');
+      bits.push(rank >= 1 ? 'league rank ' + rank.toFixed(0) + '%' : 'no league rank');
+      if (masterTier) bits.push('Master tier ' + masterTier);
+      bits.push(raidRole ? 'raid role' : 'no raid role');
+      return { p, score, reason: bits.join(' \u00b7 ') };
+    });
+    return rows.sort((a, b) => a.score - b.score);
   }
 
   masterRankFor(p) {
@@ -16650,33 +16704,8 @@ class Component extends DCLogic {
         const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
         const overBy = Math.max(0, roster.length - target);
         if (!overBy) return null;
-        // Keep score: protected flags dominate, then PvP rank and IV, with a
-        // bonus for being the only copy of a species (so living-dex coverage
-        // isn't accidentally cut ahead of a redundant duplicate).
-        const speciesCountMap = {};
-        roster.forEach(p => {
-          const key = p.dex + '_' + (p.form || '');
-          speciesCountMap[key] = (speciesCountMap[key] || 0) + 1;
-        });
-        const scored = roster.map(p => {
-          const key = p.dex + '_' + (p.form || '');
-          const onlyCopy = speciesCountMap[key] === 1;
-          const rank = this.bestRank(p);
-          const iv = Number.isFinite(p.ivAvg) ? p.ivAvg : 0;
-          // Small, deliberately modest bonus (roughly worth 10 rank points) for
-          // having a fully-known moveset — real signal, not a fabricated one:
-          // a Pokemon whose moves this app can't verify is one whose PvP rank
-          // is stats-only, so a small nudge toward keeping the verifiable one
-          // in a close tie is reasonable. Never meant to override the rank/IV
-          // verdict on its own.
-          const movesetComplete = !this.movesetDataNote(p);
-          const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0)
-            + (this.isShadow(p) ? 20000 : 0) + (this.isPurified(p) ? 10000 : 0)
-            + (onlyCopy ? 5000 : 0) + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01;
-          return { p, score };
-        });
-        scored.sort((a, b) => a.score - b.score);
-        return scored.slice(0, overBy).map(({ p }) => ({
+        const scored = this.cutScoreRows(roster);
+        return scored.slice(0, overBy).map(({ p, reason }) => ({
           idx: p.idx,
           displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
           spriteRef: this.makeSpriteRefByDex(p.dex, p.form),
@@ -16685,7 +16714,8 @@ class Component extends DCLogic {
           ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '\u2014',
           cp: p.cp,
           movesetNote: this.movesetDataNote(p),
-          markTransferred: () => this.removePokemon(p.idx)
+          reason,
+          markTransferred: () => { this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); }
         }));
       })(),
       eliteTmCandidates: (() => {
