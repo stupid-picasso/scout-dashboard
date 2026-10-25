@@ -410,6 +410,18 @@ module.exports = async function suiteB() {
     expect(/Legendary/.test(r1) && /#1 of 3/.test(r1) && /raid role|no raid role/.test(r1), r1);
     expect(/only copy/.test(rows.find(r => r.p.idx === 'c7').reason), 'only-copy reason');
   });
+  await T('CUT-03', 'Roster', 'An XXL or XXS is never in the cut list ahead of a normal-size duplicate; with protection off it can be', async () => {
+    const mk = (idx, h, iv, cp) => ({ idx, name: 'Bulbasaur', dex: 1, cp, hp: 50, height: h, weight: '7kg', atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const xxl = mk('z1', '1.2m', 1, 200), a = mk('z2', '0.7m', 10, 300), b = mk('z3', '0.7m', 12, 320), c = mk('z4', '0.7m', 14, 340);
+    await s.set({ protectSizes: 'extreme' });
+    const on = (await s.call('cutScoreRows', [xxl, a, b, c])).map(r => r.p.idx);
+    expect(on[on.length - 1] === 'z1', 'XXL must be last (kept): ' + on.join());
+    expect(/XXL size/.test((await s.call('cutScoreRows', [xxl, a, b, c])).find(r => r.p.idx === 'z1').reason), 'reason names the size');
+    await s.set({ protectSizes: 'off' });
+    const off = (await s.call('cutScoreRows', [xxl, a, b, c, mk('z5', '0.7m', 15, 360)])).map(r => r.p.idx);
+    expect(off[0] === 'z1', 'with protection off the weak XXL is cut first: ' + off.join());
+    await s.set({ protectSizes: 'extreme' });
+  });
   await T('CUT-02', 'Roster', 'Revealed cut list renders cards with a reason and the renamed button, with no page error', async () => {
     await s.set({ tab: 'home', cutTarget: 40, cutTargetDraft: '40', cutListRevealed: true }); await s.page.waitForTimeout(900);
     const txt = await s.page.evaluate(() => document.body.innerText);

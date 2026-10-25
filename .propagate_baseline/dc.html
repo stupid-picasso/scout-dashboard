@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.178</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.179</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -5365,11 +5365,13 @@ class Component extends DCLogic {
       if (raidShare != null) raidBonus = 2000 * Math.min(1, raidShare) * Math.min(1, raidShare) + (raidRole ? 1500 : 0);
       const onlyCopy = copies === 1;
       const movesetComplete = !this.movesetDataNote(p);
-      const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0)
+      const sizeKeep = this.sizeProtected(p);
+      const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0) + (sizeKeep ? 100000 : 0)
         + (shadow ? 20000 : 0) + (this.isPurified(p) ? 10000 : 0)
         + (onlyCopy ? 5000 : 0) + (cls ? 4000 + (pos <= 2 ? 3000 : 0) : 0)
         + masterBonus + raidBonus + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01;
       const bits = [];
+      if (sizeKeep) bits.push(this.sizeTagOf(p) + ' size, kept for showcases');
       if (cls) bits.push(CLASS[cls]);
       bits.push(onlyCopy ? 'only copy' : '#' + pos + ' of ' + copies + ' by IV');
       bits.push(rank >= 1 ? 'league rank ' + rank.toFixed(0) + '%' : 'no league rank');
