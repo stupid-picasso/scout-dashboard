@@ -416,7 +416,7 @@ module.exports = async function suiteB() {
     const weak = [mk('k1', 16, 'Pidgey', [2, 3, 2], 120), mk('k2', 16, 'Pidgey', [1, 2, 1], 100), mk('k3', 16, 'Pidgey', [0, 1, 1], 90), mk('k4', 16, 'Pidgey', [3, 2, 2], 130)];
     const special = [
       mk('s1', 19, 'Rattata', [1, 1, 1], 80, { lucky: true }), mk('s2', 21, 'Spearow', [1, 1, 1], 80, { favorite: true }), mk('s3', 23, 'Ekans', [1, 1, 1], 80, { shiny: true }),
-      mk('s4', 27, 'Sandshrew', [1, 1, 1], 80, { shadowPurified: '1' }), mk('s5', 1, 'Bulbasaur', [1, 1, 1], 80, { height: '1.2m', weight: '7kg' }),
+      mk('s4', 27, 'Sandshrew', [13, 13, 13], 80, { shadowPurified: '1' }), mk('s5', 1, 'Bulbasaur', [1, 1, 1], 80, { height: '1.2m', weight: '7kg' }),
       mk('s6', 484, 'Palkia', [8, 8, 8], 2770), mk('s7', 29, 'Nidoran', [14, 14, 14], 300), mk('s8', 41, 'Zubat', [1, 1, 1], 80, { ivMeasured: false, ivSolved: true }),
       mk('s9', 10, 'Caterpie', [1, 1, 1], 60)];
     const roster = [...weak, ...special];
@@ -431,6 +431,24 @@ module.exports = async function suiteB() {
     expect(plan.transferSafe.every(p => /^k/.test(p.idx)), 'Transfer-safe must exclude every protected one: ' + plan.transferSafe.map(p => p.idx).join());
     const dom = await s.call('dominatedDuplicates', [...weak, mk('d1', 16, 'Pidgey', [15, 15, 15], 400), special[5]]);
     expect(dom.every(x => /^k/.test(x.loser.idx)), 'dominated list must only hold unprotected losers');
+  });
+  await T('KEEP-02', 'Safety', 'One best copy per league, bad shadows go, nondo is kept, a lone weak Pokemon can go', async () => {
+    const mk = (idx, dex, name, iv, cp, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const gr = r => ({ great: { rankPct: r, evolvesTo: 'Azumarill' } });
+    const list = [mk('z1', 184, 'Azumarill', [2, 15, 15], 1400, gr(96)), mk('z2', 184, 'Azumarill', [3, 14, 14], 1390, gr(93)), mk('z3', 184, 'Azumarill', [1, 8, 8], 900, gr(50)),
+      mk('z4', 16, 'Pidgey', [4, 5, 6], 120), mk('z5', 27, 'Sandshrew', [1, 3, 5], 300, { shadowPurified: '1' }), mk('z6', 27, 'Sandshrew', [13, 13, 13], 300, { shadowPurified: '1' }),
+      mk('z7', 19, 'Rattata', [0, 0, 0], 60), mk('z8', 18, 'Pidgeot', [15, 15, 15], 2000)];
+    const rows = await s.call('cutScoreRows', list);
+    const keepOf = id => rows.find(r => r.p.idx === id).keep;
+    expect(keepOf('z1').some(x => /Best Great League copy/.test(x)), 'best Azumarill kept: ' + keepOf('z1'));
+    expect(!keepOf('z2').some(x => /Best Great/.test(x)), 'second 90%+ copy is not a best copy: ' + keepOf('z2'));
+    expect(!keepOf('z3').some(x => /Best/.test(x)), 'weak Azumarill is no best copy: ' + keepOf('z3'));
+    expect(!keepOf('z4').length, 'a lone weak Pidgey passes: ' + keepOf('z4'));
+    expect(!keepOf('z5').length, 'a 1/3/5 shadow passes: ' + keepOf('z5'));
+    expect(keepOf('z6').some(x => /Shadow with good IVs/.test(x)), 'a good shadow stays: ' + keepOf('z6'));
+    expect(keepOf('z7').some(x => /Nondo/.test(x)), 'nondo stays: ' + keepOf('z7'));
+    const cand = await s.call('replacedBy', list[1], await s.call('keepContext', list));
+    expect(cand && cand.q.idx === 'z1', 'replacement named: ' + JSON.stringify(cand && cand.q.idx));
   });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
@@ -489,7 +507,7 @@ module.exports = async function suiteB() {
     expect(q.great.rankPct > 95 && q.great.evolvesTo === 'Wigglytuff', 'great rank not evolution-aware: ' + JSON.stringify(q.great));
     expect(q.little.rankPct == null, 'Little Cup must stay on the current form');
     const why = await s.call('keepReasons', q);
-    expect(why.some(x => /PvP rank 90%/.test(x)), 'must be protected as a PvP pick: ' + why.join('; '));
+    expect(why.some(x => /PvP rank 90%|Best (Great|Ultra) League copy/.test(x)), 'must be protected as a PvP pick: ' + why.join('; '));
     const plain = { ...jig, idx: 'ev2', name: 'Pidgey', dex: 16, atkIV: 5, defIV: 5, staIV: 5 };
     const q2 = await s.call('withEvoRanks', plain);
     expect(q2.great.rankPct >= 0, 'sanity');
@@ -506,7 +524,7 @@ module.exports = async function suiteB() {
     // 3. Great 92 on a tiered species must protect even when Ultra is the better-tiered league (Dusknoir case).
     const dus = await s.call('withEvoRanks', mk('au1', 'Dusknoir', 477, [6, 3, 0], 752, { great: { rankPct: 92.36, evolvesTo: 'Dusknoir' }, ultra: { rankPct: 88.03, evolvesTo: 'Dusknoir' } }));
     const dw = await s.call('keepReasons', dus);
-    expect(dw.some(x => /PvP rank 90%|Only copy/.test(x)), 'Dusknoir must be kept: ' + dw.join());
+    expect(dw.some(x => /PvP rank 90%|Best (Great|Ultra) League copy/.test(x)), 'Dusknoir must be kept: ' + dw.join());
     // 4. An evolution PvPoke does not rank must not displace the form that is ranked (Vigoroth vs Slaking).
     const vig = await s.call('withEvoRanks', mk('au2', 'Vigoroth', 288, [0, 13, 15], 1400, { great: { rankPct: 88, evolvesTo: 'Vigoroth' } }));
     expect(vig.ultra && /Vigoroth|Slaking/.test(vig.ultra.evolvesTo || ''), 'vigoroth overlay ' + JSON.stringify(vig.ultra));

@@ -5452,6 +5452,61 @@ class Component extends DCLogic {
     return this._keepCtx;
   }
 
+  // Leagues in which this copy is GOOD: measured IVs, rank 90%+ for the league, and the species ranked S/A/B there
+  // (Little Cup has no tiers). Ranks are for the form the league rank names, and a copy already above the league's
+  // CP cap does not count there.
+  goodLeagues(p) {
+    if (this.needsAppraisal(p)) return [];
+    const out = [];
+    // `to` is the form the rank is for: a Poliwag that suits Politoed and one that suits Poliwrath do not compete.
+    const toOf = lk => String((lk !== 'little' && p[lk] && p[lk].evolvesTo) || p.name || '').toLowerCase();
+    ['great', 'ultra'].forEach(lk => { const a = this.pvpAssess(p, lk); if (a && a.rank >= 90 && a.tierRank <= 2) out.push({ lk, rank: a.rank, to: toOf(lk) }); });
+    const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
+    if (Number.isFinite(lc) && lc >= 90) out.push({ lk: 'little', rank: lc, to: toOf('little') });
+    return out;
+  }
+
+  // The reasons that come from being the best copy of a species (same form, normal and shadow kept apart) in a league.
+  // Equal ranks both stay. Also says when a power-up is what stands between the copy and the league cap.
+  leagueBestFor(p, c) {
+    const mine = this.goodLeagues(p);
+    if (!mine.length) return [];
+    c.lb = c.lb || new Map();
+    const caps = (this.mechanics && this.mechanics.LEAGUE_CAPS) || { great: 1500, ultra: 2500, little: 500 };
+    const NAME = { great: 'Great League', ultra: 'Ultra League', little: 'Little Cup' };
+    const shadow = this.isShadow(p);
+    const pool = (c.groups[p.dex + '_' + (p.form || '')] || [p]).filter(q => this.isShadow(q) === shadow);
+    const out = [];
+    mine.forEach(({ lk, rank, to }) => {
+      const key = p.dex + '_' + (p.form || '') + '_' + shadow + '_' + lk + '_' + to;
+      if (!c.lb.has(key)) {
+        let best = -1;
+        pool.forEach(q => { const g = this.goodLeagues(q).find(x => x.lk === lk && x.to === to); if (g && g.rank > best) best = g.rank; });
+        c.lb.set(key, best);
+      }
+      if (rank + 1e-9 >= c.lb.get(key)) {
+        const up = Number.isFinite(p.cp) && p.cp < caps[lk] * 0.92 ? ', power it up toward CP ' + caps[lk] : '';
+        out.push('Best ' + NAME[lk] + ' copy (rank ' + Math.round(rank) + '%' + up + ')');
+      }
+    });
+    return out;
+  }
+
+  // For a copy that is good in a league but not the best of its kind: the copy that replaces it.
+  replacedBy(p, ctx) {
+    const mine = this.goodLeagues(p);
+    if (!mine.length) return null;
+    const shadow = this.isShadow(p);
+    const pool = ctx.groups[p.dex + '_' + (p.form || '')] || [];
+    let win = null;
+    mine.forEach(({ lk, rank, to }) => pool.forEach(q => {
+      if (q === p || this.isShadow(q) !== shadow) return;
+      const g = this.goodLeagues(q).find(x => x.lk === lk && x.to === to);
+      if (g && g.rank > rank + 1e-9 && (!win || g.rank > win.rank)) win = { q, lk, rank: g.rank, mine: rank };
+    }));
+    return win;
+  }
+
   keepReasons(p, ctx) {
     const m = this.mechanics;
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
@@ -5462,7 +5517,7 @@ class Component extends DCLogic {
     if (p.lucky) out.push('Lucky');
     if (p.favorite) out.push('Favourite');
     if (p.shiny) out.push('Shiny');
-    if (this.isShadow(p)) out.push('Shadow');
+    const isShadowP = this.isShadow(p);
     if (this.isPurified(p)) out.push('Purified');
     if (this.sizeProtected(p)) out.push(this.sizeTagOf(p) + ' size (showcases)');
     const g = c.groups[p.dex + '_' + (p.form || '')] || [p];
@@ -5472,7 +5527,13 @@ class Component extends DCLogic {
     if (this.needsAppraisal(p) || !Number.isFinite(p.ivAvg)) out.push('IVs not measured yet');
     const iv = Number.isFinite(p.ivAvg) ? p.ivAvg : null;
     if (iv != null && iv >= 90) out.push('IV ' + iv.toFixed(0) + '%');
-    if (this.isPvpWorthy(p)) out.push('PvP rank 90%+ on a ranked species');
+    // A shadow is not kept just for being one: 1/3/5 shadows go. A shadow with good IVs stays, and so does the best
+    // of its kind per league (below).
+    if (isShadowP && iv != null && iv >= 80) out.push('Shadow with good IVs');
+    // Nondo: every IV 0 and measured. A collector's rarity, kept.
+    if (!this.needsAppraisal(p) && [p.atkIV, p.defIV, p.staIV].every(v => v === 0)) out.push('Nondo 0/0/0');
+    // One best copy per species per league. Others that are also 90%+ are redundant once the best is kept.
+    this.leagueBestFor(p, c).forEach(b => out.push(b));
     // Master League: judged on the best form it can become, since a Dratini is a Dragonite in waiting.
     const chain = this.evoChainNames(p);
     const masterBest = (() => {
@@ -5501,7 +5562,6 @@ class Component extends DCLogic {
     if (sum.every(Number.isFinite) && !Number.isFinite(p.great && p.great.rankPct)) out.push('League rank not computed yet');
     if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
     if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
-    if (g.length === 1) out.push('Only copy');
     c.cache.set(p, out);
     return out;
   }
@@ -12241,6 +12301,13 @@ class Component extends DCLogic {
     if (overBy) this.cutSafeSummary(roster, overBy).show.forEach(r => add(r.p, 'Bottom of your Keep best list'));
     this.dominatedDuplicates(roster).forEach(x => add(x.loser, 'Beaten on every stat by your ' + (x.winner.cp || '?') + ' CP ' + x.winner.name));
     this.triageQueue().forEach(t => add(t.p, t.reason));
+    // Good in a league but a better copy is kept: this one is redundant. Say which copy replaces it.
+    roster.forEach(p => {
+      const w = this.replacedBy(p, ctx);
+      if (w) add(p, 'Replaced by your ' + (w.q.cp || '?') + ' CP ' + w.q.name + ' (' + Math.round(w.rank) + '% vs ' + Math.round(w.mine) + '% ' + ({ great: 'Great', ultra: 'Ultra', little: 'Little' })[w.lk] + ')');
+    });
+    // Measured, nothing marks it as valuable and no league wants it: the app's rule is to let it go.
+    roster.forEach(p => { if (!this.needsAppraisal(p)) add(p, 'No league, raid or rarity value'); });
     return [...out.values()];
   }
 
@@ -14147,7 +14214,7 @@ class Component extends DCLogic {
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. A Pokemon that has no line of its own (it appears only in the census) cannot be verified: never recommend transferring it, say you cannot check it. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, only copy, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. A Pokemon that has no line of its own (it appears only in the census) cannot be verified: never recommend transferring it, say you cannot check it. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, best copy for a league, nondo, good-IV shadow, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: this.guardChatReply(reply) }], chatBusy: false }, () => this.queueCloudPush());

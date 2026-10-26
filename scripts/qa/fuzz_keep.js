@@ -99,7 +99,7 @@ function chainOf(p) { const out = [p.name]; let cur = p.name; for (let i = 0; i 
 function truth(p, all) {
   const R = []; const add = (k, soft, extra) => R.push({ k, soft: !!soft, ...extra });
   if (p.lucky) add('LUCKY'); if (p.favorite) add('FAVORITE'); if (p.shiny) add('SHINY');
-  if (isSh(p)) add('SHADOW'); if (isPur(p)) add('PURIFIED');
+  if (isPur(p)) add('PURIFIED');
   const grp = all.filter(q => q.dex === p.dex && (q.form || '') === (p.form || ''));
   const ivp = q => (Number.isFinite(q.atkIV) && Number.isFinite(q.defIV) && Number.isFinite(q.staIV)) ? (q.atkIV + q.defIV + q.staIV) / 45 * 100 : 0;
   const mine = ivp(p);
@@ -111,7 +111,8 @@ function truth(p, all) {
   const measuredIv = Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV);
   if (mine >= 90 && measuredIv) add('IV90');
   if (!p.ivMeasured || !measuredIv) add('UNMEASURED');
-  if (grp.length === 1) add('ONLY_COPY');
+  if (isSh(p) && mine >= 80 && Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)) add('SHADOW_IV80');
+  if (p.ivMeasured && p.atkIV === 0 && p.defIV === 0 && p.staIV === 0) add('NONDO');
   const si = p.height ? M.sizeInfoFor(p.dex, p.form, p.height) : null;
   if (si && si.valid && (si.cls === 'XXL' || si.cls === 'XXS')) add('SIZE_' + si.cls);
   if (measuredIv) {
@@ -122,10 +123,14 @@ function truth(p, all) {
         const dx = nm === p.name ? p.dex : dexOfName(nm); if (!dx) continue;
         const b = baseFor(dx, p.form); if (!b) continue;
         const rk = M.rankPctForLeague(b, iv, lg, sh); const t = M.pvpTierFor(nm, sh, lg);
-        if (rk >= 90 && t && 'SAB'.includes(t.tier)) add(lg.toUpperCase() + '_RANK90_TIER_SAB', !capOk, { via: nm, rank: +rk.toFixed(1), tier: t.tier });
+        // only the best copy of the species (same shadow status) per league is owed protection; equal ranks all stay
+        const better = grp.some(q => q !== p && isSh(q) === sh && q.ivMeasured && [q.atkIV, q.defIV, q.staIV].every(Number.isFinite) && (!Number.isFinite(q.cp) || q.cp <= lcap)
+          && chainOf(q).some(n2 => { const d2 = n2 === q.name ? q.dex : dexOfName(n2); const b2 = d2 && baseFor(d2, q.form); const t2 = d2 && M.pvpTierFor(n2, sh, lg); return b2 && t2 && 'SAB'.includes(t2.tier) && M.rankPctForLeague(b2, [q.atkIV, q.defIV, q.staIV], lg, sh) > rk + 1e-9; }));
+        if (rk >= 90 && t && 'SAB'.includes(t.tier) && !better) add(lg.toUpperCase() + '_RANK90_TIER_SAB', !capOk, { via: nm, rank: +rk.toFixed(1), tier: t.tier });
       }
     }
-    if (Number.isFinite(p.cp) && p.cp <= 500) { const b = baseFor(p.dex, p.form); const rk = M.rankPctForLeague(b, iv, 'little', sh); if (rk >= 90) add('LITTLE_RANK90_CP<=500', false, { rank: +rk.toFixed(1) }); }
+    if (Number.isFinite(p.cp) && p.cp <= 500 && chainOf(p).length > 1) {   // Little Cup needs a Pokemon that can still evolve
+      const b = baseFor(p.dex, p.form); const rk = M.rankPctForLeague(b, iv, 'little', sh); const betterL = grp.some(q => q !== p && isSh(q) === sh && q.ivMeasured && [q.atkIV, q.defIV, q.staIV].every(Number.isFinite) && q.cp <= 500 && (b2 => b2 && M.rankPctForLeague(b2, [q.atkIV, q.defIV, q.staIV], 'little', sh) > rk + 1e-9)(baseFor(q.dex, q.form))); if (rk >= 90 && !betterL) add('LITTLE_RANK90_CP<=500', false, { rank: +rk.toFixed(1) }); }
     const mega = (M.MEGA_EVOLUTION_COSTS[String(p.name).toLowerCase()] || M.megaFormsFor(p.name) || []).length > 0;
     if (mega && mine >= 80) add('MEGA_IV80');
   }
@@ -225,7 +230,7 @@ function collectInPage(sampleStep) {
         if (!t.length) continue;
         const h = t.filter(x => !x.soft), tie = h.length && h.every(x => x.tieOnly);
         const key = out + ':' + idx + ':' + seed + ':' + k; if (seenViol.has(key)) continue; seenViol.add(key);
-        const rec = { seed, roster: k, recalc, output: out, severity: h.length ? (tie ? 'tie-only' : 'HARD') : 'soft (CP over league cap)', violates: t.map(x => x.k + (x.soft ? '(soft)' : '') + (x.via ? ` via ${x.via} ${x.rank}% tier ${x.tier}` : '')), pokemon: byIdx.get(idx), diag: o.diag[idx] }; rec.cause = classify(rec);
+        const rec = { seed, roster: k, recalc, output: out, severity: h.length ? (tie ? 'tie-only' : 'HARD') : 'soft (CP over league cap)', violates: t.map(x => x.k + (x.soft ? '(soft)' : '') + (x.via ? ` via ${x.via} ${x.rank}% tier ${x.tier}` : '')), pokemon: byIdx.get(idx), diag: o.diag[idx], group: roster.filter(q => q.dex === byIdx.get(idx).dex) }; rec.cause = classify(rec);
         (h.length && !tie ? stats.violations : stats.softViolations).push(rec);
       }
       console.log(`seed ${seed} roster ${k} n=${roster.length} recalc=${recalc}: cutSafe=${o.cutSafeAll} (${(100 * o.cutSafeAll / roster.length).toFixed(1)}%) triage=${o.triage.length} dominated=${o.dominated.length} optimizeAll=${o.optimize.length} verdictTransfer=${o.verdictTransfer.length}/${o.verdictChecked} ms=${o.totalMs} hardViol=${stats.violations.length}`);
