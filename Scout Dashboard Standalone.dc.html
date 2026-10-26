@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.199</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.200</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -11761,8 +11761,9 @@ class Component extends DCLogic {
     let pinned = 0, failed = 0;
     const failMessages = [];
     for (let i = 0; i < files.length; i++) {
-      this.setState({ apprShotBusy: true, apprShotError: '',
+      this.setState({ apprShotBusy: true, apprShotError: '', apprShotProgress: (i + 1) + '/' + files.length,
         apprShotSummary: 'Screenshot ' + (i + 1) + ' of ' + files.length + '\u2026' });
+      await new Promise(r => setTimeout(r, 0));   // let the screen repaint: measuring one image blocks the page for a moment
       try {
         const r = await this.processOneAppraisalShot(files[i]);
         if (r.ok) pinned++; else { failed++; failMessages.push(r.line); }
@@ -11774,7 +11775,7 @@ class Component extends DCLogic {
     const summary = pinned + ' of ' + files.length + ' pinned'
       + (failed ? ', ' + failed + ' skipped' : '') + '.';
     this.setState({
-      apprShotBusy: false,
+      apprShotBusy: false, apprShotProgress: '',
       apprShotSummary: summary,
       apprShotError: failMessages.length ? failMessages.slice(0, 3).join(' \u2014 ') + (failMessages.length > 3 ? ' \u2026' : '') : ''
     });
@@ -17708,7 +17709,7 @@ class Component extends DCLogic {
       ocrCancelLabel: (this.state.ocrQueue || []).length > 1 ? 'SKIP' : 'CANCEL',
       onScreenshotUpload: (e) => { const files = Array.from(e.target.files || []); if (files.length) this.startOcrQueue(files); },
       onAppraisalUpload: (e) => { const files = Array.from(e.target.files || []); if (files.length) this.handleAppraisalUploadBatch(files); e.target.value = ''; },
-      apprShotLabel: this.state.apprShotBusy ? 'MEASURING\u2026' : 'IMPORT APPRAISAL',
+      apprShotLabel: this.state.apprShotBusy ? 'MEASURING' + (this.state.apprShotProgress ? ' ' + this.state.apprShotProgress : '') + '\u2026' : 'IMPORT APPRAISAL',
       apprShotSummary: this.state.apprShotSummary || '',
       apprShotError: this.state.apprShotError || '',
       addOcrAsNew: () => this.addOcrAsNew(),
