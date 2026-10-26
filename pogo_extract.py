@@ -366,6 +366,13 @@ MYTHICAL_DEX = {151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648,
                 649, 719, 720, 721, 801, 802, 807, 808, 809, 893, 1025}
 
 
+def _ffmpeg_reason(stderr, limit=600):
+    """The cause is at the END of ffmpeg's stderr; the start is only the version banner and build flags."""
+    skip = ("ffmpeg version", "built with", "configuration:", "lib")
+    lines = [l for l in str(stderr or "").splitlines() if l.strip() and not l.strip().startswith(skip)]
+    return " | ".join(lines)[-limit:] or "no error text from ffmpeg"
+
+
 def _run_ffmpeg_extract(video_path, output_dir, vf_filter, vfr_mode=False):
     cmd = ["ffmpeg", "-i", str(video_path), "-vf", vf_filter]
     if vfr_mode:
@@ -374,8 +381,9 @@ def _run_ffmpeg_extract(video_path, output_dir, vf_filter, vfr_mode=False):
     print(f"[Extract] Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print(f"[Extract] ffmpeg stderr: {result.stderr[:500]}")
-        raise RuntimeError(f"ffmpeg failed: {result.stderr[:200]}")
+        why = _ffmpeg_reason(result.stderr)
+        print(f"[Extract] ffmpeg stderr (tail): {why}")
+        raise RuntimeError(f"ffmpeg failed: {why}")
     return sorted(output_dir.glob("frame_*.png"))
 
 
