@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.184</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.185</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -7028,10 +7028,13 @@ class Component extends DCLogic {
     if (!m || !lg || !Number.isFinite(lg.rankPct) || !this.leagueUsable(p, leagueKey)) return null;
     const shadow = this.isShadow(p);
     const hasTierData = leagueKey === 'great' || leagueKey === 'ultra' || leagueKey === 'little' || leagueKey === 'master';
-    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(p.name, shadow, tk) : null;
+    // The rank is for the form it names (a Jigglypuff's Great League rank is Wigglytuff's), so the tier and
+    // the recommended moves come from that form too.
+    const formName = leagueKey !== 'little' && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
+    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(formName, shadow, tk) : null;
     const order = { S: 0, A: 1, B: 2, C: 3 };
     const tierRank = !hasTierData ? 2.5 : (tier ? order[tier.tier] : 4);
-    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(p.name, shadow, tk) : null;
+    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(formName, shadow, tk) : null;
     const have = new Set([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.moveKey(n).replace(/\+$/, '')));
     const wanted = ms ? [ms.fast, ...ms.charged] : [];
     const missing = wanted.filter(n => !have.has(n));
@@ -11973,6 +11976,60 @@ class Component extends DCLogic {
     return { overrides: rest, roster, addedPokemon };
   }
 
+  // Names a Pokemon can become, itself first, following the real evolution table and then the looked-up one.
+  evoChainNames(p) {
+    const m = this.mechanics;
+    const names = [p.name];
+    let cur = String(p.name || '');
+    for (let i = 0; i < 3; i++) {
+      const rec = (m && m.evolutionInfoFor ? m.evolutionInfoFor(cur, p.form) : null) || (this.state.evoTable || {})[cur.toLowerCase()];
+      const to = rec && rec.to;
+      if (!to || names.indexOf(to) >= 0) break;
+      names.push(to); cur = to;
+    }
+    return names;
+  }
+
+  // League ranks are judged on the form the Pokemon would actually be played as. A 1/14/14 Jigglypuff is a
+  // 83% Jigglypuff but a 98% Wigglytuff, and Wigglytuff is the one worth keeping. Importers write the
+  // Pokemon's own species into the rank, so the best evolution is applied when the roster is read (cached
+  // per species, form, IVs and chain). Great and Ultra only: Little Cup is judged on the current form.
+  withEvoRanks(p) {
+    const m = this.mechanics;
+    if (!m || !m.rankPctForLeague || p.dex == null || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return p;
+    const chain = this.evoChainNames(p);
+    if (chain.length < 2) return p;
+    const shadow = this.isShadow(p);
+    const key = [p.dex, p.form || '', p.atkIV, p.defIV, p.staIV, shadow ? 1 : 0, chain.join('>')].join('|');
+    this._evoRankCache = this._evoRankCache || new Map();
+    let best = this._evoRankCache.get(key);
+    if (!best) {
+      best = {};
+      ['great', 'ultra'].forEach(lg => {
+        let top = null;
+        chain.forEach(name => {
+          const dex = name === p.name ? p.dex : (m.resolveDexByName ? m.resolveDexByName(name) : null);
+          if (dex == null) return;
+          const base = (p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex];
+          if (!base) return;
+          const r = m.rankPctForLeague(base, [p.atkIV, p.defIV, p.staIV], lg, shadow);
+          if (Number.isFinite(r) && (!top || r > top.rankPct)) top = { rankPct: r, evolvesTo: name };
+        });
+        if (top) best[lg] = top;
+      });
+      if (this._evoRankCache.size > 6000) this._evoRankCache.clear();
+      this._evoRankCache.set(key, best);
+    }
+    const out = { ...p };
+    ['great', 'ultra'].forEach(lg => {
+      const b = best[lg];
+      if (!b) return;
+      const cur = p[lg] && Number.isFinite(p[lg].rankPct) ? p[lg].rankPct : null;
+      if (cur == null || b.rankPct > cur) out[lg] = { ...(p[lg] || {}), rankPct: b.rankPct, evolvesTo: b.evolvesTo };
+    });
+    return out;
+  }
+
   // Merged view used for matching: base roster with IV overrides applied, plus
   // added Pokemon, minus removed — i.e. the same list the roster renders.
   effectiveRosterForMatch() {
@@ -11991,7 +12048,7 @@ class Component extends DCLogic {
     const mech = this.mechanics;
     const withDex = p => (p.dex == null && p.name && mech && mech.resolveDexByName)
       ? { ...p, dex: mech.resolveDexByName(p.name) } : p;
-    const withOverrides = p => withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const withOverrides = p => this.withEvoRanks(withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p));
     const baseRoster = (this.state.roster || []).map(withOverrides);
     return [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !this.isRemoved(p, removedSet));
   }
@@ -15549,7 +15606,7 @@ class Component extends DCLogic {
     const mech = this.mechanics;
     const withDex = p => (p.dex == null && p.name && mech && mech.resolveDexByName)
       ? { ...p, dex: mech.resolveDexByName(p.name) } : p;
-    const withOverrides = p => withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p);
+    const withOverrides = p => this.withEvoRanks(withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p));
     const baseRoster = (this.state.roster || []).map(withOverrides);
     const roster = [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !this.isRemoved(p, removedSet));
     const tab = this.state.tab;

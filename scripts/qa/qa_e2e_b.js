@@ -481,6 +481,17 @@ module.exports = async function suiteB() {
     await s.page.unroute('**/generativelanguage.googleapis.com/**');
     await s.set({ geminiKey: '', geminiKeys: [], briefing: null, briefingSearch: false });
   });
+  await T('EVO-RANK-01', 'PvP', 'League rank uses the best evolution: a 1/14/14 Jigglypuff counts as the 98% Wigglytuff it can become, and is kept', async () => {
+    const jig = { idx: 'ev1', name: 'Jigglypuff', dex: 39, cp: 506, hp: 190, atkIV: 1, defIV: 14, staIV: 14, ivAvg: 64.4, lvlMin: 29, lvlMax: 29, ivMeasured: true, great: { rankPct: 83, evolvesTo: 'Jigglypuff' }, ultra: { rankPct: 60, evolvesTo: 'Jigglypuff' }, little: { rankPct: null }, scanDate: '2026-10-25' };
+    const q = await s.call('withEvoRanks', jig);
+    expect(q.great.rankPct > 95 && q.great.evolvesTo === 'Wigglytuff', 'great rank not evolution-aware: ' + JSON.stringify(q.great));
+    expect(q.little.rankPct == null, 'Little Cup must stay on the current form');
+    const why = await s.call('keepReasons', q);
+    expect(why.some(x => /PvP rank 90%/.test(x)), 'must be protected as a PvP pick: ' + why.join('; '));
+    const plain = { ...jig, idx: 'ev2', name: 'Pidgey', dex: 16, atkIV: 5, defIV: 5, staIV: 5 };
+    const q2 = await s.call('withEvoRanks', plain);
+    expect(q2.great.rankPct >= 0, 'sanity');
+  });
   await T('CUT-03', 'Roster', 'An XXL or XXS is never in the cut list ahead of a normal-size duplicate; with protection off it can be', async () => {
     const mk = (idx, h, iv, cp) => ({ idx, name: 'Bulbasaur', dex: 1, cp, hp: 50, height: h, weight: '7kg', atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const xxl = mk('z1', '1.2m', 1, 200), a = mk('z2', '0.7m', 10, 300), b = mk('z3', '0.7m', 12, 320), c = mk('z4', '0.7m', 14, 340);
@@ -494,9 +505,10 @@ module.exports = async function suiteB() {
     await s.set({ protectSizes: 'extreme' });
   });
   await T('CUT-02', 'Roster', 'Revealed cut list renders cards with a reason and the renamed button, and says plainly when protection limits it', async () => {
-    const mk = (idx, iv, cp) => ({ idx, name: 'Pidgey', dex: 16, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const mk = (idx, iv, cp) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const st0 = await s.state();
-    await s.set({ addedPokemon: [...(st0.addedPokemon || []), mk('w1', 1, 90), mk('w2', 2, 100), mk('w3', 3, 110)] }); await s.call('recalculateAllRanks');
+    const big = { ...mk('w0', 15, 3000), name: 'Snorlax', dex: 143, great: { rankPct: 0 }, scanDate: '2026-10-01' };   // a far stronger Normal attacker, so the weak ones have no raid role
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, mk('w1', 1, 640), mk('w2', 2, 650), mk('w3', 3, 660)] }); await s.call('recalculateAllRanks');   // over 500 CP, so no Little Cup rank protects them
     await s.set({ tab: 'home', cutTarget: 1, cutTargetDraft: '1', cutListRevealed: true }); await s.page.waitForTimeout(1200);
     const txt = await s.page.evaluate(() => document.body.innerText);
     expect(/I TRANSFERRED IT/.test(txt) && /(only copy|of \d+ by IV)/.test(txt) && !/is not defined/.test(txt), txt.slice(0, 300));
