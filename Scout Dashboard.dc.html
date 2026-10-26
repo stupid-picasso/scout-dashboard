@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.192</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.194</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4097,7 +4097,7 @@ class Component extends DCLogic {
       geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys : (remote.geminiKeys || (remote.geminiKey ? [remote.geminiKey] : [])),
       geminiKey: this.state.geminiKey || (remote.geminiKeys && remote.geminiKeys[0]) || remote.geminiKey || '',
     };
-    patch.cutTargetDraft = this.state.cutTargetDraft || String(patch.cutTarget);
+    patch.cutTargetDraft = String(patch.cutTarget);
     patch.apiEndpointDraft = this.state.apiEndpointDraft || patch.apiEndpoint;
     patch.geminiKeyDraft = this.state.geminiKeyDraft || (patch.geminiKeys.length ? patch.geminiKeys.join('\n') : '');
     this.setState(patch, () => {
@@ -5511,11 +5511,24 @@ class Component extends DCLogic {
     return win;
   }
 
+  // Every reason a Pokemon is worth keeping, split in two. HARD locks never move: shiny, lucky, favourite, purified,
+  // XXL/XXS, legendary/mythical (best two), nondo, anything unmeasured or inconsistent. SOFT reasons (good IV, best
+  // league copy, Master tier, raid role, Mega-capable, good IV with moves) hold until the roster is over its keep
+  // target; then the floating keep line (`floatCut`) lets the weakest of them go first.
+  isSoftKeep(reason) { return /^(IV \d|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
+
   keepReasons(p, ctx) {
-    const m = this.mechanics;
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
-    c.cache = c.cache || new Map();
-    const cached = c.cache.get(p);
+    const full = this.keepFull(p, c);
+    if (!full.soft.length) return full.all;
+    const fl = this.floatCut(c);
+    return fl.set.has(p.idx) ? full.hard : full.all;
+  }
+
+  keepFull(p, c) {
+    const m = this.mechanics;
+    c.cacheFull = c.cacheFull || new Map();
+    const cached = c.cacheFull.get(p);
     if (cached) return cached;
     const out = [];
     if (p.lucky) out.push('Lucky');
@@ -5566,7 +5579,33 @@ class Component extends DCLogic {
     if (sum.every(Number.isFinite) && !Number.isFinite(p.great && p.great.rankPct)) out.push('League rank not computed yet');
     if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
     if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
-    c.cache.set(p, out);
+    const soft = out.filter(x => this.isSoftKeep(x));
+    const res = { all: out, soft, hard: out.filter(x => soft.indexOf(x) < 0) };
+    c.cacheFull.set(p, res);
+    return res;
+  }
+
+  // The floating keep line. Over the keep target (the Keep best box), the weakest Pokemon with no hard lock are
+  // let go, lowest score first, exactly as many as it takes to reach the target. Better catches push the line up
+  // on their own. Under target nothing floats and every soft reason holds.
+  floatCut(c) {
+    const roster = c.roster;
+    const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
+    if (c.float && c.float.target === target) return c.float;
+    const overBy = Math.max(0, roster.length - target);
+    const out = { set: new Set(), overBy, taken: 0, target, kept: roster.length, lineIv: null, avgIv: null, lineRank: null };
+    c.float = out;      // set first: scoring reads keepFull, never keepReasons, so there is no loop
+    if (!overBy) return out;
+    const rows = this.cutScoreRows(roster, c);
+    const free = rows.filter(r => !r.keep.length);
+    free.slice(0, overBy).forEach(r => out.set.add(r.p.idx));
+    out.taken = out.set.size;
+    const kept = rows.filter(r => !out.set.has(r.p.idx));
+    const ivs = kept.map(r => r.p.ivAvg).filter(Number.isFinite);
+    out.avgIv = ivs.length ? ivs.reduce((a, b) => a + b, 0) / ivs.length : null;
+    const weakest = kept.find(r => !r.keep.length);
+    out.lineIv = weakest && Number.isFinite(weakest.p.ivAvg) ? weakest.p.ivAvg : null;
+    out.lineRank = weakest ? this.bestRank(weakest.p) : null;
     return out;
   }
 
@@ -5574,9 +5613,9 @@ class Component extends DCLogic {
   // Pokemon earns its place from ANY of: a PvP league rank, a Master League tier, a raid-attacker role,
   // being the only copy of its species, or (Legendary / Mythical / Ultra Beast) being one of the two
   // best copies. Each row carries a one-line reason so the list can be read, not just trusted.
-  cutScoreRows(roster) {
+  cutScoreRows(roster, ctxIn) {
     const m = this.mechanics;
-    const ctx = this.keepContext(roster);
+    const ctx = ctxIn || this.keepContext(roster);
     const groups = ctx.groups, typeBest = ctx.typeBest;
     const CLASS = { L: 'Legendary', M: 'Mythical', U: 'Ultra Beast' };
     const rows = roster.map(p => {
@@ -5608,8 +5647,9 @@ class Component extends DCLogic {
       const movesetComplete = !this.movesetDataNote(p);
       const sizeKeep = this.sizeProtected(p);
       const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0) + (sizeKeep ? 100000 : 0)
-        + (shadow ? 20000 : 0) + (this.isPurified(p) ? 10000 : 0)
-        + (onlyCopy ? 5000 : 0) + (cls ? 4000 + (pos <= 2 ? 3000 : 0) : 0)
+        + (this.isPurified(p) ? 10000 : 0) + (p.atkIV === 0 && p.defIV === 0 && p.staIV === 0 && !this.needsAppraisal(p) ? 100000 : 0)
+        + (shadow && iv >= 80 ? 1500 : 0) + this.leagueBestFor(p, ctx).length * 1500 + (iv >= 90 ? 1500 : 0)
+        + (onlyCopy ? 300 : 0) + (cls ? 4000 + (pos <= 2 ? 3000 : 0) : 0)
         + masterBonus + raidBonus + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01;
       const bits = [];
       if (sizeKeep) bits.push(this.sizeTagOf(p) + ' size, kept for showcases');
@@ -5618,7 +5658,7 @@ class Component extends DCLogic {
       bits.push(rank >= 1 ? 'league rank ' + rank.toFixed(0) + '%' : 'no league rank');
       if (masterTier) bits.push('Master tier ' + masterTier);
       bits.push(raidRole ? 'raid role' : 'no raid role');
-      return { p, score, reason: bits.join(' \u00b7 '), keep: this.keepReasons(p, ctx) };
+      return { p, score, reason: bits.join(' \u00b7 '), keep: this.keepFull(p, ctx).hard, keepAll: this.keepFull(p, ctx).all };
     });
     return rows.sort((a, b) => a.score - b.score);
   }
@@ -7125,6 +7165,21 @@ class Component extends DCLogic {
     return lines.join('\n');
   }
 
+  // Milliseconds until the soonest Gemini key/model is usable again (0 when one is usable now).
+  aiCooldownMs() {
+    const now = Date.now();
+    const keys = this.state.geminiKeys || [];
+    const keyWaits = keys.map(k => ((this._keyCooldown || {})[k] || 0) - now);
+    if (keyWaits.some(ms => ms <= 0)) {
+      // a key is open; only its models can still be parked
+      const mc = this._modelCool || {};
+      const parked = Object.keys(mc).map(k => (mc[k].until || 0) - now).filter(ms => ms > 0);
+      return parked.length ? Math.min.apply(null, parked) : 0;
+    }
+    const pos = keyWaits.filter(ms => ms > 0);
+    return pos.length ? Math.min.apply(null, pos) : 0;
+  }
+
   async generateBriefing(force) {
     const today = this.todayKey();
     const cur = this.state.briefing;
@@ -7136,12 +7191,24 @@ class Component extends DCLogic {
     this.setState({ briefingBusy: true, briefingError: '' });
     try {
       const search = !!this.state.briefingSearch;
-      const text = await this.completeWithRetry({
+      // No model is pinned: the shared rotation picks whichever Gemini models are alive. If every key is only
+      // cooling down for a minute, wait that minute out once and ask again, rather than showing an error.
+      const askOnce = () => this.completeWithRetry({
         search,
         max_tokens: 700,
         system: 'You are Professor, a concise Pokemon GO coach writing this trainer\u2019s morning briefing. Use ONLY the facts below for anything about their roster; never invent Pokemon, stats or moves. Write 4 to 6 bullets, each starting with "- ", each one short and specific (name real Pokemon from the data). Cover: what to power up, what to evolve, anything to hunt or trade given the events, the GBL focus, and' + (search ? ' one line on any recent meta or balance change you can confirm with search (say nothing if unsure)' : ' nothing about the wider meta') + '. Give each Pokemon at most one action in the whole briefing, and never advise powering up or teaching moves to a Pokemon you are also telling them to evolve. Only mention a transfer for a Pokemon listed as having PASSED the keep check; otherwise say nothing about transfers. These are suggestions for the trainer to confirm, never instructions.',
         messages: [{ role: 'user', content: this.briefingContext() }]
       });
+      let text;
+      try { text = await askOnce(); }
+      catch (e1) {
+        const wait = this.aiCooldownMs();
+        if (!/rate-limited|rate limit|cooling|429/i.test((e1 && e1.message) || '') || !(wait > 0 && wait <= 90000)) throw e1;
+        this.setState({ briefingWaiting: true });
+        await new Promise(r => setTimeout(r, wait + 1500));
+        this.setState({ briefingWaiting: false });
+        text = await askOnce();
+      }
       const okTransfer = new Set(this.buildOptimizePlan(roster).transferSafe.map(p => String(p.name || '').toLowerCase()));
       const transferWord = /\b(transfer|release|trade away|get rid|cut|dump)\b/i;
       const bullets = String(text || '').split('\n').map(l => l.replace(/^[\s*\u2022-]+/, '').trim()).filter(l => l.length > 3)
@@ -7187,7 +7254,7 @@ class Component extends DCLogic {
       refreshAllShortcut: () => { this.goToTab('home'); setTimeout(() => this.refreshEverything(), 350); },
       briefingSearchOn: !!this.state.briefingSearch,
       briefingSearchToggle: () => { const v = !this.state.briefingSearch; this.setState({ briefingSearch: v }); try { localStorage.setItem('scout.briefingSearch', v ? '1' : '0'); } catch (e) {} },
-      briefingLabel: this.state.briefingBusy ? 'Thinking\u2026' : (b ? 'Update briefing' : 'Brief me')
+      briefingLabel: this.state.briefingWaiting ? 'Waiting for the AI\u2026' : this.state.briefingBusy ? 'Thinking\u2026' : (b ? 'Update briefing' : 'Brief me')
     };
   }
 
@@ -16432,10 +16499,11 @@ class Component extends DCLogic {
         const overBy = Math.max(0, roster.length - target);
         const sum = overBy > 0 ? this.cutSafeSummary(roster, overBy) : null;
         const shown = sum ? sum.show.length : 0;
+        const fl = overBy > 0 ? this.floatCut(this.keepContext(roster)) : null;
         const headline = overBy > 0
           ? 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 ' + overBy + ' over. ' + (shown >= overBy
-            ? 'Reevaluate to see the ' + overBy + ' safest to transfer.'
-            : 'Only ' + shown + ' can be cut safely: ' + sum.protectedCount + ' are protected (good IVs, PvP, raid, rare, size or only copy). Raise the target, or appraise more Pokemon, to cut further.')
+            ? 'Reevaluate to see the ' + overBy + ' weakest, the ones below your keep line.' + (fl && fl.avgIv != null ? ' Keep line: IV about ' + Math.round(fl.lineIv || 0) + '% / league rank ' + Math.round(fl.lineRank || 0) + '%; the ' + target + ' you keep average ' + fl.avgIv.toFixed(1) + '% IV.' : '')
+            : 'Only ' + shown + ' can be cut: ' + sum.protectedCount + ' are locked (shiny, lucky, favourite, XXL/XXS, legendary, purified, nondo, or IVs not measured). Raise the target, or appraise more Pokemon, to cut further.')
           : 'You have ' + roster.length + ' \u00b7 keep-target ' + target + ' \u00b7 within target, nothing needs cutting.';
         const buttonLabel = overBy > 0 ? ('REEVALUATE \u2014 SHOW ' + (shown >= overBy ? 'BOTTOM ' + overBy : shown + ' SAFE')) : 'REEVALUATE ROSTER';
         return { target, overBy, headline, buttonLabel };

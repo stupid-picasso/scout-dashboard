@@ -421,12 +421,13 @@ module.exports = async function suiteB() {
       mk('s9', 10, 'Caterpie', [1, 1, 1], 60)];
     const roster = [...weak, ...special];
     const ctxRows = await s.call('cutScoreRows', roster);
-    const keepOf = id => ctxRows.find(r => r.p.idx === id).keep;
+    const keepOf = id => ctxRows.find(r => r.p.idx === id).keepAll;
     const missing = special.map(p => p.idx).filter(id => !keepOf(id).length);
     expect(!missing.length, 'valuable Pokemon with no keep reason: ' + missing.join() + ' ' + JSON.stringify(special.filter(p => missing.indexOf(p.idx) >= 0).map(p => p.name)));
     expect(weak.every(p => !keepOf(p.idx).length), 'weak duplicates should pass: ' + JSON.stringify(weak.map(p => keepOf(p.idx))));
     const sum = await s.call('cutSafeSummary', roster, 12);
-    expect(sum.show.length === 4 && sum.show.every(r => /^k/.test(r.p.idx)), 'cut list must offer only the 4 weak Pidgey, not pad to the target: ' + sum.show.map(r => r.p.idx).join());
+    const hardIds = ['s1', 's2', 's3', 's5', 's6', 's8'];
+    expect(['k1', 'k2', 'k3', 'k4'].every(id => sum.show.some(r => r.p.idx === id)) && !sum.show.some(r => hardIds.indexOf(r.p.idx) >= 0), 'cut list takes the weak Pidgey first and never a hard lock: ' + sum.show.map(r => r.p.idx).join());
     const plan = await s.call('buildOptimizePlan', roster);
     expect(plan.transferSafe.every(p => /^k/.test(p.idx)), 'Transfer-safe must exclude every protected one: ' + plan.transferSafe.map(p => p.idx).join());
     const dom = await s.call('dominatedDuplicates', [...weak, mk('d1', 16, 'Pidgey', [15, 15, 15], 400), special[5]]);
@@ -439,7 +440,7 @@ module.exports = async function suiteB() {
       mk('z4', 16, 'Pidgey', [4, 5, 6], 120), mk('z5', 27, 'Sandshrew', [1, 3, 5], 300, { shadowPurified: '1' }), mk('z6', 27, 'Sandshrew', [13, 13, 13], 300, { shadowPurified: '1' }),
       mk('z7', 19, 'Rattata', [0, 0, 0], 60), mk('z8', 18, 'Pidgeot', [15, 15, 15], 2000)];
     const rows = await s.call('cutScoreRows', list);
-    const keepOf = id => rows.find(r => r.p.idx === id).keep;
+    const keepOf = id => rows.find(r => r.p.idx === id).keepAll;
     expect(keepOf('z1').some(x => /Best Great League copy/.test(x)), 'best Azumarill kept: ' + keepOf('z1'));
     expect(!keepOf('z2').some(x => /Best Great/.test(x)), 'second 90%+ copy is not a best copy: ' + keepOf('z2'));
     expect(!keepOf('z3').some(x => /Best/.test(x)), 'weak Azumarill is no best copy: ' + keepOf('z3'));
@@ -451,6 +452,30 @@ module.exports = async function suiteB() {
     expect((await s.call('keepReasons', pony)).some(x => /XXS/.test(x)), 'a 0.50 m Ponyta (XXS in the game) must be protected: ' + (await s.call('keepReasons', pony)));
     const cand = await s.call('replacedBy', list[1], await s.call('keepContext', list));
     expect(cand && cand.q.idx === 'z1', 'replacement named: ' + JSON.stringify(cand && cand.q.idx));
+  });
+  await T('KEEP-03', 'Safety', 'Floating keep line: over the Keep best target the weakest unlocked Pokemon go first, hard locks never move, and nothing floats under target', async () => {
+    const mk = (idx, dex, name, iv, cp, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const locked = [mk('L1', 19, 'Rattata', [1, 1, 1], 80, { shiny: true }), mk('L2', 21, 'Spearow', [1, 1, 1], 80, { lucky: true }), mk('L3', 23, 'Ekans', [1, 1, 1], 80, { favorite: true })];
+    const good = [mk('G1', 29, 'Nidoran', [15, 15, 15], 300), mk('G2', 32, 'Nidoran', [14, 14, 14], 300), mk('G3', 41, 'Zubat', [14, 15, 13], 300), mk('G4', 43, 'Oddish', [13, 14, 14], 300)];
+    const weak = [mk('W1', 16, 'Pidgey', [2, 3, 2], 120), mk('W2', 19, 'Rattata', [1, 2, 1], 100), mk('W3', 21, 'Spearow', [0, 1, 1], 90), mk('W4', 46, 'Paras', [3, 2, 2], 130), mk('W5', 60, 'Poliwag', [2, 2, 3], 110)];
+    // stronger peers of every type, so the weak ones have no raid role of their own
+    const peers = [mk('S1', 143, 'Snorlax', [15, 15, 15], 3000), mk('S2', 130, 'Gyarados', [15, 15, 15], 3000), mk('S3', 123, 'Scyther', [15, 15, 15], 3000), mk('S4', 3, 'Venusaur', [15, 15, 15], 3000), mk('S5', 169, 'Crobat', [15, 15, 15], 3000)];
+    const roster = [...locked, ...good, ...peers, ...weak];
+    const withLogic = (body, arg) => s.page.evaluate(([b, a]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepContext) return new Function('L', 'a', b)(f.stateNode.logic, a); } return null; }, [body, arg]);
+    const run = async target => { await s.set({ cutTarget: target }); return await withLogic('const c = L.keepContext(a.roster); const fl = L.floatCut(c); const sum = L.cutSafeSummary(a.roster, Math.max(0, a.roster.length - a.target)); return { floated: fl.set.size, show: sum.show.map(x => x.p.idx), keep: Object.fromEntries(a.roster.map(p => [p.idx, L.keepReasons(p, c)])) };', { roster, target }); };
+    let r = await run(roster.length);
+    expect(r.floated === 0 && r.show.length === 0, 'nothing floats at target: ' + r.floated);
+    r = await run(roster.length - 3);
+    expect(r.show.length === 3 && r.show.every(i => /^W/.test(i)), 'three weakest cut first: ' + r.show.join());
+    r = await run(roster.length - 7);
+    expect(r.show.length === 7 && r.show.filter(i => /^W/.test(i)).length === 5 && r.show.filter(i => /^[GS]/.test(i)).length === 2 && !r.show.some(i => /^L/.test(i)), 'five weak then the two weakest good ones, never a lock: ' + r.show.join());
+    const cutGood = r.show.find(i => /^[GS]/.test(i));
+    expect(!r.keep[cutGood].length, 'a soft-kept Pokemon on the line passes every gate: ' + r.keep[cutGood]);
+    expect([...good, ...peers].map(p => p.idx).filter(i => r.show.indexOf(i) < 0).every(i => r.keep[i].length), 'the good ones above the line stay kept');
+    r = await run(1);
+    expect(r.show.length === 14 && !r.show.some(i => /^L/.test(i)), 'locks never cut even when far over target: ' + r.show.length);
+    expect(r.keep.L1.length && r.keep.L2.length && r.keep.L3.length, 'locks stay locked');
+    await s.set({ cutTarget: 300 });
   });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
@@ -592,7 +617,7 @@ module.exports = async function suiteB() {
     await s.set({ tab: 'home', cutTarget: 1, cutTargetDraft: '1', cutListRevealed: true }); await s.page.waitForTimeout(1200);
     const txt = await s.page.evaluate(() => document.body.innerText);
     expect(/I TRANSFERRED IT/.test(txt) && /(only copy|of \d+ by IV)/.test(txt) && !/is not defined/.test(txt), txt.slice(0, 300));
-    expect(/can be cut safely|safest to transfer/.test(txt), 'headline must say how many are safe: ' + txt.slice(0, 300));
+    expect(/can be cut|weakest/.test(txt), 'headline must say how many are safe: ' + txt.slice(0, 300));
     await s.set({ cutListRevealed: false, cutTarget: 300, cutTargetDraft: '300', addedPokemon: st0.addedPokemon || [] });
   });
   await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {

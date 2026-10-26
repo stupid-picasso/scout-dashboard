@@ -12,6 +12,8 @@ const M = W.PokemonMechanics;
 const ARGS = process.argv.slice(2);
 const SEEDS = (ARGS[0] || '1,2,3').split(',').map(Number);
 const PER = +(ARGS[1] || 4), MAXMIN = +(ARGS[2] || 8);
+// mode 'strict': no keep target, every soft reason must hold. mode 'float': target 300 (rosters are bigger), the floating line may release soft keeps, hard locks still never.
+const MODE = ARGS[3] || 'strict';
 const T0 = Date.now();
 
 function prng(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -109,9 +111,9 @@ function truth(p, all) {
     if (strictlyBetter < 2) add('LEGENDARY_TOP2', atLeast >= 2, { tieOnly: atLeast >= 2 });
   }
   const measuredIv = Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV);
-  if (mine >= 90 && measuredIv) add('IV90');
+  if (mine >= 90 && measuredIv) add('IV90', false, { floaty: true });
   if (!p.ivMeasured || !measuredIv) add('UNMEASURED');
-  if (isSh(p) && mine >= 80 && Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)) add('SHADOW_IV80');
+  if (isSh(p) && mine >= 80 && Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)) add('SHADOW_IV80', false, { floaty: true });
   if (p.ivMeasured && p.atkIV === 0 && p.defIV === 0 && p.staIV === 0) add('NONDO');
   const si = p.height ? M.sizeInfoFor(p.dex, p.form, p.height) : null;
   if (si && si.valid && (si.cls === 'XXL' || si.cls === 'XXS')) add('SIZE_' + si.cls);
@@ -126,13 +128,13 @@ function truth(p, all) {
         // only the best copy of the species (same shadow status) per league is owed protection; equal ranks all stay
         const better = grp.some(q => q !== p && isSh(q) === sh && q.ivMeasured && [q.atkIV, q.defIV, q.staIV].every(Number.isFinite) && (!Number.isFinite(q.cp) || q.cp <= lcap)
           && chainOf(q).some(n2 => { const d2 = n2 === q.name ? q.dex : dexOfName(n2); const b2 = d2 && baseFor(d2, q.form); const t2 = d2 && M.pvpTierFor(n2, sh, lg); return b2 && t2 && 'SAB'.includes(t2.tier) && M.rankPctForLeague(b2, [q.atkIV, q.defIV, q.staIV], lg, sh) > rk + 1e-9; }));
-        if (rk >= 90 && t && 'SAB'.includes(t.tier) && !better) add(lg.toUpperCase() + '_RANK90_TIER_SAB', !capOk, { via: nm, rank: +rk.toFixed(1), tier: t.tier });
+        if (rk >= 90 && t && 'SAB'.includes(t.tier) && !better) add(lg.toUpperCase() + '_RANK90_TIER_SAB', !capOk, { floaty: true, via: nm, rank: +rk.toFixed(1), tier: t.tier });
       }
     }
     if (Number.isFinite(p.cp) && p.cp <= 500 && chainOf(p).length > 1) {   // Little Cup needs a Pokemon that can still evolve
-      const b = baseFor(p.dex, p.form); const rk = M.rankPctForLeague(b, iv, 'little', sh); const betterL = grp.some(q => q !== p && isSh(q) === sh && q.ivMeasured && [q.atkIV, q.defIV, q.staIV].every(Number.isFinite) && q.cp <= 500 && (b2 => b2 && M.rankPctForLeague(b2, [q.atkIV, q.defIV, q.staIV], 'little', sh) > rk + 1e-9)(baseFor(q.dex, q.form))); if (rk >= 90 && !betterL) add('LITTLE_RANK90_CP<=500', false, { rank: +rk.toFixed(1) }); }
+      const b = baseFor(p.dex, p.form); const rk = M.rankPctForLeague(b, iv, 'little', sh); const betterL = grp.some(q => q !== p && isSh(q) === sh && q.ivMeasured && [q.atkIV, q.defIV, q.staIV].every(Number.isFinite) && q.cp <= 500 && (b2 => b2 && M.rankPctForLeague(b2, [q.atkIV, q.defIV, q.staIV], 'little', sh) > rk + 1e-9)(baseFor(q.dex, q.form))); if (rk >= 90 && !betterL) add('LITTLE_RANK90_CP<=500', false, { floaty: true, rank: +rk.toFixed(1) }); }
     const mega = (M.MEGA_EVOLUTION_COSTS[String(p.name).toLowerCase()] || M.megaFormsFor(p.name) || []).length > 0;
-    if (mega && mine >= 80) add('MEGA_IV80');
+    if (mega && mine >= 80) add('MEGA_IV80', false, { floaty: true });
   }
   return R;
 }
@@ -199,7 +201,7 @@ function collectInPage(sampleStep) {
       if ((Date.now() - T0) / 60000 > MAXMIN) { console.log('time budget reached'); break outer; }
       const n = 250 + Math.floor(r() * 650);
       const roster = genRoster(r, n); const recalc = r() < 0.7;
-      await s.set({ addedPokemon: roster, roster: [], removedIds: [], ivOverrides: {}, completedIds: [], transferQueue: [], triageKeep: {} });
+      await s.set({ addedPokemon: roster, roster: [], removedIds: [], ivOverrides: {}, completedIds: [], transferQueue: [], triageKeep: {}, cutTarget: MODE === 'strict' ? 1000000 : 300 });
       if (recalc) { await s.call('recalculateAllRanks'); await s.page.waitForFunction(() => true); await s.page.waitForTimeout(600); for (let i = 0; i < 40 && (await s.state()).recalcBusy; i++) await s.page.waitForTimeout(200); }
       const eff = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.effectiveRosterForMatch) return f.stateNode.logic.effectiveRosterForMatch().length; } return -1; });
       const o = await s.page.evaluate(collectInPage, Math.max(1, Math.floor(roster.length / 25)));
@@ -209,11 +211,11 @@ function collectInPage(sampleStep) {
       // ground truth on the same Pokemon (with the evolution overlay NOT applied: it is derived from first principles)
       const byIdx = new Map(roster.map(p => [p.idx, p]));
       const T = new Map(roster.map(p => [p.idx, truth(p, roster)]));
-      const hard = idx => T.get(idx).filter(x => !x.soft);
+      const hard = idx => T.get(idx).filter(x => !x.soft && (MODE === 'strict' || !x.floaty));
       let valuable = 0;
       for (const p of roster) {
         const t = T.get(p.idx); const names = [...new Set(t.map(x => x.k))];
-        if (t.some(x => !x.soft)) valuable++;
+        if (t.some(x => !x.soft && (MODE === 'strict' || !x.floaty))) valuable++;
         names.forEach(kk => { stats.reasonCounts[kk] = (stats.reasonCounts[kk] || 0) + 1; });
         const hk = [...new Set(t.filter(x => !x.soft).map(x => x.k))];
         if (hk.length === 1) stats.reasonOnlyCounts[hk[0]] = (stats.reasonOnlyCounts[hk[0]] || 0) + 1;
@@ -228,7 +230,7 @@ function collectInPage(sampleStep) {
       for (const out of OUTS) for (const idx of new Set(o[out] || [])) {
         const t = T.get(idx); if (!t) { stats.errors.push('unknown idx ' + idx + ' in ' + out); continue; }
         if (!t.length) continue;
-        const h = t.filter(x => !x.soft), tie = h.length && h.every(x => x.tieOnly);
+        const h = t.filter(x => !x.soft && (!x.floaty || (MODE === 'strict' && !/^cutShow/.test(out)))), tie = h.length && h.every(x => x.tieOnly);
         const key = out + ':' + idx + ':' + seed + ':' + k; if (seenViol.has(key)) continue; seenViol.add(key);
         const rec = { seed, roster: k, recalc, output: out, severity: h.length ? (tie ? 'tie-only' : 'HARD') : 'soft (CP over league cap)', violates: t.map(x => x.k + (x.soft ? '(soft)' : '') + (x.via ? ` via ${x.via} ${x.rank}% tier ${x.tier}` : '')), pokemon: byIdx.get(idx), diag: o.diag[idx], group: roster.filter(q => q.dex === byIdx.get(idx).dex) }; rec.cause = classify(rec);
         (h.length && !tie ? stats.violations : stats.softViolations).push(rec);

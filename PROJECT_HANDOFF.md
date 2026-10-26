@@ -386,3 +386,10 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - `transferCandidates` also lists every measured Pokemon with zero keep reasons ("No league, raid or rarity value").
 - Raid role is relative to the roster: a lone Charizard can legitimately be kept as a raid attacker even at low IV.
 - Fuzz truth model (`scripts/qa/fuzz_keep.js`) updated to the same rules; KEEP-02 test added.
+
+## Floating keep line (Keep best box = the target)
+- `keepFull(p, ctx)` splits keep reasons into HARD locks (lucky, favourite, shiny, purified, XXL/XXS, legendary best two, nondo, unmeasured, inconsistent data, rank not computed) and SOFT (IV 90+, good-IV shadow, best league copy, Master tier, raid role, Mega-capable, good IV with moves).
+- `floatCut(ctx)`: when the roster is over the Keep best target (`cutTarget`), the lowest-scoring non-hard-locked Pokemon (exactly `overBy` of them) are released from soft keeps. `keepReasons` then returns hard reasons only for those, so every gate (cut list, bulk strings, confirm, triage, dominated) agrees. Under target nothing floats. Better catches push the line up automatically.
+- Cut list headline shows the line (weakest kept IV / rank) and the average IV of the kept set.
+- Briefing: no model is pinned (rotation unchanged); on a cooldown-only 429 it waits the cooldown once (`aiCooldownMs`) and retries; label "Waiting for the AI...".
+- Fuzz: `fuzz_keep.js seeds per mins strict|float`. strict = no target, every soft reason must hold (cut-list outputs excepted); float = target 300.
