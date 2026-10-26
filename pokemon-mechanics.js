@@ -5330,8 +5330,13 @@ function sizeInfoFor(dex, form, heightM) {
   const [baseH, baseW, xxsLo, xsLo, mLo, mUp, xlUp, xxlUp] = row;
   const cls = h < xsLo ? 'XXS' : h < mLo ? 'XS' : h <= mUp ? 'M' : h <= xlUp ? 'XL' : 'XXL';
   const edges = [xsLo, mLo, mUp, xlUp];
+  // Two decimals on screen: the true height is within half a hundredth. `alt` is the class on the other side of
+  // the cut-off when they differ, so a caller can protect on the more valuable reading.
+  const clsAt = x => x < xsLo ? 'XXS' : x < mLo ? 'XS' : x <= mUp ? 'M' : x <= xlUp ? 'XL' : 'XXL';
+  const lo = clsAt(h - 0.0051), hi = clsAt(h + 0.0051);
+  const alt = lo !== cls ? lo : (hi !== cls ? hi : null);
   return {
-    cls, ratio: h / baseH, baseHeight: baseH, baseWeight: baseW,
+    cls, alt, ratio: h / baseH, baseHeight: baseH, baseWeight: baseW,
     valid: h >= xxsLo - 0.006 && h <= xxlUp + 0.006,
     borderline: edges.some(e => Math.abs(h - e) <= 0.0051)
   };

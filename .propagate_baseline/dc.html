@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.191</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.192</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4589,6 +4589,10 @@ class Component extends DCLogic {
   // for the species (a misread must not protect, or label, a Pokemon).
   sizeTagOf(p) {
     const i = this.sizeOf(p);
+    // Within rounding of a cut-off the class could be either side: the extreme reading wins (a 0.50 m Ponyta the
+    // game calls XXS must not be read as plain XS and offered for transfer).
+    const extreme = i && i.valid && i.alt && /^(XXS|XXL)$/.test(i.alt) ? i.alt : '';
+    if (extreme) return extreme;
     const computed = i && i.valid && i.cls !== 'M' ? i.cls : '';
     if (computed) return computed;
     // The size read off the screen counts too (height missing or misread): protect on the word of either.

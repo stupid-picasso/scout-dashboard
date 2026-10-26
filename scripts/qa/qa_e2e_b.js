@@ -447,6 +447,8 @@ module.exports = async function suiteB() {
     expect(!keepOf('z5').length, 'a 1/3/5 shadow passes: ' + keepOf('z5'));
     expect(keepOf('z6').some(x => /Shadow with good IVs/.test(x)), 'a good shadow stays: ' + keepOf('z6'));
     expect(keepOf('z7').some(x => /Nondo/.test(x)), 'nondo stays: ' + keepOf('z7'));
+    const pony = mk('zp', 77, 'Ponyta', [3, 3, 2], 543, { height: '0.5m', weight: '7.73kg' });
+    expect((await s.call('keepReasons', pony)).some(x => /XXS/.test(x)), 'a 0.50 m Ponyta (XXS in the game) must be protected: ' + (await s.call('keepReasons', pony)));
     const cand = await s.call('replacedBy', list[1], await s.call('keepContext', list));
     expect(cand && cand.q.idx === 'z1', 'replacement named: ' + JSON.stringify(cand && cand.q.idx));
   });
