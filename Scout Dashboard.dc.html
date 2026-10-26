@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.196</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.197</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -6608,7 +6608,7 @@ class Component extends DCLogic {
   // Metang, Cursola to Corsola, Wiglett to Diglett, Wugtrio to Dugtrio). See `lookalikeFor` in the mechanics.
   lookalikeOf(p) {
     const m = this.mechanics;
-    if (!m || !m.lookalikeFor || !p || !p.name || !/^(metang|corsola|diglett|dugtrio)$/i.test(String(p.name).trim())) return null;   // cheap pre-check: this runs for every Pokemon
+    if (!m || !m.lookalikeFor || !p || !p.name || (m.LOOKALIKE_NAMES || []).indexOf(String(p.name).trim().toLowerCase()) < 0) return null;   // cheap pre-check: this runs for every Pokemon
     return m.lookalikeFor(p.name, this.typeOf(p), p.height, p.form);
   }
 
@@ -6619,9 +6619,11 @@ class Component extends DCLogic {
     const tally = {};
     hits.forEach(x => { const k = x.p.name + ' \u2192 ' + x.look.real; tally[k] = (tally[k] || 0) + 1; });
     const summary = Object.keys(tally).map(k => tally[k] + ' \u00d7 ' + k).join(', ');
+    const sure = hits.filter(x => x.look.decisive).length, guessed = hits.length - sure;
+    const certainty = sure && guessed ? sure + ' fit the new name only, ' + guessed + ' are a best guess' : sure ? 'all ' + sure + ' fit only the new name' : 'all ' + guessed + ' are a best guess';
     this.askConfirm({
       title: 'Rename ' + hits.length + ' Pokemon?',
-      message: summary + '. The type or size on these does not fit the name they carry. Their IVs stay unmeasured until you appraise them, and ranks are recalculated for the right species. Do not do this if you really own the older species.',
+      message: summary + ' (' + certainty + '). The type or size on these does not fit the name they carry. Their IVs stay unmeasured until you appraise them, and ranks are recalculated for the right species. Do not do this if you really own the older species.',
       actions: [
         { label: 'RENAME ' + hits.length, style: 'primary', run: () => {
           const overrides = { ...(this.state.ivOverrides || {}) };

@@ -490,6 +490,8 @@ module.exports = async function suiteB() {
     expect(r[2] === null, 'a real Metang is left alone: ' + JSON.stringify(r[2]));
     expect(r[3] && r[3].real === 'Wiglett' && r[3].decisive, 'a Water Diglett is a Wiglett: ' + JSON.stringify(r[3]));
     expect(r[4] === null, 'a real Diglett is left alone: ' + JSON.stringify(r[4]));
+    const galCorsola = await s.call('lookalikeOf', mk('lk6', 222, 'Corsola', { type: 'Ghost', height: '0.6m' }));
+    expect(galCorsola && galCorsola.real === 'Cursola' && !galCorsola.decisive, 'a Ghost Corsola (Galarian, form blank) is only suspected: ' + JSON.stringify(galCorsola));
     const why = await s.call('keepReasons', meltanTypeOnly);
     expect(why.some(x => /may really be Meltan/.test(x)), 'locked from every transfer list: ' + why.join());
     const st0 = await s.state();

@@ -5349,7 +5349,7 @@ function sizeInfoFor(dex, form, heightM) {
 // lost its Psychic badge on screen).
 const NAME_LOOKALIKES = {
   metang: { real: 'Meltan', dex: 808, types: ['steel'] },
-  corsola: { real: 'Cursola', dex: 864, types: ['ghost'] },
+  corsola: { real: 'Cursola', dex: 864, types: ['ghost'], typeAlone: false },   // Galarian Corsola is pure Ghost too: only the height can settle it
   diglett: { real: 'Wiglett', dex: 960, types: ['water'] },
   dugtrio: { real: 'Wugtrio', dex: 961, types: ['water'] }
 };
@@ -5367,7 +5367,8 @@ function lookalikeFor(name, typeText, heightM, form) {
   })();
   const typeContradicts = seen.length > 0 && !seen.every(t => claimedTypes.indexOf(t) >= 0);
   const typeIsReal = seen.length > 0 && seen.every(t => row.types.indexOf(t) >= 0);
-  if (sizeSaysReal || (typeContradicts && typeIsReal)) return { real: row.real, dex: row.dex, decisive: true };
+  if (sizeSaysReal || (typeContradicts && typeIsReal && row.typeAlone !== false)) return { real: row.real, dex: row.dex, decisive: true };
+  if (typeContradicts && typeIsReal) return { real: row.real, dex: row.dex, decisive: false };
   if (typeIsReal && seen.length < claimedTypes.length) return { real: row.real, dex: row.dex, decisive: false };
   return null;
 }
@@ -5507,6 +5508,6 @@ if (typeof window !== 'undefined') {
     PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
-    speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
+    speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, LOOKALIKE_NAMES: Object.keys(NAME_LOOKALIKES), speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

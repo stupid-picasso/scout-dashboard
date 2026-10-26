@@ -23,6 +23,18 @@ check("exact name untouched", px.canonical_name("Pikachu") == ("Pikachu", False)
 check("case fixed", px.canonical_name("pikachu") == ("Pikachu", True))
 check("form prefix untouched", px.canonical_name("Alolan Raichu") == ("Alolan Raichu", False))
 check("unknown far name untouched", px.canonical_name("Zzyzxqq") == ("Zzyzxqq", False))
+import contextlib, io, pathlib
+_orig_read = pathlib.Path.read_text
+def _no_mechanics(self, *a, **k):
+    if self.name == "pokemon-mechanics.js":
+        raise OSError("missing")
+    return _orig_read(self, *a, **k)
+pathlib.Path.read_text = _no_mechanics
+_out = io.StringIO()
+with contextlib.redirect_stdout(_out):
+    px._all_species_names()
+pathlib.Path.read_text = _orig_read
+check("a missing species list is reported, not silent", "WARNING" in _out.getvalue(), _out.getvalue())
 for good in ("Meltan", "Cursola", "Wiglett", "Wugtrio"):   # past Gen 5, and each one letter from a Gen 1-5 name
     check("gen6+ name not rewritten: " + good, px.canonical_name(good) == (good, False), str(px.canonical_name(good)))
 check("short unrelated not mangled", px.canonical_name("Xyz")[1] is False)

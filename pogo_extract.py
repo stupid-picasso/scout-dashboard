@@ -873,8 +873,9 @@ def _all_species_names():
         end = js.index("};", start)
         for _dex, nm in re.findall(r'(\d+)\s*:\s*"([^"]+)"', js[start:end]):
             names.setdefault(nm.lower(), nm)
-    except (OSError, ValueError):
-        pass
+    except (OSError, ValueError) as e:
+        print(f"[Clean] WARNING: could not read the full species list from pokemon-mechanics.js ({e}); "
+              "names past Gen 5 may be rewritten to older species")
     return names
 
 
