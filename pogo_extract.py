@@ -862,6 +862,22 @@ _NAME_LOWER = None
 _POSITIVE_FLAGS = ("favorite",)  # a missed heart is likelier than an invented one, so any sighting that shows it wins
 
 
+def _all_species_names():
+    """Every species the game has (dex 1-1025), lowercase -> display name. NAME_TO_DEX stops at Gen 5, and a
+    name missing from the table gets "corrected" to its nearest neighbour (Meltan -> Metang, Cursola -> Corsola,
+    Wiglett -> Diglett, Wugtrio -> Dugtrio), so the full list comes from pokemon-mechanics.js (DEX_NAMES)."""
+    names = {n.lower(): n for n in NAME_TO_DEX}
+    try:
+        js = (Path(__file__).resolve().parent / "pokemon-mechanics.js").read_text(encoding="utf-8")
+        start = js.index("DEX_NAMES")
+        end = js.index("};", start)
+        for _dex, nm in re.findall(r'(\d+)\s*:\s*"([^"]+)"', js[start:end]):
+            names.setdefault(nm.lower(), nm)
+    except (OSError, ValueError):
+        pass
+    return names
+
+
 def canonical_name(name):
     """Fixes OCR near-misses in a species name ("Sheigon" -> "Shelgon"). A name that already is, or
     contains, a known species (forms such as "Alolan Raichu") is left alone; so is anything with no
@@ -870,7 +886,7 @@ def canonical_name(name):
     if not name or not isinstance(name, str):
         return name, False
     if _NAME_LOWER is None:
-        _NAME_LOWER = {n.lower(): n for n in NAME_TO_DEX}
+        _NAME_LOWER = _all_species_names()
     low = name.strip().lower()
     if low in _NAME_LOWER:
         return _NAME_LOWER[low], _NAME_LOWER[low] != name

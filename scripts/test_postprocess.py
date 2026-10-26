@@ -23,6 +23,8 @@ check("exact name untouched", px.canonical_name("Pikachu") == ("Pikachu", False)
 check("case fixed", px.canonical_name("pikachu") == ("Pikachu", True))
 check("form prefix untouched", px.canonical_name("Alolan Raichu") == ("Alolan Raichu", False))
 check("unknown far name untouched", px.canonical_name("Zzyzxqq") == ("Zzyzxqq", False))
+for good in ("Meltan", "Cursola", "Wiglett", "Wugtrio"):   # past Gen 5, and each one letter from a Gen 1-5 name
+    check("gen6+ name not rewritten: " + good, px.canonical_name(good) == (good, False), str(px.canonical_name(good)))
 check("short unrelated not mangled", px.canonical_name("Xyz")[1] is False)
 check("type upper", px.normalize_type("NORMAL / FLYING") == "Normal / Flying")
 check("type lower", px.normalize_type("electric") == "Electric")

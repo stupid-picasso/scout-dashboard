@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.194</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.196</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2912,6 +2912,9 @@
             <div style="font:11.5px/1.5 var(--font-body);color:var(--ink-500);margin-top:5px;text-wrap:pretty">{{ q.why }}</div>
             <div style="font:11.5px/1.5 var(--font-body);color:var(--type-water);margin-top:4px;text-wrap:pretty">{{ q.fix }}</div>
             <div style="font:11px var(--font-display);color:var(--ink-400);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ q.names }}</div>
+            <sc-if value="{{ q.canFix }}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ q.onFix }}" class="om-press" style="margin-top:9px;min-height:44px;padding:0 16px;border:0;border-radius:10px;background:var(--type-water);color:#fff;font:700 12px var(--font-display);letter-spacing:.05em;cursor:pointer">RENAME</button>
+            </sc-if>
           </div>
         </sc-for>
       </div>
@@ -5575,7 +5578,8 @@ class Component extends DCLogic {
     // A height that no Pokemon of the species can have is a misread, and a misread must not be what lets one go.
     const sz = this.sizeOf(p);
     const sizeBad = !!(p.height && sz && sz.valid === false);
-    if (!ivsOk || !avgOk || sizeBad || (c.dupIdx && c.dupIdx.has(String(p.idx)))) out.push('Data inconsistent: check this Pokemon');
+    const look = this.lookalikeOf(p);
+    if (!ivsOk || !avgOk || sizeBad || look || (c.dupIdx && c.dupIdx.has(String(p.idx)))) out.push(look ? 'Data inconsistent: the name ' + p.name + ' may really be ' + look.real : 'Data inconsistent: check this Pokemon');
     if (sum.every(Number.isFinite) && !Number.isFinite(p.great && p.great.rankPct)) out.push('League rank not computed yet');
     if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
     if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
@@ -6600,6 +6604,35 @@ class Component extends DCLogic {
   // Every feature in this app degrades in a specific way when a specific field
   // is missing, so this reports the gaps by CONSEQUENCE rather than as a flat
   // list of nulls: what is broken, and what fixes it.
+  // A Pokemon named after the older species one letter away (an earlier extractor release rewrote Meltan to
+  // Metang, Cursola to Corsola, Wiglett to Diglett, Wugtrio to Dugtrio). See `lookalikeFor` in the mechanics.
+  lookalikeOf(p) {
+    const m = this.mechanics;
+    if (!m || !m.lookalikeFor || !p || !p.name || !/^(metang|corsola|diglett|dugtrio)$/i.test(String(p.name).trim())) return null;   // cheap pre-check: this runs for every Pokemon
+    return m.lookalikeFor(p.name, this.typeOf(p), p.height, p.form);
+  }
+
+  fixLookalikeNames() {
+    const roster = this.effectiveRosterForMatch();
+    const hits = roster.map(p => ({ p, look: this.lookalikeOf(p) })).filter(x => x.look);
+    if (!hits.length) return;
+    const tally = {};
+    hits.forEach(x => { const k = x.p.name + ' \u2192 ' + x.look.real; tally[k] = (tally[k] || 0) + 1; });
+    const summary = Object.keys(tally).map(k => tally[k] + ' \u00d7 ' + k).join(', ');
+    this.askConfirm({
+      title: 'Rename ' + hits.length + ' Pokemon?',
+      message: summary + '. The type or size on these does not fit the name they carry. Their IVs stay unmeasured until you appraise them, and ranks are recalculated for the right species. Do not do this if you really own the older species.',
+      actions: [
+        { label: 'RENAME ' + hits.length, style: 'primary', run: () => {
+          const overrides = { ...(this.state.ivOverrides || {}) };
+          hits.forEach(({ p, look }) => { overrides[p.idx] = { ...(overrides[p.idx] || {}), name: look.real, dex: look.dex, form: '' }; });
+          this.setState({ ivOverrides: overrides }, () => { this.closeConfirm(); try { this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+        } },
+        { label: 'LEAVE THEM', style: 'neutral', run: () => this.closeConfirm() }
+      ]
+    });
+  }
+
   dataQualityIssues() {
     const roster = this.effectiveRosterForMatch();
     const mk = (key, label, why, fix, test) => {
@@ -6607,6 +6640,9 @@ class Component extends DCLogic {
       return hits.length ? { key, label, why, fix, count: hits.length, names: hits.slice(0, 8).map(p => p.name || '?').join(', ') } : null;
     };
     return [
+      mk('lookalike', 'Name may be wrong', 'The type or size does not fit the name (Metang that is Steel only, a Diglett that is Water). An old extractor release rewrote some newer species to older ones. They are locked from every transfer list meanwhile.',
+        'Tap RENAME to correct them, or leave them if you really own that species.',
+        p => !!this.lookalikeOf(p)),
       mk('noiv', 'No IVs at all', 'These are excluded from every ranking, the evolve queue and raid counters.',
         'Appraise in game, then run the IV import.',
         p => !Number.isFinite(p.atkIV)),
@@ -17053,6 +17089,8 @@ class Component extends DCLogic {
       } : null,
       dataQualityRows: dataQuality.map(i => ({
         label: i.label, why: i.why, fix: i.fix,
+        canFix: i.key === 'lookalike',
+        onFix: () => this.fixLookalikeNames(),
         count: String(i.count),
         names: i.names,
         onShow: () => this.goToTab('roster')

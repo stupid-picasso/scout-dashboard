@@ -5342,6 +5342,36 @@ function sizeInfoFor(dex, form, heightM) {
   };
 }
 
+// Species one letter from an older species, which an earlier extractor release rewrote to the older name
+// (its table stopped at Gen 5). `claimed` is the name now on the record; `real` is what the Pokemon probably is.
+// Returns null when nothing contradicts the name. `decisive` is true when the typing or the height cannot belong
+// to the claimed species; false when the record merely fits both (a lone "Steel" is a Meltan or a Metang that
+// lost its Psychic badge on screen).
+const NAME_LOOKALIKES = {
+  metang: { real: 'Meltan', dex: 808, types: ['steel'] },
+  corsola: { real: 'Cursola', dex: 864, types: ['ghost'] },
+  diglett: { real: 'Wiglett', dex: 960, types: ['water'] },
+  dugtrio: { real: 'Wugtrio', dex: 961, types: ['water'] }
+};
+function lookalikeFor(name, typeText, heightM, form) {
+  const row = NAME_LOOKALIKES[String(name || '').trim().toLowerCase()];
+  if (!row || (form && String(form).toLowerCase() !== 'normal')) return null;
+  const claimedDex = resolveDexByName(name);
+  const seen = String(typeText || '').split(/[\/,&]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+  const info = claimedDex != null ? speciesInfo(name, '') : null;
+  const claimedTypes = info ? info.types.map(t => t.toLowerCase()) : [];
+  const h = heightM != null && heightM !== '' ? heightM : null;
+  const sizeSaysReal = h != null && claimedDex != null && (() => {
+    const a = sizeInfoFor(claimedDex, '', h), b = sizeInfoFor(row.dex, '', h);
+    return !!(a && b && a.valid === false && b.valid === true);
+  })();
+  const typeContradicts = seen.length > 0 && !seen.every(t => claimedTypes.indexOf(t) >= 0);
+  const typeIsReal = seen.length > 0 && seen.every(t => row.types.indexOf(t) >= 0);
+  if (sizeSaysReal || (typeContradicts && typeIsReal)) return { real: row.real, dex: row.dex, decisive: true };
+  if (typeIsReal && seen.length < claimedTypes.length) return { real: row.real, dex: row.dex, decisive: false };
+  return null;
+}
+
 function pvpFastMoveFor(id) {
   const r = PVP_FAST_MOVES[String(id || '').toLowerCase().replace(/\+$/, '').replace(/[\s]+/g, '_')];
   return r ? { type: r[0], power: r[1], turns: r[2], energyGain: r[3] } : null;
@@ -5477,6 +5507,6 @@ if (typeof window !== 'undefined') {
     PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
-    speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
+    speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

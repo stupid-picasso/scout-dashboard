@@ -393,3 +393,7 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - Cut list headline shows the line (weakest kept IV / rank) and the average IV of the kept set.
 - Briefing: no model is pinned (rotation unchanged); on a cooldown-only 429 it waits the cooldown once (`aiCooldownMs`) and retries; label "Waiting for the AI...".
 - Fuzz: `fuzz_keep.js seeds per mins strict|float`. strict = no target, every soft reason must hold (cut-list outputs excepted); float = target 300.
+
+## Look-alike species names (Meltan -> Metang bug)
+- Cause: `pogo_extract.py` `NAME_TO_DEX` stops at Gen 5, so `canonical_name` fuzzy-"corrected" unknown newer species to the nearest old one (cutoff 0.82): Meltan->Metang, Cursola->Corsola, Wiglett->Diglett, Wugtrio->Dugtrio (the only four collisions in dex 1-1025). Fixed: names now come from the full DEX_NAMES in `pokemon-mechanics.js` (`_all_species_names`); regression test in `test_postprocess.py`.
+- Existing records: `lookalikeFor` (mechanics) / `lookalikeOf` (app) flag a Metang/Corsola/Diglett/Dugtrio whose type or height cannot belong to it. Those are hard-locked ("Data inconsistent: the name X may really be Y") and listed under Intel > WHAT IS INCOMPLETE with a RENAME button (`fixLookalikeNames`, writes `ivOverrides[idx] = {name, dex, form}` after a confirm). A lone "Steel" Metang is only suspected (could be a Metang that lost its Psychic badge); the confirm text says so.

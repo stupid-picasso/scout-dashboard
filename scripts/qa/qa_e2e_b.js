@@ -477,6 +477,31 @@ module.exports = async function suiteB() {
     expect(r.keep.L1.length && r.keep.L2.length && r.keep.L3.length, 'locks stay locked');
     await s.set({ cutTarget: 300 });
   });
+  await T('LOOK-01', 'Safety', 'A Meltan carrying the name Metang (older extractor bug) is locked and offered a rename; a real Metang is left alone', async () => {
+    const mk = (idx, dex, name, extra) => ({ idx, name, dex, cp: 500, hp: 60, atkIV: 5, defIV: 5, staIV: 5, ivAvg: 33, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const meltan = mk('lk1', 375, 'Metang', { type: 'Steel', height: '0.21m', weight: '8.1kg' });
+    const meltanTypeOnly = mk('lk2', 375, 'Metang', { type: 'Steel' });
+    const realMetang = mk('lk3', 375, 'Metang', { type: 'Steel / Psychic', height: '1.2m', weight: '200kg' });
+    const diglett = mk('lk4', 50, 'Diglett', { type: 'Water' });
+    const realDiglett = mk('lk5', 50, 'Diglett', { type: 'Ground', height: '0.2m' });
+    const r = await Promise.all([meltan, meltanTypeOnly, realMetang, diglett, realDiglett].map(p => s.call('lookalikeOf', p)));
+    expect(r[0] && r[0].real === 'Meltan' && r[0].decisive, 'size says Meltan: ' + JSON.stringify(r[0]));
+    expect(r[1] && r[1].real === 'Meltan' && !r[1].decisive, 'a lone Steel is only suspected: ' + JSON.stringify(r[1]));
+    expect(r[2] === null, 'a real Metang is left alone: ' + JSON.stringify(r[2]));
+    expect(r[3] && r[3].real === 'Wiglett' && r[3].decisive, 'a Water Diglett is a Wiglett: ' + JSON.stringify(r[3]));
+    expect(r[4] === null, 'a real Diglett is left alone: ' + JSON.stringify(r[4]));
+    const why = await s.call('keepReasons', meltanTypeOnly);
+    expect(why.some(x => /may really be Meltan/.test(x)), 'locked from every transfer list: ' + why.join());
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), meltan, meltanTypeOnly, realMetang] }); await s.page.waitForTimeout(300);
+    await s.call('fixLookalikeNames'); await s.page.waitForTimeout(400);
+    const btn = s.page.getByText('RENAME 2', { exact: true }); expect(await btn.count() > 0, 'confirm sheet offers RENAME 2');
+    await btn.first().click(); await s.page.waitForTimeout(700);
+    const eff = (await s.call('effectiveRosterForMatch')).filter(p => /^lk[123]$/.test(String(p.idx)));
+    const byId = Object.fromEntries(eff.map(p => [p.idx, p]));
+    expect(byId.lk1.name === 'Meltan' && byId.lk1.dex === 808 && byId.lk2.name === 'Meltan' && byId.lk3.name === 'Metang', 'renamed the two, kept the real Metang: ' + eff.map(p => p.idx + ':' + p.name).join());
+    await s.set({ addedPokemon: st0.addedPokemon || [], ivOverrides: st0.ivOverrides || {} });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
