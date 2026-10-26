@@ -504,6 +504,26 @@ module.exports = async function suiteB() {
     expect(byId.lk1.name === 'Meltan' && byId.lk1.dex === 808 && byId.lk2.name === 'Meltan' && byId.lk3.name === 'Metang', 'renamed the two, kept the real Metang: ' + eff.map(p => p.idx + ':' + p.name).join());
     await s.set({ addedPokemon: st0.addedPokemon || [], ivOverrides: st0.ivOverrides || {} });
   });
+  await T('LOOK-02', 'Bulk', 'Bulk page has a Name check: a Metang that is really a Meltan can be renamed in one tap, or kept', async () => {
+    const mk = (idx, dex, name, extra) => ({ idx, name, dex, cp: 339, hp: 38, atkIV: null, defIV: null, staIV: null, ivAvg: null, ivMeasured: false, lvlMin: 10, lvlMax: 10, great: { rankPct: null }, ultra: { rankPct: null }, little: { rankPct: null }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), mk('nm1', 375, 'Metang', { type: 'Steel' }), mk('nm2', 375, 'Metang', { type: 'Steel', cp: 507, hp: 51 })], bulkSkip: [], tab: 'bulk' });
+    await s.page.waitForTimeout(700);
+    const txt = await s.text();
+    expect(/NAME CHECK/.test(txt) && /2 TO REVIEW/.test(txt), 'Name check shows both: ' + txt.slice(0, 400));
+    const rename = s.page.locator('[aria-label="Rename Metang to Meltan"]');
+    expect(await rename.count() === 2, 'a rename option per Pokemon: ' + await rename.count());
+    await rename.first().click(); await s.page.waitForTimeout(900);
+    const keep = s.page.locator('[aria-label="Keep Metang as Metang"]');
+    expect(await keep.count() === 1, 'one left to review');
+    await keep.first().evaluate(el => el.click()); await s.page.waitForTimeout(900);   // the Undo toast from the rename can sit over the button
+    const eff = (await s.call('effectiveRosterForMatch')).filter(p => /^nm[12]$/.test(String(p.idx)));
+    const by = Object.fromEntries(eff.map(p => [p.idx, p]));
+    const first = by.nm1.name === 'Meltan' ? by.nm1 : by.nm2, other = first === by.nm1 ? by.nm2 : by.nm1;
+    expect(first.name === 'Meltan' && first.dex === 808 && other.name === 'Metang', 'one renamed, one kept: ' + eff.map(p => p.idx + ':' + p.name).join());
+    expect(!(await s.call('lookalikeOf', other)), 'a kept Metang is no longer flagged');
+    await s.set({ addedPokemon: st0.addedPokemon || [], ivOverrides: st0.ivOverrides || {}, bulkSkip: [], tab: 'today' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

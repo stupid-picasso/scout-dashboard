@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.197</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.199</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -5808,7 +5808,7 @@ class Component extends DCLogic {
     const st = this.state, c = this._bulkBadge;
     if (c && c.r === st.roster && c.a === st.addedPokemon && c.o === st.ivOverrides && c.k === st.bulkSkip && c.m === !!this.mechanics) return c.v;
     let v = '';
-    try { const n = this.bulkFormPending().length + this.bulkTypePending().length; v = n > 0 ? String(n > 99 ? '99+' : n) : ''; } catch (e) {}
+    try { const n = this.bulkFormPending().length + this.bulkTypePending().length + this.bulkNamePending().length; v = n > 0 ? String(n > 99 ? '99+' : n) : ''; } catch (e) {}
     this._bulkBadge = { r: st.roster, a: st.addedPokemon, o: st.ivOverrides, k: st.bulkSkip, m: !!this.mechanics, v };
     return v;
   }
@@ -5866,6 +5866,29 @@ class Component extends DCLogic {
       };
     });
     const typeTotal = this.bulkTypePending().length;
+    const namePending = this.bulkNamePending();
+    const nameRows = namePending.slice(0, 12).map(p => {
+      const look = this.lookalikeOf(p);
+      const fits = dex => { const b = m.BASE_STATS[dex]; if (!b || !p.cp || !p.hp || !m.solveIVs) return null; try { return m.solveIVs(b, p.cp, p.hp).length > 0; } catch (e) { return null; } };
+      const row = (name, dex, isReal) => {
+        const info = m.speciesInfo(name, ''), base = m.BASE_STATS[dex], ft = fits(dex);
+        return {
+          key: isReal ? 'real' : 'keep', label: isReal ? 'Rename to ' + name : 'Keep as ' + name, aria: (isReal ? 'Rename ' + p.name + ' to ' : 'Keep ' + p.name + ' as ') + name,
+          types: info ? info.types.join(' / ') : '?', stats: base ? base.join(' / ') : '',
+          fit: ft === true ? 'Fits CP/HP' : ft === false ? 'Does not fit CP/HP' : '', fitColor: ft === false ? 'var(--ios-red)' : 'var(--ios-green)',
+          tag: isReal ? (look.decisive ? 'FITS THE TYPE OR SIZE' : 'BEST GUESS') : 'CURRENT', border: isReal ? 'var(--ios-blue)' : 'var(--line-200)',
+          onPick: () => (isReal ? this.bulkRenameSpecies(p, look) : this.bulkKeepSpecies(p))
+        };
+      };
+      return {
+        key: 'n' + p.idx, name: p.name, cp: p.cp != null ? 'CP ' + p.cp : 'CP ?', hp: p.hp != null ? 'HP ' + p.hp : '',
+        ivText: this.ivsOf(p) ? this.ivsOf(p).join(' / ') + (p.ivMeasured ? '' : ' (solved)') : 'not known yet',
+        scanned: p.type ? 'Scanned type: ' + p.type : 'No scanned type on file', current: p.height ? 'Height ' + p.height : 'No height on file',
+        spriteRef: this.makeSpriteRefByDex(look.dex, ''), initial: String(look.real).charAt(0),
+        onSkip: () => this.setState({ bulkSkip: [...(this.state.bulkSkip || []), p.idx] }),
+        options: [row(look.real, look.dex, true), row(p.name, p.dex, false)]
+      };
+    });
     return [{
       key: 'form', title: 'REGIONAL FORM', count: pending.length, isFormCheck: true, isTypeCheck: false, typeRows: [],
       blurb: 'Same name, different form: Kantonian vs Alolan Ninetales have different types, base stats, moves and PvP/raid ranks. Pick the right form for each Pokemon. Compare the sprite, the types and whether the CP/HP fit.',
@@ -5877,6 +5900,12 @@ class Component extends DCLogic {
       blurb: 'These Pokemon have no type from a scan and none could be looked up from the species table. Pick their type(s). Pokemon scanned from a screenshot or recording get their type from the screen automatically.',
       empty: typeTotal === 0, rows: [], typeRows,
       more: typeTotal > typeRows.length, remaining: typeTotal - typeRows.length,
+      showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
+    }, {
+      key: 'name', title: 'NAME CHECK', count: namePending.length, isFormCheck: false, isTypeCheck: false, typeRows: [],
+      blurb: 'An old extractor release rewrote some newer species to older look-alikes (Meltan became Metang, Cursola became Corsola, Wiglett became Diglett, Wugtrio became Dugtrio). These carry a name whose type or size does not fit. Pick the right species for each; the CP/HP check shows which species can really have that CP and HP. They stay locked from every transfer list until you answer.',
+      empty: namePending.length === 0, rows: nameRows,
+      more: namePending.length > nameRows.length, remaining: namePending.length - nameRows.length,
       showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
     }];
   }
@@ -7622,8 +7651,46 @@ class Component extends DCLogic {
   // Metang, Cursola to Corsola, Wiglett to Diglett, Wugtrio to Dugtrio). See `lookalikeFor` in the mechanics.
   lookalikeOf(p) {
     const m = this.mechanics;
-    if (!m || !m.lookalikeFor || !p || !p.name || (m.LOOKALIKE_NAMES || []).indexOf(String(p.name).trim().toLowerCase()) < 0) return null;   // cheap pre-check: this runs for every Pokemon
+    if (!m || !m.lookalikeFor || !p || !p.name || p.nameReviewed || (m.LOOKALIKE_NAMES || []).indexOf(String(p.name).trim().toLowerCase()) < 0) return null;   // cheap pre-check: this runs for every Pokemon
     return m.lookalikeFor(p.name, this.typeOf(p), p.height, p.form);
+  }
+
+  // What a rename to the real species writes. IVs solved from CP/HP depended on the wrong base stats, so they are
+  // re-solved (one match) or cleared (none or several); a measured appraisal is a fact and stays.
+  lookalikePatch(p, look) {
+    const m = this.mechanics;
+    const patch = { name: look.real, dex: look.dex, form: '', nameReviewed: true };
+    const base = m && m.BASE_STATS ? m.BASE_STATS[look.dex] : null;
+    if (!base || p.ivMeasured || !(p.cp && p.hp) || !m.solveIVs) return patch;
+    const cands = m.solveIVs(base, p.cp, p.hp);
+    if (cands.length === 1) {
+      const c = cands[0];
+      Object.assign(patch, { atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV, ivAvg: (c.atkIV + c.defIV + c.staIV) / 45 * 100, lvlMin: c.level, lvlMax: c.level, ivSolved: true, ivCandidates: 1, ivRange: null });
+    } else {
+      Object.assign(patch, { atkIV: null, defIV: null, staIV: null, ivAvg: null, ivSolved: false, ivCandidates: cands.length, ivRange: null });
+    }
+    return patch;
+  }
+
+  bulkNamePending() {
+    const skip = new Set(this.state.bulkSkip || []);
+    return this.effectiveRosterForMatch().filter(p => !skip.has(p.idx) && this.lookalikeOf(p))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
+  }
+
+  bulkRenameSpecies(p, look) {
+    this.bulkAnimateOut('n' + p.idx, () => {
+      this.offerUndo(p.name + ' renamed to ' + look.real, ['ivOverrides']);
+      const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], ...this.lookalikePatch(p, look) } };
+      this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+    });
+  }
+
+  bulkKeepSpecies(p) {
+    this.bulkAnimateOut('n' + p.idx, () => {
+      const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], nameReviewed: true } };
+      this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); } catch (e) {} });
+    });
   }
 
   fixLookalikeNames() {
@@ -7641,7 +7708,7 @@ class Component extends DCLogic {
       actions: [
         { label: 'RENAME ' + hits.length, style: 'primary', run: () => {
           const overrides = { ...(this.state.ivOverrides || {}) };
-          hits.forEach(({ p, look }) => { overrides[p.idx] = { ...(overrides[p.idx] || {}), name: look.real, dex: look.dex, form: '' }; });
+          hits.forEach(({ p, look }) => { overrides[p.idx] = { ...(overrides[p.idx] || {}), ...this.lookalikePatch(p, look) }; });
           this.setState({ ivOverrides: overrides }, () => { this.closeConfirm(); try { this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
         } },
         { label: 'LEAVE THEM', style: 'neutral', run: () => this.closeConfirm() }
@@ -7657,7 +7724,7 @@ class Component extends DCLogic {
     };
     return [
       mk('lookalike', 'Name may be wrong', 'The type or size does not fit the name (Metang that is Steel only, a Diglett that is Water). An old extractor release rewrote some newer species to older ones. They are locked from every transfer list meanwhile.',
-        'Tap RENAME to correct them, or leave them if you really own that species.',
+        'Tap RENAME to correct them (or use Bulk, Name check, to choose one by one), or leave them if you really own that species.',
         p => !!this.lookalikeOf(p)),
       mk('noiv', 'No IVs at all', 'These are excluded from every ranking, the evolve queue and raid counters.',
         'Appraise in game, then run the IV import.',
