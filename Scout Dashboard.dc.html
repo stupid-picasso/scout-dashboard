@@ -6215,6 +6215,12 @@ class Component extends DCLogic {
   //  - moves: whether it knows PvPoke's recommended fast + charged moves
   // tierRank: S 0, A 1, B 2, C 3; 4 = PvPoke does not rank it in this league;
   // 2.5 = no tier data exists for the league. Little/Master carry only PvPoke's top 80.
+  // The species a league rank is FOR: a Meltan's Great League rank is Melmetal's, so its tier and moves are too.
+  pvpFormName(p, leagueKey) {
+    const lg = p && p[leagueKey];
+    return leagueKey !== 'little' && lg && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
+  }
+
   pvpAssess(p, leagueKey, tableKey) {
     const m = this.mechanics;
     const tk = tableKey || leagueKey;
@@ -6224,7 +6230,7 @@ class Component extends DCLogic {
     const hasTierData = leagueKey === 'great' || leagueKey === 'ultra' || leagueKey === 'little' || leagueKey === 'master';
     // The rank is for the form it names (a Jigglypuff's Great League rank is Wigglytuff's), so the tier and
     // the recommended moves come from that form too.
-    const formName = leagueKey !== 'little' && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
+    const formName = this.pvpFormName(p, leagueKey);
     const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(formName, shadow, tk, p.form) : null;
     const order = { S: 0, A: 1, B: 2, C: 3 };
     const tierRank = !hasTierData ? 2.5 : (tier ? order[tier.tier] : 4);
@@ -6236,6 +6242,33 @@ class Component extends DCLogic {
       wanted, missing, movesOk: ms ? missing.length === 0 : null,
       // IVs still a guess from CP/HP (not measured from the appraisal screen)
       confirmed: !this.needsAppraisal(p) };
+  }
+
+  // Per species and league: the owned copies ranked best first, from the same ranks the PvP page shows. The chat gets
+  // these as facts: asked "which Meltan do I evolve for Great League" a model reading a long roster picked 714 CP at
+  // "99%" when the page ranks 405 CP at 98.6% and 714 CP at 97.3%.
+  leagueLeaders(roster) {
+    const NAME = { great: 'GREAT', ultra: 'ULTRA' };
+    const groups = {};
+    roster.forEach(p => { if (p.dex != null && !this.needsAppraisal(p)) (groups[p.dex + '_' + (p.form || '')] = groups[p.dex + '_' + (p.form || '')] || []).push(p); });
+    const lines = [];
+    Object.values(groups).forEach(g => {
+      if (g.length < 2) return;
+      ['great', 'ultra'].forEach(lk => {
+        const byTo = {};
+        g.forEach(p => { const a = this.pvpAssess(p, lk); if (a && a.confirmed) { const to = this.pvpFormName(p, lk); (byTo[to] = byTo[to] || []).push({ p, a }); } });
+        Object.keys(byTo).forEach(to => {
+          const rows = byTo[to].sort((x, y) => y.a.rank - x.a.rank);
+          if (rows.length < 2 || rows[0].a.rank < 80 || rows[0].a.tierRank > 3) return;
+          const first = rows[0].p;
+          lines.push({ sort: -rows[0].a.tierRank * 1000 + rows[0].a.rank,
+            text: first.name + (to !== first.name ? ' (evolves to ' + to + ')' : '') + ' ' + NAME[lk] + ': '
+              + rows.slice(0, 3).map((x, i) => '#' + (i + 1) + ' ' + x.p.cp + 'CP ' + x.a.rank.toFixed(1) + '%').join(', ')
+              + (rows[0].a.tier ? ' [' + to + ' is tier ' + rows[0].a.tier + ' here]' : '') });
+        });
+      });
+    });
+    return lines.sort((a, b) => b.sort - a.sort).slice(0, 40).map(x => x.text);
   }
 
   // Best Great/Ultra assessment for a Pokemon: strongest species tier first,
@@ -14325,12 +14358,14 @@ class Component extends DCLogic {
           .filter(p => !topIdx.has(p.idx))
           .sort((a, b) => (a.ivAvg ?? 999) - (b.ivAvg ?? 999) || this.bestRank(a) - this.bestRank(b))
           .slice(0, 150);
+        const leaders = this.leagueLeaders(roster);
         return [
+          leaders.length ? 'LEAGUE LEADERS per species (computed by the app from the same ranks as the PvP tab; the percentages are league rank, NOT IV%). For "which one should I evolve / power up / use for Great or Ultra League" answer from THESE lines and quote the CP and percentage exactly as written, never your own comparison: ' + leaders.join('; ') : '',
           `BEST BY LEAGUE RANK — top 90 of ${roster.length} owned (${roster.length} total — absence here does NOT mean not owned; consult the census above for counts). Flags: L=lucky S=shadow F=favorite. moves is quick/charge1/charge2, "not on file" = never read off a detail-screen scan. dps is real level-50 damage/sec (STAB + type included) when the move database covers it — "dps unknown" means don't claim a damage number for that Pokemon, only that it's unverified. raidRole:Y = clears 90% of this roster's own best attacker ceiling for at least one of its types. dominated:X = another owned copy beats it on every single IV — a safe transfer; "no" only means not strictly outclassed, not that it's good.\n` +
             top.map(chatLine).join('; '),
           `EVERYTHING ELSE — up to 150 more of ${roster.length} owned, not already listed above, sorted lowest IV then lowest rank first (still includes lucky/shadow/favorite \u2014 check the L/S/F flags on each row before ever suggesting a transfer). Check THIS pool before recommending any transfer, and check it for any named Pokemon not found in the list above. Same fields as above: ` +
             cutCandidates.map(chatLine).join('; ')
-        ].join('\n');
+        ].filter(Boolean).join('\n');
       })()
     ].join('\n');
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
@@ -15201,7 +15236,7 @@ class Component extends DCLogic {
     // old rankPct-only sort, same as before this change.
     const tierOrder = { S: 0, A: 1, B: 2, C: 3 };
     const tierFor = (p) => (this.mechanics && this.mechanics.pvpTierFor)
-      ? this.mechanics.pvpTierFor(p.name, this.isShadow(p), leagueKey, p.form)
+      ? this.mechanics.pvpTierFor(this.pvpFormName(p, leagueKey), this.isShadow(p), leagueKey, p.form)
       : null;
     // Order: species tier first, then a complete recommended moveset, then IV
     // rank. A species PvPoke does not rank in Great/Ultra sorts after tier C;
@@ -15846,9 +15881,10 @@ class Component extends DCLogic {
           const tidy = n => String(n).replace(/\b\w/g, ch => ch.toUpperCase());
           const tierColor = t => t === 'S' ? 'var(--type-fairy)' : t === 'A' ? 'var(--grass-700)' : t === 'B' ? 'var(--type-electric)' : 'var(--ink-400)';
           const rows = [['GREAT', 'great'], ['ULTRA', 'ultra']].map(([label, key]) => {
-            const ms = m.pvpMovesetFor(p.name, this.isShadow(p), key, p.form);
+            const formName = this.pvpFormName(p, key);
+            const ms = m.pvpMovesetFor(formName, this.isShadow(p), key, p.form);
             if (!ms) return null;
-            const tier = m.pvpTierFor(p.name, this.isShadow(p), key, p.form);
+            const tier = m.pvpTierFor(formName, this.isShadow(p), key, p.form);
             const moves = [ms.fast, ...ms.charged].map(n => {
               const owned = have.has(n);
               return { name: tidy(n), mark: owned ? '\u2713' : '+', bg: owned ? 'color-mix(in oklab, var(--grass-600) 24%, var(--surface-card))' : 'var(--surface-sunken)', fg: owned ? 'var(--grass-700)' : 'var(--ink-600)' };

@@ -524,6 +524,20 @@ module.exports = async function suiteB() {
     expect(!(await s.call('lookalikeOf', other)), 'a kept Metang is no longer flagged');
     await s.set({ addedPokemon: st0.addedPokemon || [], ivOverrides: st0.ivOverrides || {}, bulkSkip: [], tab: 'today' });
   });
+  await T('LEAD-01', 'PvP', 'Meltan: the PvP badge and the chat leaderboard use the evolved form (Melmetal tier S) and the same ranks the PvP tab shows', async () => {
+    const mk = (idx, cp, iv, g, u) => ({ idx, name: 'Meltan', dex: 808, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: 'Melmetal' }, ultra: { rankPct: u, evolvesTo: 'Melmetal' }, little: { rankPct: null }, scanDate: '2026-10-01' });
+    const list = [mk('m1', 405, [1, 15, 14], 98.6, 90), mk('m2', 714, [3, 15, 15], 97.3, 98.4), mk('m3', 507, [2, 14, 15], 97.3, 96), mk('m4', 293, [0, 15, 15], 97.5, 85)];
+    expect(await s.call('pvpFormName', list[0], 'great') === 'Melmetal', 'rank is for Melmetal');
+    const tier = await s.page.evaluate(() => window.PokemonMechanics.pvpTierFor('Melmetal', false, 'great', ''));
+    expect(tier && tier.tier === 'S', 'Melmetal is S in Great League: ' + JSON.stringify(tier));
+    const leaders = await s.call('leagueLeaders', list);
+    const great = leaders.find(x => /GREAT/.test(x)), ultra = leaders.find(x => /ULTRA/.test(x));
+    expect(great && /#1 405CP 98\.6%, #2 293CP 97\.5%, #3 714CP 97\.3%|#1 405CP 98\.6%, #2 293CP 97\.5%, #3 507CP 97\.3%/.test(great), 'Great leader is the 405 CP, not 714: ' + great);
+    expect(ultra && /#1 714CP 98\.4%/.test(ultra), 'Ultra leader is the 714 CP: ' + ultra);
+    expect(/Melmetal is tier S/.test(great), 'tier is the evolved form: ' + great);
+    const unmeasured = await s.call('leagueLeaders', list.map(p => ({ ...p, ivMeasured: false, ivSolved: true })));
+    expect(unmeasured.length === 0, 'unmeasured copies are never ranked as leaders');
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

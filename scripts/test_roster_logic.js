@@ -489,8 +489,8 @@ function buildLists(roster, bestRank) {
   check('missing move data returns null', m.raidRating([200, 100, 100], [15, 15, 15], 50, null, charged, {}), null);
 
   const ctx = { mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } };
-  ['moveKey', 'lookupMove', 'raidProfile', 'pvpAssess', 'pvpBest', 'isPvpWorthy', 'needsAppraisal', 'leagueUsable', 'bestRank', 'bestLeagueInfo'].forEach(n => {
-    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpAssess: 'p, leagueKey, tableKey', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
+  ['moveKey', 'lookupMove', 'raidProfile', 'pvpFormName', 'pvpAssess', 'pvpBest', 'isPvpWorthy', 'needsAppraisal', 'leagueUsable', 'bestRank', 'bestLeagueInfo'].forEach(n => {
+    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpFormName: 'p, leagueKey', pvpAssess: 'p, leagueKey, tableKey', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
     ctx[n] = new Function(...sig.split(', '), extractMethodBody(SRC, `${n}(${sig}) {`)).bind(ctx);
   });
   ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
