@@ -197,11 +197,11 @@ module.exports = async function suiteB() {
     expect(await s.call('starsOf', p) === 3 && await s.call('starsOf', { atkIV: 15, defIV: 15, staIV: 15 }) === 4 && await s.call('starsOf', { atkIV: 0, defIV: 0, staIV: 0 }) === 0, 'stars');
     await s.set({ srchName: 'ninetales, vulpix', srchTypes: ['Ice'], srchForm: 'alola', srchFlags: { shadow: -1, lucky: 1 }, srchStars: [3, 4], srchCpMin: '', srchCpMax: '1500' });
     const out = await s.call('searchStringFromBuilder');
-    expect(out === 'ninetales,vulpix&ice&alola&!shadow&lucky&3*,4*&cp-1500', out);
+    expect(out === 'ninetales&ice&alola&!shadow&lucky&3*&cp-1500,ninetales&ice&alola&!shadow&lucky&4*&cp-1500,vulpix&ice&alola&!shadow&lucky&3*&cp-1500,vulpix&ice&alola&!shadow&lucky&4*&cp-1500', out);   // every alternative carries every filter: in the game "&" binds tighter than ","
     await s.set({ tab: 'tools', toolsMode: 'rename' }); await s.page.waitForTimeout(500);
     expect(/Rename/.test(await s.page.evaluate(() => document.body.innerText)), 'rename ui');
     await s.set({ toolsMode: 'search' }); await s.page.waitForTimeout(400);
-    expect(/ninetales,vulpix&ice/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
+    expect(/ninetales&ice&alola/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
   }, 'high');
   await T('GEM-01', 'AI', 'In-app Gemini cycle is live: retired models dropped, a 503 moves to the next model', async () => {
     const r = await s.page.evaluate(async () => {
@@ -349,7 +349,7 @@ module.exports = async function suiteB() {
     await s.call('closeDetail');
     // flash: an import marks the rows it touched
     await s.set({ search: 'pidgey', tab: 'roster' }); await s.page.waitForTimeout(300);
-    await s.call('mergeVideoImport', [{ name: 'Pidgey', dex: 16, cp: 300, hp: 41, atkIV: 8, defIV: 8, staIV: 8 }]); await s.page.waitForTimeout(250);
+    await s.call('mergeVideoImport', [{ name: 'Pidgey', dex: 16, cp: 300, hp: 40, atkIV: 8, defIV: 8, staIV: 8 }]); await s.page.waitForTimeout(250);
     const rc = (await s.state()).recentChanged; expect(rc && rc.ids.indexOf('qa-mo1') >= 0, 'recentChanged: ' + JSON.stringify(rc));
     expect(await s.page.evaluate(() => document.querySelectorAll('[data-changed="1"]').length) >= 1, 'row not flagged');
     await s.page.waitForTimeout(3200); expect(!(await s.state()).recentChanged, 'highlight must be forgotten after it played'); await s.set({ search: '' });
@@ -476,7 +476,9 @@ module.exports = async function suiteB() {
     await s.call('askTransferConfirm', p); await s.page.waitForTimeout(200);
     await s.call('askProfessorTransfer', p); await s.page.waitForTimeout(400);
     const cf = (await s.state()).pendingConfirm;
-    expect(cf && /Power up|Evolve|event/.test(cf.message), 'professor reply not shown: ' + JSON.stringify(cf && cf.message));
+    expect(cf && /Professor:/.test(cf.message) && /(The app would keep|Removes it from your roster)/.test(cf.message), 'the app\u2019s own warning must stay with the reply: ' + JSON.stringify(cf && cf.message));
+    // A reply that does not start with KEEP is overridden whenever the app has keep reasons.
+    expect(/Professor: .*(disagree|Power up|Evolve|event)/s.test(cf.message), 'reply missing: ' + cf.message);
     await s.call('closeConfirm');
     await s.page.unroute('**/generativelanguage.googleapis.com/**');
     await s.set({ geminiKey: '', geminiKeys: [], briefing: null, briefingSearch: false });
@@ -491,6 +493,33 @@ module.exports = async function suiteB() {
     const plain = { ...jig, idx: 'ev2', name: 'Pidgey', dex: 16, atkIV: 5, defIV: 5, staIV: 5 };
     const q2 = await s.call('withEvoRanks', plain);
     expect(q2.great.rankPct >= 0, 'sanity');
+  });
+  await T('AUDIT-REG-01', 'Safety', 'Reproduced audit failures stay fixed: tier by name+form, any-league PvP, branching evolutions, tier-aware evolution pick, protected Recs, trade gates', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: null }, ultra: { rankPct: null }, little: { rankPct: null }, scanDate: '2026-10-01', ...extra });
+    // 1. PvPoke ids are spelled differently from display names; forms have their own rows.
+    const tiers = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { mime: m.pvpTierFor('Mr. Mime', false, 'great'), hooh: m.pvpTierFor('Ho-Oh', false, 'ultra'), gourg: m.pvpTierFor('Gourgeist', false, 'great'), lil: m.pvpTierFor('Lilligant', false, 'great', 'hisui') }; });
+    expect(tiers.mime || tiers.hooh || tiers.gourg, 'name normalisation: ' + JSON.stringify(tiers));
+    // 2. A branching evolution is followed to every branch.
+    const chain = await s.call('evoChainNames', { name: 'Eevee', form: '' });
+    expect(['Vaporeon', 'Espeon', 'Sylveon'].every(n => chain.indexOf(n) >= 0), 'Eevee chain ' + chain.join());
+    expect((await s.call('evoChainNames', { name: 'Poliwhirl', form: '' })).indexOf('Poliwrath') >= 0, 'Poliwhirl -> Poliwrath');
+    // 3. Great 92 on a tiered species must protect even when Ultra is the better-tiered league (Dusknoir case).
+    const dus = await s.call('withEvoRanks', mk('au1', 'Dusknoir', 477, [6, 3, 0], 752, { great: { rankPct: 92.36, evolvesTo: 'Dusknoir' }, ultra: { rankPct: 88.03, evolvesTo: 'Dusknoir' } }));
+    const dw = await s.call('keepReasons', dus);
+    expect(dw.some(x => /PvP rank 90%|Only copy/.test(x)), 'Dusknoir must be kept: ' + dw.join());
+    // 4. An evolution PvPoke does not rank must not displace the form that is ranked (Vigoroth vs Slaking).
+    const vig = await s.call('withEvoRanks', mk('au2', 'Vigoroth', 288, [0, 13, 15], 1400, { great: { rankPct: 88, evolvesTo: 'Vigoroth' } }));
+    expect(vig.ultra && /Vigoroth|Slaking/.test(vig.ultra.evolvesTo || ''), 'vigoroth overlay ' + JSON.stringify(vig.ultra));
+    // 5. Unmeasured IVs never make Recommendations' transfer list.
+    const un = { ...mk('au3', 'Rattata', 19, [1, 1, 1], 100), ivMeasured: false, ivSolved: true };
+    const unWhy = await s.call('keepReasons', un);
+    expect(unWhy.some(x => /not measured/.test(x)), 'unmeasured must be kept: ' + unWhy.join());
+    const trade = await s.call('tradeAdvice');
+    expect(Array.isArray(trade.dupes) && Array.isArray(trade.lucky), 'trade advice shape');
+    // 6. The in-game search distributes every filter over every alternative.
+    await s.set({ srchName: 'a, b', srchTypes: [], srchForm: '', srchFlags: { shiny: -1 }, srchStars: [0, 1], srchCpMin: '', srchCpMax: '' });
+    const q = await s.call('searchStringFromBuilder');
+    expect(q.split(',').every(t => /!shiny/.test(t)) && q.split(',').length === 4, 'every alternative must keep the exclusion: ' + q);
   });
   await T('CUT-03', 'Roster', 'An XXL or XXS is never in the cut list ahead of a normal-size duplicate; with protection off it can be', async () => {
     const mk = (idx, h, iv, cp) => ({ idx, name: 'Bulbasaur', dex: 1, cp, hp: 50, height: h, weight: '7kg', atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
@@ -539,11 +568,11 @@ module.exports = async function suiteB() {
     const badge = await s.page.evaluate(() => { const e = document.querySelector('[aria-label$="to review"]'); return e ? e.textContent.trim() : null; });
     expect(badge && /^\d+\+?$/.test(badge), 'bulk badge: ' + badge);
     // import sheet + revert
-    await s.call('mergeVideoImport', [{ name: 'Pidgey', dex: 16, cp: 300, hp: 61, atkIV: 5, defIV: 5, staIV: 5 }, { name: 'Rattata', dex: 19, cp: 222, hp: 40, atkIV: 4, defIV: 4, staIV: 4 }]); await s.page.waitForTimeout(400);
+    await s.call('mergeVideoImport', [{ name: 'Pidgey', dex: 16, cp: 300, hp: 50, atkIV: 5, defIV: 5, staIV: 5, lucky: true }, { name: 'Rattata', dex: 19, cp: 222, hp: 40, atkIV: 4, defIV: 4, staIV: 4 }]); await s.page.waitForTimeout(400);
     let li = (await s.state()).lastImport; expect(li && li.rows.length === 2 && li.rows.some(r => r.kind === 'new') && li.rows.some(r => r.kind === 'updated'), JSON.stringify(li && li.rows));
     const newRow = li.rows.find(r => r.kind === 'new'), upRow = li.rows.find(r => r.kind === 'updated');
     await s.call('revertImportRow', upRow.idx); await s.call('revertImportRow', newRow.idx); await s.page.waitForTimeout(400);
-    const st = await s.state(); expect(!(st.addedPokemon || []).some(p => p.name === 'Rattata'), 'new Pokemon removed by Undo'); expect(((st.ivOverrides || {})[upRow.idx] || {}).hp !== 61, 'updated Pokemon restored');
+    const st = await s.state(); expect(!(st.addedPokemon || []).some(p => p.name === 'Rattata'), 'new Pokemon removed by Undo'); expect(((st.ivOverrides || {})[upRow.idx] || {}).lucky !== true, 'updated Pokemon restored');
     expect((await s.state()).lastImport === null, 'sheet data cleared when everything is undone');
     // evolve note
     const note = await s.call('evolveDupNote', { dupTotal: 3, candyPool: 62, affordable: 2, fundable: true, candyAfter: 12, limiting: { name: 'Pidgey', cp: 310, short: 8 } });

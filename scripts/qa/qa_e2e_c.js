@@ -264,6 +264,8 @@ module.exports = async function suiteC() {
   }, 'high');
   await T('LOG-04', 'Log', 'Thirty synthetic days draw four correct growth charts', async () => {
     const hist = []; for (let i = 0; i < 30; i++) { const d = new Date(Date.UTC(2026, 8, 30 - i)).toISOString().slice(0, 10) + ' 12:00'; hist.push({ date: d, stardust: 100000 + (29 - i) * 1000, count: 60 + (29 - i), avgIV: (70 + (29 - i) * 0.5).toFixed(1), lucky: 3, hundo: 1 + Math.floor((29 - i) / 5), dex: 40 + (29 - i) }); }
+    // The app also logs today on a 6 s timer after start; stop it so the chart holds exactly the 30 synthetic days.
+    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.dailyLogSnapshot) { f.stateNode.logic.dailyLogSnapshot = () => {}; return; } } });
     await s.set({ history: hist }); await s.call('goToTab', 'progress'); await s.page.waitForTimeout(700);
     const charts = await s.page.locator('svg[role=img]').evaluateAll(els => els.map(e => ({ label: e.getAttribute('aria-label'), d: e.querySelectorAll('path')[1].getAttribute('d') })));
     expect(charts.length === 4, 'charts=' + charts.length); const nums = d => d.match(/[ML]/g).length; expect(charts.every(c => nums(c.d) === 30), 'points ' + charts.map(c => nums(c.d)));

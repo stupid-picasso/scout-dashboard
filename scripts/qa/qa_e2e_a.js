@@ -122,7 +122,7 @@ module.exports = async function suiteA() {
   s = await session({ feed: false });
   await s.load(SMOKE); await s.go('ROSTER');
   await T('GES-01', 'Gestures', 'Swipe left reveals Transfer / Remove actions', async () => { const row = s.page.locator('[data-swipe-row]').first(); const b = await row.boundingBox(); const cdp = await s.ctx.newCDPSession(s.page); const y = b.y + b.height / 2; await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: b.x + b.width - 30, y }] }); for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: b.x + b.width - 30 - i * 25, y }] }); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await s.page.waitForTimeout(400); expect((await row.evaluate(e => e.dataset.swipeOpen)) === '1'); }, 'critical');
-  await T('GES-02', 'Gestures', 'Tapping elsewhere closes an open swipe row (iOS list behaviour)', async () => { await s.page.mouse.click(215, 400); await s.page.waitForTimeout(400); expect((await s.page.locator('[data-swipe-open="1"]').count()) === 0, 'row still open'); });
+  await T('GES-02', 'Gestures', 'Tapping elsewhere closes an open swipe row (iOS list behaviour)', async () => { await s.page.locator('[data-swipe-row]').nth(3).click(); await s.page.waitForTimeout(400); expect((await s.page.locator('[data-swipe-open="1"]').count()) === 0, 'row still open'); });
   await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(SMOKE); await s.go('ROSTER');
   await T('GES-03', 'Gestures', 'Long press opens the action menu', async () => { const row = s.page.locator('[data-swipe-row]').nth(1); const b = await row.boundingBox(); const cdp = await s.ctx.newCDPSession(s.page); await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: b.x + 100, y: b.y + b.height / 2 }] }); await s.page.waitForTimeout(800); const open = await s.page.getByText('What would you like to do?').count(); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await s.page.waitForTimeout(400); expect(open === 1 && await s.page.getByText('What would you like to do?').count() === 1, 'open=' + open); }, 'critical');
   await T('GES-04', 'Gestures', 'Vertical scrolling is not hijacked by the swipe handler', async () => { await s.page.keyboard.press('Escape'); const y0 = await s.page.evaluate(() => window.scrollY); await s.page.mouse.wheel(0, 400); await s.page.waitForTimeout(300); expect(true); });
@@ -139,11 +139,18 @@ module.exports = async function suiteA() {
     await s.page.getByRole('button', { name: 'Done', exact: true }).click(); await s.page.waitForTimeout(300);
     expect((await s.state()).selectMode === false && (await s.state()).selectedIdx.length === 0, 'did not exit');
   }, 'high');
-  await T('ROS-13', 'Roster', 'Bulk transfer removes the selection, adds 1 candy per Pokemon, and Undo restores it all', async () => {
+  await T('ROS-13', 'Roster', 'Bulk transfer asks first, only moves the unprotected, adds 1 candy each, and Undo restores it all', async () => {
+    // Two weak, unranked, over-500-CP Luvdisc (no league or Little Cup rank) next to a strong Normal attacker, so nothing protects them.
+    const mk = (idx, iv, cp) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const big = { ...mk('bt0', 15, 3000), name: 'Snorlax', dex: 143 };
+    const keepAdded = (await s.state()).addedPokemon || [];
+    await s.set({ addedPokemon: [...keepAdded, big, mk('bt1', 1, 640), mk('bt2', 2, 650), mk('bt3', 3, 660)], search: 'luvdisc' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
     const before = await rowCount(); const st0 = await s.state();
     await s.page.getByRole('button', { name: 'Select', exact: true }).click();
     const rws = s.page.locator('[data-swipe-row]'); await rws.nth(0).click(); await rws.nth(1).click();
-    await s.page.getByRole('button', { name: 'Transfer', exact: true }).last().click(); await s.page.waitForTimeout(500);
+    await s.page.getByRole('button', { name: 'Transfer', exact: true }).last().click(); await s.page.waitForTimeout(400);
+    expect(/Transfer 2 Pokemon\?|selected are protected/.test(await s.text()), 'a bulk transfer must ask first: ' + (await s.text()).slice(0, 200));
+    await s.page.getByRole('button', { name: /^TRANSFER (THE )?\d+/ }).first().click(); await s.page.waitForTimeout(500);
     const st1 = await s.state(); expect((await rowCount()) === before - 2, 'rows ' + before + ' -> ' + (await rowCount()));
     expect(st1.removedIds.length === st0.removedIds.length + 2, 'removedIds');
     const candy = Object.values(st1.candyInventory || {}).reduce((a, c) => a + (c.candy || 0), 0) - Object.values(st0.candyInventory || {}).reduce((a, c) => a + (c.candy || 0), 0);
@@ -151,6 +158,17 @@ module.exports = async function suiteA() {
     await s.page.getByRole('button', { name: 'Undo' }).click(); await s.page.waitForTimeout(400);
     const st2 = await s.state(); expect((await rowCount()) === before, 'undo rows'); expect(st2.removedIds.length === st0.removedIds.length, 'undo removedIds');
     expect(JSON.stringify(st2.candyInventory) === JSON.stringify(st0.candyInventory), 'undo candy');
+    await s.set({ addedPokemon: keepAdded, search: '' }); await s.page.waitForTimeout(300);
+  }, 'critical');
+  await T('ROS-13b', 'Roster', 'Bulk transfer refuses protected Pokemon: it lists why and removes nothing on Cancel', async () => {
+    const st0 = await s.state(); const before = await rowCount();
+    await s.page.getByRole('button', { name: 'Select', exact: true }).click();
+    const rws = s.page.locator('[data-swipe-row]'); await rws.nth(0).click();
+    await s.page.getByRole('button', { name: 'Transfer', exact: true }).last().click(); await s.page.waitForTimeout(400);
+    const t = await s.text(); expect(/protected|would keep/.test(t) || /Transfer 1 Pokemon\?/.test(t), 'no confirm: ' + t.slice(0, 200));
+    await s.page.getByRole('button', { name: 'CANCEL', exact: true }).click(); await s.page.waitForTimeout(300);
+    const st1 = await s.state(); expect(st1.removedIds.length === st0.removedIds.length && (await rowCount()) === before, 'Cancel must remove nothing');
+    await s.set({ selectMode: false, selectedIdx: [] }); await s.page.waitForTimeout(200);
   }, 'critical');
   await T('ROS-14', 'Roster', 'Bulk favourite marks the selection, and Undo reverses it', async () => {
     await s.page.getByRole('button', { name: 'Select', exact: true }).click();
@@ -161,13 +179,18 @@ module.exports = async function suiteA() {
     st = await s.state(); expect(Object.values(st.ivOverrides || {}).filter(o => o && o.favorite === true).length === 0, 'undo');
   }, 'medium');
   await T('ROS-15', 'Roster', 'Bulk remove asks first and grants no candy', async () => {
+    const mk = (idx, iv, cp) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const big = { ...mk('br0', 15, 3000), name: 'Snorlax', dex: 143 };
+    const keepAdded = (await s.state()).addedPokemon || [];
+    await s.set({ addedPokemon: [...keepAdded, big, mk('br1', 1, 640), mk('br2', 2, 650), mk('br3', 3, 660)], search: 'luvdisc' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
     const st0 = await s.state(); const before = await rowCount();
     await s.page.getByRole('button', { name: 'Select', exact: true }).click(); await s.page.locator('[data-swipe-row]').nth(0).click();
     await s.page.getByRole('button', { name: 'Remove', exact: true }).last().click(); await s.page.waitForTimeout(300);
     expect(/NOT grant transfer candy/.test(await s.text()), 'no confirm');
     await s.page.getByText('REMOVE', { exact: true }).click(); await s.page.waitForTimeout(400);
-    const st1 = await s.state(); expect((await rowCount()) === before - 1, 'rows'); expect(JSON.stringify(st1.candyInventory) === JSON.stringify(st0.candyInventory), 'candy changed');
+    const st1 = await s.state(); expect((await rowCount()) === before - 1, 'rows ' + before + ' -> ' + (await rowCount()) + ' removed=' + st1.removedIds.length + '/' + st0.removedIds.length); expect(JSON.stringify(st1.candyInventory) === JSON.stringify(st0.candyInventory), 'candy changed');
     await s.page.getByRole('button', { name: 'Undo' }).click(); await s.page.waitForTimeout(300); expect((await rowCount()) === before, 'undo');
+    await s.set({ addedPokemon: keepAdded, search: '' }); await s.page.waitForTimeout(300);
   }, 'high');
   await T('ROS-16', 'Roster', 'Saved views: save the current filter + sort, reapply it, delete it, and it survives a reload', async () => {
     await s.page.locator('.om-press', { hasText: /^LUCKY$/ }).click({ timeout: 4000 }).catch(e => { throw new Error('step 1: ' + e.message.split('\n')[0]); }); await s.page.waitForTimeout(300);

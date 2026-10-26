@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.185</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.188</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4009,6 +4009,12 @@ class Component extends DCLogic {
   // must not overwrite what's on screen before the debounced push completes.
   applyRemote(rawRemote) {
     const remote = this.unpackCloudBlob(rawRemote);
+    if (remote._unpackFailed && remote._unpackFailed.length) {
+      // A part of the cloud copy could not be read. Applying it would blank that part here and the next save would
+      // push the blank back up, so the cloud copy is left alone and this device's data stays.
+      this.setState({ syncStatus: 'cloud copy unreadable (' + remote._unpackFailed.join(', ') + '): kept this device\u2019s data' });
+      return;
+    }
     // Unsaved local work wins over a settled remote snapshot: during the 1200ms
     // debounce the server copy is by definition older than what is on screen.
     // Applying it here reverted a just-baked appraisal import, and the pending
@@ -4361,7 +4367,10 @@ class Component extends DCLogic {
         try {
           const v = JSON.parse(this.unpackText(text));
           if (v != null) out[k] = v;
-        } catch (e) { /* leave the legacy value in place */ }
+        } catch (e) {
+          // The legacy plain value (older saves) can stand in; with none, the copy is unreadable and must not be applied.
+          if (out[k] === undefined) (out._unpackFailed = out._unpackFailed || []).push(k);
+        }
       }
       delete out[k + 'Json'];
     });
@@ -4548,7 +4557,11 @@ class Component extends DCLogic {
   // for the species (a misread must not protect, or label, a Pokemon).
   sizeTagOf(p) {
     const i = this.sizeOf(p);
-    return i && i.valid && i.cls !== 'M' ? i.cls : '';
+    const computed = i && i.valid && i.cls !== 'M' ? i.cls : '';
+    if (computed) return computed;
+    // The size read off the screen counts too (height missing or misread): protect on the word of either.
+    const seen = String(p.sizeClass || '').toUpperCase();
+    return /^(XXL|XXS|XL|XS)$/.test(seen) ? seen : '';
   }
 
   // Protected from every transfer suggestion: the extremes always (XXL, XXS), and XL / XS when the
@@ -4915,16 +4928,20 @@ class Component extends DCLogic {
   // Search string in Pokemon GO syntax: "," is OR, "&" is AND, "!" is NOT.
   searchStringFromBuilder() {
     const st = this.state, parts = [];
+    // In the game "&" binds tighter than ",", so "a,b&x" means a OR (b AND x). Every OR group is therefore
+    // multiplied out ("a&x,b&x") so each exclusion applies to every alternative.
     const names = String(st.srchName || '').split(/[,\n]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
-    if (names.length) parts.push(names.join(','));
-    if ((st.srchTypes || []).length) parts.push(st.srchTypes.map(t => t.toLowerCase()).join(','));
-    if (st.srchForm) parts.push(st.srchForm);
+    if (names.length) parts.push(names);
+    if ((st.srchTypes || []).length) parts.push(st.srchTypes.map(t => t.toLowerCase()));
+    if (st.srchForm) parts.push([st.srchForm]);
     const flags = st.srchFlags || {};
-    Object.keys(flags).forEach(k => { if (flags[k] === 1) parts.push(k); else if (flags[k] === -1) parts.push('!' + k); });
-    if ((st.srchStars || []).length) parts.push([...st.srchStars].sort().map(n => n + '*').join(','));
+    Object.keys(flags).forEach(k => { if (flags[k] === 1) parts.push([k]); else if (flags[k] === -1) parts.push(['!' + k]); });
+    if ((st.srchStars || []).length) parts.push([...st.srchStars].sort().map(n => n + '*'));
     const lo = String(st.srchCpMin || '').trim(), hi = String(st.srchCpMax || '').trim();
-    if (lo || hi) parts.push('cp' + lo + '-' + hi);
-    return parts.join('&');
+    if (lo || hi) parts.push(['cp' + lo + '-' + hi]);
+    let terms = [[]];
+    parts.forEach(opts => { const next = []; terms.forEach(t => opts.forEach(o => next.push([...t, o]))); terms = next.slice(0, 200); });
+    return terms.filter(t => t.length).map(t => t.join('&')).join(',');
   }
 
   // Which roster rows the builder's selection would catch. Only filters this app can evaluate
@@ -4949,7 +4966,7 @@ class Component extends DCLogic {
 
   applySearchPreset(key) {
     const P = {
-      transfer: { srchName: '', srchTypes: [], srchForm: '', srchFlags: { favorite: -1, lucky: -1, shadow: -1, shiny: -1, legendary: -1, mythical: -1, costume: -1, xxl: -1, xxs: -1 }, srchStars: [0, 1, 2], srchCpMin: '', srchCpMax: '' },
+      transfer: { srchName: '', srchTypes: [], srchForm: '', srchFlags: { favorite: -1, lucky: -1, shadow: -1, shiny: -1, legendary: -1, mythical: -1, costume: -1, xxl: -1, xxs: -1 }, srchStars: [0], srchCpMin: '', srchCpMax: '' },
       keep: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [3, 4], srchCpMin: '', srchCpMax: '' },
       great: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '', srchCpMax: '1500' },
       ultra: { srchName: '', srchTypes: [], srchForm: '', srchFlags: {}, srchStars: [], srchCpMin: '1501', srchCpMax: '2500' },
@@ -5003,7 +5020,7 @@ class Component extends DCLogic {
     const types = ['Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
     const forms = [['', 'Any'], ['alola', 'Alolan'], ['galar', 'Galarian'], ['hisui', 'Hisuian'], ['paldea', 'Paldean']];
     const out = this.searchStringFromBuilder();
-    const presetDefs = [['transfer', 'Transfer candidates'], ['keep', '3★ and 4★'], ['great', 'Great League CP'], ['ultra', 'Ultra League CP'], ['little', 'Little Cup CP'], ['evolve', 'Can evolve'], ['clear', 'Clear']];
+    const presetDefs = [['transfer', '0\u2605 only, check each in the app'], ['keep', '3★ and 4★'], ['great', 'Great League CP'], ['ultra', 'Ultra League CP'], ['little', 'Little Cup CP'], ['evolve', 'Can evolve'], ['clear', 'Clear']];
     return {
       isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search', isShowcaseMode: st.toolsMode === 'showcase',
       ...(st.toolsMode === 'showcase' ? this.showcaseVals() : {}),
@@ -5243,9 +5260,21 @@ class Component extends DCLogic {
   }
 
   applyCsvImport(valid, issues, filename, prev) {
-    const undo = { roster: this.state.roster || [], at: Date.now(), label: 'Import of ' + filename };
+    const undo = { roster: this.state.roster || [], removedIds: this.state.removedIds || [], ivOverrides: this.state.ivOverrides || {}, at: Date.now(), label: 'Import of ' + filename };
     this._importUndo = undo;
+    // A CSV numbers its rows, so "idx 1" in the new file is a different Pokemon from "idx 1" in the old one.
+    // Removed marks and saved overrides that belonged to the old roster must not follow the numbers onto
+    // strangers (a transferred #1 would hide a brand-new Gyarados; an old 0/0/0 pin would label a 100% Pidgey).
+    // Entries for Pokemon added by scans keep their own ids and stay.
+    const oldIdx = new Set((this.state.roster || []).map(q => String(q.idx)));
+    const addedIdx = new Set((this.state.addedPokemon || []).map(q => String(q.idx)));
+    const staleKey = k => oldIdx.has(String(k)) && !addedIdx.has(String(k));
+    const keptOverrides = {}; Object.keys(this.state.ivOverrides || {}).forEach(k => { if (!staleKey(k)) keptOverrides[k] = this.state.ivOverrides[k]; });
     this.setState({
+      removedIds: (this.state.removedIds || []).filter(k => !staleKey(k)),
+      ivOverrides: keptOverrides,
+      completedIds: (this.state.completedIds || []).filter(k => !staleKey(k)),
+      transferQueue: (this.state.transferQueue || []).filter(k => !staleKey(k)),
       roster: this.sanitizeRoster(valid),
       syncedFrom: filename,
       csvNotice: 'Loaded ' + valid.length + ' Pokemon from ' + filename + (prev ? ' (replaced ' + prev + ')' : '') + (issues.length ? ' \u00b7 ' + issues.length + ' issue' + (issues.length > 1 ? 's' : '') + ' noted' : '') + '.',
@@ -5259,7 +5288,7 @@ class Component extends DCLogic {
     const u = this._importUndo;
     if (!u) return;
     this._importUndo = null;
-    this.setState({ roster: this.sanitizeRoster(u.roster), csvNotice: 'Restored your previous roster.', importUndoable: false, importReport: [] });
+    this.setState({ roster: this.sanitizeRoster(u.roster), ...(u.removedIds ? { removedIds: u.removedIds } : {}), ...(u.ivOverrides ? { ivOverrides: u.ivOverrides } : {}), csvNotice: 'Restored your previous roster.', importUndoable: false, importReport: [] });
     clearTimeout(this._csvNoticeTimer);
     this._csvNoticeTimer = setTimeout(() => this.setState({ csvNotice: '' }), 5000);
   }
@@ -5384,13 +5413,18 @@ class Component extends DCLogic {
     const groups = {};
     roster.forEach(p => { const k = p.dex + '_' + (p.form || ''); (groups[k] = groups[k] || []).push(p); });
     Object.values(groups).forEach(g => g.sort((a, b) => (Number.isFinite(b.ivAvg) ? b.ivAvg : 0) - (Number.isFinite(a.ivAvg) ? a.ivAvg : 0) || (b.cp || 0) - (a.cp || 0)));
-    this._keepCtx = { roster, groups, typeBest: this.raidRoleTypeBest(roster) };
+    const idxSeen = new Set(), dupIdx = new Set();
+    roster.forEach(p => { const k = String(p.idx); if (idxSeen.has(k)) dupIdx.add(k); idxSeen.add(k); });
+    this._keepCtx = { roster, groups, dupIdx, typeBest: this.raidRoleTypeBest(roster) };
     return this._keepCtx;
   }
 
   keepReasons(p, ctx) {
     const m = this.mechanics;
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
+    c.cache = c.cache || new Map();
+    const cached = c.cache.get(p);
+    if (cached) return cached;
     const out = [];
     if (p.lucky) out.push('Lucky');
     if (p.favorite) out.push('Favourite');
@@ -5406,13 +5440,36 @@ class Component extends DCLogic {
     const iv = Number.isFinite(p.ivAvg) ? p.ivAvg : null;
     if (iv != null && iv >= 90) out.push('IV ' + iv.toFixed(0) + '%');
     if (this.isPvpWorthy(p)) out.push('PvP rank 90%+ on a ranked species');
-    const mr = this.masterRankFor(p);
-    const mt = m && m.pvpTierFor && mr && Number.isFinite(mr.rankPct) ? m.pvpTierFor(p.name, this.isShadow(p), 'master') : null;
-    if (mt && mr.rankPct >= 90 && ['S', 'A', 'B'].indexOf(mt.tier) >= 0) out.push('Master League tier ' + mt.tier);
+    // Master League: judged on the best form it can become, since a Dratini is a Dragonite in waiting.
+    const chain = this.evoChainNames(p);
+    const masterBest = (() => {
+      if (!m || !m.pvpTierFor || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return null;
+      let top = null;
+      chain.forEach(name => {
+        const dex = name === p.name ? p.dex : (m.resolveDexByName ? m.resolveDexByName(name) : null);
+        const base = dex == null ? null : ((p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex]);
+        const t = base ? m.pvpTierFor(name, this.isShadow(p), 'master', p.form) : null;
+        if (!t || ['S', 'A', 'B'].indexOf(t.tier) < 0) return;
+        const r = m.rankPctForLeague(base, [p.atkIV, p.defIV, p.staIV], 'master', this.isShadow(p));
+        if (Number.isFinite(r) && r >= 90 && (!top || t.score > top.score)) top = { tier: t.tier, score: t.score, name };
+      });
+      return top;
+    })();
+    if (masterBest) out.push('Master League tier ' + masterBest.tier + (masterBest.name !== p.name ? ' as ' + masterBest.name : ''));
     if (this.hasRaidRole(p, c.typeBest)) out.push('Raid attacker role');
+    // Anything that does not add up is kept and flagged, never offered for transfer.
+    const ivsOk = [p.atkIV, p.defIV, p.staIV].every(v => v == null || (Number.isInteger(v) && v >= 0 && v <= 15));
+    const sum = [p.atkIV, p.defIV, p.staIV];
+    const avgOk = !sum.every(Number.isFinite) || !Number.isFinite(p.ivAvg) || Math.abs(p.ivAvg - (sum[0] + sum[1] + sum[2]) / 45 * 100) < 1.5;
+    // A height that no Pokemon of the species can have is a misread, and a misread must not be what lets one go.
+    const sz = this.sizeOf(p);
+    const sizeBad = !!(p.height && sz && sz.valid === false);
+    if (!ivsOk || !avgOk || sizeBad || (c.dupIdx && c.dupIdx.has(String(p.idx)))) out.push('Data inconsistent: check this Pokemon');
+    if (sum.every(Number.isFinite) && !Number.isFinite(p.great && p.great.rankPct)) out.push('League rank not computed yet');
     if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
     if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
     if (g.length === 1) out.push('Only copy');
+    c.cache.set(p, out);
     return out;
   }
 
@@ -5556,9 +5613,12 @@ class Component extends DCLogic {
         });
         const arr = this.extractJsonArray(reply);
         if (!Array.isArray(arr)) { failed += batch.length; continue; }
+        const TYPES = ['Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
+        const asked = new Set(batch.map(n => this.moveKey(n)));
         arr.forEach(o => {
           if (!o || !o.name) return;
           const k = this.moveKey(o.name);
+          if (!asked.has(k)) return;               // only moves that were asked for
           const power = Number(o.power);
           const energy = Math.abs(Number(o.energy));
           const durationMs = Number(o.durationMs);
@@ -5566,6 +5626,9 @@ class Component extends DCLogic {
           // A record missing any of these cannot produce a DPS figure, and a
           // half-filled row would silently rank a Pokemon on partial data.
           if (!kind || !(power > 0) || !(energy > 0) || !(durationMs > 0)) return;
+          // One absurd number would raise a whole type's best-attacker bar and strip real attackers of their protection.
+          if (power > 400 || energy > 100 || durationMs < 300 || durationMs > 6000) return;
+          if (o.type && TYPES.indexOf(String(o.type).charAt(0).toUpperCase() + String(o.type).slice(1).toLowerCase()) < 0) return;
           db[k] = { name: o.name, type: o.type || null, kind, power, energy, durationMs, source: 'ai', fetchedAt: Date.now() };
           got++;
         });
@@ -5793,7 +5856,7 @@ class Component extends DCLogic {
     const seen = new Set();
     this.effectiveRosterForMatch().forEach(p => {
       const k = String(p.name || '').toLowerCase();
-      if (k && !table[k]) seen.add(k);
+      if (k && !table[k] && !(this.mechanics && this.mechanics.speciesInfo && this.mechanics.speciesInfo(p.name, p.form))) seen.add(k);
     });
     return [...seen];
   }
@@ -5872,6 +5935,8 @@ class Component extends DCLogic {
     if (!p) return false;
     if (p.ivMeasured) return false;
     if (!Number.isFinite(p.atkIV)) return true;
+    // A spread that still carries a candidate range is a guess from CP/HP, whatever else the record says.
+    if (p.ivRange) return true;
     return !!p.ivSolved;
   }
 
@@ -5881,14 +5946,14 @@ class Component extends DCLogic {
     // name-keyed table is skipped for it: the Pokemon's own scanned type, then its form's typing.
     const m = this.mechanics;
     const regional = !!(m && m.hasRegionalForms && m.hasRegionalForms(p.name, p.dex));
-    const fromTable = regional ? '' : (this.state.typeTable || {})[String(p.name || '').toLowerCase()];
-    let raw = p.type || fromTable || [p.type1, p.type2].filter(Boolean).join(' / ') || '';
-    // PvPoke's game master (bundled) knows every released species' typing,
-    // including regional forms, so the AI type lookup is only a last resort.
-    if (!raw && this.mechanics && this.mechanics.speciesInfo) {
-      const info = this.mechanics.speciesInfo(p.name, p.form);
+    let raw = p.type || [p.type1, p.type2].filter(Boolean).join(' / ') || '';
+    // PvPoke's game master (bundled) knows every released species' typing, including regional forms, so it
+    // outranks the looked-up table, which an AI wrote and can be wrong.
+    if (!raw && m && m.speciesInfo) {
+      const info = m.speciesInfo(p.name, p.form);
       if (info) raw = info.types.join(' / ');
     }
+    if (!raw && !regional) raw = (this.state.typeTable || {})[String(p.name || '').toLowerCase()] || '';
     return String(raw);
   }
 
@@ -6004,10 +6069,10 @@ class Component extends DCLogic {
     // The rank is for the form it names (a Jigglypuff's Great League rank is Wigglytuff's), so the tier and
     // the recommended moves come from that form too.
     const formName = leagueKey !== 'little' && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
-    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(formName, shadow, tk) : null;
+    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(formName, shadow, tk, p.form) : null;
     const order = { S: 0, A: 1, B: 2, C: 3 };
     const tierRank = !hasTierData ? 2.5 : (tier ? order[tier.tier] : 4);
-    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(formName, shadow, tk) : null;
+    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(formName, shadow, tk, p.form) : null;
     const have = new Set([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.moveKey(n).replace(/\+$/, '')));
     const wanted = ms ? [ms.fast, ...ms.charged] : [];
     const missing = wanted.filter(n => !have.has(n));
@@ -6044,7 +6109,7 @@ class Component extends DCLogic {
       if (eligible && !eligible(p)) return;
       const a = this.pvpAssess(p, leagueKey, tableKey);
       if (!a || a.tierRank > 2 || a.rank < 90) return;
-      const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey);
+      const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form);
       if (!mu) return;
       pool.push({ p, a, mu, id: String(p.name).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
     });
@@ -6086,7 +6151,7 @@ class Component extends DCLogic {
       if (!a) return { n: 2, t: 'No league rank: it is over the CP cap or its stats are missing.' };
       if (a.tierRank > 2) return { n: 3, t: 'Tier ' + (a.tier || '?') + ' here; the squad uses S, A or B.' };
       if (a.rank < 90) return { n: 4, t: 'IV rank ' + a.rank.toFixed(1) + '%; the squad needs 90% or better.' };
-      const mu = m && m.pvpMatchupsFor ? m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey) : null;
+      const mu = m && m.pvpMatchupsFor ? m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form) : null;
       if (!mu) return { n: 5, t: 'No matchup data for it yet.' };
       return { n: 9, p, a, mu };
     };
@@ -6113,7 +6178,7 @@ class Component extends DCLogic {
     const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
     if (!best || !base || !ivs) return null;
     const norm = n => this.moveKey(n).replace(/\+$/, '').replace(/\s+/g, '_');
-    const ms = m.pvpMovesetFor ? m.pvpMovesetFor(p.name, this.isShadow(p), best.league) : null;
+    const ms = m.pvpMovesetFor ? m.pvpMovesetFor(p.name, this.isShadow(p), best.league, p.form) : null;
     let fast = ms ? ms.fast.replace(/\s+/g, '_') : null;
     if (!fast || !m.pvpFastMoveFor(fast)) fast = p.quickMove ? norm(p.quickMove) : null;
     if (!fast) return null;
@@ -6126,8 +6191,9 @@ class Component extends DCLogic {
   isPvpWorthy(p) {
     // Estimated IVs can look elite and be wrong, so only measured ones count.
     if (this.needsAppraisal(p)) return false;
-    const b = this.pvpBest(p);
-    if (b && b.rank >= 90 && b.tierRank <= 2) return true;
+    // Any league counts, not just the one pvpBest happens to prefer.
+    const list = ['great', 'ultra'].map(k => this.pvpAssess(p, k)).filter(Boolean);
+    if (list.some(a => a.rank >= 90 && a.tierRank <= 2)) return true;
     const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
     return Number.isFinite(lc) && lc >= 90;
   }
@@ -6439,12 +6505,12 @@ class Component extends DCLogic {
   // would otherwise transfer.
   tradeAdvice() {
     const roster = this.effectiveRosterForMatch();
+    const ctx = this.keepContext(roster);
     const LUCKY_FLOOR = 12;
-    const dexCounts = {};
-    roster.forEach(p => { if (p.dex != null) dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
-
     const lucky = roster.filter(p => {
       if (p.lucky) return false; // already lucky: a second lucky trade is impossible
+      // A trade re-rolls the IVs, which can destroy a spread that is already valuable.
+      if (p.shiny || p.favorite || this.needsAppraisal(p) || this.isPvpWorthy(p) || this.sizeProtected(p)) return false;
       const floor = this.ivFloorOf(p);
       if (floor == null || floor >= LUCKY_FLOOR) return false;
       // Only worth the lucky trade if the species is actually worth investing in.
@@ -6453,19 +6519,19 @@ class Component extends DCLogic {
       p, floor: this.ivFloorOf(p), rank: this.bestRank(p)
     })).sort((a, b) => b.rank - a.rank).slice(0, 8);
 
-    // Duplicates where one individual is beaten outright — trade the loser away
-    // instead of transferring it, since a trade at least re-rolls its IVs.
+    // Duplicates where one individual is beaten outright: trade the loser away instead of transferring
+    // it. Same species AND form, and the keep check has the last word: a trade is as final as a transfer.
     const byDex = {};
-    roster.forEach(p => { if (p.dex != null) (byDex[p.dex] = byDex[p.dex] || []).push(p); });
+    roster.forEach(p => { if (p.dex != null) (byDex[p.dex + '_' + (p.form || '')] = byDex[p.dex + '_' + (p.form || '')] || []).push(p); });
     const dupes = [];
-    Object.keys(byDex).forEach(dex => {
-      const group = byDex[dex];
+    Object.keys(byDex).forEach(key => {
+      const group = byDex[key];
       if (group.length < 2) return;
       const ranked = group.map(p => ({ p, rank: this.bestRank(p), iv: p.ivAvg || 0 }))
         .sort((a, b) => (b.rank - a.rank) || (b.iv - a.iv));
       const winner = ranked[0];
       ranked.slice(1).forEach(loser => {
-        if (loser.p.lucky || loser.p.favorite || loser.p.shiny) return; // never advise trading these away
+        if (this.keepReasons(loser.p, ctx).length) return; // never advise trading these away
         if (loser.rank >= winner.rank) return;
         dupes.push({ loser: loser.p, winner: winner.p, loserRank: loser.rank, winnerRank: winner.rank });
       });
@@ -6940,7 +7006,7 @@ class Component extends DCLogic {
   briefingContext() {
     const roster = this.effectiveRosterForMatch();
     const plan = this.buildOptimizePlan(roster);
-    const nm = p => p.name + (p.form ? ' (' + p.form + ')' : '') + ' ' + (Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '% IV' : 'IV unknown') + ' CP ' + (p.cp || '?');
+    const nm = p => this.promptSafe(p.name) + (p.form ? ' (' + this.promptSafe(p.form, 20) + ')' : '') + ' ' + (Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '% IV' : 'IV unknown') + ' CP ' + (p.cp || '?');
     const lines = [];
     // One action per Pokemon, and evolving comes first: a Pokemon that can still evolve is not powered up or
     // given moves in the same breath, which is contradictory advice.
@@ -6954,7 +7020,7 @@ class Component extends DCLogic {
     lines.push('Evolve soon: ' + (evolve.map(nm).join('; ') || 'none') + '.');
     lines.push('Needs a second charge move (fully evolved only): ' + (second.map(nm).join('; ') || 'none') + '.');
     lines.push('Transfer candidates that PASSED the keep check (the only ones you may mention as transfers): ' + (plan.transferSafe.slice(0, 6).map(nm).join('; ') || 'none') + '.');
-    const events = this.feedEvents ? this.feedEvents().slice(0, 5).map(e => e.title + ' (' + e.when + ')' + (e.bonus ? ' bonus: ' + e.bonus : '')) : [];
+    const events = this.feedEvents ? this.feedEvents().slice(0, 5).map(e => this.promptSafe(e.title, 80) + ' (' + this.promptSafe(e.when, 40) + ')' + (e.bonus ? ' bonus: ' + this.promptSafe(e.bonus, 80) : '')) : [];
     lines.push('Events: ' + (events.join('; ') || 'none known') + '.');
     const weeks = this.gblWeeks ? this.gblWeeks() : [];
     if (weeks[0]) lines.push('GBL this week: ' + weeks[0].leagues.map(l => l.name + ' (' + l.cap + ')' + (l.hasTop ? ' top: ' + l.top.slice(0, 3).map(t => t.name).join(', ') : '')).join('; ') + '.');
@@ -6979,7 +7045,11 @@ class Component extends DCLogic {
         system: 'You are Professor, a concise Pokemon GO coach writing this trainer\u2019s morning briefing. Use ONLY the facts below for anything about their roster; never invent Pokemon, stats or moves. Write 4 to 6 bullets, each starting with "- ", each one short and specific (name real Pokemon from the data). Cover: what to power up, what to evolve, anything to hunt or trade given the events, the GBL focus, and' + (search ? ' one line on any recent meta or balance change you can confirm with search (say nothing if unsure)' : ' nothing about the wider meta') + '. Give each Pokemon at most one action in the whole briefing, and never advise powering up or teaching moves to a Pokemon you are also telling them to evolve. Only mention a transfer for a Pokemon listed as having PASSED the keep check; otherwise say nothing about transfers. These are suggestions for the trainer to confirm, never instructions.',
         messages: [{ role: 'user', content: this.briefingContext() }]
       });
-      const bullets = String(text || '').split('\n').map(l => l.replace(/^[\s*\u2022-]+/, '').trim()).filter(l => l.length > 3).slice(0, 7);
+      const okTransfer = new Set(this.buildOptimizePlan(roster).transferSafe.map(p => String(p.name || '').toLowerCase()));
+      const transferWord = /\b(transfer|release|trade away|get rid|cut|dump)\b/i;
+      const bullets = String(text || '').split('\n').map(l => l.replace(/^[\s*\u2022-]+/, '').trim()).filter(l => l.length > 3)
+        // A bullet about getting rid of something survives only if it names a Pokemon the keep check cleared.
+        .filter(l => !transferWord.test(l) || [...okTransfer].some(n => n && l.toLowerCase().indexOf(n) >= 0)).slice(0, 7);
       if (!bullets.length) throw new Error('empty briefing');
       const b = { date: today, bullets, at: Date.now(), search };
       this.setState({ briefing: b, briefingBusy: false, briefingError: '' });
@@ -7681,9 +7751,11 @@ class Component extends DCLogic {
   // Builds a complete roster entry from OCR alone, so a brand-new Pokemon can be
   // added without first matching an existing roster row by CP.
   buildPokemonRecord(rec) {
-    const atk = Number.isFinite(rec.attack_iv) ? rec.attack_iv : null;
-    const def = Number.isFinite(rec.defense_iv) ? rec.defense_iv : null;
-    const sta = Number.isFinite(rec.stamina_iv) ? rec.stamina_iv : null;
+    // An IV is a whole number from 0 to 15; anything else is a misread and is dropped, not stored.
+    const okIv = v => (Number.isInteger(v) && v >= 0 && v <= 15 ? v : null);
+    const atk = okIv(rec.attack_iv);
+    const def = okIv(rec.defense_iv);
+    const sta = okIv(rec.stamina_iv);
     const haveIvs = atk != null && def != null && sta != null;
     const ivAvg = Number.isFinite(rec.iv_percent) ? rec.iv_percent
       : (haveIvs ? Math.round((atk + def + sta) / 45 * 1000) / 10 : null);
@@ -7715,6 +7787,7 @@ class Component extends DCLogic {
       weight: rec.weight || '',
       height: rec.height || '',
       lucky: rec.lucky || false,
+      ...this.shinyPatch({ shiny: !!rec.shiny, shinyIcon: !!rec.shiny_icon }, {}),
       shadowPurified: rec.shadow ? '1' : (rec.purified ? '2' : '0'),
       favorite: rec.favorite || false,
       dust: rec.stardust || null,
@@ -8268,14 +8341,14 @@ class Component extends DCLogic {
       const keep = {};
       if (prevOv.shiny !== undefined) keep.shiny = prevOv.shiny;
       if (prevOv.shinyState !== undefined) keep.shinyState = prevOv.shinyState;
-      overrides[p.matchedIdx] = { ...patch, ...keep, ...this.shinyPatch(shinyItem, this.monWithOverrides(p.matchedIdx)) };
+      overrides[p.matchedIdx] = { ...prevOv, ...patch, lvlMin: r.level, lvlMax: r.level, ivRange: null, ivSolved: true, ivCandidates: 1, ...keep, ...this.shinyPatch(shinyItem, this.monWithOverrides(p.matchedIdx)) };
       this.setState({ ivOverrides: overrides });
     } else {
       const newIdx = 'new-' + Date.now();
       const newRec = {
         idx: newIdx, name: p.name, form: null, dex: p.dex, gender: null,
         cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
-        lvlMin: r.level, lvlMax: r.level, quickMove: null, chargeMove: null, chargeMove2: null,
+        lvlMin: r.level, lvlMax: r.level, ivSolved: true, ivCandidates: 1, quickMove: null, chargeMove: null, chargeMove2: null,
         catchDate: null, lucky: false, shadowPurified: '0', favorite: false, shiny: !!shinyItem.shiny, shinyState: shinyItem.shiny && !shinyItem.shinyIcon ? 'suspected' : null, dust: null,
         ...(p._rec ? this.maxPatch(p._rec) : {}),
         great: patch.great, ultra: patch.ultra, little: patch.little
@@ -10584,10 +10657,14 @@ class Component extends DCLogic {
       // CP is a different individual and must become its own entry.
       const itemForm = item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : '';
       const formOk = p => !item.type || !item.matchedForm || String(p.form || '').toLowerCase() === itemForm;
-      const match = roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && formOk(p) && !this.isRemoved(p, removedSet))
-        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && formOk(p) && !this.isRemoved(p, removedSet))
-        || roster.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet))
-        || added.find(p => p.name.toLowerCase() === nameLower && p.cp === item.cp && !this.isRemoved(p, removedSet));
+      // HP is part of the identity too: two Pokemon of one species at the same CP but different HP are
+      // different individuals, and merging them overwrote the wrong one's IVs.
+      const hpOk = p => item.hp == null || p.hp == null || Number(p.hp) === Number(item.hp);
+      const same = p => p.name.toLowerCase() === nameLower && p.cp === item.cp && hpOk(p) && !this.isRemoved(p, removedSet);
+      const tier1 = [...roster.filter(p => same(p) && formOk(p)), ...added.filter(p => same(p) && formOk(p))];
+      const pool = tier1.length ? tier1 : [...roster.filter(same), ...added.filter(same)];
+      const match = pool[0];
+      const ambiguousMatch = pool.length > 1;
       let ivPatch = {};
       let solvedFrom = null;
       // The detail screen never prints IVs, but CP + HP + base stats pin them
@@ -10715,6 +10792,15 @@ class Component extends DCLogic {
           great: null, ultra: null, little: null
         };
       }
+      // A scan must never overwrite IVs that were measured or typed in: if it disagrees, the measured
+      // spread stays and the disagreement is reported. Several look-alike matches: IVs are left alone.
+      let ivNote = '';
+      if (match) {
+        const was = { ...match, ...(overrides[match.idx] || {}) };
+        const differs = ivPatch.atkIV != null && Number.isFinite(was.atkIV) && (was.atkIV !== ivPatch.atkIV || was.defIV !== ivPatch.defIV || was.staIV !== ivPatch.staIV);
+        if (ambiguousMatch && ivPatch.atkIV != null) { ivPatch = {}; ivNote = 'matched more than one Pokemon: IVs left alone'; }
+        else if (differs && (was.ivMeasured || was.ivManual)) { ivPatch = {}; ivNote = 'scan disagrees with your measured IVs: kept yours'; }
+      }
       if (match) {
         // Re-imports used to overwrite silently, so a mis-read CP looked
         // identical to a real power-up. Record what each update actually
@@ -10727,14 +10813,18 @@ class Component extends DCLogic {
           && (before.atkIV !== ivPatch.atkIV || before.defIV !== ivPatch.defIV || before.staIV !== ivPatch.staIV)) {
           changes.push('IV ' + [before.atkIV, before.defIV, before.staIV].join('/') + ' \u2192 ' + [ivPatch.atkIV, ivPatch.defIV, ivPatch.staIV].join('/'));
         }
+        if (ivNote) changes.push(ivNote);
         if (changes.length) changeLog.push({ name: match.name, changes: changes.join('  \u00b7  ') });
         overrides[match.idx] = {
           ...overrides[match.idx], cp: item.cp,
           hp: item.hp != null ? item.hp : match.hp,
           lucky: item.lucky ? true : !!before.lucky,
           favorite: item.favorite ? true : !!before.favorite,
-          ...(item.matchedForm ? { form: itemForm || null } : {}),
+          // A single-type read must not wipe a regional form the record already has.
+          ...(item.matchedForm && (itemForm || !before.form) ? { form: itemForm || null } : {}),
           ...(item.type ? { type: item.type } : {}),
+          ...(item.shadow ? { shadowPurified: '1' } : {}),
+          ...(item.sizeClass ? { sizeClass: item.sizeClass } : {}),
           ...this.shinyPatch(item, before),
           ...(item.gender ? { gender: item.gender } : {}),
           ...(item.fastMove ? { quickMove: item.fastMove } : {}),
@@ -10762,7 +10852,7 @@ class Component extends DCLogic {
           quickMove: item.fastMove || null,
           chargeMove: item.chargeMove1 || null,
           chargeMove2: item.chargeMove2 || null,
-          weight: item.weight || null, height: item.height || null,
+          weight: item.weight || null, height: item.height || null, sizeClass: item.sizeClass || null,
           evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
           catchDate: null, scanDate: today,
           lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
@@ -10844,31 +10934,65 @@ class Component extends DCLogic {
     return { overrides: rest, roster, addedPokemon };
   }
 
-  // Names a Pokemon can become, itself first, following the real evolution table and then the looked-up one.
+  // Every species a Pokemon can become, itself first: the real evolution table, then the looked-up one, plus the
+  // species that branch (Eevee, Poliwhirl, Ralts...), where the tables hold only one path.
+  evoBranchMap() {
+    return {
+      eevee: ['Vaporeon', 'Jolteon', 'Flareon', 'Espeon', 'Umbreon', 'Leafeon', 'Glaceon', 'Sylveon'],
+      poliwhirl: ['Poliwrath', 'Politoed'], gloom: ['Vileplume', 'Bellossom'], slowpoke: ['Slowbro', 'Slowking'],
+      ralts: ['Kirlia'], kirlia: ['Gardevoir', 'Gallade'], snorunt: ['Glalie', 'Froslass'], clamperl: ['Huntail', 'Gorebyss'],
+      tyrogue: ['Hitmonlee', 'Hitmonchan', 'Hitmontop'], burmy: ['Wormadam', 'Mothim'], wurmple: ['Silcoon', 'Cascoon'],
+      silcoon: ['Beautifly'], cascoon: ['Dustox'], nincada: ['Ninjask', 'Shedinja'], scyther: ['Scizor', 'Kleavor'],
+      charcadet: ['Armarouge', 'Ceruledge'], applin: ['Flapple', 'Appletun', 'Dipplin'], cosmoem: ['Solgaleo', 'Lunala'],
+      kubfu: ['Urshifu'], oddish: ['Gloom'], pichu: ['Pikachu'], pikachu: ['Raichu']
+    };
+  }
+
   evoChainNames(p) {
+    // The chain depends only on species, form and the looked-up table, and this runs for every Pokemon on
+    // every render, so it is cached (and dropped whenever the table object changes).
+    const table = this.state.evoTable || null;
+    if (this._evoChainTable !== table) { this._evoChainTable = table; this._evoChainCache = new Map(); }
+    const ck = String(p.name) + '|' + (p.form || '');
+    const hit = this._evoChainCache.get(ck);
+    if (hit) return hit;
+    const chain = this.evoChainNamesRaw(p);
+    this._evoChainCache.set(ck, chain);
+    return chain;
+  }
+
+  evoChainNamesRaw(p) {
     const m = this.mechanics;
+    const branch = this.evoBranchMap();
     const names = [p.name];
-    let cur = String(p.name || '');
-    for (let i = 0; i < 3; i++) {
+    const seen = new Set([String(p.name || '').toLowerCase()]);
+    const queue = [String(p.name || '')];
+    for (let guard = 0; queue.length && guard < 24; guard++) {
+      const cur = queue.shift();
       const rec = (m && m.evolutionInfoFor ? m.evolutionInfoFor(cur, p.form) : null) || (this.state.evoTable || {})[cur.toLowerCase()];
-      const to = rec && rec.to;
-      if (!to || names.indexOf(to) >= 0) break;
-      names.push(to); cur = to;
+      const next = [];
+      if (rec && rec.to) next.push(rec.to);
+      (branch[cur.toLowerCase()] || []).forEach(n => next.push(n));
+      next.forEach(to => {
+        const k = String(to).toLowerCase();
+        if (seen.has(k)) return;
+        seen.add(k); names.push(to); queue.push(to);
+      });
     }
     return names;
   }
 
   // League ranks are judged on the form the Pokemon would actually be played as. A 1/14/14 Jigglypuff is a
   // 83% Jigglypuff but a 98% Wigglytuff, and Wigglytuff is the one worth keeping. Importers write the
-  // Pokemon's own species into the rank, so the best evolution is applied when the roster is read (cached
-  // per species, form, IVs and chain). Great and Ultra only: Little Cup is judged on the current form.
+  // Pokemon's own species into the rank (or nothing), so the best evolution is applied when the roster is read
+  // (cached per species, form, IVs, level cap and chain). Great and Ultra only: Little Cup is judged on the
+  // current form. Among the forms it can become, one PvPoke ranks S/A/B beats a higher-scoring unranked form.
   withEvoRanks(p) {
     const m = this.mechanics;
     if (!m || !m.rankPctForLeague || p.dex == null || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return p;
     const chain = this.evoChainNames(p);
-    if (chain.length < 2) return p;
     const shadow = this.isShadow(p);
-    const key = [p.dex, p.form || '', p.atkIV, p.defIV, p.staIV, shadow ? 1 : 0, chain.join('>')].join('|');
+    const key = [p.dex, p.form || '', p.atkIV, p.defIV, p.staIV, shadow ? 1 : 0, this.state.pvpMaxLevel || 50, chain.join('>')].join('|');
     this._evoRankCache = this._evoRankCache || new Map();
     let best = this._evoRankCache.get(key);
     if (!best) {
@@ -10881,7 +11005,10 @@ class Component extends DCLogic {
           const base = (p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex];
           if (!base) return;
           const r = m.rankPctForLeague(base, [p.atkIV, p.defIV, p.staIV], lg, shadow);
-          if (Number.isFinite(r) && (!top || r > top.rankPct)) top = { rankPct: r, evolvesTo: name };
+          if (!Number.isFinite(r)) return;
+          const t = m.pvpTierFor ? m.pvpTierFor(name, shadow, lg, p.form) : null;
+          const ranked = !!(t && ['S', 'A', 'B'].indexOf(t.tier) >= 0);
+          if (!top || (ranked && !top.ranked) || (ranked === top.ranked && r > top.rankPct)) top = { rankPct: r, evolvesTo: name, ranked };
         });
         if (top) best[lg] = top;
       });
@@ -10893,7 +11020,10 @@ class Component extends DCLogic {
       const b = best[lg];
       if (!b) return;
       const cur = p[lg] && Number.isFinite(p[lg].rankPct) ? p[lg].rankPct : null;
-      if (cur == null || b.rankPct > cur) out[lg] = { ...(p[lg] || {}), rankPct: b.rankPct, evolvesTo: b.evolvesTo };
+      // A missing or lower stored rank is replaced. A stored rank that is higher (a trusted export) is kept.
+      if (cur == null || b.rankPct > cur || (b.ranked && !(p[lg] && p[lg].evolvesTo && String(p[lg].evolvesTo).toLowerCase() === String(b.evolvesTo).toLowerCase()) && cur < 90)) {
+        out[lg] = { ...(p[lg] || {}), rankPct: b.rankPct, evolvesTo: b.evolvesTo };
+      }
     });
     return out;
   }
@@ -11084,6 +11214,11 @@ class Component extends DCLogic {
     }
     const c = cands[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
+    // A spread already on file (a trusted export, a measurement) is never silently replaced by a single solve.
+    const knownNow = this.knownSpread(rec, overrides);
+    if (knownNow && (knownNow[0] !== ivs[0] || knownNow[1] !== ivs[1] || knownNow[2] !== ivs[2])) {
+      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: knownNow.join('/') + ' \u2260 ' + ivs.join('/'), ivCount: 1 } };
+    }
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
     const shadow = this.isShadow(rec);
     const littlePct = this.littleCupEligible(rec) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
@@ -11873,10 +12008,37 @@ class Component extends DCLogic {
   bulkTransfer(withCandy) {
     const sel = new Set(this.state.selectedIdx || []);
     if (!sel.size) return;
-    const picked = this.effectiveRosterForMatch().filter(p => sel.has(p.idx));
+    const roster = this.effectiveRosterForMatch();
+    const ctx = this.keepContext(roster);
+    const picked = roster.filter(p => sel.has(p.idx));
+    const safe = picked.filter(p => !this.keepReasons(p, ctx).length);
+    const kept = picked.filter(p => this.keepReasons(p, ctx).length);
+    const list = a => a.slice(0, 6).map(p => p.name + (p.form ? ' (' + p.form + ')' : '')).join(', ') + (a.length > 6 ? ' and ' + (a.length - 6) + ' more' : '');
+    this.askConfirm({
+      title: kept.length ? kept.length + ' of ' + picked.length + ' selected are protected' : (withCandy ? 'Transfer ' : 'Remove ') + picked.length + ' Pokemon?',
+      message: (kept.length ? 'The app would keep: ' + kept.slice(0, 5).map(p => p.name + ' (' + this.keepReasons(p, ctx)[0] + ')').join('; ') + (kept.length > 5 ? '; and ' + (kept.length - 5) + ' more' : '') + '. ' : '')
+        + (safe.length ? 'These ' + safe.length + ' would be removed: ' + list(safe) + '.' : 'Nothing unprotected is selected.'),
+      actions: [
+        ...(safe.length ? [{ label: kept.length ? (withCandy ? 'TRANSFER THE ' + safe.length + ' UNPROTECTED' : 'REMOVE THE ' + safe.length + ' UNPROTECTED') : (withCandy ? 'TRANSFER ' + safe.length : 'REMOVE ' + safe.length), style: 'primary', run: () => { this.closeConfirm(); this.bulkTransferNow(safe, withCandy); } }] : [])
+      ]
+    });
+  }
+
+  // The person already confirmed a plain removal. Anything the keep check protects still gets its own question.
+  bulkRemoveConfirmed() {
+    const roster = this.effectiveRosterForMatch();
+    const ctx = this.keepContext(roster);
+    const sel = new Set(this.state.selectedIdx || []);
+    const picked = roster.filter(p => sel.has(p.idx));
+    if (picked.some(p => this.keepReasons(p, ctx).length)) { this.bulkTransfer(false); return; }
+    this.bulkTransferNow(picked, false);
+  }
+
+  bulkTransferNow(picked, withCandy) {
+    if (!picked.length) return;
     this.offerUndo((withCandy ? 'Transferred ' : 'Removed ') + picked.length + ' Pokemon', ['removedIds', 'candyInventory']);
     const removed = new Set(this.state.removedIds || []);
-    sel.forEach(i => removed.add(i));
+    picked.forEach(p => removed.add(p.idx));
     const inv = { ...(this.state.candyInventory || {}) };
     if (withCandy) picked.forEach(p => {
       const key = this.candyKey(p.name);
@@ -12013,13 +12175,68 @@ class Component extends DCLogic {
     });
   }
 
+  // Recording a transfer that already happened in the game. The keep check runs again at tap time, so a
+  // Pokemon that became protected after the list was drawn (a stale list, a new appraisal) is stopped here.
+  confirmRemove(p) {
+    const fresh = this.effectiveRosterForMatch().find(q => q.idx === p.idx) || p;
+    const why = this.keepReasons(fresh);
+    const go = () => { this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); };
+    if (!why.length) { go(); return; }
+    this.askConfirm({
+      title: 'The app would keep ' + (p.name || 'this Pokemon'),
+      message: why.join(', ') + '. Remove it from your list anyway? Only do this if you already transferred it in the game.',
+      actions: [
+        { label: 'KEEP IT', style: 'primary', run: () => this.closeConfirm() },
+        { label: 'REMOVE ANYWAY', style: 'danger', run: () => { this.closeConfirm(); go(); } }
+      ]
+    });
+  }
+
+  // Strings that reach a model prompt (names, forms, moves, event titles) come from scans, imports and the web.
+  // Control characters, field separators and long text are removed so none of them can fake a field or an order.
+  promptSafe(v, n) {
+    return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f;|]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n || 40);
+  }
+
+  // The chat is only an advisor. If its reply talks about transferring a species of which any copy is protected,
+  // the keep check's own reasons are appended so the warning cannot be missed.
+  guardChatReply(text) {
+    const reply = String(text == null ? '' : text);
+    try {
+      const roster = this.effectiveRosterForMatch();
+      const ctx = this.keepContext(roster);
+      const bySpecies = {};
+      roster.forEach(p => {
+        const k = String(p.name || '').toLowerCase();
+        if (k.length < 3) return;
+        const b = (bySpecies[k] = bySpecies[k] || { n: 0, kept: 0, why: new Set(), name: p.name });
+        b.n++;
+        const r = this.keepReasons(p, ctx);
+        if (r.length) { b.kept++; r.slice(0, 2).forEach(x => b.why.add(x)); }
+      });
+      const act = /\b(transfer|transferring|release|releasing|trade away|trade it away|get rid|cut|dump|dispose)\b/i;
+      const notes = [], done = new Set();
+      reply.split(/[.!?\n]+/).forEach(sent => {
+        if (!act.test(sent)) return;
+        const low = sent.toLowerCase();
+        Object.keys(bySpecies).forEach(k => {
+          const b = bySpecies[k];
+          if (b.kept && !done.has(k) && low.indexOf(k) >= 0) { done.add(k); notes.push(b.name + ': ' + b.kept + ' of ' + b.n + ' protected (' + [...b.why].join('; ') + ')'); }
+        });
+      });
+      return notes.length ? reply + '\n\nKeep check: ' + notes.join('. ') + '. Check each one in the app before transferring anything.' : reply;
+    } catch (e) { return reply; }
+  }
+
   // A second opinion on one transfer. Advice only: it can add reasons to keep, and the keep check's own
   // reasons are given to it as facts it may not argue away.
   async askProfessorTransfer(p) {
     const cur = this.state.pendingConfirm;
     if (!cur) return;
-    const say = message => this.setState({ pendingConfirm: { ...this.state.pendingConfirm, message } });
-    say('Professor is checking\u2026');
+    // The app's own keep reasons stay on screen; the model's answer is added under them, never over them.
+    const baseMessage = cur.message;
+    const say = message => this.setState({ pendingConfirm: { ...this.state.pendingConfirm, message: baseMessage + '\n\nProfessor: ' + message } });
+    say('checking\u2026');
     try {
       const roster = this.effectiveRosterForMatch();
       const why = this.keepReasons(p);
@@ -12034,7 +12251,9 @@ class Component extends DCLogic {
         system: 'You are Professor, advising whether to transfer ONE Pokemon. Reply in at most 3 short sentences: start with KEEP or TRANSFER, then the reason from the facts only. If the keep-check reasons are not "none", you must answer KEEP and restate the strongest reason. When unsure, answer KEEP. Never invent stats.',
         messages: [{ role: 'user', content: facts }]
       });
-      say(String(reply || '').trim().slice(0, 600) || 'No answer. Decide with the reasons above.');
+      let said = String(reply || '').trim().slice(0, 600);
+      if (why.length && !/^\W*keep/i.test(said)) said = 'I disagree with the app\u2019s keep check, so I would not transfer this one.';
+      say(said || 'No answer. Decide with the reasons above.');
     } catch (e) { say('Professor is unavailable right now (' + ((e && e.message) || 'error').slice(0, 80) + '). Decide with the reasons above.'); }
   }
 
@@ -12224,6 +12443,14 @@ class Component extends DCLogic {
         if (hp === p.hp) bestDiff = -1; // exact CP+HP match, stop preferring anything else
       }
     });
+    // The three numbers have to be able to produce this Pokemon's CP (and HP) at some level, or they were mistyped.
+    if (Number.isFinite(p.cp)) {
+      const fits = levels.some(lv => m.cpFor(base, ivs, lv) === p.cp && (p.hp == null || m.hpFor(base, sta, lv) === p.hp));
+      if (!fits) {
+        this.askConfirm({ title: 'Those IVs do not fit', message: 'A ' + (p.name || 'Pokemon') + ' with ' + atk + '/' + def + '/' + sta + ' IVs cannot have ' + p.cp + ' CP' + (p.hp != null ? ' and ' + p.hp + ' HP' : '') + ' at any level. Check the three numbers.', actions: [{ label: 'OK', style: 'primary', run: () => this.closeConfirm() }] });
+        return;
+      }
+    }
     const ivAvg = (atk + def + sta) / 45 * 100;
     const overrides = { ...this.state.ivOverrides };
     const shadow = this.isShadow(p);
@@ -12350,9 +12577,12 @@ class Component extends DCLogic {
         }
         continue;
       }
+      const askedSet = new Set(batch.map(n => String(n).toLowerCase()));
       resolved.forEach(o => {
         if (!o || !o.name) return;
         const key = String(o.name).toLowerCase();
+        if (!askedSet.has(key)) return;            // only species that were asked for
+        if (o.evolvesTo && o.evolvesTo !== 'none' && !(this.mechanics && this.mechanics.resolveDexByName && this.mechanics.resolveDexByName(String(o.evolvesTo)) != null)) return;   // an unknown target is a made-up one
         if (o.evolvesTo === null || o.evolvesTo === 'none' || !o.evolvesTo) {
           table[key] = { to: null, candy: null, item: null };
           got++;
@@ -12961,7 +13191,7 @@ class Component extends DCLogic {
     const queued = new Set(this.state.transferQueue || []);
     const keepCtx = this.keepContext(roster);
     const byDex = {};
-    roster.forEach(p => { (byDex[p.dex] = byDex[p.dex] || []).push(p); });
+    roster.forEach(p => { const k = p.dex + '_' + (p.form || ''); (byDex[k] = byDex[k] || []).push(p); });
     const out = [];
     roster.forEach(p => {
       if (queued.has(p.idx)) return;
@@ -12970,9 +13200,10 @@ class Component extends DCLogic {
       if (Number.isFinite(rank) && rank >= 70) return;
       if ((p.ivAvg || 0) >= 70) return;
       if (p.chargeMove2) return;
-      const siblings = byDex[p.dex] || [];
+      const siblings = byDex[p.dex + '_' + (p.form || '')] || [];
       if (siblings.length < 2) return;
       const better = siblings.find(q => q.idx !== p.idx
+        && Number.isFinite(q.ivAvg) && !this.needsAppraisal(q)
         && (q.ivAvg || 0) >= (p.ivAvg || 0)
         && (q.cp || 0) >= (p.cp || 0)
         && !(q.ivAvg === p.ivAvg && q.cp === p.cp && String(q.idx) > String(p.idx)));
@@ -13509,7 +13740,7 @@ class Component extends DCLogic {
       if (!needs && !drift) return;
       let tierRank = 4, tier = null, league = null;
       ['great', 'ultra'].forEach(k => {
-        const t = m.pvpTierFor(p.name, this.isShadow(p), k);
+        const t = m.pvpTierFor(p.name, this.isShadow(p), k, p.form);
         if (t && order[t.tier] < tierRank) { tierRank = order[t.tier]; tier = t.tier; league = k; }
       });
       const cp = Number.isFinite(p.cp) ? p.cp : 0;
@@ -13648,7 +13879,8 @@ class Component extends DCLogic {
       .slice(0, 10);
     const dexCounts = {};
     roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
-    const luckyTrade = roster.filter(p => !p.lucky && dexCounts[p.dex] > 1 && (p.ivAvg || 0) < 90 && notDone(p)).slice(0, 8);
+    // Trade fodder only from Pokemon the keep check would let go: a trade re-rolls the IVs and the Pokemon is gone.
+    const luckyTrade = roster.filter(p => !p.lucky && dexCounts[p.dex] > 1 && Number.isFinite(p.ivAvg) && p.ivAvg < 90 && notDone(p) && !this.keepReasons(p, keepCtx).length).slice(0, 8);
     const buddySuggestion = withRank.filter(x => !x.p.favorite).sort((a, b) => b.rank - a.rank)[0]?.p || null;
     // A strong Pokemon with only one charge move is the cheapest real PvP
     // upgrade available — an unlocked second move roughly doubles its shield
@@ -13741,14 +13973,14 @@ class Component extends DCLogic {
         const chatLine = p => {
           const dps = this.bestDpsFor(p);
           const note = this.movesetDataNote(p);
-          const moves = [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.formatMoveName(n)).join(' / ') || 'not on file';
+          const moves = [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.promptSafe(this.formatMoveName(n), 30)).join(' / ') || 'not on file';
           // Never state a damage number the move database can't back —
           // "dps unknown" plus the reason beats a confident-sounding guess.
           const dpsText = dps ? `DPS ${dps.dps.toFixed(1)} (${dps.fast}/${dps.charged})` : `dps unknown${note ? ' (' + note + ')' : ''}`;
           const winner = dominatedByIdx[p.idx];
           const dominated = winner ? `beaten by owned ${winner.cp || '?'}CP ${winner.name}` : 'no';
           const candy = candyFor(p);
-          return `${p.name}${p.form ? '/' + p.form : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'} | keep:${keepIdx[p.idx] && keepIdx[p.idx].length ? keepIdx[p.idx].join('+') : 'none'}`;
+          return `${this.promptSafe(p.name)}${p.form ? '/' + this.promptSafe(p.form, 20) : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'} | keep:${keepIdx[p.idx] && keepIdx[p.idx].length ? keepIdx[p.idx].join('+') : 'none'}`;
         };
         const byRank = [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a));
         const top = byRank.slice(0, 90);
@@ -13777,10 +14009,10 @@ class Component extends DCLogic {
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, only copy, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nA resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to 90, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top 90 by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. A Pokemon that has no line of its own (it appears only in the census) cannot be verified: never recommend transferring it, say you cannot check it. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, only copy, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
-      this.setState({ chatMessages: [...messages, { role: 'assistant', content: reply }], chatBusy: false }, () => this.queueCloudPush());
+      this.setState({ chatMessages: [...messages, { role: 'assistant', content: this.guardChatReply(reply) }], chatBusy: false }, () => this.queueCloudPush());
     } catch (e) {
       // The engine chain already knows WHY it failed - quota, missing key,
       // rejected key, network. Throwing that away and printing "try again"
@@ -14196,7 +14428,7 @@ class Component extends DCLogic {
   // straight off the row's data-swipe-row attribute (a string), so match
   // loosely rather than assuming numeric identity.
   openRosterActionMenu(idxAttr) {
-    const p = (this.state.roster || []).find(x => String(x.idx) === String(idxAttr));
+    const p = this.effectiveRosterForMatch().find(x => String(x.idx) === String(idxAttr));
     this._swipeTrace('menu ' + (p ? 'found ' + p.name : 'NO MATCH for ' + idxAttr));
     if (!p) return;
     const name = p.name ? (p.name.charAt(0).toUpperCase() + p.name.slice(1)) : 'this Pokemon';
@@ -14295,7 +14527,7 @@ class Component extends DCLogic {
 
   answerQuery(text) {
     const q = text.toLowerCase();
-    const roster = this.state.roster;
+    const roster = this.effectiveRosterForMatch();
     let answer = '';
     if (!roster.length) {
       answer = "I don't have roster data loaded yet.";
@@ -14320,7 +14552,8 @@ class Component extends DCLogic {
       const top = roster.slice().sort((a, b) => (b.cp || 0) - (a.cp || 0))[0];
       answer = top ? `Your highest CP Pokemon is ${top.name} at ${top.cp} CP.` : 'No CP data.';
     } else if (q.includes('transfer')) {
-      const count = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1)).length;
+      const kc = this.keepContext(roster);
+      const count = roster.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && this.bestRank(p) < 70 && !this.keepReasons(p, kc).length).length;
       answer = `I count ${count} transfer candidates on the Recommendations tab.`;
     } else if (q.includes('how many') || q.includes('total')) {
       answer = `You have ${roster.length} Pokemon logged.`;
@@ -14679,7 +14912,7 @@ class Component extends DCLogic {
     // old rankPct-only sort, same as before this change.
     const tierOrder = { S: 0, A: 1, B: 2, C: 3 };
     const tierFor = (p) => (this.mechanics && this.mechanics.pvpTierFor)
-      ? this.mechanics.pvpTierFor(p.name, this.isShadow(p), leagueKey)
+      ? this.mechanics.pvpTierFor(p.name, this.isShadow(p), leagueKey, p.form)
       : null;
     // Order: species tier first, then a complete recommended moveset, then IV
     // rank. A species PvPoke does not rank in Great/Ultra sorts after tier C;
@@ -14815,7 +15048,8 @@ class Component extends DCLogic {
     // exists, raidRoleTypeBest/hasRaidRole make it real: compared only
     // against your OWN roster, never an external tier list.
     const raidTypeBest = this.raidRoleTypeBest(roster);
-    const transferPool = roster.filter(p => (!Number.isFinite(p.ivAvg) || p.ivAvg < 51) && this.bestRank(p) < 70 && !this.hasRaidRole(p, raidTypeBest) && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !this.isShadow(p) && notDone(p));
+    const recKeepCtx = this.keepContext(roster);
+    const transferPool = roster.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && this.bestRank(p) < 70 && !this.hasRaidRole(p, raidTypeBest) && notDone(p) && !this.keepReasons(p, recKeepCtx).length);
     transferPool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const transferList = transferPool.slice(0, 12).map(p => ({
       idx: p.idx,
@@ -14826,14 +15060,14 @@ class Component extends DCLogic {
       ivDisplay: Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(1) + '%' : '—',
       cp: p.cp,
       why: this.whyLine(p, 'transfer'),
-      markTransferred: () => { this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); }
+      markTransferred: () => this.confirmRemove(p)
     }));
 
     // Borderline: fails the strict transfer bar but only just — worth a human
     // glance rather than an auto-flag, so this opens the detail sheet instead
     // of offering a one-tap remove.
     const transferIdxSet = new Set(transferPool.map(p => p.idx));
-    const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && (!Number.isFinite(p.ivAvg) || p.ivAvg < 58) && this.bestRank(p) < 78 && !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p));
+    const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && Number.isFinite(p.ivAvg) && p.ivAvg < 58 && this.bestRank(p) < 78 && notDone(p) && !this.keepReasons(p, recKeepCtx).length);
     borderlinePool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const borderlineList = borderlinePool.slice(0, 10).map(p => ({
       idx: p.idx,
@@ -14850,7 +15084,7 @@ class Component extends DCLogic {
 
     let closestMiss = null;
     if (!transferPool.length && !borderlinePool.length) {
-      const cmPool = roster.filter(p => !p.lucky && !p.favorite && !this.sizeProtected(p) && !p.shiny && !(p.shadowPurified === '1' || p.shadowPurified === 1) && notDone(p) && Number.isFinite(p.ivAvg));
+      const cmPool = roster.filter(p => notDone(p) && Number.isFinite(p.ivAvg) && !this.keepReasons(p, recKeepCtx).length);
       cmPool.sort((a, b) => a.ivAvg - b.ivAvg);
       const cm = cmPool[0];
       if (cm) {
@@ -14919,7 +15153,7 @@ class Component extends DCLogic {
         why: this.whyLine(p, 'transfer'),
         cp: p.cp,
         onClick: () => this.openDetail(p),
-        markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); }
+        markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.confirmRemove(p); }
       })),
       luckyTrade: mapMini(plan.luckyTrade, 'luckyTrade'),
       secondMoveCount: (plan.needsSecondMove || []).length,
@@ -15323,9 +15557,9 @@ class Component extends DCLogic {
           const tidy = n => String(n).replace(/\b\w/g, ch => ch.toUpperCase());
           const tierColor = t => t === 'S' ? 'var(--type-fairy)' : t === 'A' ? 'var(--grass-700)' : t === 'B' ? 'var(--type-electric)' : 'var(--ink-400)';
           const rows = [['GREAT', 'great'], ['ULTRA', 'ultra']].map(([label, key]) => {
-            const ms = m.pvpMovesetFor(p.name, this.isShadow(p), key);
+            const ms = m.pvpMovesetFor(p.name, this.isShadow(p), key, p.form);
             if (!ms) return null;
-            const tier = m.pvpTierFor(p.name, this.isShadow(p), key);
+            const tier = m.pvpTierFor(p.name, this.isShadow(p), key, p.form);
             const moves = [ms.fast, ...ms.charged].map(n => {
               const owned = have.has(n);
               return { name: tidy(n), mark: owned ? '\u2713' : '+', bg: owned ? 'color-mix(in oklab, var(--grass-600) 24%, var(--surface-card))' : 'var(--surface-sunken)', fg: owned ? 'var(--grass-700)' : 'var(--ink-600)' };
@@ -15569,7 +15803,7 @@ class Component extends DCLogic {
       loserLine: (loser.cp || '?') + ' CP \u00b7 ' + this.dupSpread(loser),
       winnerLine: 'beaten on every stat by your ' + (winner.cp || '?') + ' CP ' + this.dupSpread(winner),
       onClick: () => this.openDetail(loser),
-      markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.removePokemon(loser.idx); }
+      markTransferred: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.confirmRemove(loser); }
     }));
 
     const isMobile = (this.state.viewportWidth || 1200) < 640;
@@ -15862,7 +16096,7 @@ class Component extends DCLogic {
       selectedLabel: (this.state.selectedIdx || []).length ? (this.state.selectedIdx || []).length + ' selected' : 'Select Pokemon',
       selectAllShown: () => this.setState({ selectedIdx: filtered.map(p => p.idx) }),
       bulkTransfer: () => this.bulkTransfer(true),
-      bulkRemove: () => this.askConfirm({ title: 'Remove ' + (this.state.selectedIdx || []).length + ' entries?', message: 'Use this only for mistaken duplicates \u2014 it will NOT grant transfer candy. You can undo right after.', actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.closeConfirm(); this.bulkTransfer(false); } }] }),
+      bulkRemove: () => this.askConfirm({ title: 'Remove ' + (this.state.selectedIdx || []).length + ' entries?', message: 'Use this only for mistaken duplicates \u2014 it will NOT grant transfer candy. You can undo right after.', actions: [{ label: 'REMOVE', style: 'danger', run: () => { this.closeConfirm(); this.bulkRemoveConfirmed(); } }] }),
       bulkFavourite: () => this.bulkFavourite(),
       savedViewChips: (this.state.savedViews || []).map(v => ({
         name: v.name,
@@ -16012,7 +16246,7 @@ class Component extends DCLogic {
           cp: p.cp,
           movesetNote: this.movesetDataNote(p),
           reason,
-          markTransferred: () => { this.offerUndo('Removed ' + (p.name || 'Pokemon'), ['removedIds']); this.removePokemon(p.idx); }
+          markTransferred: () => this.confirmRemove(p)
         }));
       })(),
       eliteTmCandidates: (() => {
@@ -16495,8 +16729,9 @@ class Component extends DCLogic {
       transferQueueCount: queueIdx.length || null,
       transferQueueList: queueIdx.map(idx => {
         const p = rosterByIdx[idx];
+        const keepWhy = p ? this.keepReasons(p, recKeepCtx) : [];
         return {
-          short: p ? p.name + ' ' + (p.cp != null ? p.cp : '?') : String(idx),
+          short: p ? p.name + ' ' + (p.cp != null ? p.cp : '?') + (keepWhy.length ? ' \u26a0 KEEP: ' + keepWhy[0] : '') : String(idx),
           spriteRef: p ? this.makeSpriteRefByDex(p.dex, p.form) : (() => {}),
           badgeColor: p ? this.dsTypeColor(p) : 'var(--line-300)',
           onRemove: () => this.unqueueTransfer(idx)

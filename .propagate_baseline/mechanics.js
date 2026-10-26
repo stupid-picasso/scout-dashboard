@@ -5097,9 +5097,18 @@ function pvpTableFor(leagueKey) {
     : leagueKey === 'master' ? PVP_TIER_MASTER : leagueKey === 'mega' ? PVP_TIER_MEGA : PVP_TIER_GREAT;
 }
 
-function pvpTierFor(name, isShadow, leagueKey) {
+// A PvPoke table row for a species. PvPoke ids are lowercase with underscores and spell regional forms out
+// ("mr_mime", "ho_oh", "lilligant_hisuian"), so the display name and form are normalised the same way
+// speciesInfo does, and the form-specific row is tried before the plain one.
+function _pvpEntry(table, name, form) {
+  if (!table) return null;
+  for (const k of _speciesKeys(name, form)) { if (table[k]) return table[k]; }
+  return table[String(name || '').toLowerCase()] || null;
+}
+
+function pvpTierFor(name, isShadow, leagueKey, form) {
   const table = pvpTableFor(leagueKey);
-  const entry = table[String(name || '').toLowerCase()];
+  const entry = _pvpEntry(table, name, form);
   if (!entry) return null;
   if (isShadow && entry.shadowTier != null) return { score: entry.shadowScore, tier: entry.shadowTier };
   if (entry.tier != null) return { score: entry.score, tier: entry.tier };
@@ -5113,9 +5122,9 @@ function pvpTierFor(name, isShadow, leagueKey) {
 // beats best (`matchups`) and the ones that beat it (`counters`), each as
 // { id, rating } with rating 0-1000 (above 500 is a win). Null when PvPoke
 // does not rank the species there or it is below tier B (not stored).
-function pvpMatchupsFor(name, isShadow, leagueKey) {
+function pvpMatchupsFor(name, isShadow, leagueKey, form) {
   const table = pvpTableFor(leagueKey);
-  const entry = table[String(name || '').toLowerCase()];
+  const entry = _pvpEntry(table, name, form);
   if (!entry) return null;
   const cn = (isShadow && entry.shadowCn) || entry.cn || entry.shadowCn;
   const mu = (isShadow && entry.shadowMu) || entry.mu || entry.shadowMu;
@@ -5441,9 +5450,9 @@ function ivBreakpoints(base, ivs, leagueKey, isShadow, fastMoveId, ownTypes) {
 // PvPoke's simulated best moveset for a species in a league, as
 // { fast, charged: [a, b] } in this app's move naming (lowercase, spaces), or
 // null when PvPoke does not rank the species there.
-function pvpMovesetFor(name, isShadow, leagueKey) {
+function pvpMovesetFor(name, isShadow, leagueKey, form) {
   const table = pvpTableFor(leagueKey);
-  const entry = table[String(name || '').toLowerCase()];
+  const entry = _pvpEntry(table, name, form);
   if (!entry) return null;
   const raw = (isShadow && entry.shadowMoves) || entry.moves || entry.shadowMoves;
   if (!raw) return null;
