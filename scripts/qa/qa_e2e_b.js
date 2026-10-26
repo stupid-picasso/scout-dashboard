@@ -197,11 +197,11 @@ module.exports = async function suiteB() {
     expect(await s.call('starsOf', p) === 3 && await s.call('starsOf', { atkIV: 15, defIV: 15, staIV: 15 }) === 4 && await s.call('starsOf', { atkIV: 0, defIV: 0, staIV: 0 }) === 0, 'stars');
     await s.set({ srchName: 'ninetales, vulpix', srchTypes: ['Ice'], srchForm: 'alola', srchFlags: { shadow: -1, lucky: 1 }, srchStars: [3, 4], srchCpMin: '', srchCpMax: '1500' });
     const out = await s.call('searchStringFromBuilder');
-    expect(out === 'ninetales&ice&alola&!shadow&lucky&3*&cp-1500,ninetales&ice&alola&!shadow&lucky&4*&cp-1500,vulpix&ice&alola&!shadow&lucky&3*&cp-1500,vulpix&ice&alola&!shadow&lucky&4*&cp-1500', out);   // every alternative carries every filter: in the game "&" binds tighter than ","
+    expect(out === 'ninetales,vulpix&ice&alola&!shadow&lucky&3*,4*&cp-1500', out);   // a comma groups first (OR), then "&" (AND): checked on a real account
     await s.set({ tab: 'tools', toolsMode: 'rename' }); await s.page.waitForTimeout(500);
     expect(/Rename/.test(await s.page.evaluate(() => document.body.innerText)), 'rename ui');
     await s.set({ toolsMode: 'search' }); await s.page.waitForTimeout(400);
-    expect(/ninetales&ice&alola/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
+    expect(/ninetales,vulpix&ice/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
   }, 'high');
   await T('GEM-01', 'AI', 'In-app Gemini cycle is live: retired models dropped, a 503 moves to the next model', async () => {
     const r = await s.page.evaluate(async () => {
@@ -516,26 +516,31 @@ module.exports = async function suiteB() {
     expect(unWhy.some(x => /not measured/.test(x)), 'unmeasured must be kept: ' + unWhy.join());
     const trade = await s.call('tradeAdvice');
     expect(Array.isArray(trade.dupes) && Array.isArray(trade.lucky), 'trade advice shape');
-    // 6. The in-game search distributes every filter over every alternative.
+    // 6. The in-game search: commas group first (OR), then "&" joins the groups (AND), as checked in the game.
     await s.set({ srchName: 'a, b', srchTypes: [], srchForm: '', srchFlags: { shiny: -1 }, srchStars: [0, 1], srchCpMin: '', srchCpMax: '' });
     const q = await s.call('searchStringFromBuilder');
-    expect(q.split(',').every(t => /!shiny/.test(t)) && q.split(',').length === 4, 'every alternative must keep the exclusion: ' + q);
+    expect(q === 'a,b&!shiny&0*,1*', 'builder output: ' + q);
   });
-  await T('BULKSTR-01', 'Tools', 'Transfer strings: one search term per unprotected Pokemon, batched under the length cap, twins and protected ones left out', async () => {
+  await T('BULKSTR-01', 'Tools', 'Transfer strings use the game-verified form "names & cps & stars", never select a protected Pokemon, and state the exact count', async () => {
     const mk = (idx, iv, cp, extra) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
     const big = { ...mk('bs0', 15, 3000), name: 'Snorlax', dex: 143 };
     const st0 = await s.state();
     const weak = []; for (let i = 0; i < 14; i++) weak.push(mk('bsw' + i, 1 + (i % 3), 600 + i * 7));
-    const twinA = mk('bst1', 2, 910), twinB = mk('bst2', 2, 910);        // same name, CP and stars: cannot be told apart
-    const prot = mk('bsp1', 2, 777, { favorite: true });                  // protected: never in a string
-    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, ...weak, twinA, twinB, prot], cutTarget: 1, cutTargetDraft: '1' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const keeper = mk('bsp1', weak[0].atkIV, 600, { favorite: true });   // same name, CP and stars as a candidate, but protected
+    const odd = { ...mk('bso1', 2, 888), name: 'Mr. Mime', dex: 122 };    // a name the game search may not accept
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, ...weak, keeper, odd], cutTarget: 1, cutTargetDraft: '1' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
     const r = await s.call('buildTransferBatches');
-    const all = r.batches.map(b => b.text).join(',');
-    expect(r.batches.length >= 1 && r.batches.every(b => b.text.length <= 90 + 40 && b.text.length > 0), 'batch lengths: ' + r.batches.map(b => b.text.length));
-    expect(r.batches.every(b => b.text.length <= 90 || b.pokemon.length === 1), 'a batch is over the cap');
-    expect(/luvdisc&cp600&\d\*/.test(all) && !/cp777/.test(all), 'terms: ' + all.slice(0, 160));
-    expect(r.manual.some(m => /same CP/.test(m.why)) && !/cp910/.test(all), 'twins must go to the by-hand list');
-    expect(r.batches.every(b => b.n === b.text.split(',').length), 'expected count must equal the number of terms');
+    expect(r.batches.length >= 1, 'no batches');
+    expect(r.batches.every(b => /^[a-z,]+ & cp\d+(,cp\d+)* & \d\*(,\d\*)*$/.test(b.text)), 'format: ' + r.batches.map(b => b.text).join(' | '));
+    expect(r.batches.every(b => b.text.length <= 90), 'batch over the length cap');
+    // The protected look-alike must never be selected: nothing in any batch may match it.
+    const sel = (b) => { const nm = b.text.split(' & '); const N = nm[0].split(','), C = nm[1].split(',').map(x => +x.slice(2)), S = (nm[2] || '').split(',').map(x => parseInt(x)); return { N, C, S }; };
+    expect(r.batches.every(b => { const t = sel(b); return !(t.N.indexOf('luvdisc') >= 0 && t.C.indexOf(600) >= 0 && t.S.indexOf(weak[0].atkIV <= 3 ? 0 : 1) >= 0); }), 'a batch would also select the protected Luvdisc');
+    expect(r.manual.some(m => /keeps it|keep/.test(m.why)) || r.batches.every(b => b.text.indexOf('cp600') < 0), 'the candidate that shares a protected one must be by hand');
+    const cands = await s.call('transferCandidates');
+    if (cands.some(c => c.p.idx === 'bso1')) expect(r.manual.some(m => /spaces or symbols/.test(m.why)), 'symbol names go to the by-hand list');
+    expect(!r.batches.some(b => /mr/.test(b.text)), 'a name with symbols must never be put in a string');
+    expect(r.batches.every(b => b.n === b.pokemon.length && b.n >= 1), 'expected count must equal the members');
     await s.set({ toolsMode: 'bulk', tab: 'tools' }); await s.page.waitForTimeout(600);
     const txt = await s.page.evaluate(() => document.body.innerText);
     expect(/Transfer strings/.test(txt) && /exactly \d+ Pokemon/.test(txt) && /Protect in the game too/.test(txt) && /shiny,lucky,shadow/.test(txt), txt.slice(0, 300));

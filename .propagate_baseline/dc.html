@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.190</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.191</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4960,20 +4960,18 @@ class Component extends DCLogic {
   // Search string in Pokemon GO syntax: "," is OR, "&" is AND, "!" is NOT.
   searchStringFromBuilder() {
     const st = this.state, parts = [];
-    // In the game "&" binds tighter than ",", so "a,b&x" means a OR (b AND x). Every OR group is therefore
-    // multiplied out ("a&x,b&x") so each exclusion applies to every alternative.
+    // Verified in the game: a comma joins alternatives first (OR) and "&" then joins the groups (AND), so
+    // "pikachu,charmander & cp84,cp566" means (pikachu or charmander) and (cp84 or cp566).
     const names = String(st.srchName || '').split(/[,\n]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
-    if (names.length) parts.push(names);
-    if ((st.srchTypes || []).length) parts.push(st.srchTypes.map(t => t.toLowerCase()));
-    if (st.srchForm) parts.push([st.srchForm]);
+    if (names.length) parts.push(names.join(','));
+    if ((st.srchTypes || []).length) parts.push(st.srchTypes.map(t => t.toLowerCase()).join(','));
+    if (st.srchForm) parts.push(st.srchForm);
     const flags = st.srchFlags || {};
-    Object.keys(flags).forEach(k => { if (flags[k] === 1) parts.push([k]); else if (flags[k] === -1) parts.push(['!' + k]); });
-    if ((st.srchStars || []).length) parts.push([...st.srchStars].sort().map(n => n + '*'));
+    Object.keys(flags).forEach(k => { if (flags[k] === 1) parts.push(k); else if (flags[k] === -1) parts.push('!' + k); });
+    if ((st.srchStars || []).length) parts.push([...st.srchStars].sort().map(n => n + '*').join(','));
     const lo = String(st.srchCpMin || '').trim(), hi = String(st.srchCpMax || '').trim();
-    if (lo || hi) parts.push(['cp' + lo + '-' + hi]);
-    let terms = [[]];
-    parts.forEach(opts => { const next = []; terms.forEach(t => opts.forEach(o => next.push([...t, o]))); terms = next.slice(0, 200); });
-    return terms.filter(t => t.length).map(t => t.join('&')).join(',');
+    if (lo || hi) parts.push('cp' + lo + '-' + hi);
+    return parts.join('&');
   }
 
   // Which roster rows the builder's selection would catch. Only filters this app can evaluate
@@ -12246,32 +12244,53 @@ class Component extends DCLogic {
     return [...out.values()];
   }
 
-  // Search term for exactly one Pokemon, or null when the game's search cannot single it out safely.
-  transferTermFor(p, roster) {
-    const name = String(p.name || '').toLowerCase();
-    if (!/^[a-z]+$/.test(name)) return { manual: 'The name has spaces or symbols the game search may not accept' };
-    if (!Number.isFinite(p.cp)) return { manual: 'No CP on file' };
-    const stars = this.starsOf(p);
-    const formKey = { alola: 'alola', alolan: 'alola', galar: 'galarian', galarian: 'galarian', hisui: 'hisuian', hisuian: 'hisuian', paldea: 'paldea', paldean: 'paldea' }[String(p.form || '').toLowerCase()];
-    // Another Pokemon of the same species, form, CP and stars would be selected too: they cannot be told apart in the game.
-    const twin = roster.find(q => q.idx !== p.idx && String(q.name).toLowerCase() === name && q.cp === p.cp && String(q.form || '').toLowerCase() === String(p.form || '').toLowerCase() && this.starsOf(q) === stars);
-    if (twin) return { manual: 'Another ' + p.name + ' has the same CP and stars, so a search would select both' };
-    return { term: [name, formKey, 'cp' + p.cp, stars != null ? stars + '*' : null].filter(Boolean).join('&') };
-  }
-
+  // The game reads "a,b & cp1,cp2 & 0*,1*" as (a or b) AND (cp1 or cp2) AND (0* or 1*) (checked on a real account).
+  // So a batch selects every Pokemon whose name, CP and stars are each in the lists, which can include Pokemon that
+  // were not meant. Each batch is therefore built against the WHOLE roster: a Pokemon joins a batch only if nothing
+  // outside the transfer list would be selected by it. Anything that cannot be isolated goes to a by-hand list.
   buildTransferBatches() {
     const MAX = 90;   // characters per pasted string
     const roster = this.effectiveRosterForMatch();
-    const cand = this.transferCandidates();
-    const batches = [], manual = [];
-    let cur = null;
-    cand.sort((a, b) => String(a.p.name).localeCompare(String(b.p.name)) || (a.p.cp || 0) - (b.p.cp || 0)).forEach(c => {
-      const t = this.transferTermFor(c.p, roster);
-      if (!t.term) { manual.push({ p: c.p, why: t.manual }); return; }
-      if (!cur || (cur.text.length + 1 + t.term.length) > MAX) { cur = { text: t.term, pokemon: [c.p], names: [] }; batches.push(cur); }
-      else { cur.text += ',' + t.term; cur.pokemon.push(c.p); }
+    const cand = this.transferCandidates().slice(0, 600);
+    const candByIdx = new Map(cand.map(c => [c.p.idx, c]));
+    const rows = roster.map(q => ({ idx: q.idx, name: String(q.name || '').toLowerCase(), cp: q.cp, stars: this.starsOf(q) }));
+    const manual = [];
+    let items = [];
+    cand.forEach(c => {
+      const name = String(c.p.name || '').toLowerCase();
+      if (!/^[a-z]+$/.test(name)) { manual.push({ p: c.p, why: 'The name has spaces or symbols the game search may not accept' }); return; }
+      if (!Number.isFinite(c.p.cp)) { manual.push({ p: c.p, why: 'No CP on file' }); return; }
+      items.push({ idx: c.p.idx, name, cp: c.p.cp, stars: this.starsOf(c.p) });
     });
-    batches.forEach(b => { b.n = b.pokemon.length; b.names = b.pokemon.map(p => p.name + ' ' + p.cp + ' CP'); });
+    items.sort((a, b) => a.name.localeCompare(b.name) || a.cp - b.cp);
+    const sets = it => ({ N: new Set(it.map(x => x.name)), C: new Set(it.map(x => x.cp)), S: new Set(it.map(x => x.stars)), withStars: it.every(x => x.stars != null) });
+    const matched = it => { const t = sets(it); return rows.filter(r => t.N.has(r.name) && t.C.has(r.cp) && (!t.withStars || t.S.has(r.stars))); };
+    const textOf = it => {
+      const t = sets(it);
+      return [...t.N].join(',') + ' & ' + [...t.C].sort((a, b) => a - b).map(c => 'cp' + c).join(',') + (t.withStars ? ' & ' + [...t.S].sort((a, b) => a - b).map(n => n + '*').join(',') : '');
+    };
+    const clean = it => matched(it).every(r => candByIdx.has(r.idx));
+    const batches = [];
+    let remaining = items;
+    while (remaining.length) {
+      let cur = [];
+      for (let i = 0; i < remaining.length; i++) {
+        const trial = cur.concat(remaining[i]);
+        if (textOf(trial).length <= MAX && clean(trial)) cur = trial;
+      }
+      if (!cur.length) {
+        const bad = remaining[0];
+        const extra = matched([bad]).find(r => !candByIdx.has(r.idx));
+        const other = extra ? roster.find(q => q.idx === extra.idx) : null;
+        manual.push({ p: candByIdx.get(bad.idx).p, why: other ? 'Your ' + other.name + ' (' + other.cp + ' CP) would be selected too, and the app keeps it' : 'A search for it would also select something you may want to keep' });
+        remaining = remaining.slice(1);
+        continue;
+      }
+      const members = matched(cur).map(r => candByIdx.get(r.idx).p);
+      const have = new Set(members.map(p => p.idx));
+      batches.push({ text: textOf(cur), pokemon: members, n: members.length, names: members.map(p => p.name + ' ' + p.cp + ' CP') });
+      remaining = remaining.filter(x => !have.has(x.idx));
+    }
     return { batches, manual, total: cand.length };
   }
 
