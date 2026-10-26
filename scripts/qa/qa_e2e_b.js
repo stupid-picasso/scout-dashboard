@@ -521,6 +521,32 @@ module.exports = async function suiteB() {
     const q = await s.call('searchStringFromBuilder');
     expect(q.split(',').every(t => /!shiny/.test(t)) && q.split(',').length === 4, 'every alternative must keep the exclusion: ' + q);
   });
+  await T('BULKSTR-01', 'Tools', 'Transfer strings: one search term per unprotected Pokemon, batched under the length cap, twins and protected ones left out', async () => {
+    const mk = (idx, iv, cp, extra) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const big = { ...mk('bs0', 15, 3000), name: 'Snorlax', dex: 143 };
+    const st0 = await s.state();
+    const weak = []; for (let i = 0; i < 14; i++) weak.push(mk('bsw' + i, 1 + (i % 3), 600 + i * 7));
+    const twinA = mk('bst1', 2, 910), twinB = mk('bst2', 2, 910);        // same name, CP and stars: cannot be told apart
+    const prot = mk('bsp1', 2, 777, { favorite: true });                  // protected: never in a string
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, ...weak, twinA, twinB, prot], cutTarget: 1, cutTargetDraft: '1' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const r = await s.call('buildTransferBatches');
+    const all = r.batches.map(b => b.text).join(',');
+    expect(r.batches.length >= 1 && r.batches.every(b => b.text.length <= 90 + 40 && b.text.length > 0), 'batch lengths: ' + r.batches.map(b => b.text.length));
+    expect(r.batches.every(b => b.text.length <= 90 || b.pokemon.length === 1), 'a batch is over the cap');
+    expect(/luvdisc&cp600&\d\*/.test(all) && !/cp777/.test(all), 'terms: ' + all.slice(0, 160));
+    expect(r.manual.some(m => /same CP/.test(m.why)) && !/cp910/.test(all), 'twins must go to the by-hand list');
+    expect(r.batches.every(b => b.n === b.text.split(',').length), 'expected count must equal the number of terms');
+    await s.set({ toolsMode: 'bulk', tab: 'tools' }); await s.page.waitForTimeout(600);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/Transfer strings/.test(txt) && /exactly \d+ Pokemon/.test(txt) && /Protect in the game too/.test(txt) && /shiny,lucky,shadow/.test(txt), txt.slice(0, 300));
+    await s.set({ addedPokemon: st0.addedPokemon || [], cutTarget: 300, cutTargetDraft: '300', toolsMode: 'rename' });
+  });
+  await T('STRICT-IV-01', 'Safety', 'A record with IVs but no appraisal or typed-in mark counts as unmeasured and is protected', async () => {
+    const p = { idx: 'sv1', name: 'Rattata', dex: 19, cp: 100, hp: 30, atkIV: 1, defIV: 1, staIV: 1, ivAvg: 6.7, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 } };
+    expect((await s.call('keepReasons', p)).some(x => /not measured/.test(x)), 'unflagged IVs must be treated as unmeasured');
+    expect(!(await s.call('keepReasons', { ...p, ivMeasured: true })).some(x => /not measured/.test(x)), 'measured must pass');
+    expect(!(await s.call('keepReasons', { ...p, ivManual: true })).some(x => /not measured/.test(x)), 'typed-in must pass');
+  });
   await T('CUT-03', 'Roster', 'An XXL or XXS is never in the cut list ahead of a normal-size duplicate; with protection off it can be', async () => {
     const mk = (idx, h, iv, cp) => ({ idx, name: 'Bulbasaur', dex: 1, cp, hp: 50, height: h, weight: '7kg', atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 10, lvlMax: 10, ivSolved: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const xxl = mk('z1', '1.2m', 1, 200), a = mk('z2', '0.7m', 10, 300), b = mk('z3', '0.7m', 12, 320), c = mk('z4', '0.7m', 14, 340);

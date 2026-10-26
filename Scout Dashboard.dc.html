@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.188</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.190</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3166,6 +3166,38 @@
       </div>
       <sc-if value="{{ showcaseMore }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ showcaseShowMore }}" class="om-press" style="display:block;margin:14px auto 0;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more ({{ showcaseLeft }} left)</button></sc-if>
     </sc-if>
+    <sc-if value="{{ isBulkMode }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+        <div style="font:800 18px var(--font-display);text-align:center">Transfer strings</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go, none of them protected. Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
+      </div>
+      <sc-for list="{{ bulkBatches }}" as="b" hint-placeholder-count="0">
+        <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+          <div style="font:800 15px var(--font-display)">{{ b.title }}</div>
+          <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ b.text }}</div>
+          <div style="font:600 13px/1.4 var(--font-body);color:#b4531f">{{ b.expect }}</div>
+          <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">{{ b.names }}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ b.copyLabel }}</button>
+            <button type="button" onClick="{{ b.onDone }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#17353b;color:#fff;font:700 14px var(--font-body)">I transferred this batch</button>
+          </div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ bulkHasManual }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b">
+          <div style="font:800 15px var(--font-display);margin-bottom:6px">Transfer these by hand</div>
+          <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84;margin-bottom:6px">A search string could select more than the one Pokemon, so each needs picking in the game.</div>
+          <sc-for list="{{ bulkManual }}" as="m" hint-placeholder-count="0"><div style="font:13px/1.45 var(--font-body)"><b>{{ m.name }}</b> <span style="color:#5b7d84">{{ m.why }}</span></div></sc-for>
+          <div style="font:12.5px var(--font-body);color:#5b7d84">{{ bulkManualMore }}</div>
+        </div>
+      </sc-if>
+      <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+        <div style="font:800 15px var(--font-display)">Protect in the game too</div>
+        <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">Paste this, select all and tap the favourite star. The game will then ask before it lets you transfer any of them, even if this app were wrong.</div>
+        <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ bulkProtectText }}</div>
+        <button type="button" onClick="{{ onBulkProtectCopy }}" class="om-press" style="align-self:flex-start;min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ bulkProtectCopyLabel }}</button>
+      </div>
+    </sc-if>
   </div>
   </sc-if>
 
@@ -5022,9 +5054,10 @@ class Component extends DCLogic {
     const out = this.searchStringFromBuilder();
     const presetDefs = [['transfer', '0\u2605 only, check each in the app'], ['keep', '3★ and 4★'], ['great', 'Great League CP'], ['ultra', 'Ultra League CP'], ['little', 'Little Cup CP'], ['evolve', 'Can evolve'], ['clear', 'Clear']];
     return {
-      isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search', isShowcaseMode: st.toolsMode === 'showcase',
+      isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search', isShowcaseMode: st.toolsMode === 'showcase', isBulkMode: st.toolsMode === 'bulk',
+      ...(st.toolsMode === 'bulk' ? this.bulkStringVals() : {}),
       ...(st.toolsMode === 'showcase' ? this.showcaseVals() : {}),
-      modeChips: [['rename', 'Rename'], ['search', 'Search'], ['showcase', 'Showcase']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
+      modeChips: [['rename', 'Rename'], ['search', 'Search'], ['showcase', 'Showcase'], ['bulk', 'Transfer strings']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
       renameTpl: st.renameTpl, onTplChange: e => this.setState({ renameTpl: e.target.value }),
       renameQuery: st.renameQuery, onQueryChange: e => this.setState({ renameQuery: e.target.value, renameVisible: 20 }),
       sampleText: sample || '—', sampleCount: (sample || '').length + '/12', sampleColor: (sample || '').length > 12 ? '#e5484d' : '#6b7f86',
@@ -5226,6 +5259,8 @@ class Component extends DCLogic {
       if (out.hp != null && !(out.hp >= 1 && out.hp <= 1000)) clear('hp', 'is outside 1-1000');
       ['atkIV', 'defIV', 'staIV'].forEach(k => { if (out[k] != null && !(Number.isInteger(out[k]) && out[k] >= 0 && out[k] <= 15)) clear(k, 'is not a whole number 0-15'); });
       if (out.atkIV == null || out.defIV == null || out.staIV == null) { if (r.atkIV != null || r.defIV != null || r.staIV != null) { out.atkIV = out.defIV = out.staIV = null; out.ivAvg = null; } }
+      // A Poke Genie / CSV row carries IVs read from the appraisal screen: measured, not guessed.
+      if ([out.atkIV, out.defIV, out.staIV].every(Number.isFinite)) out.ivMeasured = true;
       ['lvlMin', 'lvlMax'].forEach(k => { if (out[k] != null && !(out[k] >= 1 && out[k] <= 51)) clear(k, 'is outside level 1-51'); });
       if (out.dex != null && !(Number.isInteger(out.dex) && out.dex >= 1 && out.dex <= 1200)) clear('dex', 'is not a valid Pokedex number');
       valid.push(out);
@@ -5933,11 +5968,11 @@ class Component extends DCLogic {
   // the solver's best guess from CP and HP, and this is what separates them.
   needsAppraisal(p) {
     if (!p) return false;
-    if (p.ivMeasured) return false;
+    if (p.ivMeasured || p.ivManual) return false;
     if (!Number.isFinite(p.atkIV)) return true;
-    // A spread that still carries a candidate range is a guess from CP/HP, whatever else the record says.
-    if (p.ivRange) return true;
-    return !!p.ivSolved;
+    // Anything else is a guess from CP/HP (a unique solve, a candidate range) or a record of unknown origin: until the
+    // appraisal screen has been read, it is treated as unmeasured and is never offered for transfer.
+    return true;
   }
 
   typeOf(p) {
@@ -6229,7 +6264,7 @@ class Component extends DCLogic {
   // entry whose `to` is explicitly null/falsy) is excluded.
   littleCupEligible(p) {
     const rec = this.evoRecordFor(p);
-    if (!rec) return true;
+    if (!rec || rec.assumed) return true;   // unknown (or only assumed to be final) counts as eligible
     return !!rec.to;
   }
 
@@ -8077,13 +8112,16 @@ class Component extends DCLogic {
       // (e.g. a Nickit and a Popplio can both sit at CP 465), so falling back to
       // it whenever a confidently-read name simply has no roster match risks
       // silently attributing one Pokemon's scan to a totally different one.
-      const roster = this.state.roster || [];
+      // The merged list (scans included, removed ones left out), and HP as part of identity: two Pokemon of one
+      // species can share a CP, and matching the wrong one overwrote its IVs.
+      const roster = this.effectiveRosterForMatch();
       const nameLower = (rec.pokemon_name || '').toLowerCase();
       const formOf = f => String(f || '').toLowerCase();
+      const hpOk = p => rec.hp == null || p.hp == null || Number(p.hp) === Number(rec.hp);
       const matched = nameLower
-        ? (roster.find(p => p.cp === rec.cp && p.name.toLowerCase() === nameLower && (!rec.form || formOf(p.form) === formOf(rec.form)))
-          || roster.find(p => p.cp === rec.cp && p.name.toLowerCase() === nameLower))
-        : roster.find(p => p.cp === rec.cp);
+        ? (roster.find(p => p.cp === rec.cp && hpOk(p) && p.name.toLowerCase() === nameLower && (!rec.form || formOf(p.form) === formOf(rec.form)))
+          || roster.find(p => p.cp === rec.cp && hpOk(p) && p.name.toLowerCase() === nameLower))
+        : roster.find(p => p.cp === rec.cp && hpOk(p));
 
       this.setState({
         ocrBusy: false,
@@ -12192,6 +12230,87 @@ class Component extends DCLogic {
     });
   }
 
+  // ---- Bulk transfer strings -----------------------------------------------------------------------
+  // Every Pokemon the app would let go (Keep best list, dominated duplicates, triage), each already cleared by the
+  // keep check. Written as in-game search terms (name & CP & stars) so one paste selects the whole batch.
+  transferCandidates() {
+    const roster = this.effectiveRosterForMatch();
+    const ctx = this.keepContext(roster);
+    const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
+    const overBy = Math.max(0, roster.length - target);
+    const out = new Map();
+    const add = (p, why) => { if (p && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why }); };
+    if (overBy) this.cutSafeSummary(roster, overBy).show.forEach(r => add(r.p, 'Bottom of your Keep best list'));
+    this.dominatedDuplicates(roster).forEach(x => add(x.loser, 'Beaten on every stat by your ' + (x.winner.cp || '?') + ' CP ' + x.winner.name));
+    this.triageQueue().forEach(t => add(t.p, t.reason));
+    return [...out.values()];
+  }
+
+  // Search term for exactly one Pokemon, or null when the game's search cannot single it out safely.
+  transferTermFor(p, roster) {
+    const name = String(p.name || '').toLowerCase();
+    if (!/^[a-z]+$/.test(name)) return { manual: 'The name has spaces or symbols the game search may not accept' };
+    if (!Number.isFinite(p.cp)) return { manual: 'No CP on file' };
+    const stars = this.starsOf(p);
+    const formKey = { alola: 'alola', alolan: 'alola', galar: 'galarian', galarian: 'galarian', hisui: 'hisuian', hisuian: 'hisuian', paldea: 'paldea', paldean: 'paldea' }[String(p.form || '').toLowerCase()];
+    // Another Pokemon of the same species, form, CP and stars would be selected too: they cannot be told apart in the game.
+    const twin = roster.find(q => q.idx !== p.idx && String(q.name).toLowerCase() === name && q.cp === p.cp && String(q.form || '').toLowerCase() === String(p.form || '').toLowerCase() && this.starsOf(q) === stars);
+    if (twin) return { manual: 'Another ' + p.name + ' has the same CP and stars, so a search would select both' };
+    return { term: [name, formKey, 'cp' + p.cp, stars != null ? stars + '*' : null].filter(Boolean).join('&') };
+  }
+
+  buildTransferBatches() {
+    const MAX = 90;   // characters per pasted string
+    const roster = this.effectiveRosterForMatch();
+    const cand = this.transferCandidates();
+    const batches = [], manual = [];
+    let cur = null;
+    cand.sort((a, b) => String(a.p.name).localeCompare(String(b.p.name)) || (a.p.cp || 0) - (b.p.cp || 0)).forEach(c => {
+      const t = this.transferTermFor(c.p, roster);
+      if (!t.term) { manual.push({ p: c.p, why: t.manual }); return; }
+      if (!cur || (cur.text.length + 1 + t.term.length) > MAX) { cur = { text: t.term, pokemon: [c.p], names: [] }; batches.push(cur); }
+      else { cur.text += ',' + t.term; cur.pokemon.push(c.p); }
+    });
+    batches.forEach(b => { b.n = b.pokemon.length; b.names = b.pokemon.map(p => p.name + ' ' + p.cp + ' CP'); });
+    return { batches, manual, total: cand.length };
+  }
+
+  // After pasting a batch in the game and transferring it there: record it here (+1 candy each). The keep check runs
+  // again first, so a Pokemon that became protected since the string was made is left out.
+  confirmBatchTransferred(pokemon) {
+    const roster = this.effectiveRosterForMatch();
+    const ctx = this.keepContext(roster);
+    const fresh = pokemon.map(p => roster.find(q => q.idx === p.idx)).filter(Boolean);
+    const safe = fresh.filter(p => !this.keepReasons(p, ctx).length);
+    const skipped = fresh.length - safe.length;
+    this.askConfirm({
+      title: 'Did you transfer these ' + safe.length + ' in the game?',
+      message: safe.slice(0, 8).map(p => p.name + ' ' + p.cp).join(', ') + (safe.length > 8 ? ' and ' + (safe.length - 8) + ' more' : '') + '. This records them as transferred and adds 1 candy each.' + (skipped ? ' ' + skipped + ' became protected and are left out.' : ''),
+      actions: safe.length ? [{ label: 'YES, TRANSFERRED ' + safe.length, style: 'primary', run: () => { this.closeConfirm(); this.bulkTransferNow(safe, true); } }] : []
+    });
+  }
+
+  bulkStringVals() {
+    const r = this.buildTransferBatches();
+    const copied = this.state.copiedKey;
+    const protectText = 'shiny,lucky,shadow,purified,xxl,xxs,legendary,mythical,4*';
+    return {
+      bulkTotal: r.total,
+      bulkHasBatches: r.batches.length > 0,
+      bulkBatches: r.batches.map((b, i) => ({
+        title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
+        names: b.names.join(' \u00b7 '), copyLabel: copied === 'bulk' + i ? 'Copied' : 'Copy string',
+        onCopy: () => this.copyText(b.text, 'bulk' + i), onDone: () => this.confirmBatchTransferred(b.pokemon)
+      })),
+      bulkHasManual: r.manual.length > 0,
+      bulkManual: r.manual.slice(0, 30).map(m => ({ name: m.p.name + ' ' + m.p.cp + ' CP', why: m.why })),
+      bulkManualMore: r.manual.length > 30 ? r.manual.length - 30 + ' more' : '',
+      bulkProtectText: protectText,
+      bulkProtectCopyLabel: copied === 'protect' ? 'Copied' : 'Copy protect string',
+      onBulkProtectCopy: () => this.copyText(protectText, 'protect')
+    };
+  }
+
   // Strings that reach a model prompt (names, forms, moves, event titles) come from scans, imports and the web.
   // Control characters, field separators and long text are removed so none of them can fake a field or an order.
   promptSafe(v, n) {
@@ -12717,7 +12836,7 @@ class Component extends DCLogic {
     const real = m && m.evolutionInfoFor ? m.evolutionInfoFor(name, p && p.form) : null;
     if (real) return { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey };
     const rec = (this.state.evoTable || {})[name];
-    if (rec) return { to: rec.to, candy: rec.candy, item: rec.item || null, itemKey: null };
+    if (rec) return { to: rec.to, candy: rec.candy, item: rec.item || null, itemKey: null, ...(rec.assumed ? { assumed: true } : {}) };
     return null;
   }
 

@@ -2553,7 +2553,9 @@ def active_models(keys, announce=True, per_tier=6):
 
 
 def _video_merge_key(item):
-    return str(item["name"]).lower() + "|" + ("?" if item.get("cp") is None else str(item.get("cp")))
+    # Name + CP + HP: two Pokemon of one species can share a CP, and HP tells them apart (as in the appraisal merge).
+    return (str(item["name"]).lower() + "|" + ("?" if item.get("cp") is None else str(item.get("cp")))
+            + "|" + ("?" if item.get("hp") is None else str(item.get("hp"))))
 
 
 def _appraisal_merge_key(item):
