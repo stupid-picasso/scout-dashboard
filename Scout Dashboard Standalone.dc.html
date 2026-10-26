@@ -6121,8 +6121,6 @@ class Component extends DCLogic {
   // nothing is written to this device.
   saveTriage() {}
 
-  savePrefs() {}
-
   // Chip -> section. scrollIntoView is off-limits here, so this offsets by the
   // sticky header height manually.
   jumpToSection(key) {
@@ -6433,17 +6431,6 @@ class Component extends DCLogic {
     const t = Date.parse(p.scanDate);
     if (!Number.isFinite(t)) return null;
     return Math.floor((Date.now() - t) / 86400000);
-  }
-
-  // Representative candidate from an ambiguous solve. Shared by the manual
-  // (solveIv) and bulk (mergeVideoImport) paths — they previously disagreed on
-  // the same Pokemon because only one of them sorted.
-  pickCandidate(cands) {
-    if (!cands || !cands.length) return null;
-    if (cands.length === 1) return cands[0];
-    const sorted = cands.slice().sort((a, b) =>
-      (a.atkIV + a.defIV + a.staIV) - (b.atkIV + b.defIV + b.staIV));
-    return sorted[Math.floor(sorted.length / 2)];
   }
 
   emptyLeague() {
@@ -8691,10 +8678,6 @@ class Component extends DCLogic {
     this.setState({ megaEnergyInventory: inv });
   }
 
-  hueFor(dex) { return (dex * 37) % 360; }
-
-  hideImg(e) { e.target.style.display = 'none'; }
-
   makeSpriteRef(url) {
     return (el) => {
       if (!el || el.dataset.spriteSet === url) return;
@@ -8895,14 +8878,6 @@ class Component extends DCLogic {
 
   ringGeom(pct, r) {
     const c = 2 * Math.PI * r;
-    const ratio = Math.max(0, Math.min(1, (pct || 0) / 100));
-    return { dasharray: c.toFixed(1) + ' ' + c.toFixed(1), dashoffset: (c * (1 - ratio)).toFixed(1) };
-  }
-
-  // Same idea as ringGeom but for a semi-circle arc (path length is pi*r,
-  // half the full circle's 2*pi*r).
-  semiRingGeom(pct, r) {
-    const c = Math.PI * r;
     const ratio = Math.max(0, Math.min(1, (pct || 0) / 100));
     return { dasharray: c.toFixed(1) + ' ' + c.toFixed(1), dashoffset: (c * (1 - ratio)).toFixed(1) };
   }
@@ -11421,34 +11396,6 @@ class Component extends DCLogic {
   // whole read fail), and the true bar width had to be guessed from whatever
   // fill happened to be present. With the groove located, width is measured
   // rather than inferred and an empty bar is an honest 0.
-  // TEMPORARY DIAGNOSTIC. The bottom-bar gap does not reproduce on desktop, so
-  // these are measured on the actual device and printed in the header. Remove
-  // once the cause is known.
-  measureBarDiag() {
-    try {
-      const bar = document.querySelector('[data-navbar]');
-      if (!bar) { this.setState({ barDiag: 'no bar' }); return; }
-      const r = bar.getBoundingClientRect();
-      const cs = getComputedStyle(bar);
-      const vv = window.visualViewport;
-      const probe = document.createElement('div');
-      probe.style.cssText = 'position:fixed;bottom:0;height:env(safe-area-inset-bottom);width:1px;';
-      document.body.appendChild(probe);
-      const inset = Math.round(probe.getBoundingClientRect().height);
-      probe.remove();
-      this.setState({ barDiag: [
-        'ih' + window.innerHeight,
-        'vv' + (vv ? Math.round(vv.height) : '-'),
-        'ch' + document.documentElement.clientHeight,
-        'bot' + Math.round(r.bottom),
-        'gap' + Math.round(window.innerHeight - r.bottom),
-        'pad' + cs.paddingBottom.replace('px',''),
-        'sai' + inset,
-        'op' + (bar.offsetParent ? bar.offsetParent.tagName : 'VP')
-      ].join(' ') });
-    } catch (e) { this.setState({ barDiag: 'err ' + e.message }); }
-  }
-
   measureAppraisalBarsTrack(canvas) {
     const W = canvas.width, H = canvas.height;
     if (W < 200 || H < 200) return null;
@@ -15969,45 +15916,6 @@ class Component extends DCLogic {
     };
     this.setState({ listening: true, lastAnswer: '' });
     try { rec.start(); } catch (e) { this.setState({ listening: false, lastAnswer: 'Could not start voice recognition in this browser.' }); }
-  }
-
-  answerQuery(text) {
-    const q = text.toLowerCase();
-    const roster = this.effectiveRosterForMatch();
-    let answer = '';
-    if (!roster.length) {
-      answer = "I don't have roster data loaded yet.";
-    } else if (q.includes('lucky')) {
-      answer = `You have ${roster.filter(p => p.lucky).length} Lucky Pokemon.`;
-    } else if (q.includes('shadow')) {
-      answer = `You have ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length} Shadow Pokemon.`;
-    } else if (q.includes('average') || q.includes('avg')) {
-      const withIV = roster.filter(p => Number.isFinite(p.ivAvg));
-      const avg = withIV.length ? withIV.reduce((a, p) => a + p.ivAvg, 0) / withIV.length : 0;
-      answer = `Your average IV is ${avg.toFixed(1)} percent.`;
-    } else if (q.includes('great')) {
-      const best = this.topForLeague('great');
-      answer = (best && best.great && Number.isFinite(best.great.rankPct)) ? `Your best Great League pick is ${best.name} at ${best.great.rankPct.toFixed(1)} percent rank.` : 'No Great League data found.';
-    } else if (q.includes('ultra')) {
-      const best = this.topForLeague('ultra');
-      answer = best ? `Your best Ultra League pick is ${best.name} at ${(best.ultra && Number.isFinite(best.ultra.rankPct)) ? best.ultra.rankPct.toFixed(1) : '?'} percent rank.` : 'No Ultra League data found.';
-    } else if (q.includes('little')) {
-      const best = this.topForLeague('little');
-      answer = best ? `Your best Little Cup pick is ${best.name} at ${(best.little && Number.isFinite(best.little.rankPct)) ? best.little.rankPct.toFixed(1) : '?'} percent rank.` : 'No Little Cup data found.';
-    } else if (q.includes('raid') || q.includes('cp')) {
-      const top = roster.slice().sort((a, b) => (b.cp || 0) - (a.cp || 0))[0];
-      answer = top ? `Your highest CP Pokemon is ${top.name} at ${top.cp} CP.` : 'No CP data.';
-    } else if (q.includes('transfer')) {
-      const kc = this.keepContext(roster);
-      const count = roster.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && this.bestRank(p) < 70 && !this.keepReasons(p, kc).length).length;
-      answer = `I count ${count} transfer candidates on the Recommendations tab.`;
-    } else if (q.includes('how many') || q.includes('total')) {
-      answer = `You have ${roster.length} Pokemon logged.`;
-    } else {
-      answer = "I didn't catch a stat for that. Try asking about lucky, shadow, average IV, or your best Great League pick.";
-    }
-    this.setState({ lastAnswer: answer });
-    try { const u = new SpeechSynthesisUtterance(answer); window.speechSynthesis.speak(u); } catch (e) {}
   }
 
   bestLeagueInfo(p) {
