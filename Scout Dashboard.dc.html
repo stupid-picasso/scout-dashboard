@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.209</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.210</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3225,6 +3225,24 @@
         <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ bulkProtectText }}</div>
         <button type="button" onClick="{{ onBulkProtectCopy }}" class="om-press" style="align-self:flex-start;min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ bulkProtectCopyLabel }}</button>
       </div>
+      <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+        <div style="font:800 15px var(--font-display)">Favourite my keepers</div>
+        <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">{{ keeperIntro }}</div>
+        <sc-for list="{{ keeperBatches }}" as="kb" hint-placeholder-count="0">
+          <div style="background:#f1f7f7;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px">
+            <div style="font:700 13px var(--font-body)">{{ kb.title }}</div>
+            <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;word-break:break-all;user-select:all">{{ kb.text }}</div>
+            <div style="font:12px/1.4 var(--font-body);color:#5b7d84">{{ kb.expect }} {{ kb.names }}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" onClick="{{ kb.onCopy }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ kb.copyLabel }}</button>
+              <button type="button" onClick="{{ kb.onDone }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 13px var(--font-body)">I favourited this batch</button>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ keeperManual }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12px/1.4 var(--font-body);color:#8a4b12">{{ keeperManual }}</div>
+        </sc-if>
+      </div>
     </sc-if>
   </div>
   </sc-if>
@@ -3382,6 +3400,9 @@ class Component extends DCLogic {
     trainerLevel: 36,
     dustReserve: 100000,
     triageKeep: {},
+    appFavourited: [],
+    selfProtect: false,
+    negationOk: false,
     transferQueue: [],
     transferSearch: '',
     todayExpand: {},
@@ -3526,6 +3547,7 @@ class Component extends DCLogic {
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
     try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
+    try { const pr = JSON.parse(localStorage.getItem('scout.protect.v1') || 'null'); if (pr) this.setState({ appFavourited: Array.isArray(pr.appFavourited) ? pr.appFavourited : [], selfProtect: !!pr.selfProtect, negationOk: !!pr.negationOk }); } catch (e) {}
     try { const b = JSON.parse(localStorage.getItem('scout.briefing.v1') || 'null'); if (b && b.date && Array.isArray(b.bullets)) this.setState({ briefing: b }); } catch (e) {}
     try { if (localStorage.getItem('scout.briefingSearch') === '1') this.setState({ briefingSearch: true }); } catch (e) {}
     try { const ps = localStorage.getItem('scout.protectSizes'); if (ps === 'extreme' || ps === 'all' || ps === 'off') this.setState({ protectSizes: ps }); } catch (e) {}
@@ -5622,7 +5644,7 @@ class Component extends DCLogic {
   // XXL/XXS, legendary/mythical (best two), nondo, anything unmeasured or inconsistent. SOFT reasons (good IV, best
   // league copy, Master tier, raid role, Mega-capable, good IV with moves) hold until the roster is over its keep
   // target; then the floating keep line (`floatCut`) lets the weakest of them go first.
-  isSoftKeep(reason) { return /^(IV \d|Rising: |Upcoming cup: |Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
+  isSoftKeep(reason) { return /^(IV \d|Rising: |Upcoming cup: |Favourited from the keeper list|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
 
   keepReasons(p, ctx) {
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
@@ -5639,7 +5661,9 @@ class Component extends DCLogic {
     if (cached) return cached;
     const out = [];
     if (p.lucky) out.push('Lucky');
-    if (p.favorite) out.push('Favourite');
+    // A favourite the app asked for (the keeper strings) stays soft, so the Keep best target can still release it; with the
+    // "skip favourites" option on, or for any favourite the trainer made, it is a hard lock.
+    if (p.favorite) out.push(!this.state.selfProtect && (this.state.appFavourited || []).indexOf(String(p.idx)) >= 0 ? 'Favourited from the keeper list' : 'Favourite');
     if (p.shiny) out.push('Shiny');
     const isShadowP = this.isShadow(p);
     if (this.isPurified(p)) out.push('Purified');
@@ -12633,6 +12657,61 @@ class Component extends DCLogic {
     });
   }
 
+  // The Pokemon worth a favourite star in the game: kept for a real reason (IV 90+, best league copy, rising or cup pick, Master
+  // tier, good shadow, raid role) and NOT already covered by the category protect string. Broad or weak reasons (good IV with
+  // known moves, Mega-capable, unmeasured) are left out so the list stays short. After the trainer favourites them the game
+  // itself asks before any of them can be transferred.
+  keeperCandidates() {
+    const roster = this.effectiveRosterForMatch(), ctx = this.keepContext(roster), m = this.mechanics;
+    const real = /^(IV \d|Best |Rising: |Upcoming cup: |Master League tier|Shadow with good IVs|Raid attacker role)/;
+    const covered = p => p.shiny || p.lucky || this.isPurified(p) || /^(XXL|XXS)$/.test(this.sizeTagOf(p)) || (m && m.speciesClassFor && m.speciesClassFor(p.dex)) || this.starsOf(p) === 4;
+    return roster.filter(p => !p.favorite && !covered(p) && !this.needsAppraisal(p) && this.keepReasons(p, ctx).some(x => real.test(x)));
+  }
+
+  // Strings that favourite the keepers: name & CP & stars, like the transfer strings. A string is only used when it selects
+  // nothing but keepers (or Pokemon already favourited); what cannot be isolated goes to a by-hand list.
+  buildKeeperBatches() {
+    const MAX = 90;
+    const roster = this.effectiveRosterForMatch();
+    const cand = this.keeperCandidates();
+    const keepSet = new Set(cand.map(p => p.idx));
+    const rows = roster.map(q => ({ idx: q.idx, name: String(q.name || '').toLowerCase(), cp: q.cp, stars: this.starsOf(q), fav: !!q.favorite }));
+    const items = [], manual = [];
+    cand.forEach(p => {
+      const name = String(p.name || '').toLowerCase();
+      if (!/^[a-z]+$/.test(name) || !Number.isFinite(p.cp)) { manual.push({ p, why: !Number.isFinite(p.cp) ? 'No CP on file' : 'The name has spaces or symbols the game search may not accept' }); return; }
+      items.push({ idx: p.idx, name, cp: p.cp, stars: this.starsOf(p) });
+    });
+    items.sort((a, b) => a.name.localeCompare(b.name) || a.cp - b.cp);
+    const sets = it => ({ N: new Set(it.map(x => x.name)), C: new Set(it.map(x => x.cp)), S: new Set(it.map(x => x.stars)), withStars: it.every(x => x.stars != null) });
+    const matched = it => { const t = sets(it); return rows.filter(r => t.N.has(r.name) && t.C.has(r.cp) && (!t.withStars || t.S.has(r.stars))); };
+    const textOf = it => { const t = sets(it); return [...t.N].join(',') + ' & ' + [...t.C].sort((a, b) => a - b).map(c => 'cp' + c).join(',') + (t.withStars ? ' & ' + [...t.S].sort((a, b) => a - b).map(n => n + '*').join(',') : ''); };
+    const clean = it => matched(it).every(r => keepSet.has(r.idx) || r.fav);
+    const batches = [];
+    let remaining = items;
+    while (remaining.length) {
+      let cur = [];
+      for (let i = 0; i < remaining.length; i++) { const trial = cur.concat(remaining[i]); if (textOf(trial).length <= MAX && clean(trial)) cur = trial; }
+      if (!cur.length) { manual.push({ p: cand.find(q => q.idx === remaining[0].idx), why: 'A search for it would also select Pokemon you may want to transfer' }); remaining = remaining.slice(1); continue; }
+      const hit = matched(cur).filter(r => keepSet.has(r.idx));
+      const have = new Set(hit.map(r => r.idx));
+      batches.push({ text: textOf(cur), ids: hit.map(r => String(r.idx)), n: matched(cur).length, names: hit.map(r => { const q = roster.find(x => x.idx === r.idx); return q.name + ' ' + q.cp + ' CP'; }) });
+      remaining = remaining.filter(x => !have.has(x.idx));
+    }
+    return { batches, manual, total: cand.length };
+  }
+
+  keeperFavouritedDone(batch) {
+    this.haptic('light');
+    const ids = new Set([...(this.state.appFavourited || []), ...batch.ids]);
+    this.saveProtectPrefs({ appFavourited: [...ids] });
+  }
+
+  saveProtectPrefs(patch) {
+    const next = { appFavourited: this.state.appFavourited || [], selfProtect: !!this.state.selfProtect, negationOk: !!this.state.negationOk, ...patch };
+    this.setState(next, () => { try { localStorage.setItem('scout.protect.v1', JSON.stringify(next)); } catch (e) {} try { this.clearDerivedCaches(); } catch (e) {} });
+  }
+
   // The categories the in-game protect string favourites. Shadow is NOT in it: a 1/3/5 shadow is meant to go, and good shadows
   // are covered by the keeper strings. Coverage = how many of these the game does not yet show as favourited.
   protectCoverage() {
@@ -12666,6 +12745,7 @@ class Component extends DCLogic {
     const copied = this.state.copiedKey;
     const protectText = 'shiny,lucky,purified,xxl,xxs,legendary,mythical,4*';
     const cov = this.protectCoverage();
+    const kb = this.buildKeeperBatches();
     const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
     const softRows = this.transferCandidates().filter(c => c.soft && c.soft.length).sort((a, b) => (b.p.ivAvg || 0) - (a.p.ivAvg || 0));
     return {
@@ -12676,6 +12756,15 @@ class Component extends DCLogic {
       bulkCoverageText: cov.total ? (cov.missing
         ? cov.missing + ' of your ' + cov.total + ' shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are not favourited in the game yet (' + cov.sample.join(', ') + (cov.missing > 5 ? ', \u2026' : '') + '). Run the protect string below, then import again.'
         : 'All ' + cov.total + ' of your shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are favourited in the game, so it will ask before transferring them.') : '',
+      keeperTotal: kb.total,
+      keeperHas: kb.batches.length > 0,
+      keeperIntro: kb.total ? kb.total + ' more Pokemon are kept for a real reason (IV 90+, best league copy, rising or cup pick, raid role) but are not favourited in the game. Favourite them and the game asks before any of them can be transferred. The app still lets the Keep best target release them if you go over it.' : 'Every Pokemon the app keeps for a real reason is already favourited, or covered by the protect string above.',
+      keeperBatches: kb.batches.map((b, i) => ({
+        title: 'Keepers ' + (i + 1) + ' of ' + kb.batches.length, text: b.text, expect: 'The game should show ' + b.n + ' Pokemon.',
+        names: b.names.slice(0, 8).join(' \u00b7 ') + (b.names.length > 8 ? ' \u00b7 and ' + (b.names.length - 8) + ' more' : ''),
+        copyLabel: copied === 'keep' + i ? 'Copied' : 'Copy string', onCopy: () => this.copyText(b.text, 'keep' + i), onDone: () => this.keeperFavouritedDone(b)
+      })),
+      keeperManual: kb.manual.length ? kb.manual.length + ' keepers cannot be isolated in a search and need a star by hand: ' + kb.manual.slice(0, 6).map(m => m.p.name + ' ' + m.p.cp + ' CP').join(', ') + (kb.manual.length > 6 ? ', \u2026' : '') : '',
       bulkCoverageColor: cov.missing > 0 ? '#8a4b12' : '#1d6b5f',
       bulkSoftCount: softRows.length,
       bulkSoftText: softRows.length ? softRows.length + ' of these are normally kept. They are only here because you have more than your Keep best target of ' + target

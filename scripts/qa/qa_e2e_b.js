@@ -687,6 +687,34 @@ module.exports = async function suiteB() {
     expect(!(r4 || []).some(x => /^Upcoming cup/.test(x)), 'a cup that is over keeps nothing: ' + JSON.stringify(r4));
     await s.set({ addedPokemon: st0.addedPokemon || [], feed: st0.feed || null });
   });
+  await T('KEEPFAV-01', 'Safety', 'Favourite-my-keepers strings: only real keepers, isolated from non-keepers, and a favourite the app asked for stays soft unless "skip favourites" is on', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const az = mk('kf1', 'Azumarill', 184, [14, 15, 14], 1480, { great: { rankPct: 97, evolvesTo: 'Azumarill' } });
+    const junk = mk('kf2', 'Fearow', 22, [1, 2, 1], 3000);   // over every league cap, low IVs: no league value
+    const twin = mk('kf3', 'Azumarill', 184, [14, 15, 14], 1480, { ivMeasured: false, ivSolved: true });   // same name, CP and stars as the keeper, but unmeasured: never a keeper candidate, yet the same search would select it
+    const peers = [mk('kp1', 'Pidgeot', 18, [15, 15, 15], 3000), mk('kp2', 'Gyarados', 130, [15, 15, 15], 3000), mk('kp3', 'Snorlax', 143, [15, 15, 15], 3000)];   // so the junk Pidgey has no raid role
+    await s.set({ addedPokemon: [az, junk, ...peers], roster: [], cutTarget: 100000, appFavourited: [], selfProtect: false }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const c = (await s.call('keeperCandidates')).map(p => String(p.idx));
+    expect(c.indexOf('kf1') >= 0 && c.indexOf('kf2') < 0, 'the keeper is listed, the junk is not: ' + c.join());
+    const kb = await s.call('buildKeeperBatches');
+    expect(kb.batches.some(b => /azumarill/.test(b.text) && b.ids.indexOf('kf1') >= 0), 'a string names it: ' + JSON.stringify(kb.batches.map(b => b.text)));
+    expect(kb.batches.every(b => b.text.length <= 90), 'within the length cap');
+    await s.call('keeperFavouritedDone', kb.batches.find(b => b.ids.indexOf('kf1') >= 0)); await s.page.waitForTimeout(300);
+    expect(((await s.state()).appFavourited || []).indexOf('kf1') >= 0, 'the app remembers it asked');
+    await s.set({ addedPokemon: [{ ...az, favorite: true }, junk, ...peers] }); await s.page.waitForTimeout(300);
+    const reasons = async () => await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const L = f.stateNode.logic, r = L.effectiveRosterForMatch(), c = L.keepContext(r), p = r.find(q => String(q.idx) === 'kf1'); return p ? L.keepFull(p, c) : null; } } return null; });
+    let r = await reasons();
+    expect(r && r.all.indexOf('Favourited from the keeper list') >= 0 && r.hard.indexOf('Favourite') < 0, 'an app-asked favourite is soft: ' + JSON.stringify(r && r.all));
+    await s.call('saveProtectPrefs', { selfProtect: true }); await s.page.waitForTimeout(300);
+    r = await reasons();
+    expect(r && r.hard.indexOf('Favourite') >= 0, 'with skip-favourites on it is a hard lock: ' + JSON.stringify(r && r.hard));
+    await s.call('saveProtectPrefs', { selfProtect: false, appFavourited: [] });
+    await s.set({ addedPokemon: [az, junk, twin, ...peers] }); await s.page.waitForTimeout(300);
+    const kb2 = await s.call('buildKeeperBatches');
+    expect(!kb2.batches.some(b => b.ids.indexOf('kf1') >= 0) && kb2.manual.some(m => String(m.p.idx) === 'kf1'), 'a lookalike non-keeper blocks the string: ' + JSON.stringify(kb2.batches.map(b => b.text)) + ' manual ' + kb2.manual.length);
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300 });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
