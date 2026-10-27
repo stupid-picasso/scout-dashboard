@@ -669,6 +669,24 @@ module.exports = async function suiteB() {
     expect(/into the rankings/.test(await why(good) || ''), 'newly ranked species are protected too');
     await set([]);
   });
+  await T('CUP-01', 'Safety', 'The best copy of a strong species for a cup in the next GBL weeks is kept (soft); other copies, cups that are over and species the cup bans are not', async () => {
+    const mk = (idx, name, dex, iv, cp, g, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const day = n => new Date(Date.now() + n * 86400000).toISOString();
+    const feed = (end, types) => ({ source: 'qa', fetchedAt: day(0), events: [], gbl: [{ start: day(-1), end: day(end), season: 'QA', leagues: [{ name: 'Fantasy Cup', cp: 1500, mega: false, rules: [], cup: { types, src: 'qa' } }] }] });
+    const az1 = mk('cu1', 'Azumarill', 184, [2, 15, 15], 1400, 96), az2 = mk('cu2', 'Azumarill', 184, [3, 14, 14], 1390, 92), gy = mk('cu3', 'Gyarados', 130, [15, 15, 15], 1450, 96);
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), az1, az2, gy], feed: feed(6, ['steel', 'fairy', 'dragon']) }); await s.page.waitForTimeout(400);
+    const reasons = async id => { const ctxRoster = await s.call('effectiveRosterForMatch'); return await s.page.evaluate(([i]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const L = f.stateNode.logic, r = L.effectiveRosterForMatch(), c = L.keepContext(r), p = r.find(q => String(q.idx) === i); return p ? L.keepFull(p, c).all : null; } } return null; }, [id]); };
+    const r1 = await reasons('cu1'), r2 = await reasons('cu2'), r3 = await reasons('cu3');
+    expect(r1 && r1.some(x => /^Upcoming cup: best copy for Fantasy Cup/.test(x)), 'the best Azumarill is kept for the cup: ' + JSON.stringify(r1));
+    expect(!(r2 || []).some(x => /^Upcoming cup/.test(x)), 'the second copy is not: ' + JSON.stringify(r2));
+    expect(!(r3 || []).some(x => /^Upcoming cup/.test(x)), 'Gyarados is banned by the cup (not Steel/Fairy/Dragon): ' + JSON.stringify(r3));
+    expect(await s.call('isSoftKeep', r1.find(x => /^Upcoming cup/.test(x))) === true, 'soft, so the Keep best target can still release it');
+    await s.set({ feed: feed(-2, ['steel', 'fairy', 'dragon']) }); await s.page.waitForTimeout(300);
+    const r4 = await reasons('cu1');
+    expect(!(r4 || []).some(x => /^Upcoming cup/.test(x)), 'a cup that is over keeps nothing: ' + JSON.stringify(r4));
+    await s.set({ addedPokemon: st0.addedPokemon || [], feed: st0.feed || null });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.208</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.209</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -5500,6 +5500,46 @@ class Component extends DCLogic {
     return this._keepCtx;
   }
 
+  // The best copy of every strong species for the cups in the next three GBL weeks (from the events feed), so a Pokemon
+  // is not transferred the week before the format that wants it. Open leagues are included. Per cup, a species ranked
+  // S/A/B in PvPoke's table for it (or the open league's table when PvPoke has no cup table) keeps its single best copy
+  // (rank 80%+, under the cap, allowed by the cup's rules judged on the form it will be played as). Soft reason.
+  cupKeepMap(c) {
+    if (c.cupKeeps) return c.cupKeeps;
+    const out = new Map();
+    c.cupKeeps = out;
+    const f = this.state.feed, m = this.mechanics;
+    if (!m || !this.validFeed(f)) return out;
+    const t = Date.now();
+    const fmt = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const weeks = f.gbl.filter(w => new Date(w.end).getTime() > t).sort((a, b) => new Date(a.start) - new Date(b.start)).slice(0, 3);
+    weeks.forEach(w => (w.leagues || []).forEach(l => {
+      const lk = l.cp === 1500 ? 'great' : l.cp === 2500 ? 'ultra' : l.cp === 500 ? 'little' : null;
+      if (!lk || l.mega) return;
+      const cup = l.cup && (l.cup.types || l.cup.banTypes || l.cup.allow || l.cup.ban) ? l.cup : null;
+      const tableKey = l.pvpoke && m.pvpTableFor && m.pvpTableFor('cup:' + l.pvpoke) ? 'cup:' + l.pvpoke : null;
+      const top = this.leagueTopSpecies(l.cp, 15, cup, false, tableKey) || [];
+      top.filter(x => ['S', 'A', 'B'].indexOf(x.tier) >= 0 && x.dex != null).forEach(x => {
+        let best = null;
+        c.roster.forEach(p => {
+          if (this.needsAppraisal(p) || !this.leagueUsable(p, lk)) return;
+          const lg = p[lk];
+          if (!lg || !Number.isFinite(lg.rankPct) || lg.rankPct < 80) return;
+          const to = this.pvpFormName(p, lk);
+          const dex = String(to).toLowerCase() === String(p.name).toLowerCase() ? p.dex : (m.resolveDexByName ? m.resolveDexByName(to) : null);
+          if (dex !== x.dex) return;
+          if (cup) {
+            const info = m.speciesInfo ? m.speciesInfo(to, p.form || '') : null;
+            if (!this.cupAllowsSpecies(cup, to, p.form, info ? info.types : [])) return;
+          }
+          if (!best || lg.rankPct > best.rank) best = { p, rank: lg.rankPct };
+        });
+        if (best && !out.has(best.p.idx)) out.set(best.p.idx, 'Upcoming cup: best copy for ' + l.name + ' (' + fmt(w.start) + ' to ' + fmt(w.end) + '), ' + x.name + ' tier ' + x.tier + ', rank ' + Math.round(best.rank) + '%');
+      });
+    }));
+    return out;
+  }
+
   // A species PvPoke has recently moved UP into S/A/B in a league, for which this copy has a decent spread (rank 80%+).
   // Protects a copy BEFORE the rising species is high enough for the normal rank 90 rule. Soft: it yields to the Keep best target.
   risingReason(p) {
@@ -5582,7 +5622,7 @@ class Component extends DCLogic {
   // XXL/XXS, legendary/mythical (best two), nondo, anything unmeasured or inconsistent. SOFT reasons (good IV, best
   // league copy, Master tier, raid role, Mega-capable, good IV with moves) hold until the roster is over its keep
   // target; then the floating keep line (`floatCut`) lets the weakest of them go first.
-  isSoftKeep(reason) { return /^(IV \d|Rising: |Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
+  isSoftKeep(reason) { return /^(IV \d|Rising: |Upcoming cup: |Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
 
   keepReasons(p, ctx) {
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
@@ -5637,6 +5677,8 @@ class Component extends DCLogic {
     if (this.hasRaidRole(p, c.typeBest)) out.push('Raid attacker role');
     const rising = this.risingReason(p);
     if (rising) out.push(rising);
+    const cupKeep = this.cupKeepMap(c).get(p.idx);
+    if (cupKeep) out.push(cupKeep);
     // Anything that does not add up is kept and flagged, never offered for transfer.
     const ivsOk = [p.atkIV, p.defIV, p.staIV].every(v => v == null || (Number.isInteger(v) && v >= 0 && v <= 15));
     const sum = [p.atkIV, p.defIV, p.staIV];
