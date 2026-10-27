@@ -649,6 +649,26 @@ module.exports = async function suiteB() {
     expect(v.bulkGate === false && /Last import: today/.test(v.bulkFreshLine), 'a fresh import is not held: ' + v.bulkFreshLine);
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('RISE-01', 'Safety', 'A species PvPoke recently moved up a tier is protected (soft) for copies with a decent spread; falling or still-C species are not', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const good = mk('rs1', 'Azumarill', 184, [2, 15, 15], 1400), over = mk('rs2', 'Azumarill', 184, [2, 15, 15], 1600);
+    const set = changes => s.page.evaluate(c => { const t = window.PokemonMechanics.TIER_TRENDS; t.changes.length = 0; c.forEach(x => t.changes.push(x)); }, changes);
+    const why = async p => (await s.call('risingReason', p));
+    await set([]);
+    expect(await why(good) === null, 'no trend, no reason');
+    await set([{ s: 'azumarill', l: 'great', f: 'C', t: 'A', on: '2026-10-27' }]);
+    const r = await why(good);
+    expect(/^Rising: Azumarill moved C to A in Great League \(2026-10-27\), rank \d+%/.test(r || ''), 'rising species is named: ' + r);
+    expect(await why(over) === null, 'a copy already over the league cap cannot play it, so the trend does not protect it');
+    expect(await s.call('isSoftKeep', r) === true, 'it is a soft reason, so the Keep best target can still release it');
+    await set([{ s: 'azumarill', l: 'great', f: 'A', t: 'B', on: '2026-10-27' }]);
+    expect(await why(good) === null, 'a species that fell is not protected');
+    await set([{ s: 'azumarill', l: 'great', f: 'D', t: 'C', on: '2026-10-27' }]);
+    expect(await why(good) === null, 'moving up to C is not enough');
+    await set([{ s: 'azumarill', l: 'great', f: '-', t: 'B', on: '2026-10-27' }]);
+    expect(/into the rankings/.test(await why(good) || ''), 'newly ranked species are protected too');
+    await set([]);
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

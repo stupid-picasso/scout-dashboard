@@ -4626,6 +4626,10 @@ const SPECIES_CLASS = {"144":"L","145":"L","146":"L","150":"L","151":"M","243":"
 const EVOLUTION_BRANCHES = {"applin":[{"to":"Appletun","candy":200,"itemKey":"sweetApple","itemLabel":"Sweet Apple"},{"to":"Flapple","candy":200,"itemKey":"tartApple","itemLabel":"Tart Apple"},{"to":"Dipplin","candy":200,"itemKey":"syrupyApple","itemLabel":"Syrupy Apple"}],"burmy":[{"to":"Wormadam","candy":50,"gender":"female"},{"to":"Mothim","candy":50,"gender":"male"}],"charcadet":[{"to":"Armarouge","candy":50,"task":true},{"to":"Ceruledge","candy":50,"task":true}],"clamperl":[{"to":"Huntail","candy":50},{"to":"Gorebyss","candy":50}],"cosmoem":[{"to":"Solgaleo","candy":100,"time":"day"},{"to":"Lunala","candy":100,"time":"night"}],"eevee":[{"to":"Vaporeon","candy":25},{"to":"Jolteon","candy":25},{"to":"Flareon","candy":25},{"to":"Espeon","candy":25,"time":"day","buddyKm":10.0,"task":true},{"to":"Umbreon","candy":25,"time":"night","buddyKm":10.0,"task":true},{"to":"Leafeon","candy":25,"lure":"mossy"},{"to":"Glaceon","candy":25,"lure":"glacial"},{"to":"Sylveon","candy":25,"task":true}],"gloom":[{"to":"Vileplume","candy":100},{"to":"Bellossom","candy":100,"itemKey":"sunStone","itemLabel":"Sun Stone"}],"kirlia":[{"to":"Gallade","candy":100,"itemKey":"sinnohStone","itemLabel":"Sinnoh Stone","gender":"male"},{"to":"Gardevoir","candy":100}],"poliwhirl":[{"to":"Poliwrath","candy":100},{"to":"Politoed","candy":100,"itemKey":"kingsRock","itemLabel":"King's Rock"}],"slowpoke":[{"to":"Slowbro","candy":50},{"to":"Slowking","candy":50,"itemKey":"kingsRock","itemLabel":"King's Rock"}],"snorunt":[{"to":"Froslass","candy":100,"itemKey":"sinnohStone","itemLabel":"Sinnoh Stone","gender":"female"},{"to":"Glalie","candy":100}],"tyrogue":[{"to":"Hitmonlee","candy":25},{"to":"Hitmonchan","candy":25},{"to":"Hitmontop","candy":25}],"wurmple":[{"to":"Silcoon","candy":12},{"to":"Cascoon","candy":12}]};
 // END GENERATED BLOCK: EVOLUTION_BRANCHES
 
+// GENERATED BLOCK: TIER_TRENDS (record_tier_trends.py) — do not hand-edit
+const TIER_TRENDS = {"updated":"2026-10-27","changes":[]};
+// END GENERATED BLOCK: TIER_TRENDS
+
 // Mega Level rules for a species (see MEGA_LEVEL_DATA): energy cost and rest
 // period per level, Mega Evolutions needed per level, number of levels.
 function megaLevelsFor(name) {
@@ -5377,6 +5381,15 @@ function lookalikeFor(name, typeText, heightM, form) {
   return null;
 }
 
+// Tier moves PvPoke made in the last weeks (TIER_TRENDS, written by record_tier_trends.py): [{s, l, f, t, on}] for a
+// species and league. Shadow rows are included.
+function tierTrendsFor(name, leagueKey) {
+  const rows = (typeof TIER_TRENDS !== 'undefined' && TIER_TRENDS && TIER_TRENDS.changes) || [];
+  if (!rows.length) return [];
+  const keys = _speciesKeys(name, '');
+  return rows.filter(c => (!leagueKey || c.l === leagueKey) && keys.some(k => c.s === k || c.s === k + '_shadow'));
+}
+
 function pvpFastMoveFor(id) {
   const r = PVP_FAST_MOVES[String(id || '').toLowerCase().replace(/\+$/, '').replace(/[\s]+/g, '_')];
   return r ? { type: r[0], power: r[1], turns: r[2], energyGain: r[3] } : null;
@@ -5512,6 +5525,6 @@ if (typeof window !== 'undefined') {
     PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
-    speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, LOOKALIKE_NAMES: Object.keys(NAME_LOOKALIKES), EVOLUTION_BRANCHES, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
+    speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, LOOKALIKE_NAMES: Object.keys(NAME_LOOKALIKES), EVOLUTION_BRANCHES, TIER_TRENDS, tierTrendsFor, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
 }

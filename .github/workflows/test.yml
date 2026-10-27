@@ -34,6 +34,7 @@ jobs:
           python3 scripts/test_extract_pipeline.py
           python3 scripts/test_postprocess.py
           python3 scripts/test_evolution_branches.py
+          python3 scripts/test_tier_trends.py
 
       - name: Install Playwright
         run: |

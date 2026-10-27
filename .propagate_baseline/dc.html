@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.207</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.208</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -5500,6 +5500,29 @@ class Component extends DCLogic {
     return this._keepCtx;
   }
 
+  // A species PvPoke has recently moved UP into S/A/B in a league, for which this copy has a decent spread (rank 80%+).
+  // Protects a copy BEFORE the rising species is high enough for the normal rank 90 rule. Soft: it yields to the Keep best target.
+  risingReason(p) {
+    const m = this.mechanics;
+    if (!m || !m.tierTrendsFor || this.needsAppraisal(p) || p.dex == null) return null;
+    const ivs = this.ivsOf(p);
+    if (!ivs) return null;
+    const ORDER = { C: 0, B: 1, A: 2, S: 3 }, LG = { great: 'Great League', ultra: 'Ultra League', little: 'Little Cup' };
+    const shadow = this.isShadow(p);
+    for (const lk of ['great', 'ultra', 'little']) {
+      if (!this.leagueUsable(p, lk)) continue;
+      for (const name of this.evoChainNames(p)) {
+        const up = m.tierTrendsFor(name, lk).filter(c => ORDER[c.t] != null && ORDER[c.t] >= 1 && (c.f === '-' || ORDER[c.t] > ORDER[c.f]));
+        if (!up.length) continue;
+        const dex = name === p.name ? p.dex : (m.resolveDexByName ? m.resolveDexByName(name) : null);
+        const base = dex == null ? null : ((p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex]);
+        const r = base && m.rankPctForLeague ? m.rankPctForLeague(base, ivs, lk, shadow) : null;
+        if (Number.isFinite(r) && r >= 80) { const c = up[up.length - 1]; return 'Rising: ' + name + ' moved ' + (c.f === '-' ? 'into the rankings' : c.f + ' to ' + c.t) + ' in ' + LG[lk] + ' (' + c.on + '), rank ' + Math.round(r) + '%'; }
+      }
+    }
+    return null;
+  }
+
   // Leagues in which this copy is GOOD: measured IVs, rank 90%+ for the league, and the species ranked S/A/B there
   // (Little Cup has no tiers). Ranks are for the form the league rank names, and a copy already above the league's
   // CP cap does not count there.
@@ -5559,7 +5582,7 @@ class Component extends DCLogic {
   // XXL/XXS, legendary/mythical (best two), nondo, anything unmeasured or inconsistent. SOFT reasons (good IV, best
   // league copy, Master tier, raid role, Mega-capable, good IV with moves) hold until the roster is over its keep
   // target; then the floating keep line (`floatCut`) lets the weakest of them go first.
-  isSoftKeep(reason) { return /^(IV \d|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
+  isSoftKeep(reason) { return /^(IV \d|Rising: |Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
 
   keepReasons(p, ctx) {
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
@@ -5612,6 +5635,8 @@ class Component extends DCLogic {
     })();
     if (masterBest) out.push('Master League tier ' + masterBest.tier + (masterBest.name !== p.name ? ' as ' + masterBest.name : ''));
     if (this.hasRaidRole(p, c.typeBest)) out.push('Raid attacker role');
+    const rising = this.risingReason(p);
+    if (rising) out.push(rising);
     // Anything that does not add up is kept and flagged, never offered for transfer.
     const ivsOk = [p.atkIV, p.defIV, p.staIV].every(v => v == null || (Number.isInteger(v) && v >= 0 && v <= 15));
     const sum = [p.atkIV, p.defIV, p.staIV];
