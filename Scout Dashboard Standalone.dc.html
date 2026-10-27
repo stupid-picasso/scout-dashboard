@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.200</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.201</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -14305,6 +14305,25 @@ class Component extends DCLogic {
   // are grouped by species, ranked within the group, and only the number the
   // candy actually funds is surfaced — the rest are held back with a note
   // saying how many more candy the next one needs.
+  // What evolving this Pokemon is worth, from facts only. League value is the evolved form's rank weighted by that
+  // form's PvPoke tier (S 1.0 down to unranked 0.52), so a 97% Melmetal outscores a 97% of a C-tier species. IVs that
+  // are only estimated from CP/HP count for nothing: a guess must not decide where candy goes.
+  evolveValueOf(p, ctx) {
+    if (this.needsAppraisal(p)) return { value: 0, iv: 0, bonus: 0, measured: false, why: 'IVs not appraised yet, so it is ordered by candy only' };
+    let value = 0, why = '';
+    ['great', 'ultra'].forEach(lk => {
+      const a = this.pvpAssess(p, lk);
+      if (!a) return;
+      const v = a.rank * (1 - 0.12 * Math.min(a.tierRank, 4));
+      if (v > value) { value = v; why = (this.pvpFormName(p, lk)) + (a.tier ? ' tier ' + a.tier : ' unranked') + ' in ' + (lk === 'great' ? 'Great' : 'Ultra') + ' League, rank ' + Math.round(a.rank) + '%'; }
+    });
+    const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
+    if (Number.isFinite(lc) && lc * 0.8 > value) { value = lc * 0.8; why = 'Little Cup rank ' + Math.round(lc) + '%'; }
+    const best = this.leagueBestFor(p, ctx);
+    if (best.length) why += (why ? ' · ' : '') + best[0].replace(/ \(.*$/, '');
+    return { value, iv: p.ivAvg || 0, bonus: best.length ? 15 : 0, measured: true, why };
+  }
+
   evolveQueue() {
     const done = new Set(this.state.completedIds || []);
     // Same precedence as evoRecordFor: real GAME_MASTER data wins per species,
@@ -14331,18 +14350,24 @@ class Component extends DCLogic {
     };
 
     const groups = {};
-    this.effectiveRosterForMatch().forEach(p => {
+    const roster = this.effectiveRosterForMatch();
+    const keepCtx = this.keepContext(roster);
+    this._evolveSkipped = 0;
+    roster.forEach(p => {
       if (done.has(p.idx)) return;
       const evo = this.evoInfoFor(p);
       if (!evo) return;
       if (evo.ready === false) return;
+      // Candy spent evolving a Pokemon the keep check would let go is candy wasted: leave it out and count it.
+      if (!this.keepReasons(p, keepCtx).length) { this._evolveSkipped++; return; }
       const rank = this.bestRank(p);
       const risk = this.littleCupRisk(p);
-      // Score favours what the evolution is worth: league rank first, then IV,
-      // and a ready candy stock outranks one that still needs collecting.
-      const score = (Number.isFinite(rank) ? rank : 0) + (p.ivAvg || 0) * 0.4 + (evo.ready ? 25 : 0) - (risk ? 40 : 0);
+      const val = this.evolveValueOf(p, keepCtx);
+      // Score favours what the evolution is worth: the evolved form's league value (tier-weighted rank), IV,
+      // being the best copy for a league, and a ready candy stock over one still being collected.
+      const score = val.value + val.iv * 0.4 + val.bonus + (evo.ready ? 25 : 0) - (risk ? 40 : 0);
       const key = familyRoot(p.name);
-      (groups[key] = groups[key] || []).push({ p, evo, rank, risk, score });
+      (groups[key] = groups[key] || []).push({ p, evo, rank, risk, score, why: val.why, measured: val.measured });
     });
     const out = [];
     Object.keys(groups).forEach(key => {
@@ -18110,7 +18135,7 @@ class Component extends DCLogic {
           onClick: () => this.goToTab('attackers')
         }] : []),
 
-      todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' : '',
+      todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' + (this._evolveSkipped ? ' \u00b7 ' + this._evolveSkipped + ' hidden: you would transfer them' : '') : '',
       todayEvolveEmpty: evoQueueAll.length ? null : true,
       todayEvolve: evoShown.map(row => ({
         name: row.p.name + (row.p.form ? ' \u00b7 ' + row.p.form : ''),
@@ -18125,7 +18150,7 @@ class Component extends DCLogic {
         candyPct: (row.evo.need && row.evo.have != null)
           ? Math.min(100, Math.round(row.evo.have / row.evo.need * 100)) + '%'
           : (row.evo.ready ? '100%' : '0%'),
-        dupNote: [this.evolveDupNote(row), chainNoteFor(row.evo)].filter(Boolean).join(' \u00b7 ') || null,
+        dupNote: [row.why ? 'Why: ' + row.why : null, this.evolveDupNote(row), chainNoteFor(row.evo)].filter(Boolean).join(' \u00b7 ') || null,
         dupNoteColor: chainNoteFor(row.evo) ? 'var(--type-electric)' : 'var(--grass-700)',
         risk: row.risk,
         riskNote: 'Strong Little Cup pick \u2014 evolving puts it over the 500 CP cap.',

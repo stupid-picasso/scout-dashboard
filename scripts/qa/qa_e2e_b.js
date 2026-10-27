@@ -538,6 +538,28 @@ module.exports = async function suiteB() {
     const unmeasured = await s.call('leagueLeaders', list.map(p => ({ ...p, ivMeasured: false, ivSolved: true })));
     expect(unmeasured.length === 0, 'unmeasured copies are never ranked as leaders');
   });
+  await T('EVOLVE-01', 'Today', 'Evolve queue: skips Pokemon the keep check would transfer, ranks by the evolved form, never ranks on guessed IVs', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const gr = (r, to) => ({ great: { rankPct: r, evolvesTo: to }, ultra: { rankPct: 0, evolvesTo: to } });
+    const st0 = await s.state();
+    const roster = [
+      mk('e1', 'Marill', 183, [2, 15, 15], 400, gr(96, 'Azumarill')), mk('e2', 'Marill', 183, [3, 4, 5], 250, gr(40, 'Azumarill')),
+      mk('e3', 'Marill', 183, [4, 5, 6], 260, { ivMeasured: false, ivSolved: true, ...gr(0, 'Marill') }),
+      mk('e4', 'Gyarados', 130, [15, 15, 15], 3000), mk('e5', 'Snorlax', 143, [15, 15, 15], 3000), mk('e6', 'Scyther', 123, [15, 15, 15], 3000)];
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), ...roster], candyInventory: { ...(st0.candyInventory || {}), marill: { name: 'Marill', candy: 400 } }, completedIds: [], cutTarget: 100000 });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    const q = (await s.call('evolveQueue')).filter(r => /^e[123]$/.test(String(r.p.idx)));
+    const ids = q.map(r => r.p.idx);
+    expect(ids.indexOf('e1') === 0, 'the strong measured Marill leads: ' + ids.join());
+    expect(ids.indexOf('e2') < 0, 'a weak Marill you would transfer is not offered: ' + ids.join());
+    const e3 = q.find(r => r.p.idx === 'e3');
+    expect(e3 && e3.measured === false && /not appraised/.test(e3.why), 'an unappraised Marill is listed but explained: ' + JSON.stringify(e3 && e3.why));
+    const e1 = q.find(r => r.p.idx === 'e1');
+    expect(/Azumarill tier/.test(e1.why), 'the reason names the evolved form: ' + e1.why);
+    const skipped = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.evolveQueue) return f.stateNode.logic._evolveSkipped; } return null; });
+    expect(skipped >= 1, 'the skipped count is kept for the Today header: ' + skipped);
+    await s.set({ addedPokemon: st0.addedPokemon || [], candyInventory: st0.candyInventory || {}, cutTarget: 300 });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
