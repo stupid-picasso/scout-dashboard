@@ -605,6 +605,20 @@ module.exports = async function suiteB() {
     expect((await s.call('evoPickOf', mk('b5', 'Burmy', 412, { gender: 'F' }))) === 'Wormadam' && (await s.call('evoPickOf', mk('b6', 'Burmy', 412, { gender: 'M' }))) === 'Mothim', 'Burmy follows its gender');
     expect((await s.call('evoRecordFor', mk('b7', 'Applin', 840, { evoPick: 'Dipplin' }))).itemKey === 'syrupyApple', 'a chosen Applin branch needs its own apple');
   });
+  await T('BULKSTR-02', 'Safety', 'Transfer strings say when a normally-kept Pokemon is only on the list because the roster is over the Keep best target', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const roster = [mk('s1', 'Nidoran', 29, [14, 14, 14], 300), mk('s2', 'Zubat', 41, [14, 15, 13], 310), mk('s3', 'Oddish', 43, [13, 14, 14], 320), mk('w1', 'Pidgey', 16, [2, 3, 2], 120), mk('w2', 'Rattata', 19, [1, 2, 1], 100)];
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), ...roster], cutTarget: 100000 }); await s.page.waitForTimeout(300);
+    const baseTotal = (await s.call('effectiveRosterForMatch')).length;
+    await s.set({ cutTarget: baseTotal - 4 }); await s.page.waitForTimeout(400);
+    const v = await s.call('bulkStringVals');
+    expect(v.bulkSoftCount >= 1 && /only here because you have more than your Keep best target/.test(v.bulkSoftText), 'soft-kept Pokemon are called out: ' + v.bulkSoftCount + ' ' + v.bulkSoftText.slice(0, 120));
+    await s.set({ cutTarget: 100000 }); await s.page.waitForTimeout(300);
+    const v2 = await s.call('bulkStringVals');
+    expect(v2.bulkSoftCount === 0, 'nothing soft-kept is listed when under the target: ' + v2.bulkSoftCount);
+    await s.set({ addedPokemon: st0.addedPokemon || [], cutTarget: 300 });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

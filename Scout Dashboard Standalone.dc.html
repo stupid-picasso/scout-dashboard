@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.204</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.205</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4213,7 +4213,10 @@
     <sc-if value="{{ isBulkMode }}" hint-placeholder-val="{{ false }}">
       <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
         <div style="font:800 18px var(--font-display);text-align:center">Transfer strings</div>
-        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go, none of them protected. Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go. None has a hard lock (shiny, lucky, favourite, XXL/XXS, legendary, purified, nondo, unmeasured IVs). Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
+        <sc-if value="{{ bulkSoftCount }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkSoftText }}</div>
+        </sc-if>
       </div>
       <sc-for list="{{ bulkBatches }}" as="b" hint-placeholder-count="0">
         <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
@@ -13607,7 +13610,9 @@ class Component extends DCLogic {
     const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
     const overBy = Math.max(0, roster.length - target);
     const out = new Map();
-    const add = (p, why) => { if (p && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why }); };
+    // `soft` is non-empty only for a Pokemon released by the floating keep line: it has good-Pokemon reasons (IV, league copy,
+    // raid role...) but the roster is over the Keep best target. The screen says so instead of calling it "unprotected".
+    const add = (p, why) => { if (p && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft }); };
     if (overBy) this.cutSafeSummary(roster, overBy).show.forEach(r => add(r.p, 'Bottom of your Keep best list'));
     this.dominatedDuplicates(roster).forEach(x => add(x.loser, 'Beaten on every stat by your ' + (x.winner.cp || '?') + ' CP ' + x.winner.name));
     this.triageQueue().forEach(t => add(t.p, t.reason));
@@ -13690,7 +13695,12 @@ class Component extends DCLogic {
     const r = this.buildTransferBatches();
     const copied = this.state.copiedKey;
     const protectText = 'shiny,lucky,shadow,purified,xxl,xxs,legendary,mythical,4*';
+    const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
+    const softRows = this.transferCandidates().filter(c => c.soft && c.soft.length).sort((a, b) => (b.p.ivAvg || 0) - (a.p.ivAvg || 0));
     return {
+      bulkSoftCount: softRows.length,
+      bulkSoftText: softRows.length ? softRows.length + ' of these are normally kept. They are only here because you have more than your Keep best target of ' + target
+        + '. Raise the target (More, Keep best) to keep them. Best of them: ' + softRows.slice(0, 6).map(c => c.p.name + ' ' + c.p.cp + ' CP (' + c.soft[0] + ')').join('; ') + (softRows.length > 6 ? '; and ' + (softRows.length - 6) + ' more' : '') + '.' : '',
       bulkTotal: r.total,
       bulkHasBatches: r.batches.length > 0,
       bulkBatches: r.batches.map((b, i) => ({
