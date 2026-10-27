@@ -632,6 +632,23 @@ module.exports = async function suiteB() {
     expect(/not favourited in the game yet/.test(v.bulkCoverageText), 'the screen says what is missing: ' + v.bulkCoverageText.slice(0, 100));
     await s.set({ addedPokemon: st0.addedPokemon || [] });
   });
+  await T('FRESH-01', 'Safety', 'Transfer strings are held when the last import is old, until the trainer says nothing has changed; a fresh import shows them straight away', async () => {
+    const mk = (idx, name, dex, iv, cp, scanDate) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate });
+    const st0 = await s.state();
+    const day = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    const weak = []; for (let i = 0; i < 6; i++) weak.push(mk('fr' + i, 16 + (i % 3) * 3, 'Pidgey', [1 + i % 3, 2, 1], 100 + i * 9, day(10)));
+    const old = weak.map((p, i) => ({ ...p, name: ['Pidgey', 'Rattata', 'Caterpie', 'Weedle', 'Zubat', 'Spearow'][i], dex: [16, 19, 10, 13, 41, 21][i] }));
+    await s.set({ addedPokemon: old, roster: [], cutTarget: 1, cutTargetDraft: '1', transferFreshAck: '' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    let v = await s.call('bulkStringVals');
+    expect(v.bulkGate === true && v.bulkBatches.length === 0 && /last imported 10 days ago/.test(v.bulkGateText), 'an old import holds the strings: ' + JSON.stringify([v.bulkGate, v.bulkBatches.length, v.bulkGateText]));
+    await s.call('ackTransferFresh'); await s.page.waitForTimeout(300);
+    v = await s.call('bulkStringVals');
+    expect(v.bulkGate === false && v.bulkBatches.length >= 1, 'after "nothing has changed" the strings show: ' + v.bulkBatches.length);
+    await s.set({ addedPokemon: [...old, mk('fr9', 'Magikarp', 129, [1, 1, 1], 50, day(0))], transferFreshAck: '' }); await s.page.waitForTimeout(300);
+    v = await s.call('bulkStringVals');
+    expect(v.bulkGate === false && /Last import: today/.test(v.bulkFreshLine), 'a fresh import is not held: ' + v.bulkFreshLine);
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
@@ -728,7 +745,7 @@ module.exports = async function suiteB() {
     const weak = []; for (let i = 0; i < 14; i++) weak.push(mk('bsw' + i, 1 + (i % 3), 600 + i * 7));
     const keeper = mk('bsp1', weak[0].atkIV, 600, { favorite: true });   // same name, CP and stars as a candidate, but protected
     const odd = { ...mk('bso1', 2, 888), name: 'Mr. Mime', dex: 122 };    // a name the game search may not accept
-    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, ...weak, keeper, odd], cutTarget: 1, cutTargetDraft: '1' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, ...weak, keeper, odd], cutTarget: 1, cutTargetDraft: '1', transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
     const r = await s.call('buildTransferBatches');
     expect(r.batches.length >= 1, 'no batches');
     expect(r.batches.every(b => /^[a-z,]+ & cp\d+(,cp\d+)* & \d\*(,\d\*)*$/.test(b.text)), 'format: ' + r.batches.map(b => b.text).join(' | '));

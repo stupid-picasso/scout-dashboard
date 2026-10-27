@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.206</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.207</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3187,6 +3187,11 @@
       <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
         <div style="font:800 18px var(--font-display);text-align:center">Transfer strings</div>
         <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go. None has a hard lock (shiny, lucky, favourite, XXL/XXS, legendary, purified, nondo, unmeasured IVs). Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
+        <div style="font:12px/1.4 var(--font-body);text-align:center;color:#7a979c;margin-top:6px">{{ bulkFreshLine }}</div>
+        <sc-if value="{{ bulkGate }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkGateText }}</div>
+          <button type="button" onClick="{{ onBulkFresh }}" class="om-press" style="margin-top:10px;min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body);width:100%">NOTHING HAS CHANGED: SHOW THE STRINGS</button>
+        </sc-if>
         <sc-if value="{{ bulkSoftCount }}" hint-placeholder-val="{{ false }}">
           <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkSoftText }}</div>
         </sc-if>
@@ -12571,14 +12576,36 @@ class Component extends DCLogic {
     return { total: rows.length, missing: missing.length, sample: missing.slice(0, 5).map(p => p.name + ' ' + p.cp + ' CP') };
   }
 
+  // How current the roster is. The newest scan date in it is the last import: anything caught, favourited, traded or
+  // evolved in the game since then is invisible here. Past STALE_DAYS the strings are held until the trainer says the
+  // roster is up to date (once a day), because the count check can only catch a mismatch, not a missing Pokemon.
+  transferFreshness() {
+    const STALE_DAYS = 3;
+    const roster = this.effectiveRosterForMatch();
+    const ages = roster.map(p => this.scanAgeDays(p)).filter(d => d != null);
+    const newest = ages.length ? Math.min(...ages) : null;
+    const cand = this.transferCandidates().map(c => this.scanAgeDays(c.p)).filter(d => d != null);
+    const oldestCand = cand.length ? Math.max(...cand) : null;
+    const stale = newest != null && newest > STALE_DAYS;
+    const acked = this.state.transferFreshAck === this.todayKey();
+    return { newest, oldestCand, stale, acked, gated: stale && !acked };
+  }
+
+  ackTransferFresh() { this.setState({ transferFreshAck: this.todayKey() }); }
+
   bulkStringVals() {
-    const r = this.buildTransferBatches();
+    const fresh = this.transferFreshness();
+    const r = fresh.gated ? { batches: [], manual: [], total: 0 } : this.buildTransferBatches();
     const copied = this.state.copiedKey;
     const protectText = 'shiny,lucky,purified,xxl,xxs,legendary,mythical,4*';
     const cov = this.protectCoverage();
     const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
     const softRows = this.transferCandidates().filter(c => c.soft && c.soft.length).sort((a, b) => (b.p.ivAvg || 0) - (a.p.ivAvg || 0));
     return {
+      bulkGate: fresh.gated,
+      bulkGateText: fresh.gated ? 'Your roster was last imported ' + fresh.newest + ' day' + (fresh.newest === 1 ? '' : 's') + ' ago. Anything you caught, favourited, traded or evolved since is not in the app. Import again first, or confirm that nothing has changed.' : '',
+      onBulkFresh: () => this.ackTransferFresh(),
+      bulkFreshLine: fresh.newest != null ? 'Last import: ' + (fresh.newest === 0 ? 'today' : fresh.newest + ' day' + (fresh.newest === 1 ? '' : 's') + ' ago') + (fresh.oldestCand != null ? '. Oldest scan on this list: ' + fresh.oldestCand + ' days.' : '.') : '',
       bulkCoverageText: cov.total ? (cov.missing
         ? cov.missing + ' of your ' + cov.total + ' shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are not favourited in the game yet (' + cov.sample.join(', ') + (cov.missing > 5 ? ', \u2026' : '') + '). Run the protect string below, then import again.'
         : 'All ' + cov.total + ' of your shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are favourited in the game, so it will ask before transferring them.') : '',
