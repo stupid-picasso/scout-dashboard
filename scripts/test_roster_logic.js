@@ -212,6 +212,7 @@ function buildLists(roster, bestRank) {
     // rather than being silently shadowed by whatever evoTable already has.
     state: { evoTable: { onix: { to: 'Wrong Guess', candy: 999, item: null } } }
   };
+  ctx.evoPickOf = () => null;   // no branching species in this check
   ctx.evoRecordFor = new Function('p', evoRecordBody).bind(ctx);
 
   const real = ctx.evoRecordFor({ name: 'Onix' });

@@ -410,3 +410,9 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 
 ## Evolve queue v2 (Today > TO EVOLVE)
 - `evolveQueue` now (1) leaves out any Pokemon `keepReasons` would let go (counted in `_evolveSkipped`, shown in the Today header), (2) scores by `evolveValueOf`: the EVOLVED form's league rank weighted by its PvPoke tier (S 1.0, A .88, B .76, C .64, unranked .52; Little Cup rank x .8), IV x .4, +15 for being the best copy of a league, +25 ready, -40 Little Cup risk, and (3) ignores IVs that are only estimated (they score 0 and the card says "IVs not appraised yet"). Each card shows "Why: ..." from `row.why`. Candy is still funded greedily per family pool. Test: EVOLVE-01.
+
+## Evolve queue v3: branches, cap check, order toggle
+- The game data has ONE target per species (Eevee -> Vaporeon). `evoBranchTable()` lists the branching ones with usual requirements/items (eevee, poliwhirl, gloom, slowpoke, kirlia, snorunt, scyther, tyrogue [decided by Attack vs Defense IV], wurmple [random]). `evoBranchOptions(p)` ranks every branch for these exact IVs (Great/Ultra rank + tier, best marked). The trainer's choice is saved as `evoPick` in `ivOverrides` (`setEvoPick`); `evoPickOf` returns it (or the Tyrogue rule). A pick changes `evoRecordFor` (target, item), `evoChainNames`/`withEvoRanks` (ranked as that form only) and `evolvePokemon` (spends the pick). `markEvolveDone` on an undecided branching Pokemon asks what it became (`askBranchPick`). Branch notes are the usual requirements: the UI says to confirm in game.
+- `evolveValueOf` returns `capNote`: evolution keeps the level, so a Pokemon whose evolved form would land over a league cap loses that league's rank. -40 when its best league is the lost one. Test EVOLVE-02.
+- Today header has ORDER: VALUE / PER CANDY (`evolveSort`, `toggleEvolveSort`).
+- Marking done already spent the candy and the item (`evolvePokemon`); nothing new needed there.

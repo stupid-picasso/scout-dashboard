@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.201</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.203</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1684,8 +1684,9 @@
     <div data-today-section="evolve" style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:14px;padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
         <div style="font:800 12px var(--font-display);color:var(--grass-700);letter-spacing:.06em;white-space:nowrap">EVOLVE NOW</div>
-        <div style="font:11.5px var(--font-display);color:var(--ink-500);white-space:nowrap">{{ todayEvolveCount }}</div>
+        <div style="font:11.5px var(--font-display);color:var(--ink-500);text-align:right">{{ todayEvolveCount }}</div>
       </div>
+      <button type="button" onClick="{{ toggleEvolveSort }}" class="om-press" aria-label="Change the evolve order" style="margin:-4px 0 10px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line-200);background:var(--surface-card);color:var(--ink-500);font:700 10.5px var(--font-display);letter-spacing:.05em;cursor:pointer">{{ evolveSortLabel }}</button>
       <sc-if value="{{ todayEvolveEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12.5px var(--font-body);color:var(--ink-400)">Nothing ready to evolve.</div>
       </sc-if>
@@ -1711,6 +1712,19 @@
             </div>
             <div onClick="{{ row.onDone }}" class="om-press" style="cursor:pointer;flex-shrink:0;width:40px;height:40px;border-radius:50%;background:{{ row.doneBg }};border:1px solid {{ row.doneBorder }};display:flex;align-items:center;justify-content:center;font:800 15px var(--font-display);color:{{ row.doneColor }}">&#10003;</div>
           </div>
+          <sc-if value="{{ row.branches }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:-3px;padding:9px 10px;border-radius:9px;background:var(--surface-card);border:1px solid var(--line-200)">
+              <div style="font:11px/1.4 var(--font-display);color:var(--ink-500)">{{ row.branchHint }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+                <sc-for list="{{ row.branches }}" as="b" hint-placeholder-count="3">
+                  <button type="button" onClick="{{ b.onPick }}" aria-pressed="{{ b.selected }}" class="om-press" style="text-align:left;min-height:44px;padding:6px 10px;border-radius:10px;border:1px solid {{ b.border }};background:{{ b.bg }};color:var(--ink-900);cursor:pointer">
+                    <span style="display:block;font:700 12.5px var(--font-body)">{{ b.label }}</span>
+                    <span style="display:block;font:10.5px var(--font-display);color:var(--ink-500)">{{ b.sub }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
           <sc-if value="{{ row.risk }}" hint-placeholder-val="{{ false }}">
             <div style="font:11px/1.4 var(--font-display);color:var(--type-fighting);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));border-radius:7px;padding:7px 10px;margin-top:-3px">{{ row.riskNote }}</div>
           </sc-if>
@@ -4449,6 +4463,7 @@ class Component extends DCLogic {
     bagCapacityDraft: null,
     closestMissRevealed: false,
     cutTarget: 300,
+    evolveSort: 'value',
     pvpMaxLevel: 50,
     cutTargetDraft: '300',
     cutListRevealed: false,
@@ -12338,10 +12353,13 @@ class Component extends DCLogic {
     // every render, so it is cached (and dropped whenever the table object changes).
     const table = this.state.evoTable || null;
     if (this._evoChainTable !== table) { this._evoChainTable = table; this._evoChainCache = new Map(); }
-    const ck = String(p.name) + '|' + (p.form || '');
+    const pick = this.evoPickOf(p);
+    const ck = String(p.name) + '|' + (p.form || '') + '|' + (pick || '');
     const hit = this._evoChainCache.get(ck);
     if (hit) return hit;
-    const chain = this.evoChainNamesRaw(p);
+    let chain = this.evoChainNamesRaw(p);
+    // A chosen branch leaves out its siblings: a Pokemon that will become Sylveon is not ranked as a Vaporeon.
+    if (pick) { const sib = Object.keys(this.evoBranchTable()[String(p.name).toLowerCase()]); chain = chain.filter(n => n === pick || sib.indexOf(n) < 0); }
     this._evoChainCache.set(ck, chain);
     return chain;
   }
@@ -12375,7 +12393,9 @@ class Component extends DCLogic {
   withEvoRanks(p) {
     const m = this.mechanics;
     if (!m || !m.rankPctForLeague || p.dex == null || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return p;
-    const chain = this.evoChainNames(p);
+    const pickedTo = this.evoPickOf(p);
+    // Once a branch is chosen the Pokemon will be played as THAT form, so only it is ranked (not its current form).
+    const chain = pickedTo ? [pickedTo] : this.evoChainNames(p);
     const shadow = this.isShadow(p);
     const key = [p.dex, p.form || '', p.atkIV, p.defIV, p.staIV, shadow ? 1 : 0, this.state.pvpMaxLevel || 50, chain.join('>')].join('|');
     this._evoRankCache = this._evoRankCache || new Map();
@@ -12406,7 +12426,8 @@ class Component extends DCLogic {
       if (!b) return;
       const cur = p[lg] && Number.isFinite(p[lg].rankPct) ? p[lg].rankPct : null;
       // A missing or lower stored rank is replaced. A stored rank that is higher (a trusted export) is kept.
-      if (cur == null || b.rankPct > cur || (b.ranked && !(p[lg] && p[lg].evolvesTo && String(p[lg].evolvesTo).toLowerCase() === String(b.evolvesTo).toLowerCase()) && cur < 90)) {
+      const wrongBranch = pickedTo && String((p[lg] && p[lg].evolvesTo) || '').toLowerCase() !== pickedTo.toLowerCase();
+      if (cur == null || wrongBranch || b.rankPct > cur || (b.ranked && !(p[lg] && p[lg].evolvesTo && String(p[lg].evolvesTo).toLowerCase() === String(b.evolvesTo).toLowerCase()) && cur < 90)) {
         out[lg] = { ...(p[lg] || {}), rankPct: b.rankPct, evolvesTo: b.evolvesTo };
       }
     });
@@ -14209,10 +14230,77 @@ class Component extends DCLogic {
     const name = String(p && p.name || '').toLowerCase();
     const m = this.mechanics;
     const real = m && m.evolutionInfoFor ? m.evolutionInfoFor(name, p && p.form) : null;
-    if (real) return { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey };
     const rec = (this.state.evoTable || {})[name];
-    if (rec) return { to: rec.to, candy: rec.candy, item: rec.item || null, itemKey: null, ...(rec.assumed ? { assumed: true } : {}) };
+    const base = real ? { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey }
+      : rec ? { to: rec.to, candy: rec.candy, item: rec.item || null, itemKey: null, ...(rec.assumed ? { assumed: true } : {}) } : null;
+    // The game data holds ONE target per species (Eevee -> Vaporeon). When the trainer chose a branch, or the IVs decide it
+    // (Tyrogue), that branch's own target and item replace it; the candy cost is the species' own.
+    const pick = base ? this.evoPickOf(p) : null;
+    if (pick) { const t = this.evoBranchTable()[name][pick] || {}; return { ...base, to: pick, item: t.item || null, itemKey: t.itemKey || null }; }
+    return base;
+  }
+
+  // Species whose next step branches. Only what is known for sure is listed; the note is the usual requirement, so
+  // the trainer can confirm it in the game. `forced`: the IVs decide (Tyrogue). `random`: nobody can choose (Wurmple).
+  evoBranchTable() {
+    return {
+      eevee: { Vaporeon: { note: 'Name trick "Rainer" (once)' }, Jolteon: { note: 'Name trick "Sparky" (once)' }, Flareon: { note: 'Name trick "Pyro" (once)' },
+        Espeon: { note: 'Buddy 10 km, evolve in daytime' }, Umbreon: { note: 'Buddy 10 km, evolve at night' }, Leafeon: { note: 'Evolve near a Mossy Lure' },
+        Glaceon: { note: 'Evolve near a Glacial Lure' }, Sylveon: { note: 'Earn buddy hearts' } },
+      poliwhirl: { Poliwrath: {}, Politoed: { item: "King's Rock", itemKey: 'kingsRock' } },
+      gloom: { Vileplume: {}, Bellossom: { item: 'Sun Stone', itemKey: 'sunStone' } },
+      slowpoke: { Slowbro: {}, Slowking: { item: "King's Rock", itemKey: 'kingsRock' } },
+      kirlia: { Gardevoir: {}, Gallade: { item: 'Sinnoh Stone', itemKey: 'sinnohStone', note: 'Male Kirlia only' } },
+      snorunt: { Glalie: {}, Froslass: { item: 'Sinnoh Stone', itemKey: 'sinnohStone', note: 'Female Snorunt only' } },
+      scyther: { Scizor: { item: 'Metal Coat', itemKey: 'metalCoat' }, Kleavor: { item: 'Black Augurite' } },
+      tyrogue: { Hitmonlee: { note: 'Attack IV above Defense' }, Hitmonchan: { note: 'Defense IV above Attack' }, Hitmontop: { note: 'Attack IV equals Defense' } },
+      wurmple: { Silcoon: { note: 'Random' }, Cascoon: { note: 'Random' } }
+    };
+  }
+
+  // The branch this Pokemon will take, or null when it is still open. A saved choice wins; Tyrogue is decided by its
+  // measured IVs.
+  evoPickOf(p) {
+    const key = String(p && p.name || '').toLowerCase();
+    const tbl = this.evoBranchTable()[key];
+    if (!tbl || (p.form && String(p.form).toLowerCase() !== 'normal')) return null;
+    const names = Object.keys(tbl);
+    if (p.evoPick) { const hit = names.find(n => n.toLowerCase() === String(p.evoPick).toLowerCase()); if (hit) return hit; }
+    if (key === 'tyrogue' && !this.needsAppraisal(p) && Number.isFinite(p.atkIV) && Number.isFinite(p.defIV)) return p.atkIV > p.defIV ? 'Hitmonlee' : p.defIV > p.atkIV ? 'Hitmonchan' : 'Hitmontop';
     return null;
+  }
+
+  // The options to show for a branching species, each with the league ranks and tier IT would have for these IVs.
+  evoBranchOptions(p) {
+    const m = this.mechanics;
+    const key = String(p && p.name || '').toLowerCase();
+    const tbl = this.evoBranchTable()[key];
+    if (!m || !tbl || (p.form && String(p.form).toLowerCase() !== 'normal')) return null;
+    const forced = key === 'tyrogue', random = key === 'wurmple';
+    const pick = this.evoPickOf(p);
+    const ivs = this.needsAppraisal(p) ? null : this.ivsOf(p);
+    const shadow = this.isShadow(p);
+    const order = { S: 0, A: 1, B: 2, C: 3 };
+    const opts = Object.keys(tbl).map(name => {
+      const dex = m.resolveDexByName ? m.resolveDexByName(name) : null;
+      const base = dex != null ? m.BASE_STATS[dex] : null;
+      let value = null; const parts = [];
+      if (ivs && base && m.rankPctForLeague) {
+        ['great', 'ultra'].forEach(lk => {
+          const r = m.rankPctForLeague(base, ivs, lk, shadow);
+          if (!Number.isFinite(r)) return;
+          const t = m.pvpTierFor ? m.pvpTierFor(name, shadow, lk, '') : null;
+          const v = r * (1 - 0.12 * Math.min(t ? order[t.tier] : 4, 4));
+          if (value == null || v > value) value = v;
+          parts.push((lk === 'great' ? 'GL ' : 'UL ') + Math.round(r) + '%' + (t ? ' ' + t.tier : ''));
+        });
+      }
+      const d = tbl[name];
+      return { name, note: d.note || '', item: d.item || '', itemKey: d.itemKey || null, value, text: parts.join(' \u00b7 '), selected: pick === name, choosable: !forced && !random };
+    });
+    const best = opts.filter(o => o.value != null).sort((a, b) => b.value - a.value)[0];
+    opts.forEach(o => { o.best = !!best && o === best; });
+    return { opts, forced, random, pick };
   }
 
   // The CSV and the video importers both write the Pokemon's OWN name into
@@ -14310,18 +14398,42 @@ class Component extends DCLogic {
   // are only estimated from CP/HP count for nothing: a guess must not decide where candy goes.
   evolveValueOf(p, ctx) {
     if (this.needsAppraisal(p)) return { value: 0, iv: 0, bonus: 0, measured: false, why: 'IVs not appraised yet, so it is ordered by candy only' };
-    let value = 0, why = '';
+    let value = 0, why = '', bestLk = null;
+    const goodLeagues = [];
     ['great', 'ultra'].forEach(lk => {
       const a = this.pvpAssess(p, lk);
       if (!a) return;
+      if (a.rank >= 85) goodLeagues.push({ lk, rank: a.rank });
       const v = a.rank * (1 - 0.12 * Math.min(a.tierRank, 4));
-      if (v > value) { value = v; why = (this.pvpFormName(p, lk)) + (a.tier ? ' tier ' + a.tier : ' unranked') + ' in ' + (lk === 'great' ? 'Great' : 'Ultra') + ' League, rank ' + Math.round(a.rank) + '%'; }
+      if (v > value) { value = v; bestLk = lk; why = (this.pvpFormName(p, lk)) + (a.tier ? ' tier ' + a.tier : ' unranked') + ' in ' + (lk === 'great' ? 'Great' : 'Ultra') + ' League, rank ' + Math.round(a.rank) + '%'; }
     });
+    // A league rank assumes the evolved form is powered up to the cap. Evolution keeps the level, so a Pokemon that is
+    // already past that level lands OVER the cap and the rank is worth nothing for that league.
+    let overCap = null, capNote = null;
+    const m = this.mechanics;
+    if (goodLeagues.length && m && m.cpFor && m.LEAGUE_CAPS) {
+      const ivs = this.ivsOf(p), lv = Number.isFinite(p.lvlMin) && p.lvlMin === p.lvlMax ? p.lvlMin : null;
+      const lost = [], kept = [];
+      goodLeagues.forEach(({ lk, rank }) => {
+        const form = this.pvpFormName(p, lk), dex = m.resolveDexByName ? m.resolveDexByName(form) : null;
+        const base = dex != null ? m.BASE_STATS[dex] : null, cap = m.LEAGUE_CAPS[lk];
+        if (!base || !ivs || lv == null || !cap || String(form).toLowerCase() === String(p.name).toLowerCase()) return;
+        const cp = m.cpFor(base, ivs, lv);
+        if (cp == null) return;
+        (cp > cap ? lost : kept).push({ lk, cp, cap, rank, form, league: lk === 'great' ? 'Great' : 'Ultra' });
+      });
+      if (lost.length) {
+        const l = lost[0];
+        capNote = 'Evolving now makes it CP ' + l.cp + ', over the ' + l.league + ' League cap of ' + l.cap + ' (its ' + Math.round(l.rank) + '% rank there needs a lower level)'
+          + (kept.length ? '; still under the ' + kept[0].league + ' League cap' : '') + '.';
+        if (lost.some(x => x.lk === bestLk)) overCap = { cp: l.cp, cap: l.cap };
+      }
+    }
     const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
     if (Number.isFinite(lc) && lc * 0.8 > value) { value = lc * 0.8; why = 'Little Cup rank ' + Math.round(lc) + '%'; }
     const best = this.leagueBestFor(p, ctx);
     if (best.length) why += (why ? ' · ' : '') + best[0].replace(/ \(.*$/, '');
-    return { value, iv: p.ivAvg || 0, bonus: best.length ? 15 : 0, measured: true, why };
+    return { value, iv: p.ivAvg || 0, bonus: best.length ? 15 : 0, measured: true, why, overCap, capNote };
   }
 
   evolveQueue() {
@@ -14365,9 +14477,11 @@ class Component extends DCLogic {
       const val = this.evolveValueOf(p, keepCtx);
       // Score favours what the evolution is worth: the evolved form's league value (tier-weighted rank), IV,
       // being the best copy for a league, and a ready candy stock over one still being collected.
-      const score = val.value + val.iv * 0.4 + val.bonus + (evo.ready ? 25 : 0) - (risk ? 40 : 0);
+      const base = val.value + val.iv * 0.4 + val.bonus - (risk ? 40 : 0) - (val.overCap ? 40 : 0);
+      const score = base + (evo.ready ? 25 : 0);
+      const capNote = val.capNote;
       const key = familyRoot(p.name);
-      (groups[key] = groups[key] || []).push({ p, evo, rank, risk, score, why: val.why, measured: val.measured });
+      (groups[key] = groups[key] || []).push({ p, evo, rank, risk, score, why: val.why, measured: val.measured, capNote, perCandy: base / Math.max(5, Number(evo.need) || 25), branches: this.evoBranchOptions(p) });
     });
     const out = [];
     Object.keys(groups).forEach(key => {
@@ -14397,7 +14511,12 @@ class Component extends DCLogic {
       const shown = fundedCount > 0 ? group.filter(r => r.fundable !== false) : group.slice(0, 1);
       shown.forEach((r, i) => { r.dupRank = i + 1; out.push(r); });
     });
-    return out.sort((a, b) => b.score - a.score);
+    // Default order is value. "Per candy" ranks by value for each candy spent: the best use of a scarce stock.
+    return out.sort(this.state.evolveSort === 'perCandy' ? (a, b) => b.perCandy - a.perCandy : (a, b) => b.score - a.score);
+  }
+
+  toggleEvolveSort() {
+    this.setState({ evolveSort: this.state.evolveSort === 'perCandy' ? 'value' : 'perCandy' });
   }
 
   // One line explaining why THIS individual is the pick, and what the shared
@@ -14759,7 +14878,31 @@ class Component extends DCLogic {
 
   // Ticking a row off the evolve queue reuses the existing completed list, so
   // it stays done across reloads and devices.
+  // A branching species with no choice yet: ask what it became, so the right form, candy and item are recorded.
+  askBranchPick(p) {
+    const info = this.evoBranchOptions(p);
+    if (!info || !info.opts.length) return false;
+    const label = o => o.name + (o.text ? ' \u00b7 ' + o.text : '');
+    this.askConfirm({
+      title: 'What did ' + p.name + ' evolve into?',
+      message: info.random ? 'Wurmple evolves at random, so pick what you got.' : 'Pick the one you evolved it into, so its form, candy and item are recorded correctly.',
+      actions: [...info.opts.map(o => ({ label: label(o), style: o.best ? 'primary' : 'neutral', run: () => { this.closeConfirm(); this.setEvoPick(p, o.name, true); } })),
+        { label: 'NOT YET', style: 'neutral', run: () => this.closeConfirm() }]
+    });
+    return true;
+  }
+
+  // Saves the trainer's branch choice on the record; `thenDone` also marks it evolved.
+  setEvoPick(p, name, thenDone) {
+    const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], evoPick: name } };
+    this.setState({ ivOverrides: overrides }, () => {
+      try { this.clearDerivedCaches(); this.queueCloudPush(); } catch (e) {}
+      if (thenDone) { const fresh = this.effectiveRosterForMatch().find(q => q.idx === p.idx); if (fresh) this.markEvolveDone(fresh); }
+    });
+  }
+
   markEvolveDone(p) {
+    if (!this.evoPickOf(p) && this.evoBranchOptions(p) && this.askBranchPick(p)) return;
     this.haptic('medium');
     // Evolving in Pokemon GO does NOT create a new Pokemon: the same individual
     // transforms, keeping its IVs and its level exactly. Only the species, CP,
@@ -14792,7 +14935,7 @@ class Component extends DCLogic {
     }
     if (!newBase) return false;
 
-    const patch = { name: toName, dex: newDex, evolvedFrom: p.name };
+    const patch = { name: toName, dex: newDex, evolvedFrom: p.name, evoPick: null };
     const ivs = this.ivsOf(p);
     // The level carries over untouched; a solved single level is required to
     // recompute CP/HP honestly, so a fuzzy range leaves the numbers alone
@@ -18142,7 +18285,16 @@ class Component extends DCLogic {
         spriteRef: this.makeSpriteRefByDex(row.p.dex, row.p.form),
         badgeColor: this.dsTypeColor(row.p),
         initial: (row.p.name || '?').charAt(0),
-        arrow: (row.p.cp != null ? row.p.cp + ' CP' : '') + '  \u2192  ' + row.evo.to + (row.evo.item ? ' + ' + row.evo.item : ''),
+        arrow: (row.p.cp != null ? row.p.cp + ' CP' : '') + '  \u2192  ' + (row.branches && !row.branches.pick ? 'choose: ' + row.branches.opts.length + ' options' : row.evo.to + (row.evo.item ? ' + ' + row.evo.item : '')),
+        branches: row.branches && row.branches.opts.length ? row.branches.opts.map(o => ({
+          label: o.name + (o.best ? ' \u2605' : ''),
+          sub: [o.text, o.item ? 'needs ' + o.item : '', o.note].filter(Boolean).join(' \u00b7 ') || 'no ranking yet',
+          selected: o.selected, border: o.selected ? 'var(--grass-600)' : 'var(--line-200)', bg: o.selected ? 'color-mix(in oklab, var(--grass-500) 22%, var(--surface-card))' : 'var(--surface-card)',
+          onPick: () => (o.choosable ? this.setEvoPick(row.p, o.name, false) : null)
+        })) : null,
+        branchHint: row.branches ? (row.branches.forced ? 'Its IVs decide this one. Tap done when it has evolved.' : row.branches.random ? 'Wurmple evolves at random. Tap done, then say what you got.'
+          : row.branches.pick ? 'You chose ' + row.branches.pick + '. Tap another to change it. \u2605 = best for these IVs. Requirements shown are the usual ones: confirm in the game.'
+          : 'Choose what it will become (\u2605 = best for these IVs). Ranks are Great and Ultra League for this exact spread.') : '',
         candyLabel: candyLabelFor(row.evo),
         candyColor: candyColorFor(row.evo),
         // A bar reads as progress toward the evolution at a glance; the raw
@@ -18150,8 +18302,8 @@ class Component extends DCLogic {
         candyPct: (row.evo.need && row.evo.have != null)
           ? Math.min(100, Math.round(row.evo.have / row.evo.need * 100)) + '%'
           : (row.evo.ready ? '100%' : '0%'),
-        dupNote: [row.why ? 'Why: ' + row.why : null, this.evolveDupNote(row), chainNoteFor(row.evo)].filter(Boolean).join(' \u00b7 ') || null,
-        dupNoteColor: chainNoteFor(row.evo) ? 'var(--type-electric)' : 'var(--grass-700)',
+        dupNote: [row.why ? 'Why: ' + row.why : null, row.capNote, this.evolveDupNote(row), chainNoteFor(row.evo)].filter(Boolean).join(' \u00b7 ') || null,
+        dupNoteColor: (chainNoteFor(row.evo) || row.capNote) ? 'var(--type-electric)' : 'var(--grass-700)',
         risk: row.risk,
         riskNote: 'Strong Little Cup pick \u2014 evolving puts it over the 500 CP cap.',
         doneBg: 'var(--grass-500)',
@@ -18164,6 +18316,8 @@ class Component extends DCLogic {
         ? (expand.evolve ? 'SHOW TOP 10 ONLY' : 'SHOW ALL ' + evoQueueAll.length)
         : null,
       toggleEvolveAll: () => this.toggleTodayBlock('evolve'),
+      toggleEvolveSort: () => this.toggleEvolveSort(),
+      evolveSortLabel: this.state.evolveSort === 'perCandy' ? 'ORDER: PER CANDY' : 'ORDER: VALUE',
 
       dustPlanHeadline: dustPlan.rows.length
         ? fmt(dustPlan.spend) + ' of ' + fmt(dustPlan.budget)
