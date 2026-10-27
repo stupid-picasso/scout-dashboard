@@ -590,6 +590,21 @@ module.exports = async function suiteB() {
     expect((await get('ee2')).name === 'Eevee', 'asking changed nothing');
     await s.set({ addedPokemon: st0.addedPokemon || [], candyInventory: st0.candyInventory || {}, ivOverrides: st0.ivOverrides || {} });
   });
+  await T('EVOLVE-03', 'Today', 'Every branching species in the game data gets the right list: Applin items, Cosmoem day/night, Kirlia male + stone, Burmy by gender, Clamperl and Wurmple random; no invented Scyther branch', async () => {
+    const m = await s.page.evaluate(() => Object.keys(window.PokemonMechanics.EVOLUTION_BRANCHES).sort());
+    expect(['applin', 'burmy', 'charcadet', 'clamperl', 'cosmoem', 'eevee', 'gloom', 'kirlia', 'poliwhirl', 'slowpoke', 'snorunt', 'tyrogue', 'wurmple'].every(k => m.indexOf(k) >= 0), 'game-data species: ' + m.join());
+    expect(m.indexOf('scyther') < 0, 'Scyther has no branch in the game data');
+    const mk = (idx, name, dex, extra) => ({ idx, name, dex, cp: 300, hp: 40, atkIV: 10, defIV: 12, staIV: 14, ivAvg: 80, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const opts = async p => (await s.call('evoBranchOptions', p));
+    const ap = await opts(mk('b1', 'Applin', 840)), co = await opts(mk('b2', 'Cosmoem', 790)), ki = await opts(mk('b3', 'Kirlia', 281)), cl = await opts(mk('b4', 'Clamperl', 366));
+    expect(ap.opts.length === 3 && ap.opts.every(o => o.item && o.choosable), 'Applin: three apple choices ' + JSON.stringify(ap.opts.map(o => o.name + ':' + o.item)));
+    expect(co.opts.map(o => o.name + ':' + o.note).join() === 'Solgaleo:evolve in daytime,Lunala:evolve at night', 'Cosmoem is day or night: ' + co.opts.map(o => o.name + ':' + o.note).join());
+    const gal = ki.opts.find(o => o.name === 'Gallade');
+    expect(gal && gal.item === 'Sinnoh Stone' && /Male only/.test(gal.note), 'Gallade needs a Sinnoh Stone and a male: ' + JSON.stringify(gal));
+    expect(cl.random && cl.opts.every(o => !o.choosable), 'Clamperl has no requirement, so it cannot be chosen');
+    expect((await s.call('evoPickOf', mk('b5', 'Burmy', 412, { gender: 'F' }))) === 'Wormadam' && (await s.call('evoPickOf', mk('b6', 'Burmy', 412, { gender: 'M' }))) === 'Mothim', 'Burmy follows its gender');
+    expect((await s.call('evoRecordFor', mk('b7', 'Applin', 840, { evoPick: 'Dipplin' }))).itemKey === 'syrupyApple', 'a chosen Applin branch needs its own apple');
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

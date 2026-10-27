@@ -33,6 +33,7 @@ jobs:
           python3 scripts/test_gemini_pool.py
           python3 scripts/test_extract_pipeline.py
           python3 scripts/test_postprocess.py
+          python3 scripts/test_evolution_branches.py
 
       - name: Install Playwright
         run: |
