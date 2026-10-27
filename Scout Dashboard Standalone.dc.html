@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.210</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.211</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4268,6 +4268,25 @@
         </sc-for>
         <sc-if value="{{ keeperManual }}" hint-placeholder-val="{{ false }}">
           <div style="font:12px/1.4 var(--font-body);color:#8a4b12">{{ keeperManual }}</div>
+        </sc-if>
+      </div>
+      <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+        <div style="font:800 15px var(--font-display)">Let the game skip favourites</div>
+        <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">When on, every transfer string ends in <b>&amp; !favorite</b>, so the game itself will not select anything you favourited, even a Pokemon this app does not know about yet. Strings get a little shorter, so there are more batches.</div>
+        <sc-if value="{{ negationNotOk }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12.5px/1.45 var(--font-body);color:#8a4b12;background:#fff4e5;border-radius:10px;padding:9px 11px">First check that the game&rsquo;s NOT operator works on your account. {{ negationTestLine }}</div>
+          <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;user-select:all">{{ negationTestText }}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" onClick="{{ onNegationCopy }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ negationCopyLabel }}</button>
+            <button type="button" onClick="{{ onNegationYes }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 13px var(--font-body)">YES, THE COUNT MATCHES</button>
+          </div>
+          <div style="font:12px/1.4 var(--font-body);color:#7a979c">If it shows everything, or nothing, leave this off.</div>
+        </sc-if>
+        <sc-if value="{{ negationOk }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" onClick="{{ onSkipFavToggle }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ skipFavLabel }}</button>
+            <button type="button" onClick="{{ onNegationReset }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#eef6f6;color:#17353b;font:700 13px var(--font-body)">TEST AGAIN</button>
+          </div>
         </sc-if>
       </div>
     </sc-if>
@@ -13734,7 +13753,11 @@ class Component extends DCLogic {
     const roster = this.effectiveRosterForMatch();
     const cand = this.transferCandidates().slice(0, 600);
     const candByIdx = new Map(cand.map(c => [c.p.idx, c]));
-    const rows = roster.map(q => ({ idx: q.idx, name: String(q.name || '').toLowerCase(), cp: q.cp, stars: this.starsOf(q) }));
+    // With "skip favourites" on (and the game's NOT operator verified), every string ends in `& !favorite`: the game itself
+    // leaves out anything favourited, even a Pokemon this app has no record of. It costs characters, so batches are smaller.
+    const skipFav = !!(this.state.selfProtect && this.state.negationOk);
+    const SUFFIX = skipFav ? ' & !favorite' : '';
+    const rows = roster.filter(q => !(skipFav && q.favorite)).map(q => ({ idx: q.idx, name: String(q.name || '').toLowerCase(), cp: q.cp, stars: this.starsOf(q) }));
     const manual = [];
     let items = [];
     cand.forEach(c => {
@@ -13748,7 +13771,7 @@ class Component extends DCLogic {
     const matched = it => { const t = sets(it); return rows.filter(r => t.N.has(r.name) && t.C.has(r.cp) && (!t.withStars || t.S.has(r.stars))); };
     const textOf = it => {
       const t = sets(it);
-      return [...t.N].join(',') + ' & ' + [...t.C].sort((a, b) => a - b).map(c => 'cp' + c).join(',') + (t.withStars ? ' & ' + [...t.S].sort((a, b) => a - b).map(n => n + '*').join(',') : '');
+      return [...t.N].join(',') + ' & ' + [...t.C].sort((a, b) => a - b).map(c => 'cp' + c).join(',') + (t.withStars ? ' & ' + [...t.S].sort((a, b) => a - b).map(n => n + '*').join(',') : '') + SUFFIX;
     };
     const clean = it => matched(it).every(r => candByIdx.has(r.idx));
     const batches = [];
@@ -13879,6 +13902,12 @@ class Component extends DCLogic {
     const protectText = 'shiny,lucky,purified,xxl,xxs,legendary,mythical,4*';
     const cov = this.protectCoverage();
     const kb = this.buildKeeperBatches();
+    // One-time check that the game's NOT operator works on this account: `xxl,xxs & !xxl` must show exactly the XXS Pokemon.
+    const roster0 = this.effectiveRosterForMatch();
+    const xxsN = roster0.filter(p => this.sizeTagOf(p) === 'XXS').length;
+    const useSize = xxsN > 0;
+    const testText = useSize ? 'xxl,xxs & !xxl' : '3*,4* & !4*';
+    const testN = useSize ? xxsN : roster0.filter(p => this.starsOf(p) === 3).length;
     const target = Number.isFinite(this.state.cutTarget) ? this.state.cutTarget : 300;
     const softRows = this.transferCandidates().filter(c => c.soft && c.soft.length).sort((a, b) => (b.p.ivAvg || 0) - (a.p.ivAvg || 0));
     return {
@@ -13889,6 +13918,17 @@ class Component extends DCLogic {
       bulkCoverageText: cov.total ? (cov.missing
         ? cov.missing + ' of your ' + cov.total + ' shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are not favourited in the game yet (' + cov.sample.join(', ') + (cov.missing > 5 ? ', \u2026' : '') + '). Run the protect string below, then import again.'
         : 'All ' + cov.total + ' of your shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are favourited in the game, so it will ask before transferring them.') : '',
+      negationOk: !!this.state.negationOk,
+      negationNotOk: !this.state.negationOk,
+      negationTestText: testText,
+      negationTestLine: 'Paste this in the game search. If the NOT operator works it shows only ' + (useSize ? 'your XXS Pokemon' : 'your 3-star Pokemon') + ': about ' + testN + ' (the app counts ' + testN + '; a few more or fewer is fine if you caught or traded since).',
+      onNegationYes: () => this.saveProtectPrefs({ negationOk: true }),
+      onNegationCopy: () => this.copyText(testText, 'negtest'),
+      negationCopyLabel: copied === 'negtest' ? 'Copied' : 'Copy test string',
+      skipFavOn: !!(this.state.selfProtect && this.state.negationOk),
+      skipFavLabel: this.state.selfProtect ? 'SKIP FAVOURITES: ON' : 'SKIP FAVOURITES: OFF',
+      onSkipFavToggle: () => this.saveProtectPrefs({ selfProtect: !this.state.selfProtect }),
+      onNegationReset: () => this.saveProtectPrefs({ negationOk: false, selfProtect: false }),
       keeperTotal: kb.total,
       keeperHas: kb.batches.length > 0,
       keeperIntro: kb.total ? kb.total + ' more Pokemon are kept for a real reason (IV 90+, best league copy, rising or cup pick, raid role) but are not favourited in the game. Favourite them and the game asks before any of them can be transferred. The app still lets the Keep best target release them if you go over it.' : 'Every Pokemon the app keeps for a real reason is already favourited, or covered by the protect string above.',

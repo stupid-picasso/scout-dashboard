@@ -715,6 +715,29 @@ module.exports = async function suiteB() {
     expect(!kb2.batches.some(b => b.ids.indexOf('kf1') >= 0) && kb2.manual.some(m => String(m.p.idx) === 'kf1'), 'a lookalike non-keeper blocks the string: ' + JSON.stringify(kb2.batches.map(b => b.text)) + ' manual ' + kb2.manual.length);
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300 });
   });
+  await T('NEG-01', 'Safety', 'Skip-favourites: only after the NOT test is confirmed; every string then ends in & !favorite, stays within the length cap, and a favourited lookalike no longer blocks a batch', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const big = [mk('ng0', 'Snorlax', 143, [15, 15, 15], 3000), mk('ng00', 'Gyarados', 130, [15, 15, 15], 3000)];
+    const weak = [mk('ng1', 'Fearow', 22, [1, 2, 1], 3000), mk('ng2', 'Raticate', 20, [2, 2, 2], 3010), mk('ng3', 'Golbat', 42, [1, 1, 3], 3020)];
+    const twin = mk('ng4', 'Fearow', 22, [1, 2, 1], 3000, { favorite: true });   // same name, CP and stars as a candidate, but favourited
+    await s.set({ addedPokemon: [...big, ...weak, twin], roster: [], cutTarget: 2, cutTargetDraft: '2', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    let r = await s.call('buildTransferBatches');
+    expect(r.batches.every(b => !/!favorite/.test(b.text)), 'off by default: ' + r.batches.map(b => b.text).join(' | '));
+    expect(r.manual.some(m => String(m.p.idx) === 'ng1'), 'the favourited twin blocks the Fearow batch while the option is off: ' + JSON.stringify(r.manual.map(m => m.p.idx)));
+    await s.call('saveProtectPrefs', { selfProtect: true, negationOk: false }); await s.page.waitForTimeout(300);
+    r = await s.call('buildTransferBatches');
+    expect(r.batches.every(b => !/!favorite/.test(b.text)), 'selecting it without the NOT test changes nothing');
+    await s.call('saveProtectPrefs', { selfProtect: true, negationOk: true }); await s.page.waitForTimeout(300);
+    r = await s.call('buildTransferBatches');
+    expect(r.batches.length >= 1 && r.batches.every(b => / & !favorite$/.test(b.text) && b.text.length <= 90), 'every string ends in & !favorite and fits: ' + r.batches.map(b => b.text).join(' | '));
+    expect(r.batches.some(b => b.pokemon.some(p => String(p.idx) === 'ng1')) && !r.manual.some(m => String(m.p.idx) === 'ng1'), 'the favourited twin no longer blocks the batch');
+    expect(!r.batches.some(b => b.pokemon.some(p => String(p.idx) === 'ng4')), 'the favourited Pokemon is never in a batch');
+    const v = await s.call('bulkStringVals');
+    expect(v.negationOk === true && v.skipFavOn === true && /ON/.test(v.skipFavLabel), 'the screen shows it on');
+    await s.call('saveProtectPrefs', { selfProtect: false, negationOk: false });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
