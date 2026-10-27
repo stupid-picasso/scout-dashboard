@@ -619,6 +619,19 @@ module.exports = async function suiteB() {
     expect(v2.bulkSoftCount === 0, 'nothing soft-kept is listed when under the target: ' + v2.bulkSoftCount);
     await s.set({ addedPokemon: st0.addedPokemon || [], cutTarget: 300 });
   });
+  await T('PROTECT-01', 'Safety', 'In-game protection coverage: counts the protected Pokemon the game does not show as favourited, and the protect string no longer locks every shadow', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const before = await s.call('protectCoverage');
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), mk('pc1', 'Rattata', 19, [1, 1, 1], 80, { shiny: true }), mk('pc2', 'Spearow', 21, [1, 1, 1], 80, { shiny: true, favorite: true }), mk('pc3', 'Ekans', 23, [15, 15, 15], 90),
+      mk('pc4', 'Sandshrew', 27, [1, 3, 5], 80, { shadowPurified: '1' })] }); await s.page.waitForTimeout(300);
+    const c = await s.call('protectCoverage');
+    expect(c.total - before.total === 3 && c.missing - before.missing === 2, 'two of the three protected ones are not favourited: +' + (c.total - before.total) + ' total, +' + (c.missing - before.missing) + ' missing');
+    const v = await s.call('bulkStringVals');
+    expect(!/shadow/.test(v.bulkProtectText), 'the protect string leaves shadows out: ' + v.bulkProtectText);
+    expect(/not favourited in the game yet/.test(v.bulkCoverageText), 'the screen says what is missing: ' + v.bulkCoverageText.slice(0, 100));
+    await s.set({ addedPokemon: st0.addedPokemon || [] });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
@@ -730,7 +743,7 @@ module.exports = async function suiteB() {
     expect(r.batches.every(b => b.n === b.pokemon.length && b.n >= 1), 'expected count must equal the members');
     await s.set({ toolsMode: 'bulk', tab: 'tools' }); await s.page.waitForTimeout(600);
     const txt = await s.page.evaluate(() => document.body.innerText);
-    expect(/Transfer strings/.test(txt) && /exactly \d+ Pokemon/.test(txt) && /Protect in the game too/.test(txt) && /shiny,lucky,shadow/.test(txt), txt.slice(0, 300));
+    expect(/Transfer strings/.test(txt) && /exactly \d+ Pokemon/.test(txt) && /Protect in the game too/.test(txt) && /shiny,lucky,purified/.test(txt), txt.slice(0, 300));
     await s.set({ addedPokemon: st0.addedPokemon || [], cutTarget: 300, cutTargetDraft: '300', toolsMode: 'rename' });
   });
   await T('STRICT-IV-01', 'Safety', 'A record with IVs but no appraisal or typed-in mark counts as unmeasured and is protected', async () => {
