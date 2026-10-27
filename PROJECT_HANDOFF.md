@@ -431,3 +431,8 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 
 ## Bottom bar order
 - Bar: Today, Home (Home & settings), Roster, PvP, Recs (Recommendations), then More. More holds Raid counters, Bulk update, Collection intel, Attackers, Progress log, Rename & search. The Bulk review count now shows as a red badge on More and next to Bulk update in the menu. The active label uses a lighter blue (`labelTint`, #66b2ff) because #0a84ff fell to 3.2:1 on the green Recs page. Test helpers (`qa_lib.js`, `smoke_render.js`) map `s.go('RAID'|'BULK'|'INTEL'|...)` through More and `HOME`/`RECS` through the bar.
+
+## Slow image reads: thinking off + a timing log
+- Cause found: the browser's `callGeminiWithKey` never sent a thinking setting on the first attempt, so Gemini 2.5/3.x models "thought" before reading a screenshot (10-30 s each); the server-side extractor already used `thinkingLevel: minimal` / `thinkingBudget: 0`. Now image calls use `thinkingLadder(model, hasImage)`: Gemini 3+ `minimal` then `low` then default; 2.x budget 0 then default; a 400 steps down and the working rung is remembered in `_thinkRung`. Text calls (chat, briefing) are unchanged. Test THINK-01.
+- Every AI call is timed (`noteAiCall`: model, ms, HTTP status, image/text, thinking setting) plus import steps (`noteAiStage`: image decode/prepare, bar measuring). Read them at More > Progress log > Diagnostics > AI CALLS; COPY puts them (after the errors) on the clipboard.
+- Note: `Scout Dashboard Standalone.dc.html` and `Scout Dashboard.html` carry two copies of `processOneAppraisalShot` (and of the Gemini call code) that the source does not; `propagate_edits.py` reports those hunks as AMBIGUOUS and they must be patched in both places by hand.

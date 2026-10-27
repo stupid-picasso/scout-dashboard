@@ -738,6 +738,41 @@ module.exports = async function suiteB() {
     await s.call('saveProtectPrefs', { selfProtect: false, negationOk: false });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('THINK-01', 'AI', 'Image reads ask for the least thinking a model accepts, step down when it refuses one, remember the working setting, leave text calls alone, and every call is timed in the diagnostics', async () => {
+    const seen = [];
+    await s.page.route('**/generativelanguage.googleapis.com/**', async r => {
+      const u = r.request().url();
+      if (/:generateContent/.test(u)) {
+        const body = JSON.parse(r.request().postData() || '{}');
+        const th = body.generationConfig && body.generationConfig.thinkingConfig;
+        seen.push({ model: (u.match(/models\/([^:]+):/) || [])[1], th: th ? JSON.stringify(th) : 'none' });
+        if (th && th.thinkingLevel === 'minimal') return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: { message: 'thinking level not supported' } }) });
+        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"name":"Pikachu"}' }] } }] }) });
+      }
+      if (/:countTokens/.test(u)) return r.fulfill({ contentType: 'application/json', body: '{"totalTokens":1}' });
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [{ name: 'models/gemini-3.5-flash', supportedGenerationMethods: ['generateContent'] }] }) });
+    });
+    const key = 'q'.repeat(30) + Date.now();
+    await s.set({ geminiKey: key, geminiKeys: [key] });
+    await s.call('clearDerivedCaches');
+    const img = { messages: [{ role: 'user', content: [{ type: 'text', text: 'read' }, { type: 'image', source: { media_type: 'image/jpeg', data: 'AAAA' } }] }], max_tokens: 200 };
+    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { f.stateNode.logic._aiLog = []; f.stateNode.logic._thinkRung = {}; return; } } });
+    const call = b => s.page.evaluate(async body => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGemini) return await f.stateNode.logic.callGemini(body); } return null; }, b);
+    expect((await call(img)) === '{"name":"Pikachu"}', 'the image read returns');
+    const gen = seen.filter(x => x.th !== undefined);
+    expect(seen.length >= 2 && seen[0].th === '{"thinkingLevel":"minimal"}' && seen[1].th === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + JSON.stringify(seen));
+    const before = seen.length;
+    await call(img);
+    expect(seen.length === before + 1 && seen[before].th === '{"thinkingLevel":"low"}', 'the working setting is remembered: ' + JSON.stringify(seen.slice(before)));
+    const tBefore = seen.length;
+    await call({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 100 });
+    expect(seen[tBefore].th === 'none', 'a text call is sent as before (no thinking setting): ' + JSON.stringify(seen[tBefore]));
+    const log = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) return f.stateNode.logic._aiLog; } return null; });
+    expect(log && log.length >= 3 && log.every(a => typeof a.ms === 'number' && a.model && a.status === 200), 'every call is timed: ' + JSON.stringify(log && log.map(a => [a.model, a.ms, a.status, a.thinking])));
+    expect(/thinking low/.test(await s.call('diagnosticsText')), 'the log is in the copyable diagnostics');
+    await s.page.unroute('**/generativelanguage.googleapis.com/**');
+    await s.set({ geminiKey: '', geminiKeys: [] });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

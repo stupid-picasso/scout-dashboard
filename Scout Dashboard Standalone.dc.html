@@ -4304,9 +4304,22 @@
             <div style="font:11px/1.4 var(--font-display);color:var(--ink-600);word-break:break-word">{{ d.line }}</div>
           </sc-for>
         </div>
+ 
         <div style="display:flex;gap:8px;margin-top:10px">
           <div onClick="{{ copyDiagnostics }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display)">COPY</div>
           <div onClick="{{ clearDiagnostics }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font:700 11px var(--font-display)">CLEAR</div>
+        </div>
+      </sc-if>
+      <div style="font:700 10.5px var(--font-display);color:var(--ink-500);letter-spacing:.05em;margin-top:14px">AI CALLS &middot; {{ aiLogSummary }}</div>
+      <sc-if value="{{ hasAiLog }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+          <sc-for list="{{ aiLogRows }}" as="a" hint-placeholder-count="0">
+            <div style="font:11px/1.4 var(--font-display);color:var(--ink-600);word-break:break-word">{{ a.line }}</div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div onClick="{{ copyDiagnostics }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11px var(--font-display);letter-spacing:.05em">COPY</div>
+          <div onClick="{{ clearAiLog }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font:700 11px var(--font-display);letter-spacing:.05em">CLEAR</div>
         </div>
       </sc-if>
     </details>
@@ -7742,7 +7755,9 @@ class Component extends DCLogic {
   reloadApp() { try { location.reload(); } catch (e) {} }
 
   diagnosticsText() {
-    return (this._diag || []).map(d => d.at + ' [' + d.kind + '] ' + d.msg).join('\n');
+    const errs = (this._diag || []).map(d => d.at + ' [' + d.kind + '] ' + d.msg).join('\n');
+    const calls = (this._aiLog || []).map(a => a.at + ' [ai] ' + a.model + ' ' + a.ms + ' ms HTTP ' + a.status + (a.image ? ' image' : ' text') + ' thinking ' + a.thinking).join('\n');
+    return errs + (calls ? '\n--- AI calls (newest first) ---\n' + calls : '');
   }
 
   copyDiagnostics() {
@@ -9524,7 +9539,9 @@ class Component extends DCLogic {
     this.resetAppraisalHint();
     this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null });
     try {
+      const tPrep = Date.now();
       const canvas = await this.preprocessImage(file);
+      this.noteAiStage('screenshot: prepare image', Date.now() - tPrep);
       this.setState({ ocrPreview: canvas.toDataURL('image/jpeg', 0.7) });
 
       // Vision only. On-device OCR used to sit behind this as a fallback and was
@@ -10387,6 +10404,26 @@ class Component extends DCLogic {
     return hasImage ? c.vision : c.text;
   }
 
+  // Thinking settings to try for a call, least thinking first. Text calls are left as they were (null = the model's default).
+  thinkingLadder(model, hasImage) {
+    if (!hasImage) return [null];
+    const mm = /gemini-(\d+)/.exec(String(model));
+    if (mm && +mm[1] >= 3) return [{ thinkingLevel: 'minimal' }, { thinkingLevel: 'low' }, null];   // Gemini 3 and later
+    return [{ thinkingBudget: 0 }, null];                                                              // 2.x
+  }
+
+  // The last AI calls with their timings, shown under Progress log > Diagnostics, so a slow import can be read instead of guessed.
+  noteAiCall(model, image, status, ms, thinking) {
+    this._aiLog = this._aiLog || [];
+    this._aiLog.unshift({ at: new Date().toLocaleTimeString(), model, image: !!image, status, ms, thinking: thinking ? (thinking.thinkingLevel || 'budget ' + thinking.thinkingBudget) : 'default' });
+    if (this._aiLog.length > 40) this._aiLog.length = 40;
+    clearTimeout(this._aiLogTimer);
+    this._aiLogTimer = setTimeout(() => this.setState({ aiLogCount: this._aiLog.length }), 400);
+  }
+
+  // A named step of an import (reading the file, measuring bars) and how long it took.
+  noteAiStage(label, ms) { this.noteAiCall('(' + label + ')', false, '-', ms, null); }
+
   async callGeminiWithKey(body, key) {
     const parts = [];
     (body.messages || []).forEach(m => {
@@ -10429,17 +10466,23 @@ class Component extends DCLogic {
     let sawOther = false, sawDaily = false;
     let lastErr = null;
     for (const model of candidates) {
+      // Reading a screenshot needs no reasoning, and a model that "thinks" first can take 10 to 30 seconds per image. Vision
+      // calls therefore ask for the least thinking the model accepts (the server-side extractor does the same); a model that
+      // rejects a setting (400) steps down the ladder, and the rung that worked is remembered per model.
+      const ladder = this.thinkingLadder(model, hasImage);
+      this._thinkRung = this._thinkRung || {};
+      let rung = Math.min(this._thinkRung[model] || 0, ladder.length - 1);
       const buildConfig = (extras) => {
-        // Minimal, maximally-compatible config. responseMimeType and
-        // thinkingConfig are both model-dependent and each can trigger a bare
-        // 400 INVALID_ARGUMENT, so they are only added on the second attempt.
+        // Minimal, maximally-compatible config. responseMimeType is model-dependent and can trigger a bare
+        // 400 INVALID_ARGUMENT, so it is only added on a later attempt.
         const cfg = {
           maxOutputTokens: Math.max(body.max_tokens || 2048, 4096),
           temperature: 0
         };
+        if (ladder[rung]) cfg.thinkingConfig = ladder[rung];
         if (extras) {
           cfg.responseMimeType = 'application/json';
-          cfg.thinkingConfig = { thinkingBudget: 0 };
+          if (!cfg.thinkingConfig) cfg.thinkingConfig = { thinkingBudget: 0 };
         }
         return cfg;
       };
@@ -10450,12 +10493,21 @@ class Component extends DCLogic {
       });
       // body.search asks for Google Search grounding (live meta and news). A model or key that refuses the
       // tool falls straight back to a plain answer rather than failing the whole request.
-      let res = await post(false, !!body.search);
+      const t0 = Date.now();
+      let res;
+      try { res = await post(false, !!body.search); }
+      catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); throw netErr; }
+      while (res.status === 400 && rung < ladder.length - 1 && !/API.?key not valid|API_KEY_INVALID/i.test(await res.clone().text().catch(() => ''))) {
+        rung++;
+        res = await post(false, !!body.search);
+      }
       if (res.status === 400 && body.search) res = await post(false, false);
       if (res.status === 400) {
         // Some models need the JSON mime type to return parseable output.
         res = await post(true);
       }
+      this.noteAiCall(model, hasImage, res.status, Date.now() - t0, ladder[rung]);
+      if (res.ok) this._thinkRung[model] = rung;
       if (res.ok) {
         const data = await res.json();
         const cand = data && data.candidates && data.candidates[0];
@@ -11867,8 +11919,10 @@ class Component extends DCLogic {
   // loop below can share this without stepping on each other's progress
   // state mid-batch.
   async processOneAppraisalShot(file) {
+    const tPrep = Date.now();
     const canvas = await this.imageToCanvas(file);
     const bars = this.measureAppraisalBars(canvas);
+    this.noteAiStage('appraisal: decode + measure bars', Date.now() - tPrep);
     if (!bars) throw new Error('No appraisal bars found in that screenshot. Capture the appraisal screen with all three bars visible, uncropped.');
     const rec = await this.readScreenshotWithVision(file);
     const name = rec.pokemon_name || '';
@@ -11890,8 +11944,10 @@ class Component extends DCLogic {
   // loop below can share this without stepping on each other's progress
   // state mid-batch.
   async processOneAppraisalShot(file) {
+    const tPrep = Date.now();
     const canvas = await this.imageToCanvas(file);
     const bars = this.measureAppraisalBars(canvas);
+    this.noteAiStage('appraisal: decode + measure bars', Date.now() - tPrep);
     if (!bars) throw new Error('No appraisal bars found in that screenshot. Capture the appraisal screen with all three bars visible, uncropped.');
     const rec = await this.readScreenshotWithVision(file);
     const name = rec.pokemon_name || '';
@@ -18796,10 +18852,14 @@ class Component extends DCLogic {
       hasScanQueue: this.scanQueue().rows.length > 0,
       updateReady: this.state.updateReady,
       reloadApp: () => this.reloadApp(),
+      aiLogRows: (this._aiLog || []).map(a => ({ line: a.at + ' \u00b7 ' + a.model + ' \u00b7 ' + (a.ms >= 1000 ? (a.ms / 1000).toFixed(1) + ' s' : a.ms + ' ms') + (a.status === '-' ? '' : ' \u00b7 HTTP ' + a.status + (a.image ? ' \u00b7 image' : ' \u00b7 text') + ' \u00b7 thinking ' + a.thinking) })),
+      hasAiLog: (this._aiLog || []).length > 0,
+      aiLogSummary: (() => { const calls = (this._aiLog || []).filter(a => a.status !== '-' && a.status !== 0); if (!calls.length) return 'no AI calls yet'; const img = calls.filter(a => a.image && a.status === 200); const avg = list => list.length ? (list.reduce((t, a) => t + a.ms, 0) / list.length / 1000).toFixed(1) + ' s' : '\u2014'; return calls.length + ' calls, image reads average ' + avg(img) + ' (' + img.length + ' ok)'; })(),
       diagRows: (this._diag || []).map(d => ({ line: d.at + ' \u00b7 ' + d.kind + ' \u00b7 ' + d.msg })),
       hasDiag: (this._diag || []).length > 0,
       diagSummary: (this._diag || []).length ? (this._diag.length + ' recent error' + (this._diag.length > 1 ? 's' : '')) : 'No errors recorded',
       copyDiagnostics: () => this.copyDiagnostics(),
+      clearAiLog: () => { this._aiLog = []; this.setState({ aiLogCount: 0 }); },
       clearDiagnostics: () => { this._diag = []; this.setState({ diagCount: 0 }); },
       raidWeatherChips: Object.keys((this.mechanics && this.mechanics.WEATHER_TYPES) || {}).map(w => {
         const on = this.state.raidWeather === w;
