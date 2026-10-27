@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.211</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.213</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1335,7 +1335,7 @@
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.iconPath }}"/></svg>
           <sc-if value="{{ t.badge }}" hint-placeholder-val="{{ false }}"><span aria-label="{{ t.badge }} to review" style="position:absolute;top:-4px;right:-10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ios-red);color:#fff;font:700 11px/18px var(--font-body);text-align:center;box-sizing:border-box">{{ t.badge }}</span></sc-if>
         </span>
-        <span style="font:600 10.5px var(--font-body);letter-spacing:.01em;color:{{ t.color }};white-space:nowrap">{{ t.navLabel }}</span>
+        <span style="font:600 10.5px var(--font-body);letter-spacing:.01em;color:{{ t.labelColor }};white-space:nowrap">{{ t.navLabel }}</span>
       </button>
     </sc-for>
   </nav>
@@ -1347,6 +1347,7 @@
         <div onClick="{{ m.onClick }}" class="om-press" role="menuitem" aria-label="{{ m.label }}" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 18px;min-height:48px;border-top:.5px solid rgba(84,84,88,.5)">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{ m.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ m.iconPath }}"/></svg>
           <div style="flex:1;font:17px var(--font-body);color:{{ m.color }}">{{ m.label }}</div>
+          <sc-if value="{{ m.badge }}" hint-placeholder-val="{{ false }}"><span aria-label="{{ m.badge }} to review" style="min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--ios-red);color:#fff;font:700 12px/20px var(--font-body);text-align:center">{{ m.badge }}</span></sc-if>
           <div style="color:var(--ink-300);font:17px var(--font-body)">&rsaquo;</div>
         </div>
       </sc-for>
@@ -17809,14 +17810,14 @@ class Component extends DCLogic {
     };
     const barDefs = [
       { key: 'today', label: 'Today', navLabel: 'Today' },
+      { key: 'home', label: 'Home & settings', navLabel: 'Home' },
       { key: 'roster', label: 'Roster', navLabel: 'Roster' },
       { key: 'pvp', label: 'PvP rankings', navLabel: 'PvP' },
-      { key: 'raid', label: 'Raid counters', navLabel: 'Raid' },
-      { key: 'bulk', label: 'Bulk update', navLabel: 'Bulk' }
+      { key: 'recommend', label: 'Recommendations', navLabel: 'Recs' }
     ];
     const moreDefs = [
-      { key: 'home', label: 'Home & settings' },
-      { key: 'recommend', label: 'Recommendations' },
+      { key: 'raid', label: 'Raid counters' },
+      { key: 'bulk', label: 'Bulk update' },
       { key: 'intel', label: 'Collection intel' },
       { key: 'attackers', label: 'Attackers' },
       { key: 'progress', label: 'Progress log' },
@@ -17825,11 +17826,13 @@ class Component extends DCLogic {
     const moreKeys = moreDefs.map(m => m.key);
     const tabDefs = [...barDefs, ...moreDefs];
     const tint = on => (on ? 'var(--ios-blue)' : 'var(--ink-400)');
+    // The small label needs 4.5:1 on whatever page colour shows through the translucent bar; the icon keeps the system blue.
+    const labelTint = on => (on ? '#66b2ff' : 'var(--ink-400)');
     const tabList = [
-      ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, badge: t.key === 'bulk' && t.key !== tab ? this.bulkBadge() : '', iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), current: (t.key === tab && !this.state.moreOpen) ? 'page' : undefined, onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
-      { key: 'more', label: 'More', navLabel: 'More', iconPath: ICON.more, color: tint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), onClick: () => this.setState({ moreOpen: !this.state.moreOpen }) }
+      ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, badge: '', iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), labelColor: labelTint(t.key === tab && !this.state.moreOpen), current: (t.key === tab && !this.state.moreOpen) ? 'page' : undefined, onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
+      { key: 'more', label: 'More', navLabel: 'More', badge: tab !== 'bulk' ? this.bulkBadge() : '', iconPath: ICON.more, color: tint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), labelColor: labelTint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), onClick: () => this.setState({ moreOpen: !this.state.moreOpen }) }
     ];
-    const moreTabs = moreDefs.map(m => ({ key: m.key, label: m.label, iconPath: ICON[m.key], color: m.key === tab ? 'var(--ios-blue)' : 'var(--ink-900)', onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(m.key)) }));
+    const moreTabs = moreDefs.map(m => ({ key: m.key, label: m.label, badge: m.key === 'bulk' && tab !== 'bulk' ? this.bulkBadge() : '', iconPath: ICON[m.key], color: m.key === tab ? 'var(--ios-blue)' : 'var(--ink-900)', onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(m.key)) }));
 
     return {
       rootRef: (el) => this.rootRef(el),

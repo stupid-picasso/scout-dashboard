@@ -52,8 +52,8 @@ const check = (name, ok, extra) => {
       }
     }
   });
-  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RAID: 'Raid' };
-  const MORE = { HOME: 'Home & settings', RECS: 'Recommendations', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log' };
+  const BAR = { TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
+  const MORE = { RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search' };
   const go = async label => {
     if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(400); await page.getByText(MORE[label], { exact: true }).last().click(); await page.waitForTimeout(1200); return; }
     const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(1200);

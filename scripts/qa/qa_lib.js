@@ -50,8 +50,8 @@ async function session(opts = {}) {
   await page.waitForFunction(() => document.body.innerText.length > 100, null, { timeout: 15000 }).catch(() => {});
   const s = { ctx, page, errors, logs, loadMs: Date.now() - t0 };
   // Tab bar: Today / Roster / PvP / Raid, then More (Home, Recs, Intel, Attack, Log).
-  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RAID: 'Raid' };
-  const MORE = { HOME: 'Home & settings', RECS: 'Recommendations', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log' };
+  const BAR = { TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
+  const MORE = { RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search' };
   s.go = async label => {
     if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(350); await page.getByText(MORE[label], { exact: true }).last().click(); await page.waitForTimeout(600); return; }
     const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(500);
