@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.213</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.214</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3202,7 +3202,20 @@
           <div style="font:800 15px var(--font-display)">{{ b.title }}</div>
           <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ b.text }}</div>
           <div style="font:600 13px/1.4 var(--font-body);color:#b4531f">{{ b.expect }}</div>
+ 
           <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">{{ b.names }}</div>
+          <details style="font:12.5px/1.45 var(--font-body);color:#17353b">
+            <summary style="cursor:pointer;color:#1d6b5f;font-weight:700;min-height:32px;display:flex;align-items:center">Why are these on the list?</summary>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+              <sc-for list="{{ b.whyRows }}" as="w" hint-placeholder-count="0">
+                <div style="background:#f1f7f7;border-radius:10px;padding:8px 10px">
+                  <div style="font-weight:700">{{ w.label }}</div>
+                  <div style="color:#5b7d84">{{ w.detail }}</div>
+                  <div style="color:#8a4b12">{{ w.why }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </details>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ b.copyLabel }}</button>
             <button type="button" onClick="{{ b.onDone }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#17353b;color:#fff;font:700 14px var(--font-body)">I transferred this batch</button>
@@ -12714,10 +12727,24 @@ class Component extends DCLogic {
       }
       const members = matched(cur).map(r => candByIdx.get(r.idx).p);
       const have = new Set(members.map(p => p.idx));
-      batches.push({ text: textOf(cur), pokemon: members, n: members.length, names: members.map(p => p.name + ' ' + p.cp + ' CP') });
+      batches.push({ text: textOf(cur), pokemon: members, n: members.length, names: members.map(p => p.name + ' ' + p.cp + ' CP'), rows: members.map(p => this.transferWhyRow(p, candByIdx.get(p.idx))) });
       remaining = remaining.filter(x => !have.has(x.idx));
     }
     return { batches, manual, total: cand.length };
+  }
+
+  // One line per listed Pokemon: what it is and why the app lets it go, so a Pokemon that looks good can be checked before
+  // anything is transferred. Spread, stars, league ranks and the reason from the list that picked it.
+  transferWhyRow(p, cand) {
+    const ivs = this.ivsOf(p);
+    const rk = k => (p[k] && Number.isFinite(p[k].rankPct) && this.leagueUsable(p, k) ? Math.round(p[k].rankPct) + '%' : null);
+    const ranks = [['Little', rk('little')], ['Great', rk('great')], ['Ultra', rk('ultra')]].filter(x => x[1]).map(x => x[0] + ' ' + x[1]).join(', ');
+    const st = this.starsOf(p);
+    return {
+      label: p.name + ' ' + p.cp + ' CP',
+      detail: (ivs ? 'IV ' + ivs.join('/') + ' (' + Math.round(ivs.reduce((a, b) => a + b, 0) / 45 * 100) + '%)' : 'IVs unknown') + (st != null ? ' \u00b7 ' + st + '\u2605' : '') + (ranks ? ' \u00b7 league rank ' + ranks : ''),
+      why: cand && cand.why ? cand.why : ''
+    };
   }
 
   // After pasting a batch in the game and transferring it there: record it here (+1 candy each). The keep check runs
@@ -12868,7 +12895,7 @@ class Component extends DCLogic {
       bulkHasBatches: r.batches.length > 0,
       bulkBatches: r.batches.map((b, i) => ({
         title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
-        names: b.names.join(' \u00b7 '), copyLabel: copied === 'bulk' + i ? 'Copied' : 'Copy string',
+        names: b.names.join(' \u00b7 '), whyRows: b.rows || [], copyLabel: copied === 'bulk' + i ? 'Copied' : 'Copy string',
         onCopy: () => this.copyText(b.text, 'bulk' + i), onDone: () => this.confirmBatchTransferred(b.pokemon)
       })),
       bulkHasManual: r.manual.length > 0,

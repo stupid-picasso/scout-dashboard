@@ -773,6 +773,16 @@ module.exports = async function suiteB() {
     await s.page.unroute('**/generativelanguage.googleapis.com/**');
     await s.set({ geminiKey: '', geminiKeys: [] });
   });
+  await T('WHY-01', 'Safety', 'Each transfer batch lists, per Pokemon, its spread, stars, league ranks and the reason the app lets it go', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const roster = [mk('wy0', 'Snorlax', 143, [15, 15, 15], 3000), mk('wy00', 'Gyarados', 130, [15, 15, 15], 3000), mk('wy1', 'Fearow', 22, [1, 2, 1], 3000), mk('wy2', 'Raticate', 20, [2, 2, 2], 3010)];
+    await s.set({ addedPokemon: roster, roster: [], cutTarget: 2, cutTargetDraft: '2', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const v = await s.call('bulkStringVals');
+    const rows = v.bulkBatches.flatMap(b => b.whyRows);
+    expect(rows.length >= 2 && rows.every(r => /^[A-Z][a-z]+ \d+ CP$/.test(r.label) && /IV \d+\/\d+\/\d+ \(\d+%\)/.test(r.detail) && r.why), 'every listed Pokemon has a spread and a reason: ' + JSON.stringify(rows.slice(0, 2)));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
