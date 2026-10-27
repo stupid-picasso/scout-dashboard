@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.214</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.215</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -12666,7 +12666,17 @@ class Component extends DCLogic {
     // `soft` is non-empty only for a Pokemon released by the floating keep line: it has good-Pokemon reasons (IV, league copy,
     // raid role...) but the roster is over the Keep best target. The screen says so instead of calling it "unprotected".
     const add = (p, why) => { if (p && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft }); };
-    if (overBy) this.cutSafeSummary(roster, overBy).show.forEach(r => add(r.p, 'Bottom of your Keep best list'));
+    if (overBy) {
+      // Rows run lowest score first, so the last few shown sit right at the line: those are the ones worth a second look.
+      const sum = this.cutSafeSummary(roster, overBy), n = sum.show.length;
+      sum.show.forEach((r, i) => {
+        const soft = this.keepFull(r.p, ctx).soft;
+        const near = soft.length && i >= n - 25;
+        add(r.p, soft.length
+          ? 'Normally kept (' + soft.slice(0, 2).join('; ') + '), released only because you are ' + overBy + ' over your Keep best target of ' + target + (near ? ' \u00b7 BORDERLINE, just under the line: favourite it or raise the target to keep it' : '')
+          : 'Bottom of your Keep best list');
+      });
+    }
     this.dominatedDuplicates(roster).forEach(x => add(x.loser, 'Beaten on every stat by your ' + (x.winner.cp || '?') + ' CP ' + x.winner.name));
     this.triageQueue().forEach(t => add(t.p, t.reason));
     // Good in a league but a better copy is kept: this one is redundant. Say which copy replaces it.
