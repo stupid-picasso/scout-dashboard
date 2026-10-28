@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.214</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.219</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2458,6 +2458,17 @@
         <div onClick="{{ lg.onClick }}" style="cursor:pointer;flex-shrink:0;padding:8px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap;background:{{ lg.bg }};color:{{ lg.fg }}">{{ lg.label }}</div>
       </sc-for>
     </div>
+    <sc-if value="{{ hasSeasonPills }}" hint-placeholder-val="{{ false }}">
+      <div class="om-scroll" style="display:flex;gap:8px;margin:0 0 10px;overflow-x:auto">
+        <sc-for list="{{ seasonPills }}" as="sp" hint-placeholder-count="2">
+          <div onClick="{{ sp.onClick }}" style="cursor:pointer;flex-shrink:0;padding:6px 13px;border-radius:var(--r-pill);font:700 11.5px var(--font-display);white-space:nowrap;background:{{ sp.bg }};color:{{ sp.fg }}">{{ sp.label }}</div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasSeasonLine }}" hint-placeholder-val="{{ false }}">
+      <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-500);margin:0 0 10px">{{ seasonLine }}</div>
+    </sc-if>
+    <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:0 0 6px">{{ pvpReadyTitle }}</div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
       <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 44px 74px 58px;gap:6px;padding:10px 12px;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
         <div>#</div><div>POK&Eacute;MON</div><div>CP</div><div>IV RANK</div><div>LEVEL</div>
@@ -2488,7 +2499,38 @@
           <div style="font:600 11px var(--font-display);color:var(--ink-500)">{{ p.levelDisplay }}</div>
         </div>
       </sc-for>
+      <sc-if value="{{ pvpReadyNone }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:14px 12px;font:12.5px/1.45 var(--font-body);color:var(--ink-500)">{{ pvpReadyNone }}</div>
+      </sc-if>
     </div>
+    <sc-if value="{{ hasShowAll }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ onShowAll }}" class="om-press" style="cursor:pointer;text-align:center;margin-top:10px;padding:9px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11px var(--font-display)">{{ pvpShowAllLabel }}</div>
+    </sc-if>
+    <sc-if value="{{ hasBand }}" hint-placeholder-val="{{ false }}">
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:18px 0 6px">{{ pvpUpTitle }}</div>
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
+        <sc-for list="{{ pvpUp }}" as="u" hint-placeholder-count="3">
+          <div onClick="{{ u.onClick }}" class="om-tap" style="cursor:pointer;display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--surface-muted)">
+            <div style="flex-shrink:0;width:40px;height:40px;position:relative;display:flex;align-items:center;justify-content:center">
+              <span style="position:absolute;font:800 14px var(--font-display);color:rgba(255,255,255,.12)">{{ u.initial }}</span>
+              <img ref="{{ u.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:40px;height:40px;object-fit:contain" />
+            </div>
+            <div style="min-width:0;flex:1">
+              <div style="font:600 13px var(--font-body);overflow-wrap:anywhere">{{ u.displayName }} <span style="font:700 12px var(--font-display);color:var(--ink-400)">{{ u.cp }} CP</span></div>
+              <div style="font:12px/1.4 var(--font-body);color:var(--ink-700)">{{ u.planLine }}</div>
+              <div style="font:600 11px var(--font-display);color:{{ u.costColor }};margin-top:2px">{{ u.costLine }}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <span style="flex-shrink:0;width:17px;height:17px;border-radius:5px;background:{{ u.tierColor }};color:var(--surface-page);font:800 11px var(--font-display);display:flex;align-items:center;justify-content:center">{{ u.tierLabel }}</span>
+              <span style="font:700 12.5px var(--font-display);color:var(--grass-700)">{{ u.rankPctDisplay }}</span>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ pvpUpNone }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:14px 12px;font:12.5px/1.45 var(--font-body);color:var(--ink-500)">{{ pvpUpNone }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
     <sc-if value="{{ pvpTeam }}" hint-placeholder-val="{{ false }}">
       <div style="margin-top:20px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:16px">
         <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:4px">{{ pvpTeam.title }}</div>
@@ -3189,6 +3231,9 @@
         <div style="font:800 18px var(--font-display);text-align:center">Transfer strings</div>
         <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go. None has a hard lock (shiny, lucky, favourite, XXL/XXS, legendary, purified, nondo, unmeasured IVs). Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
         <div style="font:12px/1.4 var(--font-body);text-align:center;color:#7a979c;margin-top:6px">{{ bulkFreshLine }}</div>
+        <sc-if value="{{ bulkStorageText }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:{{ bulkStorageColor }};background:{{ bulkStorageBg }};border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkStorageText }}</div>
+        </sc-if>
         <sc-if value="{{ bulkGate }}" hint-placeholder-val="{{ false }}">
           <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkGateText }}</div>
           <button type="button" onClick="{{ onBulkFresh }}" class="om-press" style="margin-top:10px;min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body);width:100%">NOTHING HAS CHANGED: SHOW THE STRINGS</button>
@@ -3625,6 +3670,16 @@ class Component extends DCLogic {
         document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
         checkForUpdate();
       }
+    } catch (e) {}
+    // The controllerchange event above is missed whenever the page was frozen while the new worker took over (an iPhone
+    // app resumed from the background keeps its old code in memory). So also compare the build the page started with
+    // against the sw.js on the server, on every return to the app and every five minutes.
+    try {
+      const swBuild = () => fetch('sw.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => { const m = /scout-v(\d+)/.exec(t); return m ? +m[1] : null; }).catch(() => null);
+      this.checkBuildUpdate = () => swBuild().then(n => { if (n != null && this._swBase != null && n > this._swBase) this.setState({ updateReady: true }); });
+      swBuild().then(n => { if (this._swBase == null) this._swBase = n; });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) this.checkBuildUpdate(); });
+      this._buildTimer = setInterval(() => this.checkBuildUpdate(), 300000);
     } catch (e) {}
     // Keep the last errors so a crash can be read on the phone (Log tab).
     try {
@@ -6379,6 +6434,44 @@ class Component extends DCLogic {
   // tierRank: S 0, A 1, B 2, C 3; 4 = PvPoke does not rank it in this league;
   // 2.5 = no tier data exists for the league. Little/Master carry only PvPoke's top 80.
   // The species a league rank is FOR: a Meltan's Great League rank is Melmetal's, so its tier and moves are too.
+  // A league's playable CP band. The cap is the game's; the floor is where a copy is strong enough to fight (a 400 CP
+  // Great League pick loses to a 1480 CP one). Copies within PVP_BAND_SLACK of the floor still count as ready: a few
+  // power-ups finish the job. Master has no band.
+  leagueBand(leagueKey) {
+    const FLOORS = { great: 1300, ultra: 2300, little: 400 };
+    const caps = (this.mechanics && this.mechanics.LEAGUE_CAPS) || { great: 1500, ultra: 2500, little: 500 };
+    return FLOORS[leagueKey] ? { cap: caps[leagueKey], floor: FLOORS[leagueKey], slack: 75 } : null;
+  }
+
+  inBand(p, leagueKey) {
+    const b = this.leagueBand(leagueKey);
+    return !b || !Number.isFinite(p.cp) || p.cp >= b.floor - b.slack;
+  }
+
+  // The cups of the live Great League week the feed lists, as selectable PvP tabs. Each has the league its CP cap maps
+  // to, the cup's rules and the PvPoke table that ranks it, when there is one. Mega editions are left out (no IV ranks).
+  seasonOptions(now) {
+    const f = this.state.feed;
+    if (!this.validFeed(f)) return [];
+    const t = now || Date.now();
+    const wk = f.gbl.filter(w => new Date(w.start).getTime() <= t && new Date(w.end).getTime() > t)[0];
+    if (!wk) return [];
+    const mm = this.mechanics;
+    return wk.leagues.map(l => {
+      const league = l.cp === 1500 ? 'great' : (l.cp === 2500 ? 'ultra' : (l.cp === 500 ? 'little' : (l.cp >= 10000 ? 'master' : null)));
+      const cup = l.cup && (l.cup.types || l.cup.banTypes || l.cup.allow || l.cup.ban) ? l.cup : null;
+      const tableKey = l.pvpoke && mm && mm.pvpTableFor && mm.pvpTableFor('cup:' + l.pvpoke) ? 'cup:' + l.pvpoke : null;
+      return { name: l.name, cp: l.cp, league, cup, tableKey, rules: (l.rules || []).join(' '), mega: !!l.mega, rawCup: l.cup || null };
+    }).filter(o => o.league && o.league !== 'master' && !o.mega);
+  }
+
+  seasonLeague() {
+    const opts = this.seasonOptions();
+    if (!opts.length) return null;
+    const sel = this.state.seasonSel;
+    return opts.find(o => o.name === sel) || opts.find(o => o.cup || o.tableKey) || opts[0];
+  }
+
   pvpFormName(p, leagueKey) {
     const lg = p && p[leagueKey];
     return leagueKey !== 'little' && lg && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
@@ -6460,7 +6553,7 @@ class Component extends DCLogic {
       if (this.needsAppraisal(p)) return;
       if (eligible && !eligible(p)) return;
       const a = this.pvpAssess(p, leagueKey, tableKey);
-      if (!a || a.tierRank > 2 || a.rank < 90) return;
+      if (!a || a.tierRank > 2 || a.rank < 90 || !this.inBand(p, leagueKey)) return;
       const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form);
       if (!mu) return;
       pool.push({ p, a, mu, id: String(p.name).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
@@ -6501,6 +6594,7 @@ class Component extends DCLogic {
       if (eligible && !eligible(p)) return { n: 1, t: 'Not legal in this cup.' };
       const a = this.pvpAssess(p, leagueKey, tableKey);
       if (!a) return { n: 2, t: 'No league rank: it is over the CP cap or its stats are missing.' };
+      if (!this.inBand(p, leagueKey)) return { n: 2.5, t: 'CP ' + p.cp + ' is under the ' + this.leagueBand(leagueKey).floor + ' CP floor for this league. Power it up (or evolve it) first.' };
       if (a.tierRank > 2) return { n: 3, t: 'Tier ' + (a.tier || '?') + ' here; the squad uses S, A or B.' };
       if (a.rank < 90) return { n: 4, t: 'IV rank ' + a.rank.toFixed(1) + '%; the squad needs 90% or better.' };
       const mu = m && m.pvpMatchupsFor ? m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form) : null;
@@ -12666,7 +12760,17 @@ class Component extends DCLogic {
     // `soft` is non-empty only for a Pokemon released by the floating keep line: it has good-Pokemon reasons (IV, league copy,
     // raid role...) but the roster is over the Keep best target. The screen says so instead of calling it "unprotected".
     const add = (p, why) => { if (p && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft }); };
-    if (overBy) this.cutSafeSummary(roster, overBy).show.forEach(r => add(r.p, 'Bottom of your Keep best list'));
+    if (overBy) {
+      // Rows run lowest score first, so the last few shown sit right at the line: those are the ones worth a second look.
+      const sum = this.cutSafeSummary(roster, overBy), n = sum.show.length;
+      sum.show.forEach((r, i) => {
+        const soft = this.keepFull(r.p, ctx).soft;
+        const near = soft.length && i >= n - 25;
+        add(r.p, soft.length
+          ? 'Normally kept (' + soft.slice(0, 2).join('; ') + '), released only because you are ' + overBy + ' over your Keep best target of ' + target + (near ? ' \u00b7 BORDERLINE, just under the line: favourite it or raise the target to keep it' : '')
+          : 'Bottom of your Keep best list');
+      });
+    }
     this.dominatedDuplicates(roster).forEach(x => add(x.loser, 'Beaten on every stat by your ' + (x.winner.cp || '?') + ' CP ' + x.winner.name));
     this.triageQueue().forEach(t => add(t.p, t.reason));
     // Good in a league but a better copy is kept: this one is redundant. Say which copy replaces it.
@@ -12830,6 +12934,23 @@ class Component extends DCLogic {
   // How current the roster is. The newest scan date in it is the last import: anything caught, favourited, traded or
   // evolved in the game since then is invisible here. Past STALE_DAYS the strings are held until the trainer says the
   // roster is up to date (once a day), because the count check can only catch a mismatch, not a missing Pokemon.
+  // Pokemon storage: your cap (1,075 unless Settings says otherwise) against the roster, and whether the app can free enough.
+  // 'blocked' = fewer Pokemon pass the keep check than the free-slot buffer needs, so the only ways out are buying
+  // storage or loosening a keep rule. Nothing is ever transferred by this check.
+  storageCap() { const c = this.state.bagCapacity; return Number.isFinite(c) && c > 0 ? c : 1075; }
+
+  storageWarning() {
+    const BUFFER = 150, LOW = 50;
+    const cap = this.storageCap(), used = this.effectiveRosterForMatch().length, free = cap - used;
+    const safe = this.transferCandidates().length;
+    const need = Math.max(0, BUFFER - free);
+    if (free <= 0) return { level: 'full', free, cap, safe, need, text: 'Storage is FULL: ' + used + ' of ' + cap + '. You cannot catch or receive more until you transfer some. ' + (safe >= -free + 1 ? safe + ' can be transferred safely.' : 'Only ' + safe + ' pass the keep check. Buy more storage or loosen a keep rule.') };
+    if (need > safe) return { level: 'blocked', free, cap, safe, need, text: 'Only ' + safe + ' Pokemon are safe to transfer, but you need ' + need + ' more free slots to keep a buffer of ' + BUFFER + ' (' + free + ' free of ' + cap + '). Buy more storage, or loosen a keep rule or raise the Keep best target.' };
+    if (free <= LOW) return { level: 'almost', free, cap, safe, need, text: 'Almost full: ' + free + ' free of ' + cap + '. ' + safe + ' can be transferred safely.' };
+    if (free < BUFFER) return { level: 'low', free, cap, safe, need, text: 'Buffer low: ' + free + ' free of ' + cap + ' (aim for ' + BUFFER + '). ' + safe + ' can be transferred safely.' };
+    return { level: 'ok', free, cap, safe, need, text: '' };
+  }
+
   transferFreshness() {
     const STALE_DAYS = 3;
     const roster = this.effectiveRosterForMatch();
@@ -12861,6 +12982,7 @@ class Component extends DCLogic {
     const softRows = this.transferCandidates().filter(c => c.soft && c.soft.length).sort((a, b) => (b.p.ivAvg || 0) - (a.p.ivAvg || 0));
     return {
       bulkGate: fresh.gated,
+      ...(() => { const w = this.storageWarning(); const bad = w.level === 'full' || w.level === 'blocked'; return { bulkStorageText: w.text, bulkStorageColor: bad ? '#8f1d1d' : '#8a4b12', bulkStorageBg: bad ? '#fde8e8' : '#fff4e5' }; })(),
       bulkGateText: fresh.gated ? 'Your roster was last imported ' + fresh.newest + ' day' + (fresh.newest === 1 ? '' : 's') + ' ago. Anything you caught, favourited, traded or evolved since is not in the app. Import again first, or confirm that nothing has changed.' : '',
       onBulkFresh: () => this.ackTransferFresh(),
       bulkFreshLine: fresh.newest != null ? 'Last import: ' + (fresh.newest === 0 ? 'today' : fresh.newest + ' day' + (fresh.newest === 1 ? '' : 's') + ' ago') + (fresh.oldestCand != null ? '. Oldest scan on this list: ' + fresh.oldestCand + ' days.' : '.') : '',
@@ -15751,10 +15873,14 @@ class Component extends DCLogic {
       : personality === 'deadpan' ? rawCallout.replace(/[!.]+$/, '.').replace(/^You're/, 'You are')
       : rawCallout;
 
-    const leagueKey = league;
+    // The Season tab ranks the live cup with the league its CP cap maps to; every other tab is its own league.
+    const seasonDef = league === 'season' ? this.seasonLeague() : null;
+    const leagueKey = league === 'season' ? (seasonDef ? seasonDef.league : 'great') : league;
+    const cupRule = seasonDef ? seasonDef.cup : null, tableKey = seasonDef ? seasonDef.tableKey : null;
+    const band = this.leagueBand(leagueKey);
     const rosterForLeague = leagueKey === 'master' ? roster.map(p => ({ ...p, master: this.masterRankFor(p) })) : roster;
     // Only Pokemon whose CP already fits under the league's cap can play it.
-    const leaguePool = rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct) && this.leagueUsable(p, leagueKey));
+    const leaguePool = (league === 'season' && !seasonDef) ? [] : rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct) && this.leagueUsable(p, leagueKey) && (!cupRule || this.cupAllows(cupRule, p)));
     // Species meta tier (S/A/B/C) is a DIFFERENT thing from rankPct: rankPct
     // is this individual's IV quality relative to its OWN species' cap (a
     // perfect-IV Pikachu reads 100% there and is still bad in Great League).
@@ -15764,12 +15890,12 @@ class Component extends DCLogic {
     // old rankPct-only sort, same as before this change.
     const tierOrder = { S: 0, A: 1, B: 2, C: 3 };
     const tierFor = (p) => (this.mechanics && this.mechanics.pvpTierFor)
-      ? this.mechanics.pvpTierFor(this.pvpFormName(p, leagueKey), this.isShadow(p), leagueKey, p.form)
+      ? this.mechanics.pvpTierFor(this.pvpFormName(p, leagueKey), this.isShadow(p), tableKey || leagueKey, p.form)
       : null;
     // Order: species tier first, then a complete recommended moveset, then IV
     // rank. A species PvPoke does not rank in Great/Ultra sorts after tier C;
     // leagues with no tier data (Little Cup, Master) sort on IV rank alone.
-    const assessFor = (p) => ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) >= 0 ? this.pvpAssess(p, leagueKey) : null;
+    const assessFor = (p) => ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) >= 0 ? this.pvpAssess(p, leagueKey, tableKey) : null;
     leaguePool.sort((a, b) => {
       const aa = assessFor(a), ab = assessFor(b);
       if (aa && ab) {
@@ -15779,11 +15905,16 @@ class Component extends DCLogic {
     });
     const tierColor = t => t === 'S' ? 'var(--type-fairy)' : t === 'A' ? 'var(--grass-700)'
       : t === 'B' ? 'var(--type-electric)' : 'var(--ink-400)';
-    const pvpList = leaguePool.slice(0, 20).map(p => {
+    // Ready now: CP inside the band (or within the slack of its floor). Under it: too weak to fight as is.
+    const readyPool = leaguePool.filter(p => this.inBand(p, leagueKey));
+    const underPool = band ? leaguePool.filter(p => !this.inBand(p, leagueKey)) : [];
+    const showAll = !!this.state.pvpShowAll;
+    const pvpList = (showAll ? readyPool : readyPool.slice(0, 20)).map(p => {
       const tier = tierFor(p);
       const as = assessFor(p);
       const nice = n => String(n).replace(/\b\w/g, c => c.toUpperCase());
-      const moveNote = !as ? '' : ((as.movesOk === true ? '\u2713 recommended moves' : (as.movesOk === false ? 'needs ' + as.missing.map(nice).join(', ') : '')) + (as.confirmed ? '' : ' \u00b7 IVs unconfirmed')).replace(/^ \u00b7 /, '');
+      const lowBy = band && Number.isFinite(p.cp) && p.cp < band.floor ? band.floor - p.cp : 0;
+      const moveNote = !as ? '' : ((lowBy ? lowBy + ' CP under ' + band.floor + ': a few power-ups \u00b7 ' : '') + (as.movesOk === true ? '\u2713 recommended moves' : (as.movesOk === false ? 'needs ' + as.missing.map(nice).join(', ') : '')) + (as.confirmed ? '' : ' \u00b7 IVs unconfirmed')).replace(/^ \u00b7 /, '');
       // Level now vs the level that fills the league's CP cap for these IVs.
       let levelDisplay = '\u2014';
       try {
@@ -15802,7 +15933,7 @@ class Component extends DCLogic {
         initial: (p.name || '?').charAt(0),
         onClick: () => this.openDetail(p),
         cp: p.cp,
-        rankNum: '#' + (leaguePool.indexOf(p) + 1),
+        rankNum: '#' + (readyPool.indexOf(p) + 1),
         rankPctDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(1) + '%' : '—',
         levelDisplay,
         evolvesTo: evoTo ? '\u2192 ' + evoTo : '',
@@ -15811,10 +15942,10 @@ class Component extends DCLogic {
       };
     });
 
-    const teamRaw = this.pvpTeamFor(leagueKey);
+    const teamRaw = this.pvpTeamFor(leagueKey, cupRule ? p => this.cupAllows(cupRule, p) : null, tableKey);
     const prettyId = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const pvpTeam = teamRaw ? {
-      title: 'BEST ' + ({ ultra: 'ULTRA', little: 'LITTLE CUP', master: 'MASTER' }[leagueKey] || 'GREAT') + (leagueKey === 'little' ? ' TEAM' : ' LEAGUE TEAM'),
+      title: seasonDef ? 'BEST ' + String(seasonDef.name).toUpperCase() + ' TEAM' : 'BEST ' + ({ ultra: 'ULTRA', little: 'LITTLE CUP', master: 'MASTER' }[leagueKey] || 'GREAT') + (leagueKey === 'little' ? ' TEAM' : ' LEAGUE TEAM'),
       members: teamRaw.members.map(c => ({
         displayName: c.p.name + (c.p.form ? ' (' + c.p.form + ')' : ''),
         spriteRef: this.makeSpriteRefByDex(c.p.dex, c.p.form),
@@ -15837,11 +15968,12 @@ class Component extends DCLogic {
       { key: 'great', label: 'GREAT ≤1500' },
       { key: 'ultra', label: 'ULTRA ≤2500' },
       { key: 'little', label: 'LITTLE CUP' },
-      { key: 'master', label: 'MASTER' }
+      { key: 'master', label: 'MASTER' },
+      { key: 'season', label: 'SEASON' }
     ];
 
     const teamTypes = {};
-    const suggestedTeamPool = leaguePool.slice(0, 30);
+    const suggestedTeamPool = readyPool.slice(0, 30);
     const typeTableRef = this.state.typeTable || {};
     const suggestedTeam = [];
     suggestedTeamPool.forEach(p => {
@@ -15860,6 +15992,61 @@ class Component extends DCLogic {
     });
     // The matchup-based team above replaces this type-only fallback whenever it exists.
     const suggestedTeamDisplay = (suggestedTeam.length && !pvpTeam) ? suggestedTeam : null;
+    // Power up or evolve: good copies (tier S/A/B, IV rank 90%+) whose CP is under the band. For each, the level that
+    // fills the cap for the form the rank is for, the CP that gives, and what it costs from the level it is at now.
+    const upList = [];
+    if (band && underPool.length) {
+      const mm = this.mechanics;
+      underPool.forEach(p => {
+        const a = assessFor(p);
+        if (!a || a.tierRank > 2 || a.rank < 90 || !mm || !mm.maxLevelUnderCap || !mm.cpFor) return;
+        const form = this.pvpFormName(p, leagueKey), sameForm = String(form).toLowerCase() === String(p.name).toLowerCase();
+        const dex = sameForm ? p.dex : (mm.resolveDexByName ? mm.resolveDexByName(form) : null);
+        const base = sameForm ? this.baseStatsOf(p) : (dex != null ? mm.BASE_STATS[dex] : null);
+        const ivs = this.ivsOf(p);
+        if (!base || !ivs) return;
+        let target = mm.maxLevelUnderCap(base, ivs, band.cap);
+        const lvCap = cupRule && cupRule.level && cupRule.level.maxLevel;
+        if (lvCap && target > lvCap) target = lvCap;
+        const cpAt = target != null ? mm.cpFor(base, ivs, target) : null;
+        if (target == null || cpAt == null || (!sameForm ? false : cpAt <= p.cp)) return;
+        const lv = this.evalLevelOf(p).level;
+        let cost = null;
+        if (lv != null && lv < target && mm.powerUpCostBetween) cost = mm.powerUpCostBetween(lv, target, { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) });
+        const inv = this.candyRecFor(p.name) || {};
+        const short = [];
+        if (cost) {
+          if (Number.isFinite(this.state.stardustBalance) && cost.dust > this.state.stardustBalance) short.push('stardust');
+          if (Number.isFinite(inv.candy) && cost.candy > inv.candy) short.push('candy');
+          if (Number.isFinite(inv.xlCandy) && cost.xlCandy > inv.xlCandy) short.push('XL candy');
+        }
+        const nice = n => String(n).replace(/\b\w/g, c => c.toUpperCase());
+        const tier = tierFor(p);
+        upList.push({
+          sortTier: a.tierRank, sortRank: a.rank, sortDust: cost ? cost.dust : Infinity,
+          displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
+          spriteRef: this.makeSpriteRefByDex(p.dex, p.form), initial: (p.name || '?').charAt(0),
+          onClick: () => this.openDetail(p),
+          cp: p.cp,
+          tierLabel: tier ? tier.tier : '\u2014', tierColor: tier ? tierColor(tier.tier) : 'var(--ink-300)',
+          rankPctDisplay: a.rank.toFixed(1) + '%',
+          planLine: (sameForm ? '' : 'Evolve to ' + nice(form) + ', then ') + 'power up to L' + target + ' \u2192 about ' + cpAt + ' CP',
+          costLine: cost ? cost.dust.toLocaleString() + ' stardust \u00b7 ' + cost.candy + ' candy' + (cost.xlCandy ? ' \u00b7 ' + cost.xlCandy + ' XL' : '') + (short.length ? ' \u00b7 SHORT ON ' + short.join(' + ').toUpperCase() : '') : (lv == null ? 'Current level unknown, so the cost cannot be worked out.' : ''),
+          costColor: short.length ? 'var(--type-fighting)' : 'var(--ink-400)'
+        });
+      });
+      upList.sort((x, y) => (x.sortTier - y.sortTier) || (y.sortRank - x.sortRank) || (x.sortDust - y.sortDust));
+    }
+    const pvpUp = upList.slice(0, 20);
+    const seasonOpts = league === 'season' ? this.seasonOptions() : [];
+    const seasonPills = seasonOpts.length > 1 ? seasonOpts.map(o => ({
+      label: o.name, bg: seasonDef && o.name === seasonDef.name ? 'var(--brand-primary-strong)' : 'var(--surface-card)', fg: seasonDef && o.name === seasonDef.name ? 'var(--ink-900)' : 'var(--ink-500)',
+      onClick: () => this.setState({ seasonSel: o.name })
+    })) : [];
+    const seasonLine = league !== 'season' ? '' : (seasonDef
+      ? seasonDef.name + ' \u00b7 \u2264 ' + seasonDef.cp + ' CP' + (seasonDef.rules ? '. ' + seasonDef.rules : '') + (tableKey ? '. Ranked with PvPoke\u2019s rankings for this cup.' : (cupRule ? '. No PvPoke ranking for this cup, so tiers are the open-league ones, filtered by its rules.' : '')) + (seasonDef.rawCup && seasonDef.rawCup.caught ? ' Catch Cup: checked against your catch dates.' : '')
+      : 'No cup is live right now, or the event feed has not loaded. Refresh the feed on Today.');
+    const bandLine = band ? band.floor + '\u2013' + band.cap + ' CP' : '';
     const leagueList = leagueDefs.map(l => {
       const active = l.key === league;
       return {
@@ -16969,6 +17156,13 @@ class Component extends DCLogic {
       league,
       leagueList,
       pvpList,
+      pvpUp, hasPvpUp: pvpUp.length > 0, hasBand: !!band,
+      pvpReadyTitle: band ? 'READY NOW \u00b7 ' + bandLine : 'RANKED',
+      pvpUpTitle: band ? 'POWER UP OR EVOLVE \u00b7 gets you to ' + band.cap + ' CP' : '',
+      pvpUpNone: band && !pvpUp.length ? 'Nothing under ' + band.floor + ' CP is worth building here: no S, A or B tier copy with a 90%+ IV rank.' : '',
+      pvpReadyNone: !pvpList.length ? (underPool.length ? 'No copy is inside ' + bandLine + ' yet. See the power up list below.' : 'Nothing of yours is ranked for this league yet.') : '',
+      pvpShowAllLabel: showAll ? 'SHOW TOP 20' : 'SHOW ALL ' + readyPool.length, hasShowAll: readyPool.length > 20, onShowAll: () => this.setState({ pvpShowAll: !showAll }),
+      seasonLine, hasSeasonLine: !!seasonLine, seasonPills, hasSeasonPills: seasonPills.length > 0,
       pvpTeam,
       savedTeamRows: (this.state.savedTeams || []).map(t => ({
         name: t.name,
@@ -17020,8 +17214,7 @@ class Component extends DCLogic {
       onBagCapacityChange: (e) => this.onBagCapacityChange(e.target.value),
       saveBagCapacity: () => this.saveBagCapacity(),
       storageInfo: (() => {
-        const capacity = this.state.bagCapacity;
-        if (!Number.isFinite(capacity) || capacity <= 0) return null;
+        const capacity = this.storageCap();
         const used = roster.length;
         const free = capacity - used;
         const pct = Math.min(100, Math.max(0, (used / capacity) * 100));

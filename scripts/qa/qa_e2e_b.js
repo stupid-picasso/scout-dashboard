@@ -783,6 +783,63 @@ module.exports = async function suiteB() {
     expect(rows.length >= 2 && rows.every(r => /^[A-Z][a-z]+ \d+ CP$/.test(r.label) && /IV \d+\/\d+\/\d+ \(\d+%\)/.test(r.detail) && r.why), 'every listed Pokemon has a spread and a reason: ' + JSON.stringify(rows.slice(0, 2)));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('WHY-02', 'Safety', 'A good Pokemon released only by the Keep best target says what keeps it normally and that the target is the reason', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('wz0', 'Snorlax', 143, [15, 15, 15], 3000), mk('wz1', 'Machamp', 68, [15, 15, 14], 3000), mk('wz2', 'Gengar', 94, [15, 14, 15], 3000)], roster: [], cutTarget: 1, cutTargetDraft: '1', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const v = await s.call('bulkStringVals');
+    const rows = v.bulkBatches.flatMap(b => b.whyRows);
+    expect(rows.some(r => /Normally kept \(.+\), released only because you are \d+ over your Keep best target of 1/.test(r.why) && /BORDERLINE/.test(r.why)), 'why text: ' + JSON.stringify(rows.map(r => r.why)));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
+  });
+  await T('STORE-01', 'Safety', 'Storage warning: low buffer, full, and blocked when too few Pokemon are safe to transfer', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    const roster = [mk('st0', 'Snorlax', 143, [15, 15, 15], 3000), mk('st1', 'Fearow', 22, [1, 2, 1], 3000), mk('st2', 'Raticate', 20, [2, 2, 2], 3010)];
+    await s.set({ addedPokemon: roster, roster: [], cutTarget: 2, cutTargetDraft: '2', bagCapacity: null, appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(300);
+    expect((await s.call('storageCap')) === 1075, 'default cap is 1075');
+    await s.set({ bagCapacity: 100 });
+    let w = await s.call('storageWarning');
+    expect(w.level === 'blocked' && /Only \d+ Pokemon are safe to transfer/.test(w.text), 'blocked: ' + JSON.stringify(w));
+    await s.set({ bagCapacity: 3 });
+    w = await s.call('storageWarning');
+    expect(w.level === 'full' && /FULL/.test(w.text), 'full: ' + JSON.stringify(w));
+    await s.set({ bagCapacity: null });
+    w = await s.call('storageWarning');
+    expect(w.level === 'ok' && !w.text, 'ok: ' + JSON.stringify(w));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300', bagCapacity: st0.bagCapacity == null ? null : st0.bagCapacity });
+  });
+  await T('PVPBAND-01', 'PvP', 'League tabs split Ready now (inside the CP band) from Power up or evolve (under the floor); a copy a few power-ups short stays Ready', async () => {
+    const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('pb1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('pb2', 'Azumarill', 184, [1, 15, 14], 1260, 97), mk('pb3', 'Azumarill', 184, [2, 14, 15], 420, 96)], roster: [], league: 'great', feed: null }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.go('PVP'); await s.page.waitForTimeout(500);
+    const t = await s.page.evaluate(() => document.body.innerText);
+    const iReady = t.indexOf('READY NOW'), iUp = t.indexOf('POWER UP OR EVOLVE');
+    expect(iReady >= 0 && iUp > iReady, 'both sections are there: ' + t.slice(0, 200));
+    const ready = t.slice(iReady, iUp), up = t.slice(iUp);
+    expect(/1420/.test(ready) && /1260/.test(ready), '1420 and 1260 (within 75 of the 1300 floor) are ready: ' + ready.slice(0, 300));
+    expect(!/\b420\b/.test(ready) && /\b420 CP/.test(up) && /power up to L\d/.test(up), '420 CP is in the power-up list with a target: ' + up.slice(0, 300));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], league: 'great', feed: st0.feed || null });
+  });
+  await T('PVPBAND-02', 'PvP', 'Season tab ranks the live cup with its rules; with no live cup it says so', async () => {
+    const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    const day = n => new Date(Date.now() + n * 86400000).toISOString();
+    const feed = { source: 'qa', fetchedAt: day(0), events: [], gbl: [{ start: day(-1), end: day(5), season: 'QA', leagues: [{ name: 'Fantasy Cup', cp: 1500, mega: false, rules: ['Steel, Fairy and Dragon only.'], cup: { types: ['steel', 'fairy', 'dragon'], src: 'qa' } }] }] };
+    await s.set({ addedPokemon: [mk('ps1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('ps2', 'Gyarados', 130, [15, 15, 15], 1450, 97)], roster: [], league: 'season', feed }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.go('PVP'); await s.page.waitForTimeout(500);
+    let t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Fantasy Cup/.test(t) && /Steel, Fairy and Dragon only/.test(t), 'the cup and its rules show: ' + t.slice(0, 300));
+    const list = t.slice(t.indexOf('READY NOW'), t.indexOf('POWER UP OR EVOLVE'));
+    expect(/Azumarill/.test(list) && !/Gyarados/.test(list), 'Azumarill is legal, Gyarados is banned: ' + list.slice(0, 300));
+    await s.set({ feed: null }); await s.page.waitForTimeout(400);
+    t = await s.page.evaluate(() => document.body.innerText);
+    expect(/No cup is live/.test(t), 'no live cup says so: ' + t.slice(0, 200));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], league: 'great', feed: st0.feed || null });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
