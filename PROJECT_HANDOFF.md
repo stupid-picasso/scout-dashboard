@@ -437,3 +437,10 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - Every AI call is timed (`noteAiCall`: model, ms, HTTP status, image/text, thinking setting) plus import steps (`noteAiStage`: image decode/prepare, bar measuring). Read them at More > Progress log > Diagnostics > AI CALLS; COPY puts them (after the errors) on the clipboard.
 - Note: `Scout Dashboard Standalone.dc.html` and `Scout Dashboard.html` carry two copies of `processOneAppraisalShot` (and of the Gemini call code) that the source does not; `propagate_edits.py` reports those hunks as AMBIGUOUS and they must be patched in both places by hand.
 - Transfer strings: each batch has "Why are these on the list?" (`transferWhyRow`): per Pokemon the spread, IV%, stars, league ranks (only leagues it is under the cap for) and the reason from the list that picked it (`candidate.why`). Test WHY-01.
+
+## PvP CP bands, Power up or evolve, Season tab (v53.217)
+- `leagueBand(lk)` / `inBand(p, lk)`: Great 1300-1500, Ultra 2300-2500, Little 400-500; copies within 75 CP of the floor still count as ready. Master has no band.
+- PvP page: "READY NOW" list (inside the band; Show all button past 20) and "POWER UP OR EVOLVE" list (tier S/A/B, IV rank 90%+, CP under the floor; target level fills the cap for the form the rank is for, cost from `powerUpCostBetween`, SHORT ON flags from the logged stardust/candy/XL). Sort: tier, rank, cost.
+- `pvpTeamFor` and `squadWhy` apply the floor too, so squads no longer pick a 400 CP Great League Pokemon.
+- SEASON tab (after Master): `seasonOptions()` = cups of the live GBL week (no Mega editions); `seasonLeague()` picks the selected (state.seasonSel) or first cup; ranks use the cup's PvPoke table when there is one and `cupAllows` rules. Keep rules are untouched: `goodLeagues`/keep check do not use the floor.
+- Tests: PVPBAND-01, PVPBAND-02 (qa_e2e_b.js). PERF-01 can read 410-412 ms when suites run in parallel; it passes alone.
