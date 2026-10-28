@@ -840,6 +840,20 @@ module.exports = async function suiteB() {
     expect(/No cup is live/.test(t), 'no live cup says so: ' + t.slice(0, 200));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], league: 'great', feed: st0.feed || null });
   });
+  await T('PVPBAND-03', 'PvP', 'Season tab with a live Mega edition shows Mega-ready picks (not the normal-form list) and offers the live Master League too', async () => {
+    const st0 = await s.state();
+    const day = n => new Date(Date.now() + n * 86400000).toISOString();
+    const feed = { source: 'qa', fetchedAt: day(0), events: [], gbl: [{ start: day(-1), end: day(5), season: 'QA', leagues: [{ name: 'Master League', cp: 10000, mega: false, rules: [] }, { name: 'Mega Halloween Cup: Great League Edition', cp: 1500, mega: true, rules: ['Mega Evolution allowed.'], cup: { src: 'qa' } }] }] };
+    await s.set({ league: 'season', seasonSel: null, feed }); await s.page.waitForTimeout(400);
+    await s.go('PVP'); await s.page.waitForTimeout(500);
+    let t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Mega Halloween Cup/.test(t) && /MEGA-READY PICKS/.test(t) && !/POWER UP OR EVOLVE/.test(t) && !/No cup is live/.test(t), 'mega cup view: ' + t.slice(0, 400));
+    expect(/Master League/.test(t), 'the Master League pill is offered');
+    await s.set({ seasonSel: 'Master League' }); await s.page.waitForTimeout(400);
+    t = await s.page.evaluate(() => document.body.innerText);
+    expect(/READY NOW|RANKED/.test(t) && !/MEGA-READY PICKS/.test(t), 'master view is the normal ranked list: ' + t.slice(0, 300));
+    await s.set({ league: 'great', seasonSel: null, feed: st0.feed || null });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

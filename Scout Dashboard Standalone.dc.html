@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.219</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.220</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3495,6 +3495,21 @@
     <sc-if value="{{ hasSeasonLine }}" hint-placeholder-val="{{ false }}">
       <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-500);margin:0 0 10px">{{ seasonLine }}</div>
     </sc-if>
+    <sc-if value="{{ hasMegaPicks }}" hint-placeholder-val="{{ false }}">
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:0 0 6px">MEGA-READY PICKS FROM YOUR ROSTER</div>
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
+        <sc-for list="{{ megaPicks }}" as="mp" hint-placeholder-count="3">
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--surface-muted)">
+            <span style="flex-shrink:0;width:17px;height:17px;margin-top:1px;border-radius:5px;background:{{ mp.tierColor }};color:var(--surface-page);font:800 11px var(--font-display);display:flex;align-items:center;justify-content:center">{{ mp.tier }}</span>
+            <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-700)">{{ mp.text }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ megaNone }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:14px 12px;font:12.5px/1.45 var(--font-body);color:var(--ink-500)">{{ megaNone }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasReady }}" hint-placeholder-val="{{ false }}">
     <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:0 0 6px">{{ pvpReadyTitle }}</div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;overflow:hidden">
       <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 44px 74px 58px;gap:6px;padding:10px 12px;font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;border-bottom:1px solid var(--line-200)">
@@ -3532,6 +3547,7 @@
     </div>
     <sc-if value="{{ hasShowAll }}" hint-placeholder-val="{{ false }}">
       <div onClick="{{ onShowAll }}" class="om-press" style="cursor:pointer;text-align:center;margin-top:10px;padding:9px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 11px var(--font-display)">{{ pvpShowAllLabel }}</div>
+    </sc-if>
     </sc-if>
     <sc-if value="{{ hasBand }}" hint-placeholder-val="{{ false }}">
       <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:18px 0 6px">{{ pvpUpTitle }}</div>
@@ -7490,14 +7506,14 @@ class Component extends DCLogic {
       const cup = l.cup && (l.cup.types || l.cup.banTypes || l.cup.allow || l.cup.ban) ? l.cup : null;
       const tableKey = l.pvpoke && mm && mm.pvpTableFor && mm.pvpTableFor('cup:' + l.pvpoke) ? 'cup:' + l.pvpoke : null;
       return { name: l.name, cp: l.cp, league, cup, tableKey, rules: (l.rules || []).join(' '), mega: !!l.mega, rawCup: l.cup || null };
-    }).filter(o => o.league && o.league !== 'master' && !o.mega);
+    }).filter(o => o.league);
   }
 
   seasonLeague() {
     const opts = this.seasonOptions();
     if (!opts.length) return null;
     const sel = this.state.seasonSel;
-    return opts.find(o => o.name === sel) || opts.find(o => o.cup || o.tableKey) || opts[0];
+    return opts.find(o => o.name === sel) || opts.find(o => o.cup || o.tableKey || o.mega) || opts[0];
   }
 
   pvpFormName(p, leagueKey) {
@@ -17011,11 +17027,14 @@ class Component extends DCLogic {
     // The Season tab ranks the live cup with the league its CP cap maps to; every other tab is its own league.
     const seasonDef = league === 'season' ? this.seasonLeague() : null;
     const leagueKey = league === 'season' ? (seasonDef ? seasonDef.league : 'great') : league;
-    const cupRule = seasonDef ? seasonDef.cup : null, tableKey = seasonDef ? seasonDef.tableKey : null;
-    const band = this.leagueBand(leagueKey);
+    // A Mega edition judges the Mega forms, which have no IV ranks of their own here: it gets Mega-ready picks instead of
+    // the normal-form list, power-up section and squad.
+    const megaMode = !!(seasonDef && seasonDef.mega);
+    const cupRule = seasonDef && !megaMode ? seasonDef.cup : null, tableKey = seasonDef ? seasonDef.tableKey : null;
+    const band = megaMode ? null : this.leagueBand(leagueKey);
     const rosterForLeague = leagueKey === 'master' ? roster.map(p => ({ ...p, master: this.masterRankFor(p) })) : roster;
     // Only Pokemon whose CP already fits under the league's cap can play it.
-    const leaguePool = (league === 'season' && !seasonDef) ? [] : rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct) && this.leagueUsable(p, leagueKey) && (!cupRule || this.cupAllows(cupRule, p)));
+    const leaguePool = (league === 'season' && (!seasonDef || megaMode)) ? [] : rosterForLeague.filter(p => p[leagueKey] && Number.isFinite(p[leagueKey].rankPct) && this.leagueUsable(p, leagueKey) && (!cupRule || this.cupAllows(cupRule, p)));
     // Species meta tier (S/A/B/C) is a DIFFERENT thing from rankPct: rankPct
     // is this individual's IV quality relative to its OWN species' cap (a
     // perfect-IV Pikachu reads 100% there and is still bad in Great League).
@@ -17077,7 +17096,7 @@ class Component extends DCLogic {
       };
     });
 
-    const teamRaw = this.pvpTeamFor(leagueKey, cupRule ? p => this.cupAllows(cupRule, p) : null, tableKey);
+    const teamRaw = megaMode ? null : this.pvpTeamFor(leagueKey, cupRule ? p => this.cupAllows(cupRule, p) : null, tableKey);
     const prettyId = id => String(id).replace(/_shadow$/, ' (Shadow)').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const pvpTeam = teamRaw ? {
       title: seasonDef ? 'BEST ' + String(seasonDef.name).toUpperCase() + ' TEAM' : 'BEST ' + ({ ultra: 'ULTRA', little: 'LITTLE CUP', master: 'MASTER' }[leagueKey] || 'GREAT') + (leagueKey === 'little' ? ' TEAM' : ' LEAGUE TEAM'),
@@ -17179,8 +17198,9 @@ class Component extends DCLogic {
       onClick: () => this.setState({ seasonSel: o.name })
     })) : [];
     const seasonLine = league !== 'season' ? '' : (seasonDef
-      ? seasonDef.name + ' \u00b7 \u2264 ' + seasonDef.cp + ' CP' + (seasonDef.rules ? '. ' + seasonDef.rules : '') + (tableKey ? '. Ranked with PvPoke\u2019s rankings for this cup.' : (cupRule ? '. No PvPoke ranking for this cup, so tiers are the open-league ones, filtered by its rules.' : '')) + (seasonDef.rawCup && seasonDef.rawCup.caught ? ' Catch Cup: checked against your catch dates.' : '')
+      ? seasonDef.name + ' \u00b7 \u2264 ' + seasonDef.cp + ' CP' + (seasonDef.rules ? '. ' + seasonDef.rules : '') + (tableKey ? '. Ranked with PvPoke\u2019s rankings for this cup.' : (cupRule ? '. No PvPoke ranking for this cup, so tiers are the open-league ones, filtered by its rules.' : '')) + (seasonDef.rawCup && seasonDef.rawCup.caught ? ' Catch Cup: checked against your catch dates.' : '') + (megaMode ? ' Mega Evolutions are legal here, so picks are judged on the Mega form\u2019s own stats.' : '')
       : 'No cup is live right now, or the event feed has not loaded. Refresh the feed on Today.');
+    const megaPicks = megaMode ? this.megaReadyData(12, seasonDef.cp).map(x => ({ text: x.text, tier: x.tier, tierColor: tierColor(x.tier), ready: x.ready })) : [];
     const bandLine = band ? band.floor + '\u2013' + band.cap + ' CP' : '';
     const leagueList = leagueDefs.map(l => {
       const active = l.key === league;
@@ -18288,7 +18308,8 @@ class Component extends DCLogic {
       league,
       leagueList,
       pvpList,
-      pvpUp, hasPvpUp: pvpUp.length > 0, hasBand: !!band,
+      pvpUp, hasPvpUp: pvpUp.length > 0, hasBand: !!band, hasReady: !megaMode, hasMegaPicks: megaMode, megaPicks,
+      megaNone: megaMode && !megaPicks.length ? 'None of your Mega-capable Pokemon is ranked for this cup yet.' : '',
       pvpReadyTitle: band ? 'READY NOW \u00b7 ' + bandLine : 'RANKED',
       pvpUpTitle: band ? 'POWER UP OR EVOLVE \u00b7 gets you to ' + band.cap + ' CP' : '',
       pvpUpNone: band && !pvpUp.length ? 'Nothing under ' + band.floor + ' CP is worth building here: no S, A or B tier copy with a 90%+ IV rank.' : '',
