@@ -793,6 +793,24 @@ module.exports = async function suiteB() {
     expect(rows.some(r => /Normally kept \(.+\), released only because you are \d+ over your Keep best target of 1/.test(r.why) && /BORDERLINE/.test(r.why)), 'why text: ' + JSON.stringify(rows.map(r => r.why)));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('STORE-01', 'Safety', 'Storage warning: low buffer, full, and blocked when too few Pokemon are safe to transfer', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    const roster = [mk('st0', 'Snorlax', 143, [15, 15, 15], 3000), mk('st1', 'Fearow', 22, [1, 2, 1], 3000), mk('st2', 'Raticate', 20, [2, 2, 2], 3010)];
+    await s.set({ addedPokemon: roster, roster: [], cutTarget: 2, cutTargetDraft: '2', bagCapacity: null, appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(300);
+    expect((await s.call('storageCap')) === 1075, 'default cap is 1075');
+    await s.set({ bagCapacity: 100 });
+    let w = await s.call('storageWarning');
+    expect(w.level === 'blocked' && /Only \d+ Pokemon are safe to transfer/.test(w.text), 'blocked: ' + JSON.stringify(w));
+    await s.set({ bagCapacity: 3 });
+    w = await s.call('storageWarning');
+    expect(w.level === 'full' && /FULL/.test(w.text), 'full: ' + JSON.stringify(w));
+    await s.set({ bagCapacity: null });
+    w = await s.call('storageWarning');
+    expect(w.level === 'ok' && !w.text, 'ok: ' + JSON.stringify(w));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300', bagCapacity: st0.bagCapacity == null ? null : st0.bagCapacity });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
