@@ -199,6 +199,14 @@ module.exports = async function suiteC() {
   await T('PWA-02', 'PWA', 'Manifest icons exist on disk', async () => { const m = JSON.parse(fs.readFileSync(path.join(REPO, 'manifest.json'), 'utf8')); const miss = m.icons.filter(i => !fs.existsSync(path.join(REPO, i.src.replace(/^\.?\//, '')))); expect(miss.length === 0, miss.map(i => i.src).join(',')); });
   await T('PWA-03', 'PWA', 'apple-touch-icon and theme-color meta tags are present', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); expect(/apple-touch-icon/.test(h) && /theme-color/.test(h)); }, 'high');
   await T('PWA-04', 'PWA', 'Service worker registers and activates', async () => { await s.page.waitForTimeout(2500); const r = await s.page.evaluate(async () => { const reg = await navigator.serviceWorker.getRegistration(); return reg ? (reg.active ? 'active' : 'installing') : 'none'; }); expect(r === 'active', r); }, 'critical');
+  await T('UPDATE-01', 'PWA', 'The "A new version is ready" banner shows when the server has a newer build than the page started with, even without a controllerchange event', async () => {
+    expect(!(await s.state()).updateReady, 'no banner at start');
+    await s.page.evaluate(() => { const f = window.fetch; window.__realFetch = f; window.fetch = (u, o) => /sw\.js/.test(String(u)) ? Promise.resolve(new Response("const CACHE_NAME = 'scout-v99999';")) : f(u, o); });
+    await s.call('checkBuildUpdate'); await s.page.waitForTimeout(400);
+    expect((await s.state()).updateReady === true, 'banner flag after a newer sw.js');
+    expect(/TAP TO RELOAD/.test(await s.page.evaluate(() => document.body.innerText)), 'banner text is on screen');
+    await s.page.evaluate(() => { window.fetch = window.__realFetch; }); await s.set({ updateReady: false });
+  });
   await T('PWA-05', 'PWA', 'Offline reload still boots the app (shell cached)', async () => { await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(1500); await s.ctx.setOffline(true); await s.page.reload({ waitUntil: 'load' }).catch(() => {}); await s.page.waitForTimeout(2500); const t = await s.text(); expect(/Professor|Today|OFFLINE/.test(t), t.slice(0, 80)); await s.ctx.setOffline(false); }, 'critical');
   await T('PWA-06', 'PWA', 'Safe-area insets are used so the tab bar clears the iPhone home indicator', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); expect(/safe-area-inset-bottom/.test(h), 'no safe-area-inset-bottom'); }, 'high');
   await T('PWA-07', 'PWA', 'viewport-fit=cover is set for the notch/Dynamic Island', async () => expect(/viewport-fit=cover/.test(fs.readFileSync(path.join(REPO, 'index.html'), 'utf8')), 'missing'));

@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.218</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.219</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4697,6 +4697,16 @@ class Component extends DCLogic {
         document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
         checkForUpdate();
       }
+    } catch (e) {}
+    // The controllerchange event above is missed whenever the page was frozen while the new worker took over (an iPhone
+    // app resumed from the background keeps its old code in memory). So also compare the build the page started with
+    // against the sw.js on the server, on every return to the app and every five minutes.
+    try {
+      const swBuild = () => fetch('sw.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => { const m = /scout-v(\d+)/.exec(t); return m ? +m[1] : null; }).catch(() => null);
+      this.checkBuildUpdate = () => swBuild().then(n => { if (n != null && this._swBase != null && n > this._swBase) this.setState({ updateReady: true }); });
+      swBuild().then(n => { if (this._swBase == null) this._swBase = n; });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) this.checkBuildUpdate(); });
+      this._buildTimer = setInterval(() => this.checkBuildUpdate(), 300000);
     } catch (e) {}
     // Keep the last errors so a crash can be read on the phone (Log tab).
     try {
