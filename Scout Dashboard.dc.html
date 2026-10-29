@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.221</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.222</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3117,6 +3117,9 @@
           <div style="font:700 11px var(--font-display);color:var(--ink-400)">{{ chk.count }} TO REVIEW</div>
         </div>
         <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-500);margin-bottom:12px;text-wrap:pretty">{{ chk.blurb }}</div>
+        <sc-if value="{{ chk.hasFix }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ chk.onFix }}" class="om-press" style="cursor:pointer;text-align:center;margin-bottom:12px;padding:11px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 12px var(--font-display)">{{ chk.fixLabel }}</div>
+        </sc-if>
         <sc-if value="{{ chk.empty }}" hint-placeholder-val="{{ false }}">
           <div style="padding:22px;text-align:center;border:1px dashed var(--line-300);border-radius:12px;font:14px var(--font-body);color:var(--ink-500)">Nothing to review here.</div>
         </sc-if>
@@ -4932,12 +4935,75 @@ class Component extends DCLogic {
     return this._bulkFit[ck];
   }
 
+  // The form key the app holds for a Pokemon ('normal', 'alola', 'galarian', 'hisuian', 'paldea').
+  formKeyOf(p) {
+    const f = String(p.form || '').toLowerCase().trim();
+    if (!f || f === 'normal') return 'normal';
+    return ({ alolan: 'alola', alola: 'alola', galarian: 'galarian', galar: 'galarian', hisuian: 'hisuian', hisui: 'hisuian', paldean: 'paldea', paldea: 'paldea' })[f] || f;
+  }
+
+  // A regional form the stats prove wrong: the Pokemon has MEASURED IVs, the form it carries cannot produce its CP and HP
+  // with those IVs (and level, when pinned), and exactly one other form of the species can. Nothing else is claimed:
+  // unmeasured IVs, several fitting forms or a form already reviewed by hand return null. Cached per stat line.
+  formMismatchOf(p) {
+    const m = this.mechanics;
+    if (!m || !m.solveIVs || !m.hasRegionalForms || !p || p.dex == null || p.formReviewed || !p.cp || !p.hp || !p.ivMeasured) return null;
+    const ivs = this.ivsOf(p);
+    if (!ivs) return null;
+    const cur = this.formKeyOf(p), pinned = Number.isFinite(p.lvlMin) && p.lvlMin === p.lvlMax ? p.lvlMin : null;
+    const ck = p.dex + '|' + cur + '|' + p.cp + '|' + p.hp + '|' + ivs.join(',') + '|' + pinned;
+    this._fm = this._fm || new Map();
+    if (this._fm.has(ck)) return this._fm.get(ck);
+    let res = null;
+    try {
+      if (m.hasRegionalForms(p.name, p.dex)) {
+        const fit = k => {
+          const base = k === 'normal' ? m.BASE_STATS[p.dex] : m.BASE_STATS_BY_FORM[p.dex + '_' + k];
+          if (!base) return null;
+          return m.solveIVs(base, p.cp, p.hp).some(c => c.atkIV === ivs[0] && c.defIV === ivs[1] && c.staIV === ivs[2] && (pinned == null || c.level === pinned));
+        };
+        if (fit(cur) === false) {
+          const others = this.bulkFormOptionsFor(p).filter(k => k !== cur && fit(k) === true);
+          if (others.length === 1) res = { from: cur, form: others[0], label: this.bulkFormLabel(others[0]) };
+        }
+      }
+    } catch (e) { res = null; }
+    this._fm.set(ck, res);
+    return res;
+  }
+
+  // Sets the forms the stats prove, after one confirmation. Only the form, its type and the reviewed flag change: the
+  // IVs are measured, so they stay.
+  fixFormMismatches() {
+    const m = this.mechanics;
+    const hits = this.effectiveRosterForMatch().map(p => ({ p, fm: this.formMismatchOf(p) })).filter(x => x.fm);
+    if (!hits.length || !m) return;
+    const tally = {};
+    hits.forEach(x => { const k = x.p.name + ': ' + this.bulkFormLabel(x.fm.from) + ' \u2192 ' + x.fm.label; tally[k] = (tally[k] || 0) + 1; });
+    this.askConfirm({
+      title: 'Set the form on ' + hits.length + ' Pokemon?',
+      message: Object.keys(tally).map(k => tally[k] + ' \u00d7 ' + k).join(', ') + '. Their measured IVs, CP and HP only fit the new form. Ranks, types and PvP tiers are recalculated for it. Until then they are locked from every transfer list.',
+      actions: [
+        { label: 'SET ' + hits.length, style: 'primary', run: () => {
+          const overrides = { ...(this.state.ivOverrides || {}) };
+          hits.forEach(({ p, fm }) => {
+            const info = m.speciesInfo(p.name, fm.form === 'normal' ? '' : fm.form);
+            overrides[p.idx] = { ...(overrides[p.idx] || {}), form: fm.form === 'normal' ? null : fm.form, type: info ? info.types.join(' / ') : (p.type || null), formReviewed: true };
+          });
+          this.offerUndo(hits.length + ' forms set', ['ivOverrides']);
+          this.setState({ ivOverrides: overrides }, () => { this.closeConfirm(); try { this.queueCloudPush(); this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+        } },
+        { label: 'LEAVE THEM', style: 'neutral', run: () => this.closeConfirm() }
+      ]
+    });
+  }
+
   bulkFormPending() {
     const m = this.mechanics;
     if (!m || !m.hasRegionalForms) return [];
     const skip = new Set(this.state.bulkSkip || []);
     return this.effectiveRosterForMatch().filter(p => p.dex != null && !p.formReviewed && !skip.has(p.idx) && m.hasRegionalForms(p.name, p.dex))
-      .sort((a, b) => String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
+      .sort((a, b) => (!!this.formMismatchOf(b) - !!this.formMismatchOf(a)) || String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
   }
 
   // Number shown on the Bulk tab icon: Pokemon waiting for a form or a type. Cached on the data
@@ -4954,10 +5020,12 @@ class Component extends DCLogic {
   bulkChecks() {
     const m = this.mechanics;
     const pending = this.bulkFormPending();
+    const formSure = pending.filter(p => this.formMismatchOf(p)).length;
     const visible = pending.slice(0, this.state.bulkVisible || 12);
     const rows = visible.map(p => {
       const cur = p.form ? String(p.form).toLowerCase() : 'normal';
       const suggested = p.type && m.formForTypes ? m.formForTypes(p.name, p.type, p.dex) : null;
+      const fm = this.formMismatchOf(p);
       const ivs = this.ivsOf(p);
       return {
         key: String(p.idx), name: p.name, cp: p.cp != null ? 'CP ' + p.cp : 'CP ?', hp: p.hp != null ? 'HP ' + p.hp : '',
@@ -4978,8 +5046,8 @@ class Component extends DCLogic {
             stats: base ? base.join(' / ') : '',
             fit: fits === true ? 'Fits CP/HP' : fits === false ? 'Does not fit CP/HP' : '',
             fitColor: fits === false ? 'var(--ios-red)' : 'var(--ios-green)',
-            tag: (suggested === k ? 'MATCHES SCANNED TYPE' : '') || (isCur ? 'CURRENT' : ''),
-            border: suggested === k ? 'var(--ios-blue)' : 'var(--line-200)',
+            tag: (fm && fm.form === k ? 'ONLY FORM THAT FITS CP, HP AND IVS' : '') || (suggested === k ? 'MATCHES SCANNED TYPE' : '') || (isCur ? 'CURRENT' : ''),
+            border: (fm && fm.form === k) || suggested === k ? 'var(--ios-blue)' : 'var(--line-200)',
             onPick: () => this.bulkPickForm(p, k)
           };
         })
@@ -5031,6 +5099,7 @@ class Component extends DCLogic {
       key: 'form', title: 'REGIONAL FORM', count: pending.length, isFormCheck: true, isTypeCheck: false, typeRows: [],
       blurb: 'Same name, different form: Kantonian vs Alolan Ninetales have different types, base stats, moves and PvP/raid ranks. Pick the right form for each Pokemon. Compare the sprite, the types and whether the CP/HP fit.',
       empty: pending.length === 0, rows,
+      hasFix: formSure > 0, fixLabel: 'SET THE FORM ON ' + formSure + ' THAT THE STATS PROVE', onFix: () => this.fixFormMismatches(),
       more: pending.length > visible.length, remaining: pending.length - visible.length,
       showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
     }, {
@@ -5828,7 +5897,8 @@ class Component extends DCLogic {
     const sz = this.sizeOf(p);
     const sizeBad = !!(p.height && sz && sz.valid === false);
     const look = this.lookalikeOf(p);
-    if (!ivsOk || !avgOk || sizeBad || look || (c.dupIdx && c.dupIdx.has(String(p.idx)))) out.push(look ? 'Data inconsistent: the name ' + p.name + ' may really be ' + look.real : 'Data inconsistent: check this Pokemon');
+    const formBad = this.formMismatchOf(p);
+    if (!ivsOk || !avgOk || sizeBad || look || formBad || (c.dupIdx && c.dupIdx.has(String(p.idx)))) out.push(look ? 'Data inconsistent: the name ' + p.name + ' may really be ' + look.real : formBad ? 'Data inconsistent: the form may really be ' + formBad.label + ' (its CP, HP and IVs fit only that form)' : 'Data inconsistent: check this Pokemon');
     if (sum.every(Number.isFinite) && !Number.isFinite(p.great && p.great.rankPct)) out.push('League rank not computed yet');
     if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
     if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
@@ -7006,6 +7076,9 @@ class Component extends DCLogic {
       mk('lookalike', 'Name may be wrong', 'The type or size does not fit the name (Metang that is Steel only, a Diglett that is Water). An old extractor release rewrote some newer species to older ones. They are locked from every transfer list meanwhile.',
         'Tap RENAME to correct them (or use Bulk, Name check, to choose one by one), or leave them if you really own that species.',
         p => !!this.lookalikeOf(p)),
+      mk('form', 'Form may be wrong', 'The Pokemon carries one form but its measured IVs, CP and HP fit only another (an Alolan Ninetales read as Ninetales). Its rank, tier and types are for the wrong form. They are locked from every transfer list meanwhile.',
+        'Tap SET to correct them (or use Bulk, Regional form, to choose one by one).',
+        p => !!this.formMismatchOf(p)),
       mk('noiv', 'No IVs at all', 'These are excluded from every ranking, the evolve queue and raid counters.',
         'Appraise in game, then run the IV import.',
         p => !Number.isFinite(p.atkIV)),
@@ -17867,8 +17940,8 @@ class Component extends DCLogic {
       } : null,
       dataQualityRows: dataQuality.map(i => ({
         label: i.label, why: i.why, fix: i.fix,
-        canFix: i.key === 'lookalike',
-        onFix: () => this.fixLookalikeNames(),
+        canFix: i.key === 'lookalike' || i.key === 'form',
+        onFix: () => (i.key === 'form' ? this.fixFormMismatches() : this.fixLookalikeNames()),
         count: String(i.count),
         names: i.names,
         onShow: () => this.goToTab('roster')

@@ -880,6 +880,24 @@ module.exports = async function suiteB() {
     await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l._modelCool = {}; l._keyCooldown = {}; l._searchOffUntil = 0; return; } } });
     await s.set({ geminiKey: '', geminiKeys: [], briefing: null, briefingError: '', briefingSearch: false });
   });
+  await T('FORM-01', 'Safety', 'A regional form the measured stats prove wrong is flagged, locked from transfer, and set after one confirmation; a Pokemon whose stats fit its own form is left alone', async () => {
+    const mk = (idx, name, dex, iv, cp, hp, lv, extra) => ({ idx, name, dex, cp, hp, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lv, lvlMax: lv, ivMeasured: true, great: { rankPct: 40 }, ultra: { rankPct: 40 }, little: { rankPct: 40 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const alolaNt = mk('fm1', 'Ninetales', 38, [11, 15, 14], 1480, 122, 23), kantoNt = mk('fm2', 'Ninetales', 38, [11, 15, 14], 1461, 122, 23), alolaRai = mk('fm3', 'Raichu', 26, [10, 13, 11], 1253, 99, 20);
+    await s.set({ addedPokemon: [alolaNt, kantoNt, alolaRai], roster: [], cutTarget: 1, cutTargetDraft: '1', appFavourited: [], ivOverrides: {} }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const a = await s.call('formMismatchOf', alolaNt), k = await s.call('formMismatchOf', kantoNt), r = await s.call('formMismatchOf', alolaRai);
+    expect(a && a.form === 'alola' && r && r.form === 'alola', 'both Alolan ones are found: ' + JSON.stringify([a, r]));
+    expect(k === null, 'a Ninetales whose stats fit Kanto is left alone: ' + JSON.stringify(k));
+    const reasons = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const key = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!key) continue; for (let f = e[key]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; return l.keepReasons(l.effectiveRosterForMatch().find(p => p.idx === 'fm1')); } } return null; });
+    expect((reasons || []).some(x => /^Data inconsistent: the form may really be Alolan/.test(x)), 'locked from transfer meanwhile: ' + JSON.stringify(reasons));
+    await s.call('fixFormMismatches'); await s.page.waitForTimeout(300);
+    await s.page.getByText(/^SET 2$/).first().click(); await s.page.waitForTimeout(500);
+    const after = await s.call('effectiveRosterForMatch');
+    const nt = after.find(p => p.idx === 'fm1'), ra = after.find(p => p.idx === 'fm3'), kn = after.find(p => p.idx === 'fm2');
+    expect(nt.form === 'alola' && /Ice/.test(nt.type || '') && ra.form === 'alola' && !kn.form, 'forms set, the Kanto one untouched: ' + JSON.stringify([nt.form, nt.type, ra.form, kn.form]));
+    expect((await s.call('formMismatchOf', nt)) === null, 'no longer flagged');
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300', ivOverrides: st0.ivOverrides || {} });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
