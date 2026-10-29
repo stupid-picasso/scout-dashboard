@@ -854,6 +854,32 @@ module.exports = async function suiteB() {
     expect(/READY NOW|RANKED/.test(t) && !/MEGA-READY PICKS/.test(t), 'master view is the normal ranked list: ' + t.slice(0, 300));
     await s.set({ league: 'great', seasonSel: null, feed: st0.feed || null });
   });
+  await T('BRIEF-02', 'Today', 'A search-grounded briefing refused with 429 falls back to a plain answer, and a failed update shows the real reason', async () => {
+    const seen = [];
+    await s.page.route('**/generativelanguage.googleapis.com/**', async r => {
+      const u = r.request().url();
+      if (/:generateContent/.test(u)) {
+        const body = r.request().postData() || ''; seen.push(body);
+        if (/google_search/.test(body)) return r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: { code: 429, message: 'Quota exceeded for this tool' } }) });
+        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '- Power up your best Great League pick first.\n- Evolve the Pokemon with enough candy.\n- Check this weekend event.' }] } }] }) });
+      }
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [] }) });
+    });
+    const key = 'k'.repeat(30);
+    await s.set({ geminiKey: key, geminiKeys: [key], briefing: null, briefingSearch: true, tab: 'today' });
+    await s.call('generateBriefing', true); await s.page.waitForTimeout(500);
+    const b = (await s.state()).briefing;
+    expect(b && b.bullets.length === 3, 'the plain answer was used: ' + JSON.stringify(b));
+    expect(seen.length === 2 && /google_search/.test(seen[0]) && !/google_search/.test(seen[1]), 'one grounded try, then one plain: ' + seen.length);
+    await s.page.unroute('**/generativelanguage.googleapis.com/**');
+    await s.page.route('**/generativelanguage.googleapis.com/**', r => /:generateContent/.test(r.request().url()) ? r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: { message: 'PerDay quota' } }) }) : r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [] }) }));
+    await s.set({ briefingSearch: false }); try { await s.call('generateBriefing', true); } catch (e) {} await s.page.waitForTimeout(400);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/did not go through \(.*(quota|rate)/i.test(txt) && !/\(AI limit\)/.test(txt), 'the real reason is shown: ' + (txt.match(/did not go through[^\n]*/) || ['none'])[0]);
+    await s.page.unroute('**/generativelanguage.googleapis.com/**');
+    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l._modelCool = {}; l._keyCooldown = {}; l._searchOffUntil = 0; return; } } });
+    await s.set({ geminiKey: '', geminiKeys: [], briefing: null, briefingError: '', briefingSearch: false });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

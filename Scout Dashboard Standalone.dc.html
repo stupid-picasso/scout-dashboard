@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.220</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.221</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -8677,7 +8677,7 @@ class Component extends DCLogic {
       briefingBusy: this.state.briefingBusy,
       briefingCanAsk: !!this.state.geminiKey,
       briefingRefresh: () => this.generateBriefing(true).catch(() => {}),
-      briefingError: this.state.briefingError ? (fresh ? 'The last update did not go through (AI limit), so this is the earlier briefing from today.' : 'Could not brief you just now: ' + this.state.briefingError) : '',
+      briefingError: this.state.briefingError ? (fresh ? 'The last update did not go through (' + this.state.briefingError + '), so this is the earlier briefing from today.' : 'Could not brief you just now: ' + this.state.briefingError) : '',
       refreshAllShortcut: () => { this.goToTab('home'); setTimeout(() => this.refreshEverything(), 350); },
       briefingSearchOn: !!this.state.briefingSearch,
       briefingSearchToggle: () => { const v = !this.state.briefingSearch; this.setState({ briefingSearch: v }); try { localStorage.setItem('scout.briefingSearch', v ? '1' : '0'); } catch (e) {} },
@@ -10618,13 +10618,23 @@ class Component extends DCLogic {
       // tool falls straight back to a plain answer rather than failing the whole request.
       const t0 = Date.now();
       let res;
-      try { res = await post(false, !!body.search); }
+      // Search grounding has its own, much smaller free quota. Once a grounded call was refused for it, plain answers
+      // are used for the next hour instead of failing the request.
+      const useSearch = !!body.search && !(this._searchOffUntil > Date.now());
+      try { res = await post(false, useSearch); }
       catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); throw netErr; }
       while (res.status === 400 && rung < ladder.length - 1 && !/API.?key not valid|API_KEY_INVALID/i.test(await res.clone().text().catch(() => ''))) {
         rung++;
-        res = await post(false, !!body.search);
+        res = await post(false, useSearch);
       }
-      if (res.status === 400 && body.search) res = await post(false, false);
+      if (res.status === 400 && useSearch) res = await post(false, false);
+      // A grounded call refused with 429 is retried once without the search tool: the plain answer may well be inside
+      // the model's normal quota.
+      if (res.status === 429 && useSearch) {
+        const t429 = await res.clone().text().catch(() => '');
+        if (/ground|google.?search/i.test(t429)) this._searchOffUntil = Date.now() + 3600000;
+        res = await post(false, false);
+      }
       if (res.status === 400) {
         // Some models need the JSON mime type to return parseable output.
         res = await post(true);
