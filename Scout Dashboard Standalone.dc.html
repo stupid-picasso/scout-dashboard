@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.222</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.227</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -6726,13 +6726,14 @@ class Component extends DCLogic {
   // An empty array means nothing marks it as valuable. Deliberately generous: a missed transfer costs
   // a little storage, a wrong one costs a Pokemon that may be needed later.
   keepContext(roster) {
-    if (this._keepCtx && this._keepCtx.roster === roster) return this._keepCtx;
+    const deps = this.memoDeps();
+    if (this._keepCtx && this._keepCtx.roster === roster && this.sameDeps(this._keepCtx.deps, deps)) return this._keepCtx;
     const groups = {};
     roster.forEach(p => { const k = p.dex + '_' + (p.form || ''); (groups[k] = groups[k] || []).push(p); });
     Object.values(groups).forEach(g => g.sort((a, b) => (Number.isFinite(b.ivAvg) ? b.ivAvg : 0) - (Number.isFinite(a.ivAvg) ? a.ivAvg : 0) || (b.cp || 0) - (a.cp || 0)));
     const idxSeen = new Set(), dupIdx = new Set();
     roster.forEach(p => { const k = String(p.idx); if (idxSeen.has(k)) dupIdx.add(k); idxSeen.add(k); });
-    this._keepCtx = { roster, groups, dupIdx, typeBest: this.raidRoleTypeBest(roster) };
+    this._keepCtx = { roster, deps, groups, dupIdx, typeBest: this.raidRoleTypeBest(roster) };
     return this._keepCtx;
   }
 
@@ -7016,10 +7017,11 @@ class Component extends DCLogic {
 
   // Rows the cut list may actually offer: the keep check has the last word, so the list can be shorter than the target.
   cutSafeSummary(roster, overBy) {
-    if (this._cutSum && this._cutSum.roster === roster && this._cutSum.overBy === overBy) return this._cutSum;
+    const deps = this.memoDeps();
+    if (this._cutSum && this._cutSum.roster === roster && this._cutSum.overBy === overBy && this.sameDeps(this._cutSum.deps, deps)) return this._cutSum;
     const rows = this.cutScoreRows(roster);
     const safe = rows.filter(r => !r.keep.length);
-    this._cutSum = { roster, overBy, safe, protectedCount: rows.length - safe.length, show: safe.slice(0, overBy) };
+    this._cutSum = { roster, deps, overBy, safe, protectedCount: rows.length - safe.length, show: safe.slice(0, overBy) };
     return this._cutSum;
   }
 
@@ -8513,7 +8515,7 @@ class Component extends DCLogic {
   }
 
   clearDerivedCaches() {
-    this._memoStore = {}; this._keepCtx = null; this._cutSum = null; this._raidCache = null;
+    this._memoStore = {}; this._keepCtx = null; this._cutSum = null; this._raidCache = null; this._effRoster = null;
   }
 
   async reloadFeedNow() {
@@ -12820,7 +12822,18 @@ class Component extends DCLogic {
 
   // Merged view used for matching: base roster with IV overrides applied, plus
   // added Pokemon, minus removed — i.e. the same list the roster renders.
+  // Built once per state: the same array comes back until something the app reads (anything but the UI-only keys in
+  // MEMO_UI_KEYS) changes, so a tab switch no longer rebuilds ~1,000 records and every cache keyed on the roster survives it.
+  // The list and its records are shared, so callers must not change them (spread to copy).
   effectiveRosterForMatch() {
+    const deps = this.memoDeps();
+    if (this._effRoster && this.sameDeps(this._effRoster.deps, deps)) return this._effRoster.list;
+    const list = this.buildEffectiveRoster();
+    this._effRoster = { deps, list };
+    return list;
+  }
+
+  buildEffectiveRoster() {
     const removedSet = new Set(this.state.removedIds || []);
     const overrides = this.state.ivOverrides || {};
     // Overrides must reach addedPokemon too. Pokemon created by the video
@@ -16905,19 +16918,8 @@ class Component extends DCLogic {
 
   renderVals() {
     this.installDerivedCache();
-    const removedSet = new Set(this.state.removedIds || []);
-    const overrides = this.state.ivOverrides || {};
-    // Overrides must reach addedPokemon too. Pokemon created by the video
-    // import live in addedPokemon, not roster, so applying overrides to roster
-    // alone meant a measured IV was written to ivOverrides[idx] and then never
-    // read back — the card kept rendering the CP/HP-solved spread it was
-    // created with, which is why a pinned 14/15/15 still displayed as 14/10/13.
-    const mech = this.mechanics;
-    const withDex = p => (p.dex == null && p.name && mech && mech.resolveDexByName)
-      ? { ...p, dex: mech.resolveDexByName(p.name) } : p;
-    const withOverrides = p => this.withEvoRanks(withDex(overrides[p.idx] ? { ...p, ...overrides[p.idx] } : p));
-    const baseRoster = (this.state.roster || []).map(withOverrides);
-    const roster = [...baseRoster, ...(this.state.addedPokemon || []).map(withOverrides)].filter(p => !this.isRemoved(p, removedSet));
+    // The same merged list every other reader uses (overrides applied, plus added, minus removed), built once per state.
+    const roster = this.effectiveRosterForMatch();
     const tab = this.state.tab;
     const search = this.state.search;
     const sortField = this.state.sortField;

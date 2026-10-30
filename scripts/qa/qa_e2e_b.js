@@ -898,6 +898,24 @@ module.exports = async function suiteB() {
     expect((await s.call('formMismatchOf', nt)) === null, 'no longer flagged');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300', ivOverrides: st0.ivOverrides || {} });
   });
+  await T('PERF-04', 'Performance', 'The merged roster and keep context are reused across tab switches and rebuilt as soon as anything they read changes', async () => {
+    const logic = () => s.page.evaluateHandle(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { window.__qaL = f.stateNode.logic; return true; } } return false; });
+    await logic();
+    const st0 = await s.state();
+    await s.set({ tab: 'home' }); await s.page.waitForTimeout(600); await s.set({ tab: 'roster' }); await s.page.waitForTimeout(600); await s.set({ tab: 'home' }); await s.page.waitForTimeout(600);   // the first visit logs a history snapshot
+    const r1 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); window.__a = a; window.__c = L.keepContext(a); return a === L.effectiveRosterForMatch(); });
+    expect(r1, 'the same array is returned twice');
+    await s.set({ tab: 'roster' }); await s.page.waitForTimeout(200);
+    const r2 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); return a === window.__a && L.keepContext(a) === window.__c; });
+    expect(r2, 'a tab switch reuses the roster and the keep context');
+    await s.set({ cutTarget: 7, cutTargetDraft: '7' }); await s.page.waitForTimeout(200);
+    const r3 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); const c = L.keepContext(a); return { rebuilt: c !== window.__c, target: L.floatCut(c).target }; });
+    expect(r3.rebuilt && r3.target === 7, 'a changed keep target rebuilds it: ' + JSON.stringify(r3));
+    await s.set({ appFavourited: ['zz-none'] }); await s.page.waitForTimeout(200);
+    const r4 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); return L.keepContext(a).deps !== undefined && L.sameDeps(L.keepContext(a).deps, L.memoDeps()); });
+    expect(r4, 'the context follows the current state');
+    await s.set({ cutTarget: st0.cutTarget, cutTargetDraft: String(st0.cutTarget), appFavourited: st0.appFavourited || [] });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

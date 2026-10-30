@@ -449,3 +449,9 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - `formMismatchOf(p)`: measured IVs + CP + HP that fit only another regional form (via `solveIVs`, level when pinned) flag the Pokemon. Cached per stat line. Alolan Ninetales 1480 CP 11/15/14 L23 read as Ninetales is the motivating case.
 - Flagged Pokemon get the hard lock "Data inconsistent: the form may really be X"; Data quality gets a "Form may be wrong" row with a SET button; Bulk > Regional form shows the proven ones first, tags the fitting option and has "SET THE FORM ON N THAT THE STATS PROVE". `fixFormMismatches()` writes form, type and formReviewed via ivOverrides after one confirm; measured IVs are untouched.
 - Unmeasured IVs, several fitting forms and hand-reviewed forms (`formReviewed`) are never flagged. Test: FORM-01.
+
+## Performance: compute caches (v53.226)
+- Profile of 10 tab switches with 1,000 Pokemon: `_pvpEntry` name-variant building, `_pvpLevels` re-sorting and a roster/keep context rebuilt on every render dominated. Step 1: `_pvpEntry` (WeakMap per table) and `_pvpLevels` are memoized in pokemon-mechanics.js. Step 2: `effectiveRosterForMatch()` is built once per `memoDeps()` (the existing "everything but UI-only keys" signature), `renderVals` now uses it instead of its own copy, and `keepContext` / `cutSafeSummary` are valid only while `memoDeps()` is unchanged. The returned roster and records are shared: never mutate them (a frozen-roster QA run passed).
+- Tab switch with 1,000 Pokemon, CPU slowed 4x: 3 to 7 s before, about 1 to 2 s after. Desktop: 0.5 to 0.8 s before.
+- Left for later (step 3): compute only the open tab's data in `renderVals`; `pvpAssess` / `pvpMovesetFor` are the biggest remaining costs.
+- Test: PERF-04. To add a state key the keep logic reads that must NOT invalidate caches, nothing is needed; to ignore a UI-only key, add it to MEMO_UI_KEYS.
