@@ -458,3 +458,6 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 
 ## Form check follow-up (v53.227)
 - `formMismatchOf` now also flags a form picked by hand (`reviewed: true`) when measured IVs, CP and HP contradict it; the Bulk list includes those, and the cache key includes the reviewed flag. The detail sheet shows "FORM MAY BE WRONG" with a one-tap SET button (`detail.formFix`). Test: FORM-02.
+
+## Accented species names (v53.230)
+- `normalizeSpeciesName` and `_speciesKeys` now strip accents (`stripAccents`). The extractor and the game write "Flabébé", the tables "Flabebe"; the old normalizer turned it into "flab-b", so the record had no dex number: no sprite, no base stats, no ranks, no solved IVs ("not appraised", placeholder tile). Live records are repaired on read (`buildEffectiveRoster` backfills dex); re-run the IV import to measure them. Test: NAME-ACCENT-01.

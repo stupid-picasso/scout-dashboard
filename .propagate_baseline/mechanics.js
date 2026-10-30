@@ -974,8 +974,11 @@ const DEX_NAMES = {
   1017:"Ogerpon", 1018:"Archaludon", 1019:"Hydrapple", 1020:"Gouging-fire", 1021:"Raging-bolt", 1022:"Iron-boulder", 1023:"Iron-crown", 1024:"Terapagos", 
   1025:"Pecharunt"
 };
+// Accents are dropped first: the game and the extractor spell it "Flabébé", the tables "Flabebe", and an unmatched name has
+// no dex number, so no sprite, no base stats, no ranks and no IVs.
+function stripAccents(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 function normalizeSpeciesName(s) {
-  return String(s || '').toLowerCase()
+  return stripAccents(s).toLowerCase()
     .replace(/[\u2642]/g, ' m').replace(/[\u2640]/g, ' f')
     .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, '-');
 }
@@ -5163,7 +5166,7 @@ function pvpMatchupsFor(name, isShadow, leagueKey, form) {
 function _speciesKeys(name, form) {
   // Display names vary ("Ho-Oh", "Mr. Mime", "Type: Null", "Nidoran♀"); PvPoke ids are
   // lowercase with underscores ("ho_oh", "mr_mime", "type_null", "nidoran_female").
-  const norm = v => String(v || '').toLowerCase().trim().replace(/\u2640/g, '_female').replace(/\u2642/g, '_male')
+  const norm = v => stripAccents(v).toLowerCase().trim().replace(/\u2640/g, '_female').replace(/\u2642/g, '_male')
     .replace(/-f$/, '_female').replace(/-m$/, '_male').replace(/['\u2019]/g, '').replace(/[\s.:\-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
   const n = norm(name);
   // BASE_STATS_BY_FORM / movepools say "alola" and "paldea"; PvPoke ids say "alolan" and "paldean".

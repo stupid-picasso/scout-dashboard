@@ -931,6 +931,17 @@ module.exports = async function suiteB() {
     expect(after.form === 'alola' && /Ice/.test(after.type || ''), 'form set: ' + JSON.stringify([after.form, after.type]));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('NAME-ACCENT-01', 'Import', 'A species written with accents (Flabébé) resolves to its dex number, tier rows and sprite like the plain spelling', async () => {
+    const r = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.resolveDexByName('Flabébé'), b: m.resolveDexByName('Flabebe'), c: m.resolveDexByName('FLABÉBÉ'), t1: JSON.stringify(m.pvpTierFor('Flabébé', false, 'little')), t2: JSON.stringify(m.pvpTierFor('Flabebe', false, 'little')), i: !!m.speciesInfo('Flabébé', '') }; });
+    expect(r.a === 669 && r.b === 669 && r.c === 669, 'dex: ' + JSON.stringify(r));
+    expect(r.t1 === r.t2 && r.i, 'tier and species info match the plain spelling: ' + JSON.stringify(r));
+    const st0 = await s.state();
+    const p = { idx: 'ac1', name: 'Flabébé', cp: 392, hp: 70, scanDate: '2026-10-01' };
+    await s.set({ addedPokemon: [p], roster: [] }); await s.page.waitForTimeout(400);
+    const eff = (await s.call('effectiveRosterForMatch')).find(x => x.idx === 'ac1');
+    expect(eff && eff.dex === 669, 'the record gets its dex number: ' + JSON.stringify(eff && eff.dex));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [] });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
