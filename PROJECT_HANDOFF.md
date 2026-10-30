@@ -455,3 +455,6 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - Tab switch with 1,000 Pokemon, CPU slowed 4x: 3 to 7 s before, about 1 to 2 s after. Desktop: 0.5 to 0.8 s before.
 - Left for later (step 3): compute only the open tab's data in `renderVals`; `pvpAssess` / `pvpMovesetFor` are the biggest remaining costs.
 - Test: PERF-04. To add a state key the keep logic reads that must NOT invalidate caches, nothing is needed; to ignore a UI-only key, add it to MEMO_UI_KEYS.
+
+## Form check follow-up (v53.227)
+- `formMismatchOf` now also flags a form picked by hand (`reviewed: true`) when measured IVs, CP and HP contradict it; the Bulk list includes those, and the cache key includes the reviewed flag. The detail sheet shows "FORM MAY BE WRONG" with a one-tap SET button (`detail.formFix`). Test: FORM-02.

@@ -916,6 +916,21 @@ module.exports = async function suiteB() {
     expect(r4, 'the context follows the current state');
     await s.set({ cutTarget: st0.cutTarget, cutTargetDraft: String(st0.cutTarget), appFavourited: st0.appFavourited || [] });
   });
+  await T('FORM-02', 'Safety', 'A form picked by hand that the measured stats contradict is still flagged, and the detail sheet offers the fix', async () => {
+    const mk = (idx, extra) => ({ idx, name: 'Ninetales', dex: 38, cp: 1480, hp: 122, atkIV: 11, defIV: 15, staIV: 14, ivAvg: 28 / 45 * 100, lvlMin: 23, lvlMax: 23, ivMeasured: true, great: { rankPct: 40 }, ultra: { rankPct: 40 }, little: { rankPct: 40 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const nt = mk('fx1', { form: null, formReviewed: true, type: 'Fire' });
+    await s.set({ addedPokemon: [nt], roster: [], ivOverrides: {}, cutTarget: 1, cutTargetDraft: '1' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const fm = await s.call('formMismatchOf', nt);
+    expect(fm && fm.form === 'alola' && fm.reviewed === true, 'flagged although reviewed: ' + JSON.stringify(fm));
+    await s.call('openDetail', nt); await s.page.waitForTimeout(500);
+    const t = await s.page.evaluate(() => document.body.innerText);
+    expect(/FORM MAY BE WRONG/.test(t) && /SET ALOLAN/.test(t), 'the detail sheet offers the fix: ' + t.slice(0, 300));
+    await s.page.getByText(/^SET ALOLAN$/).first().click(); await s.page.waitForTimeout(600);
+    const after = (await s.call('effectiveRosterForMatch')).find(p => p.idx === 'fx1');
+    expect(after.form === 'alola' && /Ice/.test(after.type || ''), 'form set: ' + JSON.stringify([after.form, after.type]));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: 300, cutTargetDraft: '300' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

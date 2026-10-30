@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.227</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.229</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2061,6 +2061,13 @@
             <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:7px;padding:5px 12px;border-radius:var(--r-pill);background:{{ detail.verdict.bg }};border:1px solid {{ detail.verdict.border }}">
               <span style="font:800 11.5px var(--font-display);color:{{ detail.verdict.color }};letter-spacing:.04em">{{ detail.verdict.verdict }}</span>
               <span style="font:600 11px var(--font-display);color:var(--ink-700)">{{ detail.verdict.number }}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ detail.formFix }}" hint-placeholder-val="{{ false }}">
+            <div style="background:color-mix(in oklab, var(--type-electric) 14%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-electric) 45%, var(--surface-card));border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em">FORM MAY BE WRONG</div>
+              <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-900)">{{ detail.formFix.text }}</div>
+              <div onClick="{{ detail.formFix.onFix }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">{{ detail.formFix.label }}</div>
             </div>
           </sc-if>
           <details style="margin-top:2px">
@@ -4944,14 +4951,15 @@ class Component extends DCLogic {
 
   // A regional form the stats prove wrong: the Pokemon has MEASURED IVs, the form it carries cannot produce its CP and HP
   // with those IVs (and level, when pinned), and exactly one other form of the species can. Nothing else is claimed:
-  // unmeasured IVs, several fitting forms or a form already reviewed by hand return null. Cached per stat line.
+  // unmeasured IVs or several fitting forms return null. A form picked by hand (`reviewed`) is still flagged: measured
+  // numbers that cannot fit are better evidence than a tap. Cached per stat line.
   formMismatchOf(p) {
     const m = this.mechanics;
-    if (!m || !m.solveIVs || !m.hasRegionalForms || !p || p.dex == null || p.formReviewed || !p.cp || !p.hp || !p.ivMeasured) return null;
+    if (!m || !m.solveIVs || !m.hasRegionalForms || !p || p.dex == null || !p.cp || !p.hp || !p.ivMeasured) return null;
     const ivs = this.ivsOf(p);
     if (!ivs) return null;
     const cur = this.formKeyOf(p), pinned = Number.isFinite(p.lvlMin) && p.lvlMin === p.lvlMax ? p.lvlMin : null;
-    const ck = p.dex + '|' + cur + '|' + p.cp + '|' + p.hp + '|' + ivs.join(',') + '|' + pinned;
+    const ck = p.dex + '|' + cur + '|' + p.cp + '|' + p.hp + '|' + ivs.join(',') + '|' + pinned + '|' + (p.formReviewed ? 1 : 0);
     this._fm = this._fm || new Map();
     if (this._fm.has(ck)) return this._fm.get(ck);
     let res = null;
@@ -4964,7 +4972,7 @@ class Component extends DCLogic {
         };
         if (fit(cur) === false) {
           const others = this.bulkFormOptionsFor(p).filter(k => k !== cur && fit(k) === true);
-          if (others.length === 1) res = { from: cur, form: others[0], label: this.bulkFormLabel(others[0]) };
+          if (others.length === 1) res = { from: cur, form: others[0], label: this.bulkFormLabel(others[0]), reviewed: !!p.formReviewed };
         }
       }
     } catch (e) { res = null; }
@@ -4982,7 +4990,7 @@ class Component extends DCLogic {
     hits.forEach(x => { const k = x.p.name + ': ' + this.bulkFormLabel(x.fm.from) + ' \u2192 ' + x.fm.label; tally[k] = (tally[k] || 0) + 1; });
     this.askConfirm({
       title: 'Set the form on ' + hits.length + ' Pokemon?',
-      message: Object.keys(tally).map(k => tally[k] + ' \u00d7 ' + k).join(', ') + '. Their measured IVs, CP and HP only fit the new form. Ranks, types and PvP tiers are recalculated for it. Until then they are locked from every transfer list.',
+      message: Object.keys(tally).map(k => tally[k] + ' \u00d7 ' + k).join(', ') + '. Their measured IVs, CP and HP only fit the new form' + (hits.some(x => x.fm.reviewed) ? ' (including some you set by hand)' : '') + '. Ranks, types and PvP tiers are recalculated for it. Until then they are locked from every transfer list.',
       actions: [
         { label: 'SET ' + hits.length, style: 'primary', run: () => {
           const overrides = { ...(this.state.ivOverrides || {}) };
@@ -5002,7 +5010,7 @@ class Component extends DCLogic {
     const m = this.mechanics;
     if (!m || !m.hasRegionalForms) return [];
     const skip = new Set(this.state.bulkSkip || []);
-    return this.effectiveRosterForMatch().filter(p => p.dex != null && !p.formReviewed && !skip.has(p.idx) && m.hasRegionalForms(p.name, p.dex))
+    return this.effectiveRosterForMatch().filter(p => p.dex != null && (!p.formReviewed || this.formMismatchOf(p)) && !skip.has(p.idx) && m.hasRegionalForms(p.name, p.dex))
       .sort((a, b) => (!!this.formMismatchOf(b) - !!this.formMismatchOf(a)) || String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
   }
 
@@ -5020,7 +5028,7 @@ class Component extends DCLogic {
   bulkChecks() {
     const m = this.mechanics;
     const pending = this.bulkFormPending();
-    const formSure = pending.filter(p => this.formMismatchOf(p)).length;
+    const formSure = pending.filter(p => this.formMismatchOf(p)).length;   // includes forms picked by hand that the stats contradict
     const visible = pending.slice(0, this.state.bulkVisible || 12);
     const rows = visible.map(p => {
       const cur = p.form ? String(p.form).toLowerCase() : 'normal';
@@ -16800,6 +16808,10 @@ class Component extends DCLogic {
           return f == null ? null : 'IV floor ' + f + ' \u00b7 ' + (f <= 3 ? 'low floor helps under a CP cap' : f >= 13 ? 'strong across the board' : 'middling');
         })(),
         recommendation: this.computeRecommendation(p),
+        formFix: (() => {
+          const fm = this.formMismatchOf(p);
+          return fm ? { text: 'Its measured IVs, CP and HP fit only the ' + fm.label + ' form, not ' + this.bulkFormLabel(fm.from) + (fm.reviewed ? ' (you set that by hand)' : '') + '. Ranks, types and tiers here are for the wrong form until it is set. It is locked from transfer lists meanwhile.', label: 'SET ' + String(fm.label).toUpperCase(), onFix: () => { this.bulkPickFormNow(p, fm.form); this.closeDetail(); } } : null;
+        })(),
         markTransferred: () => this.askTransferConfirm(p, () => this.closeDetail())
       };
       // Tabs + evolve action, added on top of the fields above rather than
