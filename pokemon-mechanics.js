@@ -1196,8 +1196,12 @@ function setPvpMaxLevel(n) {
   if (v === 40 || v === 50 || v === 51) _pvpMaxLevel = v;
 }
 function getPvpMaxLevel() { return _pvpMaxLevel; }
+// Read-only list of the levels PvP may use, rebuilt only when the level cap changes (it used to be re-sorted on every call).
+let _pvpLevelsCache = null, _pvpLevelsFor = null;
 function _pvpLevels() {
-  return Object.keys(CPM).map(Number).filter(l => l <= _pvpMaxLevel).sort((a, b) => a - b);
+  if (_pvpLevelsCache && _pvpLevelsFor === _pvpMaxLevel) return _pvpLevelsCache;
+  _pvpLevelsFor = _pvpMaxLevel;
+  return (_pvpLevelsCache = Object.keys(CPM).map(Number).filter(l => l <= _pvpMaxLevel).sort((a, b) => a - b));
 }
 function bestStatProductUnderCap(base, capCP, isShadow) {
   // base is an array [atk, def, sta] — an object-style key collides across species.
@@ -5108,10 +5112,20 @@ function pvpTableFor(leagueKey) {
 // A PvPoke table row for a species. PvPoke ids are lowercase with underscores and spell regional forms out
 // ("mr_mime", "ho_oh", "lilligant_hisuian"), so the display name and form are normalised the same way
 // speciesInfo does, and the form-specific row is tried before the plain one.
+// The tables are fixed generated objects, so a row is looked up once per (table, name, form) and remembered: the PvP
+// page asks for every Pokemon on every render, and building the name variants dominated the profile.
+const _pvpEntryCache = new WeakMap();
 function _pvpEntry(table, name, form) {
   if (!table) return null;
-  for (const k of _speciesKeys(name, form)) { if (table[k]) return table[k]; }
-  return table[String(name || '').toLowerCase()] || null;
+  let m = _pvpEntryCache.get(table);
+  if (!m) { m = new Map(); _pvpEntryCache.set(table, m); }
+  const ck = name + '\u0000' + form;
+  if (m.has(ck)) return m.get(ck);
+  let res = null;
+  for (const k of _speciesKeys(name, form)) { if (table[k]) { res = table[k]; break; } }
+  if (!res) res = table[String(name || '').toLowerCase()] || null;
+  m.set(ck, res);
+  return res;
 }
 
 function pvpTierFor(name, isShadow, leagueKey, form) {
