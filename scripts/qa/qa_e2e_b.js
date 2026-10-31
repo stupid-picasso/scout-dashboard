@@ -998,6 +998,35 @@ module.exports = async function suiteB() {
     await s.page.unroute('**/raw.githubusercontent.com/**/data/pokemon_import.json*');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {} });
   });
+  await T('COST-01', 'Bulk', 'Costume search screenshots are read, matched by name and CP, marked after a confirmation, and costume Pokemon of evolving species get an Evolve-button check', async () => {
+    const mk = (idx, name, dex, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: 10, defIV: 10, staIV: 10, ivAvg: 66.7, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 50 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    await s.page.route('**/generativelanguage.googleapis.com/**', async r => {
+      if (/:generateContent/.test(r.request().url())) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '[{"name":"Piplup","cp":844},{"name":"Piplup","cp":451},{"name":"Gengar","cp":789},{"name":"Zubat","cp":445},{"name":"Piplup","cp":844}]' }] } }] }) });
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [] }) });
+    });
+    const key = 'k'.repeat(30);
+    await s.set({ geminiKey: key, geminiKeys: [key], addedPokemon: [mk('co1', 'Piplup', 393, 844), mk('co2', 'Piplup', 393, 451), mk('co3', 'Gengar', 94, 789), mk('co4', 'Piplup', 393, 999)], roster: [], ivOverrides: {}, bulkSkip: [], tab: 'bulk' }); await s.page.waitForTimeout(600);
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    await s.page.locator('input[aria-label="Costume search screenshots"]').setInputFiles({ name: 'costume.png', mimeType: 'image/png', buffer: png });
+    await s.page.waitForTimeout(2500);
+    let t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Read 5 tiles: 3 matched/.test(t) || /Read 4 tiles: 3 matched/.test(t) || /3 matched to your roster/.test(t), 'matched by name and CP: ' + (t.match(/Read [^\n]*/) || ['none'])[0]);
+    expect(/Zubat 445/.test(t), 'a tile that is not in the roster is listed as not found');
+    expect((await s.call('effectiveRosterForMatch')).every(p => !p.costume), 'nothing is marked before confirming');
+    await s.page.getByText(/^MARK 3 AS COSTUME$/).first().click(); await s.page.waitForTimeout(600);
+    const ros = await s.call('effectiveRosterForMatch');
+    expect(ros.filter(p => p.costume).map(p => p.idx).sort().join() === 'co1,co2,co3', 'the three matches are marked, the 999 CP Piplup is not: ' + JSON.stringify(ros.map(p => [p.idx, p.costume])));
+    t = await s.page.evaluate(() => document.body.innerText);
+    expect(/COSTUME EVOLVE CHECK/.test(t) && /It has an Evolve button/.test(t), 'the evolve check lists the costume Piplups');
+    expect(!(await s.call('costumeEvolvePending')).some(p => p.idx === 'co3'), 'Gengar is fully evolved: not asked');
+    await s.page.getByText('No Evolve button').first().click(); await s.page.waitForTimeout(900);
+    const after = await s.call('effectiveRosterForMatch');
+    const blocked = after.filter(p => p.noEvolve === true).map(p => p.idx);
+    expect(blocked.length === 1 && (await s.call('costumeEvolvePending')).length === 1, 'one Piplup is marked unable to evolve, the other still waits: ' + JSON.stringify(blocked));
+    await s.page.unroute('**/generativelanguage.googleapis.com/**');
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, geminiKey: '', geminiKeys: [], bulkSkip: [], tab: 'home' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
