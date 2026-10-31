@@ -257,6 +257,7 @@ function buildLists(roster, bestRank) {
       return { to: real.to, candy: real.candy, item: real.itemLabel, itemKey: real.itemKey };
     };
     ctx.chainCandyCost = new Function('p', chainCandyCostBody).bind(ctx);
+    ctx.evolveBlocked = () => false;   // nothing in these checks is a costume that cannot evolve
     ctx.evoInfoFor = new Function('p', evoInfoBody).bind(ctx);
     return ctx;
   }
@@ -304,6 +305,7 @@ function buildLists(roster, bestRank) {
       return rec ? { to: rec.to, candy: rec.candy, item: null, itemKey: null } : null;
     };
     ctx.chainCandyCost = new Function('p', chainCandyCostBody).bind(ctx);
+    ctx.evolveBlocked = () => false;   // nothing in these checks is a costume that cannot evolve
     ctx.evoInfoFor = new Function('p', evoInfoBody).bind(ctx);
     return ctx;
   }

@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.233</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.234</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2064,6 +2064,13 @@
             <div style="display:inline-flex;align-self:flex-start;align-items:center;gap:7px;padding:5px 12px;border-radius:var(--r-pill);background:{{ detail.verdict.bg }};border:1px solid {{ detail.verdict.border }}">
               <span style="font:800 11.5px var(--font-display);color:{{ detail.verdict.color }};letter-spacing:.04em">{{ detail.verdict.verdict }}</span>
               <span style="font:600 11px var(--font-display);color:var(--ink-700)">{{ detail.verdict.number }}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ detail.evolveMark }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">EVOLVE BUTTON</div>
+              <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-700)">{{ detail.evolveMark.text }}</div>
+              <div onClick="{{ detail.evolveMark.onToggle }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-900);font:700 11.5px var(--font-display)">{{ detail.evolveMark.label }}</div>
             </div>
           </sc-if>
           <sc-if value="{{ detail.formFix }}" hint-placeholder-val="{{ false }}">
@@ -8466,6 +8473,7 @@ class Component extends DCLogic {
       powerUpStardust: rec.power_up_stardust != null ? rec.power_up_stardust : null,
       powerUpCandy: rec.power_up_candy != null ? rec.power_up_candy : null,
       evolveCandy: rec.evolve_candy != null ? rec.evolve_candy : null,
+      canEvolve: rec.evolve_button === true || rec.evolve_button === false ? rec.evolve_button : null,
       scanDate: new Date().toISOString().split('T')[0],
       catchDate: rec.caught_date || null,
       weight: rec.weight || '',
@@ -8558,7 +8566,7 @@ class Component extends DCLogic {
       + '"candy":number|null,"xlCandy":number|null,"stardust":number|null,'
       + '"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,"sizeClass":"XXS"|"XS"|"XL"|"XXL"|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,'
-      + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
+      + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"evolveButton":true|false|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
       + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,'
       + '"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
@@ -8569,7 +8577,7 @@ class Component extends DCLogic {
       + 'candy is the count beside "<SPECIES> CANDY"; xlCandy only if a separate "<SPECIES> CANDY XL" count is shown; megaEnergy only if "<SPECIES> MEGA ENERGY" is shown. '
       + 'Mega: if the screen shows a single "<SPECIES> MEGA ENERGY" count return it as megaEnergy; if it shows "MEGA ENERGY X" and "MEGA ENERGY Y" return megaEnergyX and megaEnergyY. '
       + 'For each MEGA EVOLVE button add one megaForms entry: form "X" or "Y" (from the "MEGA <SPECIES> X/Y" label, else null), cost = the number on that button, dotsFilled = how many of the small round Mega Level dots under the button are filled with colour, dotsTotal = how many dots there are, rest = the rest-period text such as "4 DAYS" if shown on the Mega badge, else null. Return an empty megaForms array when there is no MEGA EVOLVE button. '
-      + 'powerUpStardust/powerUpCandy are the two costs on the POWER UP button; evolveCandy is the candy cost on the EVOLVE button. '
+      + 'powerUpStardust/powerUpCandy are the two costs on the POWER UP button; evolveCandy is the candy cost on the EVOLVE button. ' + 'evolveButton: true if an EVOLVE button is visible on the detail card, false if the card\u2019s button area is visible (POWER UP shown) but there is NO EVOLVE button (some event costumes cannot evolve), null if the buttons are not on screen or you cannot tell. Never guess. '
       + 'gender: "M" for the male symbol, "F" for the female symbol, null if neither. '
       + 'sizeClass: "XXL", "XL", "XS" or "XXS" only if that tag appears next to height/weight. '
       + 'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '
@@ -8609,7 +8617,7 @@ class Component extends DCLogic {
       charged_move_1: o.chargeMove1 || undefined,
       charged_move_2: o.chargeMove2 || undefined,
       power_up_stardust: num(o.powerUpStardust), power_up_candy: num(o.powerUpCandy),
-      evolve_candy: num(o.evolveCandy), mega_energy: num(o.megaEnergy),
+      evolve_candy: num(o.evolveCandy), evolve_button: o.evolveButton === true ? true : o.evolveButton === false ? false : undefined, mega_energy: num(o.megaEnergy),
       mega_energy_x: num(o.megaEnergyX), mega_energy_y: num(o.megaEnergyY), mega_forms: Array.isArray(o.megaForms) ? o.megaForms : undefined,
       attack_iv: num(o.atkIV), defense_iv: num(o.defIV), stamina_iv: num(o.staIV),
       lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, shiny_icon: !!o.shinyIcon, favorite: !!o.favorite,
@@ -9073,6 +9081,7 @@ class Component extends DCLogic {
       put('powerUpStardust', rec.power_up_stardust);
       put('powerUpCandy', rec.power_up_candy);
       put('evolveCandy', rec.evolve_candy);
+      put('canEvolve', rec.evolve_button);
       put('quickMove', p.fastMove || rec.fast_move);
       put('chargeMove', p.chargeMove1 || rec.charged_move_1);
       put('chargeMove2', p.chargeMove2 || rec.charged_move_2);
@@ -10418,7 +10427,7 @@ class Component extends DCLogic {
         + 'Respond with ONLY a JSON array, no markdown fences, no commentary. Each item: '
         + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, '
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
-        + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, '
+        + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, "evolveButton": true|false|null, '
         + '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, "megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}], '
         + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "dynamax": true|null, "gigantamax": true|null, "maxMoveName": string|null, "maxAttackLevel": number|null, "maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, "favorite": boolean}. '
         + 'Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array if no MEGA EVOLVE button. '
@@ -10726,6 +10735,7 @@ class Component extends DCLogic {
       if (o.defIV == null && o.defense_iv != null) o.defIV = o.defense_iv;
       if (o.staIV == null && o.stamina_iv != null) o.staIV = o.stamina_iv;
       if (o.evolveCandy == null && o.evolution_candy_cost != null) o.evolveCandy = o.evolution_candy_cost;
+      if (o.evolveButton == null && o.evolve_button != null) o.evolveButton = o.evolve_button;
       if (o.stardust == null && o.current_stardust != null) o.stardust = o.current_stardust;
     });
     return clean;
@@ -10789,7 +10799,7 @@ class Component extends DCLogic {
       + 'Respond with ONLY a JSON array \u2014 no commentary, no markdown fences. One object per Pokemon:\n'
       + '{"name":string,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,'
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
-      + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,'
+      + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,"evolveButton":true|false|null,'
       + '"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}\n\n'
       + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
@@ -10799,6 +10809,7 @@ class Component extends DCLogic {
       + '- hp is the first number in the "NN / NN HP" line.\n'
       + '- candy is the count beside "<SPECIES> CANDY"; xlCandy only if a separate "<SPECIES> CANDY XL" is shown.\n'
       + '- evolveCandy is the candy cost on the EVOLVE button.\n'
+      + '- evolveButton: true if an EVOLVE button is visible on the detail card, false if the card\u2019s button area is visible (POWER UP shown) but there is NO EVOLVE button (some event costumes cannot evolve), null if the buttons are not on screen or you cannot tell. Never guess. \n'
       + '- Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = the number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array when there is no MEGA EVOLVE button.\n'
       + '- Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves. Names only, no type in parentheses.\n'
       + '- '+'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '+'\n'
@@ -11563,6 +11574,7 @@ class Component extends DCLogic {
           chargeMove2: item.chargeMove2 || null,
           weight: item.weight || null, height: item.height || null, sizeClass: item.sizeClass || null,
           evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
+          canEvolve: item.evolveButton === true || item.evolveButton === false ? item.evolveButton : null,
           catchDate: null, scanDate: today,
           lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
           ...this.maxPatch(item),
@@ -11658,6 +11670,7 @@ class Component extends DCLogic {
   }
 
   evoChainNames(p) {
+    if (this.evolveBlocked(p)) return [p.name];   // it cannot become anything else, so it is judged as itself
     // The chain depends only on species, form and the looked-up table, and this runs for every Pokemon on
     // every render, so it is cached (and dropped whenever the table object changes).
     const table = this.state.evoTable || null;
@@ -11702,7 +11715,8 @@ class Component extends DCLogic {
   withEvoRanks(p) {
     const m = this.mechanics;
     if (!m || !m.rankPctForLeague || p.dex == null || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return p;
-    const pickedTo = this.evoPickOf(p);
+    const blocked = this.evolveBlocked(p);
+    const pickedTo = blocked ? null : this.evoPickOf(p);
     // Once a branch is chosen the Pokemon will be played as THAT form, so only it is ranked (not its current form).
     const chain = pickedTo ? [pickedTo] : this.evoChainNames(p);
     const shadow = this.isShadow(p);
@@ -11736,7 +11750,7 @@ class Component extends DCLogic {
       const cur = p[lg] && Number.isFinite(p[lg].rankPct) ? p[lg].rankPct : null;
       // A missing or lower stored rank is replaced. A stored rank that is higher (a trusted export) is kept.
       const wrongBranch = pickedTo && String((p[lg] && p[lg].evolvesTo) || '').toLowerCase() !== pickedTo.toLowerCase();
-      if (cur == null || wrongBranch || b.rankPct > cur || (b.ranked && !(p[lg] && p[lg].evolvesTo && String(p[lg].evolvesTo).toLowerCase() === String(b.evolvesTo).toLowerCase()) && cur < 90)) {
+      if (blocked || cur == null || wrongBranch || b.rankPct > cur || (b.ranked && !(p[lg] && p[lg].evolvesTo && String(p[lg].evolvesTo).toLowerCase() === String(b.evolvesTo).toLowerCase()) && cur < 90)) {
         out[lg] = { ...(p[lg] || {}), rankPct: b.rankPct, evolvesTo: b.evolvesTo };
       }
     });
@@ -13140,6 +13154,14 @@ class Component extends DCLogic {
     try { return this.tagGroups().filter(g => this.state.tagSnap[g.key] && this.tagStatus(g).stale).length; } catch (e) { return 0; }
   }
 
+  // Hand mark from the detail sheet: `noEvolve` true (cannot) or false (can, overriding a screen reading of "no button").
+  setNoEvolve(p, value) {
+    this.offerUndo(p.name + (value ? " marked as unable to evolve" : ' marked as able to evolve'), ['ivOverrides']);
+    const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], noEvolve: value } };
+    this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+    this.closeDetail();
+  }
+
   // The name to give the tag in the game: yours if you changed it, else a descriptive default. No spaces and a "PvP-" prefix,
   // so typing it in the game's search cannot also match a species or a game keyword (plain "Ultra" would clash with ultrabeast).
   tagNameOf(key) {
@@ -13974,7 +13996,17 @@ class Component extends DCLogic {
   // league.evolvesTo as a placeholder, which is why the PVP table read
   // "Castform -> Castform". The looked-up table is the real answer; the
   // placeholder is only trusted when it names something else.
+  // True when this individual cannot evolve even though its species does (some event costumes). Set by hand on the detail
+  // sheet (`noEvolve`, true or false) or read from the screen at import (`canEvolve: false` = the card showed no Evolve button).
+  evolveBlocked(p) {
+    if (!p) return false;
+    if (p.noEvolve === true) return true;
+    if (p.noEvolve === false) return false;
+    return p.canEvolve === false;
+  }
+
   evolvesToName(p) {
+    if (this.evolveBlocked(p)) return null;
     const rec = this.evoRecordFor(p);
     if (rec) return rec.to || null;
     const legacy = p.great && p.great.evolvesTo;
@@ -14005,6 +14037,7 @@ class Component extends DCLogic {
   }
 
   evoInfoFor(p) {
+    if (this.evolveBlocked(p)) return null;
     const rec = this.evoRecordFor(p);
     if (!rec || !rec.to) return null;
     const stock = this.candyStockFor(p);
@@ -17006,6 +17039,14 @@ class Component extends DCLogic {
           return f == null ? null : 'IV floor ' + f + ' \u00b7 ' + (f <= 3 ? 'low floor helps under a CP cap' : f >= 13 ? 'strong across the board' : 'middling');
         })(),
         recommendation: this.computeRecommendation(p),
+        evolveMark: (() => {
+          const rec = this.evoRecordFor(p);
+          if (!rec || !rec.to) return null;       // the species does not evolve: nothing to mark
+          const blocked = this.evolveBlocked(p), screen = p.canEvolve === false && p.noEvolve == null;
+          return blocked
+            ? { text: 'Marked as unable to evolve' + (screen ? ' (the game screen showed no Evolve button)' : '') + '. It is left out of the evolve lists and ranked as it is, not as ' + rec.to + '.', label: 'MARK AS CAN EVOLVE', onToggle: () => this.setNoEvolve(p, false) }
+            : { text: 'No Evolve button on this Pokemon in the game? Some event costumes cannot evolve. Mark it and it leaves the evolve lists and is ranked as it is, so no stardust goes into a ' + rec.to + ' that cannot happen.', label: "MARK AS CAN'T EVOLVE", onToggle: () => this.setNoEvolve(p, true) };
+        })(),
         formFix: (() => {
           const fm = this.formMismatchOf(p);
           return fm ? { text: 'Its measured IVs, CP and HP fit only the ' + fm.label + ' form, not ' + this.bulkFormLabel(fm.from) + (fm.reviewed ? ' (you set that by hand)' : '') + '. Ranks, types and tiers here are for the wrong form until it is set. It is locked from transfer lists meanwhile.', label: 'SET ' + String(fm.label).toUpperCase(), onFix: () => { this.bulkPickFormNow(p, fm.form); this.closeDetail(); } } : null;

@@ -993,7 +993,7 @@ def drop_sparse(records):
 
 
 _SCALAR_KEYS = ("cp", "hp", "weight", "height")
-_FLAG_KEYS = ("favorite", "lucky", "shadow", "dynamax", "gigantamax", "shiny")
+_FLAG_KEYS = ("favorite", "lucky", "shadow", "dynamax", "gigantamax", "shiny", "evolveButton")
 
 
 def _vote(values):
@@ -1161,7 +1161,7 @@ VIDEO_IMPORT_PROMPT = (
     '"powerUpDust": number|null, '
     '"type": string|null, "weight": string|null, "height": string|null, '
     '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, '
-    '"evolveCandy": number|null, "atkIV": number|null, "defIV": number|null, '
+    '"evolveCandy": number|null, "evolveButton": true|false|null, "atkIV": number|null, "defIV": number|null, '
     '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, '
     '"megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,'
     '"dotsTotal":number|null,"rest":string|null}], '
@@ -1173,6 +1173,9 @@ VIDEO_IMPORT_PROMPT = (
     "Read EVERY type printed on the screen, as \"Type1 / Type2\" (for example \"Ice / Fairy\"); "
     "a Pokemon has one or two. Read it from the screen, never from the name: a regional form shares the "
     "name of the normal form but has different types (Alolan Ninetales is Ice / Fairy, Ninetales is Fire). "
+    "evolveButton: true if an EVOLVE button is visible on the detail card, false if the card's button "
+    "area is visible (POWER UP shown) but there is NO EVOLVE button (some event costumes cannot evolve), "
+    "null if the buttons are not on screen or you cannot tell. Never guess. "
     "Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge "
     "(crossed swords) and the word \"Dynamax\" between the height/weight strip and the "
     "stardust/candy counts; the same badge and word sit in the top bar once the card is "

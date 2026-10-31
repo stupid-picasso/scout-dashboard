@@ -973,6 +973,31 @@ module.exports = async function suiteB() {
     expect(/tag group needs updating/.test(await s.page.evaluate(() => document.body.innerText)), 'Today shows the notice');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], tagSnap: {} });
   });
+  await T('EVOLVE-04', 'Safety', 'A Pokemon that cannot evolve (no Evolve button) leaves the evolve lists and is ranked as itself; the screen reading is imported and the detail sheet can set it by hand', async () => {
+    const fs = require('fs');
+    const mk = (idx, extra) => ({ idx, name: 'Marill', dex: 183, cp: 400, hp: 70, atkIV: 14, defIV: 15, staIV: 14, ivAvg: 43 / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('ev1', { canEvolve: false }), mk('ev2', {})], roster: [], ivOverrides: {} }); await s.page.waitForTimeout(500);   // no rank recalculation: it would store the own-form rank first
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; window.__qaL = l; const ros = l.effectiveRosterForMatch(); const a = ros.find(p => p.idx === 'ev1'), b = ros.find(p => p.idx === 'ev2'); return { aTo: l.evolvesToName(a), bTo: l.evolvesToName(b), aRank: a.great.evolvesTo, bRank: b.great.evolvesTo, aChain: l.evoChainNames(a), q: l.evolveQueue().map(x => x.p.idx) }; } } return null; });
+    expect(r.aTo === null && r.bTo, 'evolvesToName: ' + JSON.stringify(r));
+    expect(r.aRank === 'Marill' && r.bRank === 'Azumarill', 'ranked as itself vs as its evolution: ' + JSON.stringify(r));
+    expect(r.aChain.length === 1 && r.q.indexOf('ev1') < 0, 'not in the evolve queue: ' + JSON.stringify(r));
+    // by hand, from the detail sheet
+    await s.call('openDetail', mk('ev2', {})); await s.page.waitForTimeout(500);
+    const t1 = await s.page.evaluate(() => document.body.innerText);
+    expect(/EVOLVE BUTTON/.test(t1) && /MARK AS CAN'T EVOLVE/.test(t1), 'the detail sheet offers the mark: ' + t1.slice(0, 200));
+    await s.page.getByText("MARK AS CAN'T EVOLVE").first().click(); await s.page.waitForTimeout(700);
+    const b = (await s.call('effectiveRosterForMatch')).find(p => p.idx === 'ev2');
+    expect(b.noEvolve === true && b.great.evolvesTo === 'Marill', 'marked by hand: ' + JSON.stringify([b.noEvolve, b.great.evolvesTo]));
+    // read from the screen at import
+    const item = { name: 'Marill', cp: 598, hp: 93, evolveButton: false, atkIV: 5, defIV: 5, staIV: 5 };
+    await s.page.route('**/raw.githubusercontent.com/**/data/pokemon_import.json*', rt => rt.fulfill({ contentType: 'application/json', body: JSON.stringify([item]) }));
+    await s.call('importFromServer'); await s.page.waitForTimeout(2000);
+    const imp = (await s.call('effectiveRosterForMatch')).find(p => p.cp === 598);
+    expect(imp && imp.canEvolve === false, 'the import carries canEvolve: ' + JSON.stringify(imp && imp.canEvolve));
+    await s.page.unroute('**/raw.githubusercontent.com/**/data/pokemon_import.json*');
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {} });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
