@@ -116,7 +116,14 @@ function truth(p, all) {
   if (isSh(p) && mine >= 80 && Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)) add('SHADOW_IV80', false, { floaty: true });
   if (p.ivMeasured && p.atkIV === 0 && p.defIV === 0 && p.staIV === 0) add('NONDO');
   const si = p.height ? M.sizeInfoFor(p.dex, p.form, p.height) : null;
-  if (si && si.valid && (si.cls === 'XXL' || si.cls === 'XXS')) add('SIZE_' + si.cls);
+  if (si && si.valid && (si.cls === 'XXL' || si.cls === 'XXS')) {
+    // Only the best copy per species (and form, shadow, size tag) keeps the size lock: highest IV, ties by CP. Exact ties: the app takes one.
+    const sizeOf = q => (q.height ? M.sizeInfoFor(q.dex, q.form, q.height) : null);
+    const rival = all.filter(q => q !== p && q.dex === p.dex && (q.form || '') === (p.form || '') && isSh(q) === isSh(p) && (() => { const z = sizeOf(q); return z && z.valid && z.cls === si.cls; })());
+    const better = rival.filter(q => ivp(q) > mine || (ivp(q) === mine && (q.cp || 0) > (p.cp || 0))).length;
+    const ties = rival.filter(q => ivp(q) === mine && (q.cp || 0) === (p.cp || 0)).length;
+    if (better === 0) add('SIZE_' + si.cls, ties > 0, { tieOnly: ties > 0 });
+  }
   if (measuredIv) {
     const iv = [p.atkIV, p.defIV, p.staIV], sh = isSh(p);
     for (const lg of ['great', 'ultra']) {
