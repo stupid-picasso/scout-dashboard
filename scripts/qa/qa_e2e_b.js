@@ -949,6 +949,27 @@ module.exports = async function suiteB() {
     expect(eff && eff.dex === 669, 'the record gets its dex number: ' + JSON.stringify(eff && eff.dex));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [] });
   });
+  await T('TAGS-01', 'Tags', 'Tag groups list the best Pokemon per league and tier, give strings that select only them, remember what was tagged and flag a group that drifts', async () => {
+    const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    const L = () => s.page.evaluateHandle(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { window.__qaL = f.stateNode.logic; return true; } } return false; });
+    await s.set({ addedPokemon: [mk('tg1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('tg2', 'Altaria', 334, [3, 14, 15], 1450, 97), mk('tg3', 'Registeel', 379, [4, 15, 14], 1400, 96), mk('tg4', 'Pidgey', 16, [15, 15, 15], 300, 99)], roster: [], tagSnap: {}, appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500); await L();
+    const info = await s.page.evaluate(() => { const l = window.__qaL; const g = l.tagGroups(); const by = k => g.find(x => x.key === k).members.map(p => p.name).sort().join(','); return { s: by('GL-S'), a: by('GL-A'), keys: g.map(x => x.key) }; });
+    expect(info.s === 'Altaria,Azumarill' && info.a === 'Registeel', 'S and A groups: ' + JSON.stringify(info));
+    const vals = await s.page.evaluate(() => { const l = window.__qaL; const v = l.tagsVals(); const gs = v.tagGroupsList.find(x => x.key === 'GL-S'); return { text: gs.addBatches.map(b => b.text + ' [' + b.expect + ']'), status: gs.status }; });
+    expect(vals.text.length === 1 && /altaria,azumarill & cp1420,cp1450/.test(vals.text[0]) && /show 2 Pokemon/.test(vals.text[0]), 'one string that selects exactly the two: ' + JSON.stringify(vals));
+    expect(/Not tagged yet/.test(vals.status), 'not tagged yet: ' + vals.status);
+    expect((await s.call('tagsPendingCount')) === 0, 'no notice for a group never tagged');
+    await s.page.evaluate(() => { const l = window.__qaL; l.tagDone(l.tagGroups().find(x => x.key === 'GL-S')); });
+    await s.page.waitForTimeout(300);
+    expect((await s.page.evaluate(() => window.__qaL.tagsVals().tagGroupsList.find(x => x.key === 'GL-S').status)) === 'Up to date', 'up to date once tagged');
+    await s.set({ addedPokemon: [...(await s.state()).addedPokemon, mk('tg5', 'Mimikyu', 778, [1, 15, 15], 1380, 96)] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    const after = await s.page.evaluate(() => { const l = window.__qaL; const gs = l.tagsVals().tagGroupsList.find(x => x.key === 'GL-S'); return { status: gs.status, add: gs.addBatches.map(b => b.text), n: l.tagsPendingCount() }; });
+    expect(/Needs updating: add 1, remove 0/.test(after.status) && after.add.length === 1 && /mimikyu & cp1380/.test(after.add[0]) && after.n === 1, 'only the difference is offered: ' + JSON.stringify(after));
+    await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
+    expect(/tag group needs updating/.test(await s.page.evaluate(() => document.body.innerText)), 'Today shows the notice');
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], tagSnap: {} });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

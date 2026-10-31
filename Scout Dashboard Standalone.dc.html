@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.231</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.232</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1404,6 +1404,9 @@
 
   <sc-if value="{{ isToday }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="display:flex;flex-direction:column;gap:14px;animation:fadeSlideIn .35s ease">
+    <sc-if value="{{ tagsNotice }}" hint-placeholder-val="{{ false }}">
+      <button type="button" onClick="{{ tagsNotice.onOpen }}" class="om-press" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-electric) 16%, var(--surface-card));color:var(--ink-900);font:650 13px var(--font-body);min-height:44px;text-align:left"><span>{{ tagsNotice.text }}</span><span style="color:var(--ios-blue);font:700 12px var(--font-display);letter-spacing:.04em">OPEN TAGS</span></button>
+    </sc-if>
     <sc-if value="{{ briefingCanAsk }}" hint-placeholder-val="{{ false }}">
       <section aria-label="Morning briefing" style="background:linear-gradient(135deg,color-mix(in oklab, var(--ios-blue) 22%, var(--surface-card)),var(--surface-card));border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -4259,6 +4262,43 @@
       </div>
     </sc-if>
 
+    <sc-if value="{{ isTagsMode }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+        <div style="font:800 18px var(--font-display);text-align:center">Tags</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ tagsIntro }}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:14px">
+        <sc-for list="{{ tagGroupsList }}" as="tg" hint-placeholder-count="0">
+          <div style="background:#ffffff;border-radius:18px;padding:14px;color:#17353b">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font:800 15px var(--font-display)">{{ tg.title }}</div><div style="font:700 11px var(--font-display);color:#5b7d84">{{ tg.count }}</div></div>
+            <div style="font:700 12.5px var(--font-body);color:{{ tg.statusColor }};margin-top:4px">{{ tg.status }}</div>
+            <div style="font:12px/1.45 var(--font-body);color:#5b7d84;margin-top:4px">{{ tg.members }}</div>
+            <sc-if value="{{ tg.hasAdd }}" hint-placeholder-val="{{ false }}">
+              <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:12px 0 6px">{{ tg.addTitle }}</div>
+              <sc-for list="{{ tg.addBatches }}" as="b" hint-placeholder-count="1">
+                <div style="background:#f4fbfb;border:1.5px solid #cfe3e6;border-radius:12px;padding:10px 12px;margin-bottom:8px">
+                  <div style="font:600 14px var(--font-display);word-break:break-all">{{ b.text }}</div>
+                  <div style="font:12px var(--font-body);color:#5b7d84;margin-top:4px">{{ b.expect }} {{ b.names }}</div>
+                  <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="margin-top:8px;min-height:40px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ b.copyLabel }}</button>
+                </div>
+              </sc-for>
+            </sc-if>
+            <sc-if value="{{ tg.hasRem }}" hint-placeholder-val="{{ false }}">
+              <div style="font:700 11px var(--font-display);color:#b5651d;letter-spacing:.06em;margin:12px 0 6px">REMOVE THE TAG FROM</div>
+              <sc-for list="{{ tg.remBatches }}" as="b" hint-placeholder-count="1">
+                <div style="background:#fff7ec;border:1.5px solid #f0d6b3;border-radius:12px;padding:10px 12px;margin-bottom:8px">
+                  <div style="font:600 14px var(--font-display);word-break:break-all">{{ b.text }}</div>
+                  <div style="font:12px var(--font-body);color:#5b7d84;margin-top:4px">{{ b.expect }} {{ b.names }}</div>
+                  <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="margin-top:8px;min-height:40px;padding:0 16px;border-radius:999px;background:#b5651d;color:#fff;font:700 13px var(--font-body)">{{ b.copyLabel }}</button>
+                </div>
+              </sc-for>
+            </sc-if>
+            <sc-if value="{{ tg.manual }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:#8a4b12;margin-top:6px">{{ tg.manual }}</div></sc-if>
+            <sc-if value="{{ tg.canDone }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ tg.onDone }}" class="om-press" style="margin-top:8px;min-height:44px;width:100%;border-radius:999px;background:#17353b;color:#fff;font:700 13px var(--font-body)">{{ tg.doneLabel }}</button></sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
     <sc-if value="{{ isShowcaseMode }}" hint-placeholder-val="{{ false }}">
       <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
         <div style="font:800 18px var(--font-display);text-align:center">Showcase picks</div>
@@ -4489,6 +4529,7 @@ class Component extends DCLogic {
     importSheetOpen: false,
     bulkTypePick: {},
     toolsMode: 'rename',
+    tagSnap: {},
     leagueSel: null,
     refreshRun: null,
     briefing: null,
@@ -4691,6 +4732,7 @@ class Component extends DCLogic {
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
     try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
+    try { const ts = JSON.parse(localStorage.getItem('scout.tags.v1') || 'null'); if (ts && typeof ts === 'object') this.setState({ tagSnap: ts }); } catch (e) {}
     try { const pr = JSON.parse(localStorage.getItem('scout.protect.v1') || 'null'); if (pr) this.setState({ appFavourited: Array.isArray(pr.appFavourited) ? pr.appFavourited : [], selfProtect: !!pr.selfProtect, negationOk: !!pr.negationOk }); } catch (e) {}
     try { const b = JSON.parse(localStorage.getItem('scout.briefing.v1') || 'null'); if (b && b.date && Array.isArray(b.bullets)) this.setState({ briefing: b }); } catch (e) {}
     try { if (localStorage.getItem('scout.briefingSearch') === '1') this.setState({ briefingSearch: true }); } catch (e) {}
@@ -6357,10 +6399,11 @@ class Component extends DCLogic {
     const out = this.searchStringFromBuilder();
     const presetDefs = [['transfer', '0\u2605 only, check each in the app'], ['keep', '3★ and 4★'], ['great', 'Great League CP'], ['ultra', 'Ultra League CP'], ['little', 'Little Cup CP'], ['evolve', 'Can evolve'], ['clear', 'Clear']];
     return {
-      isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search', isShowcaseMode: st.toolsMode === 'showcase', isBulkMode: st.toolsMode === 'bulk',
+      isRenameMode: st.toolsMode === 'rename', isSearchMode: st.toolsMode === 'search', isShowcaseMode: st.toolsMode === 'showcase', isBulkMode: st.toolsMode === 'bulk', isTagsMode: st.toolsMode === 'tags',
       ...(st.toolsMode === 'bulk' ? this.bulkStringVals() : {}),
+      ...(st.toolsMode === 'tags' ? this.tagsVals() : {}),
       ...(st.toolsMode === 'showcase' ? this.showcaseVals() : {}),
-      modeChips: [['rename', 'Rename'], ['search', 'Search'], ['showcase', 'Showcase'], ['bulk', 'Transfer strings']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
+      modeChips: [['rename', 'Rename'], ['search', 'Search'], ['showcase', 'Showcase'], ['bulk', 'Transfer strings'], ['tags', 'Tags']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
       renameTpl: st.renameTpl, onTplChange: e => this.setState({ renameTpl: e.target.value }),
       renameQuery: st.renameQuery, onQueryChange: e => this.setState({ renameQuery: e.target.value, renameVisible: 20 }),
       sampleText: sample || '—', sampleCount: (sample || '').length + '/12', sampleColor: (sample || '').length > 12 ? '#e5484d' : '#6b7f86',
@@ -14132,6 +14175,134 @@ class Component extends DCLogic {
     return roster.filter(p => !p.favorite && !covered(p) && !this.needsAppraisal(p) && this.keepReasons(p, ctx).some(x => real.test(x)));
   }
 
+  // ---- In-game tags --------------------------------------------------------------------------------------------
+  // The game can tag a whole search result, but it cannot search by PvP tier or rank. These groups are what the app knows
+  // (tier S/A, IV rank 90%+, CP inside the league's band, at most 2 copies of a species, 15 per tag), turned into search
+  // strings that select exactly them. Tags do not update themselves: what was last tagged is remembered, and the groups that
+  // have drifted since are shown so only the difference needs tagging.
+  tagDefs() {
+    const defs = [];
+    [['great', 'GL', 'Great League'], ['ultra', 'UL', 'Ultra League'], ['little', 'LC', 'Little Cup'], ['master', 'ML', 'Master League']].forEach(([lk, pre, name]) => {
+      ['S', 'A'].forEach(t => defs.push({ key: pre + '-' + t, title: name + ', tier ' + t, lk, tier: t, kind: 'ready' }));
+    });
+    defs.push({ key: 'GL-BUILD', title: 'Great League, worth powering up', lk: 'great', kind: 'build' }, { key: 'UL-BUILD', title: 'Ultra League, worth powering up', lk: 'ultra', kind: 'build' });
+    const sd = this.seasonLeague();
+    if (sd && sd.league !== 'master') defs.push({ key: 'SEASON', title: 'Live cup: ' + sd.name, lk: sd.league, kind: 'season', cup: sd.cup, tableKey: sd.tableKey });
+    return defs;
+  }
+
+  tagGroups() {
+    const deps = this.memoDeps();
+    if (this._tagCache && this.sameDeps(this._tagCache.deps, deps)) return this._tagCache.groups;
+    const m = this.mechanics, roster = this.effectiveRosterForMatch();
+    const groups = this.tagDefs().map(d => {
+      const rows = [];
+      roster.forEach(p => {
+        if (this.needsAppraisal(p) || (d.cup && !this.cupAllows(d.cup, p))) return;
+        if (d.lk === 'master') {
+          const mr = this.masterRankFor(p), mt = m && m.pvpTierFor && mr ? m.pvpTierFor(p.name, this.isShadow(p), 'master', p.form) : null;
+          if (mt && mt.tier === d.tier && Number.isFinite(mr.rankPct) && mr.rankPct >= 90) rows.push({ p, tr: 0, rank: mr.rankPct, ok: true });
+          return;
+        }
+        const a = this.pvpAssess(p, d.lk, d.tableKey);
+        if (!a || a.rank < 90) return;
+        const inBand = this.inBand(p, d.lk);
+        if (d.kind === 'build') { if (!inBand && a.tierRank <= 2) rows.push({ p, tr: a.tierRank, rank: a.rank, ok: a.movesOk === true }); return; }
+        if (!inBand) return;
+        if (d.kind === 'season' ? a.tierRank <= 1 : a.tier === d.tier) rows.push({ p, tr: a.tierRank, rank: a.rank, ok: a.movesOk === true });
+      });
+      rows.sort((x, y) => (x.tr - y.tr) || ((y.ok === true) - (x.ok === true)) || (y.rank - x.rank));
+      const per = {}, members = [];
+      rows.forEach(r => { const k = r.p.dex + '_' + (r.p.form || '') + '_' + this.isShadow(r.p); per[k] = (per[k] || 0) + 1; if (per[k] <= 2 && members.length < 15) members.push(r.p); });
+      return { ...d, members };
+    });
+    this._tagCache = { deps, groups };
+    return groups;
+  }
+
+  // What was last tagged versus now, per group. A group never tagged is `fresh`; one tagged before and different now is `stale`.
+  tagStatus(g) {
+    const snapAll = this.state.tagSnap || {};
+    const rosterIdx = new Set(this.effectiveRosterForMatch().map(p => String(p.idx)));
+    const nowIdx = new Set(g.members.map(p => String(p.idx)));
+    const had = snapAll[g.key];
+    if (!had) return { fresh: true, stale: false, added: g.members, removed: [], prev: new Set() };
+    const prev = new Set(had.map(String));
+    const added = g.members.filter(p => !prev.has(String(p.idx)));
+    const removed = [...prev].filter(i => rosterIdx.has(i) && !nowIdx.has(i));
+    return { fresh: false, stale: added.length > 0 || removed.length > 0, added, removed, prev };
+  }
+
+  // Search strings (name & exact CPs & stars) that select only the listed Pokemon, plus any in `okIdx` (selecting those is
+  // harmless). Same isolation check the keeper strings use, against the whole roster.
+  isolationStrings(list, okIdx) {
+    const MAX = 90, roster = this.effectiveRosterForMatch();
+    const rows = roster.map(q => ({ idx: String(q.idx), name: String(q.name || '').toLowerCase(), cp: q.cp, stars: this.starsOf(q) }));
+    const items = [], manual = [];
+    list.forEach(p => {
+      const name = String(p.name || '').toLowerCase();
+      if (!/^[a-z]+$/.test(name) || !Number.isFinite(p.cp)) { manual.push(p); return; }
+      items.push({ idx: String(p.idx), name, cp: p.cp, stars: this.starsOf(p) });
+    });
+    items.sort((a, b) => a.name.localeCompare(b.name) || a.cp - b.cp);
+    const sets = it => ({ N: new Set(it.map(x => x.name)), C: new Set(it.map(x => x.cp)), S: new Set(it.map(x => x.stars)), withStars: it.every(x => x.stars != null) });
+    const matched = it => { const t = sets(it); return rows.filter(r => t.N.has(r.name) && t.C.has(r.cp) && (!t.withStars || t.S.has(r.stars))); };
+    const textOf = it => { const t = sets(it); return [...t.N].join(',') + ' & ' + [...t.C].sort((a, b) => a - b).map(c => 'cp' + c).join(',') + (t.withStars ? ' & ' + [...t.S].sort((a, b) => a - b).map(n => n + '*').join(',') : ''); };
+    const clean = it => matched(it).every(r => okIdx.has(r.idx));
+    const batches = [];
+    let remaining = items;
+    while (remaining.length) {
+      let cur = [];
+      for (let i = 0; i < remaining.length; i++) { const trial = cur.concat(remaining[i]); if (textOf(trial).length <= MAX && clean(trial)) cur = trial; }
+      if (!cur.length) { manual.push(list.find(q => String(q.idx) === remaining[0].idx)); remaining = remaining.slice(1); continue; }
+      const want = new Set(cur.map(x => x.idx));
+      const hit = matched(cur);
+      batches.push({ text: textOf(cur), n: hit.length, names: cur.map(x => { const q = roster.find(r => String(r.idx) === x.idx); return q.name + ' ' + q.cp + ' CP'; }) });
+      remaining = remaining.filter(x => !want.has(x.idx));
+    }
+    return { batches, manual: manual.filter(Boolean) };
+  }
+
+  tagsPendingCount() {
+    if (!this.state.tagSnap || !Object.keys(this.state.tagSnap).length) return 0;
+    try { return this.tagGroups().filter(g => this.state.tagSnap[g.key] && this.tagStatus(g).stale).length; } catch (e) { return 0; }
+  }
+
+  tagDone(g) {
+    this.haptic('light');
+    const next = { ...(this.state.tagSnap || {}), [g.key]: g.members.map(p => String(p.idx)) };
+    this.setState({ tagSnap: next }, () => { try { localStorage.setItem('scout.tags.v1', JSON.stringify(next)); } catch (e) {} });
+  }
+
+  tagsVals() {
+    const copied = this.state.copiedKey, roster = this.effectiveRosterForMatch();
+    const byIdx = new Map(roster.map(p => [String(p.idx), p]));
+    const groups = this.tagGroups().map(g => {
+      const st = this.tagStatus(g);
+      const memberIdx = new Set(g.members.map(p => String(p.idx)));
+      const stay = new Set([...memberIdx].filter(i => st.prev.has(i)));
+      const addOk = new Set([...memberIdx, ...st.prev]);
+      const remList = st.removed.map(i => byIdx.get(i)).filter(Boolean);
+      const remOk = new Set(roster.map(p => String(p.idx)).filter(i => !stay.has(i)));
+      const add = this.isolationStrings(st.added, addOk), rem = this.isolationStrings(remList, remOk);
+      const mk = (b, kind, i) => ({ text: b.text, expect: 'The game should show ' + b.n + ' Pokemon.', names: b.names.slice(0, 6).join(' · ') + (b.names.length > 6 ? ' · and ' + (b.names.length - 6) + ' more' : ''),
+        copyLabel: copied === 'tag' + g.key + kind + i ? 'Copied' : 'Copy string', onCopy: () => this.copyText(b.text, 'tag' + g.key + kind + i) });
+      const upToDate = !st.fresh && !st.stale;
+      return {
+        key: g.key, title: g.key + ' · ' + g.title, count: g.members.length + ' Pokemon',
+        status: g.members.length === 0 && st.fresh ? 'Nothing qualifies yet' : st.fresh ? 'Not tagged yet: tag all ' + g.members.length : st.stale ? 'Needs updating: add ' + st.added.length + ', remove ' + st.removed.length : 'Up to date',
+        statusColor: st.stale ? '#b5651d' : upToDate ? '#1b6e66' : '#5b7d84',
+        members: g.members.map(p => p.name + ' ' + p.cp).join(' · '),
+        hasAdd: add.batches.length > 0, addBatches: add.batches.map((b, i) => mk(b, 'a', i)), addTitle: st.fresh ? 'TAG THESE' : 'ADD THE TAG TO',
+        hasRem: rem.batches.length > 0, remBatches: rem.batches.map((b, i) => mk(b, 'r', i)),
+        manual: (add.manual.length || rem.manual.length) ? 'By hand (a search would catch others): ' + add.manual.concat(rem.manual).slice(0, 6).map(p => p.name + ' ' + p.cp + ' CP').join(', ') : '',
+        canDone: g.members.length > 0 && !upToDate || (st.stale), onDone: () => this.tagDone(g), doneLabel: 'I TAGGED THESE'
+      };
+    });
+    return { tagGroupsList: groups, tagsStaleCount: this.tagsPendingCount(),
+      tagsIntro: 'Tag a group in the game once, then find it by typing the tag name. Paste a string into the game search, check the count, select all, add the tag, then tap I TAGGED THESE here. The app remembers it and tells you when a group drifts.' };
+  }
+
   // Strings that favourite the keepers: name & CP & stars, like the transfer strings. A string is only used when it selects
   // nothing but keepers (or Pokemon already favourited); what cannot be isolated goes to a by-hand list.
   buildKeeperBatches() {
@@ -18270,6 +18441,7 @@ class Component extends DCLogic {
       isRecommend: tab === 'recommend',
       isIntel: tab === 'intel',
       isToday: tab === 'today',
+      ...(tab === 'today' ? (() => { const n = this.tagsPendingCount(); return { tagsNotice: n > 0 ? { text: n + (n === 1 ? ' tag group needs' : ' tag groups need') + ' updating in the game', onOpen: () => { this.setState({ toolsMode: 'tags' }); this.goToTab('tools'); } } : null }; })() : {}),
       isProgress: tab === 'progress',
       isRaid: tab === 'raid',
       isBulk: tab === 'bulk',

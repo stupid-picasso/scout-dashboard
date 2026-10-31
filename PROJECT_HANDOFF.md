@@ -464,3 +464,8 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 
 ## Season tab on a Mega edition (v53.231)
 - A live Mega edition (e.g. Mega Halloween Cup) now shows the Mega-ready picks AND the usual READY NOW / POWER UP OR EVOLVE lists (and squad), ranked as the Pokemon are today under the cup's rules (type lists, level cap). Before, the lists were hidden and only 0-2 Mega picks showed. Test: PVPBAND-03.
+
+## In-game tags (v53.232)
+- More > Rename & search > Tags: groups GL/UL/LC/ML-S and -A (tier S/A in that league, IV rank 90%+, CP inside the league band, max 2 copies per species, 15 per tag), GL-BUILD / UL-BUILD (good copies under the CP floor, S/A/B) and SEASON (live cup, rules and PvPoke table applied). `tagDefs`/`tagGroups` (cached on `memoDeps`), `tagStatus`, `isolationStrings` (same name & exact CPs & stars strings as the keeper strings, checked against the whole roster), `tagsVals`, `tagDone`.
+- `state.tagSnap` (localStorage `scout.tags.v1`, not cloud-synced) remembers what was last tagged per group. A group tagged before that has drifted shows "Needs updating: add N, remove M" with strings for just the difference, and Today shows "N tag groups need updating in the game" (`tagsPendingCount`). Never-tagged groups do not nag.
+- Test: TAGS-01. The QA CSV fixture repeats rows with the same idx, so string counts on it ("should show 63") are inflated; real rosters have unique idx.
