@@ -1072,6 +1072,34 @@ module.exports = async function suiteB() {
     await s.set({ transferHold: [] });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('TAGKEEP-01', 'Safety', 'A Pokemon in a Build/tier group counts as a soft keep that names the group; a second copy of the species does not', async () => {
+    const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-30' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('tk1', 'Azumarill', 184, [2, 15, 15], 400, 98), mk('tk2', 'Azumarill', 184, [3, 14, 14], 410, 96), mk('tk3', 'Pidgey', 16, [1, 1, 1], 100, 10)], roster: [], ivOverrides: {}, tagSnap: {}, appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const rows = l.cutScoreRows(ros, ctx); const sc = id => rows.find(x => x.p.idx === id).score; const rs = id => l.keepFull(ros.find(p => p.idx === id), ctx); return { a1: rs('tk1').all, a1soft: rs('tk1').soft, a2: rs('tk2').all, s1: sc('tk1'), s2: sc('tk2') }; } } return null; });
+    expect(r.a1.some(x => /^Worth building: in the PvP-Great-Build group/.test(x)), 'the build copy names its group: ' + JSON.stringify(r.a1));
+    expect(r.a1soft.some(x => /Worth building/.test(x)), 'and it is a soft keep, not a hard lock');
+    expect(!r.a2.some(x => /group/.test(x)) && r.s1 > r.s2, 'the second copy is not in the group and scores lower: ' + JSON.stringify({ a2: r.a2, s1: r.s1, s2: r.s2 }));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {} });
+  });
+  await T('ORDER-01', 'Safety', 'Transfer batches put junk first, say which batches include normally-kept Pokemon, and JUNK ONLY leaves those out', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
+    const st0 = await s.state();
+    const roster = [mk('o1', 'Nidoran', 29, [14, 14, 14], 300), mk('o2', 'Zubat', 41, [14, 15, 13], 310), mk('o3', 'Oddish', 43, [13, 14, 14], 320), mk('o4', 'Pidgey', 16, [2, 3, 2], 120), mk('o5', 'Rattata', 19, [1, 2, 1], 100)];
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), ...roster], cutTarget: 100000, transferJunkOnly: false, transferHold: [], transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.page.waitForTimeout(300);
+    const baseTotal = (await s.call('effectiveRosterForMatch')).length;
+    await s.set({ cutTarget: Math.max(3, baseTotal - 40) }); await s.page.waitForTimeout(500);
+    const v = await s.call('bulkStringVals');
+    const kinds = v.bulkBatches.map(b => /^Junk only/.test(b.kindText) ? 'J' : 'S').join('');
+    expect(/^J+S*$/.test(kinds) && kinds.indexOf('S') > 0, 'junk batches come first, then batches with normally-kept ones: ' + kinds);
+    expect(/have no keep reason/.test(v.bulkSplitText) && /normally kept/.test(v.bulkSplitText), 'the split is spelled out: ' + v.bulkSplitText);
+    await s.set({ transferJunkOnly: true }); await s.page.waitForTimeout(400);
+    const v2 = await s.call('bulkStringVals');
+    expect(v2.bulkBatches.every(b => /^Junk only/.test(b.kindText)) && v2.bulkBatches.length < v.bulkBatches.length, 'junk only drops every batch with normally-kept Pokemon: ' + v2.bulkBatches.length + ' vs ' + v.bulkBatches.length);
+    expect(!/nidoran|zubat|oddish/i.test(v2.bulkBatches.map(b => b.text).join(' ')), 'and no string selects them');
+    expect(/more slots than the junk gives/.test(v2.bulkNeedMoreText), 'it says what is still missing: ' + v2.bulkNeedMoreText);
+    await s.set({ transferJunkOnly: false, addedPokemon: st0.addedPokemon || [], cutTarget: 300 });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

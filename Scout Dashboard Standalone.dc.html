@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.240</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.241</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4366,13 +4366,19 @@
           <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkGateText }}</div>
           <button type="button" onClick="{{ onBulkFresh }}" class="om-press" style="margin-top:10px;min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body);width:100%">NOTHING HAS CHANGED: SHOW THE STRINGS</button>
         </sc-if>
+        <sc-if value="{{ bulkSplitText }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#17353b;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>{{ bulkSplitText }}</span><button type="button" onClick="{{ onJunkOnlyToggle }}" class="om-press" style="flex-shrink:0;min-height:36px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 12px var(--font-body)">{{ junkOnlyLabel }}</button></div>
+        </sc-if>
+        <sc-if value="{{ bulkNeedMoreText }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkNeedMoreText }}</div>
+        </sc-if>
         <sc-if value="{{ bulkSoftCount }}" hint-placeholder-val="{{ false }}">
           <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkSoftText }}</div>
         </sc-if>
       </div>
       <sc-for list="{{ bulkBatches }}" as="b" hint-placeholder-count="0">
         <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
-          <div style="font:800 15px var(--font-display)">{{ b.title }}</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font:800 15px var(--font-display)">{{ b.title }}</div><div style="font:700 11.5px var(--font-display);color:{{ b.kindColor }}">{{ b.kindText }}</div></div>
           <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ b.text }}</div>
           <div style="font:600 13px/1.4 var(--font-body);color:#b4531f">{{ b.expect }}</div>
  
@@ -4566,6 +4572,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     transferHold: [],
+    transferJunkOnly: false,
     costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null,
     tagSnap: {},
     tagNames: {},
@@ -7091,7 +7098,7 @@ class Component extends DCLogic {
   // XXL/XXS, legendary/mythical (best two), nondo, anything unmeasured or inconsistent. SOFT reasons (good IV, best
   // league copy, Master tier, raid role, Mega-capable, good IV with moves) hold until the roster is over its keep
   // target; then the floating keep line (`floatCut`) lets the weakest of them go first.
-  isSoftKeep(reason) { return /^(IV \d|Rising: |Upcoming cup: |Favourited from the keeper list|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
+  isSoftKeep(reason) { return /^(Worth building: |In the .+ group$|IV \d|Rising: |Upcoming cup: |Favourited from the keeper list|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
 
   keepReasons(p, ctx) {
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
@@ -7150,6 +7157,8 @@ class Component extends DCLogic {
     if (rising) out.push(rising);
     const cupKeep = this.cupKeepMap(c).get(p.idx);
     if (cupKeep) out.push(cupKeep);
+    const tagKeep = this.tagKeepReason(p, c);
+    if (tagKeep) out.push(tagKeep);
     // Anything that does not add up is kept and flagged, never offered for transfer.
     const ivsOk = [p.atkIV, p.defIV, p.staIV].every(v => v == null || (Number.isInteger(v) && v >= 0 && v <= 15));
     const sum = [p.atkIV, p.defIV, p.staIV];
@@ -7233,7 +7242,8 @@ class Component extends DCLogic {
       // A near-hundo (44/45 or better) is nearly as good as a 4-star and goes last among the soft keeps; a Mega-capable
       // Pokemon with good IVs is worth the Mega; and a Pokemon already over every league cap can never earn the rank
       // points a capped copy gets, so its IV stands in for them (a 14/15/15 Gardevoir at 2729 CP is a keeper, not filler).
-      const nearHundo = iv >= 97 ? 4000 : 0;
+      const tagWorth = this.tagKeepReason(p, ctx) ? 3000 : 0;
+      const nearHundo = (iv >= 97 ? 4000 : 0) + tagWorth;
       const megaWorth = iv >= 80 && this.megaTagFor(p) ? 1500 : 0;
       const overCapIv = rank < 1 && iv >= 80 ? iv * 15 : 0;
       const score = nearHundo + megaWorth + overCapIv + (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0) + (sizeKeep ? 100000 : 0)
@@ -14285,7 +14295,12 @@ class Component extends DCLogic {
   buildTransferBatches() {
     const MAX = 90;   // characters per pasted string
     const roster = this.effectiveRosterForMatch();
-    const cand = this.transferCandidates().slice(0, 600);
+    // Pokemon with no keep reason come first; normally-kept ones (released only by the Keep best target) go last, and with
+    // "junk only" on they are left out of every string (and never selected by one).
+    const junkOnly = !!this.state.transferJunkOnly;
+    const isSoft = c => !!(c.soft && c.soft.length);
+    const allCand = this.transferCandidates();
+    const cand = allCand.filter(c => !(junkOnly && isSoft(c))).sort((a, b) => (isSoft(a) - isSoft(b))).slice(0, 600);
     const candByIdx = new Map(cand.map(c => [c.p.idx, c]));
     // With "skip favourites" on (and the game's NOT operator verified), every string ends in `& !favorite`: the game itself
     // leaves out anything favourited, even a Pokemon this app has no record of. It costs characters, so batches are smaller.
@@ -14298,9 +14313,9 @@ class Component extends DCLogic {
       const name = String(c.p.name || '').toLowerCase();
       if (!/^[a-z]+$/.test(name)) { manual.push({ p: c.p, why: 'The name has spaces or symbols the game search may not accept' }); return; }
       if (!Number.isFinite(c.p.cp)) { manual.push({ p: c.p, why: 'No CP on file' }); return; }
-      items.push({ idx: c.p.idx, name, cp: c.p.cp, stars: this.starsOf(c.p) });
+      items.push({ idx: c.p.idx, name, cp: c.p.cp, stars: this.starsOf(c.p), soft: isSoft(c) ? 1 : 0 });
     });
-    items.sort((a, b) => a.name.localeCompare(b.name) || a.cp - b.cp);
+    items.sort((a, b) => (a.soft - b.soft) || a.name.localeCompare(b.name) || a.cp - b.cp);
     const sets = it => ({ N: new Set(it.map(x => x.name)), C: new Set(it.map(x => x.cp)), S: new Set(it.map(x => x.stars)), withStars: it.every(x => x.stars != null) });
     const matched = it => { const t = sets(it); return rows.filter(r => t.N.has(r.name) && t.C.has(r.cp) && (!t.withStars || t.S.has(r.stars))); };
     const textOf = it => {
@@ -14312,7 +14327,9 @@ class Component extends DCLogic {
     let remaining = items;
     while (remaining.length) {
       let cur = [];
+      const phase = remaining[0].soft;   // a batch is all junk or all normally-kept, so a batch can be judged at a glance
       for (let i = 0; i < remaining.length; i++) {
+        if (remaining[i].soft !== phase) continue;
         const trial = cur.concat(remaining[i]);
         if (textOf(trial).length <= MAX && clean(trial)) cur = trial;
       }
@@ -14326,7 +14343,8 @@ class Component extends DCLogic {
       }
       const members = matched(cur).map(r => candByIdx.get(r.idx).p);
       const have = new Set(members.map(p => p.idx));
-      batches.push({ text: textOf(cur), pokemon: members, n: members.length, names: members.map(p => p.name + ' ' + p.cp + ' CP'), rows: members.map(p => this.transferWhyRow(p, candByIdx.get(p.idx))) });
+      const softN = members.filter(p => isSoft(candByIdx.get(p.idx))).length;
+      batches.push({ text: textOf(cur), pokemon: members, n: members.length, softN, names: members.map(p => p.name + ' ' + p.cp + ' CP'), rows: members.map(p => this.transferWhyRow(p, candByIdx.get(p.idx))) });
       remaining = remaining.filter(x => !have.has(x.idx));
     }
     return { batches, manual, total: cand.length };
@@ -14385,7 +14403,7 @@ class Component extends DCLogic {
 
   // ---- In-game tags --------------------------------------------------------------------------------------------
   // The game can tag a whole search result, but it cannot search by PvP tier or rank. These groups are what the app knows
-  // (tier S/A, IV rank 90%+, CP inside the league's band, at most 2 copies of a species, 15 per tag), turned into search
+  // (tier S/A, IV rank 90%+, CP inside the league's band, one copy of a species, 15 per tag), turned into search
   // strings that select exactly them. Tags do not update themselves: what was last tagged is remembered, and the groups that
   // have drifted since are shown so only the difference needs tagging.
   tagDefs() {
@@ -14421,7 +14439,7 @@ class Component extends DCLogic {
       });
       rows.sort((x, y) => (x.tr - y.tr) || ((y.ok === true) - (x.ok === true)) || (y.rank - x.rank));
       const per = {}, members = [];
-      rows.forEach(r => { const k = r.p.dex + '_' + (r.p.form || '') + '_' + this.isShadow(r.p); per[k] = (per[k] || 0) + 1; if (per[k] <= 2 && members.length < 15) members.push(r.p); });
+      rows.forEach(r => { const k = r.p.dex + '_' + (r.p.form || '') + '_' + this.isShadow(r.p); per[k] = (per[k] || 0) + 1; if (per[k] <= 1 && members.length < 15) members.push(r.p); });
       return { ...d, members };
     });
     this._tagCache = { deps, groups };
@@ -14486,6 +14504,19 @@ class Component extends DCLogic {
 
   // The name to give the tag in the game: yours if you changed it, else a descriptive default. No spaces and a "PvP-" prefix,
   // so typing it in the game's search cannot also match a species or a game keyword (plain "Ultra" would clash with ultrabeast).
+  // A Pokemon in a tag group the app would give you today (including the Build groups) is not filler: it counts as a soft keep,
+  // so the Keep best line releases it only after the Pokemon with no such reason. The reason names the group.
+  tagKeepReason(p, c) {
+    if (!c.tagKeeps) {
+      const map = new Map();
+      try {
+        this.tagGroups().forEach(g => { const nm = this.tagNameOf(g.key); g.members.forEach(q => { const k = String(q.idx); if (!map.has(k)) map.set(k, g.kind === 'build' ? 'Worth building: in the ' + nm + ' group' : 'In the ' + nm + ' group'); }); });
+      } catch (e) { /* tag data unavailable: no tag reasons */ }
+      c.tagKeeps = map;
+    }
+    return c.tagKeeps.get(String(p.idx)) || null;
+  }
+
   tagNameOf(key) {
     const own = (this.state.tagNames || {})[key];
     if (own) return own;
@@ -14678,10 +14709,20 @@ class Component extends DCLogic {
       bulkSoftCount: softRows.length,
       bulkSoftText: softRows.length ? softRows.length + ' of these are normally kept. They are only here because you have more than your Keep best target of ' + target
         + '. Raise the target (More, Keep best) to keep them. Best of them: ' + softRows.slice(0, 6).map(c => c.p.name + ' ' + c.p.cp + ' CP (' + c.soft[0] + ')').join('; ') + (softRows.length > 6 ? '; and ' + (softRows.length - 6) + ' more' : '') + '.' : '',
+      ...(() => {
+        const all = this.transferCandidates(), soft = all.filter(c => c.soft && c.soft.length).length, junk = all.length - soft;
+        const overBy = Math.max(0, this.effectiveRosterForMatch().length - target);
+        const need = Math.max(0, overBy - junk);
+        return {
+          bulkSplitText: all.length ? junk + ' have no keep reason (junk). ' + soft + ' are normally kept and only here because you are over the Keep best target.' : '',
+          junkOnlyOn: !!this.state.transferJunkOnly, junkOnlyLabel: this.state.transferJunkOnly ? 'JUNK ONLY: ON' : 'JUNK ONLY: OFF', onJunkOnlyToggle: () => this.setState({ transferJunkOnly: !this.state.transferJunkOnly }),
+          bulkNeedMoreText: this.state.transferJunkOnly && need > 0 ? 'To reach your Keep best target of ' + target + ' you need ' + need + ' more slots than the junk gives. They would have to come from normally kept Pokemon: raise the target, or buy more storage.' : ''
+        };
+      })(),
       bulkTotal: r.total,
       bulkHasBatches: r.batches.length > 0,
       bulkBatches: r.batches.map((b, i) => ({
-        title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
+        title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, kindText: b.softN ? 'Includes ' + b.softN + ' normally kept' : 'Junk only: no keep reasons', kindColor: b.softN ? '#8a4b12' : '#1d6b5f', text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
         names: b.names.join(' \u00b7 '), whyRows: b.rows || [], copyLabel: copied === 'bulk' + i ? 'Copied' : 'Copy string',
         onCopy: () => this.copyText(b.text, 'bulk' + i), onDone: () => this.confirmBatchTransferred(b.pokemon)
       })),
