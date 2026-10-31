@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.234</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.236</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3137,6 +3137,26 @@
         <sc-if value="{{ chk.hasFix }}" hint-placeholder-val="{{ false }}">
           <div onClick="{{ chk.onFix }}" class="om-press" style="cursor:pointer;text-align:center;margin-bottom:12px;padding:11px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 12px var(--font-display)">{{ chk.fixLabel }}</div>
         </sc-if>
+        <sc-if value="{{ chk.isCostumeCheck }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+            <label class="om-press" style="cursor:pointer;align-self:flex-start;background:var(--ios-blue);color:#fff;font:700 12px var(--font-display);padding:10px 18px;border-radius:999px">
+              UPLOAD COSTUME SEARCH SCREENSHOTS
+              <input type="file" accept="image/*" multiple="multiple" onChange="{{ chk.onFiles }}" aria-label="Costume search screenshots" style="display:none" />
+            </label>
+            <sc-if value="{{ chk.msg }}" hint-placeholder-val="{{ false }}"><div style="font:12.5px var(--font-body);color:var(--ink-500)">{{ chk.msg }}</div></sc-if>
+            <sc-if value="{{ chk.error }}" hint-placeholder-val="{{ false }}"><div style="font:12.5px var(--font-body);color:var(--ios-red)">{{ chk.error }}</div></sc-if>
+            <sc-if value="{{ chk.hasPending }}" hint-placeholder-val="{{ false }}">
+              <div style="font:700 13px var(--font-body);color:var(--ink-900)">{{ chk.pendingLine }}</div>
+              <div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ chk.pendingNames }}</div>
+              <sc-if value="{{ chk.pendingUnmatched }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--type-electric)">{{ chk.pendingUnmatched }}</div></sc-if>
+              <sc-if value="{{ chk.pendingAmbiguous }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--type-electric)">{{ chk.pendingAmbiguous }}</div></sc-if>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <sc-if value="{{ chk.canApply }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ chk.onApply }}" class="om-press" style="min-height:44px;padding:0 20px;border-radius:999px;background:var(--ios-blue);color:#fff;font:700 13px var(--font-display)">{{ chk.applyLabel }}</button></sc-if>
+                <button type="button" onClick="{{ chk.onClear }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display)">DISCARD</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
         <sc-if value="{{ chk.empty }}" hint-placeholder-val="{{ false }}">
           <div style="padding:22px;text-align:center;border:1px dashed var(--line-300);border-radius:12px;font:14px var(--font-body);color:var(--ink-500)">Nothing to review here.</div>
         </sc-if>
@@ -3514,6 +3534,7 @@ class Component extends DCLogic {
     importSheetOpen: false,
     bulkTypePick: {},
     toolsMode: 'rename',
+    costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null,
     tagSnap: {},
     tagNames: {},
     leagueSel: null,
@@ -4966,6 +4987,85 @@ class Component extends DCLogic {
     return !!(rc && rc.ids && rc.ids.indexOf(idx) >= 0);
   }
 
+  // ---- Costume Pokemon ----------------------------------------------------------------------------------------
+  // The app cannot see which Pokemon wear a costume, but the game can: its `costume` search lists them. Screenshots of that
+  // list are read (name and CP per tile), matched to the roster by name and exact CP, and only marked after a confirmation.
+  // Nothing is protected or released because of it; the mark leads to the evolve check below.
+  costumeNorm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  // reads: [{name, cp, n}] (n = how many tiles of it were seen in one screenshot). Pure, so it can be tested.
+  costumeMatch(reads) {
+    const roster = this.effectiveRosterForMatch();
+    const byKey = new Map();
+    roster.forEach(p => { if (!Number.isFinite(p.cp)) return; const k = this.costumeNorm(p.name) + '|' + p.cp; (byKey.get(k) || byKey.set(k, []).get(k)).push(p); });
+    const matched = [], unmatched = [], ambiguous = [];
+    let already = 0;
+    reads.forEach(r => {
+      const all = byKey.get(this.costumeNorm(r.name) + '|' + r.cp) || [];
+      const fresh = all.filter(p => !p.costume);
+      already += Math.min(r.n, all.length - fresh.length);
+      const need = Math.max(0, r.n - (all.length - fresh.length));
+      if (!need) return;
+      if (!fresh.length) { unmatched.push(r.name + ' ' + r.cp); return; }
+      matched.push(...fresh.slice(0, need));
+      if (fresh.length > need) ambiguous.push(r.name + ' ' + r.cp + ': you own ' + fresh.length + ' with that CP and ' + need + ' showed as costume, so the first ' + need + ' were taken (they cannot be told apart by name and CP)');
+      if (need > fresh.length) unmatched.push((need - fresh.length) + ' × ' + r.name + ' ' + r.cp);
+    });
+    return { idxs: matched.map(p => p.idx), names: matched.map(p => p.name + ' ' + p.cp), unmatched, ambiguous, already, tiles: reads.reduce((a, r) => a + r.n, 0) };
+  }
+
+  async costumeFromShots(files) {
+    if (!files || !files.length) return;
+    this.setState({ costumeBusy: true, costumeError: '', costumeMsg: 'Reading screenshot 1 of ' + files.length + '…', costumePending: null });
+    const best = new Map();
+    try {
+      for (let i = 0; i < files.length; i++) {
+        this.setState({ costumeMsg: 'Reading screenshot ' + (i + 1) + ' of ' + files.length + '…' });
+        const data = await this.fileToVisionJpeg(files[i], 900);
+        const reply = await this.completeWithRetry({
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: 'This is a Pokemon GO collection list: a grid of tiles, each with the CP number above a picture and the name below. Read EVERY tile whose CP and name are both fully visible. Skip a tile cut off at the top or bottom edge. Ignore tag icons, stars and sparkles. Respond with ONLY a JSON array, no markdown fences: [{"name": string, "cp": number}].' },
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }
+          ] }],
+          max_tokens: 2000
+        });
+        const arr = this.extractJsonArray(reply) || [];
+        // Neighbouring screenshots overlap by a row, so a tile seen twice across screenshots counts once; twins inside ONE screenshot count twice.
+        const here = new Map();
+        arr.forEach(r => { const cp = Number(r && r.cp), name = String((r && r.name) || '').trim(); if (!name || !Number.isFinite(cp)) return; const k = name + '|' + cp; here.set(k, { name, cp, n: (here.get(k) ? here.get(k).n : 0) + 1 }); });
+        here.forEach((v, k) => { const cur = best.get(k); if (!cur || v.n > cur.n) best.set(k, v); });
+      }
+      const res = this.costumeMatch([...best.values()]);
+      this.setState({ costumeBusy: false, costumeMsg: '', costumePending: res });
+    } catch (e) {
+      this.setState({ costumeBusy: false, costumeMsg: '', costumeError: (e && e.message) || 'Could not read those screenshots.' });
+    }
+  }
+
+  costumeApply() {
+    const pend = this.state.costumePending;
+    if (!pend || !pend.idxs.length) return;
+    this.offerUndo(pend.idxs.length + ' marked as costume', ['ivOverrides']);
+    const overrides = { ...(this.state.ivOverrides || {}) };
+    pend.idxs.forEach(i => { overrides[i] = { ...(overrides[i] || {}), costume: true }; });
+    this.setState({ ivOverrides: overrides, costumePending: null }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); } catch (e) {} });
+  }
+
+  // Costume Pokemon of a species that evolves, whose Evolve button nobody has checked yet.
+  costumeEvolvePending() {
+    const skip = new Set(this.state.bulkSkip || []);
+    return this.effectiveRosterForMatch().filter(p => p.costume && !skip.has(p.idx) && p.noEvolve == null && p.canEvolve == null && (() => { const rec = this.evoRecordFor(p); return !!(rec && rec.to); })())
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)) || (b.cp || 0) - (a.cp || 0));
+  }
+
+  costumeEvolveSet(p, can) {
+    this.bulkAnimateOut('ce' + p.idx, () => {
+      this.offerUndo(p.name + (can ? ' has an Evolve button' : ' cannot evolve'), ['ivOverrides']);
+      const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], noEvolve: !can } };
+      this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); if (!can) this.recalculateAllRanks(); } catch (e) {} });
+    });
+  }
+
   // ---- Bulk update tab ---------------------------------------------------------------------
   // A home for "this fix needs a human look at many Pokemon" jobs. Each check lists the roster
   // rows it is unsure about, with the options to choose from; nothing is ever applied in bulk.
@@ -5076,7 +5176,7 @@ class Component extends DCLogic {
     const st = this.state, c = this._bulkBadge;
     if (c && c.r === st.roster && c.a === st.addedPokemon && c.o === st.ivOverrides && c.k === st.bulkSkip && c.m === !!this.mechanics) return c.v;
     let v = '';
-    try { const n = this.bulkFormPending().length + this.bulkTypePending().length + this.bulkNamePending().length; v = n > 0 ? String(n > 99 ? '99+' : n) : ''; } catch (e) {}
+    try { const n = this.bulkFormPending().length + this.bulkTypePending().length + this.bulkNamePending().length + this.costumeEvolvePending().length; v = n > 0 ? String(n > 99 ? '99+' : n) : ''; } catch (e) {}
     this._bulkBadge = { r: st.roster, a: st.addedPokemon, o: st.ivOverrides, k: st.bulkSkip, m: !!this.mechanics, v };
     return v;
   }
@@ -5137,6 +5237,20 @@ class Component extends DCLogic {
     });
     const typeTotal = this.bulkTypePending().length;
     const namePending = this.bulkNamePending();
+    const costumePend = this.state.costumePending;
+    const costEvo = this.costumeEvolvePending();
+    const costEvoRows = costEvo.slice(0, this.state.bulkVisible || 12).map(p => {
+      const rec = this.evoRecordFor(p), base = m.BASE_STATS[p.dex], ivs = this.ivsOf(p);
+      const opt = (key, label, types, onPick) => ({ key, label, aria: label + ': ' + p.name + ' ' + p.cp, types, stats: base ? base.join(' / ') : '', fit: '', fitColor: 'var(--ios-green)', tag: '', border: 'var(--line-200)', onPick });
+      return {
+        key: 'ce' + p.idx, name: p.name, cp: p.cp != null ? 'CP ' + p.cp : 'CP ?', hp: p.hp != null ? 'HP ' + p.hp : '',
+        ivText: ivs ? ivs.join(' / ') + (p.ivMeasured ? '' : ' (solved)') : 'IVs not known',
+        scanned: 'Costume Pokemon', current: 'Evolves into ' + rec.to,
+        spriteRef: this.makeSpriteRefByDex(p.dex, p.form), initial: String(p.name || '?').charAt(0),
+        onSkip: () => this.setState({ bulkSkip: [...(this.state.bulkSkip || []), p.idx] }),
+        options: [opt('yes', 'It has an Evolve button', 'can evolve into ' + rec.to, () => this.costumeEvolveSet(p, true)), opt('no', 'No Evolve button', 'cannot evolve: no evolution planned', () => this.costumeEvolveSet(p, false))]
+      };
+    });
     const nameRows = namePending.slice(0, 12).map(p => {
       const look = this.lookalikeOf(p);
       const fits = dex => { const b = m.BASE_STATS[dex]; if (!b || !p.cp || !p.hp || !m.solveIVs) return null; try { return m.solveIVs(b, p.cp, p.hp).length > 0; } catch (e) { return null; } };
@@ -5159,7 +5273,7 @@ class Component extends DCLogic {
         options: [row(look.real, look.dex, true), row(p.name, p.dex, false)]
       };
     });
-    return [{
+    const checks = [{
       key: 'form', title: 'REGIONAL FORM', count: pending.length, isFormCheck: true, isTypeCheck: false, typeRows: [],
       blurb: 'Same name, different form: Kantonian vs Alolan Ninetales have different types, base stats, moves and PvP/raid ranks. Pick the right form for each Pokemon. Compare the sprite, the types and whether the CP/HP fit.',
       empty: pending.length === 0, rows,
@@ -5173,12 +5287,33 @@ class Component extends DCLogic {
       more: typeTotal > typeRows.length, remaining: typeTotal - typeRows.length,
       showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
     }, {
+      key: 'costume', title: 'COSTUME POKEMON', count: costumePend ? costumePend.idxs.length : 0, isCostumeCheck: true, isFormCheck: false, isTypeCheck: false, typeRows: [], rows: [],
+      blurb: 'Costume Pokemon are the ones some events make unable to evolve. In the game, search `costume`, scroll the list and screenshot it (the Evolutionary line box can stay ticked). Upload those screenshots here: the app reads each tile\u2019s name and CP and matches them to your roster. Nothing is marked until you confirm. Marking changes nothing about keeping or transferring.',
+      empty: false, more: false, remaining: 0, showMore: () => {},
+      busy: !!this.state.costumeBusy, msg: this.state.costumeMsg || '', error: this.state.costumeError || '',
+      onFiles: e => { const files = Array.from((e && e.target && e.target.files) || []); if (e && e.target) e.target.value = ''; this.costumeFromShots(files); },
+      hasPending: !!costumePend,
+      pendingLine: costumePend ? 'Read ' + costumePend.tiles + ' tiles: ' + costumePend.idxs.length + ' matched to your roster' + (costumePend.already ? ', ' + costumePend.already + ' already marked' : '') + (costumePend.unmatched.length ? ', ' + costumePend.unmatched.length + ' not found' : '') + '.' : '',
+      pendingNames: costumePend ? costumePend.names.slice(0, 14).join(' \u00b7 ') + (costumePend.names.length > 14 ? ' \u00b7 and ' + (costumePend.names.length - 14) + ' more' : '') : '',
+      pendingUnmatched: costumePend && costumePend.unmatched.length ? 'Not found (renamed, traded away or misread): ' + costumePend.unmatched.slice(0, 8).join(', ') + (costumePend.unmatched.length > 8 ? ', \u2026' : '') : '',
+      pendingAmbiguous: costumePend && costumePend.ambiguous.length ? costumePend.ambiguous.slice(0, 3).join('. ') : '',
+      canApply: !!(costumePend && costumePend.idxs.length), applyLabel: 'MARK ' + (costumePend ? costumePend.idxs.length : 0) + ' AS COSTUME', onApply: () => this.costumeApply(),
+      onClear: () => this.setState({ costumePending: null })
+    }, {
+      key: 'costevo', title: 'COSTUME EVOLVE CHECK', count: costEvo.length, isFormCheck: false, isTypeCheck: false, typeRows: [],
+      blurb: 'A costume Pokemon of a species that evolves: open it in the game. If it shows an Evolve button, tap the first answer; if it has none, tap the second and the app stops planning an evolution (and stardust) for it. Costumes that can evolve are left alone.',
+      empty: costEvo.length === 0, rows: costEvoRows,
+      more: costEvo.length > costEvoRows.length, remaining: costEvo.length - costEvoRows.length,
+      showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
+    }, {
       key: 'name', title: 'NAME CHECK', count: namePending.length, isFormCheck: false, isTypeCheck: false, typeRows: [],
       blurb: 'An old extractor release rewrote some newer species to older look-alikes (Meltan became Metang, Cursola became Corsola, Wiglett became Diglett, Wugtrio became Dugtrio). These carry a name whose type or size does not fit. Pick the right species for each; the CP/HP check shows which species can really have that CP and HP. They stay locked from every transfer list until you answer.',
       empty: namePending.length === 0, rows: nameRows,
       more: namePending.length > nameRows.length, remaining: namePending.length - nameRows.length,
       showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
     }];
+    // Costume checks first: they are the short, one-off jobs; the regional form list can run to hundreds of rows.
+    return [checks[2], checks[3], checks[0], checks[1], checks[4]];
   }
 
   // Rows whose type is unknown: no scanned type of their own and nothing in the species table.
@@ -12667,7 +12802,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -16060,6 +16195,7 @@ class Component extends DCLogic {
       if (rosterFilter === 'pvp') return this.isPvpWorthy(p);
       if (rosterFilter === 'max') return this.isMaxCapable(p);
       if (rosterFilter === 'formCheck') return !p.formReviewed && !!(this.mechanics && this.mechanics.hasRegionalForms && p.dex != null && this.mechanics.hasRegionalForms(p.name, p.dex));
+      if (rosterFilter === 'costume') return !!p.costume;
       if (rosterFilter === 'noType') return !this.typeOf(p);
       if (rosterFilter === 'sizeXx') { const t = this.sizeTagOf(p); return t === 'XXL' || t === 'XXS'; }
       if (rosterFilter === 'sizeX') { const t = this.sizeTagOf(p); return t === 'XL' || t === 'XS'; }
@@ -17474,6 +17610,7 @@ class Component extends DCLogic {
         { key: 'max', label: 'MAX' },
         { key: 'sizeXx', label: 'XXL / XXS' },
         { key: 'formCheck', label: 'FORM TO CHECK' },
+        ...(roster.some(p => p.costume) ? [{ key: 'costume', label: 'COSTUME' }] : []),
         { key: 'noType', label: 'NO TYPE' },
         { key: 'sizeX', label: 'XL / XS' },
         { key: 'shadow', label: 'SHADOW / PURIFIED' },
