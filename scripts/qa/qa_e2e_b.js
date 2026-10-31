@@ -959,6 +959,9 @@ module.exports = async function suiteB() {
     const vals = await s.page.evaluate(() => { const l = window.__qaL; const v = l.tagsVals(); const gs = v.tagGroupsList.find(x => x.key === 'GL-S'); return { text: gs.addBatches.map(b => b.text + ' [' + b.expect + ']'), status: gs.status }; });
     expect(vals.text.length === 1 && /altaria,azumarill & cp1420,cp1450/.test(vals.text[0]) && /show 2 Pokemon/.test(vals.text[0]), 'one string that selects exactly the two: ' + JSON.stringify(vals));
     expect(/Not tagged yet/.test(vals.status), 'not tagged yet: ' + vals.status);
+    const nm = await s.page.evaluate(() => { const l = window.__qaL; const g = () => l.tagsVals().tagGroupsList.find(x => x.key === 'GL-S'); const first = g().tagName; l.setTagName('GL-S', 'My Best Great'); const second = g().tagName; l.setTagName('GL-S', ''); return { first, second, back: g().tagName, season: l.tagNameOf('SEASON'), build: l.tagNameOf('UL-BUILD') }; });
+    await s.page.waitForTimeout(200);
+    expect(nm.first === 'PvP-Great-S' && nm.second === 'My-Best-Great' && nm.back === 'PvP-Great-S' && nm.season === 'PvP-Season' && nm.build === 'PvP-Ultra-Build', 'tag names: ' + JSON.stringify(nm));
     expect((await s.call('tagsPendingCount')) === 0, 'no notice for a group never tagged');
     await s.page.evaluate(() => { const l = window.__qaL; l.tagDone(l.tagGroups().find(x => x.key === 'GL-S')); });
     await s.page.waitForTimeout(300);
