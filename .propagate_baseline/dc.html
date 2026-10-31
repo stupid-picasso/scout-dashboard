@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.232</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.233</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -3246,6 +3246,11 @@
             <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font:800 15px var(--font-display)">{{ tg.title }}</div><div style="font:700 11px var(--font-display);color:#5b7d84">{{ tg.count }}</div></div>
             <div style="font:700 12.5px var(--font-body);color:{{ tg.statusColor }};margin-top:4px">{{ tg.status }}</div>
             <div style="font:12px/1.45 var(--font-body);color:#5b7d84;margin-top:4px">{{ tg.members }}</div>
+            <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:12px 0 6px">TAG NAME <span style="font-weight:600;letter-spacing:0">{{ tg.tagNameCount }}</span></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input value="{{ tg.tagName }}" onInput="{{ tg.onNameChange }}" aria-label="Tag name for {{ tg.key }}" autocapitalize="off" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;box-sizing:border-box;padding:10px 12px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:600 15px var(--font-display)" />
+              <button type="button" onClick="{{ tg.onNameCopy }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body);white-space:nowrap">{{ tg.nameCopyLabel }}</button>
+            </div>
             <sc-if value="{{ tg.hasAdd }}" hint-placeholder-val="{{ false }}">
               <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:12px 0 6px">{{ tg.addTitle }}</div>
               <sc-for list="{{ tg.addBatches }}" as="b" hint-placeholder-count="1">
@@ -3503,6 +3508,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     tagSnap: {},
+    tagNames: {},
     leagueSel: null,
     refreshRun: null,
     briefing: null,
@@ -3706,6 +3712,7 @@ class Component extends DCLogic {
     try { this.installCountUp(); } catch (e) { console.error(e); }
     try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
     try { const ts = JSON.parse(localStorage.getItem('scout.tags.v1') || 'null'); if (ts && typeof ts === 'object') this.setState({ tagSnap: ts }); } catch (e) {}
+    try { const tn = JSON.parse(localStorage.getItem('scout.tagnames.v1') || 'null'); if (tn && typeof tn === 'object') this.setState({ tagNames: tn }); } catch (e) {}
     try { const pr = JSON.parse(localStorage.getItem('scout.protect.v1') || 'null'); if (pr) this.setState({ appFavourited: Array.isArray(pr.appFavourited) ? pr.appFavourited : [], selfProtect: !!pr.selfProtect, negationOk: !!pr.negationOk }); } catch (e) {}
     try { const b = JSON.parse(localStorage.getItem('scout.briefing.v1') || 'null'); if (b && b.date && Array.isArray(b.bullets)) this.setState({ briefing: b }); } catch (e) {}
     try { if (localStorage.getItem('scout.briefingSearch') === '1') this.setState({ briefingSearch: true }); } catch (e) {}
@@ -13133,6 +13140,23 @@ class Component extends DCLogic {
     try { return this.tagGroups().filter(g => this.state.tagSnap[g.key] && this.tagStatus(g).stale).length; } catch (e) { return 0; }
   }
 
+  // The name to give the tag in the game: yours if you changed it, else a descriptive default. No spaces and a "PvP-" prefix,
+  // so typing it in the game's search cannot also match a species or a game keyword (plain "Ultra" would clash with ultrabeast).
+  tagNameOf(key) {
+    const own = (this.state.tagNames || {})[key];
+    if (own) return own;
+    const m = /^(GL|UL|LC|ML)-(S|A|BUILD)$/.exec(key);
+    if (m) return 'PvP-' + { GL: 'Great', UL: 'Ultra', LC: 'Little', ML: 'Master' }[m[1]] + '-' + (m[2] === 'BUILD' ? 'Build' : m[2]);
+    return key === 'SEASON' ? 'PvP-Season' : 'PvP-' + key;
+  }
+
+  setTagName(key, value) {
+    const v = String(value || '').replace(/\s+/g, '-').slice(0, 30);
+    const next = { ...(this.state.tagNames || {}), [key]: v };
+    if (!v) delete next[key];
+    this.setState({ tagNames: next }, () => { try { localStorage.setItem('scout.tagnames.v1', JSON.stringify(next)); } catch (e) {} });
+  }
+
   tagDone(g) {
     this.haptic('light');
     const next = { ...(this.state.tagSnap || {}), [g.key]: g.members.map(p => String(p.idx)) };
@@ -13154,7 +13178,10 @@ class Component extends DCLogic {
         copyLabel: copied === 'tag' + g.key + kind + i ? 'Copied' : 'Copy string', onCopy: () => this.copyText(b.text, 'tag' + g.key + kind + i) });
       const upToDate = !st.fresh && !st.stale;
       return {
-        key: g.key, title: g.key + ' · ' + g.title, count: g.members.length + ' Pokemon',
+        key: g.key, title: this.tagNameOf(g.key) + ' · ' + g.title, count: g.members.length + ' Pokemon',
+        tagName: this.tagNameOf(g.key), tagNameCount: this.tagNameOf(g.key).length + ' characters',
+        onNameChange: e => this.setTagName(g.key, e.target.value),
+        nameCopyLabel: copied === 'tagname' + g.key ? 'Copied' : 'Copy name', onNameCopy: () => this.copyText(this.tagNameOf(g.key), 'tagname' + g.key),
         status: g.members.length === 0 && st.fresh ? 'Nothing qualifies yet' : st.fresh ? 'Not tagged yet: tag all ' + g.members.length : st.stale ? 'Needs updating: add ' + st.added.length + ', remove ' + st.removed.length : 'Up to date',
         statusColor: st.stale ? '#b5651d' : upToDate ? '#1b6e66' : '#5b7d84',
         members: g.members.map(p => p.name + ' ' + p.cp).join(' · '),
