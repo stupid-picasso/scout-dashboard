@@ -492,3 +492,6 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 ## Tags protect; junk first; JUNK ONLY (v53.241)
 - `tagKeepReason(p, ctx)`: a Pokemon in a current tag group (`tagGroups`, incl. GL-BUILD/UL-BUILD) gets a soft keep ("Worth building: in the PvP-Great-Build group" / "In the PvP-Great-S group") and +3000 score. Tag groups now hold one copy per species (matches "one best copy per league").
 - Transfer batches: `buildTransferBatches` orders junk (no soft reason) before normally-kept candidates and never mixes them in one batch; each batch says "Junk only" or "Includes N normally kept". `state.transferJunkOnly` (JUNK ONLY toggle) leaves soft candidates out of every string; the screen says how many slots the junk cannot cover. Tests: TAGKEEP-01, ORDER-01.
+
+## Release reason distance (v53.242)
+- The "Normally kept ..., released only because you are N over your Keep best target" reason now ends with "(K places below the line)", counted among the releasable Pokemon (K = 1 is the first one past the line); BORDERLINE flags K <= 25. The old "score rank R of M" counted locked and unmeasured Pokemon too, so it understated the distance (a Cubone showed 21 below the line when it was far further). Test: SCORE-01.

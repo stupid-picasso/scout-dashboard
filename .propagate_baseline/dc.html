@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.241</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.242</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -13134,10 +13134,10 @@ class Component extends DCLogic {
       const sum = this.cutSafeSummary(roster, overBy), n = sum.show.length;
       sum.show.forEach((r, i) => {
         const soft = this.keepFull(r.p, ctx).soft;
-        const pos = roster.length - sum.rows.indexOf(r);
-        const near = soft.length && i >= n - 25;
+        const fromLine = n - i;   // 1 = the first Pokemon past the line; counted among the releasable ones, not the locked ones
+        const near = soft.length && fromLine <= 25;
         add(r.p, soft.length
-          ? 'Normally kept (' + soft.slice(0, 2).join('; ') + '), released only because you are ' + overBy + ' over your Keep best target of ' + target + ' (score rank ' + pos + ' of ' + roster.length + ')' + (near ? ' \u00b7 BORDERLINE, just under the line: favourite it or raise the target to keep it' : '')
+          ? 'Normally kept (' + soft.slice(0, 2).join('; ') + '), released only because you are ' + overBy + ' over your Keep best target of ' + target + ' (' + fromLine + (fromLine === 1 ? ' place' : ' places') + ' below the line)' + (near ? ' \u00b7 BORDERLINE, just under the line: favourite it or raise the target to keep it' : '')
           : 'Bottom of your Keep best list');
       });
     }
