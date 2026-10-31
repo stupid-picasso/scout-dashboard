@@ -611,7 +611,7 @@ module.exports = async function suiteB() {
     const roster = [mk('s1', 'Nidoran', 29, [14, 14, 14], 300), mk('s2', 'Zubat', 41, [14, 15, 13], 310), mk('s3', 'Oddish', 43, [13, 14, 14], 320), mk('w1', 'Pidgey', 16, [2, 3, 2], 120), mk('w2', 'Rattata', 19, [1, 2, 1], 100)];
     await s.set({ addedPokemon: [...(st0.addedPokemon || []), ...roster], cutTarget: 100000 }); await s.page.waitForTimeout(300);
     const baseTotal = (await s.call('effectiveRosterForMatch')).length;
-    await s.set({ cutTarget: baseTotal - 4 }); await s.page.waitForTimeout(400);
+    await s.set({ cutTarget: Math.max(3, baseTotal - 40) }); await s.page.waitForTimeout(400);   // deep enough that soft keeps are reached whatever their score
     const v = await s.call('bulkStringVals');
     expect(v.bulkSoftCount >= 1 && /only here because you have more than your Keep best target/.test(v.bulkSoftText), 'soft-kept Pokemon are called out: ' + v.bulkSoftCount + ' ' + v.bulkSoftText.slice(0, 120));
     await s.set({ cutTarget: 100000 }); await s.page.waitForTimeout(300);
@@ -1026,6 +1026,17 @@ module.exports = async function suiteB() {
     expect(blocked.length === 1 && (await s.call('costumeEvolvePending')).length === 1, 'one Piplup is marked unable to evolve, the other still waits: ' + JSON.stringify(blocked));
     await s.page.unroute('**/generativelanguage.googleapis.com/**');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, geminiKey: '', geminiKeys: [], bulkSkip: [], tab: 'home' });
+  });
+  await T('SCORE-01', 'Safety', 'A near-hundo Mega-capable Pokemon over every league cap scores above a mid-IV league copy, and the release reason shows the score rank', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 120, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 25, lvlMax: 25, ivMeasured: true, quickMove: 'Confusion', chargeMove: 'Synchronoise', great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...extra });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('sc1', 'Gardevoir', 282, [14, 15, 15], 2729), mk('sc2', 'Foongus', 590, [14, 12, 11], 676, { quickMove: 'Astonish', chargeMove: 'Sludge Bomb' }), mk('sc3', 'Azumarill', 184, [3, 14, 14], 1400), mk('sc4', 'Pidgey', 16, [10, 10, 10], 300)], roster: [], ivOverrides: {}, appFavourited: [], cutTarget: 2, cutTargetDraft: '2', selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const rows = l.cutScoreRows(ros); const sc = id => rows.find(x => x.p.idx === id).score; const why = l.transferCandidates().map(c => [c.p.idx, c.why]); return { g: Math.round(sc('sc1')), f: Math.round(sc('sc2')), a: Math.round(sc('sc3')), why }; } } return null; });
+    expect(r.g > r.f, 'Gardevoir 14/15/15 outscores a 82% Foongus: ' + JSON.stringify({ g: r.g, f: r.f }));
+    expect(!r.why.some(x => x[0] === 'sc1'), 'Gardevoir is not offered for release while weaker ones are: ' + JSON.stringify(r.why.map(x => x[0])));
+    expect(r.why.some(x => /score rank \d+ of 4/.test(x[1])), 'a released soft keep shows its score rank: ' + JSON.stringify(r.why));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: 300, cutTargetDraft: '300' });
   });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });

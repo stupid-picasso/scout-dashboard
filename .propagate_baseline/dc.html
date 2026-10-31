@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.236</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.237</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -6170,7 +6170,13 @@ class Component extends DCLogic {
       const onlyCopy = copies === 1;
       const movesetComplete = !this.movesetDataNote(p);
       const sizeKeep = this.sizeProtected(p);
-      const score = (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0) + (sizeKeep ? 100000 : 0)
+      // A near-hundo (44/45 or better) is nearly as good as a 4-star and goes last among the soft keeps; a Mega-capable
+      // Pokemon with good IVs is worth the Mega; and a Pokemon already over every league cap can never earn the rank
+      // points a capped copy gets, so its IV stands in for them (a 14/15/15 Gardevoir at 2729 CP is a keeper, not filler).
+      const nearHundo = iv >= 97 ? 4000 : 0;
+      const megaWorth = iv >= 80 && this.megaTagFor(p) ? 1500 : 0;
+      const overCapIv = rank < 1 && iv >= 80 ? iv * 15 : 0;
+      const score = nearHundo + megaWorth + overCapIv + (p.lucky ? 100000 : 0) + (p.favorite ? 100000 : 0) + (p.shiny ? 100000 : 0) + (sizeKeep ? 100000 : 0)
         + (this.isPurified(p) ? 10000 : 0) + (p.atkIV === 0 && p.defIV === 0 && p.staIV === 0 && !this.needsAppraisal(p) ? 100000 : 0)
         + (shadow && iv >= 80 ? 1500 : 0) + this.leagueBestFor(p, ctx).length * 1500 + (iv >= 90 ? 1500 : 0)
         + (onlyCopy ? 300 : 0) + (cls ? 4000 + (pos <= 2 ? 3000 : 0) : 0)
@@ -6193,7 +6199,7 @@ class Component extends DCLogic {
     if (this._cutSum && this._cutSum.roster === roster && this._cutSum.overBy === overBy && this.sameDeps(this._cutSum.deps, deps)) return this._cutSum;
     const rows = this.cutScoreRows(roster);
     const safe = rows.filter(r => !r.keep.length);
-    this._cutSum = { roster, deps, overBy, safe, protectedCount: rows.length - safe.length, show: safe.slice(0, overBy) };
+    this._cutSum = { roster, deps, overBy, rows, safe, protectedCount: rows.length - safe.length, show: safe.slice(0, overBy) };
     return this._cutSum;
   }
 
@@ -13084,9 +13090,10 @@ class Component extends DCLogic {
       const sum = this.cutSafeSummary(roster, overBy), n = sum.show.length;
       sum.show.forEach((r, i) => {
         const soft = this.keepFull(r.p, ctx).soft;
+        const pos = roster.length - sum.rows.indexOf(r);
         const near = soft.length && i >= n - 25;
         add(r.p, soft.length
-          ? 'Normally kept (' + soft.slice(0, 2).join('; ') + '), released only because you are ' + overBy + ' over your Keep best target of ' + target + (near ? ' \u00b7 BORDERLINE, just under the line: favourite it or raise the target to keep it' : '')
+          ? 'Normally kept (' + soft.slice(0, 2).join('; ') + '), released only because you are ' + overBy + ' over your Keep best target of ' + target + ' (score rank ' + pos + ' of ' + roster.length + ')' + (near ? ' \u00b7 BORDERLINE, just under the line: favourite it or raise the target to keep it' : '')
           : 'Bottom of your Keep best list');
       });
     }
