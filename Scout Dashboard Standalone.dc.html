@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.237</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.239</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4356,6 +4356,9 @@
         <div style="font:800 18px var(--font-display);text-align:center">Transfer strings</div>
         <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go. None has a hard lock (shiny, lucky, favourite, XXL/XXS, legendary, purified, nondo, unmeasured IVs). Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
         <div style="font:12px/1.4 var(--font-body);text-align:center;color:#7a979c;margin-top:6px">{{ bulkFreshLine }}</div>
+        <sc-if value="{{ bulkHoldLine }}" hint-placeholder-val="{{ false }}">
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#17353b;background:#e6f4f4;border-radius:10px;padding:10px 12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>{{ bulkHoldLine }}</span><button type="button" onClick="{{ onBulkHoldClear }}" class="om-press" style="flex-shrink:0;min-height:36px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 12px var(--font-body)">BRING BACK</button></div>
+        </sc-if>
         <sc-if value="{{ bulkStorageText }}" hint-placeholder-val="{{ false }}">
           <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:{{ bulkStorageColor }};background:{{ bulkStorageBg }};border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkStorageText }}</div>
         </sc-if>
@@ -4382,6 +4385,7 @@
                   <div style="font-weight:700">{{ w.label }}</div>
                   <div style="color:#5b7d84">{{ w.detail }}</div>
                   <div style="color:#8a4b12">{{ w.why }}</div>
+                  <button type="button" onClick="{{ w.onHold }}" class="om-press" style="margin-top:6px;min-height:36px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 12px var(--font-body)">KEEP FOR NOW</button>
                 </div>
               </sc-for>
             </div>
@@ -4561,6 +4565,7 @@ class Component extends DCLogic {
     importSheetOpen: false,
     bulkTypePick: {},
     toolsMode: 'rename',
+    transferHold: [],
     costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null,
     tagSnap: {},
     tagNames: {},
@@ -5884,11 +5889,34 @@ class Component extends DCLogic {
 
   // Protected from every transfer suggestion: the extremes always (XXL, XXS), and XL / XS when the
   // setting says so. Showcases at Pokestops reward size, so these are never "safe to transfer".
-  sizeProtected(p) {
+  // Only the best copy per species keeps the lock: of five XXL Pikachu, the one with the best IVs (ties: higher CP) is the
+  // showcase pick and the other four are ordinary Pokemon. A normal and a shadow copy, and each size tag, count separately.
+  sizeProtected(p, ctxIn) {
     const mode = this.state.protectSizes || 'extreme';
     if (mode === 'off') return false;
     const t = this.sizeTagOf(p);
-    return mode === 'all' ? !!t : (t === 'XXL' || t === 'XXS');
+    if (!t) return false;
+    if (mode !== 'all' && t !== 'XXL' && t !== 'XXS') return false;
+    const best = this.sizeBestIdx(p, ctxIn);
+    return best === undefined || best === String(p.idx);   // a Pokemon not in the roster has no rival
+  }
+
+  sizeBestIdx(p, ctxIn) {
+    const c = ctxIn || this.keepContext(this.effectiveRosterForMatch());
+    if (!c.sizeBest) {
+      const best = new Map(), score = new Map();
+      c.roster.forEach(q => {
+        const tag = this.sizeTagOf(q);
+        if (!tag) return;
+        const k = (q.dex != null ? q.dex : String(q.name || '').toLowerCase()) + '_' + (q.form || '') + '_' + (this.isShadow(q) ? 's' : 'n') + '_' + tag;
+        const sc = [Number.isFinite(q.ivAvg) ? q.ivAvg : -1, Number.isFinite(q.cp) ? q.cp : -1];
+        const cur = score.get(k);
+        if (!cur || sc[0] > cur[0] || (sc[0] === cur[0] && sc[1] > cur[1])) { score.set(k, sc); best.set(k, String(q.idx)); }
+      });
+      c.sizeBest = best;
+    }
+    const tag = this.sizeTagOf(p);
+    return c.sizeBest.get((p.dex != null ? p.dex : String(p.name || '').toLowerCase()) + '_' + (p.form || '') + '_' + (this.isShadow(p) ? 's' : 'n') + '_' + tag);
   }
 
   // With the lock on, a number typed by hand under CANDY is kept: a later scan that reads a different
@@ -7082,7 +7110,7 @@ class Component extends DCLogic {
     if (p.shiny) out.push('Shiny');
     const isShadowP = this.isShadow(p);
     if (this.isPurified(p)) out.push('Purified');
-    if (this.sizeProtected(p)) out.push(this.sizeTagOf(p) + ' size (showcases)');
+    if (this.sizeProtected(p, c)) out.push(this.sizeTagOf(p) + ' size (showcases)');
     const g = c.groups[p.dex + '_' + (p.form || '')] || [p];
     const pos = Math.max(1, g.findIndex(q => q.idx === p.idx) + 1);
     const cls = m && m.speciesClassFor ? m.speciesClassFor(p.dex) : '';
@@ -7197,7 +7225,7 @@ class Component extends DCLogic {
       if (raidShare != null) raidBonus = 2000 * Math.min(1, raidShare) * Math.min(1, raidShare) + (raidRole ? 1500 : 0);
       const onlyCopy = copies === 1;
       const movesetComplete = !this.movesetDataNote(p);
-      const sizeKeep = this.sizeProtected(p);
+      const sizeKeep = this.sizeProtected(p, ctx);
       // A near-hundo (44/45 or better) is nearly as good as a 4-star and goes last among the soft keeps; a Mega-capable
       // Pokemon with good IVs is worth the Mega; and a Pokemon already over every league cap can never earn the rank
       // points a capped copy gets, so its IV stands in for them (a 14/15/15 Gardevoir at 2729 CP is a keeper, not filler).
@@ -8743,6 +8771,7 @@ class Component extends DCLogic {
   async refreshEverything() {
     if (this._refreshing) return;
     this._refreshing = true;
+    this.setState({ transferHold: [] });   // Pokemon left out of the transfer strings "for now" are judged again
     const defs = [['snapshot', 'Note where everything stands'], ['update', 'Check for a newer app version'], ['feed', 'Reload events and GBL feed'],
       ['evo', 'Fill in missing evolution data'], ['moves', 'Fill in missing move data'], ['ranks', 'Recalculate every league rank'],
       ['keep', 'Re-run the keep check and transfer lists'], ['squads', 'Rebuild PvP squads'], ['brief', 'Update today\u2019s briefing']];
@@ -14219,7 +14248,8 @@ class Component extends DCLogic {
     const out = new Map();
     // `soft` is non-empty only for a Pokemon released by the floating keep line: it has good-Pokemon reasons (IV, league copy,
     // raid role...) but the roster is over the Keep best target. The screen says so instead of calling it "unprotected".
-    const add = (p, why) => { if (p && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft }); };
+    const held = new Set(this.state.transferHold || []);
+    const add = (p, why) => { if (p && !held.has(String(p.idx)) && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft }); };
     if (overBy) {
       // Rows run lowest score first, so the last few shown sit right at the line: those are the ones worth a second look.
       const sum = this.cutSafeSummary(roster, overBy), n = sum.show.length;
@@ -14300,6 +14330,15 @@ class Component extends DCLogic {
 
   // One line per listed Pokemon: what it is and why the app lets it go, so a Pokemon that looks good can be checked before
   // anything is transferred. Spread, stars, league ranks and the reason from the list that picked it.
+  // "Keep for now": a Pokemon the trainer wants left out of the strings this time. Held in memory only (state, never saved),
+  // so reloading the app or running Refresh everything brings it back, and it is judged again on its IVs.
+  holdTransfer(p) {
+    this.offerUndo(p.name + ' ' + p.cp + ' CP left out for now', ['transferHold']);
+    this.setState({ transferHold: [...(this.state.transferHold || []), String(p.idx)] });
+  }
+
+  releaseHolds() { this.setState({ transferHold: [] }); }
+
   transferWhyRow(p, cand) {
     const ivs = this.ivsOf(p);
     const rk = k => (p[k] && Number.isFinite(p[k].rankPct) && this.leagueUsable(p, k) ? Math.round(p[k].rankPct) + '%' : null);
@@ -14308,7 +14347,8 @@ class Component extends DCLogic {
     return {
       label: p.name + ' ' + p.cp + ' CP',
       detail: (ivs ? 'IV ' + ivs.join('/') + ' (' + Math.round(ivs.reduce((a, b) => a + b, 0) / 45 * 100) + '%)' : 'IVs unknown') + (st != null ? ' \u00b7 ' + st + '\u2605' : '') + (ranks ? ' \u00b7 league rank ' + ranks : ''),
-      why: cand && cand.why ? cand.why : ''
+      why: cand && cand.why ? cand.why : '',
+      onHold: () => this.holdTransfer(p)
     };
   }
 
@@ -14334,8 +14374,9 @@ class Component extends DCLogic {
   keeperCandidates() {
     const roster = this.effectiveRosterForMatch(), ctx = this.keepContext(roster), m = this.mechanics;
     const real = /^(IV \d|Best |Rising: |Upcoming cup: |Master League tier|Shadow with good IVs|Raid attacker role)/;
-    const covered = p => p.shiny || p.lucky || this.isPurified(p) || /^(XXL|XXS)$/.test(this.sizeTagOf(p)) || (m && m.speciesClassFor && m.speciesClassFor(p.dex)) || this.starsOf(p) === 4;
-    return roster.filter(p => !p.favorite && !covered(p) && !this.needsAppraisal(p) && this.keepReasons(p, ctx).some(x => real.test(x)));
+    // XXL/XXS are not in the protect string any more (that would favourite all of them): only each species' best one is, here.
+    const covered = p => p.shiny || p.lucky || this.isPurified(p) || (m && m.speciesClassFor && m.speciesClassFor(p.dex)) || this.starsOf(p) === 4;
+    return roster.filter(p => !p.favorite && !covered(p) && (this.sizeProtected(p, ctx) || (!this.needsAppraisal(p) && this.keepReasons(p, ctx).some(x => real.test(x)))));
   }
 
   // ---- In-game tags --------------------------------------------------------------------------------------------
@@ -14542,7 +14583,7 @@ class Component extends DCLogic {
   // are covered by the keeper strings. Coverage = how many of these the game does not yet show as favourited.
   protectCoverage() {
     const m = this.mechanics;
-    const covered = p => p.shiny || p.lucky || this.isPurified(p) || /^(XXL|XXS)$/.test(this.sizeTagOf(p)) || (m && m.speciesClassFor && m.speciesClassFor(p.dex)) || this.starsOf(p) === 4;
+    const covered = p => p.shiny || p.lucky || this.isPurified(p) || (m && m.speciesClassFor && m.speciesClassFor(p.dex)) || this.starsOf(p) === 4;
     const rows = this.effectiveRosterForMatch().filter(covered);
     const missing = rows.filter(p => !p.favorite);
     return { total: rows.length, missing: missing.length, sample: missing.slice(0, 5).map(p => p.name + ' ' + p.cp + ' CP') };
@@ -14586,7 +14627,7 @@ class Component extends DCLogic {
     const fresh = this.transferFreshness();
     const r = fresh.gated ? { batches: [], manual: [], total: 0 } : this.buildTransferBatches();
     const copied = this.state.copiedKey;
-    const protectText = 'shiny,lucky,purified,xxl,xxs,legendary,mythical,4*';
+    const protectText = 'shiny,lucky,purified,legendary,mythical,4*';
     const cov = this.protectCoverage();
     const kb = this.buildKeeperBatches();
     // One-time check that the game's NOT operator works on this account: `xxl,xxs & !xxl` must show exactly the XXS Pokemon.
@@ -14602,10 +14643,13 @@ class Component extends DCLogic {
       ...(() => { const w = this.storageWarning(); const bad = w.level === 'full' || w.level === 'blocked'; return { bulkStorageText: w.text, bulkStorageColor: bad ? '#8f1d1d' : '#8a4b12', bulkStorageBg: bad ? '#fde8e8' : '#fff4e5' }; })(),
       bulkGateText: fresh.gated ? 'Your roster was last imported ' + fresh.newest + ' day' + (fresh.newest === 1 ? '' : 's') + ' ago. Anything you caught, favourited, traded or evolved since is not in the app. Import again first, or confirm that nothing has changed.' : '',
       onBulkFresh: () => this.ackTransferFresh(),
+      bulkHoldCount: (this.state.transferHold || []).length,
+      bulkHoldLine: (this.state.transferHold || []).length ? (this.state.transferHold || []).length + ' Pokemon left out for now. They come back when you reload the app or run Refresh everything.' : '',
+      onBulkHoldClear: () => this.releaseHolds(),
       bulkFreshLine: fresh.newest != null ? 'Last import: ' + (fresh.newest === 0 ? 'today' : fresh.newest + ' day' + (fresh.newest === 1 ? '' : 's') + ' ago') + (fresh.oldestCand != null ? '. Oldest scan on this list: ' + fresh.oldestCand + ' days.' : '.') : '',
       bulkCoverageText: cov.total ? (cov.missing
-        ? cov.missing + ' of your ' + cov.total + ' shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are not favourited in the game yet (' + cov.sample.join(', ') + (cov.missing > 5 ? ', \u2026' : '') + '). Run the protect string below, then import again.'
-        : 'All ' + cov.total + ' of your shiny, lucky, purified, XXL/XXS, legendary, mythical and 4-star Pokemon are favourited in the game, so it will ask before transferring them.') : '',
+        ? cov.missing + ' of your ' + cov.total + ' shiny, lucky, purified, legendary, mythical and 4-star Pokemon are not favourited in the game yet (' + cov.sample.join(', ') + (cov.missing > 5 ? ', \u2026' : '') + '). Run the protect string below, then import again.'
+        : 'All ' + cov.total + ' of your shiny, lucky, purified, legendary, mythical and 4-star Pokemon are favourited in the game, so it will ask before transferring them.') : '',
       negationOk: !!this.state.negationOk,
       negationNotOk: !this.state.negationOk,
       negationTestText: testText,

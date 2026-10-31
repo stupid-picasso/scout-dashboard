@@ -1038,6 +1038,39 @@ module.exports = async function suiteB() {
     expect(r.why.some(x => /score rank \d+ of 4/.test(x[1])), 'a released soft keep shows its score rank: ' + JSON.stringify(r.why));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('SIZE-01', 'Safety', 'Only the best-IV XXL (and XXS) per species keeps the size lock; the other copies are ordinary Pokemon', async () => {
+    const mk = (idx, name, dex, iv, cp, size) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, sizeClass: size, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('sz1', 'Pikachu', 25, [8, 8, 8], 500, 'XXL'), mk('sz2', 'Pikachu', 25, [15, 14, 14], 480, 'XXL'), mk('sz3', 'Pikachu', 25, [3, 3, 3], 400, 'XXL'), mk('sz4', 'Pikachu', 25, [2, 2, 2], 300, 'XXS'), mk('sz5', 'Pikachu', 25, [9, 9, 9], 320, 'XXS'), mk('sz6', 'Eevee', 133, [1, 1, 1], 200, 'XXL')], roster: [], ivOverrides: {}, protectSizes: 'extreme', appFavourited: [] });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const out = {}; ros.forEach(p => { out[p.idx] = l.sizeProtected(p); }); const reasons = l.keepReasons(ros.find(p => p.idx === 'sz3')); const protect = l.bulkStringVals().bulkProtectText; return { out, reasons, protect, keepers: l.keeperCandidates().map(p => p.idx) }; } } return null; });
+    expect(r.out.sz2 === true && r.out.sz1 === false && r.out.sz3 === false, 'XXL: only the best IV copy is locked: ' + JSON.stringify(r.out));
+    expect(r.out.sz5 === true && r.out.sz4 === false, 'XXS: only the best IV copy is locked');
+    expect(r.out.sz6 === true, 'a lone XXL of another species is locked');
+    expect(!r.reasons.some(x => /size/.test(x)), 'a spare XXL carries no size reason: ' + JSON.stringify(r.reasons));
+    expect(!/xxl|xxs/i.test(r.protect), 'the in-game protect string no longer favourites every XXL/XXS: ' + r.protect);
+    expect(['sz2', 'sz5', 'sz6'].every(i => r.keepers.indexOf(i) >= 0), 'the best ones are offered for favouriting: ' + JSON.stringify(r.keepers));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {} });
+  });
+  await T('HOLD-01', 'Safety', 'KEEP FOR NOW leaves a Pokemon out of the transfer strings until the holds are cleared, and Refresh everything clears them', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('hd0', 'Snorlax', 143, [15, 15, 15], 3000), mk('hd1', 'Fearow', 22, [1, 2, 1], 3000), mk('hd2', 'Raticate', 20, [2, 2, 2], 3010)], roster: [], cutTarget: 1, cutTargetDraft: '1', appFavourited: [], selfProtect: false, negationOk: false, transferHold: [], transferFreshAck: new Date().toISOString().slice(0, 10) });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    const ids = async () => (await s.call('transferCandidates')).map(c => c.p.idx).sort().join();
+    expect(await ids() === 'hd1,hd2', 'both weak ones are candidates: ' + await ids());
+    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l.holdTransfer(l.effectiveRosterForMatch().find(p => p.idx === 'hd1')); return; } } });
+    await s.page.waitForTimeout(300);
+    expect(await ids() === 'hd2', 'the held Pokemon leaves the candidates: ' + await ids());
+    const v = await s.call('bulkStringVals');
+    expect(!/fearow/i.test(v.bulkBatches.map(b => b.text).join(' ')) && /1 Pokemon left out for now/.test(v.bulkHoldLine), 'and out of every string: ' + v.bulkBatches.map(b => b.text).join(' | ') + ' / ' + v.bulkHoldLine);
+    await s.call('releaseHolds'); await s.page.waitForTimeout(200);
+    expect(await ids() === 'hd1,hd2', 'bring back restores it');
+    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l.holdTransfer(l.effectiveRosterForMatch().find(p => p.idx === 'hd2')); return; } } });
+    await s.page.waitForTimeout(200);
+    await s.set({ transferHold: [] });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');
