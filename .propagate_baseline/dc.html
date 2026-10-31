@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.239</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.240</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -4882,9 +4882,13 @@ class Component extends DCLogic {
         const tag = this.sizeTagOf(q);
         if (!tag) return;
         const k = (q.dex != null ? q.dex : String(q.name || '').toLowerCase()) + '_' + (q.form || '') + '_' + (this.isShadow(q) ? 's' : 'n') + '_' + tag;
-        const sc = [Number.isFinite(q.ivAvg) ? q.ivAvg : -1, Number.isFinite(q.cp) ? q.cp : -1];
+        // A copy that is clearly in the class beats one only within rounding of the cut-off (a 1.48 m Beautifly that could be XL
+        // or XXL must not take the lock from the 1.69 m one that certainly is XXL); then IV, then CP.
+        const i = this.sizeOf(q), sure = i && i.valid && i.cls === tag ? 1 : 0;
+        const sc = [sure, Number.isFinite(q.ivAvg) ? q.ivAvg : -1, Number.isFinite(q.cp) ? q.cp : -1];
         const cur = score.get(k);
-        if (!cur || sc[0] > cur[0] || (sc[0] === cur[0] && sc[1] > cur[1])) { score.set(k, sc); best.set(k, String(q.idx)); }
+        const better = !cur || sc[0] > cur[0] || (sc[0] === cur[0] && (sc[1] > cur[1] || (sc[1] === cur[1] && sc[2] > cur[2])));
+        if (better) { score.set(k, sc); best.set(k, String(q.idx)); }
       });
       c.sizeBest = best;
     }
