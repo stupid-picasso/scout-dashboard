@@ -840,18 +840,25 @@ module.exports = async function suiteB() {
     expect(/No cup is live/.test(t), 'no live cup says so: ' + t.slice(0, 200));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], league: 'great', feed: st0.feed || null });
   });
-  await T('PVPBAND-03', 'PvP', 'Season tab with a live Mega edition shows Mega-ready picks (not the normal-form list) and offers the live Master League too', async () => {
+  await T('PVPBAND-03', 'PvP', 'Season tab with a live Mega edition shows Mega-ready picks plus the usual lists, and offers the live Master League too', async () => {
     const st0 = await s.state();
     const day = n => new Date(Date.now() + n * 86400000).toISOString();
     const feed = { source: 'qa', fetchedAt: day(0), events: [], gbl: [{ start: day(-1), end: day(5), season: 'QA', leagues: [{ name: 'Master League', cp: 10000, mega: false, rules: [] }, { name: 'Mega Halloween Cup: Great League Edition', cp: 1500, mega: true, rules: ['Mega Evolution allowed.'], cup: { src: 'qa' } }] }] };
     await s.set({ league: 'season', seasonSel: null, feed }); await s.page.waitForTimeout(400);
     await s.go('PVP'); await s.page.waitForTimeout(500);
     let t = await s.page.evaluate(() => document.body.innerText);
-    expect(/Mega Halloween Cup/.test(t) && /MEGA-READY PICKS/.test(t) && !/POWER UP OR EVOLVE/.test(t) && !/No cup is live/.test(t), 'mega cup view: ' + t.slice(0, 400));
+    expect(/Mega Halloween Cup/.test(t) && /MEGA-READY PICKS/.test(t) && /READY NOW/.test(t) && /POWER UP OR EVOLVE/.test(t) && !/No cup is live/.test(t), 'mega cup view has the picks and the usual lists: ' + t.slice(0, 400));
     expect(/Master League/.test(t), 'the Master League pill is offered');
     await s.set({ seasonSel: 'Master League' }); await s.page.waitForTimeout(400);
     t = await s.page.evaluate(() => document.body.innerText);
     expect(/READY NOW|RANKED/.test(t) && !/MEGA-READY PICKS/.test(t), 'master view is the normal ranked list: ' + t.slice(0, 300));
+    await s.set({ league: 'season', seasonSel: null, feed: { ...feed, gbl: [{ ...feed.gbl[0], leagues: [{ name: 'Mega Halloween Cup: Great League Edition', cp: 1500, mega: true, rules: ['Only Bug, Poison, Ghost, Dark and Fairy.'], cup: { types: ['bug', 'poison', 'dark', 'fairy', 'ghost'], src: 'qa' } }] }] } });
+    const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
+    await s.set({ addedPokemon: [mk('mh1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('mh2', 'Gyarados', 130, [15, 15, 15], 1450, 97)], roster: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    t = await s.page.evaluate(() => document.body.innerText);
+    const ready = t.slice(t.indexOf('READY NOW'), t.indexOf('POWER UP OR EVOLVE'));
+    expect(/Azumarill/.test(ready) && !/Gyarados/.test(ready), 'the cup type rule applies to the list: ' + ready.slice(0, 300));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [] });
     await s.set({ league: 'great', seasonSel: null, feed: st0.feed || null });
   });
   await T('BRIEF-02', 'Today', 'A search-grounded briefing refused with 429 falls back to a plain answer, and a failed update shows the real reason', async () => {

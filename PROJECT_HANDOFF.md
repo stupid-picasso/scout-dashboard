@@ -461,3 +461,6 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 
 ## Accented species names (v53.230)
 - `normalizeSpeciesName` and `_speciesKeys` now strip accents (`stripAccents`). The extractor and the game write "Flabébé", the tables "Flabebe"; the old normalizer turned it into "flab-b", so the record had no dex number: no sprite, no base stats, no ranks, no solved IVs ("not appraised", placeholder tile). Live records are repaired on read (`buildEffectiveRoster` backfills dex); re-run the IV import to measure them. Test: NAME-ACCENT-01.
+
+## Season tab on a Mega edition (v53.231)
+- A live Mega edition (e.g. Mega Halloween Cup) now shows the Mega-ready picks AND the usual READY NOW / POWER UP OR EVOLVE lists (and squad), ranked as the Pokemon are today under the cup's rules (type lists, level cap). Before, the lists were hidden and only 0-2 Mega picks showed. Test: PVPBAND-03.
