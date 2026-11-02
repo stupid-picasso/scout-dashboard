@@ -1100,6 +1100,24 @@ module.exports = async function suiteB() {
     expect(/more slots than the junk gives/.test(v2.bulkNeedMoreText), 'it says what is still missing: ' + v2.bulkNeedMoreText);
     await s.set({ transferJunkOnly: false, addedPokemon: st0.addedPokemon || [], cutTarget: 300 });
   });
+  await T('BESTIV-01', 'BestIV', 'Best IV page: search a species, see the ideal spread per league and your copies against it', async () => {
+    const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...extra });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('bi1', 'Gengar', 94, [0, 13, 13], 1498), mk('bi2', 'Gengar', 94, [15, 15, 15], 2500), mk('bi3', 'Gengar', 94, [3, 10, 8], 1400), mk('bi4', 'Gengar', 94, [1, 1, 1], 900)], roster: [], ivOverrides: {}, bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, tab: 'bestiv' }); await s.page.waitForTimeout(600);
+    let t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Best IV/.test(t) && /Search a Pokemon/i.test(await s.page.evaluate(() => (document.querySelector('input[aria-label="Search species"]') || {}).placeholder || '')), 'the list page is there');
+    await s.page.locator('input[aria-label="Search species"]').fill('gengar'); await s.page.waitForTimeout(500);
+    t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Gengar/.test(t) && /you own 4/.test(t), 'search finds Gengar and counts your copies: ' + t.slice(0, 300));
+    await s.page.getByRole('button', { name: 'Gengar', exact: true }).first().click(); await s.page.waitForTimeout(700);
+    t = await s.page.evaluate(() => document.body.innerText);
+    expect(/0 \/ 13 \/ 13/.test(t) && /0 \/ 15 \/ 14/.test(t) && /15 \/ 15 \/ 15/.test(t), 'ideal spreads: Great 0/13/13, Ultra 0/15/14, Master 15/15/15: ' + t.slice(0, 500));
+    expect(/Gengar 1498 CP/.test(t) && /IDEAL/.test(t) && /GOOD/.test(t), 'your copies are graded against the ideal: ' + t.slice(t.indexOf('YOUR COPIES')).slice(0, 400));
+    await s.page.getByRole('button', { name: 'SHADOW', exact: true }).first().click(); await s.page.waitForTimeout(400);
+    t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Shadow/.test(t) && /You have no shadow Gengar/.test(t), 'shadow view has its own copies');
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, bestIvSel: null, bestIvShadow: false, bestIvQuery: '', tab: 'home' });
+  });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
     await s.call('refreshEverything');

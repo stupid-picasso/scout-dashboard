@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.242</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.246</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2740,6 +2740,63 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ isBestIv }}" hint-placeholder-val="{{ false }}">
+  <div role="main" style="display:flex;flex-direction:column;gap:12px;animation:fadeSlideIn .35s ease">
+    <sc-if value="{{ bestIvNoSel }}" hint-placeholder-val="{{ false }}">
+      <div style="font:650 19px var(--font-display);letter-spacing:-.012em">Best IV</div>
+      <div style="font:13px/1.45 var(--font-body);color:var(--ink-500)">Pick a species to see the ideal IV spread for each league, the spreads that still rank 99% and 98% (league ranks are squeezed, so nearly every spread is 90% or better and only the top few are worth chasing), and how your own copies compare. G, U and L show the species tier in Great, Ultra and Little.</div>
+      <input value="{{ bestIvQuery }}" onInput="{{ onBestIvQuery }}" placeholder="Search a Pokemon (name or number)" aria-label="Search species" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:999px;border:1px solid var(--line-300);background:var(--surface-card);color:var(--ink-900);font:500 16px var(--font-body)" />
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">{{ bestIvCount }}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ bestIvRows }}" as="r" hint-placeholder-count="6">
+          <button type="button" onClick="{{ r.onOpen }}" class="om-press" aria-label="{{ r.name }}" style="text-align:left;display:flex;align-items:center;gap:12px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:8px 12px;min-height:56px;color:var(--ink-900)">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--font-display);color:var(--ink-400)">{{ r.initial }}</span><img ref="{{ r.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+            <div style="flex:1;min-width:0"><div style="font:700 15px var(--font-body)">{{ r.name }} <span style="font:600 11px var(--font-display);color:var(--ink-400)">{{ r.dexNo }}</span></div><div style="font:600 11px var(--font-display);color:var(--ink-500)">{{ r.owned }}</div></div>
+            <div style="display:flex;gap:4px"><sc-for list="{{ r.tiers }}" as="t" hint-placeholder-count="3"><span style="font:800 11px var(--font-display);color:{{ t.color }}">{{ t.label }}</span></sc-for></div>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ bestIvMore }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ onBestIvMore }}" class="om-press" style="align-self:center;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more</button></sc-if>
+    </sc-if>
+    <sc-if value="{{ bestIvHasSel }}" hint-placeholder-val="{{ false }}">
+      <button type="button" onClick="{{ bestIvBack }}" class="om-press" style="align-self:flex-start;font:600 15px var(--font-body);color:var(--ios-blue);min-height:44px;padding:0 4px">&lsaquo; All Pokemon</button>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ bestIvSprite }}" alt="" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+        <div><div style="font:650 22px var(--font-display);letter-spacing:-.012em">{{ bestIvName }}</div><div style="font:600 12px var(--font-display);color:var(--ink-400)">{{ bestIvDex }}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ bestIvFormChips }}" as="c" hint-placeholder-count="0"><button type="button" onClick="{{ c.onClick }}" class="om-press" style="padding:8px 14px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }};font:700 12px var(--font-display);min-height:36px">{{ c.label }}</button></sc-for>
+        <sc-for list="{{ bestIvShadowChips }}" as="c" hint-placeholder-count="2"><button type="button" onClick="{{ c.onClick }}" class="om-press" style="padding:8px 14px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }};font:700 12px var(--font-display);min-height:36px">{{ c.label }}</button></sc-for>
+      </div>
+      <sc-if value="{{ bestIvEvolves }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px"><div style="font:12.5px/1.45 var(--font-body);color:var(--ink-700)">{{ bestIvEvolves.text }}</div><button type="button" onClick="{{ bestIvEvolves.onOpen }}" class="om-press" style="align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-900);font:700 11.5px var(--font-display)">{{ bestIvEvolves.label }}</button></div>
+      </sc-if>
+      <sc-for list="{{ bestIvLeagueCards }}" as="l" hint-placeholder-count="4">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font:700 13px var(--font-display);letter-spacing:.04em">{{ l.name }}</div><div style="font:600 11px var(--font-display);color:var(--ink-400)">{{ l.cap }}</div></div>
+          <div style="font:800 26px var(--font-display);letter-spacing:.02em">{{ l.ivs }}</div>
+          <div style="font:600 12.5px var(--font-body);color:var(--ink-700)">{{ l.ivNames }}</div>
+          <div style="font:600 12px var(--font-display);color:var(--ink-500)">{{ l.lvCp }}</div>
+          <sc-if value="{{ l.r95 }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ l.r95 }}</div></sc-if>
+          <sc-if value="{{ l.r90 }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ l.r90 }}</div></sc-if>
+          <sc-if value="{{ l.note }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ l.note }}</div></sc-if>
+        </div>
+      </sc-for>
+      <sc-if value="{{ bestIvLittleNote }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-400)">{{ bestIvLittleNote }}</div></sc-if>
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-top:6px">YOUR COPIES</div>
+      <sc-if value="{{ bestIvNoCopies }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--ink-500)">{{ bestIvNoCopies }}</div></sc-if>
+      <sc-for list="{{ bestIvCopies }}" as="c" hint-placeholder-count="0">
+        <button type="button" onClick="{{ c.onOpen }}" class="om-press" style="text-align:left;background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:3px;color:var(--ink-900)">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font:700 15px var(--font-body)">{{ c.name }}</div><div style="font:800 11px var(--font-display);color:{{ c.tagColor }}">{{ c.tag }}</div></div>
+          <div style="font:600 12.5px var(--font-body);color:var(--ink-700)">{{ c.iv }}</div>
+          <div style="font:12.5px var(--font-body);color:var(--ink-500)">{{ c.ranks }}</div>
+          <div style="font:600 12px var(--font-display);color:{{ c.appColor }}">{{ c.app }}</div>
+        </button>
+      </sc-for>
+    </sc-if>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ isAttackers }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
@@ -3544,6 +3601,7 @@ class Component extends DCLogic {
     importSheetOpen: false,
     bulkTypePick: {},
     toolsMode: 'rename',
+    bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
     costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null,
@@ -12851,7 +12909,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -13264,6 +13322,125 @@ class Component extends DCLogic {
     // XXL/XXS are not in the protect string any more (that would favourite all of them): only each species' best one is, here.
     const covered = p => p.shiny || p.lucky || this.isPurified(p) || (m && m.speciesClassFor && m.speciesClassFor(p.dex)) || this.starsOf(p) === 4;
     return roster.filter(p => !p.favorite && !covered(p) && (this.sizeProtected(p, ctx) || (!this.needsAppraisal(p) && this.keepReasons(p, ctx).some(x => real.test(x)))));
+  }
+
+  // ---- Best IV page -------------------------------------------------------------------------------------------
+  // Reference, not a rule: for any species the ideal IV spread in each league (the spread with the best stat product under
+  // the CP cap, the same maths the league ranks use), the range of spreads that still rank 99% and 98%, and your own
+  // copies measured against it. Nothing here changes a keep or transfer decision.
+  bestIvList() {
+    const m = this.mechanics;
+    if (!m || !m.DEX_NAMES) return [];
+    if (this._bestIvList && this._bestIvListFor === m) return this._bestIvList;
+    const strip = /-(male|female|normal|disguised|land|incarnate|standard|altered|average|aria|ordinary|shield|plant|baile|midday|solo|amped|full-belly|red-striped|blue-striped|ice|hero|zero|two-segment|curly|green|single-strike|family-of-four|50|therian)$/i;
+    this._bestIvListFor = m;
+    return (this._bestIvList = Object.keys(m.DEX_NAMES).map(Number).filter(d => m.DEX_NAMES[d] && m.BASE_STATS[d])
+      .map(d => ({ dex: d, name: String(m.DEX_NAMES[d]).replace(strip, ''), norm: this.costumeNorm(String(m.DEX_NAMES[d]).replace(strip, '')) })));
+  }
+
+  bestIvForms(dex) {
+    const m = this.mechanics;
+    const keys = ['normal'];
+    ['alola', 'galarian', 'hisuian', 'paldea'].forEach(f => { if (m && m.BASE_STATS_BY_FORM[dex + '_' + f]) keys.push(f); });
+    return keys;
+  }
+
+  // Ranges of IVs among spreads that still reach `min`% for the league; cached per base stats, league and shadow.
+  bestIvRanges(base, lk, shadow, min) {
+    const m = this.mechanics;
+    this._bestIvRng = this._bestIvRng || new Map();
+    const key = base.join('_') + '|' + lk + '|' + (shadow ? 's' : 'n') + '|' + min + '|' + (m.getPvpMaxLevel ? m.getPvpMaxLevel() : 50);
+    if (this._bestIvRng.has(key)) return this._bestIvRng.get(key);
+    const lo = [15, 15, 15], hi = [0, 0, 0];
+    let count = 0;
+    for (let a = 0; a <= 15; a++) for (let d = 0; d <= 15; d++) for (let h = 0; h <= 15; h++) {
+      const r = m.rankPctForLeague(base, [a, d, h], lk, shadow);
+      if (r != null && r >= min) { count++; [a, d, h].forEach((v, i) => { if (v < lo[i]) lo[i] = v; if (v > hi[i]) hi[i] = v; }); }
+    }
+    const res = count ? { count, atk: [lo[0], hi[0]], def: [lo[1], hi[1]], sta: [lo[2], hi[2]] } : null;
+    this._bestIvRng.set(key, res);
+    return res;
+  }
+
+  bestIvLeagues(dex, formKey, shadow) {
+    const m = this.mechanics;
+    const base = formKey && formKey !== 'normal' ? m.BASE_STATS_BY_FORM[dex + '_' + formKey] : m.BASE_STATS[dex];
+    if (!base) return { base: null, leagues: [] };
+    const rng = r => r ? 'ATK ' + (r.atk[0] === r.atk[1] ? r.atk[0] : r.atk[0] + '–' + r.atk[1]) + ' · DEF ' + (r.def[0] === r.def[1] ? r.def[0] : r.def[0] + '–' + r.def[1]) + ' · HP ' + (r.sta[0] === r.sta[1] ? r.sta[0] : r.sta[0] + '–' + r.sta[1]) + ' (' + r.count + ' of 4096 spreads)' : 'none';
+    const leagues = [['little', 'Little Cup'], ['great', 'Great League'], ['ultra', 'Ultra League']].map(([lk, name]) => {
+      const cap = m.LEAGUE_CAPS[lk], best = m.bestSpreadUnderCap(base, cap, shadow);
+      return { lk, name, cap: '≤ ' + cap + ' CP', ivs: best ? best.ivs : null, level: best ? best.level : null, cp: best ? m.cpFor(base, best.ivs, best.level) : null,
+        r95: rng(this.bestIvRanges(base, lk, shadow, 99)), r90: rng(this.bestIvRanges(base, lk, shadow, 98)) };
+    });
+    const maxLv = m.MAX_POKEMON_LEVEL || 50;
+    leagues.push({ lk: 'master', name: 'Master League', cap: 'No cap', ivs: [15, 15, 15], level: maxLv, cp: m.cpFor(base, [15, 15, 15], maxLv), r95: '', r90: '' });
+    return { base, leagues };
+  }
+
+  bestIvVals() {
+    const st = this.state, m = this.mechanics;
+    if (!m) return {};
+    const q = this.costumeNorm(st.bestIvQuery || '');
+    const sel = st.bestIvSel;
+    const roster = this.effectiveRosterForMatch();
+    const out = {
+      bestIvQuery: st.bestIvQuery || '', onBestIvQuery: e => this.setState({ bestIvQuery: e.target.value, bestIvVisible: 60 }),
+      bestIvHasSel: sel != null, bestIvNoSel: sel == null
+    };
+    if (sel == null) {
+      const all = this.bestIvList().filter(x => !q || x.norm.indexOf(q) >= 0 || String(x.dex) === String(st.bestIvQuery || '').trim());
+      const shown = all.slice(0, st.bestIvVisible || 60);
+      const own = {}; roster.forEach(p => { if (p.dex != null) own[p.dex] = (own[p.dex] || 0) + 1; });
+      const tier = (d, lk) => { const t = m.pvpTierFor ? m.pvpTierFor(m.DEX_NAMES[d], false, lk) : null; return t ? t.tier : ''; };
+      const col = t => t === 'S' ? 'var(--type-fairy)' : t === 'A' ? 'var(--grass-700)' : t === 'B' ? 'var(--type-electric)' : 'var(--ink-300)';
+      out.bestIvRows = shown.map(x => ({
+        key: String(x.dex), name: x.name, dexNo: '#' + x.dex, owned: own[x.dex] ? 'you own ' + own[x.dex] : '',
+        spriteRef: this.makeSpriteRefByDex(x.dex, ''), initial: x.name.charAt(0),
+        tiers: [['G', 'great'], ['U', 'ultra'], ['L', 'little']].map(([l, lk]) => { const t = tier(x.dex, lk); return { label: l + (t || '–'), color: col(t) }; }),
+        onOpen: () => this.setState({ bestIvSel: x.dex, bestIvForm: 'normal', bestIvShadow: false })
+      }));
+      out.bestIvCount = all.length + ' species' + (all.length > shown.length ? ', showing ' + shown.length : '');
+      out.bestIvMore = all.length > shown.length;
+      out.onBestIvMore = () => this.setState({ bestIvVisible: (st.bestIvVisible || 60) + 60 });
+      return out;
+    }
+    const dex = sel, name = String(m.DEX_NAMES[dex] || '').replace(/-(male|female|normal|disguised|land|incarnate|standard|altered|average)$/i, '');
+    const formKey = st.bestIvForm || 'normal', shadow = !!st.bestIvShadow;
+    const forms = this.bestIvForms(dex);
+    const data = this.bestIvLeagues(dex, formKey, shadow);
+    const rec = this.evoRecordFor({ name, form: formKey === 'normal' ? '' : formKey });
+    const copies = roster.filter(p => p.dex === dex && this.formKeyOf(p) === formKey && !!this.isShadow(p) === shadow && this.ivsOf(p))
+      .map(p => {
+        const ivs = this.ivsOf(p);
+        const rk = lk => { try { return data.base ? m.rankPctForLeague(data.base, ivs, lk, shadow) : null; } catch (e) { return null; } };
+        const ranks = [['little', 'Little'], ['great', 'Great'], ['ultra', 'Ultra'], ['master', 'Master']].map(([lk, l]) => ({ lk, l, r: rk(lk) }));
+        const best = Math.max(0, ...ranks.filter(x => x.lk !== 'little' || (rec && rec.to)).map(x => x.r || 0));
+        const kept = this.keepReasons(p).length > 0;
+        return { p, ivs, ranks, best, kept };
+      }).sort((a, b) => b.best - a.best || (b.p.cp || 0) - (a.p.cp || 0));
+    out.bestIvName = name + (formKey !== 'normal' ? ' (' + this.bulkFormLabel(formKey) + ')' : '') + (shadow ? ' · Shadow' : '');
+    out.bestIvDex = '#' + dex;
+    out.bestIvSprite = this.makeSpriteRefByDex(dex, formKey === 'normal' ? '' : formKey);
+    out.bestIvBack = () => this.setState({ bestIvSel: null });
+    out.bestIvFormChips = forms.length > 1 ? forms.map(f => ({ label: this.bulkFormLabel(f).toUpperCase(), bg: f === formKey ? 'var(--ios-blue)' : 'var(--surface-card)', fg: f === formKey ? '#fff' : 'var(--ink-500)', onClick: () => this.setState({ bestIvForm: f }) })) : [];
+    out.bestIvShadowChips = [[false, 'NORMAL'], [true, 'SHADOW']].map(([v, l]) => ({ label: l, bg: v === shadow ? 'var(--ios-blue)' : 'var(--surface-card)', fg: v === shadow ? '#fff' : 'var(--ink-500)', onClick: () => this.setState({ bestIvShadow: v }) }));
+    out.bestIvEvolves = rec && rec.to ? { text: 'Evolves into ' + rec.to + '. League ranks for evolving Pokemon are judged on the evolved form: look at ' + rec.to + ' for the spread to aim for.', label: 'OPEN ' + String(rec.to).toUpperCase(), onOpen: () => { const d = m.resolveDexByName ? m.resolveDexByName(rec.to) : null; if (d != null) this.setState({ bestIvSel: d, bestIvForm: 'normal', bestIvShadow: false }); } } : null;
+    out.bestIvLeagueCards = data.leagues.filter(l => l.lk !== 'little' || (rec && rec.to)).map(l => ({
+      name: l.name, cap: l.cap, ivs: l.ivs ? l.ivs.join(' / ') : '—', ivNames: l.ivs ? 'ATK ' + l.ivs[0] + ' · DEF ' + l.ivs[1] + ' · HP ' + l.ivs[2] : '',
+      lvCp: l.level != null ? 'Level ' + l.level + ' · ' + l.cp + ' CP' : '', r95: l.r95 ? 'Top 99%+: ' + l.r95 : '', r90: l.r90 ? 'Top 98%+: ' + l.r90 : '',
+      note: l.lk === 'master' ? 'No CP cap, so the best spread is always 15 / 15 / 15.' : ''
+    }));
+    out.bestIvLittleNote = rec && rec.to ? '' : 'Little Cup is left out: this species cannot evolve any further.';
+    out.bestIvCopies = copies.slice(0, 40).map(c => {
+      const tag = c.best >= 99 ? 'IDEAL' : c.best >= 95 ? 'EXCELLENT' : c.best >= 90 ? 'GOOD' : 'WEAK';
+      return { name: c.p.name + ' ' + c.p.cp + ' CP', iv: 'IV ' + c.ivs.join('/') + ' (' + Math.round(c.ivs.reduce((a, b) => a + b, 0) / 45 * 100) + '%)',
+        ranks: c.ranks.filter(x => x.r != null && (x.lk !== 'little' || (rec && rec.to))).map(x => x.l + ' ' + x.r.toFixed(1) + '%').join(' · '),
+        tag, tagColor: tag === 'WEAK' ? 'var(--type-fighting)' : tag === 'GOOD' ? 'var(--type-electric)' : 'var(--grass-700)',
+        app: c.kept ? 'The app keeps it' : 'The app would let it go', appColor: c.kept ? 'var(--grass-700)' : 'var(--ink-500)', onOpen: () => this.openDetail(c.p) };
+    });
+    out.bestIvHasCopies = copies.length > 0;
+    out.bestIvNoCopies = copies.length === 0 ? 'You have no ' + (shadow ? 'shadow ' : '') + name + ' with known IVs.' : '';
+    return out;
   }
 
   // ---- In-game tags --------------------------------------------------------------------------------------------
@@ -17544,6 +17721,7 @@ class Component extends DCLogic {
     const moreDefs = [
       { key: 'raid', label: 'Raid counters' },
       { key: 'bulk', label: 'Bulk update' },
+      { key: 'bestiv', label: 'Best IV' },
       { key: 'intel', label: 'Collection intel' },
       { key: 'attackers', label: 'Attackers' },
       { key: 'progress', label: 'Progress log' },
@@ -17606,6 +17784,8 @@ class Component extends DCLogic {
       isRoster: tab === 'roster',
       isPvp: tab === 'pvp',
       isAttackers: tab === 'attackers',
+      isBestIv: tab === 'bestiv',
+      ...(tab === 'bestiv' ? this.bestIvVals() : {}),
       isRecommend: tab === 'recommend',
       isIntel: tab === 'intel',
       isToday: tab === 'today',
