@@ -1096,7 +1096,8 @@ module.exports = async function suiteB() {
     await s.set({ transferJunkOnly: true }); await s.page.waitForTimeout(400);
     const v2 = await s.call('bulkStringVals');
     expect(v2.bulkBatches.every(b => /^Junk only/.test(b.kindText)) && v2.bulkBatches.length < v.bulkBatches.length, 'junk only drops every batch with normally-kept Pokemon: ' + v2.bulkBatches.length + ' vs ' + v.bulkBatches.length);
-    expect(!/nidoran|zubat|oddish/i.test(v2.bulkBatches.map(b => b.text).join(' ')), 'and no string selects them');
+    const bb = await s.call('buildTransferBatches');
+    expect(!bb.batches.some(b => b.pokemon.some(p => ['o1', 'o2', 'o3'].indexOf(p.idx) >= 0)), 'and no string selects them: ' + JSON.stringify(bb.batches.map(b => b.pokemon.map(p => p.idx))));
     expect(/more slots than the junk gives/.test(v2.bulkNeedMoreText), 'it says what is still missing: ' + v2.bulkNeedMoreText);
     await s.set({ transferJunkOnly: false, addedPokemon: st0.addedPokemon || [], cutTarget: 300 });
   });
@@ -1112,11 +1113,26 @@ module.exports = async function suiteB() {
     await s.page.getByRole('button', { name: 'Gengar', exact: true }).first().click(); await s.page.waitForTimeout(700);
     t = await s.page.evaluate(() => document.body.innerText);
     expect(/0 \/ 13 \/ 13/.test(t) && /0 \/ 15 \/ 14/.test(t) && /15 \/ 15 \/ 15/.test(t), 'ideal spreads: Great 0/13/13, Ultra 0/15/14, Master 15/15/15: ' + t.slice(0, 500));
-    expect(/Gengar 1498 CP/.test(t) && /IDEAL/.test(t) && /GOOD/.test(t), 'your copies are graded against the ideal: ' + t.slice(t.indexOf('YOUR COPIES')).slice(0, 400));
+    expect(/Gengar 1498 CP/.test(t) && /TOP/.test(t) && /AVERAGE/.test(t) && /\(top \d/.test(t), 'your copies are graded by spread percentile: ' + t.slice(t.indexOf('YOUR COPIES')).slice(0, 400));
+    expect(/Your keeper grade \(EXCELLENT\)/.test(t), 'each league card names the rank your grade needs');
     await s.page.getByRole('button', { name: 'SHADOW', exact: true }).first().click(); await s.page.waitForTimeout(400);
     t = await s.page.evaluate(() => document.body.innerText);
     expect(/Shadow/.test(t) && /You have no shadow Gengar/.test(t), 'shadow view has its own copies');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, bestIvSel: null, bestIvShadow: false, bestIvQuery: '', tab: 'home' });
+  });
+  await T('GRADE-01', 'Safety', 'Keeper grade by spread percentile: the setting decides which copy is a league best, equal copies keep only one, and the percentile matches the spread distribution', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: 0, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('gr1', 'Azumarill', 184, [0, 15, 15], 400), mk('gr2', 'Azumarill', 184, [8, 8, 8], 410), mk('gr3', 'Azumarill', 184, [0, 15, 15], 400), mk('gr4', 'Azumarill', 184, [14, 6, 12], 420)], roster: [], ivOverrides: {}, keepGrade: 'good', appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    const info = async () => s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const best = ros.filter(p => l.keepFull(p, ctx).all.some(x => /^Best Great League copy/.test(x))).map(p => p.idx).sort(); const stand = id => { const p = ros.find(q => q.idx === id); const st = l.gradeStanding(p, 'great'); return st && Math.round(st.topPct * 10) / 10; }; return { best, top: { gr1: stand('gr1'), gr2: stand('gr2'), gr4: stand('gr4') }, fx: l.gradeEffects() }; } } return null; });
+    let r = await info();
+    expect(r.best.length === 1 && (r.best[0] === 'gr1' || r.best[0] === 'gr3'), 'two identical 0/15/15 copies: only one stays as the best Great copy: ' + JSON.stringify(r.best));
+    expect(r.top.gr1 < r.top.gr2 && r.top.gr2 < 100, 'the percentile orders the spreads: ' + JSON.stringify(r.top));
+    expect(r.fx.top <= r.fx.excellent && r.fx.excellent <= r.fx.good, 'a stricter grade never keeps more: ' + JSON.stringify(r.fx));
+    await s.set({ keepGrade: 'top' }); await s.page.waitForTimeout(400);
+    const strict = await info();
+    expect(strict.best.length <= r.best.length, 'TOP keeps no more than GOOD: ' + JSON.stringify([r.best, strict.best]));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, keepGrade: 'excellent' });
   });
   await T('REFRESH-01', 'Home', 'Refresh everything runs every step, reports what changed, and can be undone', async () => {
     await s.set({ tab: 'home', geminiKey: '', geminiKeys: [] });
@@ -1190,7 +1206,8 @@ module.exports = async function suiteB() {
     expect(['Vaporeon', 'Espeon', 'Sylveon'].every(n => chain.indexOf(n) >= 0), 'Eevee chain ' + chain.join());
     expect((await s.call('evoChainNames', { name: 'Poliwhirl', form: '' })).indexOf('Poliwrath') >= 0, 'Poliwhirl -> Poliwrath');
     // 3. Great 92 on a tiered species must protect even when Ultra is the better-tiered league (Dusknoir case).
-    const dus = await s.call('withEvoRanks', mk('au1', 'Dusknoir', 477, [6, 3, 0], 752, { great: { rankPct: 92.36, evolvesTo: 'Dusknoir' }, ultra: { rankPct: 88.03, evolvesTo: 'Dusknoir' } }));
+    // (The spread is Dusknoir's ideal Great one: since keepers are graded by spread percentile, a 6/3/0 at 92% is no longer kept.)
+    const dus = await s.call('withEvoRanks', mk('au1', 'Dusknoir', 477, [0, 14, 13], 752, { great: { rankPct: 100, evolvesTo: 'Dusknoir' }, ultra: { rankPct: 88.03, evolvesTo: 'Dusknoir' } }));
     const dw = await s.call('keepReasons', dus);
     expect(dw.some(x => /PvP rank 90%|Best (Great|Ultra) League copy/.test(x)), 'Dusknoir must be kept: ' + dw.join());
     // 4. An evolution PvPoke does not rank must not displace the form that is ranked (Vigoroth vs Slaking).

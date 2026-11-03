@@ -499,3 +499,10 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 ## Best IV page (v53.246)
 - More > Best IV (`tab: 'bestiv'`). A searchable list of every species (name or dex number; tier chips G/U/L; "you own N"), and a species page: Normal/Shadow and regional-form chips, one card per league with the ideal spread (`bestSpreadUnderCap`: Great and Ultra for Gengar come out 0/13/13 and 0/15/14, Master 15/15/15), level and CP, and the ranges of spreads that still rank 99% and 98% (95% and 90% are useless: league ranks are squeezed and nearly every spread clears them). Little Cup only for species that can still evolve. "Your copies" grades each copy of that species/form/shadow state by its best league rank including Master (IDEAL 99+, EXCELLENT 95+, GOOD 90+, WEAK) and says whether the app keeps it. A species that evolves links to the evolved one. Reference only: no keep or transfer rule uses it. Computed on open (`bestIvVals`); UI keys are in MEMO_UI_KEYS. Test: BESTIV-01.
 - Environment note: a fresh container had no node_modules (terser/playwright missing): `npm install`, and the browser is /opt/pw-browsers/chromium-1243/chrome-linux64/chrome (set PW_CHROMIUM); `mkdir -p /tmp/qa` before qa_run.
+
+## Percentile keeper grading (v53.250)
+- Keeper copies graded by percentile of the 4096 IV spreads (`PokemonMechanics.spreadStanding/spreadCutRank`). A/B tier: TOP 5%, EXCELLENT 15%, GOOD 40%; S tier: 8/25/50. Setting `keepGrade` (default excellent, localStorage `scout.keepGrade`) in Home → KEEP BEST → KEEPER GRADE.
+- `gradeMeets/gradeStanding/gradeLimits` in dc.html; `goodLeagues(p,grade)` and tagGroups use it instead of rank>=90. One best copy per species per league (`leagueCopyBeats`: rank, ivAvg, cp, lower idx).
+- Best IV page grades copies TOP/EXCELLENT/GOOD/AVERAGE with "(top X%)".
+- `bestStatProductUnderCap` rewritten (bisection, ~9x faster, identical outputs).
+- Next idea (unconfirmed): Keeper review page, KEEP/RELEASE per-copy override.
