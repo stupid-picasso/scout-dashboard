@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.256</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.258</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1402,6 +1402,7 @@
           <div style="display:flex;flex-direction:column;gap:4px">
             <div aria-live="polite" style="font:12px var(--font-display);color:var(--type-electric)">Reading screenshot&hellip;</div>
             <div style="font:11px var(--font-body);color:var(--ink-300)">Extracting name, CP, HP, candy and moves.</div>
+            <sc-if value="{{ ocrWaitLine }}" hint-placeholder-val="{{ false }}"><div aria-live="off" style="font:600 11px var(--font-display);color:var(--ink-500)">{{ ocrWaitLine }}</div></sc-if>
           </div>
         </div>
       </sc-if>
@@ -3701,7 +3702,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     keepGrade: 'excellent',
-    keeperOverrides: {}, krVisible: 12,
+    keeperOverrides: {}, krVisible: 12, ocrTick: 0,
     bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, dtVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
@@ -9169,7 +9170,13 @@ class Component extends DCLogic {
     if (!file) return;
     this._lastAiError = '';
     this.resetAppraisalHint();
-    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null });
+    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null, ocrTick: 0 });
+    this._ocrSince = Date.now();
+    clearInterval(this._ocrTimer);
+    this._ocrTimer = setInterval(() => {
+      if (!this.state.ocrBusy) { clearInterval(this._ocrTimer); if (this.state.ocrTick) this.setState({ ocrTick: 0 }); return; }
+      this.setState({ ocrTick: Math.round((Date.now() - this._ocrSince) / 1000) });
+    }, 1000);
     try {
       const tPrep = Date.now();
       const canvas = await this.preprocessImage(file);
@@ -9955,6 +9962,17 @@ class Component extends DCLogic {
     if (c) { c.vision = c.vision.filter(x => x !== model); c.text = c.text.filter(x => x !== model); }
   }
 
+  // fetch() with a deadline: a request that never answers used to leave an import on "Reading screenshot..." for ever.
+  // On timeout it throws an Error tagged __geminiTimeout, so callers can move to the next model instead of waiting.
+  async fetchWithDeadline(url, opts, ms) {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const limit = ms || this._geminiTimeoutMs || 45000;
+    let timer = null;
+    const dead = new Promise((_, rej) => { timer = setTimeout(() => { const e = new Error('Gemini did not answer within ' + Math.round(limit / 1000) + 's'); e.__geminiTimeout = true; rej(e); try { if (ctl) ctl.abort(); } catch (x) {} }, limit); });
+    try { return await Promise.race([fetch(url, ctl ? { ...(opts || {}), signal: ctl.signal } : opts), dead]); }
+    finally { clearTimeout(timer); }
+  }
+
   async geminiRotation(key, hasImage) {
     this._gemRot = this._gemRot || {};
     let c = this._gemRot[key];
@@ -9962,7 +9980,7 @@ class Component extends DCLogic {
       c = this._gemRot[key] = c || { at: 0, vision: [], text: [] };
       c.at = Date.now();    // set first: a failing lookup is not retried on every call
       try {
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' + encodeURIComponent(key));
+        const res = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' + encodeURIComponent(key), undefined, 8000);
         if (res.ok) {
           const data = await res.json();
           let rows = (data.models || []).filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
@@ -9972,9 +9990,9 @@ class Component extends DCLogic {
           // Live check: a retired model answers 404/403 to countTokens (which needs no generation quota).
           const alive = await Promise.all(rows.map(async r => {
             try {
-              const t = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + r.name + ':countTokens?key=' + encodeURIComponent(key), {
+              const t = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + r.name + ':countTokens?key=' + encodeURIComponent(key), {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
-              });
+              }, 8000);
               return t.status !== 404 && t.status !== 403;
             } catch (e) { return true; }
           }));
@@ -10051,7 +10069,7 @@ class Component extends DCLogic {
       const anyDaily = ordered.some(m => { const c = coolOf(m); return c && c.daily; });
       throw new Error(anyDaily ? 'Gemini daily quota exhausted for this key (429).' : 'Gemini rate limit (429) \u2014 every model is cooling down for a minute.');
     }
-    let sawOther = false, sawDaily = false;
+    let sawOther = false, sawDaily = false, timeouts = 0;
     let lastErr = null;
     for (const model of candidates) {
       // Reading a screenshot needs no reasoning, and a model that "thinks" first can take 10 to 30 seconds per image. Vision
@@ -10074,11 +10092,21 @@ class Component extends DCLogic {
         }
         return cfg;
       };
-      const post = (extras, grounded) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras), ...(grounded ? { tools: [{ google_search: {} }] } : {}) })
-      });
+      // A request that does not answer in time is not left hanging: it counts as a failed attempt on this model (HTTP 599 in the
+      // diagnostics) and the next model is tried; two timeouts in one call end the call.
+      const post = async (extras, grounded) => {
+        try {
+          return await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras), ...(grounded ? { tools: [{ google_search: {} }] } : {}) })
+          });
+        } catch (e) {
+          if (!(e && e.__geminiTimeout)) throw e;
+          const stub = { status: 599, ok: false, clone() { return stub; }, text: async () => e.message, json: async () => ({}) };
+          return stub;
+        }
+      };
       // body.search asks for Google Search grounding (live meta and news). A model or key that refuses the
       // tool falls straight back to a plain answer rather than failing the whole request.
       const t0 = Date.now();
@@ -10105,9 +10133,16 @@ class Component extends DCLogic {
         res = await post(true);
       }
       this.noteAiCall(model, hasImage, res.status, Date.now() - t0, ladder[rung]);
+      if (res.status === 599) {
+        timeouts = (timeouts || 0) + 1;
+        lastErr = new Error('Gemini ' + model + ' did not answer within ' + Math.round((this._geminiTimeoutMs || 45000) / 1000) + 's');
+        sawOther = true;
+        if (timeouts >= 2 || model === candidates[candidates.length - 1]) throw new Error('Gemini did not answer (' + timeouts + (timeouts === 1 ? ' try' : ' tries') + ', ' + Math.round((this._geminiTimeoutMs || 45000) / 1000) + 's each). The request is dropped instead of waiting; skip or retry this one.');
+        continue;
+      }
       if (res.ok) this._thinkRung[model] = rung;
       if (res.ok) {
-        const data = await res.json();
+        const data = await Promise.race([res.json(), new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini did not finish sending its answer within 30s')), 30000))]);
         const cand = data && data.candidates && data.candidates[0];
         const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
         if (!text) {
@@ -13099,7 +13134,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -18419,6 +18454,7 @@ class Component extends DCLogic {
         ? 'Screenshot ' + ((this.state.ocrQueueIndex || 0) + 1) + ' of ' + this.state.ocrQueue.length
         : '',
       ocrQueueSummary: this.state.ocrQueueSummary || '',
+      ocrWaitLine: this.state.ocrBusy && (this.state.ocrTick || 0) >= 8 ? 'Waiting on Gemini \u00b7 ' + this.state.ocrTick + 's' + (this.state.ocrTick >= 45 ? ' \u00b7 taking long, it gives up soon; you can also SKIP' : '') : '',
       ocrCancelLabel: (this.state.ocrQueue || []).length > 1 ? 'SKIP' : 'CANCEL',
       onScreenshotUpload: (e) => { const files = Array.from(e.target.files || []); if (files.length) this.startOcrQueue(files); },
       onAppraisalUpload: (e) => { const files = Array.from(e.target.files || []); if (files.length) this.handleAppraisalUploadBatch(files); e.target.value = ''; },
