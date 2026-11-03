@@ -1120,6 +1120,25 @@ module.exports = async function suiteB() {
     expect(/Shadow/.test(t) && /You have no shadow Gengar/.test(t), 'shadow view has its own copies');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, bestIvSel: null, bestIvShadow: false, bestIvQuery: '', tab: 'home' });
   });
+  await T('KEEPREV-01', 'Safety', 'Keeper review: species with more than 3 kept copies; KEEP locks, RELEASE goes first in the transfer strings, a hard lock still wins', async () => {
+    const mk = (idx, iv, cp, extra) => ({ idx, name: 'Machamp', dex: 68, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...extra });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('kr1', [15, 15, 15], 2100), mk('kr2', [15, 15, 14], 2200), mk('kr3', [15, 14, 14], 2300), mk('kr4', [14, 14, 14], 2400), mk('kr5', [14, 14, 13], 2500, { shiny: true })], roster: [], ivOverrides: {}, keeperOverrides: {}, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.noteAiCall) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const get = id => ros.find(p => p.idx === id); return (new Function('l', 'ros', 'ctx', 'get', 'return (' + f + ')'))(l, ros, ctx, get); } } return null; }, fn);
+    await s.page.getByText('More', { exact: true }).last().click(); await s.page.waitForTimeout(350);
+    await s.page.getByText('Keeper review', { exact: true }).last().click(); await s.page.waitForTimeout(700);
+    let t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Machamp/.test(t) && /5 copies kept or chosen/.test(t) && /RELEASE/.test(t), 'species with 5 kept copies is listed: ' + t.slice(0, 400));
+    await L("l.setKeeperOverride(get('kr4'), 'release')"); await L("l.setKeeperOverride(get('kr5'), 'release')"); await L("l.setKeeperOverride(get('kr3'), 'keep')"); await s.page.waitForTimeout(500);
+    const r = await L("(() => { const b = l.buildTransferBatches(); const ids = b.batches.flatMap(x => x.pokemon.map(p => p.idx)); const why = l.transferCandidates().find(c => c.p.idx === 'kr4'); return { ids, first: ids[0], why: why && why.why, kr3: l.keepReasons(get('kr3'), l.keepContext(l.effectiveRosterForMatch())), kr5: l.keepReasons(get('kr5'), l.keepContext(l.effectiveRosterForMatch())) }; })()");
+    expect(r.ids.includes('kr4') && r.first === 'kr4' && r.why === 'You chose to release it', 'RELEASE puts it first in the transfer strings: ' + JSON.stringify(r));
+    expect(!r.ids.includes('kr5') && r.kr5.includes('Shiny'), 'a shiny is still locked after RELEASE: ' + JSON.stringify(r.kr5));
+    expect(!r.ids.includes('kr3') && r.kr3.includes('You chose to keep it'), 'KEEP is a hard lock: ' + JSON.stringify(r.kr3));
+    await L("l.setKeeperOverride(get('kr4'), null)"); await s.page.waitForTimeout(400);
+    const back = await L("l.transferCandidates().some(c => c.p.idx === 'kr4')");
+    expect(back === false, 'clearing the choice puts it back to normal');
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, keeperOverrides: {}, tab: 'home' });
+  });
   await T('DETAILLG-01', 'Detail', 'Detail sheet leads with the league its CP fits, lists the higher leagues it can still reach, and shows rank out of 4096', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 96.9, evolvesTo: name }, ultra: { rankPct: 96.9 }, little: { rankPct: 93.6 }, scanDate: '2026-10-30' });
     const st0 = await s.state();
