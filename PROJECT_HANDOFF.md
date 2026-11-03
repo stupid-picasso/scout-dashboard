@@ -520,3 +520,7 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 ## Detail sheet league rankings (v53.253+)
 - Detail sheet leads with the league its CP fits (Little ≤500 only while it can still evolve; Great ≤1500; Ultra ≤2500; else Master) labelled "its league now"; higher reachable leagues sit in a collapsed "Could also grow into" list; leagues it is over are hidden.
 - Rank line now "% · #N of 4096 · GRADE" (Ditto ranking math) instead of an empty "rank —". Best IV copy line reads "IV a/b/c · IV total N%". Test DETAILLG-01.
+
+## Keeper review (v53.256+)
+- More → "Keeper review": species where the app keeps >3 copies; per copy KEEP / RELEASE (tap again to undo). State `keeperOverrides` {idx: 'keep'|'release'}, persisted in localStorage `scout.keeperOverrides.v1` (idx-keyed like favourites).
+- `keepFull`: keep → hard reason "You chose to keep it"; release → soft reasons dropped (hard locks still win). `transferCandidates` adds released copies first with why "You chose to release it" (immediate, ignores the Keep best target); `buildTransferBatches` sorts them to the front; `cutScoreRows` scores them lowest. Test KEEPREV-01.

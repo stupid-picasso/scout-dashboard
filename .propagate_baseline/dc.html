@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.255</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.256</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2870,6 +2870,32 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ isKeepReview }}" hint-placeholder-val="{{ false }}">
+  <div role="main" style="display:flex;flex-direction:column;gap:12px;animation:fadeSlideIn .35s ease">
+    <div style="font:650 19px var(--font-display);letter-spacing:-.012em">Keeper review</div>
+    <div style="font:13px/1.45 var(--font-body);color:var(--ink-500)">For species where the app keeps more than 3 copies. KEEP locks a copy: it is never offered for transfer. RELEASE puts it first in the transfer strings, right away, whatever your Keep best target says. A shiny, lucky, favourite or other hard lock still wins over RELEASE. Tap a choice again to undo it.</div>
+    <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">{{ krCount }}</div>
+    <sc-if value="{{ krEmpty }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--ink-500)">{{ krEmpty }}</div></sc-if>
+    <sc-for list="{{ krGroups }}" as="g" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div><div style="font:700 16px var(--font-display)">{{ g.title }}</div><div style="font:600 11px var(--font-display);color:var(--ink-400)">{{ g.sub }}</div></div>
+        <sc-for list="{{ g.copies }}" as="c" hint-placeholder-count="4">
+          <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+            <div style="font:700 15px var(--font-body)">{{ c.name }}</div>
+            <div style="font:600 12.5px var(--font-body);color:var(--ink-700)">{{ c.iv }}</div>
+            <div style="font:12.5px/1.4 var(--font-body);color:var(--ink-700)">{{ c.why }}</div>
+            <div style="display:flex;gap:8px">
+              <button type="button" onClick="{{ c.onKeep }}" aria-pressed="{{ c.keepPressed }}" class="om-press" style="flex:1;min-height:44px;border-radius:var(--r-pill);background:{{ c.keepBg }};color:{{ c.keepFg }};font:700 12px var(--font-display)">KEEP</button>
+              <button type="button" onClick="{{ c.onRelease }}" aria-pressed="{{ c.relPressed }}" class="om-press" style="flex:1;min-height:44px;border-radius:var(--r-pill);background:{{ c.relBg }};color:{{ c.relFg }};font:700 12px var(--font-display)">RELEASE</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+    <sc-if value="{{ krMore }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ onKrMore }}" class="om-press" style="align-self:center;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more</button></sc-if>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ isAttackers }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
@@ -3675,6 +3701,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     keepGrade: 'excellent',
+    keeperOverrides: {}, krVisible: 12,
     bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, dtVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
@@ -3883,6 +3910,7 @@ class Component extends DCLogic {
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
     try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
+    try { const ko = JSON.parse(localStorage.getItem('scout.keeperOverrides.v1') || 'null'); if (ko && typeof ko === 'object') this.setState({ keeperOverrides: ko }); } catch (e) {}
     try { const kg = localStorage.getItem('scout.keepGrade'); if (kg === 'good' || kg === 'excellent' || kg === 'top') this.setState({ keepGrade: kg }); } catch (e) {}
     try { const ts = JSON.parse(localStorage.getItem('scout.tags.v1') || 'null'); if (ts && typeof ts === 'object') this.setState({ tagSnap: ts }); } catch (e) {}
     try { const tn = JSON.parse(localStorage.getItem('scout.tagnames.v1') || 'null'); if (tn && typeof tn === 'object') this.setState({ tagNames: tn }); } catch (e) {}
@@ -6360,8 +6388,12 @@ class Component extends DCLogic {
     if (sum.every(Number.isFinite) && !Number.isFinite(p.great && p.great.rankPct)) out.push('League rank not computed yet');
     if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
     if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
+    // The trainer's own call (Keeper review). KEEP is a hard lock. RELEASE drops every soft reason but never a hard lock.
+    const ov = (this.state.keeperOverrides || {})[String(p.idx)];
+    if (ov === 'keep') out.push('You chose to keep it');
     const soft = out.filter(x => this.isSoftKeep(x));
-    const res = { all: out, soft, hard: out.filter(x => soft.indexOf(x) < 0) };
+    let res = { all: out, soft, hard: out.filter(x => soft.indexOf(x) < 0) };
+    if (ov === 'release') res = { all: res.hard, soft: [], hard: res.hard, released: true };
     c.cacheFull.set(p, res);
     return res;
   }
@@ -6438,7 +6470,7 @@ class Component extends DCLogic {
         + (this.isPurified(p) ? 10000 : 0) + (p.atkIV === 0 && p.defIV === 0 && p.staIV === 0 && !this.needsAppraisal(p) ? 100000 : 0)
         + (shadow && iv >= 80 ? 1500 : 0) + this.leagueBestFor(p, ctx).length * 1500 + (iv >= 90 ? 1500 : 0)
         + (onlyCopy ? 300 : 0) + (cls ? 4000 + (pos <= 2 ? 3000 : 0) : 0)
-        + masterBonus + raidBonus + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01;
+        + masterBonus + raidBonus + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01 - ((this.state.keeperOverrides || {})[String(p.idx)] === 'release' ? 1e7 : 0);
       const bits = [];
       if (sizeKeep) bits.push(this.sizeTagOf(p) + ' size, kept for showcases');
       if (cls) bits.push(CLASS[cls]);
@@ -13067,7 +13099,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -13344,7 +13376,9 @@ class Component extends DCLogic {
     // `soft` is non-empty only for a Pokemon released by the floating keep line: it has good-Pokemon reasons (IV, league copy,
     // raid role...) but the roster is over the Keep best target. The screen says so instead of calling it "unprotected".
     const held = new Set(this.state.transferHold || []);
-    const add = (p, why) => { if (p && !held.has(String(p.idx)) && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft }); };
+    const add = (p, why) => { if (p && !held.has(String(p.idx)) && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft, chosen: why === 'You chose to release it' }); };
+    // Pokemon the trainer chose to release go first, whatever the Keep best target says. A hard lock still wins (add() checks it).
+    roster.forEach(p => { if ((this.state.keeperOverrides || {})[String(p.idx)] === 'release') add(p, 'You chose to release it'); });
     if (overBy) {
       // Rows run lowest score first, so the last few shown sit right at the line: those are the ones worth a second look.
       const sum = this.cutSafeSummary(roster, overBy), n = sum.show.length;
@@ -13394,9 +13428,9 @@ class Component extends DCLogic {
       const name = String(c.p.name || '').toLowerCase();
       if (!/^[a-z]+$/.test(name)) { manual.push({ p: c.p, why: 'The name has spaces or symbols the game search may not accept' }); return; }
       if (!Number.isFinite(c.p.cp)) { manual.push({ p: c.p, why: 'No CP on file' }); return; }
-      items.push({ idx: c.p.idx, name, cp: c.p.cp, stars: this.starsOf(c.p), soft: isSoft(c) ? 1 : 0 });
+      items.push({ idx: c.p.idx, name, cp: c.p.cp, stars: this.starsOf(c.p), soft: isSoft(c) ? 1 : 0, chosen: c.chosen ? 1 : 0 });
     });
-    items.sort((a, b) => (a.soft - b.soft) || a.name.localeCompare(b.name) || a.cp - b.cp);
+    items.sort((a, b) => (a.soft - b.soft) || (b.chosen - a.chosen) || a.name.localeCompare(b.name) || a.cp - b.cp);
     const sets = it => ({ N: new Set(it.map(x => x.name)), C: new Set(it.map(x => x.cp)), S: new Set(it.map(x => x.stars)), withStars: it.every(x => x.stars != null) });
     const matched = it => { const t = sets(it); return rows.filter(r => t.N.has(r.name) && t.C.has(r.cp) && (!t.withStars || t.S.has(r.stars))); };
     const textOf = it => {
@@ -13643,6 +13677,53 @@ class Component extends DCLogic {
     });
     out.dtNoCopies = copies.length === 0 ? 'You have no ' + (shadow ? 'shadow ' : '') + name + ' with known IVs.' : '';
     return out;
+  }
+
+  // ---- Keeper review ---------------------------------------------------------------------------------------------
+  // Species where the app keeps more than 3 copies, so the trainer can say KEEP (hard lock) or RELEASE (goes to the front of the
+  // transfer strings; a hard lock such as shiny/lucky/favourite still wins) per copy. Overrides persist on this device.
+  setKeeperOverride(p, v) {
+    const cur = { ...(this.state.keeperOverrides || {}) };
+    if (v) cur[String(p.idx)] = v; else delete cur[String(p.idx)];
+    this.setState({ keeperOverrides: cur }, () => { try { localStorage.setItem('scout.keeperOverrides.v1', JSON.stringify(cur)); } catch (e) {} try { this.clearDerivedCaches(); } catch (e) {} });
+  }
+
+  keeperReviewVals() {
+    const roster = this.effectiveRosterForMatch(), ctx = this.keepContext(roster), ov = this.state.keeperOverrides || {};
+    const groups = {};
+    roster.forEach(p => {
+      const f = this.keepFull(p, ctx), o = ov[String(p.idx)];
+      if (!(f.all.length || o === 'release' || f.released)) return;
+      const k = p.dex + '_' + (p.form || '') + '_' + (this.isShadow(p) ? 's' : 'n');
+      (groups[k] = groups[k] || []).push({ p, f, o });
+    });
+    const list = Object.values(groups).filter(g => g.length > 3).sort((a, b) => b.length - a.length || String(a[0].p.name).localeCompare(String(b[0].p.name)));
+    const shown = list.slice(0, this.state.krVisible || 12);
+    const btn = (on, color) => ({ bg: on ? color : 'var(--surface-muted)', fg: on ? '#fff' : 'var(--ink-900)' });
+    return {
+      krCount: list.length + ' species with more than 3 kept copies' + (list.length > shown.length ? ', showing ' + shown.length : ''),
+      krEmpty: list.length === 0 ? 'No species has more than 3 copies the app keeps.' : '',
+      krMore: list.length > shown.length, onKrMore: () => this.setState({ krVisible: (this.state.krVisible || 12) + 12 }),
+      krGroups: shown.map(g => ({
+        key: g[0].p.dex + '_' + (g[0].p.form || ''),
+        title: g[0].p.name + (g[0].p.form ? ' (' + g[0].p.form + ')' : '') + (this.isShadow(g[0].p) ? ' \u00b7 Shadow' : ''),
+        sub: g.length + ' copies kept or chosen',
+        copies: g.sort((a, b) => (b.p.ivAvg || 0) - (a.p.ivAvg || 0) || (b.p.cp || 0) - (a.p.cp || 0)).map(x => {
+          const ivs = this.ivsOf(x.p), locked = x.f.hard.length > 0 && !x.f.hard.every(r => r === 'You chose to keep it');
+          const kb = btn(x.o === 'keep', '#1b7f3b'), rb = btn(x.o === 'release', '#b3261e'), cb = btn(false, '');
+          return {
+            key: String(x.p.idx), name: x.p.name + ' ' + x.p.cp + ' CP',
+            iv: ivs ? 'IV ' + ivs.join('/') + ' \u00b7 IV total ' + Math.round(ivs.reduce((a, b) => a + b, 0) / 45 * 100) + '%' : 'IVs unknown',
+            why: x.o === 'release' ? (x.f.hard.length ? 'You chose release, but it is locked: ' + x.f.hard.slice(0, 2).join('; ') : 'You chose to release it \u00b7 first in the transfer strings') : (x.o === 'keep' ? 'You chose to keep it (hard lock)' : x.f.all.slice(0, 3).join(' \u00b7 ')),
+            keepBg: kb.bg, keepFg: kb.fg, relBg: rb.bg, relFg: rb.fg, clearBg: cb.bg, clearFg: cb.fg, hasChoice: !!x.o,
+            keepPressed: String(x.o === 'keep'), relPressed: String(x.o === 'release'),
+            onKeep: () => this.setKeeperOverride(x.p, x.o === 'keep' ? null : 'keep'),
+            onRelease: () => this.setKeeperOverride(x.p, x.o === 'release' ? null : 'release'),
+            onClear: () => this.setKeeperOverride(x.p, null), locked
+          };
+        })
+      }))
+    };
   }
 
   // ---- In-game tags --------------------------------------------------------------------------------------------
@@ -17944,6 +18025,7 @@ class Component extends DCLogic {
       { key: 'bulk', label: 'Bulk update' },
       { key: 'bestiv', label: 'Best IV' },
       { key: 'dittorank', label: 'Ditto ranking' },
+      { key: 'keepreview', label: 'Keeper review' },
       { key: 'intel', label: 'Collection intel' },
       { key: 'attackers', label: 'Attackers' },
       { key: 'progress', label: 'Progress log' },
@@ -18008,6 +18090,8 @@ class Component extends DCLogic {
       isAttackers: tab === 'attackers',
       isBestIv: tab === 'bestiv',
       isDitto: tab === 'dittorank',
+      isKeepReview: tab === 'keepreview',
+      ...(tab === 'keepreview' ? this.keeperReviewVals() : {}),
       ...(tab === 'dittorank' ? this.dittoVals() : {}),
       ...(tab === 'bestiv' ? this.bestIvVals() : {}),
       isRecommend: tab === 'recommend',
