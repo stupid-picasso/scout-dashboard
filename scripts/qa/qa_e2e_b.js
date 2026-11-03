@@ -1120,6 +1120,23 @@ module.exports = async function suiteB() {
     expect(/Shadow/.test(t) && /You have no shadow Gengar/.test(t), 'shadow view has its own copies');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, bestIvSel: null, bestIvShadow: false, bestIvQuery: '', tab: 'home' });
   });
+  await T('DITTO-01', 'BestIV', 'Ditto ranking page: opens from More, matches the Hub/Dittobase Melmetal tables, ranks your copy out of 4096', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 15.5, lvlMax: 15.5, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('dt1', 'Melmetal', 809, [0, 15, 14], 1492)], roster: [], ivOverrides: {}, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, tab: 'home' }); await s.page.waitForTimeout(500);
+    await s.page.getByText('More', { exact: true }).last().click(); await s.page.waitForTimeout(350);
+    await s.page.getByText('Ditto ranking', { exact: true }).last().click(); await s.page.waitForTimeout(600);
+    let t = await s.page.evaluate(() => document.body.innerText);
+    expect(/Ranks every IV spread the way Dittobase does/.test(t), 'page opens from More: ' + t.slice(0, 200));
+    await s.page.locator('input[aria-label="Search species for Ditto ranking"]').fill('melmetal'); await s.page.waitForTimeout(400);
+    await s.page.getByRole('button', { name: 'Melmetal', exact: true }).first().click(); await s.page.waitForTimeout(700);
+    t = await s.page.evaluate(() => document.body.innerText);
+    expect(t.includes('#1 \u00b7 1/15/14 \u00b7 L15.5 \u00b7 1499 CP \u00b7 100.00%') && t.includes('#2 \u00b7 2/15/12 \u00b7 L15.5 \u00b7 1500 CP \u00b7 99.75%'), 'Great top spreads match Hub: ' + t.slice(0, 600));
+    expect(t.includes('#3 \u00b7 0/15/15') && t.includes('#4 \u00b7 0/15/14'), 'tie order: 0/15/15 before 0/15/14 (CP breaks the tie)');
+    expect(t.includes('#1 \u00b7 0/13/15 \u00b7 L26 \u00b7 2495 CP'), 'Ultra #1 is 0/13/15 L26');
+    expect(/Great #4 \u00b7 0\/15\/14 \u00b7 L15\.5 \u00b7 1492 CP \u00b7 99\.56%/.test(t), 'your 0/15/14 copy is Great #4: ' + t.slice(t.indexOf('YOUR COPIES')).slice(0, 300));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, dtSel: null, dtQuery: '', tab: 'home' });
+  });
   await T('GRADE-01', 'Safety', 'Keeper grade by league rank (S 97/93/90, A/B 98/95/92): the setting decides which copy is a league best, equal copies keep only one', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: 0, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();

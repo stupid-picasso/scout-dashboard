@@ -1297,6 +1297,39 @@ function spreadDistribution(base, leagueKey, isShadow) {
   return arr;
 }
 
+// Dittobase-style ranking of all 4096 spreads for a league: stat product (Atk x Def x HP at the highest level under the cap),
+// ties broken by Attack stat, then HP stat, then CP, then Stamina IV. Returns { rows, index } with rows best first
+// ({ ivs, level, cp, product, pct, rank }) and index a Map from "a/d/h" to the row. Display only: the keep logic does not use it.
+const _dittoCache = new Map();
+function dittoRanking(base, leagueKey, isShadow) {
+  const b0 = Array.isArray(base) ? base[0] : base.atk, b1 = Array.isArray(base) ? base[1] : base.def, b2 = Array.isArray(base) ? base[2] : base.sta;
+  const key = [b0, b1, b2].join('_') + '|' + leagueKey + '|' + (isShadow ? 's' : 'n') + '|' + _pvpMaxLevel;
+  const hit = _dittoCache.get(key);
+  if (hit) return hit;
+  const cap = LEAGUE_CAPS[leagueKey], sBase = shadowAdjustedBase(base, isShadow), levels = _pvpLevels(), cpm = levels.map(l => CPM[l]);
+  const s0 = sBase[0], s1 = sBase[1], s2 = sBase[2];
+  const rows = [];
+  for (let a = 0; a <= 15; a++) for (let d = 0; d <= 15; d++) for (let h = 0; h <= 15; h++) {
+    const P = (b0 + a) * Math.sqrt(b1 + d) * Math.sqrt(b2 + h);
+    let lo = 0, hi = cpm.length - 1, best = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; const c = cpm[mid]; if (Math.max(10, Math.floor((P * c * c) / 10)) <= cap) { best = mid; lo = mid + 1; } else hi = mid - 1; }
+    if (best < 0) { rows.push({ ivs: [a, d, h], level: null, cp: null, product: 0, atk: 0, hp: 0 }); continue; }
+    const c = cpm[best], hp = Math.max(10, Math.floor((s2 + h) * c)), atk = (s0 + a) * c;
+    rows.push({ ivs: [a, d, h], level: levels[best], cp: Math.max(10, Math.floor((P * c * c) / 10)), product: atk * ((s1 + d) * c) * hp, atk, hp });
+  }
+  rows.sort((x, y) => (y.product - x.product) || (y.atk - x.atk) || (y.hp - x.hp) || ((y.cp || 0) - (x.cp || 0)) || (y.ivs[2] - x.ivs[2]));
+  const max = rows[0] ? rows[0].product : 0, index = new Map();
+  rows.forEach((r, i) => { r.rank = i + 1; r.pct = max > 0 ? r.product / max * 100 : 0; index.set(r.ivs.join('/'), r); });
+  const res = { rows, index };
+  _dittoCache.set(key, res);
+  return res;
+}
+
+function dittoRankOf(base, ivs, leagueKey, isShadow) {
+  const t = dittoRanking(base, leagueKey, isShadow);
+  return t.index.get(ivs.join('/')) || null;
+}
+
 // What share (percent) of all spreads rank at or above `rank`: 0.2 means the best 0.2% of spreads.
 function spreadTopPctForRank(base, leagueKey, isShadow, rank) {
   const arr = spreadDistribution(base, leagueKey, isShadow);
@@ -5589,7 +5622,7 @@ if (typeof window !== 'undefined') {
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,
-    PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor, spreadDistribution, spreadTopPctForRank, spreadCutRank, spreadStanding,
+    PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor, spreadDistribution, spreadTopPctForRank, spreadCutRank, spreadStanding, dittoRanking, dittoRankOf,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
     speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, LOOKALIKE_NAMES: Object.keys(NAME_LOOKALIKES), EVOLUTION_BRANCHES, TIER_TRENDS, tierTrendsFor, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
