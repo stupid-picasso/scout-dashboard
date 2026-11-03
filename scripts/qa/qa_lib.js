@@ -44,6 +44,8 @@ async function session(opts = {}) {
     await page.route('**/data/feed.json*', r => opts.feed ? r.fulfill({ contentType: 'application/json', body: JSON.stringify(opts.feed) }) : r.abort());
   }
   await page.route('**/data/feed_check.json*', r => r.abort());
+  // QA runs signed-out of a cloud that is not there: with real network access Firebase would load and its signed-out callback empties the roster mid-test.
+  await page.route(/(gstatic\.com|googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
   if (opts.offline) await ctx.setOffline(true);
   const t0 = Date.now();
   await page.goto(opts.url || PAGE, { waitUntil: 'load' });

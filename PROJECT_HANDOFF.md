@@ -506,3 +506,9 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - Best IV page grades copies TOP/EXCELLENT/GOOD/AVERAGE with "(top X%)".
 - `bestStatProductUnderCap` rewritten (bisection, ~9x faster, identical outputs).
 - Next idea (unconfirmed): Keeper review page, KEEP/RELEASE per-copy override.
+
+## Grading switched to league rank (v53.251)
+- Percentile cutoffs replaced by rank thresholds (user's call; matches Dittobase/PvPoke numbers): A/B tier TOP 98 / EXCELLENT 95 / GOOD 92; S tier 97 / 93 / 90. `gradeLimits/gradeMeets/gradeLabel` take league rank. "(top X%)" on Best IV is info only.
+- PvP list gate is back to rank >= 90 (not tied to the keeper grade).
+- Verified vs Hub (Melmetal top-10, Great+Ultra) and Dittobase method: stat products identical. Tie order within equal products differs from Dittobase (Atk stat, HP stat, CP, Sta IV).
+- QA harness now aborts gstatic/googleapis/firebase/jsdelivr requests: with open network Firebase's signed-out callback wipes the roster ~1s after import.
