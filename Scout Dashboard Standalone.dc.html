@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.246</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.251</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2636,6 +2636,13 @@
           </div>
         </div>
         <div style="font:12.5px var(--font-body);color:var(--ink-500);line-height:1.4">{{ cutPlan.headline }}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--surface-muted);padding-top:10px">
+          <div style="font:11px var(--font-display);color:var(--ink-300)">KEEPER GRADE</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ gradeChips }}" as="gc" hint-placeholder-count="3"><button type="button" onClick="{{ gc.onClick }}" aria-pressed="{{ gc.pressed }}" class="om-press" style="padding:8px 14px;border-radius:var(--r-pill);background:{{ gc.bg }};color:{{ gc.fg }};font:700 12px var(--font-display);min-height:36px">{{ gc.label }}</button></sc-for>
+          </div>
+          <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-700)">{{ gradeEffect }}</div>
+        </div>
         <div onClick="{{ toggleCutList }}" class="om-press" style="cursor:pointer;text-align:center;padding:9px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-fighting) 18%, var(--surface-card));color:var(--type-fighting);font:700 11px var(--font-display);letter-spacing:.04em">{{ cutPlan.buttonLabel }}</div>
         <sc-if value="{{ cutList }}" hint-placeholder-val="{{ false }}">
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
@@ -3806,6 +3813,7 @@
           <div style="font:600 12px var(--font-display);color:var(--ink-500)">{{ l.lvCp }}</div>
           <sc-if value="{{ l.r95 }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ l.r95 }}</div></sc-if>
           <sc-if value="{{ l.r90 }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ l.r90 }}</div></sc-if>
+          <sc-if value="{{ l.bar }}" hint-placeholder-val="{{ false }}"><div style="font:600 12px/1.45 var(--font-body);color:var(--grass-700)">{{ l.bar }}</div></sc-if>
           <sc-if value="{{ l.note }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ l.note }}</div></sc-if>
         </div>
       </sc-for>
@@ -4628,6 +4636,7 @@ class Component extends DCLogic {
     importSheetOpen: false,
     bulkTypePick: {},
     toolsMode: 'rename',
+    keepGrade: 'excellent',
     bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
@@ -4836,6 +4845,7 @@ class Component extends DCLogic {
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
     try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
+    try { const kg = localStorage.getItem('scout.keepGrade'); if (kg === 'good' || kg === 'excellent' || kg === 'top') this.setState({ keepGrade: kg }); } catch (e) {}
     try { const ts = JSON.parse(localStorage.getItem('scout.tags.v1') || 'null'); if (ts && typeof ts === 'object') this.setState({ tagSnap: ts }); } catch (e) {}
     try { const tn = JSON.parse(localStorage.getItem('scout.tagnames.v1') || 'null'); if (tn && typeof tn === 'object') this.setState({ tagNames: tn }); } catch (e) {}
     try { const pr = JSON.parse(localStorage.getItem('scout.protect.v1') || 'null'); if (pr) this.setState({ appFavourited: Array.isArray(pr.appFavourited) ? pr.appFavourited : [], selfProtect: !!pr.selfProtect, negationOk: !!pr.negationOk }); } catch (e) {}
@@ -7097,17 +7107,99 @@ class Component extends DCLogic {
     return null;
   }
 
+  // ---- Spread grades --------------------------------------------------------------------------------------------
+  // League ranks are squeezed (nearly every spread is 90%+), so what a copy is graded on is how many of the 4096 possible IV
+  // spreads it beats: TOP = the best few percent of spreads, EXCELLENT = the best 15%, GOOD = the best 40%; an S-tier species
+  // is one notch more lenient (8 / 25 / 50). The keep check keeps a league's best copy only when it reaches the grade the
+  // trainer picked (Settings, Keep best), so a full bag can ask for more.
+  gradeLimits(tier) { return tier === 'S' ? { top: 8, excellent: 25, good: 50 } : { top: 5, excellent: 15, good: 40 }; }
+
+  gradeBaseFor(p, lk) {
+    const m = this.mechanics;
+    const to = this.pvpFormName(p, lk);
+    const dex = String(to).toLowerCase() === String(p.name).toLowerCase() ? p.dex : (m.resolveDexByName ? m.resolveDexByName(to) : null);
+    if (dex == null) return null;
+    return (p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex] || null;
+  }
+
+  // { rank, topPct } of this copy for the league, judged as the form its rank is for; cached per stat line.
+  gradeStanding(p, lk) {
+    const m = this.mechanics, ivs = this.ivsOf(p);
+    if (!m || !m.spreadStanding || !ivs) return null;
+    const base = this.gradeBaseFor(p, lk);
+    if (!base) return null;
+    const shadow = !!this.isShadow(p);
+    this._gradeCache = this._gradeCache || new Map();
+    const key = base.join('_') + '|' + ivs.join(',') + '|' + lk + '|' + (shadow ? 1 : 0) + '|' + (this.state.pvpMaxLevel || 50);
+    if (this._gradeCache.has(key)) return this._gradeCache.get(key);
+    let res = null;
+    try { res = m.spreadStanding(base, ivs, lk, shadow); } catch (e) { res = null; }
+    if (this._gradeCache.size > 8000) this._gradeCache.clear();
+    this._gradeCache.set(key, res);
+    return res;
+  }
+
+  gradeMeets(p, lk, tier, grade) {
+    const st = this.gradeStanding(p, lk);
+    if (!st) return false;
+    const lim = this.gradeLimits(lk === 'little' ? null : tier)[grade || this.state.keepGrade || 'excellent'];
+    return st.topPct <= lim + 1e-9;
+  }
+
+  gradeLabel(topPct, tier) {
+    const lim = this.gradeLimits(tier);
+    return topPct <= lim.top + 1e-9 ? 'TOP' : topPct <= lim.excellent + 1e-9 ? 'EXCELLENT' : topPct <= lim.good + 1e-9 ? 'GOOD' : 'AVERAGE';
+  }
+
+  setKeepGrade(g) {
+    try { localStorage.setItem('scout.keepGrade', g); } catch (e) {}
+    this.setState({ keepGrade: g }, () => { try { this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+  }
+
+  // How many Pokemon are the best copy of some league at each grade: the effect of the setting, shown next to it.
+  gradeEffects() {
+    const deps = this.memoDeps();
+    if (this._gradeFx && this.sameDeps(this._gradeFx.deps, deps)) return this._gradeFx.val;
+    const c = this.keepContext(this.effectiveRosterForMatch());
+    const val = {};
+    ['good', 'excellent', 'top'].forEach(g => {
+      const keep = new Set();
+      Object.values(c.groups).forEach(grp => {
+        ['great', 'ultra', 'little'].forEach(lk => {
+          const byTo = {};
+          grp.forEach(q => { const x = this.goodLeagues(q, g).find(y => y.lk === lk); if (x) { const k = x.to + '|' + this.isShadow(q); const cur = byTo[k]; if (!cur || this.leagueCopyBeats(q, x.rank, cur.q, cur.rank)) byTo[k] = { q, rank: x.rank }; } });
+          Object.values(byTo).forEach(b => keep.add(String(b.q.idx)));
+        });
+      });
+      val[g] = keep.size;
+    });
+    this._gradeFx = { deps, val };
+    return val;
+  }
+
+  // The one copy that stays for a league when several qualify: the higher rank, then the higher IV total, then the higher CP.
+  // Equal on all of those, the lower index; so two identical copies never both stay.
+  leagueCopyBeats(q, qRank, p, pRank) {
+    if (Math.abs(qRank - pRank) > 1e-9) return qRank > pRank;
+    const qi = Number.isFinite(q.ivAvg) ? q.ivAvg : -1, pi = Number.isFinite(p.ivAvg) ? p.ivAvg : -1;
+    if (qi !== pi) return qi > pi;
+    const qc = Number.isFinite(q.cp) ? q.cp : -1, pc = Number.isFinite(p.cp) ? p.cp : -1;
+    if (qc !== pc) return qc > pc;
+    return String(q.idx) < String(p.idx);
+  }
+
   // Leagues in which this copy is GOOD: measured IVs, rank 90%+ for the league, and the species ranked S/A/B there
   // (Little Cup has no tiers). Ranks are for the form the league rank names, and a copy already above the league's
   // CP cap does not count there.
-  goodLeagues(p) {
+  goodLeagues(p, grade) {
     if (this.needsAppraisal(p)) return [];
     const out = [];
     // `to` is the form the rank is for: a Poliwag that suits Politoed and one that suits Poliwrath do not compete.
     const toOf = lk => String((lk !== 'little' && p[lk] && p[lk].evolvesTo) || p.name || '').toLowerCase();
-    ['great', 'ultra'].forEach(lk => { const a = this.pvpAssess(p, lk); if (a && a.rank >= 90 && a.tierRank <= 2) out.push({ lk, rank: a.rank, to: toOf(lk) }); });
+    // "Good" = reaches the grade the trainer picked (by spread percentile, see gradeLimits) in a league where the species is S/A/B.
+    ['great', 'ultra'].forEach(lk => { const a = this.pvpAssess(p, lk); if (a && a.tierRank <= 2 && this.gradeMeets(p, lk, a.tier, grade)) out.push({ lk, rank: a.rank, to: toOf(lk) }); });
     const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
-    if (Number.isFinite(lc) && lc >= 90) out.push({ lk: 'little', rank: lc, to: toOf('little') });
+    if (Number.isFinite(lc) && this.gradeMeets(p, 'little', null, grade)) out.push({ lk: 'little', rank: lc, to: toOf('little') });
     return out;
   }
 
@@ -7125,11 +7217,13 @@ class Component extends DCLogic {
     mine.forEach(({ lk, rank, to }) => {
       const key = p.dex + '_' + (p.form || '') + '_' + shadow + '_' + lk + '_' + to;
       if (!c.lb.has(key)) {
-        let best = -1;
-        pool.forEach(q => { const g = this.goodLeagues(q).find(x => x.lk === lk && x.to === to); if (g && g.rank > best) best = g.rank; });
+        let best = null;
+        pool.forEach(q => { const g = this.goodLeagues(q).find(x => x.lk === lk && x.to === to); if (g && (!best || this.leagueCopyBeats(q, g.rank, best.q, best.rank))) best = { q, rank: g.rank }; });
         c.lb.set(key, best);
       }
-      if (rank + 1e-9 >= c.lb.get(key)) {
+      // One copy stays per league: the best rank, then IV total, then CP. Two identical copies never both stay.
+      const bw = c.lb.get(key);
+      if (bw && String(bw.q.idx) === String(p.idx)) {
         const up = Number.isFinite(p.cp) && p.cp < caps[lk] * 0.92 ? ', power it up toward CP ' + caps[lk] : '';
         out.push('Best ' + NAME[lk] + ' copy (rank ' + Math.round(rank) + '%' + up + ')');
       }
@@ -7147,7 +7241,7 @@ class Component extends DCLogic {
     mine.forEach(({ lk, rank, to }) => pool.forEach(q => {
       if (q === p || this.isShadow(q) !== shadow) return;
       const g = this.goodLeagues(q).find(x => x.lk === lk && x.to === to);
-      if (g && g.rank > rank + 1e-9 && (!win || g.rank > win.rank)) win = { q, lk, rank: g.rank, mine: rank };
+      if (g && this.leagueCopyBeats(q, g.rank, p, rank) && (!win || this.leagueCopyBeats(q, g.rank, win.q, win.rank))) win = { q, lk, rank: g.rank, mine: rank };
     }));
     return win;
   }
@@ -14547,12 +14641,15 @@ class Component extends DCLogic {
     const copies = roster.filter(p => p.dex === dex && this.formKeyOf(p) === formKey && !!this.isShadow(p) === shadow && this.ivsOf(p))
       .map(p => {
         const ivs = this.ivsOf(p);
-        const rk = lk => { try { return data.base ? m.rankPctForLeague(data.base, ivs, lk, shadow) : null; } catch (e) { return null; } };
-        const ranks = [['little', 'Little'], ['great', 'Great'], ['ultra', 'Ultra'], ['master', 'Master']].map(([lk, l]) => ({ lk, l, r: rk(lk) }));
-        const best = Math.max(0, ...ranks.filter(x => x.lk !== 'little' || (rec && rec.to)).map(x => x.r || 0));
+        const stand = lk => { try { return data.base ? m.spreadStanding(data.base, ivs, lk, shadow) : null; } catch (e) { return null; } };
+        const tierOf = lk => { const t = m.pvpTierFor ? m.pvpTierFor(name, shadow, lk, formKey === 'normal' ? '' : formKey) : null; return t ? t.tier : null; };
+        const ranks = [['little', 'Little'], ['great', 'Great'], ['ultra', 'Ultra'], ['master', 'Master']].map(([lk, l]) => { const st = stand(lk); return { lk, l, r: st ? st.rank : null, top: st ? st.topPct : null, tier: lk === 'little' ? null : tierOf(lk) }; });
+        const ORDER = { TOP: 0, EXCELLENT: 1, GOOD: 2, AVERAGE: 3 };
+        const labels = ranks.filter(x => x.top != null && (x.lk !== 'little' || (rec && rec.to))).map(x => this.gradeLabel(x.top, x.tier));
+        const best = labels.length ? labels.sort((a, b) => ORDER[a] - ORDER[b])[0] : 'AVERAGE';
         const kept = this.keepReasons(p).length > 0;
         return { p, ivs, ranks, best, kept };
-      }).sort((a, b) => b.best - a.best || (b.p.cp || 0) - (a.p.cp || 0));
+      }).sort((a, b) => ({ TOP: 0, EXCELLENT: 1, GOOD: 2, AVERAGE: 3 }[a.best] - { TOP: 0, EXCELLENT: 1, GOOD: 2, AVERAGE: 3 }[b.best]) || Math.min(...a.ranks.map(x => x.top == null ? 100 : x.top)) - Math.min(...b.ranks.map(x => x.top == null ? 100 : x.top)) || (b.p.cp || 0) - (a.p.cp || 0));
     out.bestIvName = name + (formKey !== 'normal' ? ' (' + this.bulkFormLabel(formKey) + ')' : '') + (shadow ? ' · Shadow' : '');
     out.bestIvDex = '#' + dex;
     out.bestIvSprite = this.makeSpriteRefByDex(dex, formKey === 'normal' ? '' : formKey);
@@ -14560,17 +14657,19 @@ class Component extends DCLogic {
     out.bestIvFormChips = forms.length > 1 ? forms.map(f => ({ label: this.bulkFormLabel(f).toUpperCase(), bg: f === formKey ? 'var(--ios-blue)' : 'var(--surface-card)', fg: f === formKey ? '#fff' : 'var(--ink-500)', onClick: () => this.setState({ bestIvForm: f }) })) : [];
     out.bestIvShadowChips = [[false, 'NORMAL'], [true, 'SHADOW']].map(([v, l]) => ({ label: l, bg: v === shadow ? 'var(--ios-blue)' : 'var(--surface-card)', fg: v === shadow ? '#fff' : 'var(--ink-500)', onClick: () => this.setState({ bestIvShadow: v }) }));
     out.bestIvEvolves = rec && rec.to ? { text: 'Evolves into ' + rec.to + '. League ranks for evolving Pokemon are judged on the evolved form: look at ' + rec.to + ' for the spread to aim for.', label: 'OPEN ' + String(rec.to).toUpperCase(), onOpen: () => { const d = m.resolveDexByName ? m.resolveDexByName(rec.to) : null; if (d != null) this.setState({ bestIvSel: d, bestIvForm: 'normal', bestIvShadow: false }); } } : null;
+    const gradeNow = st.keepGrade || 'excellent';
     out.bestIvLeagueCards = data.leagues.filter(l => l.lk !== 'little' || (rec && rec.to)).map(l => ({
+      bar: l.lk === 'master' || !data.base ? '' : (() => { const t = l.lk === 'little' ? null : (m.pvpTierFor ? (m.pvpTierFor(name, shadow, l.lk, formKey === 'normal' ? '' : formKey) || {}).tier : null); const lim = this.gradeLimits(t)[gradeNow]; return 'Your keeper grade (' + gradeNow.toUpperCase() + '): beat ' + (100 - lim) + '% of spreads, which is rank ' + m.spreadCutRank(data.base, l.lk, shadow, lim).toFixed(1) + '% or better' + (t ? ' (' + t + ' tier)' : '') + '.'; })(),
       name: l.name, cap: l.cap, ivs: l.ivs ? l.ivs.join(' / ') : '—', ivNames: l.ivs ? 'ATK ' + l.ivs[0] + ' · DEF ' + l.ivs[1] + ' · HP ' + l.ivs[2] : '',
       lvCp: l.level != null ? 'Level ' + l.level + ' · ' + l.cp + ' CP' : '', r95: l.r95 ? 'Top 99%+: ' + l.r95 : '', r90: l.r90 ? 'Top 98%+: ' + l.r90 : '',
       note: l.lk === 'master' ? 'No CP cap, so the best spread is always 15 / 15 / 15.' : ''
     }));
     out.bestIvLittleNote = rec && rec.to ? '' : 'Little Cup is left out: this species cannot evolve any further.';
     out.bestIvCopies = copies.slice(0, 40).map(c => {
-      const tag = c.best >= 99 ? 'IDEAL' : c.best >= 95 ? 'EXCELLENT' : c.best >= 90 ? 'GOOD' : 'WEAK';
+      const tag = c.best;
       return { name: c.p.name + ' ' + c.p.cp + ' CP', iv: 'IV ' + c.ivs.join('/') + ' (' + Math.round(c.ivs.reduce((a, b) => a + b, 0) / 45 * 100) + '%)',
-        ranks: c.ranks.filter(x => x.r != null && (x.lk !== 'little' || (rec && rec.to))).map(x => x.l + ' ' + x.r.toFixed(1) + '%').join(' · '),
-        tag, tagColor: tag === 'WEAK' ? 'var(--type-fighting)' : tag === 'GOOD' ? 'var(--type-electric)' : 'var(--grass-700)',
+        ranks: c.ranks.filter(x => x.r != null && (x.lk !== 'little' || (rec && rec.to))).map(x => x.l + ' ' + x.r.toFixed(1) + '% (top ' + (x.top < 10 ? x.top.toFixed(1) : Math.round(x.top)) + '%)').join(' · '),
+        tag, tagColor: tag === 'AVERAGE' ? 'var(--ink-400)' : tag === 'GOOD' ? 'var(--type-electric)' : 'var(--grass-700)',
         app: c.kept ? 'The app keeps it' : 'The app would let it go', appColor: c.kept ? 'var(--grass-700)' : 'var(--ink-500)', onOpen: () => this.openDetail(c.p) };
     });
     out.bestIvHasCopies = copies.length > 0;
@@ -14608,7 +14707,7 @@ class Component extends DCLogic {
           return;
         }
         const a = this.pvpAssess(p, d.lk, d.tableKey);
-        if (!a || a.rank < 90) return;
+        if (!a || !this.gradeMeets(p, d.lk, a.tier)) return;
         const inBand = this.inBand(p, d.lk);
         if (d.kind === 'build') { if (!inBand && a.tierRank <= 2) rows.push({ p, tr: a.tierRank, rank: a.rank, ok: a.movesOk === true }); return; }
         if (!inBand) return;
@@ -19164,6 +19263,11 @@ class Component extends DCLogic {
         fg: (this.state.pvpMaxLevel || 50) === n ? 'white' : 'var(--ink-600)',
         onClick: () => this.setPvpMaxLevel(n)
       })),
+      gradeChips: [['good', 'GOOD'], ['excellent', 'EXCELLENT'], ['top', 'TOP']].map(([k, l]) => ({ label: l, pressed: String((this.state.keepGrade || 'excellent') === k), bg: (this.state.keepGrade || 'excellent') === k ? '#0060c8' : 'var(--surface-muted)', fg: (this.state.keepGrade || 'excellent') === k ? '#fff' : 'var(--ink-900)', onClick: () => this.setKeepGrade(k) })),
+      gradeEffect: tab === 'home' ? (() => {
+        const fx = this.gradeEffects(), cur = this.state.keepGrade || 'excellent';
+        return 'A league\u2019s best copy is kept only if it beats at least this share of all IV spreads: TOP the best 5%, EXCELLENT the best 15%, GOOD the best 40% (S-tier species: 8%, 25%, 50%). Copies kept as a league\u2019s best: GOOD ' + fx.good + ', EXCELLENT ' + fx.excellent + ', TOP ' + fx.top + '. You are on ' + cur.toUpperCase() + '.';
+      })() : '',
       cutTargetDraft: this.state.cutTargetDraft,
       onCutTargetChange: (e) => this.onCutTargetChange(e.target.value),
       saveCutTarget: () => this.saveCutTarget(),

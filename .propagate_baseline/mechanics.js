@@ -1206,29 +1206,39 @@ function _pvpLevels() {
   _pvpLevelsFor = _pvpMaxLevel;
   return (_pvpLevelsCache = Object.keys(CPM).map(Number).filter(l => l <= _pvpMaxLevel).sort((a, b) => a - b));
 }
+// The stat product of all 4096 spreads at the highest level each can reach under the cap (0 when even level 1 is over it).
+// Levels only raise CP, so the highest legal level is found by bisection; the arithmetic is cpFor's and statProductFor's,
+// inlined, because this runs 4096 times for every species and league the app grades.
+const _spreadProdCache = new Map();
+function _spreadProducts(base, capCP, isShadow) {
+  const key = (Array.isArray(base) ? base.join('_') : [base.atk, base.def, base.sta].join('_')) + '|' + capCP + '|' + (isShadow ? 's' : 'n') + '|' + _pvpMaxLevel;
+  const hit = _spreadProdCache.get(key);
+  if (hit) return hit;
+  const sBase = shadowAdjustedBase(base, isShadow), levels = _pvpLevels(), cpm = levels.map(l => CPM[l]);
+  const b0 = Array.isArray(base) ? base[0] : base.atk, b1 = Array.isArray(base) ? base[1] : base.def, b2 = Array.isArray(base) ? base[2] : base.sta;
+  const s0 = sBase[0], s1 = sBase[1], s2 = sBase[2];
+  const arr = new Float64Array(4096);
+  let n = 0;
+  for (let a = 0; a <= 15; a++) for (let d = 0; d <= 15; d++) for (let h = 0; h <= 15; h++) {
+    const P = (b0 + a) * Math.sqrt(b1 + d) * Math.sqrt(b2 + h);
+    let lo = 0, hi = cpm.length - 1, best = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; const c = cpm[mid]; if (Math.max(10, Math.floor((P * c * c) / 10)) <= capCP) { best = mid; lo = mid + 1; } else hi = mid - 1; }
+    if (best < 0) { arr[n++] = 0; continue; }
+    const c = cpm[best];
+    arr[n++] = ((s0 + a) * c) * ((s1 + d) * c) * Math.max(10, Math.floor((s2 + h) * c));
+  }
+  _spreadProdCache.set(key, arr);
+  return arr;
+}
+
 function bestStatProductUnderCap(base, capCP, isShadow) {
   // base is an array [atk, def, sta] — an object-style key collides across species.
   const key = (Array.isArray(base) ? base.join('_') : [base.atk, base.def, base.sta].join('_')) + '|' + capCP + '|' + (isShadow ? 's' : 'n') + '|' + _pvpMaxLevel;
   const hit = _bestSPCache.get(key);
   if (hit !== undefined) return hit;
-  const sBase = shadowAdjustedBase(base, isShadow);
-  const levels = _pvpLevels();
+  const arr = _spreadProducts(base, capCP, isShadow);
   let best = 0;
-  for (let atkIV = 0; atkIV <= 15; atkIV++) {
-    for (let defIV = 0; defIV <= 15; defIV++) {
-      for (let staIV = 0; staIV <= 15; staIV++) {
-        const ivs = [atkIV, defIV, staIV];
-        // Levels ascend, so walk down from the top and take the first legal one.
-        for (let i = levels.length - 1; i >= 0; i--) {
-          if (cpFor(base, ivs, levels[i]) <= capCP) {
-            const sp = statProductFor(sBase, ivs, levels[i]);
-            if (sp > best) best = sp;
-            break;
-          }
-        }
-      }
-    }
-  }
+  for (let i = 0; i < arr.length; i++) if (arr[i] > best) best = arr[i];
   _bestSPCache.set(key, best);
   return best;
 }
@@ -1267,6 +1277,46 @@ function bestSpreadUnderCap(base, capCP, isShadow) {
   }
   _bestSpreadCache.set(key, best);
   return best;
+}
+
+// All 4096 IV spreads of a species ranked for a league, sorted ascending: the league rank (stat product / best stat product)
+// of every spread. League ranks are squeezed (a 1/1/1 Gengar is 92.8% in Great), so a grade is "better than X% of all spreads",
+// read off this distribution, not a fixed rank percent. The best level under the cap is found by bisection (CP only grows with
+// level), which makes one distribution cheap enough to build on demand.
+const _spreadDistCache = new Map();
+function spreadDistribution(base, leagueKey, isShadow) {
+  const key = (Array.isArray(base) ? base.join('_') : [base.atk, base.def, base.sta].join('_')) + '|' + leagueKey + '|' + (isShadow ? 's' : 'n') + '|' + _pvpMaxLevel;
+  const hit = _spreadDistCache.get(key);
+  if (hit) return hit;
+  const cap = LEAGUE_CAPS[leagueKey];
+  const prod = _spreadProducts(base, cap, isShadow), max = bestStatProductUnderCap(base, cap, isShadow);
+  const arr = new Float64Array(4096);
+  for (let i = 0; i < arr.length; i++) arr[i] = max > 0 ? Math.min(100, prod[i] / max * 100) : 0;
+  arr.sort();
+  _spreadDistCache.set(key, arr);
+  return arr;
+}
+
+// What share (percent) of all spreads rank at or above `rank`: 0.2 means the best 0.2% of spreads.
+function spreadTopPctForRank(base, leagueKey, isShadow, rank) {
+  const arr = spreadDistribution(base, leagueKey, isShadow);
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] < rank - 1e-9) lo = mid + 1; else hi = mid; }
+  return (arr.length - lo) / arr.length * 100;
+}
+
+// The rank a spread needs to be inside the best `topPct` percent of spreads.
+function spreadCutRank(base, leagueKey, isShadow, topPct) {
+  const arr = spreadDistribution(base, leagueKey, isShadow);
+  const i = Math.min(arr.length - 1, Math.max(0, Math.floor(arr.length * (1 - topPct / 100))));
+  return arr[i];
+}
+
+// Where these IVs sit among all spreads for the league: { rank, topPct }.
+function spreadStanding(base, ivs, leagueKey, isShadow) {
+  const rank = rankPctForLeague(base, ivs, leagueKey, isShadow);
+  if (rank == null) return null;
+  return { rank, topPct: spreadTopPctForRank(base, leagueKey, isShadow, rank) };
 }
 
 function rankPctForLeague(base, ivs, leagueKey, isShadow) {
@@ -5539,7 +5589,7 @@ if (typeof window !== 'undefined') {
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,
-    PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor,
+    PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor, spreadDistribution, spreadTopPctForRank, spreadCutRank, spreadStanding,
     TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
     speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, LOOKALIKE_NAMES: Object.keys(NAME_LOOKALIKES), EVOLUTION_BRANCHES, TIER_TRENDS, tierTrendsFor, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
