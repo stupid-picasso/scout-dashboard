@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.258</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.259</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -8991,6 +8991,28 @@ class Component extends DCLogic {
     return canvas.toDataURL('image/jpeg', 0.72).split(',')[1];
   }
 
+  // Parses a model reply that should be one JSON object. Strips fences and prose, then (only if strict parsing fails) repairs the
+  // usual slips: a missing comma between fields, a missing opening quote on a key, a bare `undefined`, and a reply cut off
+  // mid-field (everything after the last complete field is dropped).
+  parseLooseObject(reply) {
+    let t = String(reply == null ? '' : reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+    const a = t.indexOf('{'), b = t.lastIndexOf('}');
+    if (a >= 0) t = b > a ? t.slice(a, b + 1) : t.slice(a);
+    t = t.replace(/:\s*undefined\b/g, ': null').replace(/,\s*([}\]])/g, '$1');
+    const tries = [
+      x => x,
+      x => x.replace(/(true|false|null|"|\d|\]|\})(\s+)("[A-Za-z_]\w*"\s*:)/g, '$1,$2$3'),
+      x => x.replace(/([,{]\s*)([A-Za-z_]\w*)"\s*:/g, '$1"$2":').replace(/([,{]\s*)([A-Za-z_]\w*)\s*:/g, '$1"$2":'),
+      x => { let y = x; for (let i = 0; i < 40; i++) { const c = y.lastIndexOf(','); if (c < 0) break; y = y.slice(0, c) + '}'; try { JSON.parse(y); return y; } catch (e) { y = y.slice(0, y.length - 1); } } return x; }
+    ];
+    let cur = t, lastErr = null;
+    for (const fix of tries) {
+      cur = fix(cur);
+      try { const o = JSON.parse(cur); if (o && typeof o === 'object') return o; } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('bad vision payload');
+  }
+
   async readScreenshotWithVision(file) {
     const data = await this.fileToVisionJpeg(file, 760);
     const prompt = 'This is a Pokemon GO detail screen. Extract every visible field EXACTLY as printed. '
@@ -9019,24 +9041,21 @@ class Component extends DCLogic {
       + 'Only report atkIV/defIV/staIV if exact 0-15 numbers are visible; never infer them from appraisal bars or stars. '
       + 'shiny: true if the Pokemon shows the small sparkles icon on its detail card, or its coloring is clearly a different palette from its normal form. shinyIcon: true ONLY if you can actually see that sparkles icon (coloring alone is not enough). Never guess either from name or CP alone. '
       + 'Never guess. Any field not clearly visible must be null.';
-    const reply = await this.completeWithRetry({
-      messages: [{ role: 'user', content: [
-        { type: 'text', text: prompt },
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }
-      ] }],
-      max_tokens: 900
-    });
-    let jsonText = String(reply).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
-    // Models sometimes emit a bare `undefined` as a value, which is not valid
-    // JSON and killed the whole read. Also trim any prose around the object.
-    const objStart = jsonText.indexOf('{');
-    const objEnd = jsonText.lastIndexOf('}');
-    if (objStart > 0 || (objEnd >= 0 && objEnd < jsonText.length - 1)) {
-      if (objStart >= 0 && objEnd > objStart) jsonText = jsonText.slice(objStart, objEnd + 1);
+    // A reply that is not valid JSON is repaired when it can be (see parseLooseObject); when it cannot, the screenshot is asked
+    // once more before the read fails, because the model rarely garbles the same screenshot twice.
+    let o = null, parseErr = null;
+    for (let attempt = 0; attempt < 2 && !o; attempt++) {
+      const reply = await this.completeWithRetry({
+        messages: [{ role: 'user', content: [
+          { type: 'text', text: prompt },
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }
+        ] }],
+        max_tokens: 900
+      });
+      try { o = this.parseLooseObject(reply); } catch (e) { parseErr = e; o = null; }
     }
-    jsonText = jsonText.replace(/:\s*undefined\b/g, ': null').replace(/,\s*([}\]])/g, '$1');
-    const o = JSON.parse(jsonText);
-    if (!o || typeof o !== 'object') throw new Error('bad vision payload');
+    if (!o) throw parseErr || new Error('bad vision payload');
+    if (typeof o !== 'object') throw new Error('bad vision payload');
     const num = v => (typeof v === 'number' && isFinite(v)) ? v : (v != null && /^\d[\d,]*$/.test(String(v)) ? parseInt(String(v).replace(/,/g, ''), 10) : null);
     return {
       pokemon_name: o.name ? this.capitalizeName(o.name) : undefined,

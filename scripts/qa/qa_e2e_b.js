@@ -1139,6 +1139,24 @@ module.exports = async function suiteB() {
     expect(back === false, 'clearing the choice puts it back to normal');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, keeperOverrides: {}, tab: 'home' });
   });
+  await T('PARSE-01', 'AI', 'A garbled screenshot reply is repaired, and a hopeless one is asked again once', async () => {
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic;
+      const ok = x => { try { return l.parseLooseObject(x); } catch (e) { return { err: e.message }; } };
+      const out = { missingComma: ok('{"cp":1200,"purified":false "shiny":true,"favorite":false}'), missingQuote: ok('{"cp":1200,"purified":false,\n shiny":true}'), cutOff: ok('{"cp":1200,"hp":80,"candy":3,"shi'), fenced: ok('Here you go:\n```json\n{"cp":900,"shiny":false,}\n```'), undef: ok('{"cp":undefined,"hp":70}'), junk: ok('no object here') };
+      let calls = 0; const keep = [l.completeWithRetry, l.fileToVisionJpeg];
+      l.fileToVisionJpeg = async () => 'AAAA';
+      l.completeWithRetry = async () => { calls++; return calls === 1 ? 'sorry, I cannot read this' : '{"name":"Machamp","cp":2100,"shiny":true}'; };
+      let rec = null; try { rec = await l.readScreenshotWithVision({}); } catch (e) { rec = { err: e.message }; }
+      l.completeWithRetry = keep[0]; l.fileToVisionJpeg = keep[1];
+      out.reask = { calls, cp: rec && rec.cp, shiny: rec && rec.shiny };
+      return out; } } return null; });
+    expect(r && r.missingComma.shiny === true && r.missingComma.cp === 1200, 'missing comma repaired: ' + JSON.stringify(r && r.missingComma));
+    expect(r.missingQuote.shiny === true, 'missing opening quote repaired: ' + JSON.stringify(r.missingQuote));
+    expect(r.cutOff.cp === 1200 && r.cutOff.candy === 3, 'cut-off reply keeps the complete fields: ' + JSON.stringify(r.cutOff));
+    expect(r.fenced.cp === 900 && r.undef.hp === 70 && r.undef.cp === null, 'fences, trailing comma and undefined handled');
+    expect(r.junk.err, 'a reply with no object still fails');
+    expect(r.reask.calls === 2 && r.reask.cp === 2100 && r.reask.shiny === true, 'a hopeless first reply is asked again once: ' + JSON.stringify(r.reask));
+  });
   await T('GEMTIME-01', 'AI', 'A Gemini request that never answers is dropped after the deadline instead of hanging the import', async () => {
     const st0 = await s.state();
     await s.page.route(/generativelanguage\.googleapis\.com/, () => { /* never answers */ });

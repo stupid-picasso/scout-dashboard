@@ -529,3 +529,6 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - Cause of "Reading screenshot 7 of 68" hanging: `callGeminiWithKey` fetches had no timeout. Now `fetchWithDeadline` (45 s generateContent, 8 s model list/countTokens, 30 s body read). A timeout is logged as status 599 in Diagnostics, tries the next model, and a second timeout in one call throws "Gemini did not answer..." (the import panel then shows the error with SKIP/retry). Import card shows "Waiting on Gemini · Ns" after 8 s (`ocrTick`, UI-only key). Test GEMTIME-01.
 - Model choice is already automatic (`geminiRotation`: newest non-preview first, non-lite first for vision, minimal thinking); Progress log > Diagnostics lists the model, status and time of each call.
 - Cleanup: the Standalone and Scout Dashboard.html bundles each had the whole "Live Gemini model list" block (geminiClassify/geminiForget/geminiRotation) twice; the duplicate was removed so propagation anchors are unambiguous.
+
+## Screenshot JSON repair (v53.258)
+- `JSON Parse error: Unexpected identifier "shiny"` came from a model reply with a missing comma/quote. `parseLooseObject` repairs missing commas, missing key quotes, `undefined`, trailing commas, fences/prose, and a cut-off reply (keeps complete fields); if still unparseable `readScreenshotWithVision` asks once more. Test PARSE-01.
