@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.254</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.255</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2406,6 +2406,25 @@
               </sc-if>
             </div>
           </sc-for>
+          <sc-if value="{{ detail.hasOtherLeagues }}" hint-placeholder-val="{{ false }}">
+            <details style="margin-top:2px">
+              <summary style="cursor:pointer;font:600 12px var(--font-display);color:var(--ink-700);min-height:36px;display:flex;align-items:center">{{ detail.otherLeaguesLabel }}</summary>
+              <sc-for list="{{ detail.otherLeagues }}" as="l" hint-placeholder-count="2">
+            <div style="margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;font:12.5px var(--font-display);margin-bottom:5px">
+                <span style="color:{{ l.color }};font-weight:750">{{ l.label }}</span>
+                <span style="color:var(--ink-500)">{{ l.pctDisplay }} &middot; rank {{ l.rankDisplay }}</span>
+              </div>
+              <div style="height:7px;background:var(--line-200);border-radius:4px;overflow:hidden">
+                <div class="om-bar" style="height:100%;border-radius:4px;background:{{ l.color }};width:{{ l.barWidth }};transition:width 1s ease"></div>
+              </div>
+              <sc-if value="{{ l.idealLine }}" hint-placeholder-val="{{ false }}">
+                <div style="font:11px var(--font-body);color:var(--ink-400);margin-top:4px">{{ l.idealLine }}</div>
+              </sc-if>
+            </div>
+              </sc-for>
+            </details>
+          </sc-if>
         </div>
         </div>
         <div class="om-rise" style="--i:8">
@@ -13577,7 +13596,7 @@ class Component extends DCLogic {
     out.bestIvLittleNote = rec && rec.to ? '' : 'Little Cup is left out: this species cannot evolve any further.';
     out.bestIvCopies = copies.slice(0, 40).map(c => {
       const tag = c.best;
-      return { name: c.p.name + ' ' + c.p.cp + ' CP', iv: 'IV ' + c.ivs.join('/') + ' (' + Math.round(c.ivs.reduce((a, b) => a + b, 0) / 45 * 100) + '%)',
+      return { name: c.p.name + ' ' + c.p.cp + ' CP', iv: 'IV ' + c.ivs.join('/') + ' \u00b7 IV total ' + Math.round(c.ivs.reduce((a, b) => a + b, 0) / 45 * 100) + '%',
         ranks: c.ranks.filter(x => x.r != null && (x.lk !== 'little' || (rec && rec.to))).map(x => x.l + ' ' + x.r.toFixed(1) + '% (top ' + (x.top < 10 ? x.top.toFixed(1) : Math.round(x.top)) + '%)').join(' · '),
         tag, tagColor: tag === 'AVERAGE' ? 'var(--ink-400)' : tag === 'GOOD' ? 'var(--type-electric)' : 'var(--grass-700)',
         app: c.kept ? 'The app keeps it' : 'The app would let it go', appColor: c.kept ? 'var(--grass-700)' : 'var(--ink-500)', onOpen: () => this.openDetail(c.p) };
@@ -17321,7 +17340,7 @@ class Component extends DCLogic {
         { label: 'STA', value: Number.isFinite(p.staIV) ? p.staIV : '—', color: 'var(--grass-700)', ...this.ringGeom((Number.isFinite(p.staIV) ? p.staIV : 0) / 15 * 100, 27) }
       ];
       const idealBase = this.baseStatsOf(p);
-      const leagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little]].map(([label, o]) => {
+      const allLeagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little], ['MASTER', this.masterRankFor(p)]].map(([label, o]) => {
         o = o || {};
         let idealLine = '';
         try {
@@ -17333,15 +17352,34 @@ class Component extends DCLogic {
           }
           if (cap && !this.leagueUsable(p, label.toLowerCase())) idealLine = 'Already ' + p.cp + ' CP \u2014 over the ' + cap + ' cap, so this one cannot enter this league.';
         } catch (e) {}
+        let rankNo = '\u2014';
+        try {
+          const lk = label.toLowerCase(), mm = this.mechanics, ivs = this.ivsOf(p);
+          const b = (lk === 'master' ? idealBase : this.gradeBaseFor(p, lk)) || idealBase;
+          const dr = b && ivs && mm.dittoRankOf ? mm.dittoRankOf(b, ivs, lk, !!this.isShadow(p)) : null;
+          if (dr) rankNo = '#' + dr.rank + ' of 4096';
+          if (dr && lk !== 'master' && Number.isFinite(o.rankPct)) { const a = this.pvpAssess(p, lk); const g = this.gradeLabel(o.rankPct, lk === 'little' ? null : (a && a.tier)); rankNo += ' \u00b7 ' + g; }
+        } catch (e) {}
         return {
           idealLine,
           label,
           color: leagueColor(label),
           pctDisplay: Number.isFinite(o.rankPct) ? o.rankPct.toFixed(1) + '%' : '—',
-          rankDisplay: Number.isFinite(o.rankNum) ? '#' + o.rankNum : '—',
+          rankDisplay: Number.isFinite(o.rankNum) ? '#' + o.rankNum : rankNo,
           barWidth: (Number.isFinite(o.rankPct) ? o.rankPct : 0) + '%'
         };
       });
+      // One league leads: the one its CP fits right now (Little Cup only while it can still evolve). The higher leagues it can still
+      // grow into sit below; leagues it is already over are left out.
+      const capOf = { LITTLE: 500, GREAT: 1500, ULTRA: 2500, MASTER: Infinity };
+      const evolvesNow = !!(this.evoRecordFor(p) || {}).to && !this.evolveBlocked(p);
+      const cpNow = Number.isFinite(p.cp) ? p.cp : null;
+      const order = ['LITTLE', 'GREAT', 'ULTRA', 'MASTER'];
+      const curLabel = cpNow == null ? 'GREAT' : order.find(l => cpNow <= capOf[l] && (l !== 'LITTLE' || evolvesNow));
+      const byLabel = Object.fromEntries(allLeagues.map(l => [l.label, l]));
+      const cur = byLabel[curLabel];
+      const leagues = cur ? [{ ...cur, label: cur.label + ' \u00b7 its league now' }] : allLeagues.filter(l => l.label !== 'LITTLE');
+      const otherLeagues = cur ? order.filter(l => l !== 'LITTLE' && capOf[l] > capOf[curLabel]).map(l => byLabel[l]).filter(Boolean) : [];
 
       const age = this.scanAgeDays(p);
       const vd = this.verdictFor(p);
@@ -17386,7 +17424,7 @@ class Component extends DCLogic {
         heroFilter: (p.shadowPurified === '1' || p.shadowPurified === 1) ? 'drop-shadow(0 0 10px #8a2be2) drop-shadow(0 12px 10px rgba(0,0,0,.45))' : 'drop-shadow(0 12px 14px rgba(0,0,0,.35))',
         displayName: p.name + (p.form ? ' (' + p.form + ')' : ''),
         dex: p.dex, cp: p.cp, hp: p.hp,
-        statRings, leagues,
+        statRings, leagues, otherLeagues, hasOtherLeagues: otherLeagues.length > 0, otherLeaguesLabel: 'Could also grow into: ' + otherLeagues.map(l => l.label[0] + l.label.slice(1).toLowerCase()).join(', '),
         // ---- Power-up planner + PvP level targets ----
         // Both read from the same two facts: this Pokemon's real level and the
         // cost table in the mechanics module. Lucky halves dust, Shadow adds

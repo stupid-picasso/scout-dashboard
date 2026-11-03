@@ -516,3 +516,7 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 ## Ditto ranking page (v53.252+)
 - More → "Ditto ranking" (tab `dittorank`, state `dt*`). `PokemonMechanics.dittoRanking/dittoRankOf`: all 4096 spreads, stat product at highest level under the cap, ties: Atk stat, HP stat, CP, Sta IV. Verified identical to the Hub Melmetal Great and Ultra top-10 (order, level, CP, %).
 - Reference only: keep/transfer logic still uses Best IV. Test DITTO-01.
+
+## Detail sheet league rankings (v53.253+)
+- Detail sheet leads with the league its CP fits (Little ≤500 only while it can still evolve; Great ≤1500; Ultra ≤2500; else Master) labelled "its league now"; higher reachable leagues sit in a collapsed "Could also grow into" list; leagues it is over are hidden.
+- Rank line now "% · #N of 4096 · GRADE" (Ditto ranking math) instead of an empty "rank —". Best IV copy line reads "IV a/b/c · IV total N%". Test DETAILLG-01.

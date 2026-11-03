@@ -1120,6 +1120,21 @@ module.exports = async function suiteB() {
     expect(/Shadow/.test(t) && /You have no shadow Gengar/.test(t), 'shadow view has its own copies');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, bestIvSel: null, bestIvShadow: false, bestIvQuery: '', tab: 'home' });
   });
+  await T('DETAILLG-01', 'Detail', 'Detail sheet leads with the league its CP fits, lists the higher leagues it can still reach, and shows rank out of 4096', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 96.9, evolvesTo: name }, ultra: { rankPct: 96.9 }, little: { rankPct: 93.6 }, scanDate: '2026-10-30' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('dl1', 'Bulbasaur', 1, [14, 13, 14], 625), mk('dl2', 'Machamp', 68, [10, 10, 10], 2000), mk('dl3', 'Machamp', 68, [10, 10, 11], 2800)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
+    const open = async idx => { await s.page.evaluate(i => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.openDetail) { const l = f.stateNode.logic; l.openDetail(l.effectiveRosterForMatch().find(p => p.idx === i)); return; } } }, idx); await s.page.waitForTimeout(900); return s.page.evaluate(() => document.body.innerText); };
+    let t = await open('dl1');
+    expect(/GREAT \u00b7 its league now/.test(t) && /Could also grow into: Ultra, Master/.test(t) && !/LITTLE/.test(t), 'a 625 CP Bulbasaur leads with Great, lists Ultra and Master: ' + t.slice(t.indexOf('LEAGUE RANKINGS'), t.indexOf('LEAGUE RANKINGS') + 300));
+    expect(/#\d+ of 4096/.test(t), 'rank is out of 4096, not a dash');
+    await s.call('closeDetail'); t = await open('dl2');
+    expect(/ULTRA \u00b7 its league now/.test(t) && /Could also grow into: Master/.test(t) && !/GREAT/.test(t.slice(t.indexOf('LEAGUE RANKINGS'), t.indexOf('LEAGUE RANKINGS') + 600)), 'a 2000 CP Pokemon leads with Ultra');
+    await s.call('closeDetail'); t = await open('dl3');
+    expect(/MASTER \u00b7 its league now/.test(t) && !/Could also grow into/.test(t), 'a 2800 CP Pokemon is Master only');
+    await s.call('closeDetail');
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+  });
   await T('DITTO-01', 'BestIV', 'Ditto ranking page: opens from More, matches the Hub/Dittobase Melmetal tables, ranks your copy out of 4096', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 15.5, lvlMax: 15.5, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30' });
     const st0 = await s.state();
