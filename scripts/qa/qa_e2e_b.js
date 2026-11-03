@@ -1139,6 +1139,15 @@ module.exports = async function suiteB() {
     expect(back === false, 'clearing the choice puts it back to normal');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, keeperOverrides: {}, tab: 'home' });
   });
+  await T('GEMTIME-01', 'AI', 'A Gemini request that never answers is dropped after the deadline instead of hanging the import', async () => {
+    const st0 = await s.state();
+    await s.page.route(/generativelanguage\.googleapis\.com/, () => { /* never answers */ });
+    await s.set({ geminiKeys: ['AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1', 'AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA2'].slice(0, 1), geminiKey: 'AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1' });
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l._geminiTimeoutMs = 700; l._gemRot = { AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1: { at: Date.now(), vision: ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite'], text: ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'] } }; const t0 = Date.now(); let msg = ''; try { await l.callGemini({ messages: [{ role: 'user', content: 'hi' }] }); } catch (err) { msg = err.message; } const calls = (l._aiLog || []).filter(x => x.status === 599).length; l._geminiTimeoutMs = 0; return { ms: Date.now() - t0, msg, calls }; } } return null; });
+    await s.page.unroute(/generativelanguage\.googleapis\.com/);
+    await s.set({ geminiKeys: st0.geminiKeys || [], geminiKey: st0.geminiKey || '' });
+    expect(r && /did not answer/.test(r.msg) && r.ms < 6000 && r.calls === 2, 'times out after two tries, not forever: ' + JSON.stringify(r));
+  });
   await T('DETAILLG-01', 'Detail', 'Detail sheet leads with the league its CP fits, lists the higher leagues it can still reach, and shows rank out of 4096', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 96.9, evolvesTo: name }, ultra: { rankPct: 96.9 }, little: { rankPct: 93.6 }, scanDate: '2026-10-30' });
     const st0 = await s.state();
