@@ -223,7 +223,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.253</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.254</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -2805,6 +2805,52 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ isDitto }}" hint-placeholder-val="{{ false }}">
+  <div role="main" style="display:flex;flex-direction:column;gap:12px;animation:fadeSlideIn .35s ease">
+    <sc-if value="{{ dtNoSel }}" hint-placeholder-val="{{ false }}">
+      <div style="font:650 19px var(--font-display);letter-spacing:-.012em">Ditto ranking</div>
+      <div style="font:13px/1.45 var(--font-body);color:var(--ink-500)">Ranks every IV spread the way Dittobase does: stat product at the highest level under the CP cap, ties broken by Attack stat, then HP stat, then CP, then Stamina IV. Pick a species to see its top spreads per league and where your own copies rank out of 4096. This page is for reference; the keep and transfer logic uses Best IV.</div>
+      <input value="{{ dtQuery }}" onInput="{{ onDtQuery }}" placeholder="Search a Pokemon (name or number)" aria-label="Search species for Ditto ranking" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:999px;border:1px solid var(--line-300);background:var(--surface-card);color:var(--ink-900);font:500 16px var(--font-body)" />
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">{{ dtCount }}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ dtRows }}" as="r" hint-placeholder-count="6">
+          <button type="button" onClick="{{ r.onOpen }}" class="om-press" aria-label="{{ r.name }}" style="text-align:left;display:flex;align-items:center;gap:12px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:8px 12px;min-height:56px;color:var(--ink-900)">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--font-display);color:var(--ink-400)">{{ r.initial }}</span><img ref="{{ r.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+            <div style="flex:1;min-width:0"><div style="font:700 15px var(--font-body)">{{ r.name }} <span style="font:600 11px var(--font-display);color:var(--ink-400)">{{ r.dexNo }}</span></div><div style="font:600 11px var(--font-display);color:var(--ink-500)">{{ r.owned }}</div></div>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ dtMore }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ onDtMore }}" class="om-press" style="align-self:center;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more</button></sc-if>
+    </sc-if>
+    <sc-if value="{{ dtHasSel }}" hint-placeholder-val="{{ false }}">
+      <button type="button" onClick="{{ dtBack }}" class="om-press" style="align-self:flex-start;font:600 15px var(--font-body);color:var(--ios-blue);min-height:44px;padding:0 4px">&lsaquo; All Pokemon</button>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ dtSprite }}" alt="" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+        <div><div style="font:650 22px var(--font-display);letter-spacing:-.012em">{{ dtName }}</div><div style="font:600 12px var(--font-display);color:var(--ink-400)">{{ dtDex }}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ dtFormChips }}" as="c" hint-placeholder-count="0"><button type="button" onClick="{{ c.onClick }}" class="om-press" style="padding:8px 14px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }};font:700 12px var(--font-display);min-height:36px">{{ c.label }}</button></sc-for>
+        <sc-for list="{{ dtShadowChips }}" as="c" hint-placeholder-count="2"><button type="button" onClick="{{ c.onClick }}" class="om-press" style="padding:8px 14px;border-radius:var(--r-pill);background:{{ c.bg }};color:{{ c.fg }};font:700 12px var(--font-display);min-height:36px">{{ c.label }}</button></sc-for>
+      </div>
+      <sc-for list="{{ dtLeagueCards }}" as="l" hint-placeholder-count="4">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font:700 13px var(--font-display);letter-spacing:.04em">{{ l.name }}</div><div style="font:600 11px var(--font-display);color:var(--ink-400)">{{ l.cap }}</div></div>
+          <sc-for list="{{ l.top }}" as="t" hint-placeholder-count="5"><div style="font:600 13px var(--font-body);color:var(--ink-700)">{{ t.text }}</div></sc-for>
+        </div>
+      </sc-for>
+      <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-top:6px">YOUR COPIES</div>
+      <sc-if value="{{ dtNoCopies }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--ink-500)">{{ dtNoCopies }}</div></sc-if>
+      <sc-for list="{{ dtCopies }}" as="c" hint-placeholder-count="0">
+        <button type="button" onClick="{{ c.onOpen }}" class="om-press" style="text-align:left;background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:3px;color:var(--ink-900)">
+          <div style="font:700 15px var(--font-body)">{{ c.name }}</div>
+          <div style="font:600 12.5px var(--font-body);color:var(--ink-700)">{{ c.iv }}</div>
+          <sc-for list="{{ c.lines }}" as="x" hint-placeholder-count="3"><div style="font:12.5px var(--font-body);color:var(--ink-500)">{{ x.text }}</div></sc-for>
+        </button>
+      </sc-for>
+    </sc-if>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ isAttackers }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn .35s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px 20px;margin-bottom:20px">
@@ -3610,7 +3656,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     keepGrade: 'excellent',
-    bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60,
+    bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, dtVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
     costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null,
@@ -13002,7 +13048,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -13538,6 +13584,45 @@ class Component extends DCLogic {
     });
     out.bestIvHasCopies = copies.length > 0;
     out.bestIvNoCopies = copies.length === 0 ? 'You have no ' + (shadow ? 'shadow ' : '') + name + ' with known IVs.' : '';
+    return out;
+  }
+
+  // Ditto ranking page: Dittobase's ordering of all 4096 spreads (see PokemonMechanics.dittoRanking). Reference only; keep logic stays on Best IV.
+  dittoVals() {
+    const st = this.state, m = this.mechanics;
+    if (!m || !m.dittoRanking) return {};
+    const q = this.costumeNorm(st.dtQuery || ''), sel = st.dtSel, roster = this.effectiveRosterForMatch();
+    const out = { dtQuery: st.dtQuery || '', onDtQuery: e => this.setState({ dtQuery: e.target.value, dtVisible: 60 }), dtHasSel: sel != null, dtNoSel: sel == null };
+    if (sel == null) {
+      const all = this.bestIvList().filter(x => !q || x.norm.indexOf(q) >= 0 || String(x.dex) === String(st.dtQuery || '').trim());
+      const shown = all.slice(0, st.dtVisible || 60), own = {};
+      roster.forEach(p => { if (p.dex != null) own[p.dex] = (own[p.dex] || 0) + 1; });
+      out.dtRows = shown.map(x => ({ key: String(x.dex), name: x.name, dexNo: '#' + x.dex, owned: own[x.dex] ? 'you own ' + own[x.dex] : '', spriteRef: this.makeSpriteRefByDex(x.dex, ''), initial: x.name.charAt(0), onOpen: () => this.setState({ dtSel: x.dex, dtForm: 'normal', dtShadow: false }) }));
+      out.dtCount = all.length + ' species' + (all.length > shown.length ? ', showing ' + shown.length : '');
+      out.dtMore = all.length > shown.length;
+      out.onDtMore = () => this.setState({ dtVisible: (st.dtVisible || 60) + 60 });
+      return out;
+    }
+    const dex = sel, name = String(m.DEX_NAMES[dex] || '').replace(/-(male|female|normal|disguised|land|incarnate|standard|altered|average)$/i, '');
+    const formKey = st.dtForm || 'normal', shadow = !!st.dtShadow, forms = this.bestIvForms(dex);
+    const base = formKey !== 'normal' ? m.BASE_STATS_BY_FORM[dex + '_' + formKey] : m.BASE_STATS[dex];
+    const rec = this.evoRecordFor({ name, form: formKey === 'normal' ? '' : formKey });
+    const leagues = [['little', 'Little Cup', '\u2264 500 CP'], ['great', 'Great League', '\u2264 1500 CP'], ['ultra', 'Ultra League', '\u2264 2500 CP'], ['master', 'Master League', 'No cap']].filter(l => l[0] !== 'little' || (rec && rec.to));
+    const fmt = r => '#' + r.rank + ' \u00b7 ' + r.ivs.join('/') + ' \u00b7 L' + r.level + ' \u00b7 ' + r.cp + ' CP \u00b7 ' + r.pct.toFixed(2) + '%';
+    out.dtName = name + (formKey !== 'normal' ? ' (' + this.bulkFormLabel(formKey) + ')' : '') + (shadow ? ' \u00b7 Shadow' : '');
+    out.dtDex = '#' + dex;
+    out.dtSprite = this.makeSpriteRefByDex(dex, formKey === 'normal' ? '' : formKey);
+    out.dtBack = () => this.setState({ dtSel: null });
+    out.dtFormChips = forms.length > 1 ? forms.map(f => ({ label: this.bulkFormLabel(f).toUpperCase(), bg: f === formKey ? '#0060c8' : 'var(--surface-card)', fg: f === formKey ? '#fff' : 'var(--ink-700)', onClick: () => this.setState({ dtForm: f }) })) : [];
+    out.dtShadowChips = [[false, 'NORMAL'], [true, 'SHADOW']].map(([v, l]) => ({ label: l, bg: v === shadow ? '#0060c8' : 'var(--surface-card)', fg: v === shadow ? '#fff' : 'var(--ink-700)', onClick: () => this.setState({ dtShadow: v }) }));
+    out.dtLeagueCards = base ? leagues.map(([lk, ln, cap]) => ({ name: ln, cap, top: m.dittoRanking(base, lk, shadow).rows.slice(0, 5).map(r => ({ text: fmt(r) })) })) : [];
+    const copies = base ? roster.filter(p => p.dex === dex && this.formKeyOf(p) === formKey && !!this.isShadow(p) === shadow && this.ivsOf(p)) : [];
+    out.dtCopies = copies.slice(0, 40).map(p => {
+      const ivs = this.ivsOf(p);
+      return { name: p.name + ' ' + p.cp + ' CP', iv: 'IV ' + ivs.join('/'), onOpen: () => this.openDetail(p),
+        lines: leagues.map(([lk, ln]) => { const r = m.dittoRankOf(base, ivs, lk, shadow); return { text: ln.replace(' League', '').replace(' Cup', '') + (r ? ' ' + fmt(r) : ' \u2014') }; }) };
+    });
+    out.dtNoCopies = copies.length === 0 ? 'You have no ' + (shadow ? 'shadow ' : '') + name + ' with known IVs.' : '';
     return out;
   }
 
@@ -17820,6 +17905,7 @@ class Component extends DCLogic {
       { key: 'raid', label: 'Raid counters' },
       { key: 'bulk', label: 'Bulk update' },
       { key: 'bestiv', label: 'Best IV' },
+      { key: 'dittorank', label: 'Ditto ranking' },
       { key: 'intel', label: 'Collection intel' },
       { key: 'attackers', label: 'Attackers' },
       { key: 'progress', label: 'Progress log' },
@@ -17883,6 +17969,8 @@ class Component extends DCLogic {
       isPvp: tab === 'pvp',
       isAttackers: tab === 'attackers',
       isBestIv: tab === 'bestiv',
+      isDitto: tab === 'dittorank',
+      ...(tab === 'dittorank' ? this.dittoVals() : {}),
       ...(tab === 'bestiv' ? this.bestIvVals() : {}),
       isRecommend: tab === 'recommend',
       isIntel: tab === 'intel',

@@ -512,3 +512,7 @@ scripts/qa/fuzz_keep.js: independent property test for the transfer gate. Run: P
 - PvP list gate is back to rank >= 90 (not tied to the keeper grade).
 - Verified vs Hub (Melmetal top-10, Great+Ultra) and Dittobase method: stat products identical. Tie order within equal products differs from Dittobase (Atk stat, HP stat, CP, Sta IV).
 - QA harness now aborts gstatic/googleapis/firebase/jsdelivr requests: with open network Firebase's signed-out callback wipes the roster ~1s after import.
+
+## Ditto ranking page (v53.252+)
+- More → "Ditto ranking" (tab `dittorank`, state `dt*`). `PokemonMechanics.dittoRanking/dittoRankOf`: all 4096 spreads, stat product at highest level under the cap, ties: Atk stat, HP stat, CP, Sta IV. Verified identical to the Hub Melmetal Great and Ultra top-10 (order, level, CP, %).
+- Reference only: keep/transfer logic still uses Best IV. Test DITTO-01.
