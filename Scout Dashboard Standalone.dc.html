@@ -1249,7 +1249,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.251</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.253</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -7108,11 +7108,10 @@ class Component extends DCLogic {
   }
 
   // ---- Spread grades --------------------------------------------------------------------------------------------
-  // League ranks are squeezed (nearly every spread is 90%+), so what a copy is graded on is how many of the 4096 possible IV
-  // spreads it beats: TOP = the best few percent of spreads, EXCELLENT = the best 15%, GOOD = the best 40%; an S-tier species
-  // is one notch more lenient (8 / 25 / 50). The keep check keeps a league's best copy only when it reaches the grade the
-  // trainer picked (Settings, Keep best), so a full bag can ask for more.
-  gradeLimits(tier) { return tier === 'S' ? { top: 8, excellent: 25, good: 50 } : { top: 5, excellent: 15, good: 40 }; }
+  // A copy is graded on its league rank (stat product vs the best spread, the number Dittobase/PvPoke show). TOP / EXCELLENT / GOOD
+  // need rank 98 / 95 / 92 (S-tier species, one notch more lenient: 97 / 93 / 90). The keep check keeps a league's best copy only
+  // when it reaches the grade the trainer picked (Home, Keep best). "(top X%)" on Best IV is the share of the 4096 spreads, for info.
+  gradeLimits(tier) { return tier === 'S' ? { top: 97, excellent: 93, good: 90 } : { top: 98, excellent: 95, good: 92 }; }
 
   gradeBaseFor(p, lk) {
     const m = this.mechanics;
@@ -7143,12 +7142,12 @@ class Component extends DCLogic {
     const st = this.gradeStanding(p, lk);
     if (!st) return false;
     const lim = this.gradeLimits(lk === 'little' ? null : tier)[grade || this.state.keepGrade || 'excellent'];
-    return st.topPct <= lim + 1e-9;
+    return st.rank >= lim - 1e-9;
   }
 
-  gradeLabel(topPct, tier) {
+  gradeLabel(rank, tier) {
     const lim = this.gradeLimits(tier);
-    return topPct <= lim.top + 1e-9 ? 'TOP' : topPct <= lim.excellent + 1e-9 ? 'EXCELLENT' : topPct <= lim.good + 1e-9 ? 'GOOD' : 'AVERAGE';
+    return rank >= lim.top - 1e-9 ? 'TOP' : rank >= lim.excellent - 1e-9 ? 'EXCELLENT' : rank >= lim.good - 1e-9 ? 'GOOD' : 'AVERAGE';
   }
 
   setKeepGrade(g) {
@@ -14645,7 +14644,7 @@ class Component extends DCLogic {
         const tierOf = lk => { const t = m.pvpTierFor ? m.pvpTierFor(name, shadow, lk, formKey === 'normal' ? '' : formKey) : null; return t ? t.tier : null; };
         const ranks = [['little', 'Little'], ['great', 'Great'], ['ultra', 'Ultra'], ['master', 'Master']].map(([lk, l]) => { const st = stand(lk); return { lk, l, r: st ? st.rank : null, top: st ? st.topPct : null, tier: lk === 'little' ? null : tierOf(lk) }; });
         const ORDER = { TOP: 0, EXCELLENT: 1, GOOD: 2, AVERAGE: 3 };
-        const labels = ranks.filter(x => x.top != null && (x.lk !== 'little' || (rec && rec.to))).map(x => this.gradeLabel(x.top, x.tier));
+        const labels = ranks.filter(x => x.top != null && (x.lk !== 'little' || (rec && rec.to))).map(x => this.gradeLabel(x.r, x.tier));
         const best = labels.length ? labels.sort((a, b) => ORDER[a] - ORDER[b])[0] : 'AVERAGE';
         const kept = this.keepReasons(p).length > 0;
         return { p, ivs, ranks, best, kept };
@@ -14659,7 +14658,7 @@ class Component extends DCLogic {
     out.bestIvEvolves = rec && rec.to ? { text: 'Evolves into ' + rec.to + '. League ranks for evolving Pokemon are judged on the evolved form: look at ' + rec.to + ' for the spread to aim for.', label: 'OPEN ' + String(rec.to).toUpperCase(), onOpen: () => { const d = m.resolveDexByName ? m.resolveDexByName(rec.to) : null; if (d != null) this.setState({ bestIvSel: d, bestIvForm: 'normal', bestIvShadow: false }); } } : null;
     const gradeNow = st.keepGrade || 'excellent';
     out.bestIvLeagueCards = data.leagues.filter(l => l.lk !== 'little' || (rec && rec.to)).map(l => ({
-      bar: l.lk === 'master' || !data.base ? '' : (() => { const t = l.lk === 'little' ? null : (m.pvpTierFor ? (m.pvpTierFor(name, shadow, l.lk, formKey === 'normal' ? '' : formKey) || {}).tier : null); const lim = this.gradeLimits(t)[gradeNow]; return 'Your keeper grade (' + gradeNow.toUpperCase() + '): beat ' + (100 - lim) + '% of spreads, which is rank ' + m.spreadCutRank(data.base, l.lk, shadow, lim).toFixed(1) + '% or better' + (t ? ' (' + t + ' tier)' : '') + '.'; })(),
+      bar: l.lk === 'master' || !data.base ? '' : (() => { const t = l.lk === 'little' ? null : (m.pvpTierFor ? (m.pvpTierFor(name, shadow, l.lk, formKey === 'normal' ? '' : formKey) || {}).tier : null); const lim = this.gradeLimits(t)[gradeNow]; return 'Your keeper grade (' + gradeNow.toUpperCase() + '): league rank ' + lim + '% or better' + (t ? ' (' + t + ' tier)' : '') + '.'; })(),
       name: l.name, cap: l.cap, ivs: l.ivs ? l.ivs.join(' / ') : '—', ivNames: l.ivs ? 'ATK ' + l.ivs[0] + ' · DEF ' + l.ivs[1] + ' · HP ' + l.ivs[2] : '',
       lvCp: l.level != null ? 'Level ' + l.level + ' · ' + l.cp + ' CP' : '', r95: l.r95 ? 'Top 99%+: ' + l.r95 : '', r90: l.r90 ? 'Top 98%+: ' + l.r90 : '',
       note: l.lk === 'master' ? 'No CP cap, so the best spread is always 15 / 15 / 15.' : ''
@@ -14707,7 +14706,7 @@ class Component extends DCLogic {
           return;
         }
         const a = this.pvpAssess(p, d.lk, d.tableKey);
-        if (!a || !this.gradeMeets(p, d.lk, a.tier)) return;
+        if (!a || a.rank < 90) return;
         const inBand = this.inBand(p, d.lk);
         if (d.kind === 'build') { if (!inBand && a.tierRank <= 2) rows.push({ p, tr: a.tierRank, rank: a.rank, ok: a.movesOk === true }); return; }
         if (!inBand) return;
@@ -19266,7 +19265,7 @@ class Component extends DCLogic {
       gradeChips: [['good', 'GOOD'], ['excellent', 'EXCELLENT'], ['top', 'TOP']].map(([k, l]) => ({ label: l, pressed: String((this.state.keepGrade || 'excellent') === k), bg: (this.state.keepGrade || 'excellent') === k ? '#0060c8' : 'var(--surface-muted)', fg: (this.state.keepGrade || 'excellent') === k ? '#fff' : 'var(--ink-900)', onClick: () => this.setKeepGrade(k) })),
       gradeEffect: tab === 'home' ? (() => {
         const fx = this.gradeEffects(), cur = this.state.keepGrade || 'excellent';
-        return 'A league\u2019s best copy is kept only if it beats at least this share of all IV spreads: TOP the best 5%, EXCELLENT the best 15%, GOOD the best 40% (S-tier species: 8%, 25%, 50%). Copies kept as a league\u2019s best: GOOD ' + fx.good + ', EXCELLENT ' + fx.excellent + ', TOP ' + fx.top + '. You are on ' + cur.toUpperCase() + '.';
+        return 'A league\u2019s best copy is kept only if its league rank reaches the grade: TOP 98%, EXCELLENT 95%, GOOD 92% (S-tier species: 97%, 93%, 90%). Copies kept as a league\u2019s best: GOOD ' + fx.good + ', EXCELLENT ' + fx.excellent + ', TOP ' + fx.top + '. You are on ' + cur.toUpperCase() + '.';
       })() : '',
       cutTargetDraft: this.state.cutTargetDraft,
       onCutTargetChange: (e) => this.onCutTargetChange(e.target.value),

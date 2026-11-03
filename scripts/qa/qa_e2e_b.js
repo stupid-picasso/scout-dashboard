@@ -1113,18 +1113,20 @@ module.exports = async function suiteB() {
     await s.page.getByRole('button', { name: 'Gengar', exact: true }).first().click(); await s.page.waitForTimeout(700);
     t = await s.page.evaluate(() => document.body.innerText);
     expect(/0 \/ 13 \/ 13/.test(t) && /0 \/ 15 \/ 14/.test(t) && /15 \/ 15 \/ 15/.test(t), 'ideal spreads: Great 0/13/13, Ultra 0/15/14, Master 15/15/15: ' + t.slice(0, 500));
-    expect(/Gengar 1498 CP/.test(t) && /TOP/.test(t) && /AVERAGE/.test(t) && /\(top \d/.test(t), 'your copies are graded by spread percentile: ' + t.slice(t.indexOf('YOUR COPIES')).slice(0, 400));
+    expect(/Gengar 1498 CP/.test(t) && /TOP/.test(t) && /EXCELLENT/.test(t) && /GOOD/.test(t) && /\(top \d/.test(t), 'your copies are graded by league rank: ' + t.slice(t.indexOf('YOUR COPIES')).slice(0, 400));
     expect(/Your keeper grade \(EXCELLENT\)/.test(t), 'each league card names the rank your grade needs');
     await s.page.getByRole('button', { name: 'SHADOW', exact: true }).first().click(); await s.page.waitForTimeout(400);
     t = await s.page.evaluate(() => document.body.innerText);
     expect(/Shadow/.test(t) && /You have no shadow Gengar/.test(t), 'shadow view has its own copies');
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, bestIvSel: null, bestIvShadow: false, bestIvQuery: '', tab: 'home' });
   });
-  await T('GRADE-01', 'Safety', 'Keeper grade by spread percentile: the setting decides which copy is a league best, equal copies keep only one, and the percentile matches the spread distribution', async () => {
+  await T('GRADE-01', 'Safety', 'Keeper grade by league rank (S 97/93/90, A/B 98/95/92): the setting decides which copy is a league best, equal copies keep only one', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: 0, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('gr1', 'Azumarill', 184, [0, 15, 15], 400), mk('gr2', 'Azumarill', 184, [8, 8, 8], 410), mk('gr3', 'Azumarill', 184, [0, 15, 15], 400), mk('gr4', 'Azumarill', 184, [14, 6, 12], 420)], roster: [], ivOverrides: {}, keepGrade: 'good', appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
     const info = async () => s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const best = ros.filter(p => l.keepFull(p, ctx).all.some(x => /^Best Great League copy/.test(x))).map(p => p.idx).sort(); const stand = id => { const p = ros.find(q => q.idx === id); const st = l.gradeStanding(p, 'great'); return st && Math.round(st.topPct * 10) / 10; }; return { best, top: { gr1: stand('gr1'), gr2: stand('gr2'), gr4: stand('gr4') }, fx: l.gradeEffects() }; } } return null; });
+    const lab = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; return [l.gradeLabel(95.27, 'S'), l.gradeLabel(97.21, 'S'), l.gradeLabel(94.0, 'S'), l.gradeLabel(95, 'A'), l.gradeLabel(94.9, 'A'), l.gradeLabel(89, 'S'), l.gradeLabel(98, 'B')]; } } return null; });
+    expect(JSON.stringify(lab) === JSON.stringify(['EXCELLENT', 'TOP', 'EXCELLENT', 'EXCELLENT', 'GOOD', 'AVERAGE', 'TOP']), 'S-tier Mimikyu 95.3 and Cramorant 94.0 are EXCELLENT, Clodsire 97.2 is TOP, A/B needs 95: ' + JSON.stringify(lab));
     let r = await info();
     expect(r.best.length === 1 && (r.best[0] === 'gr1' || r.best[0] === 'gr3'), 'two identical 0/15/15 copies: only one stays as the best Great copy: ' + JSON.stringify(r.best));
     expect(r.top.gr1 < r.top.gr2 && r.top.gr2 < 100, 'the percentile orders the spreads: ' + JSON.stringify(r.top));
