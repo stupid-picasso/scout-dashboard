@@ -140,7 +140,7 @@ module.exports = async function suiteC() {
   // ------------------------------------------------------------------ HOME / settings
   s = await session({ feed: false });
   await s.load(QA); await s.go('HOME');
-  await T('HOM-01', 'Home', 'Greeting, Power Up, Evolve Soon and Great League Project counts render', async () => { const t = await s.text(); expect(/Trainer/.test(t) && /POWER UP/.test(t) && /EVOLVE SOON/.test(t) && /GREAT LEAGUE PROJECTS/.test(t)); });
+  await T('HOM-01', 'Home', 'The title names the day, and Power Up, Evolve Soon and Great League Project counts render', async () => { const t = await s.text(); expect(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/.test(t) && /POWER UP/.test(t) && /EVOLVE SOON/.test(t) && /GREAT LEAGUE PROJECTS/.test(t)); });
   const openSetup = () => s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/Setup, sync and backup/.test(d.textContent.slice(0, 120))) d.open = true; }));
     await T('HOM-02', 'Home', 'Sign-in form is present and a bad login shows an error, not a crash', async () => { await openSetup(); await s.page.getByPlaceholder('email').first().fill('not-an-email'); await s.page.getByPlaceholder('password').first().fill('x'); await s.page.getByText('SIGN IN', { exact: true }).first().click(); await s.page.waitForTimeout(1500); expect(s.errors.length === 0, s.errors[0]); }, 'high');
   await T('HOM-03', 'Home', 'Trainer level and stardust reserve save and survive state read-back', async () => { const inputs = s.page.locator('input[type=text]'); await s.call('setState', {}); const ok = await s.set({ trainerLevel: 42, dustReserve: 100000 }); expect(ok); expect((await s.state()).trainerLevel === 42); });

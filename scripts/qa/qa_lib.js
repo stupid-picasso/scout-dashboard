@@ -35,7 +35,8 @@ async function close() { if (browser) await browser.close(); }
 // types (inject typeTable), offline, init (fn run before load)
 async function session(opts = {}) {
   const b = await launch();
-  const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2 });
+  const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark' });
+  if (!opts.sentenceCase) await ctx.addInitScript(() => { window.__keepCaps = true; });   // tests read the source wording; CASE-01 turns the display layer on
   const page = await ctx.newPage();
   const errors = [], logs = [];
   page.on('pageerror', e => errors.push(e.message));

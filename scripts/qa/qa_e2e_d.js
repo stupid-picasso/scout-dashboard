@@ -29,4 +29,38 @@ module.exports = async function suiteD() {
   await T('KEY-03', 'Accessibility', 'Every control on the tab bar and header has an accessible name', async () => { const n = await s.page.evaluate(() => [...document.querySelectorAll('header button, header label, nav button')].filter(b => !(b.getAttribute('aria-label') || b.innerText || '').trim()).length); expect(n === 0, n + ' unnamed controls'); });
   fs.writeFileSync(process.env.QA_AXE_OUT || '/tmp/qa/axe.json', JSON.stringify(all, null, 1));
   await s.close();
+  // Light theme: same checks, on every tab, with the display layer (sentence case) switched on.
+  const sl = await session({ feed: false, colorScheme: 'light', sentenceCase: true });
+  await sl.load(QA); await sl.call('recalculateAllRanks'); await sl.page.waitForTimeout(2500);
+  await T('THEME-01', 'Theme', 'Light follows the phone, Dark and Light buttons override it, and the choice is remembered', async () => {
+    const th = () => sl.page.evaluate(() => ({ attr: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, ls: localStorage.getItem('scout.theme') }));
+    let t = await th();
+    expect(t.attr === null && /246, 246, 247/.test(t.bg), 'auto in a light phone is light: ' + JSON.stringify(t));
+    await sl.call('setThemePref', 'dark'); await sl.page.waitForTimeout(200); t = await th();
+    expect(t.attr === 'dark' && /15, 15, 16/.test(t.bg) && t.ls === 'dark', 'Dark button: ' + JSON.stringify(t));
+    await sl.call('setThemePref', 'light'); await sl.page.waitForTimeout(200); t = await th();
+    expect(t.attr === 'light' && /246, 246, 247/.test(t.bg), 'Light button: ' + JSON.stringify(t));
+    await sl.call('setThemePref', 'auto'); await sl.page.waitForTimeout(200); t = await th();
+    expect(t.attr === null && t.ls === 'auto', 'Auto removes the override: ' + JSON.stringify(t));
+  }, 'high');
+  await T('CASE-01', 'Theme', 'Labels written in capitals are shown in sentence case, acronyms kept', async () => {
+    await sl.go('HOME'); await sl.page.waitForTimeout(900);
+    const t = await sl.text();
+    expect(/Refresh everything/.test(t) && /Power up/.test(t) && !/POWER UP/.test(t) && !/REFRESH EVERYTHING/.test(t), 'Home labels: ' + t.slice(0, 300));
+    await sl.go('RAID'); await sl.page.waitForTimeout(700);
+    const r = await sl.text();
+    expect(/Boss types \(pick up to 2\)/.test(r) && /Raid counters/.test(r) && /Fire/.test(r) && !/BOSS TYPES/.test(r), 'Raid labels');
+    await sl.go('ROSTER'); await sl.page.waitForTimeout(700);
+    const o = await sl.text();
+    expect(/CP/.test(o) && /\bPvP ready\b/.test(o), 'CP stays capitalised, PvP is PvP');
+  }, 'high');
+  for (const scr of SCREENS) {
+    await T('AXE-LIGHT-' + scr, 'Accessibility', `axe-core (light theme): no serious or critical violations on ${scr}`, async () => {
+      await sl.go(scr); await sl.page.waitForTimeout(800);
+      await sl.page.evaluate(src => { if (!window.axe) (0, eval)(src); }, AXE);
+      const res = await sl.page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.filter(v => v.impact === 'serious' || v.impact === 'critical').map(v => v.id + '(' + v.nodes.length + ')'));
+      expect(res.length === 0, res.join(', '));
+    }, 'high');
+  }
+  await sl.close();
 };

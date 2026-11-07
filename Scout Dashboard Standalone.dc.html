@@ -1175,18 +1175,58 @@
   :root{
     --font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
     --font-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-    --surface-page:#000;
-    --surface:#1c1c1e; --surface-card:#1c1c1e; --surface-muted:#2c2c2e; --surface-sunken:#0b0b0d; --surface-field:#2c2c2e;
-    --ink-900:#fff; --ink-700:rgba(255,255,255,.9); --ink-600:rgba(235,235,245,.78); --ink-500:rgba(235,235,245,.66);
-    --ink-400:rgba(235,235,245,.64); --ink-300:rgba(235,235,245,.56);
-    --line-100:rgba(84,84,88,.28); --line-200:rgba(84,84,88,.42); --line-300:rgba(84,84,88,.62);
-    --brand-primary-strong:#0a84ff; --grass-500:#30d158; --grass-600:#30d158; --grass-700:#32d74b;
+    color-scheme:dark;
+    /* Dark: one graphite ramp and a blue accent; the sprites, tier badges and rank bars carry the colour. */
+    --surface-page:#0f0f10;
+    --surface:#19191b; --surface-card:#19191b; --surface-muted:#232325; --surface-sunken:#0a0a0b; --surface-field:#232325;
+    --ink-900:#ededed; --ink-700:#ededed; --ink-600:#a1a1a6; --ink-500:#a1a1a6;
+    --ink-400:#8a8a90; --ink-300:#8a8a90;
+    --line-100:rgba(237,237,237,.06); --line-200:rgba(237,237,237,.09); --line-300:rgba(237,237,237,.16);
+    --brand-primary-strong:#0a84ff; --grass-500:#4cc38a; --grass-600:#4cc38a; --grass-700:#4cc38a;
     --type-electric:#ffd60a; --type-fighting:#ff453a;
-    --ios-blue:#0a84ff; --ios-blue-fill:#0a64d6; --ios-green:#30d158; --ios-red:#ff453a; --ios-yellow:#ffd60a; --ios-fill:rgba(120,120,128,.24);
+    --ios-blue:#0a84ff; --ios-blue-fill:#0a64d6; --ios-green:#4cc38a; --ios-red:#e5484d; --ios-yellow:#ffd60a; --ios-fill:rgba(237,237,237,.09);
+    --bar-bg:rgba(15,15,16,.78); --bar-bg-stuck:rgba(15,15,16,.92); --bar-shadow:0 10px 30px rgba(0,0,0,.42); --nav-bg:rgba(15,15,16,.94); --nav-line:rgba(237,237,237,.12); --menu-bg:rgba(35,35,37,.94); --toast-bg:rgba(35,35,37,.9);
+    --accent-on-fill:#fff;
+    --accent-text:#66b2ff; --type-lift:#fff; --tt-dragon:#aaa0f4; --tt-ghost:#bdb2ec; --tt-poison:#d6a9ee; --tt-dark:#b0abbd; --tt-psychic:#ff9db8; --tt-fairy:#f5a8d6; --tt-fighting:#ff8a80;
     --ios-spring:cubic-bezier(.32,.72,0,1);
   }
+  /* Light: the same ramp turned over, with an amber accent from the logbook world (text uses the darker shade so it clears 4.5:1). */
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --surface-page:#f6f6f7;
+    --surface:#ffffff; --surface-card:#ffffff; --surface-muted:#ececee; --surface-sunken:#efeff1; --surface-field:#ececee;
+    --ink-900:#171717; --ink-700:#171717; --ink-600:#525252; --ink-500:#525252;
+    --ink-400:#6b6b70; --ink-300:#6b6b70;
+    --line-100:rgba(23,23,23,.06); --line-200:rgba(23,23,23,.09); --line-300:rgba(23,23,23,.18);
+    --brand-primary-strong:#9a4a06; --grass-500:#16a34a; --grass-600:#12703a; --grass-700:#12703a;
+    --type-electric:#8a5a00; --type-fighting:#b3261e;
+    --ios-blue:#9a4a06; --ios-blue-fill:#9a4a06; --ios-green:#12703a; --ios-red:#b3261e; --ios-yellow:#8a5a00; --ios-fill:rgba(23,23,23,.07);
+    --type-grass:#2f7d34; --type-poison:#7a3aa0; --type-fire:#b85a10; --type-psychic:#c2185b; --type-flying:#4f66b0; --type-ice:#1f7f78; --type-water:#1d6fb8;
+    --type-ground:#8a6420; --type-rock:#7a6d3f; --type-bug:#5d7d1a; --type-ghost:#5b4c9a; --type-dragon:#4f46b8; --type-dark:#4f4b5c; --type-steel:#506070; --type-fairy:#b43b86; --type-normal:#5f6870;
+    --accent-text:#9a4a06; --type-lift:#000; --tt-dragon:#4f46b8; --tt-ghost:#5b4c9a; --tt-poison:#7a3aa0; --tt-dark:#4f4b5c; --tt-psychic:#c2185b; --tt-fairy:#b43b86; --tt-fighting:#b3261e;
+    --bar-bg:rgba(246,246,247,.82); --bar-bg-stuck:rgba(246,246,247,.94); --bar-shadow:0 8px 24px rgba(0,0,0,.08); --nav-bg:rgba(250,250,250,.96); --nav-line:rgba(23,23,23,.12); --menu-bg:rgba(255,255,255,.96); --toast-bg:rgba(255,255,255,.94);
+    --accent-on-fill:#fff;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      color-scheme:light;
+      --surface-page:#f6f6f7;
+      --surface:#ffffff; --surface-card:#ffffff; --surface-muted:#ececee; --surface-sunken:#efeff1; --surface-field:#ececee;
+      --ink-900:#171717; --ink-700:#171717; --ink-600:#525252; --ink-500:#525252;
+      --ink-400:#6b6b70; --ink-300:#6b6b70;
+      --line-100:rgba(23,23,23,.06); --line-200:rgba(23,23,23,.09); --line-300:rgba(23,23,23,.18);
+      --brand-primary-strong:#9a4a06; --grass-500:#16a34a; --grass-600:#12703a; --grass-700:#12703a;
+      --type-electric:#8a5a00; --type-fighting:#b3261e;
+      --ios-blue:#9a4a06; --ios-blue-fill:#9a4a06; --ios-green:#12703a; --ios-red:#b3261e; --ios-yellow:#8a5a00; --ios-fill:rgba(23,23,23,.07);
+      --type-grass:#2f7d34; --type-poison:#7a3aa0; --type-fire:#b85a10; --type-psychic:#c2185b; --type-flying:#4f66b0; --type-ice:#1f7f78; --type-water:#1d6fb8;
+      --type-ground:#8a6420; --type-rock:#7a6d3f; --type-bug:#5d7d1a; --type-ghost:#5b4c9a; --type-dragon:#4f46b8; --type-dark:#4f4b5c; --type-steel:#506070; --type-fairy:#b43b86; --type-normal:#5f6870;
+      --accent-text:#9a4a06; --type-lift:#000; --tt-dragon:#4f46b8; --tt-ghost:#5b4c9a; --tt-poison:#7a3aa0; --tt-dark:#4f4b5c; --tt-psychic:#c2185b; --tt-fairy:#b43b86; --tt-fighting:#b3261e;
+      --bar-bg:rgba(246,246,247,.82); --bar-bg-stuck:rgba(246,246,247,.94); --bar-shadow:0 8px 24px rgba(0,0,0,.08); --nav-bg:rgba(250,250,250,.96); --nav-line:rgba(23,23,23,.12); --menu-bg:rgba(255,255,255,.96); --toast-bg:rgba(255,255,255,.94);
+      --accent-on-fill:#fff;
+    }
+  }
   html{font-family:var(--font-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-  body{font-family:var(--font-body);font-size:17px;letter-spacing:-.011em;background:#000 !important}
+  body{font-family:var(--font-body);font-size:17px;letter-spacing:0;background:var(--surface-page) !important}
   /* Grouped cards: no outline, continuous corners, the elevation is the surface colour.
      The browser re-serialises inline styles as "prop: value;", so selectors match that form. */
   [style*="background: var(--surface-card); border: 1px solid"]{border-color:transparent !important;border-radius:18px !important;box-shadow:none !important}
@@ -1200,15 +1240,15 @@
   input::placeholder,textarea::placeholder{color:var(--ink-300) !important}
   /* Readability floor: secondary text was set at 11-11.5px in many places; nothing is read below 12px. */
   [style*="font:11px"],[style*=" 11px var"],[style*=":11px var"],[style*="font-size:11px"],[style*="font:11.5px"],[style*=" 11.5px var"],[style*="font-size:11.5px"]{font-size:12px !important}
-  .go-card input:not([type]){background:#f4fbfb !important;color:#17353b !important;border:1.5px solid #cfe3e6 !important;border-radius:12px !important}
-  .go-card input:not([type])::placeholder{color:#8aa5ab !important}
+  .go-card input:not([type]){background:var(--surface-field) !important;color:var(--ink-900) !important;border:1.5px solid var(--line-300) !important;border-radius:12px !important}
+  .go-card input:not([type])::placeholder{color:var(--ink-400) !important}
   .go-card button{text-align:center;display:inline-flex;align-items:center;justify-content:center}
   /* Primary action: system blue capsule. */
   [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue-fill) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
-  [style*="background: var(--grass-500)"]{background:var(--ios-green) !important;color:#000 !important}
+  [style*="background: var(--grass-500)"]{background:var(--ios-blue-fill) !important;color:#fff !important}
   /* Coloured type names used as text: lifted so they clear 4.5:1 on the dark cards. */
-  [style*="color: var(--type-dragon)"]{color:#aaa0f4 !important}[style*="color: var(--type-ghost)"]{color:#bdb2ec !important}[style*="color: var(--type-poison)"]{color:#d6a9ee !important}[style*="color: var(--type-dark)"]{color:#b0abbd !important}[style*="color: var(--type-psychic)"]{color:#ff9db8 !important}[style*="color: var(--type-fairy)"]{color:#f5a8d6 !important}
-  [style*="color: var(--type-fighting)"]{color:#ff8a80 !important}
+  [style*="color: var(--type-dragon)"]{color:var(--tt-dragon) !important}[style*="color: var(--type-ghost)"]{color:var(--tt-ghost) !important}[style*="color: var(--type-poison)"]{color:var(--tt-poison) !important}[style*="color: var(--type-dark)"]{color:var(--tt-dark) !important}[style*="color: var(--type-psychic)"]{color:var(--tt-psychic) !important}[style*="color: var(--type-fairy)"]{color:var(--tt-fairy) !important}
+  [style*="color: var(--type-fighting)"]{color:var(--tt-fighting) !important}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:inherit;cursor:pointer}
   /* Focus ring for keyboard and switch users. */
@@ -1223,7 +1263,35 @@
   .ios-nav svg{display:block}
   .ios-icon-btn{cursor:pointer;width:38px;height:38px;border-radius:50%;background:var(--ios-fill);display:flex;align-items:center;justify-content:center;color:var(--ios-blue);flex-shrink:0}
   .ios-icon-btn:active{opacity:.6}
-  .ios-toast{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);z-index:70;display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:18px;background:rgba(44,44,46,.86);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);color:#fff;font:15px/1.35 var(--font-body);box-shadow:0 10px 30px rgba(0,0,0,.5);animation:sheetUp .45s var(--ios-spring) backwards}
+  .ios-toast{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);z-index:70;display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:18px;background:var(--toast-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);color:#fff;font:15px/1.35 var(--font-body);box-shadow:0 10px 30px rgba(0,0,0,.5);animation:sheetUp .45s var(--ios-spring) backwards}
+  /* Inline colours that were lifted for the dark theme, darkened again for light. */
+  :root[data-theme="light"] [style*="color:#ff8a80"],:root[data-theme="light"] [style*="color: #ff8a80"]{color:#b3261e !important}
+  :root[data-theme="light"] [style*="color:#d7a8ff"],:root[data-theme="light"] [style*="color: #d7a8ff"]{color:#6d3a9a !important}
+  :root[data-theme="light"] [style*="color:#64b5ff"],:root[data-theme="light"] [style*="color: #64b5ff"]{color:#9a4a06 !important}
+  :root[data-theme="light"] [style*="color:#8fd3ff"],:root[data-theme="light"] [style*="color: #8fd3ff"]{color:#0a5a85 !important}
+  :root[data-theme="light"] [style*="color:#7cf29a"],:root[data-theme="light"] [style*="color: #7cf29a"]{color:#12703a !important}
+  :root[data-theme="light"] [style*="color:#ffb454"],:root[data-theme="light"] [style*="color: #ffb454"]{color:#8a5a00 !important}
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]) [style*="color:#ff8a80"],:root:not([data-theme="dark"]) [style*="color: #ff8a80"]{color:#b3261e !important}
+    :root:not([data-theme="dark"]) [style*="color:#d7a8ff"],:root:not([data-theme="dark"]) [style*="color: #d7a8ff"]{color:#6d3a9a !important}
+    :root:not([data-theme="dark"]) [style*="color:#64b5ff"],:root:not([data-theme="dark"]) [style*="color: #64b5ff"]{color:#9a4a06 !important}
+    :root:not([data-theme="dark"]) [style*="color:#8fd3ff"],:root:not([data-theme="dark"]) [style*="color: #8fd3ff"]{color:#0a5a85 !important}
+    :root:not([data-theme="dark"]) [style*="color:#7cf29a"],:root:not([data-theme="dark"]) [style*="color: #7cf29a"]{color:#12703a !important}
+    :root:not([data-theme="dark"]) [style*="color:#ffb454"],:root:not([data-theme="dark"]) [style*="color: #ffb454"]{color:#8a5a00 !important}
+  }
+  /* ---- Unslop passes: calm type, no tracking, neutral surfaces ---- */
+  body{font-variant-numeric:tabular-nums}
+  [style*="letter-spacing"]{letter-spacing:0 !important}
+  [style*="font:700"],[style*="font: 700"],[style*="font:800"],[style*="font: 800"],[style*="font:900"],[style*="font: 900"],[style*="font:750"],[style*="font: 750"]{font-weight:600 !important}
+  [style*="font:650"],[style*="font: 650"]{font-weight:600 !important}
+  h1,h2,h3{font-weight:600 !important}
+  /* Yellow stood for "look here" everywhere; emphasis is now the primary text colour, and a selected chip or bar takes the accent. */
+  [style*="color:var(--type-electric)"],[style*="color: var(--type-electric)"]{color:var(--ink-900) !important}
+  [style*="background:var(--type-electric)"],[style*="background: var(--type-electric)"]{background:var(--ios-blue-fill) !important;color:#fff !important}
+  .stat-strip{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;padding-bottom:2px}
+  .stat-strip>div{flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:8px 12px;border-radius:10px;background:var(--surface-card);white-space:nowrap}
+  .stat-strip .n{font:600 15px var(--font-display);font-variant-numeric:tabular-nums}
+  .stat-strip .l{font:500 12px var(--font-body);color:var(--ink-500)}
   ::-webkit-scrollbar{width:0;height:0}
   /* Dynamic Type: honour the user's text-size setting where the browser exposes it. */
   @supports (font: -apple-system-body){ body{font:-apple-system-body} }
@@ -1246,10 +1314,10 @@
         </sc-if>
       </div>
     </sc-if>
-    <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
+    <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.259</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.261</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <label class="ios-icon-btn om-press" title="Import CSV">
@@ -1287,40 +1355,25 @@
   </sc-if>
 
   <sc-if value="{{ syncAlert }}" hint-placeholder-val="{{ false }}">
-    <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:5px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:5px">
       <div style="font:700 11px var(--font-display);color:var(--type-fighting);letter-spacing:.06em">CLOUD SAVE FAILED</div>
       <div style="font:12px/1.5 var(--font-body);color:var(--ink-700);text-wrap:pretty">{{ syncAlert }}</div>
     </div>
   </sc-if>
 
   <sc-if value="{{ hasVoiceExchange }}" hint-placeholder-val="{{ false }}">
-  <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:8px;padding:14px 22px;margin-bottom:24px;animation:fadeSlideIn .35s ease">
+  <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:14px 22px;margin-bottom:24px;animation:fadeSlideIn .35s ease">
     <div style="font:12px var(--font-display);color:var(--type-electric);margin-bottom:4px">YOU ASKED: {{ lastQuestion }}</div>
     <div style="font:14.5px/1.4 var(--font-body);color:var(--ink-900)">{{ lastAnswer }}</div>
   </div>
   </sc-if>
 
-  <div class="om-scroll" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;padding-bottom:2px">
-    <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
-      <span style="font:800 15px var(--font-display)">{{ stats.total }}</span>
-      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ROSTER</span>
-    </div>
-    <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
-      <span style="font:800 15px var(--font-display)">{{ stats.avgIV }}</span>
-      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">AVG IV%</span>
-    </div>
-    <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
-      <span style="font:800 15px var(--font-display);color:var(--type-electric)">{{ stats.lucky }}</span>
-      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">LUCKY</span>
-    </div>
-    <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
-      <span style="font:800 15px var(--font-display);color:var(--type-fairy)">{{ stats.shadow }}</span>
-      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">SHADOW</span>
-    </div>
-    <div style="flex-shrink:0;display:flex;align-items:baseline;gap:6px;padding:9px 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-200);white-space:nowrap">
-      <span style="font:800 15px var(--font-display);color:var(--grass-700)">{{ stats.pvpReady }}</span>
-      <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">PVP READY</span>
-    </div>
+  <div class="om-scroll stat-strip">
+    <div><span class="n">{{ stats.total }}</span><span class="l">Roster</span></div>
+    <div><span class="n">{{ stats.avgIV }}</span><span class="l">Avg IV%</span></div>
+    <div><span class="n">{{ stats.lucky }}</span><span class="l">Lucky</span></div>
+    <div><span class="n">{{ stats.shadow }}</span><span class="l">Shadow</span></div>
+    <div><span class="n">{{ stats.pvpReady }}</span><span class="l">PvP ready</span></div>
   </div>
 
   <sc-if value="{{ updateReady }}" hint-placeholder-val="{{ false }}">
@@ -1328,7 +1381,7 @@
       <span>A new version is ready</span><span style="letter-spacing:.05em">TAP TO RELOAD</span>
     </div>
   </sc-if>
-  <nav data-navbar="1" class="ios-nav" aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(22,22,24,.78);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid rgba(84,84,88,.6)">
+  <nav data-navbar="1" class="ios-nav" aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:var(--nav-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid var(--nav-line)">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="5">
       <button type="button" onClick="{{ t.onClick }}" class="om-press" aria-label="{{ t.label }}" aria-current="{{ t.current }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
         <span style="position:relative;display:inline-flex">
@@ -1342,7 +1395,7 @@
 
   <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ closeMore }}" style="position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:scrimIn .25s ease both"></div>
-    <div role="menu" aria-label="More" style="position:fixed;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:46;background:rgba(44,44,46,.92);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);border-radius:20px;overflow:hidden;animation:sheetUp .38s var(--ios-spring) backwards;box-shadow:0 14px 40px rgba(0,0,0,.55)">
+    <div role="menu" aria-label="More" style="position:fixed;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:46;background:var(--menu-bg);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);border-radius:20px;overflow:hidden;animation:sheetUp .38s var(--ios-spring) backwards;box-shadow:0 14px 40px rgba(0,0,0,.55)">
       <sc-for list="{{ moreTabs }}" as="m" hint-placeholder-count="5">
         <div onClick="{{ m.onClick }}" class="om-press" role="menuitem" aria-label="{{ m.label }}" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 18px;min-height:48px;border-top:.5px solid rgba(84,84,88,.5)">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{ m.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ m.iconPath }}"/></svg>
@@ -1405,7 +1458,7 @@
   <sc-if value="{{ isToday }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="display:flex;flex-direction:column;gap:14px;animation:fadeSlideIn .35s ease">
     <sc-if value="{{ tagsNotice }}" hint-placeholder-val="{{ false }}">
-      <button type="button" onClick="{{ tagsNotice.onOpen }}" class="om-press" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-electric) 16%, var(--surface-card));color:var(--ink-900);font:650 13px var(--font-body);min-height:44px;text-align:left"><span>{{ tagsNotice.text }}</span><span style="color:var(--ios-blue);font:700 12px var(--font-display);letter-spacing:.04em">OPEN TAGS</span></button>
+      <button type="button" onClick="{{ tagsNotice.onOpen }}" class="om-press" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-radius:var(--r-pill);background:var(--surface-card);color:var(--ink-900);font:650 13px var(--font-body);min-height:44px;text-align:left"><span>{{ tagsNotice.text }}</span><span style="color:var(--ios-blue);font:700 12px var(--font-display);letter-spacing:.04em">OPEN TAGS</span></button>
     </sc-if>
     <sc-if value="{{ briefingCanAsk }}" hint-placeholder-val="{{ false }}">
       <section aria-label="Morning briefing" style="background:linear-gradient(135deg,color-mix(in oklab, var(--ios-blue) 22%, var(--surface-card)),var(--surface-card));border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
@@ -1646,7 +1699,7 @@
     </sc-if>
 
     <sc-if value="{{ evoNeedsLookup }}" hint-placeholder-val="{{ false }}">
-      <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
         <div style="font:12.5px/1.5 var(--font-body);color:var(--type-electric);text-wrap:pretty">{{ evoNeedsLookup }}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <div onClick="{{ fetchEvoData }}" class="om-press" style="cursor:pointer;padding:10px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display);white-space:nowrap">{{ evoFetchLabel }}</div>
@@ -1659,7 +1712,7 @@
     </sc-if>
 
     <sc-if value="{{ triageCard }}" hint-placeholder-val="{{ true }}">
-      <div data-today-section="review" style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:14px;padding:14px">
+      <div data-today-section="review" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
           <div style="font:800 12px var(--font-display);color:var(--type-fighting);letter-spacing:.06em;white-space:nowrap">KEEP OR TRANSFER?</div>
           <div style="font:11.5px var(--font-display);color:var(--ink-500);white-space:nowrap">{{ triageHeadline }}</div>
@@ -1685,7 +1738,7 @@
       </div>
     </sc-if>
 
-    <div data-today-section="evolve" style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:14px;padding:14px">
+    <div data-today-section="evolve" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
         <div style="font:800 12px var(--font-display);color:var(--grass-700);letter-spacing:.06em;white-space:nowrap">EVOLVE NOW</div>
         <div style="font:11.5px var(--font-display);color:var(--ink-500);text-align:right">{{ todayEvolveCount }}</div>
@@ -1739,7 +1792,7 @@
       </sc-if>
     </div>
 
-    <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:14px;padding:14px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
         <div style="font:800 12px var(--font-display);color:var(--type-electric);letter-spacing:.06em;white-space:nowrap">STARDUST SPEND</div>
         <div style="font:11.5px var(--font-display);color:var(--ink-500);white-space:nowrap">{{ dustPlanHeadline }}</div>
@@ -1756,7 +1809,7 @@
       <sc-if value="{{ hasCandyAiNotes }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
           <sc-for list="{{ candyAiNotes }}" as="note" hint-placeholder-count="2">
-            <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:4px">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:4px">
               <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
                 <div style="font:800 12.5px var(--font-display);color:var(--ink-900)">{{ note.name }}</div>
                 <div style="font:700 11px var(--font-display);letter-spacing:.07em;color:{{ note.verdictColor }}">{{ note.verdict }}</div>
@@ -1789,7 +1842,7 @@
       </div>
     </div>
 
-    <div data-today-section="queued" style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:14px;padding:14px">
+    <div data-today-section="queued" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
         <div style="font:800 12px var(--font-display);color:var(--type-fighting);letter-spacing:.06em;white-space:nowrap">TRANSFER LIST</div>
         <sc-if value="{{ transferQueueCount }}" hint-placeholder-val="{{ false }}">
@@ -1800,7 +1853,7 @@
       <sc-if value="{{ transferQueueCount }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px">
           <sc-for list="{{ transferQueueList }}" as="row" hint-placeholder-count="3">
-            <div onClick="{{ row.onRemove }}" class="om-press" style="cursor:pointer;display:flex;align-items:center;gap:7px;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:999px;padding:5px 11px 5px 5px">
+            <div onClick="{{ row.onRemove }}" class="om-press" style="cursor:pointer;display:flex;align-items:center;gap:7px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:999px;padding:5px 11px 5px 5px">
               <div style="width:26px;height:26px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
                 <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
               </div>
@@ -1812,7 +1865,7 @@
       </sc-if>
 
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <input type="text" placeholder="Search any Pokemon to transfer..." value="{{ transferSearch }}" onChange="{{ onTransferSearch }}" style="flex:1;min-width:0;box-sizing:border-box;background:var(--surface-sunken);border:1px solid var(--type-fighting);color:var(--ink-900);padding:11px 13px;border-radius:9px;font:12.5px var(--font-body)" />
+        <input type="text" placeholder="Search Pokemon" aria-label="Search any Pokemon to transfer" value="{{ transferSearch }}" onChange="{{ onTransferSearch }}" style="flex:1;min-width:0;box-sizing:border-box;background:var(--surface-sunken);border:1px solid var(--type-fighting);color:var(--ink-900);padding:11px 13px;border-radius:9px;font:12.5px var(--font-body)" />
       </div>
 
       <sc-if value="{{ transferPickHint }}" hint-placeholder-val="{{ true }}">
@@ -1843,7 +1896,7 @@
     </div>
 
     <sc-if value="{{ dexGapHasAny }}" hint-placeholder-val="{{ false }}">
-      <div data-today-section="dex" style="background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));border-radius:14px;padding:14px">
+      <div data-today-section="dex" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
           <div style="font:800 12px var(--font-display);color:var(--type-ghost);letter-spacing:.06em;white-space:nowrap">NEW DEX ENTRIES</div>
           <div style="font:11.5px var(--font-display);color:var(--ink-500);white-space:nowrap">{{ dexGapCount }}</div>
@@ -1875,15 +1928,15 @@
     <div style="display:grid;grid-template-columns:{{ statGridCols }};gap:9px">
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
         <div style="font:11px var(--font-display);color:var(--ink-400)">POWER UP</div>
-        <div style="font:800 20px var(--font-display);color:var(--grass-700)">{{ digest.powerUpCount }}</div>
+        <div style="font:600 24px var(--font-display)">{{ digest.powerUpCount }}</div>
       </div>
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
         <div style="font:11px var(--font-display);color:var(--ink-400)">EVOLVE SOON</div>
-        <div style="font:800 20px var(--font-display);color:var(--type-electric)">{{ digest.evolveCount }}</div>
+        <div style="font:600 24px var(--font-display)">{{ digest.evolveCount }}</div>
       </div>
       <div style="background:var(--surface-card);border-radius:10px;padding:11px 12px;border:1px solid var(--line-200)">
         <div style="font:11px var(--font-display);color:var(--ink-400)">GREAT LEAGUE PROJECTS</div>
-        <div style="font:800 20px var(--font-display);color:var(--type-electric)">{{ digest.greatProjects }}</div>
+        <div style="font:600 24px var(--font-display)">{{ digest.greatProjects }}</div>
       </div>
     </div>
 
@@ -1909,6 +1962,14 @@
         </div>
       </sc-if>
       <sc-if value="{{ refreshUndone }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--grass-700)">Restored the ranks, evolution and move data from before this refresh.</div></sc-if>
+    </section>
+
+    <section style="background:var(--surface-card);border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 15px var(--font-body)">Appearance</div>
+      <div style="font:13px/1.4 var(--font-body);color:var(--ink-500)">Auto follows your phone. Dark uses a blue accent, light uses amber.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ themeChips }}" as="tc" hint-placeholder-count="3"><button type="button" onClick="{{ tc.onClick }}" aria-pressed="{{ tc.pressed }}" class="om-press" style="padding:8px 16px;border-radius:var(--r-pill);background:{{ tc.bg }};color:{{ tc.fg }};font:600 13px var(--font-display);min-height:44px">{{ tc.label }}</button></sc-for>
+      </div>
     </section>
 
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:4px 16px;margin-bottom:14px">
@@ -1967,10 +2028,10 @@
       </section>
     </sc-if>
 
-    <div style="background:color-mix(in oklab, var(--type-water) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-water) 42%, var(--surface-card));border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
       <div style="font:700 11px var(--font-display);color:var(--type-water);letter-spacing:.05em">CLOUD SYNC (across your devices)</div>
       <sc-if value="{{ needsFirebaseConfig }}" hint-placeholder-val="{{ true }}">
-        <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:6px;padding:12px;margin:8px 0;font:12.5px var(--font-body);color:var(--ink-600);line-height:1.5">✓ Firebase project <strong>pokemon-professor</strong> detected. Ready to sync. Sign in below.</div>
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:6px;padding:12px;margin:8px 0;font:12.5px var(--font-body);color:var(--ink-600);line-height:1.5">✓ Firebase project <strong>pokemon-professor</strong> detected. Ready to sync. Sign in below.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <input type="text" placeholder="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:6px;font:12.5px var(--font-body);width:180px" />
           <input type="password" placeholder="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 10px;border-radius:6px;font:12.5px var(--font-body);width:150px" />
@@ -2014,7 +2075,7 @@
             </label>
           </div>
           <sc-if value="{{ backupReadyDisplay }}" hint-placeholder-val="{{ false }}">
-            <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
               <div style="font:12.5px var(--font-body);color:var(--grass-700)">{{ backupReadyDisplay.summary }}</div>
               <div onClick="{{ saveBackupFile }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:9px 15px;border-radius:var(--r-pill);background:var(--grass-500);color:white;font:700 11.5px var(--font-display)">SAVE BACKUP FILE</div>
             </div>
@@ -2047,7 +2108,7 @@
           </div>
 
           <sc-if value="{{ restorePendingDisplay }}" hint-placeholder-val="{{ false }}">
-            <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px">
               <div style="font:12.5px/1.5 var(--font-body);color:var(--type-fighting);text-wrap:pretty">{{ restorePendingDisplay.summary }}</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <div onClick="{{ confirmRestore }}" class="om-press" style="cursor:pointer;padding:9px 15px;border-radius:var(--r-pill);background:var(--type-fighting);color:white;font:700 11.5px var(--font-display)">OVERWRITE WITH BACKUP</div>
@@ -2178,7 +2239,7 @@
             </sc-if>
           </div>
         </details>
-        <details style="background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));border-radius:6px;padding:8px 12px">
+        <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:6px;padding:8px 12px">
           <summary style="cursor:pointer;font:600 11px var(--font-display);color:var(--type-ghost);list-style:none">SERVER-SIDE IV IMPORT &middot; FREE</summary>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
             <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.55">Step 2, after importing Pokemon above. Run the &ldquo;Extract IV Ratings&rdquo; workflow with your <b>appraisal</b> recording, then tap below. It measures the three appraisal bars to get the exact IV, matches each reading to a Pokemon you already imported by name, CP and HP, and pins it. Nothing is guessed and no new Pokemon are added.</div>
@@ -2227,7 +2288,7 @@
             IMPORT SCREENSHOT
             <input type="file" accept="image/*" multiple="multiple" onChange="{{ onScreenshotUpload }}" style="display:none" />
           </label>
-          <label class="om-press" style="cursor:pointer;background:color-mix(in oklab, var(--type-water) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-water) 42%, var(--surface-card));color:var(--type-water);font:600 12px var(--font-display);padding:9px 16px;border-radius:5px;white-space:nowrap">
+          <label class="om-press" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);color:var(--type-water);font:600 12px var(--font-display);padding:9px 16px;border-radius:5px;white-space:nowrap">
             {{ apprShotLabel }}
             <input type="file" accept="image/*" multiple="multiple" onChange="{{ onAppraisalUpload }}" style="display:none" />
           </label>
@@ -2239,7 +2300,7 @@
       </div>
       <div style="font:11.5px var(--font-body);color:var(--ink-300)">Upload a Pokemon detail screenshot to update Stardust, that species' candy/XL candy, and its type &mdash; or a screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div>
       <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:7px;padding:9px 12px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface-card);border:1px solid var(--line-200);border-radius:7px;padding:9px 12px">
           <div style="font:700 11px var(--font-display);color:var(--grass-700);letter-spacing:.05em">IMPORT PROGRESS</div>
           <div style="font:12px var(--font-display);color:var(--ink-700)">{{ importProgressLine }}</div>
           <div onClick="{{ resetImportProgress }}" style="cursor:pointer;margin-left:auto;font:11px var(--font-display);color:var(--ink-300);text-decoration:underline">RESET</div>
@@ -2256,7 +2317,7 @@
         </div>
       </sc-if>
       <sc-if value="{{ videoEstimate }}" hint-placeholder-val="{{ false }}">
-        <div style="background:color-mix(in oklab, var(--type-flying) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-flying) 42%, var(--surface-card));border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
           <div style="font:700 11px var(--font-display);color:var(--type-flying);letter-spacing:.04em">BEFORE WE START</div>
           <div style="font:13px var(--font-body);color:var(--ink-900);line-height:1.55;text-wrap:pretty">{{ videoEstimate.line }}</div>
           <div style="font:11.5px var(--font-body);color:var(--ink-500);line-height:1.5">{{ videoEstimate.hint }}</div>
@@ -2375,7 +2436,7 @@
                       <div style="font:11px var(--font-body);color:var(--type-electric)">{{ r.choicePrompt }}</div>
                       <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <sc-for list="{{ r.choices }}" as="c" hint-placeholder-count="2">
-                          <div onClick="{{ c.onClick }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));color:var(--type-ghost);font:600 11px var(--font-display)">{{ c.label }}</div>
+                          <div onClick="{{ c.onClick }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:var(--surface-card);border:1px solid var(--line-200);color:var(--type-ghost);font:600 11px var(--font-display)">{{ c.label }}</div>
                         </sc-for>
                         <div onClick="{{ r.onSkip }}" style="cursor:pointer;padding:7px 12px;border-radius:var(--r-pill);background:var(--surface-muted);border:1px solid var(--line-300);color:var(--ink-500);font:600 11px var(--font-display)">SKIP</div>
                       </div>
@@ -2389,7 +2450,7 @@
           <sc-if value="{{ videoImportSummary }}" hint-placeholder-val="{{ false }}">
             <div style="font:13px var(--font-body);color:var(--ink-900)">Done! Updated {{ videoImportSummary.updated }}, added {{ videoImportSummary.inserted }} new, from {{ videoImportSummary.total }} Pokemon read off the recording.</div>
             <sc-if value="{{ videoPartialWarning }}" hint-placeholder-val="{{ false }}">
-              <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:7px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:8px">
+              <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:7px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:8px">
                 <div style="font:12px var(--font-display);color:var(--type-electric);line-height:1.5;text-wrap:pretty">{{ videoPartialWarning }}</div>
                 <sc-if value="{{ canRetryVideo }}" hint-placeholder-val="{{ false }}">
                   <div onClick="{{ retryVideoImport }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:var(--surface-sunken);font:700 11.5px var(--font-display)" style-hover="background:var(--brand-primary-strong)">RETRY FAILED BATCHES</div>
@@ -2437,7 +2498,7 @@
         <div style="font:12px var(--font-display);color:var(--type-fighting)">{{ ocrError }}</div>
       </sc-if>
       <sc-if value="{{ hasOcrParsed }}" hint-placeholder-val="{{ false }}">
-        <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px">
           <div style="font:11px var(--font-display);color:var(--type-electric)">{{ ocrParsedDisplay.matchLine }}</div>
           <sc-if value="{{ ocrParsedDisplay.readerLine }}" hint-placeholder-val="{{ false }}">
             <div style="font:11px var(--font-display);color:var(--type-electric)">{{ ocrParsedDisplay.readerLine }}</div>
@@ -2494,7 +2555,7 @@
                 <div style="font:12px var(--font-display);color:var(--type-fighting)">{{ solvedIvResult.error }}</div>
               </sc-if>
               <sc-if value="{{ solvedIvResult.spread }}" hint-placeholder-val="{{ false }}">
-                <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:6px;padding:10px 12px;font:12.5px var(--font-body);color:var(--ink-900);display:flex;flex-direction:column;gap:4px">
+                <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:6px;padding:10px 12px;font:12.5px var(--font-body);color:var(--ink-900);display:flex;flex-direction:column;gap:4px">
                   <div>Level {{ solvedIvResult.level }} &middot; IV {{ solvedIvResult.spread }} ({{ solvedIvResult.ivAvg }})</div>
                   <div style="font:var(--font-display);font-size:11.5px">Great {{ solvedIvResult.great }} &middot; Ultra {{ solvedIvResult.ultra }} &middot; Little {{ solvedIvResult.little }}</div>
                   <sc-if value="{{ solvedIvResult.form }}" hint-placeholder-val="{{ false }}">
@@ -2648,7 +2709,7 @@
         <sc-if value="{{ cutList }}" hint-placeholder-val="{{ false }}">
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
             <sc-for list="{{ cutList }}" as="p" hint-placeholder-count="6">
-              <div class="om-stagger" style="--i:{{ $index }};background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+              <div class="om-stagger" style="--i:{{ $index }};background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px">
                   <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
                     <span style="position:absolute">{{ p.initial }}</span>
@@ -2670,7 +2731,7 @@
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:8px;padding:16px">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px">
         <div style="font:700 11px var(--font-display);color:var(--grass-700);letter-spacing:.05em;margin-bottom:8px">STARDUST PRIORITY</div>
         <sc-for list="{{ digest.dustPriority }}" as="d" hint-placeholder-count="3">
           <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:var(--r-pill);transition:background .12s ease" style-hover="background:var(--grass-500)">
@@ -2679,7 +2740,7 @@
           </div>
         </sc-for>
       </div>
-      <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:16px">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px">
         <div style="font:700 11px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:8px">DON'T SPEND DUST ON</div>
         <sc-for list="{{ digest.avoidList }}" as="d" hint-placeholder-count="3">
           <div onClick="{{ d.onClick }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:var(--r-pill);transition:background .12s ease" style-hover="background:var(--type-fighting)">
@@ -2703,7 +2764,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.powerUp }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--grass-600);background:var(--grass-500);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--grass-600);background:var(--grass-500);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2721,7 +2782,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.evolveSoon }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2739,7 +2800,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.transferSafe }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-fighting);background:var(--type-fighting);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-fighting);background:var(--type-fighting);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2758,7 +2819,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
           <sc-for list="{{ optimizePlanDisplay.luckyTrade }}" as="p" hint-placeholder-count="3">
-            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
+            <div onClick="{{ p.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--brand-primary-strong);background:var(--brand-primary-strong);transform:translateY(-1px)" style-active="transform:translateY(0)">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain" /></div>
                 <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2777,7 +2838,7 @@
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px">
             <sc-for list="{{ optimizePlanDisplay.needsSecondMove }}" as="p" hint-placeholder-count="3">
-              <div onClick="{{ p.onClick }}" style="cursor:pointer;background:color-mix(in oklab, var(--type-ghost) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-ghost) 42%, var(--surface-card));border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-ghost);background:var(--type-ghost);transform:translateY(-1px)" style-active="transform:translateY(0)">
+              <div onClick="{{ p.onClick }}" style="cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:10px;display:flex;flex-direction:column;gap:7px;transition:border-color .12s ease,background .12s ease,transform .12s ease" style-hover="border-color:var(--type-ghost);background:var(--type-ghost);transform:translateY(-1px)" style-active="transform:translateY(0)">
                 <div style="display:flex;align-items:center;gap:8px">
                   <div style="width:32px;height:32px;border-radius:50%;background:{{ p.badgeColor }};position:relative;overflow:hidden;flex-shrink:0"><img ref="{{ p.spriteRef }}" style="width:100%;height:100%;object-fit:contain" /></div>
                   <div style="font:600 12.5px var(--font-body);line-height:1.25;text-wrap:pretty">{{ p.displayName }}</div>
@@ -2874,7 +2935,7 @@
       </details>
     </sc-if>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center">
-      <input type="text" placeholder="🔍 Search name, move or type..." value="{{ search }}" onChange="{{ onSearchChange }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:14px var(--font-display);padding:10px 18px;border-radius:999px;flex:1 1 160px;min-width:140px" />
+      <input type="text" placeholder="Search roster" aria-label="Search by name, move or type" value="{{ search }}" onChange="{{ onSearchChange }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:14px var(--font-display);padding:10px 18px;border-radius:999px;flex:1 1 160px;min-width:140px" />
       <select aria-label="Sort roster" onChange="{{ onSortChange }}" value="{{ sortField }}" style="background:var(--surface-card);border:1px solid var(--line-200);color:var(--ink-900);font:13px var(--font-display);padding:10px 14px;border-radius:999px;flex:0 1 150px;min-width:0;max-width:150px">
         <option value="cp">Sort: CP</option>
         <option value="ivAvg">Sort: IV%</option>
@@ -2973,7 +3034,7 @@
               <span style="color:{{ p.rowSpreadColor }};font-variant-numeric:tabular-nums;flex-shrink:0">{{ p.rowSpread }}</span>
               <sc-if value="{{ p.typeChips }}" hint-placeholder-val="{{ false }}">
                 <span style="color:var(--ink-300)">&middot;</span>
-                <span style="color:color-mix(in oklab, {{ p.typeAccent }} 55%, white);font-weight:500;text-transform:capitalize">{{ p.primaryTypeLabel }}</span>
+                <span style="color:color-mix(in oklab, {{ p.typeAccent }} 55%, var(--type-lift));font-weight:500;text-transform:capitalize">{{ p.primaryTypeLabel }}</span>
               </sc-if>
               <sc-if value="{{ p.bestLeagueLabel }}" hint-placeholder-val="{{ false }}">
                 <span style="color:var(--ink-300)">&middot;</span>
@@ -3109,7 +3170,7 @@
             </div>
           </sc-if>
           <sc-if value="{{ detail.formFix }}" hint-placeholder-val="{{ false }}">
-            <div style="background:color-mix(in oklab, var(--type-electric) 14%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-electric) 45%, var(--surface-card));border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
               <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.05em">FORM MAY BE WRONG</div>
               <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-900)">{{ detail.formFix.text }}</div>
               <div onClick="{{ detail.formFix.onFix }}" class="om-press" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:700 11.5px var(--font-display)">{{ detail.formFix.label }}</div>
@@ -3215,7 +3276,7 @@
           <button type="button" onClick="{{ detail.maxCard.toggle }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:6px 0;margin-top:2px">{{ detail.maxCard.toggleLabel }}</button>
         </section>
         <sc-if value="{{ detail.mega.has }}" hint-placeholder-val="{{ false }}">
-          <div style="background:color-mix(in oklab, var(--type-electric) 14%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-electric) 40%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
+          <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:16px;margin-bottom:14px">
             <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-bottom:8px">MEGA EVOLUTION</div>
             <sc-for list="{{ detail.mega.rows }}" as="mg" hint-placeholder-count="1">
               <div style="padding:8px 0;border-top:1px solid var(--line-200)">
@@ -3242,7 +3303,7 @@
         </sc-if>
         <div class="om-rise" style="--i:1">
         <sc-if value="{{ detail.evo.hasEvo }}" hint-placeholder-val="{{ false }}">
-          <div style="background:color-mix(in oklab, var(--grass-600) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-600) 42%, var(--surface-card));border-radius:16px;padding:16px;margin-bottom:14px">
+          <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:16px;margin-bottom:14px">
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
               <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">EVOLVES TO {{ detail.evo.toName }}</div>
               <div style="font:700 11px var(--font-display);letter-spacing:.05em;color:{{ detail.evo.statusColor }}">{{ detail.evo.statusLabel }}</div>
@@ -3509,7 +3570,7 @@
         </sc-if>
         </div>
         <div class="om-rise" style="--i:11">
-        <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:16px;padding:14px 16px">
+        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:14px 16px">
           <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em;margin-bottom:5px">PROFESSOR RECOMMENDS</div>
           <div style="font:13.5px/1.45 var(--font-body);color:var(--ink-900)">{{ detail.recommendation }}</div>
         </div>
@@ -3665,12 +3726,12 @@
       </div>
     </sc-if>
     <sc-if value="{{ suggestedTeamDisplay }}" hint-placeholder-val="{{ false }}">
-      <div style="margin-top:20px;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:8px;padding:18px">
+      <div style="margin-top:20px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px">
         <div style="font:800 12.5px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:4px">SUGGESTED TEAM (type-diverse top ranks)</div>
         <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:14px">Highest-ranked pick per distinct primary type from your top 30 &mdash; not a full matchup engine, just diversity.</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
           <sc-for list="{{ suggestedTeamDisplay }}" as="t" hint-placeholder-count="6">
-            <div style="background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
               <div style="width:36px;height:36px;border-radius:50%;background:{{ t.badgeColor }};position:relative;overflow:hidden">
                 <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 14px var(--font-display);color:var(--surface-sunken)">{{ t.initial }}</span>
                 <img ref="{{ t.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
@@ -3799,7 +3860,7 @@
     <sc-if value="{{ bestIvNoSel }}" hint-placeholder-val="{{ false }}">
       <div style="font:650 19px var(--font-display);letter-spacing:-.012em">Best IV</div>
       <div style="font:13px/1.45 var(--font-body);color:var(--ink-500)">Pick a species to see the ideal IV spread for each league, the spreads that still rank 99% and 98% (league ranks are squeezed, so nearly every spread is 90% or better and only the top few are worth chasing), and how your own copies compare. G, U and L show the species tier in Great, Ultra and Little.</div>
-      <input value="{{ bestIvQuery }}" onInput="{{ onBestIvQuery }}" placeholder="Search a Pokemon (name or number)" aria-label="Search species" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:999px;border:1px solid var(--line-300);background:var(--surface-card);color:var(--ink-900);font:500 16px var(--font-body)" />
+      <input value="{{ bestIvQuery }}" onInput="{{ onBestIvQuery }}" placeholder="Search by name or number" aria-label="Search species" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:999px;border:1px solid var(--line-300);background:var(--surface-card);color:var(--ink-900);font:500 16px var(--font-body)" />
       <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">{{ bestIvCount }}</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{ bestIvRows }}" as="r" hint-placeholder-count="6">
@@ -3857,7 +3918,7 @@
     <sc-if value="{{ dtNoSel }}" hint-placeholder-val="{{ false }}">
       <div style="font:650 19px var(--font-display);letter-spacing:-.012em">Ditto ranking</div>
       <div style="font:13px/1.45 var(--font-body);color:var(--ink-500)">Ranks every IV spread the way Dittobase does: stat product at the highest level under the CP cap, ties broken by Attack stat, then HP stat, then CP, then Stamina IV. Pick a species to see its top spreads per league and where your own copies rank out of 4096. This page is for reference; the keep and transfer logic uses Best IV.</div>
-      <input value="{{ dtQuery }}" onInput="{{ onDtQuery }}" placeholder="Search a Pokemon (name or number)" aria-label="Search species for Ditto ranking" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:999px;border:1px solid var(--line-300);background:var(--surface-card);color:var(--ink-900);font:500 16px var(--font-body)" />
+      <input value="{{ dtQuery }}" onInput="{{ onDtQuery }}" placeholder="Search by name or number" aria-label="Search species for Ditto ranking" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:999px;border:1px solid var(--line-300);background:var(--surface-card);color:var(--ink-900);font:500 16px var(--font-body)" />
       <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">{{ dtCount }}</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{ dtRows }}" as="r" hint-placeholder-count="6">
@@ -3954,7 +4015,7 @@
       <sc-for list="{{ attackerGroups }}" as="g" hint-placeholder-count="6">
         <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
-            <div style="font:800 14px var(--font-display);letter-spacing:.04em;color:color-mix(in oklab, {{ g.typeColor }} 55%, white)">{{ g.type }}</div>
+            <div style="font:800 14px var(--font-display);letter-spacing:.04em;color:color-mix(in oklab, {{ g.typeColor }} 55%, var(--type-lift))">{{ g.type }}</div>
             <div style="font:11px var(--font-display);color:var(--ink-300)">{{ g.count }} {{ g.countNoun }} &middot; {{ g.basisLabel }}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
@@ -3987,7 +4048,7 @@
     <div style="background:var(--surface-card);border-radius:var(--r-card);padding:20px">
       <div style="font:800 13px var(--font-display);color:var(--ink-900);letter-spacing:.05em;margin-bottom:4px">USE A TM</div>
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px;max-width:80ch;text-wrap:pretty">Search a Pokemon, then tap the TM you used on it in-game. Opens its move picker to log what it learned, and deducts 1 from your TM count on save. Greyed-out buttons mean you're logged as having none of that TM.</div>
-      <input type="text" value="{{ tmUseSearch }}" onChange="{{ onTmUseSearchChange }}" placeholder="Search your roster by name&hellip;" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:9px 11px;border-radius:8px;font:13px var(--font-display);margin-bottom:12px" />
+      <input type="text" value="{{ tmUseSearch }}" onChange="{{ onTmUseSearchChange }}" placeholder="Search roster" aria-label="Search your roster by name" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:9px 11px;border-radius:8px;font:13px var(--font-display);margin-bottom:12px" />
       <sc-if value="{{ tmUseResults }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;flex-direction:column;gap:8px">
           <sc-for list="{{ tmUseResults }}" as="r" hint-placeholder-count="0">
@@ -4062,13 +4123,13 @@
         </sc-if>
       </div>
     </div>
-    <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-card);padding:20px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-card);padding:20px">
       <div style="font:800 13px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:4px">DOMINATED DUPLICATES &middot; {{ dominatedCount }}</div>
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px;max-width:80ch;text-wrap:pretty">Same species and form, every IV equal or lower, no higher level, and none of them Lucky, Shadow or favorited. Each one loses to another Pokemon you already own on every axis at once, so there is nothing to weigh up.</div>
       <sc-if value="{{ dominatedList }}" hint-placeholder-val="{{ true }}">
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
           <sc-for list="{{ dominatedList }}" as="d" hint-placeholder-count="6">
-            <div onClick="{{ d.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-pill);padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div onClick="{{ d.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:12px;display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:30px;height:30px;border-radius:50%;background:{{ d.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
                   <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken)">{{ d.initial }}</span>
@@ -4084,12 +4145,12 @@
         </div>
       </sc-if>
     </div>
-    <div style="background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:var(--r-card);padding:20px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-card);padding:20px">
       <div style="font:800 13px var(--font-display);color:var(--grass-700);letter-spacing:.05em;margin-bottom:4px">POWER UP CANDIDATES</div>
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px">High league rank, not yet favorited &mdash; invest stardust here first. Mark done once handled.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
         <sc-for list="{{ powerUpList }}" as="p" hint-placeholder-count="4">
-          <div class="om-stagger" style="--i:{{ $index }};background:color-mix(in oklab, var(--grass-500) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--grass-500) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+          <div class="om-stagger" style="--i:{{ $index }};background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
                 <span style="position:absolute">{{ p.initial }}</span>
@@ -4107,12 +4168,12 @@
         </sc-for>
       </div>
     </div>
-    <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:var(--r-card);padding:20px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-card);padding:20px">
       <div style="font:800 13px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:4px">TRANSFER CANDIDATES</div>
       <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-bottom:14px">Low IV, no PvP rank, no raid role, not Lucky/Shadow/Favorite. Mark done once transferred.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
         <sc-for list="{{ transferList }}" as="p" hint-placeholder-count="4">
-          <div class="om-stagger" style="--i:{{ $index }};background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
+          <div class="om-stagger" style="--i:{{ $index }};background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:30px;height:30px;border-radius:50%;background:{{ p.badgeColor }};display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken);position:relative;overflow:hidden;flex-shrink:0">
                 <span style="position:absolute">{{ p.initial }}</span>
@@ -4204,7 +4265,7 @@
       </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px">
         <sc-for list="{{ tradeLuckyRows }}" as="t" hint-placeholder-count="3">
-          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--brand-primary-strong) 42%, var(--surface-card));border-radius:var(--r-pill);padding:9px 11px">
+          <div onClick="{{ t.onClick }}" class="om-tap" style="cursor:pointer;display:flex;align-items:center;gap:11px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:9px 11px">
             <div style="flex-shrink:0;width:40px;height:40px;border-radius:8px;background:{{ t.rail }};display:flex;align-items:center;justify-content:center;position:relative">
               <span style="position:absolute;font:800 14px var(--font-display);color:oklch(20% 0.02 50 / .55)">{{ t.initial }}</span>
               <img ref="{{ t.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:34px;height:34px;object-fit:contain" />
@@ -4287,11 +4348,11 @@
       <div style="font:12.5px var(--font-body);color:var(--ink-500);line-height:1.6">{{ intelDisplay.missingPreview }}</div>
     </div>
     <sc-if value="{{ intelDisplay.duplicateGroups }}" hint-placeholder-val="{{ false }}">
-      <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:18px;grid-column:1/-1">
+      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:18px;grid-column:1/-1">
         <div style="font:800 12.5px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:4px">DUPLICATE SPECIES (no Lucky in the group &mdash; trade candidates)</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px">
           <sc-for list="{{ intelDisplay.duplicateGroups }}" as="d" hint-placeholder-count="6">
-            <div style="background:color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card));border:1px solid color-mix(in oklab, var(--type-fighting) 42%, var(--surface-card));border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px">
               <div style="width:30px;height:30px;border-radius:50%;background:{{ d.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
                 <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 13px var(--font-display);color:var(--surface-sunken)">{{ d.initial }}</span>
                 <img ref="{{ d.spriteRef }}" style="position:relative;width:100%;height:100%;object-fit:contain" />
@@ -4401,32 +4462,32 @@
 
   <sc-if value="{{ isTools }}" hint-placeholder-val="{{ false }}">
   <div role="main" class="go-card" style="animation:fadeSlideIn .35s ease">
-    <div style="display:flex;gap:4px;padding:4px;border-radius:999px;background:#e6f4f4;margin-bottom:14px" role="group" aria-label="Tool">
+    <div style="display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface-muted);margin-bottom:14px" role="group" aria-label="Tool">
       <sc-for list="{{ modeChips }}" as="m" hint-placeholder-count="2"><button type="button" onClick="{{ m.onClick }}" class="om-press" style="flex:1;min-height:40px;border-radius:999px;background:{{ m.bg }};color:{{ m.fg }};font:700 14px var(--font-body)">{{ m.label }}</button></sc-for>
     </div>
 
     <sc-if value="{{ isRenameMode }}" hint-placeholder-val="{{ false }}">
-      <div style="background:#ffffff;border-radius:22px;padding:18px 16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
-        <div style="font:800 18px var(--font-display);text-align:center;color:#17353b">Rename</div>
-        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 12px">Build a nickname template. Tap Copy on a Pokemon, then paste it in the game's rename box (12 characters max).</div>
-        <input value="{{ renameTpl }}" onInput="{{ onTplChange }}" aria-label="Rename template" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" />
-        <div style="display:flex;justify-content:space-between;margin-top:6px;font:600 12px var(--font-display)"><span style="color:#5b7d84">Example: {{ sampleText }}</span><span style="color:{{ sampleColor }}">{{ sampleCount }}</span></div>
+      <div style="background:var(--surface-card);border-radius:22px;padding:18px 16px;color:var(--ink-900);box-shadow:0 6px 24px rgba(0,0,0,.35)">
+        <div style="font:800 18px var(--font-display);text-align:center;color:var(--ink-900)">Rename</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:var(--ink-500);margin:4px 0 12px">Build a nickname template. Tap Copy on a Pokemon, then paste it in the game's rename box (12 characters max).</div>
+        <input value="{{ renameTpl }}" onInput="{{ onTplChange }}" aria-label="Rename template" autocapitalize="off" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid var(--line-300);background:var(--surface-field);color:var(--ink-900);font:500 16px var(--font-body)" />
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font:600 12px var(--font-display)"><span style="color:var(--ink-500)">Example: {{ sampleText }}</span><span style="color:{{ sampleColor }}">{{ sampleCount }}</span></div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
-          <sc-for list="{{ tokenChips }}" as="t" hint-placeholder-count="4"><button type="button" onClick="{{ t.onClick }}" class="om-press" style="padding:6px 11px;min-height:32px;border-radius:999px;background:#e6f4f4;color:#1b6e66;font:600 12px var(--font-display)">{{ t.label }}</button></sc-for>
+          <sc-for list="{{ tokenChips }}" as="t" hint-placeholder-count="4"><button type="button" onClick="{{ t.onClick }}" class="om-press" style="padding:6px 11px;min-height:32px;border-radius:999px;background:var(--surface-muted);color:var(--ios-blue);font:600 12px var(--font-display)">{{ t.label }}</button></sc-for>
         </div>
-        <div style="font:11.5px/1.5 var(--font-body);color:#5b7d84;margin-top:10px">{iv} IV% &middot; {ivs} IVs in hex (F = 15) &middot; {g} {u} {l} Great/Ultra/Little rank% &middot; {form} A/G/H/P &middot; {stars} 0-4 &middot; {size} XXL/XXS/XL/XS &middot; {shadow} S &middot; {lucky} L</div>
+        <div style="font:11.5px/1.5 var(--font-body);color:var(--ink-500);margin-top:10px">{iv} IV% &middot; {ivs} IVs in hex (F = 15) &middot; {g} {u} {l} Great/Ultra/Little rank% &middot; {form} A/G/H/P &middot; {stars} 0-4 &middot; {size} XXL/XXS/XL/XS &middot; {shadow} S &middot; {lucky} L</div>
       </div>
-      <input value="{{ renameQuery }}" onInput="{{ onQueryChange }}" placeholder="Search your Pokemon" aria-label="Filter Pokemon" style="width:100%;box-sizing:border-box;margin:14px 0 10px;padding:12px 14px;min-height:44px;border-radius:999px;border:1.5px solid #cfe3e6;background:#ffffff;color:#17353b;font:500 16px var(--font-body)" />
+      <input value="{{ renameQuery }}" onInput="{{ onQueryChange }}" placeholder="Search Pokemon" aria-label="Filter Pokemon" style="width:100%;box-sizing:border-box;margin:14px 0 10px;padding:12px 14px;min-height:44px;border-radius:999px;border:1.5px solid var(--line-300);background:var(--surface-card);color:var(--ink-900);font:500 16px var(--font-body)" />
       <div style="font:700 11px var(--font-display);color:var(--ink-400);margin-bottom:8px">{{ renameTotal }} POKEMON WITH KNOWN IVS</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{ renameRows }}" as="row" hint-placeholder-count="0">
-          <div style="background:#ffffff;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:11px;color:#17353b">
-            <div style="width:48px;height:48px;border-radius:50%;background:#e6f4f4;position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 17px var(--font-display);color:#5b7d84">{{ row.initial }}</span><img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+          <div style="background:var(--surface-card);border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:11px;color:var(--ink-900)">
+            <div style="width:48px;height:48px;border-radius:50%;background:var(--surface-muted);position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 17px var(--font-display);color:var(--ink-500)">{{ row.initial }}</span><img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
             <div style="flex:1;min-width:0">
-              <div style="font:600 12px var(--font-body);color:#5b7d84;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }} &middot; {{ row.cp }}</div>
-              <div style="font:800 18px var(--font-display);color:#17353b;word-break:break-all">{{ row.text }} <span style="font:600 11px var(--font-display);color:{{ row.countColor }}">{{ row.count }}</span></div>
+              <div style="font:600 12px var(--font-body);color:var(--ink-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }} &middot; {{ row.cp }}</div>
+              <div style="font:800 18px var(--font-display);color:var(--ink-900);word-break:break-all">{{ row.text }} <span style="font:600 11px var(--font-display);color:{{ row.countColor }}">{{ row.count }}</span></div>
             </div>
-            <button type="button" onClick="{{ row.onCopy }}" class="om-press" aria-label="Copy name for {{ row.name }}" style="min-width:68px;min-height:44px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ row.copyLabel }}</button>
+            <button type="button" onClick="{{ row.onCopy }}" class="om-press" aria-label="Copy name for {{ row.name }}" style="min-width:68px;min-height:44px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 14px var(--font-body)">{{ row.copyLabel }}</button>
           </div>
         </sc-for>
       </div>
@@ -4434,182 +4495,182 @@
     </sc-if>
 
     <sc-if value="{{ isSearchMode }}" hint-placeholder-val="{{ false }}">
-      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+      <div style="background:var(--surface-card);border-radius:22px;padding:16px;color:var(--ink-900);box-shadow:0 6px 24px rgba(0,0,0,.35)">
         <div style="font:800 18px var(--font-display);text-align:center">Search</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;min-height:48px;border-radius:999px;background:#f4fbfb;border:1.5px solid #cfe3e6">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5b7d84" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <div style="flex:1;min-width:0;font:600 15px var(--font-display);color:#17353b;word-break:break-all">{{ searchOut }}</div>
-          <button type="button" onClick="{{ onSearchCopy }}" class="om-press" aria-label="Copy search string" style="min-width:64px;min-height:36px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ searchCopyLabel }}</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;min-height:48px;border-radius:999px;background:var(--surface-field);border:1.5px solid var(--line-300)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-500)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <div style="flex:1;min-width:0;font:600 15px var(--font-display);color:var(--ink-900);word-break:break-all">{{ searchOut }}</div>
+          <button type="button" onClick="{{ onSearchCopy }}" class="om-press" aria-label="Copy search string" style="min-width:64px;min-height:36px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-body)">{{ searchCopyLabel }}</button>
         </div>
-        <div style="font:12px var(--font-body);color:#5b7d84;margin-top:6px">{{ searchMatches }} (counts what this app can evaluate; the game has the final say)</div>
-        <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">QUICK SEARCHES</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ presetChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">NAME (COMMA = OR)</div><input value="{{ srchName }}" onInput="{{ onSrchName }}" aria-label="Name filter" autocapitalize="off" placeholder="ninetales, vulpix" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">TYPE</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">REGIONAL FORM</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ formChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">STATUS (TAP ONCE = HAS, TWICE = NOT)</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ flagChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">APPRAISAL STARS</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ starChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:14px 0 7px">CP RANGE</div><div style="display:flex;gap:8px;align-items:center"><input value="{{ srchCpMin }}" onInput="{{ onCpMin }}" inputmode="numeric" placeholder="min" aria-label="Minimum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /><span style="color:#5b7d84">to</span><input value="{{ srchCpMax }}" onInput="{{ onCpMax }}" inputmode="numeric" placeholder="max" aria-label="Maximum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:500 16px var(--font-body)" /></div>
+        <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:6px">{{ searchMatches }} (counts what this app can evaluate; the game has the final say)</div>
+        <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:14px 0 7px">QUICK SEARCHES</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ presetChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:14px 0 7px">NAME (COMMA = OR)</div><input value="{{ srchName }}" onInput="{{ onSrchName }}" aria-label="Name filter" autocapitalize="off" placeholder="ninetales, vulpix" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid var(--line-300);background:var(--surface-field);color:var(--ink-900);font:500 16px var(--font-body)" /><div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:14px 0 7px">TYPE</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:14px 0 7px">REGIONAL FORM</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ formChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:14px 0 7px">STATUS (TAP ONCE = HAS, TWICE = NOT)</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ flagChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:14px 0 7px">APPRAISAL STARS</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ starChips }}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:7px 13px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div><div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:14px 0 7px">CP RANGE</div><div style="display:flex;gap:8px;align-items:center"><input value="{{ srchCpMin }}" onInput="{{ onCpMin }}" inputmode="numeric" placeholder="min" aria-label="Minimum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid var(--line-300);background:var(--surface-field);color:var(--ink-900);font:500 16px var(--font-body)" /><span style="color:var(--ink-500)">to</span><input value="{{ srchCpMax }}" onInput="{{ onCpMax }}" inputmode="numeric" placeholder="max" aria-label="Maximum CP" style="width:100%;box-sizing:border-box;padding:12px 14px;min-height:44px;border-radius:12px;border:1.5px solid var(--line-300);background:var(--surface-field);color:var(--ink-900);font:500 16px var(--font-body)" /></div>
       </div>
     </sc-if>
 
     <sc-if value="{{ isTagsMode }}" hint-placeholder-val="{{ false }}">
-      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+      <div style="background:var(--surface-card);border-radius:22px;padding:16px;color:var(--ink-900);box-shadow:0 6px 24px rgba(0,0,0,.35)">
         <div style="font:800 18px var(--font-display);text-align:center">Tags</div>
-        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ tagsIntro }}</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:var(--ink-500);margin:4px 0 0">{{ tagsIntro }}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;margin-top:14px">
         <sc-for list="{{ tagGroupsList }}" as="tg" hint-placeholder-count="0">
-          <div style="background:#ffffff;border-radius:18px;padding:14px;color:#17353b">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font:800 15px var(--font-display)">{{ tg.title }}</div><div style="font:700 11px var(--font-display);color:#5b7d84">{{ tg.count }}</div></div>
+          <div style="background:var(--surface-card);border-radius:18px;padding:14px;color:var(--ink-900)">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font:800 15px var(--font-display)">{{ tg.title }}</div><div style="font:700 11px var(--font-display);color:var(--ink-500)">{{ tg.count }}</div></div>
             <div style="font:700 12.5px var(--font-body);color:{{ tg.statusColor }};margin-top:4px">{{ tg.status }}</div>
-            <div style="font:12px/1.45 var(--font-body);color:#5b7d84;margin-top:4px">{{ tg.members }}</div>
-            <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:12px 0 6px">TAG NAME <span style="font-weight:600;letter-spacing:0">{{ tg.tagNameCount }}</span></div>
+            <div style="font:12px/1.45 var(--font-body);color:var(--ink-500);margin-top:4px">{{ tg.members }}</div>
+            <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:12px 0 6px">TAG NAME <span style="font-weight:600;letter-spacing:0">{{ tg.tagNameCount }}</span></div>
             <div style="display:flex;gap:8px;align-items:center">
-              <input value="{{ tg.tagName }}" onInput="{{ tg.onNameChange }}" aria-label="Tag name for {{ tg.key }}" autocapitalize="off" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;box-sizing:border-box;padding:10px 12px;min-height:44px;border-radius:12px;border:1.5px solid #cfe3e6;background:#f4fbfb;color:#17353b;font:600 15px var(--font-display)" />
-              <button type="button" onClick="{{ tg.onNameCopy }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body);white-space:nowrap">{{ tg.nameCopyLabel }}</button>
+              <input value="{{ tg.tagName }}" onInput="{{ tg.onNameChange }}" aria-label="Tag name for {{ tg.key }}" autocapitalize="off" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;box-sizing:border-box;padding:10px 12px;min-height:44px;border-radius:12px;border:1.5px solid var(--line-300);background:var(--surface-field);color:var(--ink-900);font:600 15px var(--font-display)" />
+              <button type="button" onClick="{{ tg.onNameCopy }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-body);white-space:nowrap">{{ tg.nameCopyLabel }}</button>
             </div>
             <sc-if value="{{ tg.hasAdd }}" hint-placeholder-val="{{ false }}">
-              <div style="font:700 11px var(--font-display);color:#5b7d84;letter-spacing:.06em;margin:12px 0 6px">{{ tg.addTitle }}</div>
+              <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:12px 0 6px">{{ tg.addTitle }}</div>
               <sc-for list="{{ tg.addBatches }}" as="b" hint-placeholder-count="1">
-                <div style="background:#f4fbfb;border:1.5px solid #cfe3e6;border-radius:12px;padding:10px 12px;margin-bottom:8px">
+                <div style="background:var(--surface-field);border:1.5px solid var(--line-300);border-radius:12px;padding:10px 12px;margin-bottom:8px">
                   <div style="font:600 14px var(--font-display);word-break:break-all">{{ b.text }}</div>
-                  <div style="font:12px var(--font-body);color:#5b7d84;margin-top:4px">{{ b.expect }} {{ b.names }}</div>
-                  <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="margin-top:8px;min-height:40px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ b.copyLabel }}</button>
+                  <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:4px">{{ b.expect }} {{ b.names }}</div>
+                  <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="margin-top:8px;min-height:40px;padding:0 16px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-body)">{{ b.copyLabel }}</button>
                 </div>
               </sc-for>
             </sc-if>
             <sc-if value="{{ tg.hasRem }}" hint-placeholder-val="{{ false }}">
-              <div style="font:700 11px var(--font-display);color:#b5651d;letter-spacing:.06em;margin:12px 0 6px">REMOVE THE TAG FROM</div>
+              <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin:12px 0 6px">REMOVE THE TAG FROM</div>
               <sc-for list="{{ tg.remBatches }}" as="b" hint-placeholder-count="1">
                 <div style="background:#fff7ec;border:1.5px solid #f0d6b3;border-radius:12px;padding:10px 12px;margin-bottom:8px">
                   <div style="font:600 14px var(--font-display);word-break:break-all">{{ b.text }}</div>
-                  <div style="font:12px var(--font-body);color:#5b7d84;margin-top:4px">{{ b.expect }} {{ b.names }}</div>
-                  <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="margin-top:8px;min-height:40px;padding:0 16px;border-radius:999px;background:#b5651d;color:#fff;font:700 13px var(--font-body)">{{ b.copyLabel }}</button>
+                  <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:4px">{{ b.expect }} {{ b.names }}</div>
+                  <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="margin-top:8px;min-height:40px;padding:0 16px;border-radius:999px;background:var(--ink-500);color:#fff;font:700 13px var(--font-body)">{{ b.copyLabel }}</button>
                 </div>
               </sc-for>
             </sc-if>
-            <sc-if value="{{ tg.manual }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:#8a4b12;margin-top:6px">{{ tg.manual }}</div></sc-if>
-            <sc-if value="{{ tg.canDone }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ tg.onDone }}" class="om-press" style="margin-top:8px;min-height:44px;width:100%;border-radius:999px;background:#17353b;color:#fff;font:700 13px var(--font-body)">{{ tg.doneLabel }}</button></sc-if>
+            <sc-if value="{{ tg.manual }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ink-700);margin-top:6px">{{ tg.manual }}</div></sc-if>
+            <sc-if value="{{ tg.canDone }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ tg.onDone }}" class="om-press" style="margin-top:8px;min-height:44px;width:100%;border-radius:999px;background:var(--ink-900);color:#fff;font:700 13px var(--font-body)">{{ tg.doneLabel }}</button></sc-if>
           </div>
         </sc-for>
       </div>
     </sc-if>
     <sc-if value="{{ isShowcaseMode }}" hint-placeholder-val="{{ false }}">
-      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+      <div style="background:var(--surface-card);border-radius:22px;padding:16px;color:var(--ink-900);box-shadow:0 6px 24px rgba(0,0,0,.35)">
         <div style="font:800 18px var(--font-display);text-align:center">Showcase picks</div>
-        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 4px">Your biggest and smallest Pokemon, first the XXL and XXS, then how far each is from its species' normal height. {{ showcaseTotal }} have a size on file. Showcase scoring itself isn't visible to this app, so this is raw size only.</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:var(--ink-500);margin:4px 0 4px">Your biggest and smallest Pokemon, first the XXL and XXS, then how far each is from its species' normal height. {{ showcaseTotal }} have a size on file. Showcase scoring itself isn't visible to this app, so this is raw size only.</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
         <sc-for list="{{ showcaseList }}" as="r" hint-placeholder-count="0">
-          <div style="background:#ffffff;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:11px;color:#17353b">
-            <div style="width:48px;height:48px;border-radius:50%;background:#e6f4f4;position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 17px var(--font-display);color:#5b7d84">{{ r.initial }}</span><img ref="{{ r.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
+          <div style="background:var(--surface-card);border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:11px;color:var(--ink-900)">
+            <div style="width:48px;height:48px;border-radius:50%;background:var(--surface-muted);position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 17px var(--font-display);color:var(--ink-500)">{{ r.initial }}</span><img ref="{{ r.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" /></div>
             <div style="flex:1;min-width:0">
-              <div style="font:700 16px var(--font-body);color:#17353b">{{ r.name }} <span style="display:inline-block;padding:2px 9px;border-radius:999px;background:{{ r.clsBg }};color:{{ r.clsFg }};font:800 11px var(--font-display)">{{ r.cls }}</span></div>
-              <div style="font:12.5px var(--font-body);color:#5b7d84;margin-top:2px">{{ r.line }}</div>
-              <div style="font:600 12px var(--font-body);color:#1b6e66">{{ r.kept }}</div>
+              <div style="font:700 16px var(--font-body);color:var(--ink-900)">{{ r.name }} <span style="display:inline-block;padding:2px 9px;border-radius:999px;background:{{ r.clsBg }};color:{{ r.clsFg }};font:800 11px var(--font-display)">{{ r.cls }}</span></div>
+              <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-top:2px">{{ r.line }}</div>
+              <div style="font:600 12px var(--font-body);color:var(--ios-blue)">{{ r.kept }}</div>
             </div>
-            <button type="button" onClick="{{ r.onOpen }}" class="om-press" aria-label="Find {{ r.name }} in the roster" style="min-width:60px;min-height:44px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">Open</button>
+            <button type="button" onClick="{{ r.onOpen }}" class="om-press" aria-label="Find {{ r.name }} in the roster" style="min-width:60px;min-height:44px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 14px var(--font-body)">Open</button>
           </div>
         </sc-for>
       </div>
       <sc-if value="{{ showcaseMore }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ showcaseShowMore }}" class="om-press" style="display:block;margin:14px auto 0;font:500 15px var(--font-body);color:var(--ios-blue);padding:10px 16px;min-height:44px">Show more ({{ showcaseLeft }} left)</button></sc-if>
     </sc-if>
     <sc-if value="{{ isBulkMode }}" hint-placeholder-val="{{ false }}">
-      <div style="background:#ffffff;border-radius:22px;padding:16px;color:#17353b;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+      <div style="background:var(--surface-card);border-radius:22px;padding:16px;color:var(--ink-900);box-shadow:0 6px 24px rgba(0,0,0,.35)">
         <div style="font:800 18px var(--font-display);text-align:center">Transfer strings</div>
-        <div style="font:13px/1.45 var(--font-body);text-align:center;color:#5b7d84;margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go. None has a hard lock (shiny, lucky, favourite, XXL/XXS, legendary, purified, nondo, unmeasured IVs). Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
-        <div style="font:12px/1.4 var(--font-body);text-align:center;color:#7a979c;margin-top:6px">{{ bulkFreshLine }}</div>
+        <div style="font:13px/1.45 var(--font-body);text-align:center;color:var(--ink-500);margin:4px 0 0">{{ bulkTotal }} Pokemon the app would let go. None has a hard lock (shiny, lucky, favourite, XXL/XXS, legendary, purified, nondo, unmeasured IVs). Paste one string into the game&rsquo;s search box, check the count, select all and transfer. Then tap &ldquo;I transferred this batch&rdquo; here.</div>
+        <div style="font:12px/1.4 var(--font-body);text-align:center;color:var(--ink-500);margin-top:6px">{{ bulkFreshLine }}</div>
         <sc-if value="{{ bulkHoldLine }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#17353b;background:#e6f4f4;border-radius:10px;padding:10px 12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>{{ bulkHoldLine }}</span><button type="button" onClick="{{ onBulkHoldClear }}" class="om-press" style="flex-shrink:0;min-height:36px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 12px var(--font-body)">BRING BACK</button></div>
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:var(--ink-900);background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>{{ bulkHoldLine }}</span><button type="button" onClick="{{ onBulkHoldClear }}" class="om-press" style="flex-shrink:0;min-height:36px;padding:0 14px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 12px var(--font-body)">BRING BACK</button></div>
         </sc-if>
         <sc-if value="{{ bulkStorageText }}" hint-placeholder-val="{{ false }}">
           <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:{{ bulkStorageColor }};background:{{ bulkStorageBg }};border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkStorageText }}</div>
         </sc-if>
         <sc-if value="{{ bulkGate }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkGateText }}</div>
-          <button type="button" onClick="{{ onBulkFresh }}" class="om-press" style="margin-top:10px;min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body);width:100%">NOTHING HAS CHANGED: SHOW THE STRINGS</button>
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:var(--ink-700);background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkGateText }}</div>
+          <button type="button" onClick="{{ onBulkFresh }}" class="om-press" style="margin-top:10px;min-height:44px;padding:0 16px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-body);width:100%">NOTHING HAS CHANGED: SHOW THE STRINGS</button>
         </sc-if>
         <sc-if value="{{ bulkSplitText }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#17353b;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>{{ bulkSplitText }}</span><button type="button" onClick="{{ onJunkOnlyToggle }}" class="om-press" style="flex-shrink:0;min-height:36px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 12px var(--font-body)">{{ junkOnlyLabel }}</button></div>
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:var(--ink-900);margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>{{ bulkSplitText }}</span><button type="button" onClick="{{ onJunkOnlyToggle }}" class="om-press" style="flex-shrink:0;min-height:36px;padding:0 14px;border-radius:999px;background:var(--ink-900);color:#fff;font:700 12px var(--font-body)">{{ junkOnlyLabel }}</button></div>
         </sc-if>
         <sc-if value="{{ bulkNeedMoreText }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkNeedMoreText }}</div>
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:var(--ink-700);background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkNeedMoreText }}</div>
         </sc-if>
         <sc-if value="{{ bulkSoftCount }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:#8a4b12;background:#fff4e5;border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkSoftText }}</div>
+          <div style="font:12.5px/1.45 var(--font-body);text-align:left;color:var(--ink-700);background:var(--surface-muted);border-radius:10px;padding:10px 12px;margin-top:10px">{{ bulkSoftText }}</div>
         </sc-if>
       </div>
       <sc-for list="{{ bulkBatches }}" as="b" hint-placeholder-count="0">
-        <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+        <div style="background:var(--surface-card);border-radius:16px;padding:12px 14px;margin-top:12px;color:var(--ink-900);display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div style="font:800 15px var(--font-display)">{{ b.title }}</div><div style="font:700 11.5px var(--font-display);color:{{ b.kindColor }}">{{ b.kindText }}</div></div>
-          <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ b.text }}</div>
+          <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-muted);border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ b.text }}</div>
           <div style="font:600 13px/1.4 var(--font-body);color:#b4531f">{{ b.expect }}</div>
  
-          <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">{{ b.names }}</div>
-          <details style="font:12.5px/1.45 var(--font-body);color:#17353b">
-            <summary style="cursor:pointer;color:#1d6b5f;font-weight:700;min-height:32px;display:flex;align-items:center">Why are these on the list?</summary>
+          <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-500)">{{ b.names }}</div>
+          <details style="font:12.5px/1.45 var(--font-body);color:var(--ink-900)">
+            <summary style="cursor:pointer;color:var(--ink-700);font-weight:700;min-height:32px;display:flex;align-items:center">Why are these on the list?</summary>
             <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
               <sc-for list="{{ b.whyRows }}" as="w" hint-placeholder-count="0">
-                <div style="background:#f1f7f7;border-radius:10px;padding:8px 10px">
+                <div style="background:var(--surface-muted);border-radius:10px;padding:8px 10px">
                   <div style="font-weight:700">{{ w.label }}</div>
-                  <div style="color:#5b7d84">{{ w.detail }}</div>
-                  <div style="color:#8a4b12">{{ w.why }}</div>
-                  <button type="button" onClick="{{ w.onHold }}" class="om-press" style="margin-top:6px;min-height:36px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 12px var(--font-body)">KEEP FOR NOW</button>
+                  <div style="color:var(--ink-500)">{{ w.detail }}</div>
+                  <div style="color:var(--ink-700)">{{ w.why }}</div>
+                  <button type="button" onClick="{{ w.onHold }}" class="om-press" style="margin-top:6px;min-height:36px;padding:0 14px;border-radius:999px;background:var(--ink-900);color:#fff;font:700 12px var(--font-body)">KEEP FOR NOW</button>
                 </div>
               </sc-for>
             </div>
           </details>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ b.copyLabel }}</button>
-            <button type="button" onClick="{{ b.onDone }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:#17353b;color:#fff;font:700 14px var(--font-body)">I transferred this batch</button>
+            <button type="button" onClick="{{ b.onCopy }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 14px var(--font-body)">{{ b.copyLabel }}</button>
+            <button type="button" onClick="{{ b.onDone }}" class="om-press" style="min-height:44px;padding:0 16px;border-radius:999px;background:var(--ink-900);color:#fff;font:700 14px var(--font-body)">I transferred this batch</button>
           </div>
         </div>
       </sc-for>
       <sc-if value="{{ bulkHasManual }}" hint-placeholder-val="{{ false }}">
-        <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b">
+        <div style="background:var(--surface-card);border-radius:16px;padding:12px 14px;margin-top:12px;color:var(--ink-900)">
           <div style="font:800 15px var(--font-display);margin-bottom:6px">Transfer these by hand</div>
-          <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84;margin-bottom:6px">A search string could select more than the one Pokemon, so each needs picking in the game.</div>
-          <sc-for list="{{ bulkManual }}" as="m" hint-placeholder-count="0"><div style="font:13px/1.45 var(--font-body)"><b>{{ m.name }}</b> <span style="color:#5b7d84">{{ m.why }}</span></div></sc-for>
-          <div style="font:12.5px var(--font-body);color:#5b7d84">{{ bulkManualMore }}</div>
+          <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-500);margin-bottom:6px">A search string could select more than the one Pokemon, so each needs picking in the game.</div>
+          <sc-for list="{{ bulkManual }}" as="m" hint-placeholder-count="0"><div style="font:13px/1.45 var(--font-body)"><b>{{ m.name }}</b> <span style="color:var(--ink-500)">{{ m.why }}</span></div></sc-for>
+          <div style="font:12.5px var(--font-body);color:var(--ink-500)">{{ bulkManualMore }}</div>
         </div>
       </sc-if>
-      <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+      <div style="background:var(--surface-card);border-radius:16px;padding:12px 14px;margin-top:12px;color:var(--ink-900);display:flex;flex-direction:column;gap:8px">
         <div style="font:800 15px var(--font-display)">Protect in the game too</div>
-        <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">Paste this, select all and tap the favourite star. The game will then ask before it lets you transfer any of them, even if this app were wrong.</div>
+        <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-500)">Paste this, select all and tap the favourite star. The game will then ask before it lets you transfer any of them, even if this app were wrong.</div>
         <sc-if value="{{ bulkCoverageText }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12.5px/1.45 var(--font-body);color:{{ bulkCoverageColor }};background:#f1f7f7;border-radius:10px;padding:9px 11px">{{ bulkCoverageText }}</div>
+          <div style="font:12.5px/1.45 var(--font-body);color:{{ bulkCoverageColor }};background:var(--surface-muted);border-radius:10px;padding:9px 11px">{{ bulkCoverageText }}</div>
         </sc-if>
-        <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ bulkProtectText }}</div>
-        <button type="button" onClick="{{ onBulkProtectCopy }}" class="om-press" style="align-self:flex-start;min-height:44px;padding:0 16px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 14px var(--font-body)">{{ bulkProtectCopyLabel }}</button>
+        <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-muted);border-radius:10px;padding:10px;word-break:break-all;user-select:all">{{ bulkProtectText }}</div>
+        <button type="button" onClick="{{ onBulkProtectCopy }}" class="om-press" style="align-self:flex-start;min-height:44px;padding:0 16px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 14px var(--font-body)">{{ bulkProtectCopyLabel }}</button>
       </div>
-      <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+      <div style="background:var(--surface-card);border-radius:16px;padding:12px 14px;margin-top:12px;color:var(--ink-900);display:flex;flex-direction:column;gap:8px">
         <div style="font:800 15px var(--font-display)">Favourite my keepers</div>
-        <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">{{ keeperIntro }}</div>
+        <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-500)">{{ keeperIntro }}</div>
         <sc-for list="{{ keeperBatches }}" as="kb" hint-placeholder-count="0">
-          <div style="background:#f1f7f7;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px">
+          <div style="background:var(--surface-muted);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px">
             <div style="font:700 13px var(--font-body)">{{ kb.title }}</div>
             <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;word-break:break-all;user-select:all">{{ kb.text }}</div>
-            <div style="font:12px/1.4 var(--font-body);color:#5b7d84">{{ kb.expect }} {{ kb.names }}</div>
+            <div style="font:12px/1.4 var(--font-body);color:var(--ink-500)">{{ kb.expect }} {{ kb.names }}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button type="button" onClick="{{ kb.onCopy }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ kb.copyLabel }}</button>
-              <button type="button" onClick="{{ kb.onDone }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 13px var(--font-body)">I favourited this batch</button>
+              <button type="button" onClick="{{ kb.onCopy }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-body)">{{ kb.copyLabel }}</button>
+              <button type="button" onClick="{{ kb.onDone }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--ink-900);color:#fff;font:700 13px var(--font-body)">I favourited this batch</button>
             </div>
           </div>
         </sc-for>
         <sc-if value="{{ keeperManual }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12px/1.4 var(--font-body);color:#8a4b12">{{ keeperManual }}</div>
+          <div style="font:12px/1.4 var(--font-body);color:var(--ink-700)">{{ keeperManual }}</div>
         </sc-if>
       </div>
-      <div style="background:#ffffff;border-radius:16px;padding:12px 14px;margin-top:12px;color:#17353b;display:flex;flex-direction:column;gap:8px">
+      <div style="background:var(--surface-card);border-radius:16px;padding:12px 14px;margin-top:12px;color:var(--ink-900);display:flex;flex-direction:column;gap:8px">
         <div style="font:800 15px var(--font-display)">Let the game skip favourites</div>
-        <div style="font:12.5px/1.45 var(--font-body);color:#5b7d84">When on, every transfer string ends in <b>&amp; !favorite</b>, so the game itself will not select anything you favourited, even a Pokemon this app does not know about yet. Strings get a little shorter, so there are more batches.</div>
+        <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-500)">When on, every transfer string ends in <b>&amp; !favorite</b>, so the game itself will not select anything you favourited, even a Pokemon this app does not know about yet. Strings get a little shorter, so there are more batches.</div>
         <sc-if value="{{ negationNotOk }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12.5px/1.45 var(--font-body);color:#8a4b12;background:#fff4e5;border-radius:10px;padding:9px 11px">First check that the game&rsquo;s NOT operator works on your account. {{ negationTestLine }}</div>
-          <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:#eef6f6;border-radius:10px;padding:10px;user-select:all">{{ negationTestText }}</div>
+          <div style="font:12.5px/1.45 var(--font-body);color:var(--ink-700);background:var(--surface-muted);border-radius:10px;padding:9px 11px">First check that the game&rsquo;s NOT operator works on your account. {{ negationTestLine }}</div>
+          <div style="font:600 13px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-muted);border-radius:10px;padding:10px;user-select:all">{{ negationTestText }}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" onClick="{{ onNegationCopy }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ negationCopyLabel }}</button>
-            <button type="button" onClick="{{ onNegationYes }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#17353b;color:#fff;font:700 13px var(--font-body)">YES, THE COUNT MATCHES</button>
+            <button type="button" onClick="{{ onNegationCopy }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-body)">{{ negationCopyLabel }}</button>
+            <button type="button" onClick="{{ onNegationYes }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--ink-900);color:#fff;font:700 13px var(--font-body)">YES, THE COUNT MATCHES</button>
           </div>
-          <div style="font:12px/1.4 var(--font-body);color:#7a979c">If it shows everything, or nothing, leave this off.</div>
+          <div style="font:12px/1.4 var(--font-body);color:var(--ink-500)">If it shows everything, or nothing, leave this off.</div>
         </sc-if>
         <sc-if value="{{ negationOk }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" onClick="{{ onSkipFavToggle }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#1fb5a5;color:#fff;font:700 13px var(--font-body)">{{ skipFavLabel }}</button>
-            <button type="button" onClick="{{ onNegationReset }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:#eef6f6;color:#17353b;font:700 13px var(--font-body)">TEST AGAIN</button>
+            <button type="button" onClick="{{ onSkipFavToggle }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-body)">{{ skipFavLabel }}</button>
+            <button type="button" onClick="{{ onNegationReset }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--surface-muted);color:var(--ink-900);font:700 13px var(--font-body)">TEST AGAIN</button>
           </div>
         </sc-if>
       </div>
@@ -4729,7 +4790,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     keepGrade: 'excellent',
-    keeperOverrides: {}, krVisible: 12, ocrTick: 0,
+    keeperOverrides: {}, krVisible: 12, ocrTick: 0, themePref: 'auto',
     bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, dtVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
@@ -4937,7 +4998,13 @@ class Component extends DCLogic {
     // this entirely, leaving swipe/long-press with no listeners at all.
     try { this.bindRosterSwipe(); } catch (e) { console.error(e); }
     try { this.installCountUp(); } catch (e) { console.error(e); }
+    try { this.installSentenceCase(); } catch (e) { console.error(e); }
     try { if (localStorage.getItem('scout.candyLock') === '1') this.setState({ candyLock: true }); } catch (e) {}
+    try {
+      const tp = localStorage.getItem('scout.theme'); const pref = tp === 'dark' || tp === 'light' ? tp : 'auto';
+      this.setState({ themePref: pref }); this.applyTheme(pref);
+      if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: light)'); const on = () => { if ((this.state.themePref || 'auto') === 'auto') this.applyTheme('auto'); }; if (mq.addEventListener) mq.addEventListener('change', on); }
+    } catch (e) {}
     try { const ko = JSON.parse(localStorage.getItem('scout.keeperOverrides.v1') || 'null'); if (ko && typeof ko === 'object') this.setState({ keeperOverrides: ko }); } catch (e) {}
     try { const kg = localStorage.getItem('scout.keepGrade'); if (kg === 'good' || kg === 'excellent' || kg === 'top') this.setState({ keepGrade: kg }); } catch (e) {}
     try { const ts = JSON.parse(localStorage.getItem('scout.tags.v1') || 'null'); if (ts && typeof ts === 'object') this.setState({ tagSnap: ts }); } catch (e) {}
@@ -6453,7 +6520,7 @@ class Component extends DCLogic {
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form), initial: String(p.name || '?').charAt(0),
         picked: pick.length ? 'Selected: ' + pick.join(' / ') : 'Pick one or two types',
         canSave: pick.length > 0, saveOpacity: pick.length ? 1 : .4,
-        typeChips: all.map(t => ({ label: t, bg: pick.indexOf(t) >= 0 ? '#1fb5a5' : '#ffffff', fg: pick.indexOf(t) >= 0 ? '#fff' : '#2a4a50', bd: pick.indexOf(t) >= 0 ? '#1fb5a5' : '#cfe3e6', pressed: pick.indexOf(t) >= 0 ? 'true' : 'false',
+        typeChips: all.map(t => ({ label: t, bg: pick.indexOf(t) >= 0 ? 'var(--ios-blue-fill)' : '#ffffff', fg: pick.indexOf(t) >= 0 ? '#fff' : 'var(--ink-700)', bd: pick.indexOf(t) >= 0 ? 'var(--ios-blue-fill)' : 'var(--line-300)', pressed: pick.indexOf(t) >= 0 ? 'true' : 'false',
           onClick: () => {
             const cur = [...pick]; const i = cur.indexOf(t);
             if (i >= 0) cur.splice(i, 1); else { if (cur.length >= 2) cur.shift(); cur.push(t); }
@@ -6648,7 +6715,7 @@ class Component extends DCLogic {
       const text = this.renameFor(p, tpl);
       const over = text.length > 12;
       return { key: String(p.idx), name: p.name + (p.form ? ' (' + p.form + ')' : ''), cp: p.cp != null ? 'CP ' + p.cp : '', text: text || '—', count: text.length + '/12',
-        countColor: over ? '#e5484d' : '#6b7f86', copyLabel: this.state.copiedKey === 'r' + p.idx ? 'Copied' : 'Copy',
+        countColor: over ? '#e5484d' : 'var(--ink-500)', copyLabel: this.state.copiedKey === 'r' + p.idx ? 'Copied' : 'Copy',
         spriteRef: this.makeSpriteRefByDex(p.dex, p.form), initial: String(p.name || '?').charAt(0),
         onCopy: () => this.copyText(text, 'r' + p.idx) };
     }) };
@@ -6722,7 +6789,7 @@ class Component extends DCLogic {
   showcaseVals() {
     const rows = this.showcaseRows();
     const shown = rows.slice(0, this.state.showcaseVisible || 25);
-    const col = { XXL: ['var(--type-electric)', '#1c1c1e'], XXS: ['var(--type-electric)', '#1c1c1e'], XL: ['#e6f4f4', '#1b6e66'], XS: ['#e6f4f4', '#1b6e66'], M: ['transparent', '#5b7d84'] };
+    const col = { XXL: ['var(--type-electric)', '#1c1c1e'], XXS: ['var(--type-electric)', '#1c1c1e'], XL: ['var(--surface-muted)', 'var(--ios-blue)'], XS: ['var(--surface-muted)', 'var(--ios-blue)'], M: ['transparent', 'var(--ink-500)'] };
     return {
       showcaseTotal: rows.length, showcaseMore: rows.length > shown.length, showcaseLeft: rows.length - shown.length,
       showcaseShowMore: () => this.setState({ showcaseVisible: (this.state.showcaseVisible || 25) + 25 }),
@@ -6741,7 +6808,7 @@ class Component extends DCLogic {
     const st = this.state;
     const R = this.renameRows();
     const sample = this.renameFor({ name: 'Ninetales', form: 'alola', atkIV: 15, defIV: 14, staIV: 13, great: { rankPct: 97 }, ultra: { rankPct: 71 }, little: { rankPct: 40 }, cp: 1801 }, st.renameTpl);
-    const mkChip = (label, on, onClick, extra) => ({ label, onClick, bg: on === 1 ? '#1fb5a5' : on === -1 ? '#e5484d' : '#ffffff', fg: on ? '#ffffff' : '#2a4a50', bd: on === 1 ? '#1fb5a5' : on === -1 ? '#e5484d' : '#cfe3e6', pressed: on ? 'true' : 'false' });
+    const mkChip = (label, on, onClick, extra) => ({ label, onClick, bg: on === 1 ? 'var(--ios-blue-fill)' : on === -1 ? '#e5484d' : '#ffffff', fg: on ? '#ffffff' : 'var(--ink-700)', bd: on === 1 ? 'var(--ios-blue-fill)' : on === -1 ? '#e5484d' : 'var(--line-300)', pressed: on ? 'true' : 'false' });
     const flagDefs = [['xxl', 'XXL'], ['xxs', 'XXS'], ['xl', 'XL'], ['xs', 'XS'], ['shadow', 'Shadow'], ['purified', 'Purified'], ['lucky', 'Lucky'], ['shiny', 'Shiny'], ['favorite', 'Favorite'], ['legendary', 'Legendary'], ['mythical', 'Mythical'], ['costume', 'Costume'], ['evolve', 'Can evolve']];
     const flags = st.srchFlags || {};
     const types = ['Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
@@ -6753,14 +6820,14 @@ class Component extends DCLogic {
       ...(st.toolsMode === 'bulk' ? this.bulkStringVals() : {}),
       ...(st.toolsMode === 'tags' ? this.tagsVals() : {}),
       ...(st.toolsMode === 'showcase' ? this.showcaseVals() : {}),
-      modeChips: [['rename', 'Rename'], ['search', 'Search'], ['showcase', 'Showcase'], ['bulk', 'Transfer strings'], ['tags', 'Tags']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? '#1fb5a5' : 'transparent', fg: st.toolsMode === k ? '#fff' : '#2a4a50', onClick: () => this.setState({ toolsMode: k }) })),
+      modeChips: [['rename', 'Rename'], ['search', 'Search'], ['showcase', 'Showcase'], ['bulk', 'Transfer strings'], ['tags', 'Tags']].map(([k, l]) => ({ label: l, bg: st.toolsMode === k ? 'var(--ios-blue-fill)' : 'transparent', fg: st.toolsMode === k ? '#fff' : 'var(--ink-700)', onClick: () => this.setState({ toolsMode: k }) })),
       renameTpl: st.renameTpl, onTplChange: e => this.setState({ renameTpl: e.target.value }),
       renameQuery: st.renameQuery, onQueryChange: e => this.setState({ renameQuery: e.target.value, renameVisible: 20 }),
-      sampleText: sample || '—', sampleCount: (sample || '').length + '/12', sampleColor: (sample || '').length > 12 ? '#e5484d' : '#6b7f86',
+      sampleText: sample || '—', sampleCount: (sample || '').length + '/12', sampleColor: (sample || '').length > 12 ? '#e5484d' : 'var(--ink-500)',
       tokenChips: ['name', 'form', 'iv', 'ivs', 'g', 'u', 'l', 'cp', 'stars', 'size', 'shadow', 'lucky'].map(t => ({ label: '{' + t + '}', onClick: () => this.setState({ renameTpl: (st.renameTpl || '') + '{' + t + '}' }) })),
       renameRows: R.rows, renameTotal: R.total, renameMore: R.total > R.rows.length, renameLeft: R.total - R.rows.length,
       renameShowMore: () => this.setState({ renameVisible: (st.renameVisible || 20) + 20 }),
-      presetChips: presetDefs.map(([k, l]) => ({ label: l, bg: '#ffffff', fg: '#2a4a50', bd: '#cfe3e6', pressed: 'false', onClick: () => this.applySearchPreset(k) })),
+      presetChips: presetDefs.map(([k, l]) => ({ label: l, bg: '#ffffff', fg: 'var(--ink-700)', bd: 'var(--line-300)', pressed: 'false', onClick: () => this.applySearchPreset(k) })),
       srchName: st.srchName, onSrchName: e => this.setState({ srchName: e.target.value }),
       typeChips: types.map(t => mkChip(t, (st.srchTypes || []).indexOf(t) >= 0 ? 1 : 0, () => this.toggleInList('srchTypes', t))),
       formChips: forms.map(([k, l]) => mkChip(l, st.srchForm === k ? 1 : 0, () => this.setState({ srchForm: k }))),
@@ -7242,6 +7309,65 @@ class Component extends DCLogic {
   gradeLabel(rank, tier) {
     const lim = this.gradeLimits(tier);
     return rank >= lim.top - 1e-9 ? 'TOP' : rank >= lim.excellent - 1e-9 ? 'EXCELLENT' : rank >= lim.good - 1e-9 ? 'GOOD' : 'AVERAGE';
+  }
+
+  // Sentence case for labels. Many labels are written in capitals in the source, and some of those strings are also data the code
+  // compares (verdicts, grades, tags), so the text on screen is rewritten instead: any text node that is entirely capitals (three
+  // or more letters) is shown as "Sentence case", keeping acronyms (IV, CP, TM, XL...). Nothing in state or logic changes.
+  installSentenceCase() {
+    if (this._scObs || typeof MutationObserver === 'undefined' || typeof document === 'undefined' || (typeof window !== 'undefined' && window.__keepCaps)) return;   // __keepCaps: the QA harness reads the source wording
+    const KEEP = new Set(['IV', 'IVS', 'CP', 'HP', 'TM', 'TMS', 'XL', 'XXL', 'XS', 'XXS', 'AI', 'CSV', 'DPS', 'GL', 'UI', 'URL', 'API', 'ID', 'DB', 'ATK', 'DEF', 'STA', 'NFD', 'OK', 'XP', 'PVP']);
+    const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'OPTION', 'CODE', 'PRE']);
+    const word = (w, first, ctx) => {
+      const core = w.replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/g, '');
+      if (!/[A-Za-z]/.test(w)) return w;
+      if (core === 'PVP') return w.replace('PVP', 'PvP');
+      if (core === 'IVS') return w.replace('IVS', 'IVs');
+      if (KEEP.has(core) || /\d/.test(core)) return w;
+      if (core.indexOf('/') >= 0 && core.split('/').every(x => KEEP.has(x))) return w;
+      if (core === 'A' && !first) return w.replace('A', 'a');
+      if (/^[A-Z]$/.test(core)) return w;
+      let o = w.toLowerCase();
+      if (first) o = o.replace(/[a-z]/, c => c.toUpperCase());
+      return o;
+    };
+    const conv = t => {
+      let first = true;
+      return t.split(/(\s+)/).map(w => { if (!w.trim()) return w; const r = (w.charAt(0) === '&') ? w : word(w, first); if (/[A-Za-z]/.test(w)) first = false; return r; }).join('');
+    };
+    const OK = /^[A-Z0-9][A-Z0-9 &'\u2019\/%().,\u00b7+:!?\-]*$/;
+    const fix = n => {
+      const p = n.parentNode;
+      if (!p || SKIP.has(p.nodeName) || (p.closest && p.closest('[data-keep-case]'))) return;
+      const v = n.nodeValue;
+      if (!v) return;
+      const t = v.trim();
+      let out = null;
+      if (!/[a-z]/.test(t) && t.length < 90 && (t.match(/[A-Z]/g) || []).length >= 3 && !/[{}<>=;]/.test(t)) { const lead = v.match(/^\s*/)[0], tail = v.slice(lead.length + t.length); out = lead + conv(t) + tail; }
+      else { const m = /^(\s*)([A-Z][A-Z0-9 &'\u2019\/%().+\-]{3,}[A-Z0-9)%]):(\s.*)$/.exec(v); if (m && (m[2].match(/[A-Z]/g) || []).length >= 4) out = m[1] + conv(m[2]) + ':' + m[3]; }
+      if (out != null && out !== v) n.nodeValue = out;
+    };
+    const walk = root => { const w = document.createTreeWalker(root, 4); let n; while ((n = w.nextNode())) fix(n); };
+    this._scObs = new MutationObserver(ms => { ms.forEach(m => { if (m.type === 'characterData') fix(m.target); else m.addedNodes.forEach(a => { if (a.nodeType === 3) fix(a); else if (a.nodeType === 1) walk(a); }); }); });
+    this._scObs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    walk(document.body);
+  }
+
+  // Dark, light, or follow the phone. Sets data-theme on <html> (none = follow the system) and the browser bar colour.
+  applyTheme(pref) {
+    try {
+      const el = document.documentElement;
+      if (pref === 'dark' || pref === 'light') el.setAttribute('data-theme', pref); else el.removeAttribute('data-theme');
+      const light = pref === 'light' || (pref !== 'dark' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+      const m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', light ? '#f6f6f7' : '#0f0f10');
+    } catch (e) {}
+  }
+
+  setThemePref(v) {
+    const pref = v === 'dark' || v === 'light' ? v : 'auto';
+    try { localStorage.setItem('scout.theme', pref); } catch (e) {}
+    this.setState({ themePref: pref }); this.applyTheme(pref);
   }
 
   setKeepGrade(g) {
@@ -14239,7 +14365,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['themePref', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -15023,7 +15149,7 @@ class Component extends DCLogic {
         onNameChange: e => this.setTagName(g.key, e.target.value),
         nameCopyLabel: copied === 'tagname' + g.key ? 'Copied' : 'Copy name', onNameCopy: () => this.copyText(this.tagNameOf(g.key), 'tagname' + g.key),
         status: g.members.length === 0 && st.fresh ? 'Nothing qualifies yet' : st.fresh ? 'Not tagged yet: tag all ' + g.members.length : st.stale ? 'Needs updating: add ' + st.added.length + ', remove ' + st.removed.length : 'Up to date',
-        statusColor: st.stale ? '#b5651d' : upToDate ? '#1b6e66' : '#5b7d84',
+        statusColor: st.stale ? 'var(--ink-500)' : upToDate ? 'var(--ios-blue)' : 'var(--ink-500)',
         members: g.members.map(p => p.name + ' ' + p.cp).join(' · '),
         hasAdd: add.batches.length > 0, addBatches: add.batches.map((b, i) => mk(b, 'a', i)), addTitle: st.fresh ? 'TAG THESE' : 'ADD THE TAG TO',
         hasRem: rem.batches.length > 0, remBatches: rem.batches.map((b, i) => mk(b, 'r', i)),
@@ -15140,7 +15266,7 @@ class Component extends DCLogic {
     const softRows = this.transferCandidates().filter(c => c.soft && c.soft.length).sort((a, b) => (b.p.ivAvg || 0) - (a.p.ivAvg || 0));
     return {
       bulkGate: fresh.gated,
-      ...(() => { const w = this.storageWarning(); const bad = w.level === 'full' || w.level === 'blocked'; return { bulkStorageText: w.text, bulkStorageColor: bad ? '#8f1d1d' : '#8a4b12', bulkStorageBg: bad ? '#fde8e8' : '#fff4e5' }; })(),
+      ...(() => { const w = this.storageWarning(); const bad = w.level === 'full' || w.level === 'blocked'; return { bulkStorageText: w.text, bulkStorageColor: bad ? '#8f1d1d' : 'var(--ink-700)', bulkStorageBg: bad ? '#fde8e8' : 'var(--surface-muted)' }; })(),
       bulkGateText: fresh.gated ? 'Your roster was last imported ' + fresh.newest + ' day' + (fresh.newest === 1 ? '' : 's') + ' ago. Anything you caught, favourited, traded or evolved since is not in the app. Import again first, or confirm that nothing has changed.' : '',
       onBulkFresh: () => this.ackTransferFresh(),
       bulkHoldCount: (this.state.transferHold || []).length,
@@ -15170,7 +15296,7 @@ class Component extends DCLogic {
         copyLabel: copied === 'keep' + i ? 'Copied' : 'Copy string', onCopy: () => this.copyText(b.text, 'keep' + i), onDone: () => this.keeperFavouritedDone(b)
       })),
       keeperManual: kb.manual.length ? kb.manual.length + ' keepers cannot be isolated in a search and need a star by hand: ' + kb.manual.slice(0, 6).map(m => m.p.name + ' ' + m.p.cp + ' CP').join(', ') + (kb.manual.length > 6 ? ', \u2026' : '') : '',
-      bulkCoverageColor: cov.missing > 0 ? '#8a4b12' : '#1d6b5f',
+      bulkCoverageColor: cov.missing > 0 ? 'var(--ink-700)' : 'var(--ink-700)',
       bulkSoftCount: softRows.length,
       bulkSoftText: softRows.length ? softRows.length + ' of these are normally kept. They are only here because you have more than your Keep best target of ' + target
         + '. Raise the target (More, Keep best) to keep them. Best of them: ' + softRows.slice(0, 6).map(c => c.p.name + ' ' + c.p.cp + ' CP (' + c.soft[0] + ')').join('; ') + (softRows.length > 6 ? '; and ' + (softRows.length - 6) + ' more' : '') + '.' : '',
@@ -15187,7 +15313,7 @@ class Component extends DCLogic {
       bulkTotal: r.total,
       bulkHasBatches: r.batches.length > 0,
       bulkBatches: r.batches.map((b, i) => ({
-        title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, kindText: b.softN ? 'Includes ' + b.softN + ' normally kept' : 'Junk only: no keep reasons', kindColor: b.softN ? '#8a4b12' : '#1d6b5f', text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
+        title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, kindText: b.softN ? 'Includes ' + b.softN + ' normally kept' : 'Junk only: no keep reasons', kindColor: b.softN ? 'var(--ink-700)' : 'var(--ink-700)', text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
         names: b.names.join(' \u00b7 '), whyRows: b.rows || [], copyLabel: copied === 'bulk' + i ? 'Copied' : 'Copy string',
         onCopy: () => this.copyText(b.text, 'bulk' + i), onDone: () => this.confirmBatchTransferred(b.pokemon)
       })),
@@ -17275,8 +17401,8 @@ class Component extends DCLogic {
       this._headerStuck = stuck;
       const h = this._headerEl;
       if (!h) return;
-      h.style.boxShadow = stuck ? '0 10px 30px rgba(0,0,0,.42)' : 'none';
-      h.style.background = stuck ? 'rgba(0,0,0,.86)' : 'rgba(0,0,0,.72)';
+      h.style.boxShadow = stuck ? 'var(--bar-shadow)' : 'none';
+      h.style.background = stuck ? 'var(--bar-bg-stuck)' : 'var(--bar-bg)';
     }, { threshold: 0 });
     this._headerIO.observe(el);
   }
@@ -18322,9 +18448,10 @@ class Component extends DCLogic {
 
     const plan = this.buildOptimizePlan(roster);
     const hour = new Date().getHours();
-    const baseGreeting = hour < 12 ? 'Good morning, Trainer.' : hour < 18 ? 'Good afternoon, Trainer.' : 'Good evening, Trainer.';
-    const greeting = personality === 'hype' ? baseGreeting.replace('.', '!') + ' Let\'s cook.'
-      : personality === 'deadpan' ? baseGreeting.replace('Trainer.', 'Trainer. Data follows.')
+    // The title names the day, not a greeting.
+    const baseGreeting = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+    const greeting = personality === 'hype' ? baseGreeting + '. Let\'s cook.'
+      : personality === 'deadpan' ? baseGreeting + '. Data follows.'
       : baseGreeting;
     const greatProjects = roster.filter(p => p.great && Number.isFinite(p.great.rankPct) && p.great.rankPct >= 80 && notDone(p)).length;
     const mapMini = (arr, kind) => arr.map(p => ({
@@ -19172,7 +19299,7 @@ class Component extends DCLogic {
     const tabDefs = [...barDefs, ...moreDefs];
     const tint = on => (on ? 'var(--ios-blue)' : 'var(--ink-400)');
     // The small label needs 4.5:1 on whatever page colour shows through the translucent bar; the icon keeps the system blue.
-    const labelTint = on => (on ? '#66b2ff' : 'var(--ink-400)');
+    const labelTint = on => (on ? 'var(--accent-text)' : 'var(--ink-400)');
     const tabList = [
       ...barDefs.map(t => ({ key: t.key, label: t.label, navLabel: t.navLabel, badge: '', iconPath: ICON[t.key], color: tint(t.key === tab && !this.state.moreOpen), labelColor: labelTint(t.key === tab && !this.state.moreOpen), current: (t.key === tab && !this.state.moreOpen) ? 'page' : undefined, onClick: () => this.setState({ moreOpen: false }, () => this.goToTab(t.key)) })),
       { key: 'more', label: 'More', navLabel: 'More', badge: tab !== 'bulk' ? this.bulkBadge() : '', iconPath: ICON.more, color: tint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), labelColor: labelTint(moreKeys.indexOf(tab) >= 0 || this.state.moreOpen), onClick: () => this.setState({ moreOpen: !this.state.moreOpen }) }
@@ -19477,6 +19604,7 @@ class Component extends DCLogic {
         fg: (this.state.pvpMaxLevel || 50) === n ? 'white' : 'var(--ink-600)',
         onClick: () => this.setPvpMaxLevel(n)
       })),
+      themeChips: [['auto', 'Auto'], ['dark', 'Dark'], ['light', 'Light']].map(([k, l]) => ({ label: l, pressed: String((this.state.themePref || 'auto') === k), bg: (this.state.themePref || 'auto') === k ? 'var(--ios-blue-fill)' : 'var(--surface-muted)', fg: (this.state.themePref || 'auto') === k ? '#fff' : 'var(--ink-900)', onClick: () => this.setThemePref(k) })),
       gradeChips: [['good', 'GOOD'], ['excellent', 'EXCELLENT'], ['top', 'TOP']].map(([k, l]) => ({ label: l, pressed: String((this.state.keepGrade || 'excellent') === k), bg: (this.state.keepGrade || 'excellent') === k ? '#0060c8' : 'var(--surface-muted)', fg: (this.state.keepGrade || 'excellent') === k ? '#fff' : 'var(--ink-900)', onClick: () => this.setKeepGrade(k) })),
       gradeEffect: tab === 'home' ? (() => {
         const fx = this.gradeEffects(), cur = this.state.keepGrade || 'excellent';
@@ -19909,9 +20037,9 @@ class Component extends DCLogic {
         .map(c => ({
           label: c.label,
           count: c.count,
-          color: `var(${c.token})`,
-          bg: `color-mix(in oklab, var(${c.token}) 16%, var(--surface-card))`,
-          border: `color-mix(in oklab, var(${c.token}) 42%, var(--surface-card))`,
+          color: 'var(--ink-900)',
+          bg: 'var(--surface-card)',
+          border: 'var(--line-200)',
           onClick: () => this.jumpToSection(c.key)
         }))
         // Separate from the section-jump chips above: this one jumps tabs
@@ -19919,9 +20047,9 @@ class Component extends DCLogic {
         .concat(unverifiedDpsCount > 0 ? [{
           label: 'UNVERIFIED DPS',
           count: unverifiedDpsCount,
-          color: 'var(--type-electric)',
-          bg: 'color-mix(in oklab, var(--type-electric) 16%, var(--surface-card))',
-          border: 'color-mix(in oklab, var(--type-electric) 42%, var(--surface-card))',
+          color: 'var(--ink-900)',
+          bg: 'var(--surface-card)',
+          border: 'var(--line-200)',
           onClick: () => this.goToTab('attackers')
         }] : []),
 

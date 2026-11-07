@@ -25,7 +25,8 @@ const check = (name, ok, extra) => {
   const launch = { args: ['--no-sandbox'] };
   if (process.env.PW_CHROMIUM) launch.executablePath = process.env.PW_CHROMIUM;
   const browser = await chromium.launch(launch);
-  const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, hasTouch: true });
+  const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, hasTouch: true, colorScheme: 'dark' });
+  await ctx.addInitScript(() => { window.__keepCaps = true; });   // the smoke checks read the source wording
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
