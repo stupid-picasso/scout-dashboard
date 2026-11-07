@@ -64,7 +64,7 @@ module.exports = async function suiteB() {
   await T('REC-02', 'Recs', 'Transfer candidates never include Lucky, Shadow or Favourite Pokemon', async () => { const t = await s.text(); const seg = (t.split('TRANSFER CANDIDATES')[1] || '').split('REFRESH')[0]; const protect = roster.filter(p => p.lucky || p.favorite || (p.shadowPurified === '1' || p.shadowPurified === 1)).map(p => p.name); const leak = protect.filter(n => new RegExp('\\n' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\n').test(seg)); expect(leak.length === 0, leak.join(',')); }, 'critical');
   await T('REC-03', 'Recs', 'Dominated-duplicates section explains its rule', async () => expect(/DOMINATED DUPLICATES/.test(await s.text())));
   await T('REC-04', 'Recs', 'MARK DONE removes an item from the power-up list', async () => { const b = s.page.getByText('MARK DONE', { exact: true }).first(); if (!(await b.count())) skip('none'); const seg = async () => ((await s.text()).split('POWER UP CANDIDATES')[1] || '').split('\n').filter(x => x.length > 3)[2]; const first0 = await seg(); await b.click(); await s.page.waitForTimeout(400); expect((await seg()) !== first0, 'first item unchanged: ' + first0); });
-  await T('REC-05', 'Recs', 'USE A TM search finds a Pokemon by name', async () => { const f = s.page.getByPlaceholder(/Search your roster by name/); await f.fill('Gyarados'); await s.page.waitForTimeout(500); expect(/Gyarados/.test(await s.text())); await f.fill(''); });
+  await T('REC-05', 'Recs', 'USE A TM search finds a Pokemon by name', async () => { const f = s.page.getByPlaceholder(/Search roster/); await f.fill('Gyarados'); await s.page.waitForTimeout(500); expect(/Gyarados/.test(await s.text())); await f.fill(''); });
   await T('REC-06', 'Recs', 'AI recommendations without a key explain what is missing instead of failing', async () => { await s.page.getByText('GET RECOMMENDATIONS', { exact: true }).click().catch(() => {}); await s.page.waitForTimeout(700); expect(s.errors.length === 0, s.errors[0]); });
   await T('REC-07', 'Recs', 'Every recommendation card states the rule behind it', async () => {
     const t = await s.text(); const cards = await s.page.locator('div').filter({ hasText: /^(Best league rank|PvP-worthy|IV \d|IV unknown|You own|Best rank)/ }).count();
@@ -1106,7 +1106,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('bi1', 'Gengar', 94, [0, 13, 13], 1498), mk('bi2', 'Gengar', 94, [15, 15, 15], 2500), mk('bi3', 'Gengar', 94, [3, 10, 8], 1400), mk('bi4', 'Gengar', 94, [1, 1, 1], 900)], roster: [], ivOverrides: {}, bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, tab: 'bestiv' }); await s.page.waitForTimeout(600);
     let t = await s.page.evaluate(() => document.body.innerText);
-    expect(/Best IV/.test(t) && /Search a Pokemon/i.test(await s.page.evaluate(() => (document.querySelector('input[aria-label="Search species"]') || {}).placeholder || '')), 'the list page is there');
+    expect(/Best IV/.test(t) && /Search by name or number/i.test(await s.page.evaluate(() => (document.querySelector('input[aria-label="Search species"]') || {}).placeholder || '')), 'the list page is there');
     await s.page.locator('input[aria-label="Search species"]').fill('gengar'); await s.page.waitForTimeout(500);
     t = await s.page.evaluate(() => document.body.innerText);
     expect(/Gengar/.test(t) && /you own 4/.test(t), 'search finds Gengar and counts your copies: ' + t.slice(0, 300));

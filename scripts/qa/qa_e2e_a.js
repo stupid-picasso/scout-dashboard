@@ -29,7 +29,7 @@ module.exports = async function suiteA() {
   await s.set({ typeTable: TYPES });
   await T('IMP-01', 'Import', 'CSV of 64 Pokemon loads and the header count updates', async () => expect(/64 Pokemon loaded/.test(await s.text())), 'critical');
   await T('IMP-02', 'Import', 'Success notice names the file and the count', async () => expect(/Loaded 64 Pokemon from qa_roster\.csv/.test(await s.text())));
-  await T('IMP-03', 'Import', 'Header stat tiles show roster count, average IV, lucky and shadow counts', async () => { const t = await s.text(); expect(/64\s*\|?\s*ROSTER|ROSTER/.test(t) && /AVG IV/.test(t) && /LUCKY/.test(t) && /SHADOW/.test(t)); });
+  await T('IMP-03', 'Import', 'Header stat tiles show roster count, average IV, lucky and shadow counts', async () => { const t = await s.text(); expect(/Roster/.test(t) && /Avg IV/.test(t) && /Lucky/.test(t) && /Shadow/.test(t) && /PvP ready/.test(t)); });
   await T('IMP-04', 'Import', 'Re-importing the same file replaces rather than duplicates', async () => { await s.load(QA); const t = await s.text(); expect(/64 Pokemon loaded/.test(t) && !/128 Pokemon/.test(t), t.slice(0, 160)); return /replaced 64/.test(t) ? 'notice says replaced' : 'count stays 64 (notice does not mention the replacement)'; });
   const tmp = '/tmp/qa/tmp_csv'; fs.mkdirSync(tmp, { recursive: true });
   const base = fs.readFileSync(SMOKE, 'utf8');
@@ -64,7 +64,7 @@ module.exports = async function suiteA() {
   const rows = () => s.page.locator('[data-swipe-row]').count();
   await T('ROS-01', 'Roster', 'First page shows 30 rows with a count line', async () => { const n = await rows(); expect(n === 30, 'rows=' + n); expect(/of 64 shown|30 of 64/.test(await s.text())); });
   await T('ROS-02', 'Roster', 'LOAD MORE adds the next page', async () => { const b = s.page.getByText(/LOAD \d+ MORE/i).first(); expect(await b.count() > 0, 'no load more'); await b.click(); await s.page.waitForTimeout(500); expect(await rows() > 30); });
-  const search = s.page.getByPlaceholder(/Search name, move or type/);
+  const search = s.page.getByPlaceholder(/Search roster/);
   await T('ROS-03', 'Roster', 'Search by name filters the list', async () => { await search.fill('garchomp'); await s.page.waitForTimeout(500); const n = await rows(); expect(n === 1, 'rows=' + n); });
   await T('ROS-04', 'Roster', 'Search by move name finds Pokemon that know the move', async () => { await search.fill('Hurricane'); await s.page.waitForTimeout(500); expect(await rows() >= 1); });
   await T('ROS-05', 'Roster', 'Search by type works once types are known', async () => { await search.fill('dragon'); await s.page.waitForTimeout(500); expect(await rows() >= 2, 'rows=' + await rows()); });
