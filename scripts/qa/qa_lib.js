@@ -36,6 +36,7 @@ async function close() { if (browser) await browser.close(); }
 async function session(opts = {}) {
   const b = await launch();
   const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark' });
+  await ctx.addInitScript(() => { window.__noImportGate = true; });   // tests feed synthetic reads; IMPCHK-01 turns the import gate on
   if (!opts.sentenceCase) await ctx.addInitScript(() => { window.__keepCaps = true; });   // tests read the source wording; CASE-01 turns the display layer on
   const page = await ctx.newPage();
   const errors = [], logs = [];

@@ -1181,6 +1181,32 @@ module.exports = async function suiteB() {
     await s.set({ geminiKeys: st0.geminiKeys || [], geminiKey: st0.geminiKey || '' });
     expect(r && /did not answer/.test(r.msg) && r.ms < 6000 && r.calls === 2, 'times out after two tries, not forever: ' + JSON.stringify(r));
   });
+  await T('IMPCHK-01', 'Import', 'The import gate holds reads that cannot be right, merges the good ones, and Accept / Discard work from Bulk update', async () => {
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [], roster: [], ivOverrides: {}, importHold: [], tab: 'home' }); await s.page.waitForTimeout(400);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic, m = l.mechanics;
+      const base = m.BASE_STATS[68], iv = [12, 13, 14], good = { name: 'Machamp', dex: 68, cp: m.cpFor(base, iv, 20), hp: m.hpFor(base, 14, 20), atkIV: 12, defIV: 13, staIV: 14 };
+      const lowHp = { ...good, hp: good.hp - 20 };
+      const badIv = { name: 'Alakazam', dex: 65, cp: 1200, hp: 90, atkIV: 20, defIV: 3, staIV: 4 };
+      const badFit = { name: 'Machamp', dex: 68, cp: good.cp + 37, hp: good.hp, atkIV: 12, defIV: 13, staIV: 14 };
+      const badName = { name: 'Notamon', cp: 800, hp: 70 };
+      const checks = { good: l.importCheck(good).length, lowHp: l.importCheck(lowHp).length, badIv: l.importCheck(badIv).length, badFit: l.importCheck(badFit).length, badName: l.importCheck(badName).length, stardust: l.importCheck({ name: 'Machamp', dex: 68, cp: 148482, hp: 100 }).length };
+      window.__noImportGate = false;
+      const res = l.mergeVideoImport([good, badIv, badFit]);
+      window.__noImportGate = true;
+      return { checks, res: { inserted: res.inserted, held: res.held }, hold: (l.state.importHold || []).length, added: (l.state.addedPokemon || []).length }; } } return null; });
+    expect(r && r.checks.good === 0 && r.checks.lowHp === 0, 'a consistent read, even with HP below its maximum, passes: ' + JSON.stringify(r && r.checks));
+    expect(r.checks.badIv > 0 && r.checks.badFit > 0 && r.checks.badName > 0 && r.checks.stardust > 0, 'bad reads are flagged: ' + JSON.stringify(r.checks));
+    expect(r.res.inserted === 1 && r.res.held === 2 && r.hold === 2 && r.added === 1, 'one merged, two held: ' + JSON.stringify(r));
+    await s.go('BULK'); await s.page.waitForTimeout(700);
+    let t = await s.text();
+    expect(/Import check/.test(t) && /2 to review/.test(t) && /do not fit any level of Machamp/.test(t) && /IVs must be whole numbers/.test(t), 'the Import check list shows both with reasons: ' + t.slice(t.indexOf('Import check'), t.indexOf('Import check') + 400));
+    await s.page.getByRole('button', { name: 'Discard', exact: true }).first().click(); await s.page.waitForTimeout(400);
+    await s.page.getByRole('button', { name: 'Accept', exact: true }).first().click(); await s.page.waitForTimeout(600);
+    const after = await s.state();
+    expect((after.importHold || []).length === 0 && (after.addedPokemon || []).length === 2, 'discard drops one, accept merges the other: ' + JSON.stringify({ hold: (after.importHold || []).length, added: (after.addedPokemon || []).length }));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, importHold: [], tab: 'home' });
+  });
   await T('KEEPKEY-01', 'Safety', 'A KEEP/RELEASE choice follows the Pokemon through a re-import that renumbers the roster; identical copies are released one at a time', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();

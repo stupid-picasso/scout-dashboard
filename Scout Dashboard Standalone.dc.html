@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.264</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.267</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -4373,6 +4373,28 @@
       <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em">BULK UPDATE</div>
       <div style="font:12.5px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Checks that need your eye on many Pokemon at once. Nothing is changed automatically: you choose for each one, and every choice can be undone right after.</div>
     </div>
+    <sc-if value="{{ hasImportHold }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-bottom:24px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px">
+          <div style="font:700 13px var(--font-display);color:var(--ink-900)">Import check</div>
+          <div style="font:700 11px var(--font-display);color:var(--ink-400)">{{ importHoldCount }} to review</div>
+        </div>
+        <div style="font:12.5px/1.5 var(--font-body);color:var(--ink-500);margin-bottom:12px;text-wrap:pretty">These reads did not add up, so they are not in your roster yet. Accept one if the read is right, or discard it and scan it again.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ importHoldRows }}" as="hr" hint-placeholder-count="2">
+            <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+              <div style="font:700 15px var(--font-body);color:var(--ink-900)">{{ hr.name }}</div>
+              <div style="font:600 12.5px var(--font-body);color:var(--ink-700)">{{ hr.read }}</div>
+              <div style="font:12.5px/1.45 var(--font-body);color:var(--type-fighting)">{{ hr.reasons }}</div>
+              <div style="display:flex;gap:8px">
+                <button type="button" onClick="{{ hr.onAccept }}" class="om-press" style="flex:1;min-height:44px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:600 13px var(--font-display)">Accept</button>
+                <button type="button" onClick="{{ hr.onDiscard }}" class="om-press" style="flex:1;min-height:44px;border-radius:999px;background:var(--surface-muted);color:var(--ink-900);font:600 13px var(--font-display)">Discard</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
     <sc-for list="{{ bulkChecks }}" as="chk" hint-placeholder-count="1">
       <div style="margin-bottom:24px">
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px">
@@ -4791,7 +4813,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     keepGrade: 'excellent',
-    keeperOverrides: {}, krVisible: 12, ocrTick: 0, themePref: 'auto', themeToast: '',
+    keeperOverrides: {}, importHold: [], krVisible: 12, ocrTick: 0, themePref: 'auto', themeToast: '',
     bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, dtVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
@@ -5006,6 +5028,7 @@ class Component extends DCLogic {
       this.setState({ themePref: pref }); this.applyTheme(pref);
       if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: light)'); const on = () => { if ((this.state.themePref || 'auto') === 'auto') this.applyTheme('auto'); }; if (mq.addEventListener) mq.addEventListener('change', on); }
     } catch (e) {}
+    try { const ih = JSON.parse(localStorage.getItem('scout.importHold.v1') || 'null'); if (Array.isArray(ih)) this.setState({ importHold: ih }); } catch (e) {}
     try { const ko = JSON.parse(localStorage.getItem('scout.keeperOverrides.v1') || 'null'); if (ko && typeof ko === 'object') this.setState({ keeperOverrides: ko }); } catch (e) {}
     try { const kg = localStorage.getItem('scout.keepGrade'); if (kg === 'good' || kg === 'excellent' || kg === 'top') this.setState({ keepGrade: kg }); } catch (e) {}
     try { const ts = JSON.parse(localStorage.getItem('scout.tags.v1') || 'null'); if (ts && typeof ts === 'object') this.setState({ tagSnap: ts }); } catch (e) {}
@@ -6470,10 +6493,10 @@ class Component extends DCLogic {
   // identities because it is read on every render.
   bulkBadge() {
     const st = this.state, c = this._bulkBadge;
-    if (c && c.r === st.roster && c.a === st.addedPokemon && c.o === st.ivOverrides && c.k === st.bulkSkip && c.m === !!this.mechanics) return c.v;
+    if (c && c.r === st.roster && c.a === st.addedPokemon && c.o === st.ivOverrides && c.k === st.bulkSkip && c.h === st.importHold && c.m === !!this.mechanics) return c.v;
     let v = '';
-    try { const n = this.bulkFormPending().length + this.bulkTypePending().length + this.bulkNamePending().length + this.costumeEvolvePending().length; v = n > 0 ? String(n > 99 ? '99+' : n) : ''; } catch (e) {}
-    this._bulkBadge = { r: st.roster, a: st.addedPokemon, o: st.ivOverrides, k: st.bulkSkip, m: !!this.mechanics, v };
+    try { const n = this.bulkFormPending().length + this.bulkTypePending().length + this.bulkNamePending().length + this.costumeEvolvePending().length + (st.importHold || []).length; v = n > 0 ? String(n > 99 ? '99+' : n) : ''; } catch (e) {}
+    this._bulkBadge = { r: st.roster, a: st.addedPokemon, o: st.ivOverrides, k: st.bulkSkip, h: st.importHold, m: !!this.mechanics, v };
     return v;
   }
 
@@ -10481,7 +10504,7 @@ class Component extends DCLogic {
 
   // Adds the current OCR read as a brand-new roster entry — the escape hatch for
   // "no roster match by CP", which previously dead-ended the import.
-  addOcrAsNew() {
+  addOcrAsNew(skipCheck) {
     const p = this.state.ocrParsed;
     if (!p) return;
     const rec = p._rec ? { ...p._rec } : {};
@@ -10504,6 +10527,14 @@ class Component extends DCLogic {
     }
     if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
     const mon = this.buildPokemonRecord(rec);
+    // The same import gate as the other imports: a read that does not add up asks first.
+    if (!skipCheck && !(typeof window !== 'undefined' && window.__noImportGate)) {
+      const why = this.importCheck({ name: mon.name, dex: mon.dex, cp: mon.cp, hp: mon.hp, atkIV: mon.atkIV, defIV: mon.defIV, staIV: mon.staIV, form: mon.form });
+      if (why.length) {
+        this.askConfirm({ title: 'Check this read', message: why.join('. ') + '. Add it anyway? Cancel to read the screenshot again.', actions: [{ label: 'ADD ANYWAY', style: 'primary', run: () => { this.closeConfirm(); this.addOcrAsNew(true); } }] });
+        return;
+      }
+    }
     // A repeated tap here (e.g. retrying because a stale TRANSFERRED mark was
     // hiding the first attempt) used to silently create another full, visible
     // duplicate with no warning. Confirm once when an existing, VISIBLE
@@ -13034,10 +13065,73 @@ class Component extends DCLogic {
     return kept;
   }
 
+  // ---- Import check ---------------------------------------------------------------------------------------------
+  // A read that cannot be right should not become a roster entry. importCheck lists high-confidence problems only (so a real
+  // Pokemon is not held for nothing): an unknown species, a CP or IV that cannot exist, IVs that no level of the species can
+  // turn into this CP, or an HP above the most it could have. The Pokemon's current HP may be below its maximum, so a low HP is fine.
+  importCheck(item) {
+    const m = this.mechanics, out = [];
+    if (!item) return out;
+    const name = String(item.name || item.pokemon_name || '').trim();
+    const dex = item.dex != null ? item.dex : (item.dex_number != null ? item.dex_number : (m && m.resolveDexByName && name ? m.resolveDexByName(name) : null));
+    if (!name) out.push('No name was read');
+    else if (m && m.resolveDexByName && dex == null && !name.toLowerCase().replace(/-/g, ' ').split(/\s+/).some(w => w.length > 2 && m.resolveDexByName(w) != null)) out.push('"' + name + '" is not a species the app knows');   // "Alolan Raichu", "Mega Mewtwo X" still contain a known species
+    const cp = Number(item.cp), hp = Number(item.hp);
+    if (item.cp != null && Number.isFinite(cp) && (cp < 10 || cp > 5200)) out.push('CP ' + cp + ' is outside what a Pokemon can have (10 to about 5000); it may be a stardust amount');
+    const ivs = [item.atkIV, item.defIV, item.staIV];
+    const have = ivs.filter(v => v != null);
+    if (have.some(v => !(Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 15))) { out.push('IVs must be whole numbers from 0 to 15 (read ' + ivs.map(v => v == null ? '?' : v).join('/') + ')'); return out; }
+    if (have.length === 3 && Number.isFinite(cp) && dex != null && m && m.cpFor && m.hpFor && m.CPM) {
+      const bases = this.baseStatCandidates({ dex, matchedForm: item.matchedForm || item.form });
+      if (bases.length) {
+        const iv3 = ivs.map(Number), levels = Object.keys(m.CPM).map(Number);
+        let fit = [];
+        bases.forEach(b => levels.forEach(L => { if (m.cpFor(b.base, iv3, L) === cp) fit.push({ b, L }); }));
+        if (!fit.length) out.push('CP ' + cp + ' and IVs ' + iv3.join('/') + ' do not fit any level of ' + name);
+        else if (Number.isFinite(hp) && !fit.some(f => hp <= m.hpFor(f.b.base, iv3[2], f.L))) out.push('HP ' + hp + ' is more than ' + name + ' can have at CP ' + cp + ' with these IVs');
+      }
+    }
+    return out;
+  }
+
+  holdImportItems(held) {
+    if (!held || !held.length) return;
+    const next = [...(this.state.importHold || []), ...held].slice(-200);
+    this.setState({ importHold: next }, () => { try { localStorage.setItem('scout.importHold.v1', JSON.stringify(next)); } catch (e) {} });
+  }
+
+  dropHeld(id) {
+    const next = (this.state.importHold || []).filter(h => h.id !== id);
+    this.setState({ importHold: next }, () => { try { localStorage.setItem('scout.importHold.v1', JSON.stringify(next)); } catch (e) {} });
+  }
+
+  acceptHeld(id) {
+    const h = (this.state.importHold || []).find(x => x.id === id);
+    if (!h) return;
+    this._gateBypass = true;
+    try { this.mergeVideoImport([h.item]); } finally { this._gateBypass = false; }
+    this.dropHeld(id);
+  }
+
+  importHoldRows() {
+    return (this.state.importHold || []).map(h => {
+      const it = h.item || {};
+      const iv = [it.atkIV, it.defIV, it.staIV].some(v => v != null) ? 'IV ' + [it.atkIV, it.defIV, it.staIV].map(v => v == null ? '?' : v).join('/') : 'IVs not read';
+      return { key: h.id, name: String(it.name || 'Unknown'), read: 'CP ' + (it.cp == null ? '?' : it.cp) + ' \u00b7 HP ' + (it.hp == null ? '?' : it.hp) + ' \u00b7 ' + iv, reasons: h.reasons.join('. ') + '.', onAccept: () => this.acceptHeld(h.id), onDiscard: () => this.dropHeld(h.id) };
+    });
+  }
+
   mergeVideoImport(rawItems) {
     try { this.logMegaScans(rawItems || []); } catch (e) {}
     try { (rawItems || []).forEach(o => this.noteMaxParticles(o)); } catch (e) {}
-    const items = this.coalesceFragments(rawItems || []);
+    let items = this.coalesceFragments(rawItems || []);
+    // The import gate: reads that cannot be right wait in Bulk update > Import check until you accept or discard them.
+    let heldNow = 0;
+    if (!this._gateBypass && !(typeof window !== 'undefined' && window.__noImportGate)) {   // __noImportGate: the QA harness feeds synthetic reads
+      const keep = [], held = [];
+      items.forEach(it => { const why = this.importCheck(it); if (why.length) held.push({ id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: Date.now(), reasons: why, item: it }); else keep.push(it); });
+      if (held.length) { items = keep; heldNow = held.length; this.holdImportItems(held); }
+    }
     const overrides = { ...this.state.ivOverrides };
     const candyInv = { ...this.state.candyInventory };
     const types = { ...this.state.typeTable };
@@ -13321,7 +13415,7 @@ class Component extends DCLogic {
     this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds, recentChanged: { ids: touchedIdx, at: Date.now(), shown: false }, lastImport: { at: Date.now(), rows: sheetRows, revert: revertMap }, importSheetOpen: false });
     if (seenStardust != null) this.setStardust(seenStardust);
     const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
-    return { updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
+    return { held: heldNow, updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
   }
 
   setImportScreenMode(mode) {
@@ -14380,7 +14474,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -19431,6 +19525,7 @@ class Component extends DCLogic {
       isTools: tab === 'tools',
       ...(tab === 'tools' ? this.toolsVals() : {}),
       bulkChecks: tab === 'bulk' ? this.bulkChecks() : [],
+      hasImportHold: (this.state.importHold || []).length > 0, importHoldCount: (this.state.importHold || []).length, importHoldRows: tab === 'bulk' ? this.importHoldRows() : [],
       tabList,
       moreTabs,
       moreOpen: !!this.state.moreOpen,
