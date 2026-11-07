@@ -32,16 +32,16 @@ module.exports = async function suiteD() {
   // Light theme: same checks, on every tab, with the display layer (sentence case) switched on.
   const sl = await session({ feed: false, colorScheme: 'light', sentenceCase: true });
   await sl.load(QA); await sl.call('recalculateAllRanks'); await sl.page.waitForTimeout(2500);
-  await T('THEME-01', 'Theme', 'Light follows the phone, Dark and Light buttons override it, and the choice is remembered', async () => {
-    const th = () => sl.page.evaluate(() => ({ attr: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, ls: localStorage.getItem('scout.theme') }));
+  await T('THEME-01', 'Theme', 'The header sun button cycles Auto, Light, Dark; the phone setting drives Auto and the choice is remembered', async () => {
+    const th = () => sl.page.evaluate(() => ({ attr: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, ls: localStorage.getItem('scout.theme'), label: (document.querySelector('header button[aria-label^="Theme"]') || {}).ariaLabel }));
+    const tap = async () => { await sl.page.locator('header button[aria-label^="Theme"]').click(); await sl.page.waitForTimeout(250); return th(); };
+    await sl.call('setThemePref', 'auto'); await sl.page.waitForTimeout(250);
     let t = await th();
-    expect(t.attr === null && /246, 246, 247/.test(t.bg), 'auto in a light phone is light: ' + JSON.stringify(t));
-    await sl.call('setThemePref', 'dark'); await sl.page.waitForTimeout(200); t = await th();
-    expect(t.attr === 'dark' && /15, 15, 16/.test(t.bg) && t.ls === 'dark', 'Dark button: ' + JSON.stringify(t));
-    await sl.call('setThemePref', 'light'); await sl.page.waitForTimeout(200); t = await th();
-    expect(t.attr === 'light' && /246, 246, 247/.test(t.bg), 'Light button: ' + JSON.stringify(t));
-    await sl.call('setThemePref', 'auto'); await sl.page.waitForTimeout(200); t = await th();
-    expect(t.attr === null && t.ls === 'auto', 'Auto removes the override: ' + JSON.stringify(t));
+    expect(t.attr === null && /246, 246, 247/.test(t.bg) && /Auto/.test(t.label), 'auto in a light phone is light: ' + JSON.stringify(t));
+    t = await tap(); expect(t.attr === 'light' && /Light/.test(t.label) && t.ls === 'light', 'first tap is Light: ' + JSON.stringify(t));
+    expect(/Theme: Light/.test(await sl.text()), 'a note says which mode it landed on');
+    t = await tap(); expect(t.attr === 'dark' && /15, 15, 16/.test(t.bg) && /Dark/.test(t.label) && t.ls === 'dark', 'second tap is Dark: ' + JSON.stringify(t));
+    t = await tap(); expect(t.attr === null && t.ls === 'auto' && /Auto/.test(t.label), 'third tap is Auto again: ' + JSON.stringify(t));
   }, 'high');
   await T('CASE-01', 'Theme', 'Labels written in capitals are shown in sentence case, acronyms kept', async () => {
     await sl.go('HOME'); await sl.page.waitForTimeout(900);
