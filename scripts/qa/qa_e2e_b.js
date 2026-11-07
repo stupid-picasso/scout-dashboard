@@ -1157,6 +1157,21 @@ module.exports = async function suiteB() {
     expect(r.junk.err, 'a reply with no object still fails');
     expect(r.reask.calls === 2 && r.reask.cp === 2100 && r.reask.shiny === true, 'a hopeless first reply is asked again once: ' + JSON.stringify(r.reask));
   });
+  await T('SQUAD-01', 'PvP', 'The squad prefers Pokemon that already have their recommended moves, and says which are missing', async () => {
+    const mk = (idx, name, dex) => ({ idx, name, dex, cp: 1490, hp: 100, atkIV: 1, defIV: 15, staIV: 15, ivAvg: 69, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 97 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('sq1', 'Melmetal', 809), mk('sq2', 'Mimikyu', 778), mk('sq3', 'Sableye', 302), mk('sq4', 'Altaria', 334), mk('sq5', 'Tinkaton', 959)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic, m = l.mechanics;
+      const score = { Melmetal: 100, Mimikyu: 90, Sableye: 80, Altaria: 70, Tinkaton: 60 }, ok = { Melmetal: false, Mimikyu: true, Sableye: true, Altaria: true, Tinkaton: false };
+      const keep = [l.pvpAssess, l.inBand, m.pvpMatchupsFor, l.needsAppraisal];
+      l.pvpAssess = p => ({ tierRank: 0, tier: 'S', rank: 96, tierScore: score[p.name], movesOk: ok[p.name], missing: ok[p.name] ? [] : ['double iron bash'] });
+      l.inBand = () => true; l.needsAppraisal = () => false; m.pvpMatchupsFor = () => ({ counters: [], matchups: [] });
+      let team = null; try { team = l.pvpTeamFor('great'); } catch (e) { team = { err: e.message }; }
+      l.pvpAssess = keep[0]; l.inBand = keep[1]; m.pvpMatchupsFor = keep[2]; l.needsAppraisal = keep[3];
+      return team && team.members ? { names: team.members.map(c => c.p.name).sort(), ready: team.ready } : team; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+    expect(r && r.names && r.names.join() === 'Altaria,Mimikyu,Sableye' && r.ready === 3, 'a 100-score Melmetal without its moves loses its place to three that have them: ' + JSON.stringify(r));
+  });
   await T('GEMTIME-01', 'AI', 'A Gemini request that never answers is dropped after the deadline instead of hanging the import', async () => {
     const st0 = await s.state();
     await s.page.route(/generativelanguage\.googleapis\.com/, () => { /* never answers */ });
