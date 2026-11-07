@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.262</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.263</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -1584,6 +1584,10 @@
                       <button type="button" onClick="{{ sq.onClick }}" aria-label="{{ sq.name }}" class="om-tap" style="all:unset;cursor:pointer;display:block;position:relative;width:52px;height:52px;border-radius:50%;background:var(--surface-card)"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:650 17px var(--font-display);color:var(--ink-400)">{{ sq.initial }}</span><img ref="{{ sq.spriteRef }}" alt="{{ sq.name }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></button>
                     </sc-for>
                   </div>
+                  <div style="display:flex;flex-direction:column;gap:2px;margin-top:8px">
+                    <sc-for list="{{ lg.squadMoves }}" as="sm" hint-placeholder-count="3"><div style="font:12px/1.4 var(--font-body);color:var(--ink-500)">{{ sm.text }}</div></sc-for>
+                  </div>
+                  <sc-if value="{{ lg.squadMovesWarn }}" hint-placeholder-val="{{ false }}"><div style="font:600 12px/1.45 var(--font-body);color:var(--type-fighting);margin-top:6px">{{ lg.squadMovesWarn }}</div></sc-if>
                   <sc-if value="{{ lg.squadNote }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--ios-yellow);margin-top:6px">Check {{ lg.squadNote }}</div></sc-if>
                 </sc-if>
                 <sc-if value="{{ lg.hasSquadEmpty }}" hint-placeholder-val="{{ false }}">
@@ -8286,6 +8290,7 @@ class Component extends DCLogic {
   // Best 3-Pokemon team for Great or Ultra League from YOUR box, from PvPoke's
   // simulated matchups. For each candidate the data lists the 5 opponents that
   // beat it (counters) and the 5 it beats best (matchups). A team is judged on
+  //  0. most members that already have their recommended moves (the rating assumes them),
   //  1. fewest SHARED weaknesses (the same opponent beating 2+ members),
   //  2. most of the threats that beat a member being answered by a teammate,
   //  3. highest average species score.
@@ -8308,7 +8313,8 @@ class Component extends DCLogic {
     pool.sort((x, y) => ((y.a.movesOk === true) - (x.a.movesOk === true)) || (y.a.rank - x.a.rank));
     const bySpecies = new Map();
     pool.forEach(c => { if (!bySpecies.has(c.id)) bySpecies.set(c.id, c); });
-    const cands = [...bySpecies.values()].sort((x, y) => (y.a.tierScore || 0) - (x.a.tierScore || 0)).slice(0, 16);
+    // A Pokemon missing its recommended moves is rated on moves it does not have, so Pokemon that already have them come first.
+    const cands = [...bySpecies.values()].sort((x, y) => ((y.a.movesOk === true) - (x.a.movesOk === true)) || ((y.a.tierScore || 0) - (x.a.tierScore || 0))).slice(0, 16);
     if (cands.length < 3) return null;
     let best = null;
     for (let i = 0; i < cands.length; i++) for (let j = i + 1; j < cands.length; j++) for (let k = j + 1; k < cands.length; k++) {
@@ -8319,10 +8325,11 @@ class Component extends DCLogic {
       const shared = threats.filter(id => weak.get(id) >= 2);
       const covered = threats.filter(id => members.some(c => c.mu.matchups.some(t => t.id === id && t.rating > 500)));
       const avg = members.reduce((a, c) => a + (c.a.tierScore || 0), 0) / 3;
-      const cand = { members, threats, shared, covered, avg };
-      if (!best || shared.length < best.shared.length
+      const ready = members.filter(c => c.a.movesOk === true).length;   // members that already have their recommended moves
+      const cand = { members, threats, shared, covered, avg, ready };
+      if (!best || ready > best.ready || (ready === best.ready && (shared.length < best.shared.length
         || (shared.length === best.shared.length && (covered.length > best.covered.length
-          || (covered.length === best.covered.length && avg > best.avg)))) best = cand;
+          || (covered.length === best.covered.length && avg > best.avg)))))) best = cand;
     }
     return best ? { league: leagueKey, ...best } : null;
   }
@@ -16929,6 +16936,9 @@ class Component extends DCLogic {
           spriteRef: t.dex != null ? this.makeSpriteRefByDex(t.dex, null) : null, selected: sel === t.name,
           label: t.name + ', tier ' + t.tier, onClick: () => this.setState({ leagueSel: sel === t.name ? null : { k: selKey, n: t.name } }) }));
         const selTop = (top || []).find(t => t.name === sel);
+        const tidyMv = n => String(n).replace(/\b\w/g, ch => ch.toUpperCase());
+        const squadMoves = squad ? squad.members.map(c => ({ text: c.p.name + ' \u00b7 ' + (c.a.movesOk === true ? 'has the recommended moves' : c.a.movesOk === false ? 'needs ' + c.a.missing.map(tidyMv).join(', ') : 'moves not checked'), ok: c.a.movesOk === true })) : [];
+        const squadLack = squad ? squad.members.filter(c => c.a.movesOk !== true).length : 0;
         const squadCards = squad ? squad.members.map(c => ({ name: c.p.name, initial: c.p.dex != null ? '' : String(c.p.name || '?').charAt(0), spriteRef: this.makeSpriteRefByDex(c.p.dex, c.p.form), onClick: () => this.openDetail(c.p) })) : [];
         const megaCards = picks.map(x => ({ name: x.name.replace(/ (Mega|Primal)\b/, ''), initial: x.dex != null ? '' : x.name.charAt(0), spriteRef: x.dex != null ? this.makeSpriteRefByDex(x.dex, null) : null,
           score: x.tier + ' ' + x.score, barW: x.cost ? Math.min(100, Math.round(100 * (x.have || 0) / x.cost)) + '%' : '0%', hasBar: x.cost != null,
@@ -16939,6 +16949,7 @@ class Component extends DCLogic {
           top: top || [], hasTop: !!(top && top.length),
           topCards, hasTopCards: topCards.length > 0, selLine: selTop ? selTop.name + ' \u00b7 ' + selTop.moves + (wi === 0 && canSquad ? '\n' + this.squadWhy(league, cup ? p => this.cupAllows(cup, p) : null, tableKey, selTop.name.replace(/ \(Shadow\)$/, '').replace(/ (Mega|Primal).*$/, ''), squad) : '') : '', hasSel: !!selTop,
           squadNote: (/\(check .*\)$/.exec(squad ? squad.members.map(c => c.p.name).join('') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ')' : '') : '') || [''])[0].replace(/^\(|\)$/g, ''),
+          squadMoves, squadMovesWarn: squadLack ? squadLack + ' of 3 do not have the recommended moves. The rating assumes them, so expect these to play weaker until you teach them.' : '',
           squadCards, hasSquadCards: squadCards.length > 0, squadSlots: squad ? [] : [1, 2, 3], hasSquadEmpty: !squad && canSquad,
           megaCards, hasMegaCards: megaCards.length > 0,
           squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ' for: ' + squad.members.filter(c => this.cupUnknown(cup, c.p).length).map(c => c.p.name).join(', ') + ')' : '') : (wi === 0 && canSquad ? 'Not enough measured, in-cap, legal A-tier Pokemon yet' : ''),

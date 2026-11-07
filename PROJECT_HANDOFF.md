@@ -543,3 +543,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 
 ## Theme button (v53.263)
 - The Appearance card on Home is gone. A 38px round button in the header (before Import) cycles Auto -> Light -> Dark -> Auto (`cycleTheme`); icon = current mode (half-filled circle / sun / moon), aria-label "Theme: Auto, tap for Light", and a 1.8 s status note "Theme: Light" (`themeToast`, UI-only key). Test THEME-01 taps the button.
+
+## Squad: moves first (v53.264)
+- `pvpTeamFor`: candidates with their recommended moves (`movesOk`) rank first, and a trio with more members that already have them wins before shared weaknesses, coverage and tier score. The Today GBL card lists each squad member as "has the recommended moves" / "needs X" and warns "N of 3 do not have the recommended moves". Test SQUAD-01. Not done: lead / safe swap / closer roles (no role data in the bundled PvPoke tables).
