@@ -1301,7 +1301,7 @@
 <script type="module" src="./pokemon-data.js"></script>
 <script type="module" src="./pokemon-mechanics.js"></script>
 </helmet>
-<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100dvh;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}" style-before="content:'';position:fixed;inset:-20%;pointer-events:none;z-index:-1;background:radial-gradient(46% 38% at 18% 12%, oklch(46% 0.10 50 / .22), transparent 70%),radial-gradient(40% 34% at 84% 8%, oklch(48% 0.09 25 / .16), transparent 72%),radial-gradient(52% 44% at 62% 92%, oklch(44% 0.08 90 / .14), transparent 74%);animation:ambientDrift 34s ease-in-out infinite">
+<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100dvh;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}">
 
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
   <header style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.267</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.268</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -2202,7 +2202,6 @@
               </sc-for>
               <div style="font:11px var(--font-body);color:var(--ink-300)">Counts reset at midnight, this device only.</div>
             </div>
-
             </div>
           </div>
         </details>
@@ -2895,7 +2894,7 @@
       </div>
     </div>
 
-        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
         <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ASK THE PROFESSOR ANYTHING</div>
         <div onClick="{{ clearChat }}" style="cursor:pointer;padding:5px 11px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 11px var(--font-display);letter-spacing:.03em;white-space:nowrap">NEW CHAT</div>
@@ -5507,8 +5506,8 @@ class Component extends DCLogic {
       this.checkMigrationStatus();
       this.loadMechanicsFromCloud();
     } else {
-      // Signed out means nothing is displayed \u2014 this device holds no
-      // Pok\u00e9mon data of its own, so there is nothing left to fall back to.
+      // Signed out means nothing is displayed — this device holds no
+      // Pokémon data of its own, so there is nothing left to fall back to.
       if (this._unsubDoc) { this._unsubDoc(); this._unsubDoc = null; }
       this._hydrated = false;
       this._lastBlobBytes = 0;
@@ -6872,9 +6871,8 @@ class Component extends DCLogic {
     });
   }
 
-  // triageKeep/transferQueue sync to Firestore via SYNC_KEYS/pushCloud;
-  // nothing is written to this device.
-  saveTriage() {}
+  saveTriage() {
+  }
 
   // Chip -> section. scrollIntoView is off-limits here, so this offsets by the
   // sticky header height manually.
@@ -8446,7 +8444,7 @@ class Component extends DCLogic {
   // Little Cup requires a Pokemon that has not reached its final evolution.
   // evoTable only records a species once its evolution chain has actually
   // been looked up, so a species with no entry yet is UNKNOWN, not
-  // \u201cconfirmed fully evolved\u201d \u2014 treat unknown as eligible rather than
+  // "confirmed fully evolved" — treat unknown as eligible rather than
   // silently hiding a legitimately NFE Pokemon's Little rank because nobody
   // has fetched its evolution data yet. Only a confirmed final stage (an
   // entry whose `to` is explicitly null/falsy) is excluded.
@@ -10306,42 +10304,6 @@ class Component extends DCLogic {
       ocrParsed: null, ocrPreview: null, ocrError: '' });
   }
 
-  // Kicks off a multi-screenshot import: files queued from one multi-select
-  // input, processed one at a time. Each file goes through the exact same
-  // handleScreenshotUpload() as a single upload always has — this only adds
-  // what happens AFTER the trainer acts on one (advance to the next queued
-  // file, or wrap up with a summary once the queue is empty).
-  startOcrQueue(files) {
-    if (!files || !files.length) return;
-    this.setState({ ocrQueue: files, ocrQueueIndex: 0, ocrQueueDone: [], ocrQueueSummary: '' }, () => {
-      this.handleScreenshotUpload(files[0]);
-    });
-  }
-
-  // Called from every exit point of the single-item panel (ADD AS NEW,
-  // SAVE CANDY/TYPE, CANCEL/SKIP) instead of just clearing ocrParsed. If more
-  // files are queued, advances to the next one automatically; otherwise
-  // leaves a short summary of what happened across the whole batch.
-  advanceOcrQueue(logEntry) {
-    const doneLog = logEntry ? [...(this.state.ocrQueueDone || []), logEntry] : (this.state.ocrQueueDone || []);
-    const queue = this.state.ocrQueue || [];
-    const nextIndex = (this.state.ocrQueueIndex || 0) + 1;
-    if (nextIndex < queue.length) {
-      this.setState({ ocrQueueIndex: nextIndex, ocrQueueDone: doneLog, ocrParsed: null, ocrPreview: null, ocrError: '' }, () => {
-        this.handleScreenshotUpload(queue[nextIndex]);
-      });
-      return;
-    }
-    const summary = doneLog.length
-      ? doneLog.filter(d => d.action === 'added').length + ' added, '
-        + doneLog.filter(d => d.action === 'updated').length + ' updated, '
-        + doneLog.filter(d => d.action === 'skipped').length + ' skipped'
-        + (queue.length > 1 ? ' (' + queue.length + ' screenshots)' : '')
-      : '';
-    this.setState({ ocrQueue: [], ocrQueueIndex: 0, ocrQueueDone: [], ocrQueueSummary: summary,
-      ocrParsed: null, ocrPreview: null, ocrError: '' });
-  }
-
   // ---- Screenshot read clean-up (same rules as the server pipeline's post-processing) -----------
   // Edit distance based similarity in [0,1].
   nameSimilarity(a, b) {
@@ -10643,7 +10605,7 @@ class Component extends DCLogic {
     const c = candidates[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-    // ocrParsed itself has no shadow field \u2014 if this screenshot was matched to
+    // ocrParsed itself has no shadow field — if this screenshot was matched to
     // an existing roster entry, that entry is the only place shadow status
     // could come from; otherwise assume normal (a shadow OCR'd fresh has no
     // way to signal it here yet).
@@ -11018,6 +10980,8 @@ class Component extends DCLogic {
     // render exactly as an unsanitized cloud read did.
     next.addedPokemon = this.sanitizeRoster(d.addedPokemon || []);
     next.csvNotice = 'Restored ' + p.count + ' Pokemon from ' + p.filename + '.';
+    // A CLEAR ROSTER marker would make applyRemote discard the restored roster
+    // as "written before the clear", so the restore retires it.
     this.setState(next, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
@@ -11107,11 +11071,11 @@ class Component extends DCLogic {
     this.queueCloudPush();
   }
 
-  // Keys sync to Firestore via SYNC_KEYS/pushCloud — nothing is stored on
-  // this device. Rotates across every stored key. Both Gemini limits (10 rpm
-  // and 1,500/day) are PER KEY, so a 429 on one key is not a 429 on the next —
-  // rotating turns a hard stop into a hop. Keys go on a cooldown rather than
-  // being discarded: 60s for a per-minute 429, until midnight for a daily-quota 429.
+  // Google AI Studio free tier. Key is stored locally on this device only.
+  // Rotates across every stored key. Both Gemini limits (10 rpm and 1,500/day)
+  // are PER KEY, so a 429 on one key is not a 429 on the next — rotating turns
+  // a hard stop into a hop. Keys go on a cooldown rather than being discarded:
+  // 60s for a per-minute 429, until midnight for a daily-quota 429.
   async callGemini(body) {
     const keys = this.activeGeminiKeys();
     if (!keys.length) {
@@ -11294,6 +11258,8 @@ class Component extends DCLogic {
       });
     });
     if (body.system) parts.unshift({ text: body.system });
+    // Model rotation: cycle through top 5 models for best accuracy + quota spread.
+    // (3.5 Flash is best, then 2.5 Flash, then lite variants)
     // Two separate rotations, kept apart on purpose: vision calls (video/
     // screenshot appraisal reading) use the same 3 models as the pogo_extract.py
     // pipeline; text-only calls (chat/evolve/moves/types/candy-ai) use a
@@ -11460,9 +11426,10 @@ class Component extends DCLogic {
 
   // Bump on every change to callGemini's request shape, so a stale cached build
   // is identifiable from the error text alone.
-  get GEMINI_REQ_VERSION() { return 'g3'; }
+  get GEMINI_REQ_VERSION() { return 'g4'; }
 
-  // Per-day call counters — in-memory only, resets on reload.
+
+  // Per-day call counters, so the free-tier budgets are visible before they run out.
   todayKey() { return new Date().toISOString().slice(0, 10); }
 
   bumpAiUsage(engine) {
@@ -11476,8 +11443,7 @@ class Component extends DCLogic {
 
   // Accepts one key or many (newline, comma, or space separated). Rotation is
   // what makes a long video import viable: limits are per key, so N keys is
-  // N x 1,500 requests/day and N x 10 rpm. Keys sync to Firestore via
-  // SYNC_KEYS/pushCloud — nothing is stored on this device.
+  // N x 1,500 requests/day and N x 10 rpm.
   setGeminiKey(v) {
     const keys = String(v || '')
       .split(/[\s,;]+/)
@@ -11500,8 +11466,7 @@ class Component extends DCLogic {
         // it's verified against real appraisal cards and is the one engine
         // guaranteed to accept image parts. The custom text gateway (Groq,
         // OmniRoute, OpenRouter…) is for chat/evolve/move-lookup/candy-AI only.
-        // Gemini only now (Claude/gateway paths removed) — free tier is 1500
-        // req/day, 10 rpm, and
+        // Gemini only (Claude/gateway paths removed) — free tier is 1500 req/day, 10 rpm, and
         // includes vision — far past what this app needs, and no card required.
         if (this.state.geminiKey) {
           try { return await this.callGemini(body); }
@@ -12797,31 +12762,6 @@ class Component extends DCLogic {
       img.onerror = () => reject(new Error('Could not decode that image.'));
       img.src = URL.createObjectURL(file);
     });
-  }
-
-  // Does the actual read-measure-match-pin work for ONE appraisal
-  // screenshot and returns { ok, line, review, summary } instead of setting
-  // state directly, so both the single-image path and the multi-image batch
-  // loop below can share this without stepping on each other's progress
-  // state mid-batch.
-  async processOneAppraisalShot(file) {
-    const tPrep = Date.now();
-    const canvas = await this.imageToCanvas(file);
-    const bars = this.measureAppraisalBars(canvas);
-    this.noteAiStage('appraisal: decode + measure bars', Date.now() - tPrep);
-    if (!bars) throw new Error('No appraisal bars found in that screenshot. Capture the appraisal screen with all three bars visible, uncropped.');
-    const rec = await this.readScreenshotWithVision(file);
-    const name = rec.pokemon_name || '';
-    if (!name || rec.cp == null || rec.hp == null) throw new Error('Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but could not read the name, CP and HP from this shot. All three are needed to match it to a Pokemon you already imported.');
-    const item = { name, cp: rec.cp, hp: rec.hp, atkIV: bars.atk, defIV: bars.def, staIV: bars.sta,
-                   ivSource: 'bar-measure', barDrift: bars.drift, barConfidence: bars.drift < 0.2 ? 'high' : 'low' };
-    const clean = this.normalizeAppraisalItems([item]);
-    if (!clean.length) throw new Error('Read ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP, but no Pokemon called "' + name + '" is in your roster and no single entry matches that CP/HP \u2014 import its detail screen first, or check the name was read correctly.');
-    const summary = this.mergeAppraisalImport(clean);
-    const line = summary.applied ? 'Pinned ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' to ' + name
-      : (summary.contradiction ? 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but it cannot produce CP ' + rec.cp + ' at ' + rec.hp + ' HP - check the screenshot is one Pokemon'
-      : 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but no imported Pokemon matches ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP');
-    return { ok: !!summary.applied, line, review: summary._review, summary };
   }
 
   // Does the actual read-measure-match-pin work for ONE appraisal
@@ -19184,6 +19124,9 @@ class Component extends DCLogic {
         })(),
         markTransferred: () => this.askTransferConfirm(p, () => this.closeDetail())
       };
+      // Tabs + evolve action, added on top of the fields above rather than
+      // woven through them, so the sheet gains a section switcher without
+      // touching how every existing field is computed.
       const dTab = this.state.detailTab || 'appraisal';
       const evoInfo = this.evoInfoFor(p);
       const tabOn = k => dTab === k;

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """
+RETIRED WORKFLOW: use `python3 scripts/build_bundles.py` (see its docstring). The bundles are now generated from
+Scout Dashboard.dc.html instead of being patched hunk by hunk, which is what let them drift. This file stays because
+build_bundles.py imports its helpers (read/write, mechanics embedding, version bump, syntax and ranking checks);
+its snapshot/apply commands are no longer part of the workflow.
+
 propagate_edits.py — mechanically propagate edits made to Scout Dashboard.dc.html
 (the single source of truth) into the other three deployed files:
 
