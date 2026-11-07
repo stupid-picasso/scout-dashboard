@@ -546,3 +546,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 
 ## Squad: moves first (v53.264)
 - `pvpTeamFor`: candidates with their recommended moves (`movesOk`) rank first, and a trio with more members that already have them wins before shared weaknesses, coverage and tier score. The Today GBL card lists each squad member as "has the recommended moves" / "needs X" and warns "N of 3 do not have the recommended moves". Test SQUAD-01. Not done: lead / safe swap / closer roles (no role data in the bundled PvPoke tables).
+
+## Stable KEEP/RELEASE choices (v53.265)
+- `keeperOverrides` is keyed by `copyKeyOf(p)` = name|form|shadow|IVs + "#n" (n = rank by CP among same-IV copies, then row order) instead of the row number, so a re-import that renumbers the roster keeps each choice on its Pokemon; identical copies get separate keys. Old row-number entries still work and are moved to keys (`migrateKeeperOverrides`). A power-up keeps a unique-IV copy's key (CP is not in the key). Test KEEPKEY-01. THINK-01 failed twice in one session and passed on re-run: treat it as timing-flaky.

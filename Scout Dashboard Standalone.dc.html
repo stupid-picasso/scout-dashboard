@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.263</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.264</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -7556,7 +7556,7 @@ class Component extends DCLogic {
     if (iv != null && iv >= 80 && this.megaTagFor(p)) out.push('Mega-capable with good IVs');
     if (iv != null && iv >= 80 && !this.movesetDataNote(p)) out.push('Good IV with known moves');
     // The trainer's own call (Keeper review). KEEP is a hard lock. RELEASE drops every soft reason but never a hard lock.
-    const ov = (this.state.keeperOverrides || {})[String(p.idx)];
+    const ov = this.keeperOverrideOf(p);
     if (ov === 'keep') out.push('You chose to keep it');
     const soft = out.filter(x => this.isSoftKeep(x));
     let res = { all: out, soft, hard: out.filter(x => soft.indexOf(x) < 0) };
@@ -7637,7 +7637,7 @@ class Component extends DCLogic {
         + (this.isPurified(p) ? 10000 : 0) + (p.atkIV === 0 && p.defIV === 0 && p.staIV === 0 && !this.needsAppraisal(p) ? 100000 : 0)
         + (shadow && iv >= 80 ? 1500 : 0) + this.leagueBestFor(p, ctx).length * 1500 + (iv >= 90 ? 1500 : 0)
         + (onlyCopy ? 300 : 0) + (cls ? 4000 + (pos <= 2 ? 3000 : 0) : 0)
-        + masterBonus + raidBonus + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01 - ((this.state.keeperOverrides || {})[String(p.idx)] === 'release' ? 1e7 : 0);
+        + masterBonus + raidBonus + (movesetComplete ? 300 : 0) + rank * 30 + iv * 10 + (p.cp || 0) * 0.01 - (this.keeperOverrideOf(p) === 'release' ? 1e7 : 0);
       const bits = [];
       if (sizeKeep) bits.push(this.sizeTagOf(p) + ' size, kept for showcases');
       if (cls) bits.push(CLASS[cls]);
@@ -14659,7 +14659,7 @@ class Component extends DCLogic {
     const held = new Set(this.state.transferHold || []);
     const add = (p, why) => { if (p && !held.has(String(p.idx)) && !out.has(p.idx) && !this.keepReasons(p, ctx).length) out.set(p.idx, { p, why, soft: this.keepFull(p, ctx).soft, chosen: why === 'You chose to release it' }); };
     // Pokemon the trainer chose to release go first, whatever the Keep best target says. A hard lock still wins (add() checks it).
-    roster.forEach(p => { if ((this.state.keeperOverrides || {})[String(p.idx)] === 'release') add(p, 'You chose to release it'); });
+    roster.forEach(p => { if (this.keeperOverrideOf(p) === 'release') add(p, 'You chose to release it'); });
     if (overBy) {
       // Rows run lowest score first, so the last few shown sit right at the line: those are the ones worth a second look.
       const sum = this.cutSafeSummary(roster, overBy), n = sum.show.length;
@@ -14963,9 +14963,49 @@ class Component extends DCLogic {
   // ---- Keeper review ---------------------------------------------------------------------------------------------
   // Species where the app keeps more than 3 copies, so the trainer can say KEEP (hard lock) or RELEASE (goes to the front of the
   // transfer strings; a hard lock such as shiny/lucky/favourite still wins) per copy. Overrides persist on this device.
+  // A choice follows the Pokemon, not its row number: the key is species, form, shadow and IVs, plus which of several
+  // same-IV copies it is (by CP). Identical copies are interchangeable, so releasing "the second one" releases exactly one of them.
+  // The row number changes whenever the roster is re-imported, which used to put a choice on the wrong copy.
+  copyKeyMap() {
+    const list = this.effectiveRosterForMatch();
+    if (this._ckList === list && this._ckMap) return this._ckMap;
+    const groups = new Map(), map = new Map();
+    list.forEach(p => {
+      const base = [String(p.name || '').toLowerCase(), String(p.form || '').toLowerCase(), this.isShadow(p) ? 's' : 'n', p.atkIV, p.defIV, p.staIV].map(v => v == null ? '?' : v).join('|');
+      (groups.get(base) || groups.set(base, []).get(base)).push(p);
+    });
+    // Copies with the same IVs are told apart by CP (a power-up keeps a unique-IV copy's key), then by row order as a last resort.
+    groups.forEach((g, base) => { g.slice().sort((a, b) => ((a.cp || 0) - (b.cp || 0)) || ((a.hp || 0) - (b.hp || 0)) || (String(a.idx) < String(b.idx) ? -1 : String(a.idx) > String(b.idx) ? 1 : 0)).forEach((p, i) => map.set(p.idx, base + '#' + i)); });
+    this._ckList = list; this._ckMap = map;
+    return map;
+  }
+
+  copyKeyOf(p) { return this.copyKeyMap().get(p.idx) || ('idx:' + p.idx); }
+
+  keeperOverrideOf(p) {
+    const ov = this.state.keeperOverrides;
+    if (!ov) return undefined;
+    const k = ov[this.copyKeyOf(p)];
+    if (k) return k;
+    const legacy = ov[String(p.idx)];       // saved before keys existed: still honoured, then moved to a key
+    if (legacy && !this._koMigrating) { this._koMigrating = true; setTimeout(() => { this._koMigrating = false; try { this.migrateKeeperOverrides(); } catch (e) {} }, 0); }
+    return legacy;
+  }
+
+  migrateKeeperOverrides() {
+    const ov = this.state.keeperOverrides || {}, cur = { ...ov };
+    const byIdx = new Map(); this.effectiveRosterForMatch().forEach(p => byIdx.set(String(p.idx), p));
+    let moved = 0;
+    Object.keys(ov).forEach(k => { const p = byIdx.get(k); if (p && k.indexOf('|') < 0) { const nk = this.copyKeyOf(p); if (!cur[nk]) cur[nk] = ov[k]; delete cur[k]; moved++; } });
+    if (!moved) return;
+    this.setState({ keeperOverrides: cur }, () => { try { localStorage.setItem('scout.keeperOverrides.v1', JSON.stringify(cur)); } catch (e) {} });
+  }
+
   setKeeperOverride(p, v) {
     const cur = { ...(this.state.keeperOverrides || {}) };
-    if (v) cur[String(p.idx)] = v; else delete cur[String(p.idx)];
+    const key = this.copyKeyOf(p);
+    delete cur[String(p.idx)];
+    if (v) cur[key] = v; else delete cur[key];
     this.setState({ keeperOverrides: cur }, () => { try { localStorage.setItem('scout.keeperOverrides.v1', JSON.stringify(cur)); } catch (e) {} try { this.clearDerivedCaches(); } catch (e) {} });
   }
 
@@ -14973,7 +15013,7 @@ class Component extends DCLogic {
     const roster = this.effectiveRosterForMatch(), ctx = this.keepContext(roster), ov = this.state.keeperOverrides || {};
     const groups = {};
     roster.forEach(p => {
-      const f = this.keepFull(p, ctx), o = ov[String(p.idx)];
+      const f = this.keepFull(p, ctx), o = this.keeperOverrideOf(p);
       if (!(f.all.length || o === 'release' || f.released)) return;
       const k = p.dex + '_' + (p.form || '') + '_' + (this.isShadow(p) ? 's' : 'n');
       (groups[k] = groups[k] || []).push({ p, f, o });

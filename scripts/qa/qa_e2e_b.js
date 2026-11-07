@@ -1181,6 +1181,26 @@ module.exports = async function suiteB() {
     await s.set({ geminiKeys: st0.geminiKeys || [], geminiKey: st0.geminiKey || '' });
     expect(r && /did not answer/.test(r.msg) && r.ms < 6000 && r.calls === 2, 'times out after two tries, not forever: ' + JSON.stringify(r));
   });
+  await T('KEEPKEY-01', 'Safety', 'A KEEP/RELEASE choice follows the Pokemon through a re-import that renumbers the roster; identical copies are released one at a time', async () => {
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
+    const st0 = await s.state();
+    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.noteAiCall) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch(); return (new Function('l', 'ros', 'return (' + f + ')'))(l, ros); } } return null; }, fn);
+    const rel = "ros.map(p => [p.idx, l.keeperOverrideOf(p) || '']).filter(x => x[1]).map(x => x[0] + ':' + x[1])";
+    await s.set({ addedPokemon: [mk('k1', 'Machamp', 68, [15, 15, 15], 2100), mk('k2', 'Machamp', 68, [15, 15, 15], 2100), mk('k3', 'Machamp', 68, [10, 11, 12], 1800)], roster: [], ivOverrides: {}, keeperOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
+    await L("l.setKeeperOverride(ros.find(p => p.idx === 'k2'), 'release')"); await L("l.setKeeperOverride(ros.find(p => p.idx === 'k3'), 'keep')"); await s.page.waitForTimeout(300);
+    let r = await L(rel);
+    expect(r.length === 2 && r.some(x => /^k2:release/.test(x)) && r.some(x => /^k3:keep/.test(x)), 'two choices saved: ' + JSON.stringify(r));
+    await s.set({ addedPokemon: [mk('z7', 'Machamp', 68, [10, 11, 12], 1800), mk('z2', 'Machamp', 68, [15, 15, 15], 2100), mk('z1', 'Machamp', 68, [15, 15, 15], 2100)] }); await s.page.waitForTimeout(500);
+    r = await L(rel);
+    const rels = r.filter(x => /:release/.test(x)), keeps = r.filter(x => /:keep/.test(x));
+    expect(rels.length === 1 && /^z[12]:/.test(rels[0]) && keeps.length === 1 && /^z7:/.test(keeps[0]), 'after renumbering: exactly one identical copy released, the other Machamp kept: ' + JSON.stringify(r));
+    const stored = await s.page.evaluate(() => JSON.parse(localStorage.getItem('scout.keeperOverrides.v1') || '{}'));
+    expect(Object.keys(stored).every(k => k.indexOf('|') > 0), 'saved under keys, not row numbers: ' + JSON.stringify(stored));
+    await s.set({ addedPokemon: [mk('m1', 'Machamp', 68, [9, 9, 9], 1000)], keeperOverrides: { m1: 'release' } }); await s.page.waitForTimeout(900);
+    const mig = await s.page.evaluate(() => JSON.parse(localStorage.getItem('scout.keeperOverrides.v1') || '{}'));
+    expect(Object.keys(mig).length === 1 && Object.keys(mig)[0].indexOf('|') > 0 && mig[Object.keys(mig)[0]] === 'release', 'an old row-number choice is moved to a key: ' + JSON.stringify(mig));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, keeperOverrides: {}, tab: 'home' });
+  });
   await T('DETAILLG-01', 'Detail', 'Detail sheet leads with the league its CP fits, lists the higher leagues it can still reach, and shows rank out of 4096', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 96.9, evolvesTo: name }, ultra: { rankPct: 96.9 }, little: { rankPct: 93.6 }, scanDate: '2026-10-30' });
     const st0 = await s.state();
