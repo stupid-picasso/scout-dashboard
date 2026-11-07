@@ -540,3 +540,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - **Sentence case.** Labels are written in capitals in the source and some are logic keys (verdicts, grades, tags), so `installSentenceCase()` rewrites any all-caps text node on screen (3+ letters, acronyms like IV/CP/TM/XL kept) with a MutationObserver. State and logic are untouched. The QA harness sets `window.__keepCaps` so tests keep reading the source wording; `session({ sentenceCase: true })` turns it on (CASE-01, AXE-LIGHT-*, THEME-01 in qa_e2e_d.js).
 - QA harness runs dark by default (`colorScheme: 'dark'`); suite d also runs axe on every tab in light.
 - Propagation note: this change is large and the bundles had drifted, so the helper used was a fallback that retries failed hunks with less context; the `style-before` ambient layer was removed from dc.html and the bundle by hand.
+
+## Theme button (v53.263)
+- The Appearance card on Home is gone. A 38px round button in the header (before Import) cycles Auto -> Light -> Dark -> Auto (`cycleTheme`); icon = current mode (half-filled circle / sun / moon), aria-label "Theme: Auto, tap for Light", and a 1.8 s status note "Theme: Light" (`themeToast`, UI-only key). Test THEME-01 taps the button.

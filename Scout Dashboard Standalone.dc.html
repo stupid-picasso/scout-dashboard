@@ -1317,9 +1317,14 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.261</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.262</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
+        <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
+          <sc-if value="{{ themeIsAuto }}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></sc-if>
+          <sc-if value="{{ themeIsLight }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></sc-if>
+          <sc-if value="{{ themeIsDark }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></sc-if>
+        </button>
         <label class="ios-icon-btn om-press" title="Import CSV">
           <span class="sr-only">Import CSV</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
@@ -1962,14 +1967,6 @@
         </div>
       </sc-if>
       <sc-if value="{{ refreshUndone }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--grass-700)">Restored the ranks, evolution and move data from before this refresh.</div></sc-if>
-    </section>
-
-    <section style="background:var(--surface-card);border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
-      <div style="font:600 15px var(--font-body)">Appearance</div>
-      <div style="font:13px/1.4 var(--font-body);color:var(--ink-500)">Auto follows your phone. Dark uses a blue accent, light uses amber.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <sc-for list="{{ themeChips }}" as="tc" hint-placeholder-count="3"><button type="button" onClick="{{ tc.onClick }}" aria-pressed="{{ tc.pressed }}" class="om-press" style="padding:8px 16px;border-radius:var(--r-pill);background:{{ tc.bg }};color:{{ tc.fg }};font:600 13px var(--font-display);min-height:44px">{{ tc.label }}</button></sc-for>
-      </div>
     </section>
 
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:4px 16px;margin-bottom:14px">
@@ -4790,7 +4787,7 @@ class Component extends DCLogic {
     bulkTypePick: {},
     toolsMode: 'rename',
     keepGrade: 'excellent',
-    keeperOverrides: {}, krVisible: 12, ocrTick: 0, themePref: 'auto',
+    keeperOverrides: {}, krVisible: 12, ocrTick: 0, themePref: 'auto', themeToast: '',
     bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, dtVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
@@ -7362,6 +7359,17 @@ class Component extends DCLogic {
       const m = document.querySelector('meta[name="theme-color"]');
       if (m) m.setAttribute('content', light ? '#f6f6f7' : '#0f0f10');
     } catch (e) {}
+  }
+
+  // The header button: Auto -> Light -> Dark -> Auto, with a short note saying which one you landed on.
+  cycleTheme() {
+    const cur = this.state.themePref || 'auto';
+    const next = cur === 'auto' ? 'light' : cur === 'light' ? 'dark' : 'auto';
+    this.setThemePref(next);
+    const name = next === 'auto' ? 'Auto (follows your phone)' : next === 'light' ? 'Light' : 'Dark';
+    clearTimeout(this._themeToastTimer);
+    this.setState({ themeToast: 'Theme: ' + name });
+    this._themeToastTimer = setTimeout(() => this.setState({ themeToast: '' }), 1800);
   }
 
   setThemePref(v) {
@@ -14365,7 +14373,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['themePref', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -19308,8 +19316,12 @@ class Component extends DCLogic {
 
     return {
       rootRef: (el) => this.rootRef(el),
+      cycleTheme: () => this.cycleTheme(),
+      themeIsAuto: (this.state.themePref || 'auto') === 'auto', themeIsLight: this.state.themePref === 'light', themeIsDark: this.state.themePref === 'dark',
+      themeLabel: 'Theme: ' + ((this.state.themePref || 'auto') === 'auto' ? 'Auto, tap for Light' : this.state.themePref === 'light' ? 'Light, tap for Dark' : 'Dark, tap for Auto'),
       statusBanner: (() => {
         if (this.state.csvError) return { text: this.state.csvError, dot: 'var(--ios-red)' };
+        if (this.state.themeToast) return { text: this.state.themeToast, dot: 'var(--ios-blue)' };
         if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         const aiNote = this.aiQuotaNote();
         if (aiNote && !this.state.undoLabel && !this.state.csvNotice) return { text: aiNote, dot: 'var(--ios-yellow)' };
@@ -19604,7 +19616,6 @@ class Component extends DCLogic {
         fg: (this.state.pvpMaxLevel || 50) === n ? 'white' : 'var(--ink-600)',
         onClick: () => this.setPvpMaxLevel(n)
       })),
-      themeChips: [['auto', 'Auto'], ['dark', 'Dark'], ['light', 'Light']].map(([k, l]) => ({ label: l, pressed: String((this.state.themePref || 'auto') === k), bg: (this.state.themePref || 'auto') === k ? 'var(--ios-blue-fill)' : 'var(--surface-muted)', fg: (this.state.themePref || 'auto') === k ? '#fff' : 'var(--ink-900)', onClick: () => this.setThemePref(k) })),
       gradeChips: [['good', 'GOOD'], ['excellent', 'EXCELLENT'], ['top', 'TOP']].map(([k, l]) => ({ label: l, pressed: String((this.state.keepGrade || 'excellent') === k), bg: (this.state.keepGrade || 'excellent') === k ? '#0060c8' : 'var(--surface-muted)', fg: (this.state.keepGrade || 'excellent') === k ? '#fff' : 'var(--ink-900)', onClick: () => this.setKeepGrade(k) })),
       gradeEffect: tab === 'home' ? (() => {
         const fx = this.gradeEffects(), cur = this.state.keepGrade || 'excellent';
