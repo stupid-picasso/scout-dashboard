@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.268</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.269</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -11311,13 +11311,17 @@ class Component extends DCLogic {
       };
       // A request that does not answer in time is not left hanging: it counts as a failed attempt on this model (HTTP 599 in the
       // diagnostics) and the next model is tried; two timeouts in one call end the call.
+      // How long one request may take: a read of one image gets 90 s, each further image in the same request 30 s more (up to 4 minutes),
+      // text calls 45 s. 45 s was too short for image reads, which can legitimately take a minute or more.
+      const imgN = parts.filter(x => x.inline_data).length;
+      const deadlineMs = this._geminiTimeoutMs || (hasImage ? Math.min(240000, 90000 + 30000 * Math.max(0, imgN - 1)) : 45000);
       const post = async (extras, grounded) => {
         try {
           return await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras), ...(grounded ? { tools: [{ google_search: {} }] } : {}) })
-          });
+          }, deadlineMs);
         } catch (e) {
           if (!(e && e.__geminiTimeout)) throw e;
           const stub = { status: 599, ok: false, clone() { return stub; }, text: async () => e.message, json: async () => ({}) };
@@ -11352,9 +11356,9 @@ class Component extends DCLogic {
       this.noteAiCall(model, hasImage, res.status, Date.now() - t0, ladder[rung]);
       if (res.status === 599) {
         timeouts = (timeouts || 0) + 1;
-        lastErr = new Error('Gemini ' + model + ' did not answer within ' + Math.round((this._geminiTimeoutMs || 45000) / 1000) + 's');
+        lastErr = new Error('Gemini ' + model + ' did not answer within ' + Math.round(deadlineMs / 1000) + 's');
         sawOther = true;
-        if (timeouts >= 2 || model === candidates[candidates.length - 1]) throw new Error('Gemini did not answer (' + timeouts + (timeouts === 1 ? ' try' : ' tries') + ', ' + Math.round((this._geminiTimeoutMs || 45000) / 1000) + 's each). The request is dropped instead of waiting; skip or retry this one.');
+        if (timeouts >= 2 || model === candidates[candidates.length - 1]) throw new Error('Gemini did not answer (' + timeouts + (timeouts === 1 ? ' try' : ' tries') + ', ' + Math.round(deadlineMs / 1000) + 's each). The request is dropped instead of waiting; skip or retry this one.');
         continue;
       }
       if (res.ok) this._thinkRung[model] = rung;
