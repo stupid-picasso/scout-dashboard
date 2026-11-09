@@ -532,8 +532,8 @@ module.exports = async function suiteB() {
     expect(tier && tier.tier === 'S', 'Melmetal is S in Great League: ' + JSON.stringify(tier));
     const leaders = await s.call('leagueLeaders', list);
     const great = leaders.find(x => /GREAT/.test(x)), ultra = leaders.find(x => /ULTRA/.test(x));
-    expect(great && /#1 405CP 98\.6%, #2 293CP 97\.5%, #3 714CP 97\.3%|#1 405CP 98\.6%, #2 293CP 97\.5%, #3 507CP 97\.3%/.test(great), 'Great leader is the 405 CP, not 714: ' + great);
-    expect(ultra && /#1 714CP 98\.4%/.test(ultra), 'Ultra leader is the 714 CP: ' + ultra);
+    expect(great && /#1 405CP [\d.]+%, #2 293CP [\d.]+%, #3 (714|507)CP/.test(great), 'Great leader is the 405 CP, not 714 (ranks are worked out from the IVs): ' + great);
+    expect(ultra && /#1 714CP [\d.]+%/.test(ultra), 'Ultra leader is the 714 CP: ' + ultra);
     expect(/Melmetal is tier S/.test(great), 'tier is the evolved form: ' + great);
     const unmeasured = await s.call('leagueLeaders', list.map(p => ({ ...p, ivMeasured: false, ivSolved: true })));
     expect(unmeasured.length === 0, 'unmeasured copies are never ranked as leaders');
@@ -1206,6 +1206,18 @@ module.exports = async function suiteB() {
     const after = await s.state();
     expect((after.importHold || []).length === 0 && (after.addedPokemon || []).length === 2, 'discard drops one, accept merges the other: ' + JSON.stringify({ hold: (after.importHold || []).length, added: (after.addedPokemon || []).length }));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, importHold: [], tab: 'home' });
+  });
+  await T('PVPFRESH-01', 'PvP', 'League ranks are worked out from the IVs, so a stale stored rank cannot show on the PvP page, the detail sheet or in the chat; the Today note counts stale ones', async () => {
+    const mk = (idx, iv, cp, stored) => ({ idx, name: 'Floette', dex: 670, cp, hp: 80, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: stored, evolvesTo: 'Florges' }, ultra: { rankPct: stored, evolvesTo: 'Florges' }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('pf1', [6, 11, 8], 574, 97.9), mk('pf2', [4, 11, 14], 1109, 95.7)], roster: [], ivOverrides: {}, tab: 'today' }); await s.page.waitForTimeout(700);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.noteAiCall) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch(); const a = ros.find(p => p.idx === 'pf1'), b = ros.find(p => p.idx === 'pf2'); const x = l.pvpAssess(a, 'ultra'), y = l.pvpAssess(b, 'ultra'); return { a: x && { rank: Math.round(x.rank * 10) / 10, stale: x.stale, stored: x.stored }, b: y && { rank: Math.round(y.rank * 10) / 10, stale: y.stale }, best: Math.round(l.bestRank(a) * 10) / 10, stale: l.staleRankCount() }; } } return null; });
+    expect(r && r.a && Math.abs(r.a.rank - 95.7) < 0.2 && r.a.stale === true && r.a.stored === 97.9, 'the 6/11/8 copy shows the rank its IVs give (95.7), not the stored 97.9: ' + JSON.stringify(r));
+    expect(Math.abs(r.b.rank - 97.6) < 0.2, 'the 4/11/14 copy is 97.6 whatever is stored: ' + JSON.stringify(r));
+    expect(Math.abs(r.best - 95.7) < 0.2 && r.stale >= 1, 'best rank follows the IVs and the stale one is counted: ' + JSON.stringify(r));
+    const t = await s.page.evaluate(() => document.body.textContent);
+    expect(/\d+ Pokemon have a stored rank that disagrees with their IVs/.test(t), 'Today says so: ' + t.slice(t.indexOf('Recalculates'), t.indexOf('Recalculates') + 300));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
   });
   await T('KEEPKEY-01', 'Safety', 'A KEEP/RELEASE choice follows the Pokemon through a re-import that renumbers the roster; identical copies are released one at a time', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });

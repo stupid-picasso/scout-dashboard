@@ -560,3 +560,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 
 ## Gemini deadline scales with the request (v53.269)
 - The flat 45 s deadline (added with the hang fix) cut off image reads that were only slow. Image requests now get 90 s, +30 s per extra image in the request (max 240 s); text calls keep 45 s. The error names the real limit. If reads still time out, Progress log > Diagnostics shows each call's model, status (599 = timed out) and time.
+
+## League ranks worked out from the IVs (v53.270)
+- `freshRank(p, lk)` = stat-product rank from the IVs now (via `gradeStanding`, judged on the form the rank is for). `pvpAssess` (PvP page, squads, keep logic), `bestRank`, the detail sheet's league lines and the chat's per-Pokemon lines (`rkChat`) use it, falling back to the stored `great/ultra/little.rankPct` only when IVs are not measured. `pvpAssess` also returns `stored` and `stale`. The Today card "PvP ranks out of date?" shows how many Pokemon have a stored rank more than 0.5 off (`staleRankCount`); Recalculate all ranks saves the fresh values. Cause that prompted it: a Floette showed 97.9% on the PvP page and 95.7% in the chat for IVs that give 95.7% (Florges, Ultra). Test PVPFRESH-01; LEAD-01 now only checks the ordering. `freshRank` is guarded (`this.freshRank ?`) where test_roster_logic's stub class does not have it.

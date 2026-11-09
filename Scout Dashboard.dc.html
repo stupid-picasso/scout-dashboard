@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.269</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.271</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -667,6 +667,7 @@
       <div style="display:flex;flex-direction:column;gap:2px">
         <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.04em">PVP RANKS OUT OF DATE?</div>
         <div style="font:11.5px var(--font-body);color:var(--ink-400)">Recalculates great/ultra/little for your whole roster with the current ranking logic &mdash; run after any ranking fix, no re-import needed.</div>
+        <sc-if value="{{ staleRankLine }}" hint-placeholder-val="{{ false }}"><div style="font:600 12px/1.4 var(--font-body);color:var(--type-fighting)">{{ staleRankLine }}</div></sc-if>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-basis:100%">
         <span style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.06em">MAX LEVEL FOR PVP RANKS</span>
@@ -6175,14 +6176,38 @@ class Component extends DCLogic {
     return p.cp <= cap;
   }
 
+  // The league rank worked out from the IVs now (stat product against the best spread, for the form the rank is judged on),
+  // not the number stored at the last recalculation. Null when the IVs are not measured or the form has no base stats.
+  freshRank(p, lk) {
+    try {
+      if (!p || this.needsAppraisal(p) || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV) || !this.gradeStanding) return null;
+      const st = this.gradeStanding(p, lk);
+      return st && Number.isFinite(st.rank) ? st.rank : null;
+    } catch (e) { return null; }
+  }
+
+  // Pokemon whose stored rank disagrees with their IVs by more than half a point in a league they can still enter.
+  staleRankCount() {
+    const deps = this.memoDeps();
+    if (this._staleRk && this.sameDeps(this._staleRk.deps, deps)) return this._staleRk.n;
+    let n = 0;
+    this.effectiveRosterForMatch().forEach(p => {
+      for (const lk of ['great', 'ultra', 'little']) {
+        const o = p[lk]; if (!o || !Number.isFinite(o.rankPct) || !this.leagueUsable(p, lk)) continue;
+        const f = this.freshRank(p, lk);
+        if (f != null && Math.abs(f - o.rankPct) > 0.5) { n++; break; }
+      }
+    });
+    this._staleRk = { deps, n };
+    return n;
+  }
+
   bestRank(p) {
     // Video/OCR-imported Pokemon can arrive without league objects at all, so
     // reading p.great.rankPct directly crashes the whole render. Leagues the
     // Pokemon is already too strong for do not count.
-    const g = (this.leagueUsable(p, 'great') && p.great && p.great.rankPct) || 0;
-    const u = (this.leagueUsable(p, 'ultra') && p.ultra && p.ultra.rankPct) || 0;
-    const l = (this.leagueUsable(p, 'little') && p.little && p.little.rankPct) || 0;
-    return Math.max(g, u, l);
+    const pick = lk => { if (!this.leagueUsable(p, lk) || !p[lk]) return 0; const f = this.freshRank ? this.freshRank(p, lk) : null; return f != null ? f : (p[lk].rankPct || 0); };
+    return Math.max(pick('great'), pick('ultra'), pick('little'));
   }
 
   // ---- Keep check: the one gate every transfer suggestion must pass --------------------------------
@@ -7240,7 +7265,8 @@ class Component extends DCLogic {
     const have = new Set([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.moveKey(n).replace(/\+$/, '')));
     const wanted = ms ? [ms.fast, ...ms.charged] : [];
     const missing = wanted.filter(n => !have.has(n));
-    return { league: leagueKey, rank: lg.rankPct, tier: tier ? tier.tier : null, tierScore: tier ? tier.score : null, tierRank,
+    const fresh = this.freshRank ? this.freshRank(p, leagueKey) : null;
+    return { league: leagueKey, rank: fresh != null ? fresh : lg.rankPct, stored: lg.rankPct, stale: fresh != null && Math.abs(fresh - lg.rankPct) > 0.5, tier: tier ? tier.tier : null, tierScore: tier ? tier.score : null, tierRank,
       wanted, missing, movesOk: ms ? missing.length === 0 : null,
       // IVs still a guess from CP/HP (not measured from the appraisal screen)
       confirmed: !this.needsAppraisal(p) };
@@ -16360,6 +16386,7 @@ class Component extends DCLogic {
         const keepCtxChat = this.keepContext(roster);
         const keepIdx = {};
         roster.forEach(p => { keepIdx[p.idx] = this.keepReasons(p, keepCtxChat); });
+        const rkChat = (p, lk) => { const f = this.freshRank(p, lk); const v = f != null ? f : (p[lk] && p[lk].rankPct); return v == null ? '-' : Math.round(v * 10) / 10; };   // rank from the IVs now, not the stored number
         const chatLine = p => {
           const dps = this.bestDpsFor(p);
           const note = this.movesetDataNote(p);
@@ -16370,7 +16397,7 @@ class Component extends DCLogic {
           const winner = dominatedByIdx[p.idx];
           const dominated = winner ? `beaten by owned ${winner.cp || '?'}CP ${winner.name}` : 'no';
           const candy = candyFor(p);
-          return `${this.promptSafe(p.name)}${p.form ? '/' + this.promptSafe(p.form, 20) : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${(p.great && p.great.rankPct) ?? '-'} U${(p.ultra && p.ultra.rankPct) ?? '-'} LC${(p.little && p.little.rankPct) ?? '-'} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'} | keep:${keepIdx[p.idx] && keepIdx[p.idx].length ? keepIdx[p.idx].join('+') : 'none'}`;
+          return `${this.promptSafe(p.name)}${p.form ? '/' + this.promptSafe(p.form, 20) : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${rkChat(p, 'great')} U${rkChat(p, 'ultra')} LC${rkChat(p, 'little')} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'} | keep:${keepIdx[p.idx] && keepIdx[p.idx].length ? keepIdx[p.idx].join('+') : 'none'}`;
         };
         const byRank = [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a));
         const top = byRank.slice(0, 90);
@@ -17761,6 +17788,7 @@ class Component extends DCLogic {
       const idealBase = this.baseStatsOf(p);
       const allLeagues = [['GREAT', p.great], ['ULTRA', p.ultra], ['LITTLE', p.little], ['MASTER', this.masterRankFor(p)]].map(([label, o]) => {
         o = o || {};
+        if (label !== 'MASTER') { const fr = this.freshRank(p, label.toLowerCase()); if (fr != null) o = { ...o, rankPct: fr }; }
         let idealLine = '';
         try {
           const mm = this.mechanics;
@@ -18446,6 +18474,7 @@ class Component extends DCLogic {
       isTools: tab === 'tools',
       ...(tab === 'tools' ? this.toolsVals() : {}),
       bulkChecks: tab === 'bulk' ? this.bulkChecks() : [],
+      staleRankLine: tab === 'today' ? (n => n > 0 ? n + ' Pokemon have a stored rank that disagrees with their IVs. Screens now show the rank worked out from the IVs; Recalculate saves it.' : '')(this.staleRankCount()) : '',
       hasImportHold: (this.state.importHold || []).length > 0, importHoldCount: (this.state.importHold || []).length, importHoldRows: tab === 'bulk' ? this.importHoldRows() : [],
       tabList,
       moreTabs,
