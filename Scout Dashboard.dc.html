@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.271</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.272</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -3824,7 +3824,6 @@ class Component extends DCLogic {
     candyInventory: {},
     typeTable: {},
     online: true,
-    storageWarning: '',
     csvNotice: '',
     csvError: '',
     backupBusy: false,
@@ -9121,7 +9120,6 @@ class Component extends DCLogic {
   // Nothing is written to this device — the roster only lives in memory
   // (state) and in Firestore. Kept as a no-op so old call sites don't need
   // updating; state + cloud push (componentDidUpdate/SYNC_KEYS) do the work.
-  saveRoster(roster) {}
 
   // NaN sanitizer at the import boundary. A malformed CSV cell parses to NaN,
   // which is NOT null — so every downstream `!= null` check admits it and it
@@ -16915,12 +16913,6 @@ class Component extends DCLogic {
   // opens. Drafts are meant to be immediate save-or-discard, not a cache.
   closeDetail() { this.setState({ detailPoke: null, moveDraft: {}, movePicker: null, movePickerFilter: '', pendingTmUse: null, detailNavList: [], detailNavIndex: -1 }); }
 
-  topForLeague(key) {
-    const pool = this.state.roster.filter(p => p[key] && Number.isFinite(p[key].rankPct));
-    pool.sort((a, b) => b[key].rankPct - a[key].rankPct);
-    return pool[0] || null;
-  }
-
   startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -18419,7 +18411,6 @@ class Component extends DCLogic {
         if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         const aiNote = this.aiQuotaNote();
         if (aiNote && !this.state.undoLabel && !this.state.csvNotice) return { text: aiNote, dot: 'var(--ios-yellow)' };
-        if (this.state.storageWarning) return { text: this.state.storageWarning, bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
         if (this.state.undoLabel) return { text: this.state.undoLabel + '.', dot: 'var(--ios-green)', action: { label: 'Undo', run: () => this.performUndo() } };
         if (this.state.csvNotice) return { text: this.state.csvNotice, dot: 'var(--ios-green)', action: this.state.importUndoable ? { label: 'Undo', run: () => this.undoImport() } : null };
         return null;
@@ -19208,6 +19199,10 @@ class Component extends DCLogic {
         ? Math.min(100, Math.round(dustPlan.spend / dustPlan.budget * 100)) + '%'
         : '0%',
       dustBudgetShort: 'lvl ' + dustPlan.ceiling + ' cap',
+      levelCeilingNote: 'Power-ups are planned up to level ' + dustPlan.ceiling + (dustPlan.ceiling < 40 ? ' (your level + 2). Level 40 costs are shown beside each row.' : '.'),
+      dustBudgetNote: (Number(this.state.stardustBalance) > 0
+        ? fmt(Math.max(0, Number(this.state.stardustBalance) - (Number(this.state.dustReserve) || 0))) + ' left to spend after the reserve (balance ' + fmt(Number(this.state.stardustBalance)) + ').'
+        : 'Enter your stardust balance below to see how much is left to spend.'),
       candyAiBusy: candyAiBusy,
       candyAiNotes: candyAiNotes,
       hasCandyAiNotes: candyAiNotes.length > 0,

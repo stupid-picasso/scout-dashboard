@@ -1219,6 +1219,14 @@ module.exports = async function suiteB() {
     expect(/\d+ Pokemon have a stored rank that disagrees with their IVs/.test(t), 'Today says so: ' + t.slice(t.indexOf('Recalculates'), t.indexOf('Recalculates') + 300));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
   });
+  await T('PLANNOTE-01', 'Home', 'Planning card shows its two notes: the level cap and the stardust left after the reserve', async () => {
+    const st0 = await s.state();
+    await s.set({ trainerLevel: 36, dustReserve: 100000, stardustBalance: 350000, tab: 'home' }); await s.page.waitForTimeout(800);
+    const t = await s.page.evaluate(() => document.body.textContent);
+    expect(/planned up to level 38 \(your level \+ 2\)/.test(t), 'level note shows 38');
+    expect(/250,000 left to spend after the reserve \(balance 350,000\)/.test(t), 'dust note: ' + t.slice(t.indexOf('left to spend') - 40, t.indexOf('left to spend') + 80));
+    await s.set({ trainerLevel: st0.trainerLevel, dustReserve: st0.dustReserve, stardustBalance: st0.stardustBalance, tab: 'home' });
+  });
   await T('KEEPKEY-01', 'Safety', 'A KEEP/RELEASE choice follows the Pokemon through a re-import that renumbers the roster; identical copies are released one at a time', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();
