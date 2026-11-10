@@ -1236,6 +1236,17 @@ module.exports = async function suiteB() {
     expect(r.whys.length > 0 && r.whys.every(w => typeof w === 'string' && w.length > 5), 'each offered copy states a reason: ' + JSON.stringify(r.whys));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: st0.cutTarget, tab: 'home' });
   });
+  await T('DQ-CPFIT-01', 'Intel', 'What is incomplete lists a Pokemon whose CP and IVs cannot both be true, and one scanned over 30 days ago', async () => {
+    const st0 = await s.state();
+    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const cp = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { cp: m.cpFor(m.BASE_STATS[68], [10, 10, 10], 20), hp: m.hpFor(m.BASE_STATS[68], 10, 20) }; });
+    const mk = (idx, c, extra) => Object.assign({ idx, name: 'Machamp', dex: 68, cp: c, hp: cp.hp, atkIV: 10, defIV: 10, staIV: 10, ivAvg: 66.7, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) }, extra || {});
+    await s.set({ addedPokemon: [mk('dq1', cp.cp), mk('dq2', 1234), mk('dq3', cp.cp, { scanDate: '2026-08-01' })], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(700);
+    const r = await L("l.dataQualityIssues().filter(i => i.key === 'cpfit' || i.key === 'oldscan').map(i => i.key + ':' + i.count + ':' + i.names)");
+    expect(r && r.some(x => /^cpfit:1:/.test(x)), 'one CP/IV disagreement is listed: ' + JSON.stringify(r));
+    expect(r.some(x => /^oldscan:1:/.test(x)), 'one old scan is listed: ' + JSON.stringify(r));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+  });
   await T('PLANNOTE-01', 'Home', 'Planning card shows its two notes: the level cap and the stardust left after the reserve', async () => {
     const st0 = await s.state();
     await s.set({ trainerLevel: 36, dustReserve: 100000, stardustBalance: 350000, tab: 'home' }); await s.page.waitForTimeout(800);

@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.276</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.277</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -8884,7 +8884,13 @@ class Component extends DCLogic {
         p => p.dex == null),
       mk('evo', 'Evolution unknown', 'Missing from the evolve queue even when candy is ready.',
         'Run the evolution lookup on the Today tab.',
-        p => !this.evoRecordFor(p))
+        p => !this.evoRecordFor(p)),
+      mk('cpfit', 'CP and IVs do not agree', 'The CP, HP and IVs on file cannot all be true at any level of this species, so one of them was misread. Ranks, power-up costs and keep/transfer advice rest on them.',
+        'Open it and correct the CP, HP or IVs, or re-import the detail screen and the appraisal.',
+        p => !!(p.ivMeasured && p.cp != null && this.importCheck(p).some(x => /do not fit any level|more than .* can have|IVs must be whole|outside what a Pokemon/.test(x)))),
+      mk('oldscan', 'Scanned more than 30 days ago', 'Its CP and level may have changed since (power-ups, evolving), so power-up costs and PvP level targets can be off. IVs do not change.',
+        'Re-import its detail screen.',
+        p => { const d = this.scanAgeDays(p); return d != null && d > 30; })
     ].filter(Boolean);
   }
 
