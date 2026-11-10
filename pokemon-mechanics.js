@@ -1398,7 +1398,9 @@ function powerUpStepCost(level) {
 
 // Total cost to walk a Pokemon from one level to another, half-level by
 // half-level. Lucky halves Stardust, Shadow adds 20%, Purified takes 10% off —
-// the multipliers apply to Stardust and Candy, never to XL Candy.
+// Shadow (+20%) and Purified (-10%) apply to Stardust, Candy and XL Candy; Lucky halves Stardust only. Each half-level step is
+// rounded on its own. (Hub and GamePress both give 296 XL Candy and 250,000 Stardust for 40 to 50; Hub lists 360 XL for shadow and
+// 272 for purified, a little off per-step rounding of x1.2 / x0.9, so the exact in-game rounding for XL is unconfirmed.)
 function powerUpCostBetween(fromLevel, toLevel, opts) {
   opts = opts || {};
   const out = { dust: 0, candy: 0, xlCandy: 0, steps: 0, reachable: true };
@@ -1416,7 +1418,7 @@ function powerUpCostBetween(fromLevel, toLevel, opts) {
     if (!step) { out.reachable = false; break; }
     out.dust += Math.round(step.dust * dustMult);
     out.candy += Math.round(step.candy * candyMult);
-    out.xlCandy += step.xlCandy;
+    out.xlCandy += Math.round(step.xlCandy * candyMult);
     out.steps++;
   }
   return out;

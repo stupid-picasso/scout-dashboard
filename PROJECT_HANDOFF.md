@@ -571,3 +571,7 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 ## Shadow stats and the rank reference test
 - `pokemon-mechanics.js`: a shadow's +20% Atk / -1/6 Def now multiplies the whole stat, (base + IV) x CP multiplier, via `shadowIVs()`. Before, only the base was scaled, which skewed shadow rank % by 1-2 points. Consequence: a shadow ranks exactly like a normal one for the same IVs (the bonus scales every spread's stat product equally); it still raises raid attack score and DPS.
 - `scripts/test_rank_reference.js` (new, run it with the other `scripts/test_*.js`): independent brute-force reference (all 4096 spreads, linear level walk) compared against `rankPctForLeague`, `dittoRankOf` and rank position for 40 species x 4 leagues x shadow/normal x 12 spreads, plus the Dittobase Mimikyu 11/13/13 = 95.3% anchor.
+
+## Intel checks and power-up costs
+- Intel > What is incomplete now also lists "CP and IVs do not agree" (reuses `importCheck` on stored rows with measured IVs) and "Scanned more than 30 days ago" (CP/level may have changed). Test DQ-CPFIT-01.
+- `powerUpCostBetween`: Shadow (+20%) and Purified (-10%) now scale XL Candy too (it was skipped). Anchors tested in test_ranking.js: 1 to 40 = 270,000 dust / 304 candy, 40 to 50 = 250,000 dust / 296 XL. Exact in-game XL rounding for shadow/purified is unconfirmed (Hub lists 360 / 272; per-step rounding gives 352 / 268). The dust plan still caps at level 40 (`levelCeiling`), so XL only shows up in direct callers.
