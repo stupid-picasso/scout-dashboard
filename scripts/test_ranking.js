@@ -342,6 +342,33 @@ const MEWTWO = m.BASE_STATS[150];    // master-league-relevant
 })();
 
 // ---------------------------------------------------------------------------
+// Power-up costs. Anchors are the published totals: level 1 to 40 is 270,000 Stardust and 304 Candy; 40 to 50 is
+// 250,000 Stardust and 296 XL Candy. Lucky halves Stardust only; Shadow is +20% and Purified -10% on Stardust, Candy and XL Candy
+// (each half-level step rounded on its own); Lucky and Purified stack on Stardust. XL scaling used to be skipped for shadow and purified.
+// ---------------------------------------------------------------------------
+(function testPowerUpCosts() {
+  const c = (a, b, o) => m.powerUpCostBetween(a, b, o);
+  const std = c(1, 40), xl = c(40, 50);
+  checkExact('1 to 40 costs 270,000 Stardust', std.dust, 270000);
+  checkExact('1 to 40 costs 304 Candy', std.candy, 304);
+  checkExact('1 to 40 needs no XL Candy', std.xlCandy, 0);
+  checkExact('40 to 50 costs 250,000 Stardust', xl.dust, 250000);
+  checkExact('40 to 50 costs 296 XL Candy', xl.xlCandy, 296);
+  checkExact('40 to 50 needs no regular Candy', xl.candy, 0);
+  const lucky = c(40, 50, { lucky: true });
+  checkExact('Lucky halves Stardust', lucky.dust, 125000);
+  checkExact('Lucky leaves XL Candy alone', lucky.xlCandy, 296);
+  const sh = c(40, 50, { shadow: true }), shLow = c(1, 40, { shadow: true });
+  checkExact('Shadow is +20% Stardust at 40 to 50', sh.dust, 300000);
+  check('Shadow XL Candy is about +20% (352 to 360 depending on rounding)', sh.xlCandy >= 350 && sh.xlCandy <= 362 ? 1 : 0, 1, 0);
+  check('Shadow 1 to 40 Candy is about +20%', shLow.candy >= 355 && shLow.candy <= 366 ? 1 : 0, 1, 0);
+  const pu = c(40, 50, { purified: true });
+  checkExact('Purified is -10% Stardust', pu.dust, 225000);
+  check('Purified XL Candy is about -10% (266 to 272)', pu.xlCandy >= 264 && pu.xlCandy <= 273 ? 1 : 0, 1, 0);
+  checkExact('Lucky and Purified stack on Stardust (0.5 x 0.9)', c(40, 50, { lucky: true, purified: true }).dust, 112500);
+})();
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
