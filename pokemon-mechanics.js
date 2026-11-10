@@ -40,6 +40,12 @@ const MAX_LEVEL_SEARCH = 51;
 const SHADOW_ATK_MULTIPLIER = 1.2;
 const SHADOW_DEF_MULTIPLIER = 0.83333326;
 
+// A shadow's +20% Attack / -1/6 Defense applies to the whole stat, (base + IV) x CP multiplier, not to the base alone.
+// shadowIVs scales the IVs by the same factor, so `shadowAdjustedBase(base) + shadowIVs(ivs)` equals (base + IV) x multiplier.
+function shadowIVs(ivs, isShadow) {
+  if (!isShadow) return ivs;
+  return [ivs[0] * SHADOW_ATK_MULTIPLIER, ivs[1] * SHADOW_DEF_MULTIPLIER, ivs[2]];
+}
 function shadowAdjustedBase(base, isShadow) {
   if (!isShadow) return base;
   const arr = Array.isArray(base) ? base : [base.atk, base.def, base.sta];
@@ -1216,7 +1222,7 @@ function _spreadProducts(base, capCP, isShadow) {
   if (hit) return hit;
   const sBase = shadowAdjustedBase(base, isShadow), levels = _pvpLevels(), cpm = levels.map(l => CPM[l]);
   const b0 = Array.isArray(base) ? base[0] : base.atk, b1 = Array.isArray(base) ? base[1] : base.def, b2 = Array.isArray(base) ? base[2] : base.sta;
-  const s0 = sBase[0], s1 = sBase[1], s2 = sBase[2];
+  const s0 = sBase[0], s1 = sBase[1], s2 = sBase[2], ma = isShadow ? SHADOW_ATK_MULTIPLIER : 1, md = isShadow ? SHADOW_DEF_MULTIPLIER : 1;
   const arr = new Float64Array(4096);
   let n = 0;
   for (let a = 0; a <= 15; a++) for (let d = 0; d <= 15; d++) for (let h = 0; h <= 15; h++) {
@@ -1225,7 +1231,7 @@ function _spreadProducts(base, capCP, isShadow) {
     while (lo <= hi) { const mid = (lo + hi) >> 1; const c = cpm[mid]; if (Math.max(10, Math.floor((P * c * c) / 10)) <= capCP) { best = mid; lo = mid + 1; } else hi = mid - 1; }
     if (best < 0) { arr[n++] = 0; continue; }
     const c = cpm[best];
-    arr[n++] = ((s0 + a) * c) * ((s1 + d) * c) * Math.max(10, Math.floor((s2 + h) * c));
+    arr[n++] = ((s0 + a * ma) * c) * ((s1 + d * md) * c) * Math.max(10, Math.floor((s2 + h) * c));
   }
   _spreadProdCache.set(key, arr);
   return arr;
@@ -1248,7 +1254,7 @@ function ownBestStatProductUnderCap(base, ivs, capCP, isShadow) {
   const sBase = shadowAdjustedBase(base, isShadow);
   const levels = _pvpLevels();
   for (let i = levels.length - 1; i >= 0; i--) {
-    if (cpFor(base, ivs, levels[i]) <= capCP) return statProductFor(sBase, ivs, levels[i]);
+    if (cpFor(base, ivs, levels[i]) <= capCP) return statProductFor(sBase, shadowIVs(ivs, isShadow), levels[i]);
   }
   return 0;
 }
@@ -1269,7 +1275,7 @@ function bestSpreadUnderCap(base, capCP, isShadow) {
     const ivs = [a, d, h];
     for (let i = levels.length - 1; i >= 0; i--) {
       if (cpFor(base, ivs, levels[i]) <= capCP) {
-        const sp = statProductFor(sBase, ivs, levels[i]);
+        const sp = statProductFor(sBase, shadowIVs(ivs, isShadow), levels[i]);
         if (!best || sp > best.product) best = { ivs, level: levels[i], product: sp };
         break;
       }
@@ -1307,15 +1313,15 @@ function dittoRanking(base, leagueKey, isShadow) {
   const hit = _dittoCache.get(key);
   if (hit) return hit;
   const cap = LEAGUE_CAPS[leagueKey], sBase = shadowAdjustedBase(base, isShadow), levels = _pvpLevels(), cpm = levels.map(l => CPM[l]);
-  const s0 = sBase[0], s1 = sBase[1], s2 = sBase[2];
+  const s0 = sBase[0], s1 = sBase[1], s2 = sBase[2], ma = isShadow ? SHADOW_ATK_MULTIPLIER : 1, md = isShadow ? SHADOW_DEF_MULTIPLIER : 1;
   const rows = [];
   for (let a = 0; a <= 15; a++) for (let d = 0; d <= 15; d++) for (let h = 0; h <= 15; h++) {
     const P = (b0 + a) * Math.sqrt(b1 + d) * Math.sqrt(b2 + h);
     let lo = 0, hi = cpm.length - 1, best = -1;
     while (lo <= hi) { const mid = (lo + hi) >> 1; const c = cpm[mid]; if (Math.max(10, Math.floor((P * c * c) / 10)) <= cap) { best = mid; lo = mid + 1; } else hi = mid - 1; }
     if (best < 0) { rows.push({ ivs: [a, d, h], level: null, cp: null, product: 0, atk: 0, hp: 0 }); continue; }
-    const c = cpm[best], hp = Math.max(10, Math.floor((s2 + h) * c)), atk = (s0 + a) * c;
-    rows.push({ ivs: [a, d, h], level: levels[best], cp: Math.max(10, Math.floor((P * c * c) / 10)), product: atk * ((s1 + d) * c) * hp, atk, hp });
+    const c = cpm[best], hp = Math.max(10, Math.floor((s2 + h) * c)), atk = (s0 + a * ma) * c;
+    rows.push({ ivs: [a, d, h], level: levels[best], cp: Math.max(10, Math.floor((P * c * c) / 10)), product: atk * ((s1 + d * md) * c) * hp, atk, hp });
   }
   rows.sort((x, y) => (y.product - x.product) || (y.atk - x.atk) || (y.hp - x.hp) || ((y.cp || 0) - (x.cp || 0)) || (y.ivs[2] - x.ivs[2]));
   const max = rows[0] ? rows[0].product : 0, index = new Map();
@@ -1440,8 +1446,9 @@ function attackerScore(base, ivs, level, isShadow) {
   const cpm = CPM[level != null ? level : 40];
   if (!cpm) return 0;
   const sBase = shadowAdjustedBase(base, isShadow);
-  const atk = (sBase[0] + ivs[0]) * cpm;
-  const def = (sBase[1] + ivs[1]) * cpm;
+  const sIv = shadowIVs(ivs, isShadow);
+  const atk = (sBase[0] + sIv[0]) * cpm;
+  const def = (sBase[1] + sIv[1]) * cpm;
   const sta = (sBase[2] + ivs[2]) * cpm;
   return Math.pow(atk, 0.8) * Math.pow(def * sta, 0.2);
 }
@@ -5132,8 +5139,8 @@ function cycleDps(base, ivs, level, fastMove, chargedMove, opts) {
   if (!cpm || !fastMove || !chargedMove) return null;
   if (!(fastMove.durationMs > 0) || !(chargedMove.durationMs > 0)) return null;
   if (!(fastMove.energy > 0) || !(chargedMove.energy > 0)) return null;
-  const sBase = shadowAdjustedBase(base, opts.isShadow);
-  const atk = (sBase[0] + ivs[0]) * cpm;
+  const sBase = shadowAdjustedBase(base, opts.isShadow), sIv = shadowIVs(ivs, opts.isShadow);
+  const atk = (sBase[0] + sIv[0]) * cpm;
   const dmgFast = moveDamage(fastMove, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat, opts.weatherTypes);
   const dmgCharged = moveDamage(chargedMove, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat, opts.weatherTypes);
   const fastPerCharged = Math.ceil(chargedMove.energy / fastMove.energy);
@@ -5158,8 +5165,8 @@ function raidRating(base, ivs, level, fastMove, chargedMove, opts) {
   const dps = cycleDps(base, ivs, level, fastMove, chargedMove, opts);
   if (dps == null) return null;
   const cpm = CPM[level != null ? level : 40];
-  const sBase = shadowAdjustedBase(base, opts.isShadow);
-  const def = (sBase[1] + ivs[1]) * cpm;
+  const sBase = shadowAdjustedBase(base, opts.isShadow), sIv = shadowIVs(ivs, opts.isShadow);
+  const def = (sBase[1] + sIv[1]) * cpm;
   const hp = Math.max(10, Math.floor((sBase[2] + ivs[2]) * cpm));
   return { dps, hp, def, rating: dps * Math.pow(hp * def, 0.4) };
 }
@@ -5333,9 +5340,9 @@ function maxRating(base, ivs, level, opts) {
   opts = opts || {};
   const cpm = CPM[level != null ? level : 40];
   if (!cpm || !opts.moveType) return null;
-  const sBase = shadowAdjustedBase(base, opts.isShadow);
-  const atk = (sBase[0] + ivs[0]) * cpm;
-  const def = (sBase[1] + ivs[1]) * cpm;
+  const sBase = shadowAdjustedBase(base, opts.isShadow), sIv = shadowIVs(ivs, opts.isShadow);
+  const atk = (sBase[0] + sIv[0]) * cpm;
+  const def = (sBase[1] + sIv[1]) * cpm;
   const hp = Math.max(10, Math.floor((sBase[2] + ivs[2]) * cpm));
   const power = maxAttackPower(opts.attackLevel || 1, !!opts.gmax);
   const damage = moveDamage({ type: opts.moveType, power }, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat, opts.weatherTypes);
@@ -5538,8 +5545,9 @@ function ivBreakpoints(base, ivs, leagueKey, isShadow, fastMoveId, ownTypes) {
     for (let i = levels.length - 1; i >= 0; i--) {
       if (cpFor(base, iv, levels[i]) <= cap) {
         const cpm = CPM[levels[i]];
-        return { atk: (sBase[0] + iv[0]) * cpm, def: (sBase[1] + iv[1]) * cpm, level: levels[i],
-          pct: maxProduct > 0 ? statProductFor(sBase, iv, levels[i]) / maxProduct * 100 : null };
+        const sIv = shadowIVs(iv, isShadow);
+        return { atk: (sBase[0] + sIv[0]) * cpm, def: (sBase[1] + sIv[1]) * cpm, level: levels[i],
+          pct: maxProduct > 0 ? statProductFor(sBase, sIv, levels[i]) / maxProduct * 100 : null };
       }
     }
     return null;

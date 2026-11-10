@@ -437,7 +437,7 @@ module.exports = async function suiteB() {
     const mk = (idx, dex, name, iv, cp, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
     const gr = r => ({ great: { rankPct: r, evolvesTo: 'Azumarill' } });
     const list = [mk('z1', 184, 'Azumarill', [2, 15, 15], 1400, gr(96)), mk('z2', 184, 'Azumarill', [3, 14, 14], 1390, gr(93)), mk('z3', 184, 'Azumarill', [1, 8, 8], 900, gr(50)),
-      mk('z4', 16, 'Pidgey', [4, 5, 6], 120), mk('z5', 27, 'Sandshrew', [1, 3, 5], 300, { shadowPurified: '1' }), mk('z6', 27, 'Sandshrew', [13, 13, 13], 300, { shadowPurified: '1' }),
+      mk('z4', 16, 'Pidgey', [4, 5, 6], 120), mk('z5', 17, 'Pidgeotto', [1, 3, 5], 900, { shadowPurified: '1' }), mk('z6', 27, 'Sandshrew', [13, 13, 13], 300, { shadowPurified: '1' }),
       mk('z7', 19, 'Rattata', [0, 0, 0], 60), mk('z8', 18, 'Pidgeot', [15, 15, 15], 2000)];
     const rows = await s.call('cutScoreRows', list);
     const keepOf = id => rows.find(r => r.p.idx === id).keepAll;

@@ -109,12 +109,18 @@ const MEWTWO = m.BASE_STATS[150];    // master-league-relevant
   // stat product changes, so unless the ceiling shifts by exactly the same
   // ratio (it won't, since ATK/DEF move in opposite directions), the two
   // rank%s should differ.
-  if (normalGreat === shadowGreat) {
-    fail++;
-    failures.push(`  shadow multiplier appears inactive — normal and shadow Machop produced identical Great League rank% (${normalGreat}). Check shadowAdjustedBase is still wired into rankPctForLeague.`);
-  } else {
+  // The shadow bonus (+20% Atk, -1/6 Def) multiplies the WHOLE stat, (base + IV) x CP multiplier. That scales every spread's
+  // stat product by the same constant, so a shadow ranks exactly like a normal one for the same IVs; what the multiplier does
+  // change is raw attack, which the raid score below must reflect. (An earlier version scaled the base alone and made shadows
+  // rank 1-2 points differently; test_rank_reference.js now checks every spread against a brute-force reference.)
+  if (Math.abs(normalGreat - shadowGreat) < 1e-4) {
     pass++;
+  } else {
+    fail++;
+    failures.push(`  shadow and normal Machop should rank the same for the same IVs (${normalGreat} vs ${shadowGreat}); the multiplier must apply to the whole stat.`);
   }
+  const rawN = m.attackerScore(MACHOP, ivs, 50, false), rawS = m.attackerScore(MACHOP, ivs, 50, true);
+  if (rawS > rawN) pass++; else { fail++; failures.push(`  shadow attacker score should exceed the normal one (${rawS} vs ${rawN})`); }
 
   // Snapshot of the actual current values, so an unintended SHIFT in the
   // multiplier's magnitude (not just its presence) also gets caught.
