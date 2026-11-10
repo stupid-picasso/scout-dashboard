@@ -1172,6 +1172,18 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
     expect(r && r.names && r.names.join() === 'Altaria,Mimikyu,Sableye' && r.ready === 3, 'a 100-score Melmetal without its moves loses its place to three that have them: ' + JSON.stringify(r));
   });
+  await T('SIMSQUAD-01', 'PvP', 'The Great League squad is picked from simulated matchups that use the Pokemon\u2019s own IVs and moves', async () => {
+    const mk = (idx, name, dex, extra) => Object.assign({ idx, name, dex, cp: 1490, hp: 100, atkIV: 1, defIV: 15, staIV: 15, ivAvg: 69, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 97 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) }, extra || {});
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [mk('ss1', 'Melmetal', 809), mk('ss2', 'Mimikyu', 778), mk('ss3', 'Sableye', 302), mk('ss4', 'Altaria', 334), mk('ss5', 'Tinkaton', 959)], roster: [], ivOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(600);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const l = f.stateNode.logic;
+      let team = null; try { team = l.pvpTeamFor('great'); } catch (e) { return { err: e.message }; }
+      return team ? { n: team.members.length, simulated: team.simulated, sims: team.members.map(c => !!(c.mu && c.mu.simulated)), sizes: team.members.map(c => c.mu.counters.length + c.mu.matchups.length) } : null; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+    expect(r && !r.err && r.n === 3, 'a squad of three is formed: ' + JSON.stringify(r));
+    expect(r.simulated === 3 && r.sims.every(Boolean), 'all three matchup sets come from the simulator: ' + JSON.stringify(r));
+    expect(r.sizes.every(x => x > 0 && x <= 60), 'each was fought against up to 60 species: ' + JSON.stringify(r));
+  });
   await T('GEMTIME-01', 'AI', 'A Gemini request that never answers is dropped after the deadline instead of hanging the import', async () => {
     const st0 = await s.state();
     await s.page.route(/generativelanguage\.googleapis\.com/, () => { /* never answers */ });
