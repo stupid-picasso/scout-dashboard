@@ -1123,7 +1123,7 @@ module.exports = async function suiteB() {
   await T('KEEPREV-01', 'Safety', 'Keeper review: species with more than 3 kept copies; KEEP locks, RELEASE goes first in the transfer strings, a hard lock still wins', async () => {
     const mk = (idx, iv, cp, extra) => ({ idx, name: 'Machamp', dex: 68, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...extra });
     const st0 = await s.state();
-    await s.set({ addedPokemon: [mk('kr1', [15, 15, 15], 2100, { favorite: true }), mk('kr2', [15, 15, 14], 2200), mk('kr3', [15, 14, 14], 2300), mk('kr4', [14, 14, 14], 2400), mk('kr5', [14, 14, 13], 2500, { shiny: true })], roster: [], ivOverrides: {}, keeperOverrides: {}, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [mk('kr1', [15, 15, 15], 2100, { favorite: true }), mk('kr2', [15, 15, 14], 2200, { favorite: true }), mk('kr3', [15, 14, 14], 2300), mk('kr4', [14, 14, 14], 2400), mk('kr5', [14, 14, 13], 2500, { shiny: true })], roster: [], ivOverrides: {}, keeperOverrides: {}, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
     const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.noteAiCall) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const get = id => ros.find(p => p.idx === id); return (new Function('l', 'ros', 'ctx', 'get', 'return (' + f + ')'))(l, ros, ctx, get); } } return null; }, fn);
     await s.page.getByText('More', { exact: true }).last().click(); await s.page.waitForTimeout(350);
     await s.page.getByText('Keeper review', { exact: true }).last().click(); await s.page.waitForTimeout(700);
@@ -1219,20 +1219,20 @@ module.exports = async function suiteB() {
     expect(/\d+ Pokemon have a stored rank that disagrees with their IVs/.test(t), 'Today says so: ' + t.slice(t.indexOf('Recalculates'), t.indexOf('Recalculates') + 300));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
   });
-  await T('EXTRA-01', 'Safety', 'Ten Gengar: spare copies are offered for transfer, the best-IV copy and locked copies stay', async () => {
+  await T('EXTRA-01', 'Safety', 'Spare copies: one copy covers Great and Ultra, the shiny stays, every other copy is offered for transfer', async () => {
     const mk = (idx, iv, cp, extra) => Object.assign({ idx, name: 'Gengar', dex: 94, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-11-05' }, extra || {});
     const st0 = await s.state();
-    const ivs = [[15, 14, 15], [14, 13, 14], [14, 14, 13], [13, 14, 14], [13, 13, 14], [14, 12, 13], [12, 14, 13], [13, 12, 14], [12, 13, 13], [15, 15, 15]];
-    const gs = ivs.map((v, i) => mk('gx' + i, v, 1400 + i * 50, i === 8 ? { favorite: true } : i === 9 ? { lucky: true } : {}));
-    await s.set({ addedPokemon: gs, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], keeperOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(800);
+    const gs = [mk('xa', [1, 14, 15], 1480), mk('xb', [12, 12, 12], 1450), mk('xc', [14, 15, 14], 2450), mk('xd', [14, 14, 14], 2440), mk('xe', [13, 13, 14], 2300), mk('xf', [10, 10, 10], 1900), mk('xg', [15, 14, 15], 2480), mk('xh', [8, 9, 10], 900), mk('xi', [5, 5, 5], 1200, { shiny: true })];
+    await s.set({ addedPokemon: gs, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], keeperOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
     const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const l = f.stateNode.logic;
       const cand = l.transferCandidates().filter(c => c.p.name === 'Gengar');
       const ctx = l.keepContext(l.effectiveRosterForMatch());
-      const extras = l.effectiveRosterForMatch().filter(p => p.name === 'Gengar' && l.keepFull(p, ctx).extra).map(p => p.idx);
-      return { cand: cand.map(c => c.p.idx), extras, whys: cand.map(c => c.why).slice(0, 2) }; } } return null; });
-    expect(r && r.extras.length >= 4, 'at least 4 spare copies are flagged: ' + JSON.stringify(r));
-    expect(r.cand.length >= 4 && r.extras.every(i => r.cand.indexOf(i) >= 0), 'every spare is offered for transfer: ' + JSON.stringify(r));
-    expect(r.cand.indexOf('gx0') < 0 && r.cand.indexOf('gx8') < 0 && r.cand.indexOf('gx9') < 0, 'the hundo-ish best, the favourite and the lucky one are not offered: ' + JSON.stringify(r));
+      const ros = l.effectiveRosterForMatch().filter(p => p.name === 'Gengar');
+      const extras = ros.filter(p => l.keepFull(p, ctx).extra).map(p => p.idx);
+      return { cand: cand.map(c => c.p.idx), extras, kept: ros.filter(p => !l.keepReasons(p, ctx).length === false).map(p => p.idx), whys: cand.map(c => c.why) }; } } return null; });
+    expect(r && r.extras.length >= 6, 'at least 6 spare copies are flagged: ' + JSON.stringify(r));
+    expect(r.extras.every(i => r.cand.indexOf(i) >= 0), 'every spare is offered for transfer: ' + JSON.stringify(r));
+    expect(r.kept.length <= 2 && r.kept.indexOf('xi') >= 0 && r.cand.indexOf('xi') < 0, 'only the shiny and one build copy are kept: ' + JSON.stringify(r));
     expect(r.whys.length > 0 && r.whys.every(w => typeof w === 'string' && w.length > 5), 'each offered copy states a reason: ' + JSON.stringify(r.whys));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: st0.cutTarget, tab: 'home' });
   });
