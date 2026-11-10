@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.278</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.279</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -8360,7 +8360,7 @@ class Component extends DCLogic {
     const missing = wanted.filter(n => !have.has(n));
     const fresh = this.freshRank ? this.freshRank(p, leagueKey) : null;
     return { league: leagueKey, rank: fresh != null ? fresh : lg.rankPct, stored: lg.rankPct, stale: fresh != null && Math.abs(fresh - lg.rankPct) > 0.5, tier: tier ? tier.tier : null, tierScore: tier ? tier.score : null, tierRank,
-      wanted, missing, movesOk: ms ? missing.length === 0 : null,
+      wanted, missing, missingElite: missing.filter(n => this.needsEliteTM(formName, p.form, n)), movesOk: ms ? missing.length === 0 : null,
       // IVs still a guess from CP/HP (not measured from the appraisal screen)
       confirmed: !this.needsAppraisal(p) };
   }
@@ -8502,6 +8502,16 @@ class Component extends DCLogic {
   // "PvP ready": 90%+ IV rank on a species PvPoke rates S, A or B in that
   // league, or 90%+ in Little Cup (no tier data exists there). IV rank alone
   // is not enough: a perfect-IV Pikachu is 100% and still weak.
+  // True when this species learns the move only from an Elite TM (it sits in the legacy pool and not in the regular one).
+  needsEliteTM(speciesName, form, moveName) {
+    const m = this.mechanics;
+    const pool = m && m.movepoolFor ? m.movepoolFor(speciesName, form) : null;
+    if (!pool) return false;
+    const k = String(moveName || '').toLowerCase().replace(/_/g, ' ').replace(/\+$/, '').trim();
+    const has = list => (list || []).indexOf(k) >= 0;
+    return (has(pool.fastLegacy) || has(pool.chargeLegacy)) && !has(pool.fast) && !has(pool.charge);
+  }
+
   isPvpWorthy(p) {
     // Estimated IVs can look elite and be wrong, so only measured ones count.
     if (this.needsAppraisal(p)) return false;
@@ -8885,6 +8895,9 @@ class Component extends DCLogic {
       mk('evo', 'Evolution unknown', 'Missing from the evolve queue even when candy is ready.',
         'Run the evolution lookup on the Today tab.',
         p => !this.evoRecordFor(p)),
+      mk('pvpmoves', 'PvP-ready but missing recommended moves', 'These rank 90%+ for an S/A/B species, but do not know the moves its PvP rating assumes (the detail sheet marks the ones that need an Elite TM, which is a one-off cost worth weighing).',
+        'Open it, check PvP moves, then use a TM (or an Elite TM where marked).',
+        p => !this.needsAppraisal(p) && ['great', 'ultra'].some(k => { const a = this.pvpAssess(p, k); return !!(a && a.rank >= 90 && a.tierRank <= 2 && a.confirmed && a.movesOk === false); })),
       mk('cpfit', 'CP and IVs do not agree', 'The CP, HP and IVs on file cannot all be true at any level of this species, so one of them was misread. Ranks, power-up costs and keep/transfer advice rest on them.',
         'Open it and correct the CP, HP or IVs, or re-import the detail screen and the appraisal.',
         p => !!(p.ivMeasured && p.cp != null && this.importCheck(p).some(x => /do not fit any level|more than .* can have|IVs must be whole|outside what a Pokemon/.test(x)))),
@@ -19122,7 +19135,7 @@ class Component extends DCLogic {
             });
             const missing = moves.filter(x => x.mark === '+').map(x => x.name);
             return { label, tier: tier ? tier.tier + ' TIER' : '', tierColor: tierColor(tier && tier.tier), moves,
-              status: missing.length ? 'Missing: ' + missing.join(', ') : 'You already have the full recommended moveset' };
+              status: missing.length ? 'Missing: ' + moves.filter(x => x.mark === '+').map(x => x.name + (this.needsEliteTM(formName, p.form, x.name) ? ' (Elite TM)' : '')).join(', ') : 'You already have the full recommended moveset' };
           }).filter(Boolean);
           return rows.length ? rows : null;
         })(),
