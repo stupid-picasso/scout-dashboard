@@ -1247,6 +1247,17 @@ module.exports = async function suiteB() {
     expect(r.some(x => /^oldscan:1:/.test(x)), 'one old scan is listed: ' + JSON.stringify(r));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
   });
+  await T('PVPMOVES-01', 'PvP', 'A PvP-ready Gengar missing its recommended moves is flagged, with the Elite-TM ones marked', async () => {
+    const st0 = await s.state();
+    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const g = { idx: 'pm1', name: 'Gengar', dex: 94, cp: 2450, hp: 120, atkIV: 14, defIV: 15, staIV: 14, ivAvg: 95.6, lvlMin: 30, lvlMax: 30, ivMeasured: true, quickMove: 'Hex', chargeMove: 'Sludge Bomb', great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) };
+    await s.set({ addedPokemon: [g], roster: [], ivOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(800);
+    const r = await L("(() => { const p = l.effectiveRosterForMatch().find(x => x.idx === 'pm1'); const a = l.pvpAssess(p, 'ultra'); return { miss: a && a.missing, elite: a && a.missingElite, issue: l.dataQualityIssues().filter(i => i.key === 'pvpmoves').map(i => i.count) }; })()");
+    expect(r && r.miss && r.miss.indexOf('shadow punch') >= 0 && r.miss.indexOf('dark pulse') >= 0, 'missing moves listed: ' + JSON.stringify(r));
+    expect(r.elite.indexOf('shadow punch') >= 0 && r.elite.indexOf('dark pulse') >= 0 && r.elite.indexOf('shadow claw') < 0, 'Elite-TM ones marked, a regular move is not: ' + JSON.stringify(r));
+    expect(r.issue.length === 1 && r.issue[0] === 1, 'Intel lists it once: ' + JSON.stringify(r));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+  });
   await T('PLANNOTE-01', 'Home', 'Planning card shows its two notes: the level cap and the stardust left after the reserve', async () => {
     const st0 = await s.state();
     await s.set({ trainerLevel: 36, dustReserve: 100000, stardustBalance: 350000, tab: 'home' }); await s.page.waitForTimeout(800);
