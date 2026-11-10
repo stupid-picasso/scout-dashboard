@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.281</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.282</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -7390,6 +7390,42 @@ class Component extends DCLogic {
   // Candidates are measured IVs, tier S/A/B, 90%+ IV rank, one per species.
   // It only sees the top-5 lists, so it is a strong filter, not a full
   // simulation of every meta matchup.
+  // This Pokemon's matchups against the league's 60 best species, from the battle simulator (1 shield each) using ITS OWN IVs at the best level
+  // under the cap and its own moves (the recommended moves when it has none the PvP tables know). Same shape as pvpMatchupsFor, so the squad
+  // picker can use either. Null for Little/Master or when the simulator cannot build the fighter. Cached per stat line and moveset.
+  pvpSimMu(p, leagueKey) {
+    const m = this.mechanics;
+    if (!m || !m.pvpSimFighterFor || !m.pvpSimPool || (leagueKey !== 'great' && leagueKey !== 'ultra')) return null;
+    const ivs = this.ivsOf(p), base = this.gradeBaseFor(p, leagueKey);
+    if (!ivs || !base) return null;
+    const formName = this.pvpFormName(p, leagueKey), shadow = !!this.isShadow(p);
+    const info = m.speciesInfo ? m.speciesInfo(formName, p.form || '') : null;
+    const types = info ? info.types : [];
+    const own = [p.chargeMove, p.chargeMove2].filter(Boolean);
+    const key = [leagueKey, base.join('_'), ivs.join(','), shadow ? 1 : 0, types.join('/'), p.quickMove, own.join('|'), this.state.pvpMaxLevel || 50].join('#');
+    this._simMuCache = this._simMuCache || new Map();
+    if (this._simMuCache.has(key)) return this._simMuCache.get(key);
+    let res = null;
+    try {
+      let f = m.pvpSimFighterFor(base, ivs, leagueKey, shadow, types, p.quickMove, own), assumed = false;
+      if (!f) {
+        const ms = m.pvpMovesetFor ? m.pvpMovesetFor(formName, shadow, leagueKey, p.form) : null;
+        if (ms) { f = m.pvpSimFighterFor(base, ivs, leagueKey, shadow, types, ms.fast, ms.charged); assumed = true; }
+      }
+      if (f) {
+        const counters = [], matchups = [];
+        m.pvpSimPool(leagueKey).slice(0, 60).forEach(o => {
+          const r = m.pvpSimulate(f, o, 1, 1);
+          if (r.winner === 2) counters.push({ id: o.id, rating: r.rating }); else if (r.winner === 1) matchups.push({ id: o.id, rating: r.rating });
+        });
+        res = { counters, matchups, simulated: true, assumedMoves: assumed };
+      }
+    } catch (e) { res = null; }
+    if (this._simMuCache.size > 600) this._simMuCache.clear();
+    this._simMuCache.set(key, res);
+    return res;
+  }
+
   pvpTeamFor(leagueKey, eligible, tableKey) {
     const m = this.mechanics;
     if (!m || !m.pvpMatchupsFor || ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) < 0) return null;
@@ -7401,7 +7437,9 @@ class Component extends DCLogic {
       if (!a || a.tierRank > 2 || a.rank < 90 || !this.inBand(p, leagueKey)) return;
       const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form);
       if (!mu) return;
-      pool.push({ p, a, mu, id: String(p.name).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
+      // Open leagues: judge the matchups by simulating this Pokemon's own IVs and moves; cups keep PvPoke's table.
+      const sim = !tableKey || tableKey === leagueKey ? this.pvpSimMu(p, leagueKey) : null;
+      pool.push({ p, a, mu: sim || mu, sim: !!sim, id: String(p.name).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
     });
     pool.sort((x, y) => ((y.a.movesOk === true) - (x.a.movesOk === true)) || (y.a.rank - x.a.rank));
     const bySpecies = new Map();
@@ -7424,7 +7462,7 @@ class Component extends DCLogic {
         || (shared.length === best.shared.length && (covered.length > best.covered.length
           || (covered.length === best.covered.length && avg > best.avg)))))) best = cand;
     }
-    return best ? { league: leagueKey, ...best } : null;
+    return best ? { league: leagueKey, simulated: best.members.filter(c => c.sim).length, ...best } : null;
   }
 
   // Why a species is, or is not, in the squad pvpTeamFor picked. Mirrors that function's filters in the
@@ -16095,6 +16133,7 @@ class Component extends DCLogic {
         const notes = [];
         if (tableKey) notes.push('Ranked with PvPoke\u2019s ' + l.pvpoke.split('@')[0] + ' rankings for this format.');
         else if (cup) notes.push('No PvPoke ranking for this cup: open-league scores filtered by its rules (' + (cup.src || 'feed') + ') \u2014 an estimate.');
+        if (squad && squad.simulated) notes.push('The squad is picked by simulating each of your Pokemon, with its own IVs and moves, against the top 60 ' + (league === 'ultra' ? 'Ultra' : 'Great') + ' League species (about 90% agreement with PvPoke\u2019s own simulations).');
         if (l.mega) notes.push('Mega-ready picks are judged on the Mega form\u2019s own base stats (game master); the squad line uses normal forms.');
         if (l.cup && l.cup.caughtWindowUnknown) notes.push('Catch Cup: only Pokemon caught in this season\u2019s window are legal \u2014 not checked here.');
         if (l.cup && l.cup.caught) notes.push('Catch Cup: only Pokemon caught in the window are legal \u2014 checked against your catch dates.');

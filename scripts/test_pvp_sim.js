@@ -15,11 +15,11 @@ const code = fs.readFileSync(path.join(__dirname, '..', 'pokemon-mechanics.js'),
 const ctx = { window: { dispatchEvent: () => {} }, Event: function () {}, console };
 vm.createContext(ctx); vm.runInContext(code, ctx);
 const m = ctx.window.PokemonMechanics;
-const MIN_AGREE = Number(process.env.MIN_AGREE || 0.70);
+const MIN_AGREE = Number(process.env.MIN_AGREE || 0.88);   // regression floor for the combined 1v1 figure; the figure at the time of writing is about 90%
 const verbose = process.argv.indexOf('--verbose') >= 0;
 
-let best = 0;
-const report = {};
+const report = {}, deci = { n: 0, ok: 0 };
+let comb1 = { n: 0, ok: 0 };
 for (const lk of ['great', 'ultra']) {
   const pool = m.pvpSimPool(lk), by = new Map(pool.map(f => [f.id, f]));
   for (const sh of [0, 1, 2]) {
@@ -32,14 +32,16 @@ for (const lk of ['great', 'ultra']) {
         const r = m.pvpSimulate(f, o, sh, sh);
         const win = r.winner === 1 ? true : r.winner === 2 ? false : null;
         n++;
-        const want = t.rating > 500;
-        if (win === want) ok++; else if (misses.length < 12) misses.push(f.id + ' vs ' + o.id + ' PvPoke ' + t.rating + ' sim ' + r.rating);
+        const want = t.rating > 500, good = win === want;
+        if (good) ok++; else if (misses.length < 12) misses.push(f.id + ' vs ' + o.id + ' PvPoke ' + t.rating + ' sim ' + r.rating);
+        if (sh === 1) { comb1.n++; if (good) comb1.ok++; if (Math.abs(t.rating - 500) >= 100) { deci.n++; if (good) deci.ok++; } }
       }
     }
     report[lk + ' ' + sh + 'v' + sh] = { n, agree: n ? ok / n : 0, misses };
-    best = Math.max(best, n ? ok / n : 0);
   }
 }
 Object.keys(report).forEach(k => { const r = report[k]; console.log(k.padEnd(10) + ' compared ' + String(r.n).padStart(5) + '  agree ' + (r.agree * 100).toFixed(1) + '%'); if (verbose) r.misses.forEach(x => console.log('     ' + x)); });
-console.log('best scenario ' + (best * 100).toFixed(1) + '% (minimum ' + (MIN_AGREE * 100) + '%)');
-process.exit(best >= MIN_AGREE ? 0 : 1);
+const comb = comb1.n ? comb1.ok / comb1.n : 0;
+console.log('combined 1 shield each (the scenario PvPoke lists matchups from): ' + (comb * 100).toFixed(1) + '% of ' + comb1.n + ' (minimum ' + (MIN_AGREE * 100) + '%)');
+console.log('decisive matchups only (rating 100+ from even): ' + (deci.n ? deci.ok / deci.n * 100 : 0).toFixed(1) + '% of ' + deci.n);
+process.exit(comb >= MIN_AGREE ? 0 : 1);

@@ -5529,62 +5529,286 @@ function pvpDamage(power, moveType, atkStat, defStat, ownTypes, defTypes) {
 
 // ---- 1v1 PvP battle simulator -------------------------------------------------------------------------------------------
 // A turn-based model of a Go Battle League fight (500 ms turns), written to answer "which of my Pokemon beats which meta
-// Pokemon" with the Pokemon's own IVs and moves instead of a species-level table. It is validated against PvPoke's own
-// stored matchup ratings (scripts/test_pvp_sim.js reports the agreement), and it is an approximation: simple, fixed
-// rules for when to throw and when to shield, no switching, no energy-gain rounding quirks.
+// Pokemon" with the Pokemon's own IVs and moves instead of a species-level table. The throw / wait / shield decisions follow
+// the logic of PvPoke's battle AI (ActionLogic.js and Battle.js, MIT licence, Copyright (c) 2019 pvpoke,
+// github.com/pvpoke/pvpoke), reduced to the parts that decide ordinary fights: no form changes (Aegislash, Minior, Cramorant,
+// Mimikyu), no switching, no random-decision modes. scripts/test_pvp_sim.js reports how often it picks the same winner as
+// PvPoke's stored matchups; treat the result as an estimate, not a replay.
 //   fighter: { atk, def, hp, types, fast: [type,power,turns,energyGain], charged: [[type,power,energy,buffs,buffTarget,chance], ...] }
 //   Fast move: starts when idle, lands (damage + energy) when its turns have passed. Charged move: thrown on a turn the
-//   thrower is idle, lands at once, uses that turn. Same-turn charged moves: higher Attack stat first (CMP).
-//   Throwing: with the opponent holding shields, the cheapest affordable move (bait); otherwise the most damage per energy once
-//   affordable, or any affordable move that finishes the fight. Shielding: only against a move that would finish you or that
-//   takes a big share (>= SIM_SHIELD_FRACTION) of your remaining HP. Buffs: applied when the chance is 50% or more.
-const SIM_SHIELD_FRACTION = 0.25;
+//   thrower is idle, lands at once and uses that turn. Same-turn charged moves: higher Attack stat first (CMP).
 const _SIM_STAGE = [0.5, 0.5714286, 0.6666667, 0.8, 1, 1.25, 1.5, 1.75, 2];
 function _simMult(stage) { return _SIM_STAGE[Math.max(0, Math.min(8, stage + 4))]; }
+function _simEff(type, defTypes) {
+  const row = TYPE_CHART[type];
+  if (!row) return 1;
+  let m = 1;
+  (defTypes || []).forEach(t => { const v = row[t]; m *= v == null ? 1 : v === 1.6 ? 1.6000000238418579 : v; });
+  return m;
+}
 
-function pvpSimulate(a, b, shieldsA, shieldsB, trace) {
-  const mk = (f, sh) => ({ f, hp: f.hp, maxHp: f.hp, energy: 0, cd: 0, sh: sh | 0, bA: 0, bD: 0 });
-  const A = mk(a, shieldsA), B = mk(b, shieldsB);
-  const dmg = (att, def, mv) => pvpDamage(mv[1], mv[0], att.f.atk * _simMult(att.bA), def.f.def * _simMult(def.bD), att.f.types, def.f.types);
-  const eff = (att, def, mv) => dmg(att, def, mv) / Math.max(1, mv[2]);
-  const choose = (me, opp) => {
-    const afford = me.f.charged.filter(m => m && me.energy >= m[2]);
-    if (!afford.length) return null;
-    const left = opp.hp;
-    const kill = afford.filter(m => dmg(me, opp, m) >= left);
-    if (kill.length) return kill.sort((x, y) => x[2] - y[2])[0];
-    if (opp.sh > 0) return afford.slice().sort((x, y) => x[2] - y[2])[0];
-    const best = me.f.charged.filter(Boolean).slice().sort((x, y) => eff(me, opp, y) - eff(me, opp, x))[0];
-    return me.energy >= best[2] ? best : null;
+function pvpSimulate(a, b, shieldsA, shieldsB, trace, opts) {
+  opts = opts || {};
+  const mkMove = mv => {
+    const buffs = mv[3] || null, target = mv[4] || '', chance = mv[5] || 0;
+    const m = { raw: mv, type: mv[0], power: mv[1], energy: mv[2], buffs, buffTarget: target, chance, damage: 0, dpe: 0,
+      selfDebuffing: !!(buffs && target === 'self' && chance >= 0.5 && (buffs[0] < 0 || buffs[1] < 0)),
+      selfAttackDebuffing: !!(buffs && target === 'self' && chance >= 0.5 && buffs[0] < 0),
+      selfDefenseDebuffing: !!(buffs && target === 'self' && chance >= 0.5 && buffs[1] < 0),
+      selfBuffing: !!(buffs && chance === 1 && (target === 'opponent' || (target === 'self' && (buffs[0] > 0 || buffs[1] > 0)))),
+      meter: buffs && chance < 1 ? (chance === 0.5 ? 0 : chance) : 0 };
+    return m;
   };
+  const mkFighter = (f, sh, startEnergy) => ({ f, hp: f.hp, maxHp: f.hp, energy: startEnergy | 0, cd: 0, sh: sh | 0, bA: 0, bD: 0,
+    moves: f.charged.filter(Boolean).map(mkMove), turnsToKO: -1, disguise: f.id === 'mimikyu', gulp: null, isCram: f.id === 'cramorant' });
+  const A = mkFighter(a, shieldsA, opts.energyA), B = mkFighter(b, shieldsB, opts.energyB);
+  // Exact constants of PvPoke's damage formula: bonus 1.2999999523, STAB 1.2000000477, super effective 1.6000000238.
+  const dmgM = (att, def, mv) => {
+    const stab = att.f.types.indexOf(mv.type) >= 0 ? 1.2000000476837158 : 1;
+    return Math.floor(mv.power * stab * ((att.f.atk * _simMult(att.bA)) / (def.f.def * _simMult(def.bD))) * _simEff(mv.type, def.f.types) * 0.5 * 1.2999999523162842) + 1;
+  };
+  const fastMv = f => ({ type: f.fast[0], power: f.fast[1] });
+  const fdmg = (att, def) => dmgM(att, def, fastMv(att.f));
+  const BUFF_DIVISOR = 4;
+  // Move ordering and "best" move, as PvPoke's Pokemon.js sets them up against this opponent.
+  const setup = (me, opp) => {
+    me.moves.forEach(m => {
+      m.damage = dmgM(me, opp, m);
+      m.dpe = m.damage / m.energy;
+      let eff = 0;
+      if (m.buffs && m.buffTarget === 'self' && m.buffs[0] > 0) eff = m.buffs[0] * (80 / m.energy);
+      else if (m.buffs && m.buffTarget === 'opponent' && m.buffs[1] < 0) eff = Math.abs(m.buffs[1]) * (80 / m.energy);
+      if (eff > 0) m.dpe *= (BUFF_DIVISOR + eff * m.chance) / BUFF_DIVISOR;
+    });
+    const act = me.moves.slice().sort((x, y) => x.energy - y.energy);
+    me.fastestMove = act[0];
+    for (let i = 1; i < act.length; i++) {
+      const rot = () => { act.push(act.shift()); };
+      if (act[i].energy === act[0].energy && !act[i].selfDebuffing && (act[i].buffs || act[i].damage > act[0].damage)) rot();
+      if (act[i].energy === act[0].energy && act[0].buffs && act[i].buffs && !act[i].selfDebuffing && act[i].chance > act[0].chance) rot();
+      if (act[i].energy - act[0].energy <= 10 && !act[i].selfDebuffing && act[i].selfBuffing && act[0].dpe - act[i].dpe < 0.3) rot();
+      if (act[i].energy - act[0].energy <= 10 && act[0].selfAttackDebuffing && !act[i].selfDebuffing) rot();
+      if (act[i].energy - act[0].energy <= 10 && act[0].selfDebuffing && act[0].energy > 50 && !act[i].selfDebuffing) rot();
+      if (act[i].energy - act[0].energy <= 5 && act[i].selfBuffing) rot();
+    }
+    me.active = act;
+    let best = act[0];
+    act.forEach(m => {
+      if (m.dpe - best.dpe > 0.03 || m.dpe - best.dpe > 0.3) { if (!best.selfBuffing || m.dpe - best.dpe > 0.3) best = m; }
+      if (Math.abs(m.dpe - best.dpe) < 0.03 && best.buffs && m.buffs && m.chance > best.chance && !m.selfDebuffing) best = m;
+    });
+    me.best = best;
+    me.bait = 1;
+  };
+  setup(A, B); setup(B, A);
+
+  const wouldShield = (att, def, mv) => {
+    const d0 = dmgM(att, def, mv);
+    let use = false;
+    const mb = mv.buffs || [0, 0];
+    const tmpA = att.bA, tmpD = def.bD;
+    const clamp = v => Math.max(-4, Math.min(4, v));
+    if (mb[0] > 0) att.bA = clamp(att.bA + mb[0]); else def.bD = clamp(def.bD + mb[1]);
+    const fastDmg = fdmg(att, def);
+    const fastAttacks = Math.ceil((mv.energy - Math.max(att.energy - mv.energy, 0)) / att.f.fast[3]) + 1;
+    const cycle = (fastAttacks * fastDmg + 1) * def.sh;
+    if (def.hp - d0 <= cycle) use = true;
+    att.bA = tmpA; def.bD = tmpD;
+    const fastDPT = fastDmg / att.f.fast[2];
+    att.moves.forEach(cm => {
+      const cd = dmgM(att, def, cm);
+      if (cd >= def.hp / 1.4 && fastDPT > 1.5) use = true;
+      if (cd >= def.hp - cycle) use = true;
+    });
+    if (mv.selfAttackDebuffing && d0 / def.hp > 0.55) use = true;
+    return use;
+  };
+
+  // The throw decision (PvPoke ActionLogic.decideAction). Returns a move or null to use the fast move.
+  const R = (why, mv) => { if (trace && mv) trace.push('decides ' + why + ' ' + mv.type + ' ' + mv.power); return mv; };
+  const decide = (me, opp) => {
+    const act = me.active;
+    if (!act.length || me.energy < me.fastestMove.energy) return null;
+    const winsCMP = me.f.cmp >= opp.f.cmp;
+    const myFast = fdmg(me, opp), oppFast = fdmg(opp, me);
+    const myFastCd = me.f.fast[2] * 500, oppFastCd = opp.f.fast[2] * 500;
+    const oppCooldown = opp.cd * 500;
+    const hasNonDebuff = act.some(m => !m.selfDebuffing);
+    // Turns I can live: walk the opponent's possible Charged Move sequences.
+    let turnsToLive = Infinity;
+    const queue = [];
+    if (oppCooldown !== 0) queue.unshift({ hp: me.hp - oppFast, opEnergy: opp.energy + opp.f.fast[3], turn: oppCooldown / 500, shields: me.sh });
+    else queue.unshift({ hp: me.hp, opEnergy: opp.energy, turn: 0, shields: me.sh });
+    let guard = 0;
+    while (queue.length && guard++ < 400) {
+      const cur = queue.shift();
+      if (cur.hp > oppFast) {
+        if (winsCMP) { if (cur.turn > me.f.fast[2]) continue; } else if (cur.turn > me.f.fast[2] + 1) continue;
+      }
+      if (cur.shields !== 0) {
+        if (cur.opEnergy >= opp.fastestMove.energy) queue.unshift({ hp: cur.hp - 1, opEnergy: cur.opEnergy - opp.fastestMove.energy, turn: cur.turn + 1, shields: cur.shields - 1 });
+      } else {
+        for (let n = 0; n < opp.active.length; n++) {
+          if (cur.opEnergy >= opp.active[n].energy) {
+            const md = dmgM(opp, me, opp.active[n]);
+            if (md >= cur.hp) {
+              turnsToLive = Math.min(cur.turn, turnsToLive);
+              if (me.f.cmp > opp.f.cmp && oppFastCd % myFastCd === 0) turnsToLive++;
+              break;
+            }
+            queue.unshift({ hp: cur.hp - md, opEnergy: cur.opEnergy - opp.active[n].energy, turn: cur.turn + 1, shields: cur.shields });
+          }
+        }
+      }
+      if (cur.hp - oppFast <= 0) { turnsToLive = Math.min(cur.turn + opp.f.fast[2], turnsToLive); break; }
+      queue.unshift({ hp: cur.hp - oppFast, opEnergy: cur.opEnergy + opp.f.fast[3], turn: cur.turn + opp.f.fast[2], shields: cur.shields });
+    }
+    const ready = act.map(m => me.energy >= m.energy ? 0 : Math.ceil((m.energy - me.energy) / me.f.fast[3]) * me.f.fast[2]);
+    // About to be knocked out: throw whatever does the most damage.
+    if (turnsToLive !== -1) {
+      if (me.hp <= oppFast * 2 && oppFastCd === 500) turnsToLive--;
+      if (me.hp <= oppFast && oppCooldown > 0 && oppFastCd > 500) { turnsToLive = oppCooldown / 500; if (opp.hp > myFast) turnsToLive--; }
+      if (me.hp <= oppFast && oppCooldown === 0 && oppFastCd <= myFastCd + 500) { if (opp.hp > myFast) turnsToLive--; }
+      if (turnsToLive * 500 < myFastCd || (turnsToLive * 500 === myFastCd && !winsCMP) || (turnsToLive * 500 === myFastCd && me.hp <= oppFast)) {
+        let bestMove = null, prev = -1;
+        for (let n = act.length - 1; n >= 0; n--) {
+          if (ready[n] === 0) {
+            const md = dmgM(me, opp, act[n]);
+            if (md > prev) { bestMove = act[n]; prev = md; }
+            if (me.energy >= act[n].energy * 2 && me.f.cmp > opp.f.cmp && md * 2 > prev) { bestMove = act[n]; prev = md * 2; }
+          }
+        }
+        return R('dying', prev === -1 ? null : bestMove);
+      }
+    }
+    // Mimikyu's disguise blocks the first Charged Move that is not shielded: pop it with the fastest one.
+    if (opp.disguise && opp.sh === 0 && me.energy >= me.fastestMove.energy && !me.fastestMove.selfDebuffing) return R('disguise', me.fastestMove);
+    // Cramorant not yet gulping: use Surf or Dive early unless another move is clearly better.
+    if (me.isCram && !me.gulp) {
+      const isGulp = m => m.type === 'Water' && ((m.power === 75 && m.energy === 45) || (m.power === 50 && m.energy === 40));
+      const g = act.find(isGulp), ng = act.find(m => !isGulp(m));
+      if (g && ng && me.energy >= g.energy && opp.hp > dmgM(me, opp, ng) * 1.3 && ng.dpe / g.dpe < 1.5) return R('gulp', g);
+    }
+    // A Charged Move that finishes the opponent.
+    if (opp.sh === 0) {
+      for (let n = 0; n < act.length; n++) {
+        const m = act[n];
+        if (me.energy >= m.energy) {
+          const md = dmgM(me, opp, m);
+          if (opp.hp <= md && !m.selfDebuffing && (n === 0 || n === 1) && opp.hp > myFast) return R('lethal', m);
+        }
+      }
+    }
+    // Hold a Charged Move back to avoid handing the opponent free turns (optimizeMoveTiming).
+    {
+      let target = 500;
+      if (myFastCd >= 2000) target = 1000;
+      if (myFastCd >= 1500 && oppFastCd === 2500) target = 1000;
+      if (myFastCd === 1000 && oppFastCd === 2000) target = 1000;
+      if (myFastCd === oppFastCd) target = 0;
+      if (myFastCd % oppFastCd === 0 && myFastCd > oppFastCd) target = 0;
+      if ((oppCooldown === 0 || oppCooldown > target) && target > 0) {
+        let optimize = true;
+        if (me.hp <= oppFast) optimize = false;
+        if (me.energy + me.f.fast[3] > 100) optimize = false;
+        let planned = me.f.fast[2] + Math.floor(me.energy / act[0].energy);
+        if (me.f.cmp < opp.f.cmp) planned++;
+        if (planned > turnsToLive) optimize = false;
+        if (opp.sh === 0) act.forEach(m => { if (me.energy >= m.energy && dmgM(me, opp, m) >= opp.hp) optimize = false; });
+        opp.active.forEach(m => {
+          const fastToCharged = Math.ceil((m.energy - opp.energy) / opp.f.fast[3]);
+          const fastInFast = Math.floor(myFastCd / oppFastCd);
+          const turnsFrom = fastToCharged * opp.f.fast[2] + 1;
+          let md = dmgM(opp, me, m) + oppFast * fastInFast;
+          if (me.sh > 0) md = 1 + oppFast * fastInFast;
+          if (turnsFrom <= me.f.fast[2] && md >= me.hp) optimize = false;
+        });
+        if (me.hp <= oppFast * Math.floor((myFastCd + 500) / oppFastCd)) optimize = false;
+        if (optimize) return R('optimize', null);
+      }
+    }
+    // Many cycles to go: just build to the best move (bait with the cheap one when the opponent would shield the big one).
+    const bestDmg = dmgM(me, opp, me.best);
+    const bestCycle = bestDmg + myFast * Math.ceil(me.best.energy / me.f.fast[3]);
+    let minCycles = 2;
+    if (me.best.selfDebuffing && me.best.energy > me.fastestMove.energy && me.best.dpe / me.fastestMove.dpe < 2) minCycles = 1.1;
+    if (opp.hp / bestCycle > minCycles) {
+      let sel = me.best;
+      if (act.length > 1) {
+        for (let i = 0; i < act.length; i++) {
+          if (me.best.selfDebuffing && !act[i].selfDebuffing && sel.dpe / act[i].dpe < 2) sel = act[i];
+          if (me.bait && opp.sh > 0 && !act[0].selfDebuffing && wouldShield(me, opp, act[i])) sel = act[0];
+        }
+      }
+      if (me.energy < sel.energy) return R('cycles-wait', null);
+      if (sel.selfDebuffing) { const reach = me.energy + Math.floor((100 - me.energy) / me.f.fast[3]) * me.f.fast[3]; if (me.energy < reach) return null; }
+      return R('cycles-throw', sel);
+    }
+    // The rest of PvPoke's planner (a search over throw sequences) did not improve agreement in testing, so the rule is plain:
+    // with shields up throw the cheapest affordable move (the bait), otherwise wait for the move with the best damage per energy.
+    const afford = act.filter(m => me.energy >= m.energy);
+    if (!afford.length) return null;
+    if (opp.sh > 0) return R('bait', afford[0]);
+    return me.energy >= me.best.energy ? R('best', me.best) : null;
+  };
+
+  const clampS = v => Math.max(-4, Math.min(4, v));
   const throwAt = (me, opp, mv) => {
-    me.energy -= mv[2];
-    const d = dmg(me, opp, mv);
-    if (trace) trace.push((me === A ? 'A' : 'B') + ' throws ' + mv[0] + ' ' + mv[1] + ' for ' + d + ' (opp hp ' + opp.hp + ', shields ' + opp.sh + ')');
-    let hit = true;
-    if (opp.sh > 0 && (d >= opp.hp || d >= SIM_SHIELD_FRACTION * opp.hp)) { opp.sh--; hit = false; }
-    if (hit) opp.hp -= d;
-    if (mv[3] && mv[5] >= 0.5) { const tgt = mv[4] === 'opponent' ? opp : me; tgt.bA += mv[3][0]; tgt.bD += mv[3][1]; tgt.bA = Math.max(-4, Math.min(4, tgt.bA)); tgt.bD = Math.max(-4, Math.min(4, tgt.bD)); }
+    me.energy -= mv.energy;
+    let d = dmgM(me, opp, mv), shieldedNow = false;
+    if (trace) trace.push((me === A ? 'A' : 'B') + ' throws ' + mv.type + ' ' + mv.power + ' for ' + d + ' (opp hp ' + opp.hp + ', shields ' + opp.sh + ')');
+    if (opp.sh > 0) {
+      // PvPoke shields by default; moves that only buff (power-up style) are shielded only when wouldShield says so.
+      const buffing = mv.buffs && ((mv.buffTarget === 'self' && mv.buffs[0] > 0) || (mv.buffTarget === 'opponent' && mv.buffs[1] < 0));
+      let use = true;
+      if (buffing) use = wouldShield(me, opp, mv);
+      if (opp.best && opp.best.selfDefenseDebuffing) {
+        if (me.sh > 0) use = wouldShield(me, opp, mv);
+        else if (opp.best && me.best) {
+          const fastToNext = Math.ceil((opp.best.energy - opp.energy) / opp.f.fast[3]);
+          const turnsToNext = fastToNext * opp.f.fast[2];
+          const cycleDamage = fastToNext * fdmg(opp, me) + dmgM(opp, me, opp.best);
+          let myTurns = Math.ceil((me.active[0].energy - me.energy) / me.f.fast[3]) * me.f.fast[2];
+          if (me.f.cmp > opp.f.cmp) myTurns--;
+          if (turnsToNext >= myTurns && me.hp <= cycleDamage) use = wouldShield(me, opp, mv);
+        }
+      }
+      if (use) { opp.sh--; d = 1; shieldedNow = true; }
+      else if (opp.disguise) { opp.disguise = false; d = 1; opp.bD = clampS(opp.bD - 1); }
+    } else if (opp.disguise) { opp.disguise = false; d = 1; opp.bD = clampS(opp.bD - 1); }
+    // Cramorant, Gulp Missile: Surf or Dive loads the form; the next Charged Move that lands unshielded gets a missile back.
+    if (opp.gulp && !shieldedNow) {
+      me.hp = Math.max(0, me.hp - (Math.floor(0.15 * me.maxHp) + 1));
+      if (opp.gulp === 'gulping') me.bD = clampS(me.bD - 1); else me.bA = clampS(me.bA - 2);
+      opp.gulp = null;
+    }
+    if (me.isCram && mv.type === 'Water' && ((mv.power === 75 && mv.energy === 45) || (mv.power === 50 && mv.energy === 40))) me.gulp = me.hp / me.maxHp > 0.5 ? 'gulping' : 'gorging';
+    opp.hp = Math.max(0, opp.hp - d);
+    if (mv.buffs) {
+      let fire = mv.chance >= 1;
+      if (!fire && mv.chance > 0) { const m0 = mv.meter; mv.meter += mv.chance; fire = Math.floor(mv.meter) > Math.floor(m0); }
+      if (fire) { const tgt = mv.buffTarget === 'opponent' ? opp : me; tgt.bA = clampS(tgt.bA + mv.buffs[0]); tgt.bD = clampS(tgt.bD + mv.buffs[1]); }
+    }
   };
   for (let turn = 0; turn < 1200 && A.hp > 0 && B.hp > 0; turn++) {
     // Idle fighters may throw a charged move this turn.
-    const planA = A.cd === 0 ? choose(A, B) : null, planB = B.cd === 0 ? choose(B, A) : null;
+    const planA = A.cd === 0 ? decide(A, B) : null, planB = B.cd === 0 ? decide(B, A) : null;
     const order = [];
     if (planA) order.push([A, B, planA]);
     if (planB) order.push([B, A, planB]);
-    if (order.length === 2 && a.atk < b.atk) order.reverse();
-    for (const [me, opp, mv] of order) { if (me.hp > 0 && opp.hp > 0) throwAt(me, opp, mv); else if (me.hp > 0 && opp.hp <= 0) break; }
+    if (order.length === 2 && a.cmp < b.cmp) order.reverse();
+    for (const [me, opp, mv] of order) { if (me.hp > 0 && opp.hp > 0) throwAt(me, opp, mv); }
     if (A.hp <= 0 || B.hp <= 0) break;
     // Fast moves: start when idle (and not throwing), land when the turns are up.
-    [[A, B, planA], [B, A, planB]].forEach(([me, , plan]) => { if (!plan && me.cd === 0) me.cd = me.f.fast[2]; });
+    [[A, planA], [B, planB]].forEach(([me, plan]) => { if (!plan && me.cd === 0) me.cd = me.f.fast[2]; });
     const land = [];
     [[A, B, planA], [B, A, planB]].forEach(([me, opp, plan]) => {
       if (plan) return;
       me.cd--;
       if (me.cd === 0) land.push([me, opp]);
     });
-    land.forEach(([me, opp]) => { opp.hpPending = (opp.hpPending || 0) + dmg(me, opp, me.f.fast); me.energy = Math.min(100, me.energy + me.f.fast[3]); });
-    [A, B].forEach(x => { if (x.hpPending) { x.hp -= x.hpPending; x.hpPending = 0; } });
+    land.forEach(([me, opp]) => { opp.pending = (opp.pending || 0) + fdmg(me, opp); me.energy = Math.min(100, me.energy + me.f.fast[3]); });
+    [A, B].forEach(x => { if (x.pending) { x.hp = Math.max(0, x.hp - x.pending); x.pending = 0; } });
   }
   const fa = Math.max(0, A.hp) / A.maxHp, fb = Math.max(0, B.hp) / B.maxHp;
   const winner = A.hp > 0 && B.hp <= 0 ? 1 : B.hp > 0 && A.hp <= 0 ? 2 : (A.hp > 0 && B.hp > 0 ? (fa > fb ? 1 : fa < fb ? 2 : 0) : 0);
@@ -5592,6 +5816,27 @@ function pvpSimulate(a, b, shieldsA, shieldsB, trace) {
   const rating = Math.round(500 * (fa + (1 - fb)));
   return { winner, hpA: fa, hpB: fb, rating };
 }
+
+// A simulator fighter for one of the trainer's own Pokemon: its IVs at the highest level under the league cap, its own moves.
+// `fastName` / `chargedNames` are move names as the app stores them ("Shadow Claw", "Dark Pulse"); returns null when a move
+// is not in the PvP tables or the spread cannot fit the cap.
+function pvpSimFighterFor(base, ivs, leagueKey, isShadow, types, fastName, chargedNames) {
+  const cap = LEAGUE_CAPS[leagueKey];
+  if (!cap || !Array.isArray(base) || !Array.isArray(ivs) || ivs.some(v => !Number.isFinite(v))) return null;
+  const key = n => String(n || '').toLowerCase().replace(/\+$/, '').trim().replace(/[\s-]+/g, '_');
+  const fast = PVP_FAST_MOVES[key(fastName)];
+  const charged = (chargedNames || []).map(n => PVP_CHARGED_MOVES[key(n)]).filter(Boolean);
+  if (!fast || !charged.length) return null;
+  const levels = _pvpLevels();
+  let lvl = null;
+  for (let i = levels.length - 1; i >= 0; i--) { if (cpFor(base, ivs, levels[i]) <= cap) { lvl = levels[i]; break; } }
+  if (lvl == null) return null;
+  const cpm = CPM[lvl];
+  const atk = (base[0] + ivs[0]) * cpm, def = (base[1] + ivs[1]) * cpm;
+  return { id: 'own', cmp: atk, atk: isShadow ? atk * 1.2 : atk, def: isShadow ? def * 0.83333331 : def, hp: Math.max(10, Math.floor((base[2] + ivs[2]) * cpm)),
+    types: (types || []).map(t => String(t).charAt(0).toUpperCase() + String(t).slice(1).toLowerCase()), fast, charged, level: lvl };
+}
+// Name -> [fast, charged...] helper for the app: a species' recommended PvP moves as fighter inputs is pvpMovesetFor.
 
 // A fighter from an id in the simulator pool ("tinkaton", "ninetales_shadow") or from raw numbers.
 function pvpSimFighter(row) {
@@ -5603,7 +5848,8 @@ function pvpSimFighter(row) {
   const f = PVP_FAST_MOVES[fast];
   const charged = [c1, c2].filter(Boolean).map(n => PVP_CHARGED_MOVES[n]).filter(Boolean);
   if (!f || !charged.length) return null;
-  return { id, atk, def, hp, types, fast: f, charged };
+  const sh = /_shadow$/.test(id);   // PvPoke's listed stats are the plain ones; the shadow bonus is applied on top
+  return { id, cmp: atk, atk: sh ? atk * 1.2 : atk, def: sh ? def * 0.83333331 : def, hp, types, fast: f, charged };
 }
 function pvpSimPool(leagueKey) {
   const list = leagueKey === 'ultra' ? PVP_SIM_ULTRA : leagueKey === 'great' ? PVP_SIM_GREAT : [];
@@ -5719,7 +5965,7 @@ if (typeof window !== 'undefined') {
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,
     PVP_TIER_GREAT, PVP_TIER_ULTRA, PVP_TIER_LITTLE, PVP_TIER_MASTER, PVP_TIER_MEGA, PVP_CUP_TABLES, pvpTableFor, pvpTierFor, pvpMovesetFor, pvpMatchupsFor, spreadDistribution, spreadTopPctForRank, spreadCutRank, spreadStanding, dittoRanking, dittoRankOf,
-    TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, pvpSimulate, pvpSimFighter, pvpSimPool, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
+    TYPE_CHART, STAB_MULTIPLIER, REFERENCE_DEFENCE, typeMultiplier, pvpSimulate, pvpSimFighter, pvpSimFighterFor, pvpSimPool, moveDamage, cycleDps, raidRating, AUTHORITATIVE_MOVES, WEATHER_TYPES, WEATHER_BOOST,
     setPvpMaxLevel, getPvpMaxLevel, bestSpreadUnderCap,
     speciesInfo, formForTypes, completeTypes, hasRegionalForms, sizeInfoFor, lookalikeFor, LOOKALIKE_NAMES: Object.keys(NAME_LOOKALIKES), EVOLUTION_BRANCHES, TIER_TRENDS, tierTrendsFor, speciesClassFor, pvpFastMoveFor, pvpMetaFor, pvpDamage, ivBreakpoints };
   window.dispatchEvent(new Event('scout-mechanics-ready'));
