@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.273</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.275</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -6510,11 +6510,36 @@ class Component extends DCLogic {
     return fl.set.has(p.idx) ? full.hard : full.all;
   }
 
-  // Extra copies. When you own more than three ordinary copies of one species and form (lucky, favourite, shiny and
-  // purified copies are locked and do not count), only the copies that do a job stay: the best of each league, a copy an
-  // upcoming cup or tag wants, the best IV total and the best raid attacker (normal and shadow judged apart). Every other
-  // copy loses its generic reasons (a good IV, a raid role, Mega-capable, Master tier) because a spare of the same
-  // species adds nothing the kept ones do not already cover. Returns { n, kept } for an extra copy, else null.
+  // Master League value of one copy, judged on the best form it can become (a Dratini is a Dragonite in waiting):
+  // { tier, score, name } when some form in its line is S/A/B and these IVs rank 90%+, else null.
+  masterBestFor(p) {
+    const m = this.mechanics;
+    const chain = this.evoChainNames(p);
+    if (!m || !m.pvpTierFor || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return null;
+    let top = null;
+    chain.forEach(name => {
+      const dex = name === p.name ? p.dex : (m.resolveDexByName ? m.resolveDexByName(name) : null);
+      const base = dex == null ? null : ((p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex]);
+      const t = base ? m.pvpTierFor(name, this.isShadow(p), 'master', p.form) : null;
+      if (!t || ['S', 'A', 'B'].indexOf(t.tier) < 0) return;
+      const r = m.rankPctForLeague(base, [p.atkIV, p.defIV, p.staIV], 'master', this.isShadow(p));
+      if (Number.isFinite(r) && r >= 90 && (!top || t.score > top.score)) top = { tier: t.tier, score: t.score, name };
+    });
+    return top;
+  }
+
+  // Spare copies. Space matters, so a species with three or more ordinary copies (lucky, favourite, shiny and purified
+  // copies are locked and do not count) keeps only the copies that do a job nothing else already does:
+  //   Great   the best Great League copy, only if it ranks well
+  //   Little  the best Little Cup copy, only if it ranks well
+  //   High    ONE high-CP copy covers Ultra, Master and raid together. Start with the best Master copy (S/A/B species,
+  //           IV rank 90%+); the best Ultra copy joins it only if the Master copy is clearly worse in Ultra (2+ points of
+  //           rank or not a good Ultra rank at all); the best raid attacker (with a raid role) joins only if the copies
+  //           already kept rate under 95% of it.
+  //   Upcoming cup / tag / rising-species keeps are honoured as before.
+  // A league nobody ranks well in adds nothing. Normal and shadow are judged apart. If nothing qualifies, the best IV
+  // copy stays so the species is not wiped out. Every other copy loses its generic reasons. Returns { n, kept, jobs }
+  // for a spare copy, else null.
   extraCopyOf(p, c) {
     const key = p.dex + '_' + (p.form || '');
     c.extraCopies = c.extraCopies || new Map();
@@ -6523,19 +6548,40 @@ class Component extends DCLogic {
       c.extraCopies.set(key, res);
       const g = c.groups[key] || [];
       const pool = g.filter(q => !(q.lucky || q.favorite || q.shiny || this.isPurified(q)) && !this.needsAppraisal(q) && Number.isFinite(q.ivAvg));
-      if (g.length > 3 && pool.length > 3) {
+      if (pool.length >= 3) {
         const cupMap = this.cupKeepMap(c);
-        const raidOf = q => { const r = this.raidProfile(q); const v = r && (r.now || r.ceil); return v && Number.isFinite(v.rating) ? v.rating : -1; };
+        const rating = q => { const r = this.raidProfile(q); const v = r && (r.now || r.ceil); if (v && Number.isFinite(v.rating)) return v.rating; const sc = this.attackerCeilingOf(q); return Number.isFinite(sc) ? sc : -1; };
+        const rankIn = (q, lk) => { const x = this.goodLeagues(q).filter(y => y.lk === lk); return x.length ? Math.max(...x.map(y => y.rank)) : null; };
         [false, true].forEach(sh => {
           const part = pool.filter(q => this.isShadow(q) === sh);
-          if (part.length < 2) return;
-          const kept = new Set();
-          part.forEach(q => { if (this.leagueBestFor(q, c).length || cupMap.get(q.idx) || this.risingReason(q) || this.tagKeepReason(q, c)) kept.add(q); });
-          const bestBy = f => part.reduce((b, q) => (!b || f(q) > f(b) ? q : b), null);
-          kept.add(bestBy(q => q.ivAvg * 1000 + (q.cp || 0) / 100));
-          const rb = bestBy(raidOf);
-          if (rb && raidOf(rb) >= 0) kept.add(rb);
-          part.forEach(q => { if (!kept.has(q)) res.set(q.idx, { n: part.length, kept: kept.size }); });
+          if (!part.length) return;
+          const kept = new Map();   // copy -> job
+          const add = (q, job) => { if (q && !kept.has(q)) kept.set(q, job); };
+          const lb = (q, re) => this.leagueBestFor(q, c).some(x => re.test(x));
+          part.forEach(q => {
+            if (lb(q, /^Best Great/)) add(q, 'best Great League copy');
+            if (lb(q, /^Best Little/)) add(q, 'best Little Cup copy');
+            if (cupMap.get(q.idx) || this.risingReason(q) || this.tagKeepReason(q, c)) add(q, 'wanted by a cup or tag');
+          });
+          // High-CP copy: Master first.
+          const better = (a, b, f) => !b || f(a) > f(b);
+          let master = null;
+          part.forEach(q => { if (this.masterBestFor(q) && better(q, master, x => x.ivAvg * 1000 + (x.cp || 0) / 100)) master = q; });
+          if (master) add(master, 'best Master copy');
+          const ultra = part.find(q => lb(q, /^Best Ultra/));
+          if (ultra && !kept.has(ultra)) {
+            const mu = master ? rankIn(master, 'ultra') : null, uu = rankIn(ultra, 'ultra');
+            if (!(mu != null && uu != null && mu >= uu - 2)) add(ultra, 'best Ultra League copy');
+          }
+          let raid = null;
+          part.forEach(q => { if (this.hasRaidRole(q, c.typeBest) && better(q, raid, rating)) raid = q; });
+          if (raid && !kept.has(raid)) {
+            const have = Math.max(-1, ...[...kept.keys()].map(rating));
+            if (!(have >= 0.95 * rating(raid))) add(raid, 'best raid attacker');
+          }
+          if (!kept.size) { let top = null; part.forEach(q => { if (better(q, top, x => x.ivAvg * 1000 + (x.cp || 0) / 100)) top = q; }); add(top, 'best IV copy'); }
+          const jobs = [...new Set(kept.values())];
+          part.forEach(q => { if (!kept.has(q)) res.set(q.idx, { n: part.length, kept: kept.size, jobs }); });
         });
       }
     }
@@ -6571,20 +6617,7 @@ class Component extends DCLogic {
     // One best copy per species per league. Others that are also 90%+ are redundant once the best is kept.
     this.leagueBestFor(p, c).forEach(b => out.push(b));
     // Master League: judged on the best form it can become, since a Dratini is a Dragonite in waiting.
-    const chain = this.evoChainNames(p);
-    const masterBest = (() => {
-      if (!m || !m.pvpTierFor || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV)) return null;
-      let top = null;
-      chain.forEach(name => {
-        const dex = name === p.name ? p.dex : (m.resolveDexByName ? m.resolveDexByName(name) : null);
-        const base = dex == null ? null : ((p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex]);
-        const t = base ? m.pvpTierFor(name, this.isShadow(p), 'master', p.form) : null;
-        if (!t || ['S', 'A', 'B'].indexOf(t.tier) < 0) return;
-        const r = m.rankPctForLeague(base, [p.atkIV, p.defIV, p.staIV], 'master', this.isShadow(p));
-        if (Number.isFinite(r) && r >= 90 && (!top || t.score > top.score)) top = { tier: t.tier, score: t.score, name };
-      });
-      return top;
-    })();
+    const masterBest = this.masterBestFor(p);
     if (masterBest) out.push('Master League tier ' + masterBest.tier + (masterBest.name !== p.name ? ' as ' + masterBest.name : ''));
     if (this.hasRaidRole(p, c.typeBest)) out.push('Raid attacker role');
     const rising = this.risingReason(p);
@@ -6610,7 +6643,7 @@ class Component extends DCLogic {
     const ov = this.keeperOverrideOf(p);
     if (ov === 'keep') out.push('You chose to keep it');
     const extra = ov === 'keep' ? null : this.extraCopyOf(p, c);
-    const generic = /^(IV \d|Raid attacker role|Good IV with known moves|Mega-capable with good IVs|Master League tier|Shadow with good IVs)/;
+    const generic = /^(IV \d|Raid attacker role|Good IV with known moves|Mega-capable with good IVs|Master League tier|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy)/;
     const outKept = extra ? out.filter(x => !generic.test(x)) : out;
     const soft = outKept.filter(x => this.isSoftKeep(x));
     let res = { all: outKept, soft, hard: outKept.filter(x => soft.indexOf(x) < 0), extra };
@@ -13751,7 +13784,7 @@ class Component extends DCLogic {
       if (w) add(p, 'Replaced by your ' + (w.q.cp || '?') + ' CP ' + w.q.name + ' (' + Math.round(w.rank) + '% vs ' + Math.round(w.mine) + '% ' + ({ great: 'Great', ultra: 'Ultra', little: 'Little' })[w.lk] + ')');
     });
     // A spare copy of a species you own many of: the kept copies already cover every job it could do.
-    roster.forEach(p => { const x = this.keepFull(p, ctx).extra; if (x) add(p, 'Extra copy: you own ' + x.n + ' ' + p.name + ' of this kind and ' + x.kept + ' better-suited ones stay (best of each league, best IV, best raid attacker)'); });
+    roster.forEach(p => { const x = this.keepFull(p, ctx).extra; if (x) add(p, 'Extra copy: you own ' + x.n + ' ' + p.name + ' of this kind and the ' + x.kept + ' that stay already cover it (' + x.jobs.join(', ') + ')'); });
     // Measured, nothing marks it as valuable and no league wants it: the app's rule is to let it go.
     roster.forEach(p => { if (!this.needsAppraisal(p)) add(p, 'No league, raid or rarity value'); });
     return [...out.values()];
@@ -16240,7 +16273,7 @@ class Component extends DCLogic {
     }
     const same = roster.filter(q => q.dex === p.dex && String(q.form || '') === String(p.form || '')).length;
     const exX = this.keepFull(p, this.keepContext(roster)).extra;
-    out.push({ label: 'COPIES', text: 'You own ' + same + ' of this species and form.' + (exX ? ' This is a spare: ' + exX.kept + ' of them already cover the league, IV and raid jobs.' : '') });
+    out.push({ label: 'COPIES', text: 'You own ' + same + ' of this species and form.' + (exX ? ' This is a spare: the ' + exX.kept + ' kept already cover ' + exX.jobs.join(', ') + '.' : '') });
     const evo = this.evoInfoFor(p);
     if (evo) out.push({ label: 'EVOLUTION', text: 'Evolves to ' + evo.to + (evo.need != null ? ' \u2014 ' + (evo.have != null ? evo.have : '?') + '/' + evo.need + ' candy' : '') + (evo.ready ? ' (ready)' : '') + '.' });
     const flags = [p.lucky ? 'Lucky' : '', this.isShadow(p) ? 'Shadow' : '', p.favorite ? 'Favorite' : '', p.shiny ? 'Shiny' : ''].filter(Boolean);
