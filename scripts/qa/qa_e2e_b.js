@@ -1258,6 +1258,17 @@ module.exports = async function suiteB() {
     expect(r.issue.length === 1 && r.issue[0] === 1, 'Intel lists it once: ' + JSON.stringify(r));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
   });
+  await T('LITTLE-01', 'Keep', 'Little Cup grade also needs a top-few-percent spread: a 1/3/5 Sandshrew no longer passes, the best spread does', async () => {
+    const st0 = await s.state();
+    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const mk = (idx, iv) => ({ idx, name: 'Sandshrew', dex: 27, cp: 450, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    const best = await s.page.evaluate(() => { const m = window.PokemonMechanics; return m.dittoRanking(m.BASE_STATS[27], 'little', false).rows[0].ivs; });
+    await s.set({ addedPokemon: [mk('lt1', [1, 3, 5]), mk('lt2', best)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(600);
+    const r = await L("(() => { const g = id => l.effectiveRosterForMatch().find(x => x.idx === id); return { low: l.gradeMeets(g('lt1'), 'little', null, 'good'), top: l.gradeMeets(g('lt2'), 'little', null, 'top') }; })()");
+    expect(r && r.low === false, 'a 1/3/5 Sandshrew does not meet even GOOD in Little Cup: ' + JSON.stringify(r));
+    expect(r.top === true, 'the best Little Cup spread meets TOP: ' + JSON.stringify(r) + ' best ' + JSON.stringify(best));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+  });
   await T('PLANNOTE-01', 'Home', 'Planning card shows its two notes: the level cap and the stardust left after the reserve', async () => {
     const st0 = await s.state();
     await s.set({ trainerLevel: 36, dustReserve: 100000, stardustBalance: 350000, tab: 'home' }); await s.page.waitForTimeout(800);
