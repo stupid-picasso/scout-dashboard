@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.279</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.281</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -6322,8 +6322,13 @@ class Component extends DCLogic {
   gradeMeets(p, lk, tier, grade) {
     const st = this.gradeStanding(p, lk);
     if (!st) return false;
-    const lim = this.gradeLimits(lk === 'little' ? null : tier)[grade || this.state.keepGrade || 'excellent'];
-    return st.rank >= lim - 1e-9;
+    const g = grade || this.state.keepGrade || 'excellent';
+    const lim = this.gradeLimits(lk === 'little' ? null : tier)[g];
+    if (st.rank < lim - 1e-9) return false;
+    // Little Cup percentages are squeezed together (almost any low-IV spread scores 91-95%), so the percent alone cannot tell a good
+    // spread from a bad one. It also has to sit in the best few percent of the 4096 spreads: top 2% / 5% / 10% for top / excellent / good.
+    if (lk === 'little') return st.topPct <= ({ top: 2, excellent: 5, good: 10 }[g] || 5) + 1e-9;
+    return true;
   }
 
   gradeLabel(rank, tier) {
@@ -7493,7 +7498,7 @@ class Component extends DCLogic {
     const list = ['great', 'ultra'].map(k => this.pvpAssess(p, k)).filter(Boolean);
     if (list.some(a => a.rank >= 90 && a.tierRank <= 2)) return true;
     const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
-    return Number.isFinite(lc) && lc >= 90;
+    return Number.isFinite(lc) && lc >= 90 && this.gradeMeets(p, 'little', null, 'good');
   }
 
   // Data-completeness note for a Pokemon's known moveset — NOT a judgment of

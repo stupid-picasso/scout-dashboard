@@ -10,6 +10,12 @@ PVP_FAST_MOVES   fast move id -> [type, power, turns, energyGain]  (PvP numbers,
 SPECIES_META     species id -> "type1/type2|buddyKm|secondChargedMoveStardust"
                  for every released species. Types here mean the app no longer
                  needs the AI type lookup to know a Pokemon's typing.
+PVP_CHARGED_MOVES charged move id -> [type, power, energy, buffs, buffTarget, chance]  (PvP numbers; buffs is
+                 [attackStages, defenseStages] or 0, buffTarget "self"/"opponent", chance 0-1). Used by the
+                 1v1 battle simulator.
+PVP_SIM_GREAT / PVP_SIM_ULTRA
+                 the 150 best-ranked species per league as [id, atk, def, hp, fast, charged1, charged2] (PvPoke's
+                 default spread and moveset): the opponent pool the simulator fights.
 PVP_META_GREAT / PVP_META_ULTRA
                  the 25 best-ranked species in each league as
                  [id, atk, def, hp, fastMoveId] using PvPoke's default spread.
@@ -58,6 +64,30 @@ def fast_moves(moves):
     return out
 
 
+def charged_moves(moves):
+    out = {}
+    for m in moves:
+        if m.get("energy", 0) > 0:
+            buffs = m.get("buffs")
+            b = [buffs[0], buffs[1]] if buffs and any(buffs) else 0
+            chance = float(m.get("buffApplyChance", 1) or 1) if b else 0
+            out[m["moveId"].lower()] = [m["type"].capitalize(), m["power"], m["energy"], b, (m.get("buffTarget") or "self") if b else "", chance]
+    return out
+
+
+def sim_list(rankings, n=150):
+    rows = []
+    for row in rankings:
+        st = row.get("stats") or {}
+        ms = row.get("moveset") or []
+        if len(ms) < 2 or "atk" not in st:
+            continue
+        rows.append([row["speciesId"].lower(), round(st["atk"], 2), round(st["def"], 2), round(st["hp"]), ms[0].lower(), ms[1].lower(), (ms[2] if len(ms) > 2 else "").lower()])
+        if len(rows) >= n:
+            break
+    return rows
+
+
 def species_meta(pokemon):
     out = {}
     for p in pokemon:
@@ -87,8 +117,12 @@ def meta_list(rankings):
 def main():
     fm = fast_moves(fetch(MOVES_URL))
     sm = species_meta(fetch(POKEMON_URL))
-    great = meta_list(fetch(GREAT_URL))
-    ultra = meta_list(fetch(ULTRA_URL))
+    mv = fetch(MOVES_URL)
+    cm = charged_moves(mv)
+    great_rank, ultra_rank = fetch(GREAT_URL), fetch(ULTRA_URL)
+    great, ultra = meta_list(great_rank), meta_list(ultra_rank)
+    sim_g, sim_u = sim_list(great_rank), sim_list(ultra_rank)
+    print(f"charged moves: {len(cm)}, sim pool great/ultra: {len(sim_g)}/{len(sim_u)}")
     print(f"fast moves: {len(fm)}, species: {len(sm)}, meta great/ultra: {len(great)}/{len(ultra)}")
     print("  spot-check bulbasaur:", sm.get("bulbasaur"), "| acid:", fm.get("acid"), "| top great:", great[0])
 
@@ -96,6 +130,9 @@ def main():
         "// GENERATED BLOCK: PVPOKE_GM (import_pvpoke_gamemaster.py) — do not hand-edit\n"
         "const PVP_FAST_MOVES = " + json.dumps(fm, separators=(",", ":")) + ";\n"
         "const SPECIES_META = " + json.dumps(sm, separators=(",", ":")) + ";\n"
+        "const PVP_CHARGED_MOVES = " + json.dumps(cm, separators=(",", ":")) + ";\n"
+        "const PVP_SIM_GREAT = " + json.dumps(sim_g, separators=(",", ":")) + ";\n"
+        "const PVP_SIM_ULTRA = " + json.dumps(sim_u, separators=(",", ":")) + ";\n"
         "const PVP_META_GREAT = " + json.dumps(great, separators=(",", ":")) + ";\n"
         "const PVP_META_ULTRA = " + json.dumps(ultra, separators=(",", ":")) + ";\n"
         "// END GENERATED BLOCK: PVPOKE_GM"
