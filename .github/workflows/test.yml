@@ -26,6 +26,9 @@ jobs:
         run: |
           node scripts/test_ranking.js
           node scripts/test_roster_logic.js
+          node scripts/test_rank_reference.js
+          node scripts/test_pvp_sim.js
+          python3 scripts/test_bundles_current.py
 
       - name: Gemini pipeline tests
         run: |
