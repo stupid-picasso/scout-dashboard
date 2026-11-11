@@ -1209,7 +1209,7 @@ module.exports = async function suiteB() {
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
-      const keepF = l.fetchWithDeadline, keepR = l.geminiRotation, keepC = l._modelCool, keepGT = l._geminiTimeoutMs;
+      const keepF = l.fetchWithDeadline, keepR = l.geminiRotation, keepC = l._modelCool, keepGT = l._geminiTimeoutMs, keepLog = l._aiLog ? l._aiLog.slice() : undefined;
       l._geminiTimeoutMs = 0; l._modelCool = {};
       l.geminiRotation = async () => ['gemini-hang', 'gemini-good'];
       l.fetchWithDeadline = async url => { const m = /models\/([^:]+):generateContent/.exec(url); calls.push(m ? m[1] : url);
@@ -1222,7 +1222,7 @@ module.exports = async function suiteB() {
         out.a = await l.callGeminiWithKey(body, 'KEY-PARK'); out.callsA = calls.slice();
         l._geminiModelIdxVision = 0;
         out.b = await l.callGeminiWithKey(body, 'KEY-PARK'); out.callsB = calls.slice(out.callsA.length);
-      } catch (e) { out.err = e.message; } finally { l.fetchWithDeadline = keepF; l.geminiRotation = keepR; l._modelCool = keepC; l._geminiTimeoutMs = keepGT; delete l._modelMs; }
+      } catch (e) { out.err = e.message; } finally { l.fetchWithDeadline = keepF; l.geminiRotation = keepR; l._modelCool = keepC; l._geminiTimeoutMs = keepGT; delete l._modelMs; l._aiLog = keepLog; }
       return out; } } return null; });
     expect(r && !r.err && /Machamp/.test(r.a) && r.callsA.join() === 'gemini-hang,gemini-good', 'the first read tries the hanging model, then the good one: ' + JSON.stringify(r));
     expect(r.callsB.join() === 'gemini-good', 'the next read skips the hanging model: ' + JSON.stringify(r));
