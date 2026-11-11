@@ -1,16 +1,23 @@
 name: Update PvPoke Data
 
 # PvPoke re-rates species and changes recommended movesets every season, so the
-# tier, moveset, matchup and game-master blocks in pokemon-mechanics.js go
-# stale. This re-runs both PvPoke import scripts weekly and, if anything
-# changed, opens a pull request for review (it is not auto-merged: a bad
-# upstream edit should not silently change your rankings).
+# tier, moveset, matchup, move and game-master blocks in pokemon-mechanics.js go
+# stale. Every Wednesday this re-runs the import scripts (each retried up to
+# three times, since the upstream hosts time out now and then), rebuilds the
+# app bundles from the single source, runs the accuracy tests and, if anything
+# changed, opens a pull request for review. It is never auto-merged: a bad
+# upstream edit should not silently change your rankings, and the PR body shows
+# the test results so the decision is quick.
 
 on:
   schedule:
     # Every Wednesday at 09:30 UTC
     - cron: '30 9 * * 3'
   workflow_dispatch: {}
+
+concurrency:
+  group: update-pvpoke-data
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -29,44 +36,83 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Refresh PvPoke tiers, movesets and matchups
-        run: python scripts/import_pvp_tier_data.py
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Refresh PvPoke game master (types, buddy distance, PvP fast moves, meta)
-        run: python scripts/import_pvpoke_gamemaster.py
+      - name: Install the bundle builder's dependency
+        run: npm install --no-save terser
 
-      - name: Record which species moved up or down a tier
-        run: python scripts/record_tier_trends.py
+      - name: Refresh data (each import retried up to 3 times)
+        run: |
+          retry() {
+            for attempt in 1 2 3; do
+              if "$@"; then return 0; fi
+              echo "::warning::'$*' failed (attempt $attempt of 3)"
+              sleep $((attempt * 20))
+            done
+            echo "::error::'$*' failed 3 times"
+            return 1
+          }
+          retry python scripts/import_pvp_tier_data.py
+          retry python scripts/import_pvpoke_gamemaster.py
+          python scripts/record_tier_trends.py
+          retry python scripts/import_mega_levels.py
+          retry python scripts/import_size_data.py
+          retry python scripts/import_species_class.py
+          retry python scripts/import_evolution_branches.py
 
-      - name: Refresh Mega Level rules (game master)
-        run: python scripts/import_mega_levels.py
+      - name: Rebuild the app bundles from the source
+        run: |
+          if git diff --quiet -- pokemon-mechanics.js; then
+            echo "PvPoke data is unchanged"
+          else
+            python3 scripts/build_bundles.py --bump
+          fi
 
-      - name: Refresh size classes (game master)
-        run: python scripts/import_size_data.py
-
-      - name: Refresh legendary / mythical / ultra beast list (game master)
-        run: python scripts/import_species_class.py
-
-      - name: Refresh branching evolutions (game master)
-        run: python scripts/import_evolution_branches.py
+      - name: Run the accuracy tests
+        id: tests
+        run: |
+          {
+            echo '```'
+            for t in "node scripts/test_ranking.js" "node scripts/test_rank_reference.js" "node scripts/test_roster_logic.js" "node scripts/test_pvp_sim.js" "python3 scripts/test_bundles_current.py"; do
+              echo "\$ $t"
+              if $t > /tmp/one_test.out 2>&1; then tail -2 /tmp/one_test.out; else tail -6 /tmp/one_test.out; echo "FAILED: $t"; echo "failed=1" >> "$GITHUB_OUTPUT"; fi
+            done
+            echo '```'
+          } > /tmp/test_report.md
+          cat /tmp/test_report.md
 
       - name: Open a PR if anything changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- pokemon-mechanics.js; then
-            echo "PvPoke data is unchanged"
+          if git diff --quiet; then
+            echo "Nothing changed"
             exit 0
           fi
           BRANCH="pvpoke-data-$(date +%Y%m%d)"
+          TITLE="Refresh PvPoke data ($(date +%Y-%m-%d))"
+          if [ "${{ steps.tests.outputs.failed }}" = "1" ]; then TITLE="$TITLE - TESTS FAILING, do not merge as is"; fi
           git checkout -b "$BRANCH"
-          git add pokemon-mechanics.js
+          git add -u   # tracked files only, so stray files never ride along
           git commit -m "Refresh PvPoke data ($(date +%Y-%m-%d))"
           git push origin "$BRANCH" --force
-          gh pr create \
-            --title "Refresh PvPoke data ($(date +%Y-%m-%d))" \
-            --body "Automated weekly refresh of PvPoke tiers, recommended movesets, matchups, species typing, buddy distance and PvP fast-move numbers. Review the diff in pokemon-mechanics.js before merging; the propagate workflow regenerates the bundled copies after merge." \
-            --base main \
-            --head "$BRANCH" || echo "PR may already exist for this branch"
+          {
+            echo "Automated weekly refresh of PvPoke tiers, recommended movesets, matchups, move numbers, species typing and the simulator's opponent pool, with the app bundles rebuilt."
+            echo
+            echo "Diff size:"
+            echo '```'
+            git diff --stat HEAD~1 | tail -8
+            echo '```'
+            echo
+            echo "Test results:"
+            cat /tmp/test_report.md
+            echo
+            echo "Review the diff in pokemon-mechanics.js before merging."
+          } > /tmp/pr_body.md
+          gh pr create --title "$TITLE" --body-file /tmp/pr_body.md --base main --head "$BRANCH" \
+            || echo "::warning::Could not open the PR (is 'Allow GitHub Actions to create pull requests' off?). The branch $BRANCH is pushed; open the PR by hand."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

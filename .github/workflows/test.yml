@@ -26,6 +26,8 @@ jobs:
         run: |
           node scripts/test_ranking.js
           node scripts/test_roster_logic.js
+          node scripts/test_rank_reference.js
+          node scripts/test_pvp_sim.js
 
       - name: Gemini pipeline tests
         run: |
@@ -40,6 +42,11 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+
+      - name: Bundles match the source
+        run: |
+          npm install --no-save terser
+          python3 scripts/test_bundles_current.py
 
       - name: Smoke render
         run: node scripts/smoke_render.js
