@@ -41,6 +41,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install the bundle builder's dependency
+        run: npm install --no-save terser
+
       - name: Refresh data (each import retried up to 3 times)
         run: |
           retry() {
