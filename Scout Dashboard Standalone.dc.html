@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.282</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.283</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -10429,9 +10429,25 @@ class Component extends DCLogic {
   // file, or wrap up with a summary once the queue is empty).
   startOcrQueue(files) {
     if (!files || !files.length) return;
+    this._ocrReads = new Map();
     this.setState({ ocrQueue: files, ocrQueueIndex: 0, ocrQueueDone: [], ocrQueueSummary: '' }, () => {
-      this.handleScreenshotUpload(files[0]);
+      this.prefetchOcrReads(files, 0);
+      this.handleScreenshotUpload(files[0], 0);
     });
+  }
+
+  // Read-ahead for a queue of screenshots. The next few are sent to Gemini while you review the current one, so a long queue
+  // no longer waits on the model after every tap. At most OCR_AHEAD reads are in flight or finished-but-unused at any time (the
+  // free tier allows about 10 requests a minute per key, and a failed read is simply read again when its turn comes).
+  prefetchOcrReads(files, from) {
+    const AHEAD = 3;
+    this._ocrReads = this._ocrReads || new Map();
+    for (let i = from; i < files.length && i < from + AHEAD; i++) {
+      if (this._ocrReads.has(i) || (typeof window !== 'undefined' && window.__noPrefetch)) continue;
+      const f = files[i];
+      this._ocrReads.set(i, { file: f, p: this.readScreenshotWithVision(f).then(r => ({ ok: r }), e => ({ err: e })) });
+    }
+    [...this._ocrReads.keys()].forEach(k => { if (k < from) this._ocrReads.delete(k); });
   }
 
   // Called from every exit point of the single-item panel (ADD AS NEW,
@@ -10444,7 +10460,8 @@ class Component extends DCLogic {
     const nextIndex = (this.state.ocrQueueIndex || 0) + 1;
     if (nextIndex < queue.length) {
       this.setState({ ocrQueueIndex: nextIndex, ocrQueueDone: doneLog, ocrParsed: null, ocrPreview: null, ocrError: '' }, () => {
-        this.handleScreenshotUpload(queue[nextIndex]);
+        this.prefetchOcrReads(queue, nextIndex);
+        this.handleScreenshotUpload(queue[nextIndex], nextIndex);
       });
       return;
     }
@@ -10454,6 +10471,7 @@ class Component extends DCLogic {
         + doneLog.filter(d => d.action === 'skipped').length + ' skipped'
         + (queue.length > 1 ? ' (' + queue.length + ' screenshots)' : '')
       : '';
+    this._ocrReads = new Map();
     this.setState({ ocrQueue: [], ocrQueueIndex: 0, ocrQueueDone: [], ocrQueueSummary: summary,
       ocrParsed: null, ocrPreview: null, ocrError: '' });
   }
@@ -10529,7 +10547,7 @@ class Component extends DCLogic {
     return { rec: out, notes };
   }
 
-  async handleScreenshotUpload(file) {
+  async handleScreenshotUpload(file, queueIndex) {
     if (!file) return;
     this._lastAiError = '';
     this.resetAppraisalHint();
@@ -10550,7 +10568,14 @@ class Component extends DCLogic {
       // removed: it could not read the stylized CP badge or the type chips, and
       // its numeric misreads landed stardust digits in CP. A wrong record is
       // worse than no record, so a failed read now surfaces as an error.
-      const rec0 = await this.readScreenshotWithVision(file);
+      // A queued screenshot was usually read in the background already; a failed background read is read again here.
+      const ahead = queueIndex != null && this._ocrReads ? this._ocrReads.get(queueIndex) : null;
+      let rec0;
+      if (ahead && ahead.file === file) {
+        const r = await ahead.p;
+        this._ocrReads.delete(queueIndex);
+        rec0 = r.err ? await this.readScreenshotWithVision(file) : r.ok;
+      } else rec0 = await this.readScreenshotWithVision(file);
       const cleaned = this.cleanScreenshotRecord(rec0);
       let rec = cleaned.rec;
       if (cleaned.notes.length) console.info('[Scout] screenshot read cleaned: ' + cleaned.notes.join('; '));
@@ -11437,6 +11462,7 @@ class Component extends DCLogic {
     const coolOf = m => { const c = (this._modelCool || {})[key + '|' + m]; return c && c.until > Date.now() ? c : null; };
     const candidates = ordered.filter(m => !coolOf(m));
     if (!candidates.length) {
+      if (ordered.some(m => { const c = coolOf(m); return c && c.hung; })) throw new Error('Gemini did not answer on any model a moment ago. Wait a minute and try again.');
       const anyDaily = ordered.some(m => { const c = coolOf(m); return c && c.daily; });
       throw new Error(anyDaily ? 'Gemini daily quota exhausted for this key (429).' : 'Gemini rate limit (429) \u2014 every model is cooling down for a minute.');
     }
@@ -11468,7 +11494,10 @@ class Component extends DCLogic {
       // How long one request may take: a read of one image gets 90 s, each further image in the same request 30 s more (up to 4 minutes),
       // text calls 45 s. 45 s was too short for image reads, which can legitimately take a minute or more.
       const imgN = parts.filter(x => x.inline_data).length;
-      const deadlineMs = this._geminiTimeoutMs || (hasImage ? Math.min(240000, 90000 + 30000 * Math.max(0, imgN - 1)) : 45000);
+      let deadlineMs = this._geminiTimeoutMs || (hasImage ? Math.min(240000, 90000 + 30000 * Math.max(0, imgN - 1)) : 45000);
+      // Once a model has answered, wait four times its usual time (never under 30 s) instead of the full allowance, so a model that
+      // hangs later costs seconds, not minutes.
+      if (!this._geminiTimeoutMs && hasImage && this._modelMs && this._modelMs[model]) deadlineMs = Math.max(30000, Math.min(deadlineMs, Math.round(this._modelMs[model] * 4)));
       const post = async (extras, grounded) => {
         try {
           return await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
@@ -11510,12 +11539,15 @@ class Component extends DCLogic {
       this.noteAiCall(model, hasImage, res.status, Date.now() - t0, ladder[rung]);
       if (res.status === 599) {
         timeouts = (timeouts || 0) + 1;
+        // A model that hung is set aside for three minutes, so the next screenshot goes to one that answers instead of waiting again.
+        if (candidates.length > 1) { this._modelCool = this._modelCool || {}; this._modelCool[key + '|' + model] = { until: Date.now() + 180000, daily: false, hung: true }; }
         lastErr = new Error('Gemini ' + model + ' did not answer within ' + Math.round(deadlineMs / 1000) + 's');
         sawOther = true;
         if (timeouts >= 2 || model === candidates[candidates.length - 1]) throw new Error('Gemini did not answer (' + timeouts + (timeouts === 1 ? ' try' : ' tries') + ', ' + Math.round(deadlineMs / 1000) + 's each). The request is dropped instead of waiting; skip or retry this one.');
         continue;
       }
       if (res.ok) this._thinkRung[model] = rung;
+      if (res.ok && hasImage) { this._modelMs = this._modelMs || {}; const took = Date.now() - t0; this._modelMs[model] = this._modelMs[model] ? Math.round(this._modelMs[model] * 0.6 + took * 0.4) : took; }
       if (res.ok) {
         const data = await Promise.race([res.json(), new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini did not finish sending its answer within 30s')), 30000))]);
         const cand = data && data.candidates && data.candidates[0];

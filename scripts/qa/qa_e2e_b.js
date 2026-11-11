@@ -1184,6 +1184,49 @@ module.exports = async function suiteB() {
     expect(r.simulated === 3 && r.sims.every(Boolean), 'all three matchup sets come from the simulator: ' + JSON.stringify(r));
     expect(r.sizes.every(x => x > 0 && x <= 60), 'each was fought against up to 60 species: ' + JSON.stringify(r));
   });
+  await T('SCRNQ-01', 'Import', 'A queue of screenshots is read ahead in the background (3 at a time), so the next one is ready when you confirm the current one', async () => {
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const wait = ms => new Promise(r => setTimeout(r, ms)), starts = [];
+      l.preprocessImage = async () => document.createElement('canvas');
+      l.readScreenshotWithVision = async f => { starts.push(f.name); await wait(300); return { pokemon_name: 'Machamp', cp: 1000 + Number(f.name.slice(1)), hp: 100, candy: 10 }; };
+      const files = [0, 1, 2, 3, 4].map(i => ({ name: 'f' + i }));
+      const out = {};
+      try {
+        l.startOcrQueue(files);
+        await wait(120); out.startedEarly = starts.slice();
+        await wait(700); out.first = l.state.ocrParsed && l.state.ocrParsed.cp;
+        l.cancelOcr(); await wait(150);
+        out.second = l.state.ocrParsed && l.state.ocrParsed.cp; out.startedAfterOne = starts.slice();
+        for (let i = 0; i < 6 && (l.state.ocrQueue || []).length; i++) { await wait(400); l.cancelOcr(); }
+        out.total = starts.length;
+      } finally { delete l.readScreenshotWithVision; delete l.preprocessImage; l.setState({ ocrQueue: [], ocrParsed: null, ocrBusy: false }); }
+      return out; } } return null; });
+    expect(r && r.startedEarly && r.startedEarly.join() === 'f0,f1,f2', 'three reads start at once: ' + JSON.stringify(r));
+    expect(r.first === 1000 && r.second === 1001, 'the first and second reads show the right screenshots: ' + JSON.stringify(r));
+    expect(r.startedAfterOne.length === 4 && r.second === 1001, 'after one is done the next is already read and one more starts: ' + JSON.stringify(r));
+    expect(r.total === 5, 'every screenshot is read exactly once: ' + JSON.stringify(r));
+  });
+  await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const calls = [];
+      const keepF = l.fetchWithDeadline, keepR = l.geminiRotation, keepC = l._modelCool, keepGT = l._geminiTimeoutMs, keepLog = l._aiLog ? l._aiLog.slice() : undefined;
+      l._geminiTimeoutMs = 0; l._modelCool = {};
+      l.geminiRotation = async () => ['gemini-hang', 'gemini-good'];
+      l.fetchWithDeadline = async url => { const m = /models\/([^:]+):generateContent/.exec(url); calls.push(m ? m[1] : url);
+        if (m && m[1] === 'gemini-hang') { const e = new Error('Gemini did not answer within 90s'); e.__geminiTimeout = true; throw e; }
+        return { ok: true, status: 200, clone() { return this; }, text: async () => '', json: async () => ({ candidates: [{ content: { parts: [{ text: '{"name":"Machamp"}' }] }, finishReason: 'STOP' }] }) }; };
+      const body = { messages: [{ content: [{ type: 'image', source: { data: 'AAAA' } }, { type: 'text', text: 'read' }] }] };
+      const out = {};
+      try {
+        l._geminiModelIdxVision = 0;
+        out.a = await l.callGeminiWithKey(body, 'KEY-PARK'); out.callsA = calls.slice();
+        l._geminiModelIdxVision = 0;
+        out.b = await l.callGeminiWithKey(body, 'KEY-PARK'); out.callsB = calls.slice(out.callsA.length);
+      } catch (e) { out.err = e.message; } finally { l.fetchWithDeadline = keepF; l.geminiRotation = keepR; l._modelCool = keepC; l._geminiTimeoutMs = keepGT; delete l._modelMs; l._aiLog = keepLog; }
+      return out; } } return null; });
+    expect(r && !r.err && /Machamp/.test(r.a) && r.callsA.join() === 'gemini-hang,gemini-good', 'the first read tries the hanging model, then the good one: ' + JSON.stringify(r));
+    expect(r.callsB.join() === 'gemini-good', 'the next read skips the hanging model: ' + JSON.stringify(r));
+  });
   await T('GEMTIME-01', 'AI', 'A Gemini request that never answers is dropped after the deadline instead of hanging the import', async () => {
     const st0 = await s.state();
     await s.page.route(/generativelanguage\.googleapis\.com/, () => { /* never answers */ });
