@@ -6485,6 +6485,17 @@ class Component extends DCLogic {
     return idx;
   }
 
+  // The list for one league key, with the copy itself added when it is not in the keep context's roster (a copy being looked at on its own).
+  leagueListFor(idx, key, p, lk, rank, to) {
+    const list = idx.get(key) || [];
+    if (list.some(e => String(e.q.idx) === String(p.idx))) return list;
+    const chain = lk === 'little' ? [p.name] : this.evoChainNames(p).map(n => String(n).toLowerCase());
+    const at = chain.indexOf(to), steps = at > 0 ? at : 0;
+    let aff = steps === 0;
+    if (!aff) { const ei = this.evoInfoFor(p); aff = !!(ei && ei.chainReady === true); }
+    return list.concat([{ q: p, rank, steps, aff, toName: (lk !== 'little' && p[lk] && p[lk].evolvesTo) || p.name }]);
+  }
+
   // Best entry of a league list: the best rank, with a copy that still has to evolve needing one more point to beat one that already
   // is the form (the evolution costs candy and time); ties by IV total, then CP.
   leagueWinner(list) {
@@ -6510,13 +6521,16 @@ class Component extends DCLogic {
     const out = [];
     mine.forEach(({ lk, rank, to }) => {
       const key = lk + '|' + to + '|' + shadow;
-      if (!c.lb.has(key)) {
-        const list = idx.get(key) || [];
-        const w = this.leagueWinner(list);
-        const built = w && w.steps > 0 && !w.aff ? this.leagueWinner(list.filter(e => e.steps === 0)) : null;
-        c.lb.set(key, { w, built });
+      const inIdx = (idx.get(key) || []).some(e => String(e.q.idx) === String(p.idx));
+      let hit = inIdx ? c.lb.get(key) : null;   // a copy outside the roster is judged on its own, not cached
+      if (!hit) {
+        const list = inIdx ? (idx.get(key) || []) : this.leagueListFor(idx, key, p, lk, rank, to);
+        const w0 = this.leagueWinner(list);
+        const built0 = w0 && w0.steps > 0 && !w0.aff ? this.leagueWinner(list.filter(e => e.steps === 0)) : null;
+        hit = { w: w0, built: built0 };
+        if (inIdx) c.lb.set(key, hit);
       }
-      const { w, built } = c.lb.get(key);
+      const { w, built } = hit;
       const mineIs = w && String(w.q.idx) === String(p.idx), builtIs = built && String(built.q.idx) === String(p.idx);
       if (!mineIs && !builtIs) return;
       const up = Number.isFinite(p.cp) && p.cp < caps[lk] * 0.92 ? ', power it up toward CP ' + caps[lk] : '';
@@ -6536,7 +6550,7 @@ class Component extends DCLogic {
     let win = null;
     mine.forEach(({ lk, rank, to }) => {
       const key = lk + '|' + to + '|' + shadow;
-      const list = idx.get(key) || [];
+      const list = this.leagueListFor(idx, key, p, lk, rank, to);
       const w = this.leagueWinner(list);
       if (!w || String(w.q.idx) === String(p.idx)) return;
       let r = w;
@@ -6633,7 +6647,7 @@ class Component extends DCLogic {
           part.forEach(q => { if (this.hasRaidRole(q, c.typeBest) && better(q, raid, rating)) raid = q; });
           if (raid && !kept.has(raid)) {
             const have = Math.max(-1, ...[...kept.keys()].map(rating));
-            if (!(have >= 0.99 * rating(raid))) add(raid, 'best raid attacker');
+            if (!(have >= 0.95 * rating(raid))) add(raid, 'best raid attacker');
           }
           // The highest-IV copy stays when it is near-hundo (14/15/14 or better): it is the one for raids and Master League, where a low
           // Attack league spread is no substitute. Without that, the best IV copy stays only when nothing else does.

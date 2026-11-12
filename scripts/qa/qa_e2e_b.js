@@ -1190,7 +1190,7 @@ module.exports = async function suiteB() {
     const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
     const list = [mk('ev1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('ev2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('ev3', 'Froakie', 656, [15, 15, 15], 1122, 50)];
     const probe = "(() => { const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros); const by = id => ros.find(p => p.idx === id); const cand = l.transferCandidates().map(c => c.p.idx + ':' + c.why.slice(0, 70));"
-      + " return { fr: l.keepFull(by('ev1'), ctx).all.filter(x => /^Best/.test(x)), gr: l.keepFull(by('ev2'), ctx).all.filter(x => /^Best/.test(x)), cand, hundoForm: l.pvpFormName(by('ev3'), 'great'), hundoRank: Math.round(l.pvpAssess(by('ev3'), 'great').rank * 10) / 10 }; })()";
+      + " return { fr: l.keepFull(by('ev1'), ctx).all.filter(x => /^Best/.test(x)), gr: l.keepFull(by('ev2'), ctx).all.filter(x => /^Best/.test(x)), cand, rb: (r => r && { q: r.q.idx, to: r.evolveTo, lk: r.lk })(l.replacedBy(by('ev2'), ctx)), hundoForm: l.pvpFormName(by('ev3'), 'great'), hundoRank: Math.round(l.pvpAssess(by('ev3'), 'great').rank * 10) / 10 }; })()";
     await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
     const noCandy = await L(probe);
     expect(noCandy && noCandy.fr.some(x => /evolve it into Greninja first/.test(x)), 'the Froakie is the best Great League copy and says to evolve: ' + JSON.stringify(noCandy));
@@ -1198,7 +1198,7 @@ module.exports = async function suiteB() {
     expect(noCandy.hundoForm === 'Greninja' && Math.abs(noCandy.hundoRank - 95.2) < 0.2, 'a hundo Froakie is judged as Greninja (95.2%): ' + JSON.stringify(noCandy));
     await s.set({ candyInventory: { froakie: { name: 'Froakie', candy: 200 } } }); await s.page.waitForTimeout(600);
     const candy = await L(probe);
-    expect(candy.cand.some(x => /^ev2:Replaced by your 400 CP Froakie .*evolve it into Greninja first/.test(x)), 'with the candy for the whole chain the worse Greninja is offered for transfer, naming the Froakie to evolve: ' + JSON.stringify(candy));
+    expect(candy.rb && candy.rb.q === 'ev1' && candy.rb.to === 'Greninja' && candy.rb.lk === 'great', 'with the candy for the whole chain the Greninja is replaced in Great League by the Froakie to evolve (it stays for Ultra, where it is the better copy): ' + JSON.stringify(candy));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, tab: 'home' });
   });
   await T('HUNDO-01', 'Keep', 'With low-Attack league copies in the box, the hundo Charizard and Greninja are still kept (raids, Master League)', async () => {
