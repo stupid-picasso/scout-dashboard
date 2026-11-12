@@ -565,13 +565,13 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const roster = [mk('ee1', 'Eevee', 133, [15, 14, 15], 500, 15), mk('ee2', 'Eevee', 133, [14, 15, 15], 480, 15), mk('ty1', 'Tyrogue', 236, [15, 3, 10], 200, 10),
       mk('ty2', 'Tyrogue', 236, [4, 12, 9], 200, 10), mk('mt1', 'Meltan', 808, [3, 15, 15], 714, 25, { great: { rankPct: 98, evolvesTo: 'Melmetal' } })];
-    await s.set({ addedPokemon: [...(st0.addedPokemon || []), ...roster], candyInventory: { ...(st0.candyInventory || {}), eevee: { name: 'Eevee', candy: 100 }, meltan: { name: 'Meltan', candy: 500 }, tyrogue: { name: 'Tyrogue', candy: 100 } }, completedIds: [], ivOverrides: { ...(st0.ivOverrides || {}) } });
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []).filter(x => !/^(Eevee|Tyrogue|Meltan)$/.test(x.name)), ...roster], roster: [], candyInventory: { ...(st0.candyInventory || {}), eevee: { name: 'Eevee', candy: 100 }, meltan: { name: 'Meltan', candy: 500 }, tyrogue: { name: 'Tyrogue', candy: 100 } }, completedIds: [], ivOverrides: { ...(st0.ivOverrides || {}) } });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
     const get = async id => (await s.call('effectiveRosterForMatch')).find(p => String(p.idx) === id);
     let q = await s.call('evolveQueue');
     const row = id => q.find(r => String(r.p.idx) === id);
     const e1 = row('ee1');
-    expect(e1 && e1.branches && e1.branches.opts.length === 8 && !e1.branches.pick, 'Eevee offers its 8 evolutions, none chosen: ' + JSON.stringify(e1 && e1.branches && e1.branches.opts.length));
+    expect(e1 && e1.branches && e1.branches.opts.length === 8 && !e1.branches.pick, 'Eevee offers its 8 evolutions, none chosen: ' + JSON.stringify(q.map(r => [r.p.idx, r.branches && r.branches.opts.length, r.branches && r.branches.pick])) + ' roster ' + (await s.call('effectiveRosterForMatch')).filter(p => /Eevee/.test(p.name)).map(p => p.idx + ':' + JSON.stringify(p.great)).join(' '));
     expect(e1.branches.opts.every(o => /GL \d+%/.test(o.text)) && e1.branches.opts.filter(o => o.best).length === 1, 'every option has ranks and exactly one is best');
     expect(!!(row('mt1') && /over the Great League cap/.test(row('mt1').capNote || '')), 'a Meltan that would land over the cap is warned: ' + JSON.stringify(row('mt1') && row('mt1').capNote));
     expect(await s.call('evoPickOf', await get('ty1')) === 'Hitmonlee' && await s.call('evoPickOf', await get('ty2')) === 'Hitmonchan', 'Tyrogue is decided by Attack vs Defense IV');
@@ -588,7 +588,7 @@ module.exports = async function suiteB() {
     expect(/What did Eevee evolve into\?/.test(await s.text()), 'done on an undecided Eevee asks what it became');
     await s.page.getByText('NOT YET', { exact: true }).first().click(); await s.page.waitForTimeout(300);
     expect((await get('ee2')).name === 'Eevee', 'asking changed nothing');
-    await s.set({ addedPokemon: st0.addedPokemon || [], candyInventory: st0.candyInventory || {}, ivOverrides: st0.ivOverrides || {} });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], candyInventory: st0.candyInventory || {}, ivOverrides: st0.ivOverrides || {} });
   });
   await T('EVOLVE-03', 'Today', 'Every branching species in the game data gets the right list: Applin items, Cosmoem day/night, Kirlia male + stone, Burmy by gender, Clamperl and Wurmple random; no invented Scyther branch', async () => {
     const m = await s.page.evaluate(() => Object.keys(window.PokemonMechanics.EVOLUTION_BRANCHES).sort());
