@@ -565,13 +565,13 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const roster = [mk('ee1', 'Eevee', 133, [15, 14, 15], 500, 15), mk('ee2', 'Eevee', 133, [14, 15, 15], 480, 15), mk('ty1', 'Tyrogue', 236, [15, 3, 10], 200, 10),
       mk('ty2', 'Tyrogue', 236, [4, 12, 9], 200, 10), mk('mt1', 'Meltan', 808, [3, 15, 15], 714, 25, { great: { rankPct: 98, evolvesTo: 'Melmetal' } })];
-    await s.set({ addedPokemon: [...(st0.addedPokemon || []), ...roster], candyInventory: { ...(st0.candyInventory || {}), eevee: { name: 'Eevee', candy: 100 }, meltan: { name: 'Meltan', candy: 500 }, tyrogue: { name: 'Tyrogue', candy: 100 } }, completedIds: [], ivOverrides: { ...(st0.ivOverrides || {}) } });
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []).filter(x => !/^(Eevee|Tyrogue|Meltan)$/.test(x.name)), ...roster], roster: [], candyInventory: { ...(st0.candyInventory || {}), eevee: { name: 'Eevee', candy: 100 }, meltan: { name: 'Meltan', candy: 500 }, tyrogue: { name: 'Tyrogue', candy: 100 } }, completedIds: [], ivOverrides: { ...(st0.ivOverrides || {}) } });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
     const get = async id => (await s.call('effectiveRosterForMatch')).find(p => String(p.idx) === id);
     let q = await s.call('evolveQueue');
     const row = id => q.find(r => String(r.p.idx) === id);
     const e1 = row('ee1');
-    expect(e1 && e1.branches && e1.branches.opts.length === 8 && !e1.branches.pick, 'Eevee offers its 8 evolutions, none chosen: ' + JSON.stringify(e1 && e1.branches && e1.branches.opts.length));
+    expect(e1 && e1.branches && e1.branches.opts.length === 8 && !e1.branches.pick, 'Eevee offers its 8 evolutions, none chosen: ' + JSON.stringify(q.map(r => [r.p.idx, r.branches && r.branches.opts.length, r.branches && r.branches.pick])) + ' roster ' + (await s.call('effectiveRosterForMatch')).filter(p => /Eevee/.test(p.name)).map(p => p.idx + ':' + JSON.stringify(p.great)).join(' '));
     expect(e1.branches.opts.every(o => /GL \d+%/.test(o.text)) && e1.branches.opts.filter(o => o.best).length === 1, 'every option has ranks and exactly one is best');
     expect(!!(row('mt1') && /over the Great League cap/.test(row('mt1').capNote || '')), 'a Meltan that would land over the cap is warned: ' + JSON.stringify(row('mt1') && row('mt1').capNote));
     expect(await s.call('evoPickOf', await get('ty1')) === 'Hitmonlee' && await s.call('evoPickOf', await get('ty2')) === 'Hitmonchan', 'Tyrogue is decided by Attack vs Defense IV');
@@ -588,7 +588,7 @@ module.exports = async function suiteB() {
     expect(/What did Eevee evolve into\?/.test(await s.text()), 'done on an undecided Eevee asks what it became');
     await s.page.getByText('NOT YET', { exact: true }).first().click(); await s.page.waitForTimeout(300);
     expect((await get('ee2')).name === 'Eevee', 'asking changed nothing');
-    await s.set({ addedPokemon: st0.addedPokemon || [], candyInventory: st0.candyInventory || {}, ivOverrides: st0.ivOverrides || {} });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], candyInventory: st0.candyInventory || {}, ivOverrides: st0.ivOverrides || {} });
   });
   await T('EVOLVE-03', 'Today', 'Every branching species in the game data gets the right list: Applin items, Cosmoem day/night, Kirlia male + stone, Burmy by gender, Clamperl and Wurmple random; no invented Scyther branch', async () => {
     const m = await s.page.evaluate(() => Object.keys(window.PokemonMechanics.EVOLUTION_BRANCHES).sort());
@@ -1184,6 +1184,33 @@ module.exports = async function suiteB() {
     expect(r.simulated === 3 && r.sims.every(Boolean), 'all three matchup sets come from the simulator: ' + JSON.stringify(r));
     expect(r.sizes.every(x => x > 0 && x <= 60), 'each was fought against up to 60 species: ' + JSON.stringify(r));
   });
+  await T('EVOLINE-01', 'Keep', 'Copies compete across the evolution line: a Froakie that would be a better Greninja replaces a worse Greninja (when the candy is there), and a hundo Froakie is judged as Greninja', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const list = [mk('ev1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('ev2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('ev3', 'Froakie', 656, [15, 15, 15], 1122, 50)];
+    const probe = "(() => { const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros); const by = id => ros.find(p => p.idx === id); const cand = l.transferCandidates().map(c => c.p.idx + ':' + c.why.slice(0, 70));"
+      + " return { fr: l.keepFull(by('ev1'), ctx).all.filter(x => /^Best/.test(x)), gr: l.keepFull(by('ev2'), ctx).all.filter(x => /^Best/.test(x)), cand, rb: (r => r && { q: r.q.idx, to: r.evolveTo, lk: r.lk })(l.replacedBy(by('ev2'), ctx)), hundoForm: l.pvpFormName(by('ev3'), 'great'), hundoRank: Math.round(l.pvpAssess(by('ev3'), 'great').rank * 10) / 10 }; })()";
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    const noCandy = await L(probe);
+    expect(noCandy && noCandy.fr.some(x => /evolve it into Greninja first/.test(x)), 'the Froakie is the best Great League copy and says to evolve: ' + JSON.stringify(noCandy));
+    expect(noCandy.gr.some(x => /you can use now/.test(x)) && !noCandy.cand.some(x => /^ev2:/.test(x)), 'with the candy unknown the Greninja is kept as the best copy you can use now, not replaced: ' + JSON.stringify(noCandy));
+    expect(noCandy.hundoForm === 'Greninja' && Math.abs(noCandy.hundoRank - 95.2) < 0.2, 'a hundo Froakie is judged as Greninja (95.2%): ' + JSON.stringify(noCandy));
+    await s.set({ candyInventory: { froakie: { name: 'Froakie', candy: 200 } } }); await s.page.waitForTimeout(600);
+    const candy = await L(probe);
+    expect(candy.rb && candy.rb.q === 'ev1' && candy.rb.to === 'Greninja' && candy.rb.lk === 'great', 'with the candy for the whole chain the Greninja is replaced in Great League by the Froakie to evolve (it stays for Ultra, where it is the better copy): ' + JSON.stringify(candy));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, tab: 'home' });
+  });
+  await T('HUNDO-01', 'Keep', 'With low-Attack league copies in the box, the hundo Charizard and Greninja are still kept (raids, Master League)', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    const list = [mk('hu1', 'Charizard', 6, [15, 15, 15], 3266, 50), mk('hu2', 'Charizard', 6, [0, 15, 13], 1500, 19.5), mk('hu3', 'Charizard', 6, [0, 13, 15], 2500, 35), mk('hu4', 'Greninja', 658, [15, 15, 15], 3001, 50), mk('hu5', 'Greninja', 658, [3, 15, 12], 1500, 21), mk('hu6', 'Greninja', 658, [0, 13, 14], 2497, 41)];
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; return l.transferCandidates().map(c => c.p.idx); } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+    expect(r && r.indexOf('hu1') < 0 && r.indexOf('hu4') < 0, 'neither hundo is offered for transfer: ' + JSON.stringify(r));
+    expect(r.indexOf('hu2') < 0 && r.indexOf('hu3') < 0 && r.indexOf('hu5') < 0 && r.indexOf('hu6') < 0, 'the league copies stay too: ' + JSON.stringify(r));
+  });
   await T('SHEETX-01', 'Detail', 'The detail sheet never moves sideways: nothing overhangs it, and a sideways drag leaves it where it is', async () => {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 92, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 23, lvlMax: 23, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
@@ -1310,7 +1337,7 @@ module.exports = async function suiteB() {
       return { cand: cand.map(c => c.p.idx), extras, kept: ros.filter(p => !l.keepReasons(p, ctx).length === false).map(p => p.idx), whys: cand.map(c => c.why) }; } } return null; });
     expect(r && r.extras.length >= 6, 'at least 6 spare copies are flagged: ' + JSON.stringify(r));
     expect(r.extras.every(i => r.cand.indexOf(i) >= 0), 'every spare is offered for transfer: ' + JSON.stringify(r));
-    expect(r.kept.length <= 2 && r.kept.indexOf('xi') >= 0 && r.cand.indexOf('xi') < 0, 'only the shiny and one build copy are kept: ' + JSON.stringify(r));
+    expect(r.kept.length <= 3 && r.kept.indexOf('xi') >= 0 && r.cand.indexOf('xi') < 0, 'only the shiny, the league copy and the near-hundo are kept: ' + JSON.stringify(r));
     expect(r.whys.length > 0 && r.whys.every(w => typeof w === 'string' && w.length > 5), 'each offered copy states a reason: ' + JSON.stringify(r.whys));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: st0.cutTarget, tab: 'home' });
   });
