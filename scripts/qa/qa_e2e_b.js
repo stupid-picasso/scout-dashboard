@@ -1256,6 +1256,31 @@ module.exports = async function suiteB() {
     expect(r.startedAfterOne.length === 4 && r.second === 1001, 'after one is done the next is already read and one more starts: ' + JSON.stringify(r));
     expect(r.total === 5, 'every screenshot is read exactly once: ' + JSON.stringify(r));
   });
+  await T('AUTOAPPLY-01', 'Import', 'With "apply clean reads automatically" on, a clean read is saved by itself; a doubtful read, or the switch off, leaves it waiting for you', async () => {
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const wait = ms => new Promise(r => setTimeout(r, ms)), m = window.PokemonMechanics, out = {};
+      const cp = m.cpFor(m.BASE_STATS[68], [10, 10, 10], 20), hp = m.hpFor(m.BASE_STATS[68], 10, 20);
+      const before = { roster: l.state.roster, added: l.state.addedPokemon, auto: l.state.ocrAutoApply, removed: l.state.removedIds };
+      l.preprocessImage = async () => document.createElement('canvas'); window.__noPrefetch = true;
+      const clean = { pokemon_name: 'Machamp', cp, hp, attack_iv: 10, defense_iv: 10, stamina_iv: 10, candy: 10 };
+      const count = () => (l.state.roster || []).length + (l.state.addedPokemon || []).length;
+      const run = async rec => { l.readScreenshotWithVision = async () => rec; const n = count(); l.handleScreenshotUpload({ name: 'x' }); await wait(500); return { grew: count() - n, waiting: !!l.state.ocrParsed }; };
+      try {
+        l.setState({ ocrAutoApply: false }); await wait(50);
+        out.off = await run(clean); l.setState({ ocrParsed: null });
+        l.setState({ ocrAutoApply: true }); await wait(50);
+        out.noIv = await run({ pokemon_name: 'Machamp', cp, hp });
+        l.setState({ ocrParsed: null });
+        out.clean = await run(clean);
+        l.setState({ ocrParsed: null });
+        out.dup = await run(clean);   // the same Pokemon again is a possible duplicate: ask first
+      } finally { delete l.readScreenshotWithVision; delete l.preprocessImage; delete window.__noPrefetch; l.setState({ roster: before.roster, addedPokemon: before.added, ocrAutoApply: before.auto, removedIds: before.removed, ocrParsed: null, ocrQueue: [], ocrBusy: false }); }
+      return out; } } return null; });
+    expect(r && r.off.grew === 0 && r.off.waiting, 'switch off: the read waits for you: ' + JSON.stringify(r));
+    expect(r.noIv.grew === 0 && r.noIv.waiting, 'a new record without IVs waits: ' + JSON.stringify(r));
+    expect(r.clean.grew === 1 && !r.clean.waiting, 'a clean read is added by itself: ' + JSON.stringify(r));
+    expect(r.dup.grew === 0, 'the same Pokemon read again matches the saved one and never creates a duplicate: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];

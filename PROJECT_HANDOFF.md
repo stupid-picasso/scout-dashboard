@@ -588,3 +588,7 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - `withEvoRanks` replaces placeholder ranks (own-species) with the best chain form's rank (hundo Froakie judged as Greninja).
 - `extraCopyOf`: near-hundo best IV (>=93%) kept; raid coverage threshold stays 95%.
 - Tests: EVOLINE-01, HUNDO-01; EVOLVE-02/EXTRA-01 fixtures adjusted (roster isolation).
+
+## Apply clean reads automatically (2026-11-12)
+- Import-page checkbox (`ocrAutoApply`, synced). `autoApplyOcr()` runs after each screenshot read: no clean-up notes, no AI error, a named species; a matched roster row is updated, a new record needs CP/HP/3 IVs and must pass `importCheck` and the duplicate check (`addOcrAsNew(false, true)` returns false instead of asking). Otherwise the panel waits as before. Test AUTOAPPLY-01.
+- Tests workflow: single `npm install` (the old `--no-save terser` step replaced Playwright, so smoke_render could not find its browser).

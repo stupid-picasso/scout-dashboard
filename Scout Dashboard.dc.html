@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.286</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.287</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -1451,6 +1451,10 @@
           </sc-if>
         </div>
       </sc-if>
+      <label style="display:flex;align-items:center;gap:8px;font:12px var(--font-body);color:var(--ink-500);cursor:pointer">
+        <input type="checkbox" checked="{{ ocrAutoApply }}" onChange="{{ toggleOcrAutoApply }}" />
+        <span>Apply clean reads automatically (anything doubtful still waits for you)</span>
+      </label>
       <sc-if value="{{ ocrQueueLabel }}" hint-placeholder-val="{{ false }}">
         <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.04em">{{ ocrQueueLabel }}</div>
       </sc-if>
@@ -3918,6 +3922,7 @@ class Component extends DCLogic {
     cutTarget: 300,
     evolveSort: 'value',
     pvpMaxLevel: 50,
+    ocrAutoApply: false,
     cutTargetDraft: '300',
     cutListRevealed: false,
     githubToken: '',
@@ -4189,7 +4194,7 @@ class Component extends DCLogic {
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'candyAiDecisions',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -4767,7 +4772,7 @@ class Component extends DCLogic {
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
       'chatMessages',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply'];
   }
 
   // Credentials are excluded from a restore by NAME, not by being forgotten, so
@@ -9679,15 +9684,27 @@ class Component extends DCLogic {
           cleanNotes: cleaned.notes,
           rawText: text.slice(0, 1200)
         }
-      });
+      }, () => { try { this.autoApplyOcr(); } catch (e) { /* the panel stays for a manual decision */ } });
     } catch (e) {
       this.setState({ ocrBusy: false, ocrError: (e && e.message) || 'Could not read that screenshot. Try a clearer, uncropped capture.' });
     }
   }
 
+  // "Apply clean reads automatically": with the switch on, a read that needed no clean-up, has no AI error, names a species and (for a new
+  // record) carries a CP, HP and all three IVs applies by itself and moves on. Anything doubtful (a clean-up note, a failed import check,
+  // a possible duplicate, missing IVs on a new record) stays in the panel exactly as before.
+  autoApplyOcr() {
+    const p = this.state.ocrParsed;
+    if (!this.state.ocrAutoApply || !p || this.state.ocrBusy) return false;
+    if ((p.cleanNotes && p.cleanNotes.length) || p.aiError || !(p.name || p.matchedName)) return false;
+    if (p.matchedIdx != null) { this.applyOcrResult(); return true; }
+    if ([p.cp, p.hp, p.atkIV, p.defIV, p.staIV].some(v => v == null)) return false;
+    return this.addOcrAsNew(false, true) === true;
+  }
+
   // Adds the current OCR read as a brand-new roster entry — the escape hatch for
   // "no roster match by CP", which previously dead-ended the import.
-  addOcrAsNew(skipCheck) {
+  addOcrAsNew(skipCheck, auto) {
     const p = this.state.ocrParsed;
     if (!p) return;
     const rec = p._rec ? { ...p._rec } : {};
@@ -9708,12 +9725,13 @@ class Component extends DCLogic {
       if (parts[0]) rec.type_1 = parts[0];
       if (parts[1]) rec.type_2 = parts[1];
     }
-    if (!rec.pokemon_name) { this.setState({ ocrError: 'Need a name before this can be added.' }); return; }
+    if (!rec.pokemon_name) { if (!auto) this.setState({ ocrError: 'Need a name before this can be added.' }); return false; }
     const mon = this.buildPokemonRecord(rec);
     // The same import gate as the other imports: a read that does not add up asks first.
     if (!skipCheck && !(typeof window !== 'undefined' && window.__noImportGate)) {
       const why = this.importCheck({ name: mon.name, dex: mon.dex, cp: mon.cp, hp: mon.hp, atkIV: mon.atkIV, defIV: mon.defIV, staIV: mon.staIV, form: mon.form });
       if (why.length) {
+        if (auto) return false;
         this.askConfirm({ title: 'Check this read', message: why.join('. ') + '. Add it anyway? Cancel to read the screenshot again.', actions: [{ label: 'ADD ANYWAY', style: 'primary', run: () => { this.closeConfirm(); this.addOcrAsNew(true); } }] });
         return;
       }
@@ -9728,6 +9746,7 @@ class Component extends DCLogic {
     const existingMatch = [...(this.state.roster || []), ...(this.state.addedPokemon || [])]
       .find(p => !this.isRemoved(p, removedSetNow) && this.pokeSig(p) === this.pokeSig(mon));
     if (existingMatch) {
+      if (auto) return false;
       this.askConfirm({
         title: 'Possible duplicate',
         message: `You already have a ${mon.name} at CP ${mon.cp} in your roster. Add this as another one anyway? Cancel if this is the same Pokemon you just added.`,
@@ -9736,6 +9755,7 @@ class Component extends DCLogic {
       return;
     }
     this.finishAddOcrAsNew(mon);
+    return true;
   }
 
   finishAddOcrAsNew(mon) {
@@ -18990,6 +19010,8 @@ class Component extends DCLogic {
       ocrParsedDisplay,
       hasOcrPreview: !!this.state.ocrPreview,
       hasOcrParsed: !!ocrParsedDisplay,
+      ocrAutoApply: !!this.state.ocrAutoApply,
+      toggleOcrAutoApply: () => this.setState({ ocrAutoApply: !this.state.ocrAutoApply }),
       ocrQueueLabel: (this.state.ocrQueue || []).length > 1
         ? 'Screenshot ' + ((this.state.ocrQueueIndex || 0) + 1) + ' of ' + this.state.ocrQueue.length
         : '',
