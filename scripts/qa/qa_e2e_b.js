@@ -1281,6 +1281,19 @@ module.exports = async function suiteB() {
     expect(r.clean.grew === 1 && !r.clean.waiting, 'a clean read is added by itself: ' + JSON.stringify(r));
     expect(r.dup.grew === 0, 'the same Pokemon read again matches the saved one and never creates a duplicate: ' + JSON.stringify(r));
   });
+  await T('LINEUSE-01', 'PvP', 'The squad picker plays a Froakie that would be a Greninja as Greninja (never both), and the power-up list skips a copy the keep check would let go', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    const list = [mk('lu1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('lu2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('lu3', 'Azumarill', 184, [2, 14, 15], 1480, 30), mk('lu4', 'Medicham', 308, [4, 14, 14], 1490, 33), mk('lu5', 'Registeel', 379, [1, 15, 15], 1495, 33)];
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: { froakie: { name: 'Froakie', candy: 200 } }, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const t = l.pvpTeamFor('great'); const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
+      return { team: t ? t.members.map(c => c.p.name + ':' + c.id) : null, ids: t ? new Set(t.members.map(c => c.id)).size : 0, kept: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).length), payoff: (l.powerUpPayoff(ros) || []).map(x => x.p ? x.p.idx : x.idx) }; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, tab: 'home' });
+    expect(r && (!r.team || r.ids === r.team.length), 'no species twice in a squad (Froakie-as-Greninja and Greninja are one): ' + JSON.stringify(r));
+    const gone = (r.kept.filter(x => /:0$/.test(x)).map(x => x.split(':')[0]));
+    expect(gone.every(id => r.payoff.indexOf(id) < 0), 'the power-up list never includes a copy the keep check would let go: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];

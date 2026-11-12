@@ -592,3 +592,8 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 ## Apply clean reads automatically (2026-11-12)
 - Import-page checkbox (`ocrAutoApply`, synced). `autoApplyOcr()` runs after each screenshot read: no clean-up notes, no AI error, a named species; a matched roster row is updated, a new record needs CP/HP/3 IVs and must pass `importCheck` and the duplicate check (`addOcrAsNew(false, true)` returns false instead of asking). Otherwise the panel waits as before. Test AUTOAPPLY-01.
 - Tests workflow: single `npm install` (the old `--no-save terser` step replaced Playwright, so smoke_render could not find its browser).
+
+## Evolution-line rule in squad picker and power-up list (2026-11-12)
+- `pvpTeamFor`: a copy is identified by the form it is played as (`pvpFormName`), so Froakie-as-Greninja and Greninja are one candidate; an unevolved copy needs +1 rank to beat an evolved one and is not simulated as itself.
+- `powerUpPayoff`: skips copies `keepReasons` would let go (including copies replaced by a better copy in their line).
+- Test LINEUSE-01.

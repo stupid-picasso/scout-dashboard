@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.287</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.288</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -8534,13 +8534,17 @@ class Component extends DCLogic {
       if (eligible && !eligible(p)) return;
       const a = this.pvpAssess(p, leagueKey, tableKey);
       if (!a || a.tierRank > 2 || a.rank < 90 || !this.inBand(p, leagueKey)) return;
-      const mu = m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form);
+      // The form the copy is played as: a Froakie whose league rank is judged on Greninja is a Greninja here, and competes with the Greninjas.
+      const formName = this.pvpFormName(p, leagueKey) || p.name;
+      const evolves = String(formName).toLowerCase() !== String(p.name).toLowerCase();
+      const mu = m.pvpMatchupsFor(formName, this.isShadow(p), tableKey || leagueKey, evolves ? undefined : p.form) || (evolves ? m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form) : null);
       if (!mu) return;
-      // Open leagues: judge the matchups by simulating this Pokemon's own IVs and moves; cups keep PvPoke's table.
-      const sim = !tableKey || tableKey === leagueKey ? this.pvpSimMu(p, leagueKey) : null;
-      pool.push({ p, a, mu: sim || mu, sim: !!sim, id: String(p.name).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
+      // Open leagues: judge the matchups by simulating this Pokemon's own IVs and moves; cups keep PvPoke's table. An unevolved copy is not simulated as itself.
+      const sim = !evolves && (!tableKey || tableKey === leagueKey) ? this.pvpSimMu(p, leagueKey) : null;
+      pool.push({ p, a, mu: sim || mu, sim: !!sim, evolves, id: String(formName).toLowerCase() + (this.isShadow(p) ? '_shadow' : '') });
     });
-    pool.sort((x, y) => ((y.a.movesOk === true) - (x.a.movesOk === true)) || (y.a.rank - x.a.rank));
+    // A copy that still has to evolve needs one more rank point to beat one that already is the form (same rule as the keep check).
+    pool.sort((x, y) => ((y.a.movesOk === true) - (x.a.movesOk === true)) || ((y.a.rank - (y.evolves ? 1 : 0)) - (x.a.rank - (x.evolves ? 1 : 0))));
     const bySpecies = new Map();
     pool.forEach(c => { if (!bySpecies.has(c.id)) bySpecies.set(c.id, c); });
     // A Pokemon missing its recommended moves is rated on moves it does not have, so Pokemon that already have them come first.
@@ -9078,7 +9082,10 @@ class Component extends DCLogic {
     if (!m || !m.raidRating || !m.powerUpCostBetween) return [];
     const have = this.state.stardustBalance;
     const rows = [];
+    const keepCtx = this.keepContext(roster);
     roster.forEach(p => {
+      // Dust spent on a copy the keep check would let go (or one replaced by a better copy in its evolution line) is wasted.
+      if (!this.keepReasons(p, keepCtx).length) return;
       const prof = this.raidProfile(p);
       if (!prof || !prof.now) return;
       const lv = this.evalLevelOf(p);

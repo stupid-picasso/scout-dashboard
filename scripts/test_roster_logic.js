@@ -633,6 +633,7 @@ function buildLists(roster, bestRank) {
   const ctx = { mechanics: m, state: { moveDB: {}, stardustBalance: 5000, resources: {} } };
   const sigs = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', evalLevelOf: 'p', powerUpPayoff: 'roster', tmTargets: 'roster', formatMoveName: 'name' };
   Object.keys(sigs).forEach(n => { ctx[n] = new Function(...sigs[n].split(', '), extractMethodBody(SRC, `${n}(${sigs[n]}) {`)).bind(ctx); });
+  ctx.keepContext = () => ({}); ctx.keepReasons = () => ['stub: kept'];
   ctx.baseStatsOf = p => m.BASE_STATS[p.dex];
   ctx.ivsOf = p => [p.atkIV, p.defIV, p.staIV];
   ctx.typesOf = p => p.types;
