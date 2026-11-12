@@ -40,12 +40,11 @@ jobs:
 
       - name: Install Playwright
         run: |
-          npm install --no-save playwright
+          npm install
           npx playwright install --with-deps chromium
 
       - name: Bundles match the source
         run: |
-          npm install --no-save terser
           python3 scripts/test_bundles_current.py
 
       - name: Smoke render
