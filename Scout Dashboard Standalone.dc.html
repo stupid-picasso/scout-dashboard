@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.285</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.286</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -7484,46 +7484,96 @@ class Component extends DCLogic {
     return out;
   }
 
-  // The reasons that come from being the best copy of a species (same form, normal and shadow kept apart) in a league.
-  // Equal ranks both stay. Also says when a power-up is what stands between the copy and the league cap.
+  // The copies that compete in one league, across the whole evolution line. A Froakie, a Frogadier and a Greninja whose league rank
+  // is judged on Greninja all compete for the one Greninja slot (normal and shadow kept apart); a Poliwag that suits Politoed does not
+  // compete with one that suits Poliwrath. Built once per keep context: key `league|form|shadow` -> [{ q, rank, steps, aff, toName }].
+  // `steps` is how many evolutions the copy still needs to become that form; `aff` is true when it is already that form or the candy
+  // on hand covers every step (unknown candy does not count, so an evolved copy is never replaced on a guess).
+  leagueIndexOf(c) {
+    if (c.leagueIdx) return c.leagueIdx;
+    const idx = new Map();
+    c.leagueIdx = idx;
+    c.roster.forEach(q => {
+      const mine = this.goodLeagues(q);
+      if (!mine.length) return;
+      const shadow = this.isShadow(q);
+      mine.forEach(({ lk, rank, to }) => {
+        const chain = lk === 'little' ? [q.name] : this.evoChainNames(q).map(n => String(n).toLowerCase());
+        const at = chain.indexOf(to);
+        const steps = at > 0 ? at : 0;
+        let aff = steps === 0;
+        if (!aff) { const ei = this.evoInfoFor(q); aff = !!(ei && ei.chainReady === true); }
+        const key = lk + '|' + to + '|' + shadow;
+        if (!idx.has(key)) idx.set(key, []);
+        idx.get(key).push({ q, rank, steps, aff, toName: (lk !== 'little' && q[lk] && q[lk].evolvesTo) || q.name });
+      });
+    });
+    return idx;
+  }
+
+  // Best entry of a league list: the best rank, with a copy that still has to evolve needing one more point to beat one that already
+  // is the form (the evolution costs candy and time); ties by IV total, then CP.
+  leagueWinner(list) {
+    let best = null;
+    list.forEach(e => {
+      const er = e.rank - (e.steps > 0 ? 1 : 0);
+      if (!best || this.leagueCopyBeats(e.q, er, best.e.q, best.er)) best = { e, er };
+    });
+    return best ? best.e : null;
+  }
+
+  // The reasons that come from being the best copy in a league, judged across the evolution line (see leagueIndexOf). Equal ranks both
+  // stay. Says when a power-up, or an evolution, is what stands between the copy and the league. When the best copy still has to
+  // evolve and the candy is not there yet, the best copy that is already the form keeps its place too.
   leagueBestFor(p, c) {
     const mine = this.goodLeagues(p);
     if (!mine.length) return [];
-    c.lb = c.lb || new Map();
     const caps = (this.mechanics && this.mechanics.LEAGUE_CAPS) || { great: 1500, ultra: 2500, little: 500 };
     const NAME = { great: 'Great League', ultra: 'Ultra League', little: 'Little Cup' };
     const shadow = this.isShadow(p);
-    const pool = (c.groups[p.dex + '_' + (p.form || '')] || [p]).filter(q => this.isShadow(q) === shadow);
+    const idx = this.leagueIndexOf(c);
+    c.lb = c.lb || new Map();
     const out = [];
     mine.forEach(({ lk, rank, to }) => {
-      const key = p.dex + '_' + (p.form || '') + '_' + shadow + '_' + lk + '_' + to;
+      const key = lk + '|' + to + '|' + shadow;
       if (!c.lb.has(key)) {
-        let best = null;
-        pool.forEach(q => { const g = this.goodLeagues(q).find(x => x.lk === lk && x.to === to); if (g && (!best || this.leagueCopyBeats(q, g.rank, best.q, best.rank))) best = { q, rank: g.rank }; });
-        c.lb.set(key, best);
+        const list = idx.get(key) || [];
+        const w = this.leagueWinner(list);
+        const built = w && w.steps > 0 && !w.aff ? this.leagueWinner(list.filter(e => e.steps === 0)) : null;
+        c.lb.set(key, { w, built });
       }
-      // One copy stays per league: the best rank, then IV total, then CP. Two identical copies never both stay.
-      const bw = c.lb.get(key);
-      if (bw && String(bw.q.idx) === String(p.idx)) {
-        const up = Number.isFinite(p.cp) && p.cp < caps[lk] * 0.92 ? ', power it up toward CP ' + caps[lk] : '';
-        out.push('Best ' + NAME[lk] + ' copy (rank ' + Math.round(rank) + '%' + up + ')');
-      }
+      const { w, built } = c.lb.get(key);
+      const mineIs = w && String(w.q.idx) === String(p.idx), builtIs = built && String(built.q.idx) === String(p.idx);
+      if (!mineIs && !builtIs) return;
+      const up = Number.isFinite(p.cp) && p.cp < caps[lk] * 0.92 ? ', power it up toward CP ' + caps[lk] : '';
+      const evo = mineIs && w.steps > 0 ? ', evolve it into ' + w.toName + ' first' : '';
+      out.push('Best ' + NAME[lk] + ' copy' + (builtIs && !mineIs ? ' you can use now' : '') + ' (rank ' + Math.round(rank) + '%' + evo + up + ')');
     });
     return out;
   }
 
-  // For a copy that is good in a league but not the best of its kind: the copy that replaces it.
+  // For a copy that is good in a league but not the best of its kind: the copy that replaces it, judged across the evolution line.
+  // A copy that is already the form is not replaced by one that still needs candy it does not have.
   replacedBy(p, ctx) {
     const mine = this.goodLeagues(p);
     if (!mine.length) return null;
     const shadow = this.isShadow(p);
-    const pool = ctx.groups[p.dex + '_' + (p.form || '')] || [];
+    const idx = this.leagueIndexOf(ctx);
     let win = null;
-    mine.forEach(({ lk, rank, to }) => pool.forEach(q => {
-      if (q === p || this.isShadow(q) !== shadow) return;
-      const g = this.goodLeagues(q).find(x => x.lk === lk && x.to === to);
-      if (g && this.leagueCopyBeats(q, g.rank, p, rank) && (!win || this.leagueCopyBeats(q, g.rank, win.q, win.rank))) win = { q, lk, rank: g.rank, mine: rank };
-    }));
+    mine.forEach(({ lk, rank, to }) => {
+      const key = lk + '|' + to + '|' + shadow;
+      const list = idx.get(key) || [];
+      const w = this.leagueWinner(list);
+      if (!w || String(w.q.idx) === String(p.idx)) return;
+      let r = w;
+      if (w.steps > 0 && !w.aff) {
+        const built = this.leagueWinner(list.filter(e => e.steps === 0));
+        if (!built || String(built.q.idx) === String(p.idx)) return;   // p is the best copy that can be used now
+        r = built;
+      }
+      if (!this.leagueCopyBeats(r.q, r.rank - (r.steps > 0 ? 1 : 0), p, rank)) return;
+      if (!win || this.leagueCopyBeats(r.q, r.rank, win.q, win.rank)) win = { q: r.q, lk, rank: r.rank, mine: rank, evolveTo: r.steps > 0 ? r.toName : null };
+    });
     return win;
   }
 
@@ -7566,7 +7616,8 @@ class Component extends DCLogic {
   //   High    ONE high-CP copy covers Ultra, Master and raid together. Start with the best Master copy (S/A/B species,
   //           IV rank 90%+); the best Ultra copy joins it only if the Master copy is clearly worse in Ultra (2+ points of
   //           rank or not a good Ultra rank at all); the best raid attacker (with a raid role) joins only if the copies
-  //           already kept rate under 95% of it.
+  //           already kept rate under 99% of it. The best IV copy also stays when it is near-hundo (93%+): a low Attack
+  //           league spread rates within a few percent of it for raids but is no use in Master League.
   //   Upcoming cup / tag / rising-species keeps are honoured as before.
   // A league nobody ranks well in adds nothing. Normal and shadow are judged apart. If nothing qualifies, the best IV
   // copy stays so the species is not wiped out. Every other copy loses its generic reasons. Returns { n, kept, jobs }
@@ -7608,9 +7659,12 @@ class Component extends DCLogic {
           part.forEach(q => { if (this.hasRaidRole(q, c.typeBest) && better(q, raid, rating)) raid = q; });
           if (raid && !kept.has(raid)) {
             const have = Math.max(-1, ...[...kept.keys()].map(rating));
-            if (!(have >= 0.95 * rating(raid))) add(raid, 'best raid attacker');
+            if (!(have >= 0.99 * rating(raid))) add(raid, 'best raid attacker');
           }
-          if (!kept.size) { let top = null; part.forEach(q => { if (better(q, top, x => x.ivAvg * 1000 + (x.cp || 0) / 100)) top = q; }); add(top, 'best IV copy'); }
+          // The highest-IV copy stays when it is near-hundo (14/15/14 or better): it is the one for raids and Master League, where a low
+          // Attack league spread is no substitute. Without that, the best IV copy stays only when nothing else does.
+          { let top = null; part.forEach(q => { if (better(q, top, x => x.ivAvg * 1000 + (x.cp || 0) / 100)) top = q; });
+            if (top && (!kept.size || top.ivAvg >= 93)) add(top, 'best IV copy'); }
           const jobs = [...new Set(kept.values())];
           part.forEach(q => { if (!kept.has(q)) res.set(q.idx, { n: part.length, kept: kept.size, jobs }); });
         });
@@ -13687,7 +13741,10 @@ class Component extends DCLogic {
       const cur = p[lg] && Number.isFinite(p[lg].rankPct) ? p[lg].rankPct : null;
       // A missing or lower stored rank is replaced. A stored rank that is higher (a trusted export) is kept.
       const wrongBranch = pickedTo && String((p[lg] && p[lg].evolvesTo) || '').toLowerCase() !== pickedTo.toLowerCase();
-      if (blocked || cur == null || wrongBranch || b.rankPct > cur || (b.ranked && !(p[lg] && p[lg].evolvesTo && String(p[lg].evolvesTo).toLowerCase() === String(b.evolvesTo).toLowerCase()) && cur < 90)) {
+      // A rank that names the Pokemon's own species (what a recalculation and the screenshot importers write) is a placeholder, not a
+      // judgement about the evolution: a hundo Froakie is a 100% Froakie but a 95% Greninja, and Greninja is what it would be played as.
+      const placeholder = chain.length > 1 && (!p[lg] || !p[lg].evolvesTo || String(p[lg].evolvesTo).toLowerCase() === String(p.name).toLowerCase());
+      if (blocked || cur == null || wrongBranch || placeholder || b.rankPct > cur || (b.ranked && !(p[lg] && p[lg].evolvesTo && String(p[lg].evolvesTo).toLowerCase() === String(b.evolvesTo).toLowerCase()) && cur < 90)) {
         out[lg] = { ...(p[lg] || {}), rankPct: b.rankPct, evolvesTo: b.evolvesTo };
       }
     });
@@ -14901,7 +14958,7 @@ class Component extends DCLogic {
     // Good in a league but a better copy is kept: this one is redundant. Say which copy replaces it.
     roster.forEach(p => {
       const w = this.replacedBy(p, ctx);
-      if (w) add(p, 'Replaced by your ' + (w.q.cp || '?') + ' CP ' + w.q.name + ' (' + Math.round(w.rank) + '% vs ' + Math.round(w.mine) + '% ' + ({ great: 'Great', ultra: 'Ultra', little: 'Little' })[w.lk] + ')');
+      if (w) add(p, 'Replaced by your ' + (w.q.cp || '?') + ' CP ' + w.q.name + ' (' + Math.round(w.rank) + '% vs ' + Math.round(w.mine) + '% ' + ({ great: 'Great', ultra: 'Ultra', little: 'Little' })[w.lk] + ')' + (w.evolveTo ? ' \u2014 evolve it into ' + w.evolveTo + ' first' : ''));
     });
     // A spare copy of a species you own many of: the kept copies already cover every job it could do.
     roster.forEach(p => { const x = this.keepFull(p, ctx).extra; if (x) add(p, 'Extra copy: you own ' + x.n + ' ' + p.name + ' of this kind and the ' + x.kept + ' that stay already cover it (' + x.jobs.join(', ') + ')'); });

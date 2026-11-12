@@ -1184,6 +1184,33 @@ module.exports = async function suiteB() {
     expect(r.simulated === 3 && r.sims.every(Boolean), 'all three matchup sets come from the simulator: ' + JSON.stringify(r));
     expect(r.sizes.every(x => x > 0 && x <= 60), 'each was fought against up to 60 species: ' + JSON.stringify(r));
   });
+  await T('EVOLINE-01', 'Keep', 'Copies compete across the evolution line: a Froakie that would be a better Greninja replaces a worse Greninja (when the candy is there), and a hundo Froakie is judged as Greninja', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const list = [mk('ev1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('ev2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('ev3', 'Froakie', 656, [15, 15, 15], 1122, 50)];
+    const probe = "(() => { const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros); const by = id => ros.find(p => p.idx === id); const cand = l.transferCandidates().map(c => c.p.idx + ':' + c.why.slice(0, 70));"
+      + " return { fr: l.keepFull(by('ev1'), ctx).all.filter(x => /^Best/.test(x)), gr: l.keepFull(by('ev2'), ctx).all.filter(x => /^Best/.test(x)), cand, hundoForm: l.pvpFormName(by('ev3'), 'great'), hundoRank: Math.round(l.pvpAssess(by('ev3'), 'great').rank * 10) / 10 }; })()";
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    const noCandy = await L(probe);
+    expect(noCandy && noCandy.fr.some(x => /evolve it into Greninja first/.test(x)), 'the Froakie is the best Great League copy and says to evolve: ' + JSON.stringify(noCandy));
+    expect(noCandy.gr.some(x => /you can use now/.test(x)) && !noCandy.cand.some(x => /^ev2:/.test(x)), 'with the candy unknown the Greninja is kept as the best copy you can use now, not replaced: ' + JSON.stringify(noCandy));
+    expect(noCandy.hundoForm === 'Greninja' && Math.abs(noCandy.hundoRank - 95.2) < 0.2, 'a hundo Froakie is judged as Greninja (95.2%): ' + JSON.stringify(noCandy));
+    await s.set({ candyInventory: { froakie: { name: 'Froakie', candy: 200 } } }); await s.page.waitForTimeout(600);
+    const candy = await L(probe);
+    expect(candy.cand.some(x => /^ev2:Replaced by your 400 CP Froakie .*evolve it into Greninja first/.test(x)), 'with the candy for the whole chain the worse Greninja is offered for transfer, naming the Froakie to evolve: ' + JSON.stringify(candy));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, tab: 'home' });
+  });
+  await T('HUNDO-01', 'Keep', 'With low-Attack league copies in the box, the hundo Charizard and Greninja are still kept (raids, Master League)', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    const list = [mk('hu1', 'Charizard', 6, [15, 15, 15], 3266, 50), mk('hu2', 'Charizard', 6, [0, 15, 13], 1500, 19.5), mk('hu3', 'Charizard', 6, [0, 13, 15], 2500, 35), mk('hu4', 'Greninja', 658, [15, 15, 15], 3001, 50), mk('hu5', 'Greninja', 658, [3, 15, 12], 1500, 21), mk('hu6', 'Greninja', 658, [0, 13, 14], 2497, 41)];
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; return l.transferCandidates().map(c => c.p.idx); } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+    expect(r && r.indexOf('hu1') < 0 && r.indexOf('hu4') < 0, 'neither hundo is offered for transfer: ' + JSON.stringify(r));
+    expect(r.indexOf('hu2') < 0 && r.indexOf('hu3') < 0 && r.indexOf('hu5') < 0 && r.indexOf('hu6') < 0, 'the league copies stay too: ' + JSON.stringify(r));
+  });
   await T('SHEETX-01', 'Detail', 'The detail sheet never moves sideways: nothing overhangs it, and a sideways drag leaves it where it is', async () => {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 92, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 23, lvlMax: 23, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
@@ -1310,7 +1337,7 @@ module.exports = async function suiteB() {
       return { cand: cand.map(c => c.p.idx), extras, kept: ros.filter(p => !l.keepReasons(p, ctx).length === false).map(p => p.idx), whys: cand.map(c => c.why) }; } } return null; });
     expect(r && r.extras.length >= 6, 'at least 6 spare copies are flagged: ' + JSON.stringify(r));
     expect(r.extras.every(i => r.cand.indexOf(i) >= 0), 'every spare is offered for transfer: ' + JSON.stringify(r));
-    expect(r.kept.length <= 2 && r.kept.indexOf('xi') >= 0 && r.cand.indexOf('xi') < 0, 'only the shiny and one build copy are kept: ' + JSON.stringify(r));
+    expect(r.kept.length <= 3 && r.kept.indexOf('xi') >= 0 && r.cand.indexOf('xi') < 0, 'only the shiny, the league copy and the near-hundo are kept: ' + JSON.stringify(r));
     expect(r.whys.length > 0 && r.whys.every(w => typeof w === 'string' && w.length > 5), 'each offered copy states a reason: ' + JSON.stringify(r.whys));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, cutTarget: st0.cutTarget, tab: 'home' });
   });
