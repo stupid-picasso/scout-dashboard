@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.283</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.285</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -2067,9 +2067,9 @@
 
   <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
   <div onClick="{{ closeDetail }}" style="animation:scrimIn .26s ease both;position:fixed;inset:0;background:rgba(10,12,18,.72);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
-    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" role="dialog" aria-modal="true" aria-label="Pokemon details" tabindex="-1" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
+    <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" role="dialog" aria-modal="true" aria-label="Pokemon details" tabindex="-1" style="touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)">
 
-      <div style="position:relative;min-height:230px;background:{{ detail.headerGradient }};overflow:visible;display:flex;flex-direction:column">
+      <div style="position:relative;min-height:230px;background:{{ detail.headerGradient }};overflow-x:clip;overflow-y:visible;display:flex;flex-direction:column">
         <div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:inherit"><div style="position:absolute;left:50%;top:62%;width:460px;height:460px;margin:-230px 0 0 -230px;background:repeating-conic-gradient(from 0deg, rgba(255,255,255,.13) 0 7deg, transparent 7deg 20deg);-webkit-mask:radial-gradient(circle, #000 0, transparent 66%);mask:radial-gradient(circle, #000 0, transparent 66%);animation:heroSpin 48s linear infinite"></div></div>
         <div style="position:absolute;top:-30px;right:-38px;transform:rotate(18deg);width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:62% 8% 62% 8%"></div>
         <div style="position:absolute;bottom:-18px;left:-20px;transform:rotate(-24deg);width:96px;height:96px;background:rgba(255,255,255,.04);border-radius:62% 8% 62% 8%"></div>
@@ -16671,11 +16671,9 @@ class Component extends DCLogic {
 
   // Drag the detail sheet down to dismiss, the way a native bottom sheet
   // works — Past 110px (or a fast flick) it closes; otherwise it springs
-  // back. Also handles the horizontal axis: swipe left/right to step to the
-  // next/previous Pokemon in whatever list the sheet was opened from
-  // (detailNavList/detailNavIndex, set by openDetail). Axis is locked on
-  // the first meaningful move so a vertical scroll/dismiss never also drags
-  // sideways and vice versa — same lock pattern as triageSwipeRef.
+  // back. Sideways drags are ignored on purpose (the sheet must never slide left or right); the header arrows step to the next or
+  // previous Pokemon in the list the sheet was opened from (detailNavList/detailNavIndex, set by openDetail). The axis is locked on
+  // the first meaningful move so a vertical scroll/dismiss never also drags sideways.
   sheetRef(el) {
     if (!el || el.dataset.swipeBound) return;
     el.dataset.swipeBound = '1';
@@ -16717,38 +16715,15 @@ class Component extends DCLogic {
         el.style.opacity = String(Math.max(0.45, 1 - dy / 620));
         return;
       }
-      // axis === 'x': resist (rubber-band) past either end of the list.
-      const canGo = dx < 0 ? this.state.detailNavIndex < (this.state.detailNavList || []).length - 1 : this.state.detailNavIndex > 0;
-      if (e.cancelable) e.preventDefault();
-      const applied = canGo ? dx : dx * 0.28;
-      el.style.transform = 'translateX(' + applied + 'px)';
-      el.style.opacity = String(Math.max(0.55, 1 - Math.abs(applied) / 700));
+      // axis === 'x': the sheet never moves sideways. A horizontal drag is ignored, so a thumb that wanders left or right while
+      // scrolling cannot push the sheet off-screen; the arrows in the header step to the next or previous Pokemon.
+      el.style.transform = ''; el.style.opacity = '';
     };
     const onEnd = () => {
       if (!dragging) return;
       dragging = false;
       if (!axis) { el.style.transition = ''; return; } // plain tap: nothing moved
-      if (axis === 'x') {
-        const dx = lastX - startX;
-        const velocity = Math.abs(dx) / Math.max(1, Date.now() - startT);
-        const dir = dx < 0 ? 1 : -1; // swipe left -> next, swipe right -> previous
-        const wantsNav = Math.abs(dx) > 90 || (Math.abs(dx) > 30 && velocity > 0.6);
-        el.style.transition = 'transform .22s ease-out, opacity .2s ease-out';
-        if (wantsNav) {
-          const moved = this.navigateDetail(dir);
-          if (moved) {
-            this.haptic('light');
-            el.style.transform = 'translateX(' + (dir * -60) + 'px)';
-            el.style.opacity = '0';
-            settle(200);
-            return;
-          }
-        }
-        el.style.transform = 'translateX(0)';
-        el.style.opacity = '1';
-        settle(260);
-        return;
-      }
+      if (axis === 'x') { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; return; }   // sideways drags do nothing
       const dy = lastY - startY;
       const velocity = dy / Math.max(1, Date.now() - startT);
       el.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1), opacity .28s ease';

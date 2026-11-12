@@ -1184,6 +1184,29 @@ module.exports = async function suiteB() {
     expect(r.simulated === 3 && r.sims.every(Boolean), 'all three matchup sets come from the simulator: ' + JSON.stringify(r));
     expect(r.sizes.every(x => x > 0 && x <= 60), 'each was fought against up to 60 species: ' + JSON.stringify(r));
   });
+  await T('SHEETX-01', 'Detail', 'The detail sheet never moves sideways: nothing overhangs it, and a sideways drag leaves it where it is', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 92, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 23, lvlMax: 23, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('sx1', 'Meltan', 808, [6, 11, 15], 642), mk('sx2', 'Gengar', 94, [14, 14, 14], 2428)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.openDetail) { const l = g.stateNode.logic;
+      const wait = ms => new Promise(r => setTimeout(r, ms)), out = [];
+      for (const id of ['sx1', 'sx2']) {
+        l.openDetail(l.effectiveRosterForMatch().find(x => x.idx === id)); await wait(700);
+        const d = document.querySelector('[role=dialog][aria-label="Pokemon details"]'); if (!d) { out.push('no dialog'); continue; }
+        const t = (x, y) => new Touch({ identifier: 1, target: d, clientX: x, clientY: y });
+        d.dispatchEvent(new TouchEvent('touchstart', { touches: [t(300, 300)], bubbles: true, cancelable: true }));
+        d.dispatchEvent(new TouchEvent('touchmove', { touches: [t(120, 304)], bubbles: true, cancelable: true }));
+        const during = d.style.transform;
+        d.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t(120, 304)], bubbles: true, cancelable: true })); await wait(300);
+        d.scrollLeft = 80;
+        out.push({ client: d.clientWidth, scroll: d.scrollWidth, during, after: d.style.transform, left: d.scrollLeft, index: l.state.detailNavIndex });
+        l.closeDetail(); await wait(300);
+      }
+      return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+    expect(r && r.length === 2 && r.every(x => x && x.scroll <= x.client), 'nothing is wider than the sheet: ' + JSON.stringify(r));
+    expect(r.every(x => x.during === '' && x.after === '' && x.left === 0), 'a sideways drag does not move or scroll the sheet: ' + JSON.stringify(r));
+  });
   await T('SCRNQ-01', 'Import', 'A queue of screenshots is read ahead in the background (3 at a time), so the next one is ready when you confirm the current one', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const wait = ms => new Promise(r => setTimeout(r, ms)), starts = [];
