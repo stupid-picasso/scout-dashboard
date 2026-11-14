@@ -1311,6 +1311,7 @@ module.exports = async function suiteB() {
     const dull = await run(mkE(3 * 24 * HOUR, 3 * 24 * HOUR + 3 * HOUR, 'Zap Cannon'), 300);
     const past = await run(mkE(-3 * 24 * HOUR, -3 * 24 * HOUR + 3 * HOUR, 'Hydro Cannon'), 300);
     const none = await run(null, 300);
+    const anyMon = await run({ ...mkE(-1 * HOUR, 20 * HOUR, 'Hydro Cannon'), species: null, scope: 'caught-or-evolved' }, 300);   // a "caught or evolved during the event" list names no starting Pokemon
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
     await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { g.stateNode.logic.setState({ eventMoves: null }); return; } } });
     expect(fut && fut.n === 1 && fut.worth === true && fut.held === true && fut.days === 3 && fut.inQueue === false, 'an upcoming Hydro Cannon window holds the Wartortle out of Evolve now: ' + JSON.stringify(fut));
@@ -1319,6 +1320,7 @@ module.exports = async function suiteB() {
     expect(dull && dull.n === 1 && dull.worth === false && dull.held === false && dull.inQueue === true, 'a move that gains nothing never holds an evolution: ' + JSON.stringify(dull));
     expect(past && past.n === 0 && past.inQueue === true, 'a finished event is ignored: ' + JSON.stringify(past));
     expect(none && none.n === 0 && none.inQueue === true, 'no event data changes nothing: ' + JSON.stringify(none));
+    expect(anyMon && anyMon.n === 1 && anyMon.active === true && anyMon.worth === true, 'an event listing only the evolved form (caught or evolved) still finds the Wartortle: ' + JSON.stringify(anyMon));
   });
   await T('EVENTMOVE-02', 'Today', 'A Community Day with the Pokemon named but the move not announced holds the last evolution as a reminder; far-off Community Days are listed; Elite TM advice says when it is free', async () => {
     const st0 = await s.state();

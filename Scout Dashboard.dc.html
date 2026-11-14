@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.291</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.292</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -15548,11 +15548,14 @@ class Component extends DCLogic {
     list.forEach(e => {
       const w = this.eventMoveWindow(e);
       if (!Number.isFinite(w.start) || !Number.isFinite(w.end) || w.end < now) return;
+      // `species` is the Pokemon to evolve; without it (Wild Area / Go Fest lists: "caught or evolved during the event") any Pokemon
+      // whose evolution is `to` qualifies. Outfit variants ("Modern Jacket Machamp") match on their trailing species name.
+      const sameTo = a => lower(a) === lower(e.to) || lower(e.to).endsWith(' ' + lower(a));
       roster.forEach(p => {
-        if (done.has(p.idx) || lower(p.name) !== lower(e.species)) return;
+        if (done.has(p.idx) || (e.species ? lower(p.name) !== lower(e.species) : !e.to)) return;
         const evo = this.evoInfoFor(p);
         if (!evo || !evo.to) return;
-        if (e.to && lower(evo.to) !== lower(e.to)) return;
+        if (e.to && !sameTo(evo.to)) return;
         if (!kept(p)) return;
         const worth = this.eventMoveWorth(p, e, evo.to);
         const active = w.start <= now;
@@ -19583,7 +19586,7 @@ class Component extends DCLogic {
           when: o.active ? 'EVOLVE NOW · until ' + fmtD(o.end) + ' ' + fmtT(o.end) : (o.held ? 'WAIT · ' : 'EVENT · ') + fmtD(o.start) + ' ' + fmtT(o.start) + ' (in ' + o.days + (o.days === 1 ? ' day' : ' days') + ') to ' + fmtD(o.end) + ' ' + fmtT(o.end),
           whenColor: o.active ? 'var(--grass-700)' : o.held ? 'var(--type-electric)' : 'var(--ink-400)',
           border: o.active ? 'var(--grass-500)' : o.held ? 'var(--type-electric)' : 'var(--line-200)',
-          note: [o.e.eventName, o.likely ? 'Move not announced yet: the last evolution of a Community Day line usually learns an exclusive move that day. Check the move when it is announced' : (o.worth.worth ? 'Saves an Elite TM' + (why ? ' — ' + why : '') : 'Exclusive move, value not rated'), o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' · '),
+          note: [o.e.eventName + (o.e.scope === 'caught-or-evolved' ? ' (caught or evolved during the event)' : ''), o.likely ? 'Move not announced yet: the last evolution of a Community Day line usually learns an exclusive move that day. Check the move when it is announced' : (o.worth.worth ? 'Saves an Elite TM' + (why ? ' — ' + why : '') : 'Exclusive move, value not rated'), o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' · '),
           onClick: () => this.openDetail(o.p)
         };
       }),

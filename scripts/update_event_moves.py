@@ -51,8 +51,30 @@ def parse_sentence(s):
     return {'species': frm.group(1).strip(), 'to': to.group(1).strip() if to else None, 'move': move, 'kind': kind, 'graceHours': grace}
 
 
+def parse_table(text):
+    """The "Certain Pokemon caught or evolved during the event will know the following featured attacks" list (Wild Area, Go Fest):
+    one block per move: [Pokemon (outfit text)] / Move / Fast Attack|Charged Attack / Pokemon. Gives entries with `species` None
+    (any Pokemon that evolves into `to`) and the scope 'caught-or-evolved'."""
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    hits = []
+    start = next((i for i, l in enumerate(lines) if re.search(r'featured (?:attacks|moves)', l, re.I) and re.search(r'evolved', l, re.I)), None)
+    if start is None:
+        return hits
+    for i in range(start + 1, len(lines) - 2):
+        if lines[i] in ('Fast Attack', 'Charged Attack') and i - 1 > start:
+            to = lines[i + 1]
+            if to in ('Fast Attack', 'Charged Attack') or len(to) > 40 or len(lines[i - 1]) > 40:
+                continue
+            hits.append({'species': None, 'to': to, 'move': lines[i - 1], 'kind': 'fast' if lines[i] == 'Fast Attack' else 'charged',
+                         'graceHours': 0, 'scope': 'caught-or-evolved', 'sentence': 'Pokemon caught or evolved during the event know ' + lines[i - 1] + ' (' + lines[i] + ')'})
+        if re.match(r'(Sales|Purchase|New Avatar|Bonuses)', lines[i]) and i > start + 3:
+            break
+    return hits
+
+
 def parse_page(text):
     hits, unparsed = [], []
+    hits += parse_table(text)
     for line in text.split('\n'):
         line = line.strip()
         if not re.search(r'evolv', line, re.I) or not re.search(r'attack|move', line, re.I):
