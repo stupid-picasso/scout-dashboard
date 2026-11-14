@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.289</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.291</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -1748,13 +1748,16 @@
       </div>
     </sc-if>
 
-    <sc-if value="{{ todayEventEvolve }}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{ todayEventSection }}" hint-placeholder-val="{{ false }}">
     <div data-today-section="eventevolve" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
         <div style="font:800 12px var(--font-display);color:var(--type-electric);letter-spacing:.06em;white-space:nowrap">EVOLVE AT AN EVENT</div>
         <div style="font:11.5px var(--font-display);color:var(--ink-500);text-align:right">{{ todayEventEvolveCount }}</div>
       </div>
       <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-500);margin-bottom:10px;text-wrap:pretty">Evolving during these events teaches a move that otherwise needs an Elite TM. Held out of Evolve now until the window opens.</div>
+      <sc-if value="{{ todayEventWatch }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11.5px/1.4 var(--font-display);color:var(--type-electric);margin-bottom:10px;text-wrap:pretty">{{ todayEventWatch }}</div>
+      </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px">
         <sc-for list="{{ todayEventEvolve }}" as="ev" hint-placeholder-count="3">
           <div onClick="{{ ev.onClick }}" style="cursor:pointer;background:var(--surface-sunken);border:1px solid {{ ev.border }};border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:11px">
@@ -9283,7 +9286,7 @@ class Component extends DCLogic {
       members: tmRows.map((x, i) => {
         const parts = [];
         if (x.normal) parts.push('+' + x.normal.gain.toFixed(0) + '% with a TM (' + (x.need.join(', ') || 'swap moves') + ')');
-        if (x.elite) parts.push('+' + x.elite.gain.toFixed(0) + '% with an Elite TM (' + (x.eliteNeed.join(', ') || 'swap moves') + ')');
+        if (x.elite) parts.push('+' + x.elite.gain.toFixed(0) + '% with an Elite TM (' + (x.eliteNeed.join(', ') || 'swap moves') + ')' + this.eventFreeNote(x.p));
         return {
           displayName: x.p.name + (x.p.form ? ' (' + x.p.form + ')' : ''),
           spriteRef: this.makeSpriteRefByDex(x.p.dex, x.p.form),
@@ -16548,31 +16551,81 @@ class Component extends DCLogic {
   }
 
   eventEvolveOpps(rosterIn) {
-    const list = (this.state.eventMoves && this.state.eventMoves.moves) || [];
-    if (!list.length) return [];
-    const now = Date.now();
+    const st = this.state;
     const roster = rosterIn || this.effectiveRosterForMatch();
+    const memoKey = [st.eventMoves, st.feed, roster, st.candyInventory, st.completedIds, st.evolutionItems, Math.floor(Date.now() / 60000)];
+    const memo = this._evtMemo;
+    if (memo && memo.key.length === memoKey.length && memo.key.every((v, i) => v === memoKey[i])) return memo.val;
+    const val = this.eventEvolveOppsCompute(roster);
+    this._evtMemo = { key: memoKey, val };
+    return val;
+  }
+
+  eventEvolveOppsCompute(roster) {
+    const list = (this.state.eventMoves && this.state.eventMoves.moves) || [];
+    const feedEvents = (this.state.feed && this.state.feed.events) || [];
+    if (!list.length && !feedEvents.length) return [];
+    const now = Date.now();
+    const lower = x => String(x || '').toLowerCase();
     const done = new Set(this.state.completedIds || []);
     let ctx = null;
+    const kept = p => { ctx = ctx || this.keepContext(roster); return this.keepReasons(p, ctx).length > 0; };
     const out = [];
     list.forEach(e => {
       const w = this.eventMoveWindow(e);
       if (!Number.isFinite(w.start) || !Number.isFinite(w.end) || w.end < now) return;
       roster.forEach(p => {
-        if (done.has(p.idx) || String(p.name).toLowerCase() !== String(e.species).toLowerCase()) return;
+        if (done.has(p.idx) || lower(p.name) !== lower(e.species)) return;
         const evo = this.evoInfoFor(p);
         if (!evo || !evo.to) return;
-        if (e.to && String(evo.to).toLowerCase() !== String(e.to).toLowerCase()) return;
-        ctx = ctx || this.keepContext(roster);
-        if (!this.keepReasons(p, ctx).length) return;
+        if (e.to && lower(evo.to) !== lower(e.to)) return;
+        if (!kept(p)) return;
         const worth = this.eventMoveWorth(p, e, evo.to);
         const active = w.start <= now;
         const short = evo.ready === false;
-        out.push({ p, e, evo, to: evo.to, move: e.move, kind: e.kind, start: w.start, end: w.end, active, short, worth,
+        out.push({ p, e, evo, to: evo.to, move: e.move, kind: e.kind, start: w.start, end: w.end, active, short, worth, likely: false,
           held: worth.worth && !active && !short, days: Math.max(0, Math.ceil((w.start - now) / 86400000)) });
       });
     });
-    return out.sort((a, b) => (b.active - a.active) || (b.worth.worth - a.worth.worth) || (a.start - b.start));
+    // A Community Day whose featured Pokemon is announced but whose move is not on the page yet: the last evolution of the featured line
+    // nearly always teaches an exclusive move that day, so it is held (and says so) rather than evolved on a normal day and missed.
+    feedEvents.forEach(ev => {
+      if (ev.type !== 'community-day' || !(ev.spawns || []).length) return;
+      const w = { start: new Date(ev.start).getTime(), end: new Date(ev.end).getTime() };
+      if (!Number.isFinite(w.start) || !Number.isFinite(w.end) || w.end < now) return;
+      roster.forEach(p => {
+        if (done.has(p.idx)) return;
+        const evo = this.evoInfoFor(p);
+        if (!evo || !evo.to) return;
+        const chain = this.evoChainNames(p).map(lower);
+        const family = new Set(); ev.spawns.forEach(n => this.evoChainNamesRaw({ name: n, form: p.form }).forEach(x => family.add(lower(x))));
+        if (!family.has(lower(p.name)) || chain.indexOf(lower(evo.to)) !== chain.length - 1) return;
+        if (list.some(e => e.eventId === ev.id && lower(e.species) === lower(p.name))) return;   // the announced move wins
+        if (!kept(p)) return;
+        const active = w.start <= now, short = evo.ready === false;
+        out.push({ p, e: { eventId: ev.id, eventName: ev.name }, evo, to: evo.to, move: null, kind: null, start: w.start, end: w.end, active, short,
+          worth: { worth: false, exclusive: true, leagues: [], raidGain: null }, likely: true,
+          held: !active && !short, days: Math.max(0, Math.ceil((w.start - now) / 86400000)) });
+      });
+    });
+    return out.sort((a, b) => (b.active - a.active) || ((b.worth.worth || b.likely) - (a.worth.worth || a.likely)) || (a.start - b.start));
+  }
+
+  // Community Days (and similar events) on the calendar whose featured Pokemon is not announced yet. Nothing can be held for them,
+  // but they are listed so a final evolution is not done on a normal day just before one.
+  eventWatchList() {
+    const now = Date.now();
+    return ((this.state.feed && this.state.feed.events) || []).filter(ev => ev.type === 'community-day' && !(ev.spawns || []).length && new Date(ev.end).getTime() >= now)
+      .sort((a, b) => new Date(a.start) - new Date(b.start)).slice(0, 4);
+  }
+
+  // " · free on Tue 17 Nov: evolve into Blastoise" for a Pokemon whose evolution during an upcoming event teaches the move for free.
+  eventFreeNote(p) {
+    const o = this.eventEvolveOpps().filter(x => x.p.idx === p.idx && (x.worth.worth || x.likely));
+    if (!o.length) return '';
+    const x = o[0];
+    const d = new Date(x.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    return ' · ' + (x.likely ? 'may be free on ' : 'free on ') + d + ': evolve into ' + x.to + (x.move ? ' for ' + x.move : ' (move not announced yet)');
   }
 
   eventHeldIds(rosterIn) {
@@ -17604,7 +17657,7 @@ class Component extends DCLogic {
       const role = this.hasRaidRole(p, this.raidRoleTypeBest(roster));
       const bits = [];
       if (prof.now) bits.push('now ' + prof.now.dps.toFixed(1) + ' DPS');
-      if (prof.ceil) bits.push('best possible ' + prof.ceil.dps.toFixed(1) + ' DPS' + (prof.ceil.legacy ? ' (needs an Elite TM)' : ''));
+      if (prof.ceil) bits.push('best possible ' + prof.ceil.dps.toFixed(1) + ' DPS' + (prof.ceil.legacy ? ' (needs an Elite TM' + this.eventFreeNote(p) + ')' : ''));
       out.push({ label: 'RAID', text: (role ? 'Has a raid role \u2014 within 90% of your best attacker of its type' : 'No raid role \u2014 another of your attackers of its type rates clearly higher') + ' (' + bits.join(', ') + ').' });
     } else {
       out.push({ label: 'RAID', text: 'No damage data for its moves, so no raid rating.' });
@@ -19403,7 +19456,7 @@ class Component extends DCLogic {
             });
             const missing = moves.filter(x => x.mark === '+').map(x => x.name);
             return { label, tier: tier ? tier.tier + ' TIER' : '', tierColor: tierColor(tier && tier.tier), moves,
-              status: missing.length ? 'Missing: ' + moves.filter(x => x.mark === '+').map(x => x.name + (this.needsEliteTM(formName, p.form, x.name) ? ' (Elite TM)' : '')).join(', ') : 'You already have the full recommended moveset' };
+              status: missing.length ? 'Missing: ' + moves.filter(x => x.mark === '+').map(x => x.name + (this.needsEliteTM(formName, p.form, x.name) ? ' (Elite TM' + this.eventFreeNote(p) + ')' : '')).join(', ') : 'You already have the full recommended moveset' };
           }).filter(Boolean);
           return rows.length ? rows : null;
         })(),
@@ -19662,6 +19715,7 @@ class Component extends DCLogic {
     // here rather than per key.
     const evoQueueAll = this.evolveQueue();
     const eventOpps = this.eventEvolveOpps(roster);
+    const eventWatch = this.eventWatchList();
     const triageAll = this.triageQueue();
     const dustPlan = this.dustPlan();
     const candyAiBusy = this.state.candyAiBusy;
@@ -20539,24 +20593,26 @@ class Component extends DCLogic {
         }] : []),
 
       todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' + (this._evolveSkipped ? ' \u00b7 ' + this._evolveSkipped + ' hidden: you would transfer them' : '') + (this._evolveHeld ? ' \u00b7 ' + this._evolveHeld + ' waiting for an event' : '') : '',
-      todayEventEvolve: eventOpps.length ? eventOpps.slice(0, 12).map(o => {
+      todayEventSection: (eventOpps.length || eventWatch.length) ? true : null,
+      todayEventWatch: eventWatch.length ? 'Coming up, Pokemon not announced yet: ' + eventWatch.map(ev => new Date(ev.start).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + ev.name).join(' · ') + '. Hold a final evolution you care about until the Pokemon is named (usually 1–2 weeks ahead).' : '',
+      todayEventEvolve: eventOpps.slice(0, 12).map(o => {
         const fmtD = t => new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
         const fmtT = t => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
         const kindWord = o.kind === 'fast' ? 'Fast' : 'Charged';
         const why = [o.worth.leagues.length ? 'in the recommended ' + o.worth.leagues.map(l => l[0].toUpperCase() + l.slice(1)).join('/') + ' moves' : null, o.worth.raidGain != null && o.worth.raidGain >= 3 ? '+' + o.worth.raidGain + '% raid rating' : null].filter(Boolean).join(', ');
         return {
-          name: o.p.name + (o.p.form ? ' \u00b7 ' + o.p.form : ''),
+          name: o.p.name + (o.p.form ? ' · ' + o.p.form : ''),
           spriteRef: this.makeSpriteRefByDex(o.p.dex, o.p.form),
           badgeColor: this.dsTypeColor(o.p),
           initial: (o.p.name || '?').charAt(0),
-          arrow: (o.p.cp != null ? o.p.cp + ' CP  \u2192  ' : '\u2192  ') + o.to + ' with ' + o.move + ' (' + kindWord + ')',
-          when: o.active ? 'EVOLVE NOW \u00b7 until ' + fmtD(o.end) + ' ' + fmtT(o.end) : (o.held ? 'WAIT \u00b7 ' : 'EVENT \u00b7 ') + fmtD(o.start) + ' ' + fmtT(o.start) + ' (in ' + o.days + (o.days === 1 ? ' day' : ' days') + ') to ' + fmtD(o.end) + ' ' + fmtT(o.end),
+          arrow: (o.p.cp != null ? o.p.cp + ' CP  →  ' : '→  ') + o.to + (o.move ? ' with ' + o.move + ' (' + kindWord + ')' : ' with its exclusive move'),
+          when: o.active ? 'EVOLVE NOW · until ' + fmtD(o.end) + ' ' + fmtT(o.end) : (o.held ? 'WAIT · ' : 'EVENT · ') + fmtD(o.start) + ' ' + fmtT(o.start) + ' (in ' + o.days + (o.days === 1 ? ' day' : ' days') + ') to ' + fmtD(o.end) + ' ' + fmtT(o.end),
           whenColor: o.active ? 'var(--grass-700)' : o.held ? 'var(--type-electric)' : 'var(--ink-400)',
           border: o.active ? 'var(--grass-500)' : o.held ? 'var(--type-electric)' : 'var(--line-200)',
-          note: [o.e.eventName, o.worth.worth ? 'Saves an Elite TM' + (why ? ' \u2014 ' + why : '') : 'Exclusive move, value not rated', o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' \u00b7 '),
+          note: [o.e.eventName, o.likely ? 'Move not announced yet: the last evolution of a Community Day line usually learns an exclusive move that day. Check the move when it is announced' : (o.worth.worth ? 'Saves an Elite TM' + (why ? ' — ' + why : '') : 'Exclusive move, value not rated'), o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' · '),
           onClick: () => this.openDetail(o.p)
         };
-      }) : null,
+      }),
       todayEventEvolveCount: eventOpps.length ? eventOpps.filter(o => o.held).length + ' held \u00b7 ' + eventOpps.filter(o => o.active).length + ' open now' : '',
       todayEvolveEmpty: evoQueueAll.length ? null : true,
       todayEvolve: evoShown.map(row => ({
