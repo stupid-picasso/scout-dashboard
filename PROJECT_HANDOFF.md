@@ -615,3 +615,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 ## Event moves judged across the whole line (2026-11-14)
 - `eventEvolveOppsCompute`: a copy 1-2 stages before the event form counts (Axew/Fraxure/Haxorus, Squirtle/Wartortle/Blastoise). `to` is the event form, `steps` the stages to go, `next` the first step. Only `steps === 1` copies are held (the earlier stage may evolve any time); multi-step copies need the whole chain candy (`evo.chainReady`).
 - `skip`: `replacedBy` finds a better copy of the line and the copy is best in no Great/Ultra league -> row says SKIP (never held, candy not worth spending). Test EVENTMOVE-03.
+
+## Event rows share one candy pool (2026-11-14)
+- Rows heading to the same form from the same event are grouped; the pool (`evo.have`) is spent best copy first (league rank, then IV) against the whole remaining chain cost (`evo.chainNeed` for 2-step copies). Unfunded rows get `short`, `shortBy`, are never held. Rows show the form's league rank/tier and the first keep reason. Test EVENTMOVE-04.
