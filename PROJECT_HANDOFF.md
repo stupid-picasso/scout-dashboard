@@ -597,3 +597,8 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - `pvpTeamFor`: a copy is identified by the form it is played as (`pvpFormName`), so Froakie-as-Greninja and Greninja are one candidate; an unevolved copy needs +1 rank to beat an evolved one and is not simulated as itself.
 - `powerUpPayoff`: skips copies `keepReasons` would let go (including copies replaced by a better copy in their line).
 - Test LINEUSE-01.
+
+## Event-day moves: evolve during an event (2026-11-14)
+- `scripts/update_event_moves.py` (run by the Update Events & GBL workflow, `continue-on-error`) reads upcoming event pages from `data/feed.json` links, extracts "Evolve X during the event ... to get a Y that knows the Charged/Fast Attack Z" (plus the "up to N hours afterwards" grace) into `data/event_moves.json` (`moves`, `unparsed`). Unreadable pages keep their old entries; never writes over a good file when every page fails. `scripts/test_event_moves.py` covers the patterns.
+- App: `state.eventMoves` (loaded in `loadFeed`, cached `scout.eventmoves.v1`). `eventEvolveOpps()` matches kept, owned Pokemon to entries; `eventMoveWorth` = move is Elite-only/not in the regular pool AND (in PvPoke's recommended set for Great/Ultra/Master OR raid rating +3%). Held = worth, window not open, funded (`evo.ready !== false`). `evolveQueue` skips held copies (`_evolveHeld`, shown in the Evolve now count). Today has an "EVOLVE AT AN EVENT" section (held / open now, window, saving an Elite TM). Unrated exclusive moves (e.g. a brand-new move missing from the data) are listed but never held.
+- Test EVENTMOVE-01. Not done: Elite-TM purchase advice does not yet say "free on <date>" (an already-evolved Pokemon cannot learn the event move).
