@@ -611,3 +611,7 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 
 ## "Caught or evolved during the event" lists (2026-11-14)
 - `update_event_moves.parse_table` reads the Wild Area / Go Fest "featured attacks" block (Move / Fast|Charged Attack / Pokemon) into entries with `species: null`, `scope: 'caught-or-evolved'`. The app matches them to any owned Pokemon whose evolution is `to` (outfit names match on their trailing species). Test EVENTMOVE-01 (anyMon case) and `test_event_moves.py`.
+
+## Event moves judged across the whole line (2026-11-14)
+- `eventEvolveOppsCompute`: a copy 1-2 stages before the event form counts (Axew/Fraxure/Haxorus, Squirtle/Wartortle/Blastoise). `to` is the event form, `steps` the stages to go, `next` the first step. Only `steps === 1` copies are held (the earlier stage may evolve any time); multi-step copies need the whole chain candy (`evo.chainReady`).
+- `skip`: `replacedBy` finds a better copy of the line and the copy is best in no Great/Ultra league -> row says SKIP (never held, candy not worth spending). Test EVENTMOVE-03.

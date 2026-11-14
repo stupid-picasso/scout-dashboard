@@ -1344,6 +1344,26 @@ module.exports = async function suiteB() {
     expect(r.watch.length === 1 && r.watch[0] === 'Far Community Day', 'the far-off Community Day is on the watch list: ' + JSON.stringify(r));
     expect(/may be free on .*evolve into Blastoise/.test(r.note) && r.none === '', 'the Elite TM advice says when it may be free, and only for the held Pokemon: ' + JSON.stringify(r));
   });
+  await T('EVENTMOVE-03', 'Today', 'An event move is judged across the whole line: a Squirtle two stages early counts, and of two copies only the better Blastoise is worth the candy (the other is marked SKIP)', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('ln1', 'Squirtle', 7, [0, 15, 15], 300, 10), mk('ln2', 'Wartortle', 8, [1, 14, 15], 1200, 25), mk('ln3', 'Wartortle', 8, [12, 5, 6], 1100, 25)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 400 } }, tab: 'today' });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
+      const keep = l.state.eventMoves;
+      l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Blastoise', move: 'Hydro Cannon', kind: 'charged', graceHours: 0, scope: 'caught-or-evolved' }] } });
+      await new Promise(r => setTimeout(r, 150));
+      const opps = l.eventEvolveOpps();
+      const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
+      const out = { rows: opps.map(o => [o.p.idx, o.steps, o.skip, o.held, o.short]), kept: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).length), rep: ros.map(p => { const r = l.replacedBy(p, ctx); return p.idx + '>' + (r ? r.q.idx + '/' + r.lk : '-'); }) };
+      l.setState({ eventMoves: keep }); return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
+    const sq = r && r.rows.find(x => x[0] === 'ln1'), w2 = r && r.rows.find(x => x[0] === 'ln2');
+    expect(sq && sq[1] === 2, 'the Squirtle two stages early is listed with two steps to go: ' + JSON.stringify(r));
+    const w3 = r.rows.find(x => x[0] === 'ln3');
+    expect(w2 && w2[2] === false && w3 && w3[2] === true && w3[3] === false, 'the better Wartortle is not skipped; the 93% one that it replaces is marked SKIP and never held: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
