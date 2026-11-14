@@ -1294,6 +1294,32 @@ module.exports = async function suiteB() {
     const gone = (r.kept.filter(x => /:0$/.test(x)).map(x => x.split(':')[0]));
     expect(gone.every(id => r.payoff.indexOf(id) < 0), 'the power-up list never includes a copy the keep check would let go: ' + JSON.stringify(r));
   });
+  await T('EVENTMOVE-01', 'Today', 'An event that teaches an Elite-TM move on evolution holds the evolve until the window, opens it during the window, and never holds one it cannot fund or one that gains nothing', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('em1', 'Wartortle', 8, [15, 15, 15], 1200, 25)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 300 } }, tab: 'home' });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    const run = async (entry, candy) => s.page.evaluate(async ({ entry, candy }) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      l.setState({ eventMoves: { moves: entry ? [entry] : [] }, candyInventory: { ...l.state.candyInventory, squirtle: { name: 'Squirtle', candy } } }); await new Promise(r => setTimeout(r, 150));
+      const opps = l.eventEvolveOpps(); const q = l.evolveQueue();
+      return { n: opps.length, held: opps.length ? opps[0].held : null, active: opps.length ? opps[0].active : null, worth: opps.length ? opps[0].worth.worth : null, short: opps.length ? opps[0].short : null, days: opps.length ? opps[0].days : null, inQueue: q.some(r => r.p.idx === 'em1') }; } } return null; }, { entry, candy });
+    const HOUR = 3600000, iso = t => new Date(t).toISOString().slice(0, 23);
+    const mkE = (startOff, endOff, move) => ({ eventId: 't', eventName: 'Test Community Day', type: 'community-day', start: iso(Date.now() + startOff).replace('Z', ''), end: iso(Date.now() + endOff).replace('Z', ''), species: 'Wartortle', to: 'Blastoise', move, kind: 'charged', graceHours: 0, link: 'x' });
+    const fut = await run(mkE(3 * 24 * HOUR, 3 * 24 * HOUR + 3 * HOUR, 'Hydro Cannon'), 300);
+    const open = await run(mkE(-1 * HOUR, 2 * HOUR, 'Hydro Cannon'), 300);
+    const short = await run(mkE(3 * 24 * HOUR, 3 * 24 * HOUR + 3 * HOUR, 'Hydro Cannon'), 5);
+    const dull = await run(mkE(3 * 24 * HOUR, 3 * 24 * HOUR + 3 * HOUR, 'Zap Cannon'), 300);
+    const past = await run(mkE(-3 * 24 * HOUR, -3 * 24 * HOUR + 3 * HOUR, 'Hydro Cannon'), 300);
+    const none = await run(null, 300);
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
+    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { g.stateNode.logic.setState({ eventMoves: null }); return; } } });
+    expect(fut && fut.n === 1 && fut.worth === true && fut.held === true && fut.days === 3 && fut.inQueue === false, 'an upcoming Hydro Cannon window holds the Wartortle out of Evolve now: ' + JSON.stringify(fut));
+    expect(open && open.active === true && open.held === false && open.inQueue === true, 'inside the window it is no longer held: ' + JSON.stringify(open));
+    expect(short && short.n === 1 && short.short === true && short.held === false, 'without the candy it is flagged short and not held: ' + JSON.stringify(short));
+    expect(dull && dull.n === 1 && dull.worth === false && dull.held === false && dull.inQueue === true, 'a move that gains nothing never holds an evolution: ' + JSON.stringify(dull));
+    expect(past && past.n === 0 && past.inQueue === true, 'a finished event is ignored: ' + JSON.stringify(past));
+    expect(none && none.n === 0 && none.inQueue === true, 'no event data changes nothing: ' + JSON.stringify(none));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
