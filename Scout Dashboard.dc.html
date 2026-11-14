@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.292</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.293</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -15549,19 +15549,30 @@ class Component extends DCLogic {
       const w = this.eventMoveWindow(e);
       if (!Number.isFinite(w.start) || !Number.isFinite(w.end) || w.end < now) return;
       // `species` is the Pokemon to evolve; without it (Wild Area / Go Fest lists: "caught or evolved during the event") any Pokemon
-      // whose evolution is `to` qualifies. Outfit variants ("Modern Jacket Machamp") match on their trailing species name.
+      // whose line leads to `to` qualifies. A copy one or two stages earlier counts too (Axew, Fraxure and Haxorus all compete for the one
+      // Haxorus slot): it is judged on the form it would become, and a copy that a better copy of the line replaces is marked SKIP so the
+      // candy is not spent on it. Outfit variants ("Modern Jacket Machamp") match on their trailing species name.
+      if (!e.to) return;
       const sameTo = a => lower(a) === lower(e.to) || lower(e.to).endsWith(' ' + lower(a));
       roster.forEach(p => {
-        if (done.has(p.idx) || (e.species ? lower(p.name) !== lower(e.species) : !e.to)) return;
+        if (done.has(p.idx)) return;
         const evo = this.evoInfoFor(p);
         if (!evo || !evo.to) return;
-        if (e.to && !sameTo(evo.to)) return;
+        const chain = this.evoChainNames(p);
+        const at = chain.findIndex(sameTo);
+        if (at < 1) return;                                              // already that form, or not in its line
+        if (e.species && !chain.slice(0, at + 1).some(n => lower(n) === lower(e.species))) return;
         if (!kept(p)) return;
-        const worth = this.eventMoveWorth(p, e, evo.to);
+        ctx = ctx || this.keepContext(roster);
+        const target = chain[at];
+        const worth = this.eventMoveWorth(p, e, target);
         const active = w.start <= now;
-        const short = evo.ready === false;
-        out.push({ p, e, evo, to: evo.to, move: e.move, kind: e.kind, start: w.start, end: w.end, active, short, worth, likely: false,
-          held: worth.worth && !active && !short, days: Math.max(0, Math.ceil((w.start - now) / 86400000)) });
+        const short = evo.ready === false || (at > 1 && evo.chainReady === false);
+        const rep = this.replacedBy(p, ctx);
+        const skip = !!rep && rep.lk !== 'little' && this.leagueBestFor(p, ctx).filter(x => !/Little Cup/.test(x)).length === 0;   // replaced, and best in no league
+        out.push({ p, e, evo, to: target, steps: at, next: evo.to, move: e.move, kind: e.kind, start: w.start, end: w.end, active, short, worth, likely: false,
+          skip, better: skip ? rep : null,
+          held: worth.worth && !active && !short && at === 1 && !skip, days: Math.max(0, Math.ceil((w.start - now) / 86400000)) });
       });
     });
     // A Community Day whose featured Pokemon is announced but whose move is not on the page yet: the last evolution of the featured line
@@ -15585,7 +15596,7 @@ class Component extends DCLogic {
           held: !active && !short, days: Math.max(0, Math.ceil((w.start - now) / 86400000)) });
       });
     });
-    return out.sort((a, b) => (b.active - a.active) || ((b.worth.worth || b.likely) - (a.worth.worth || a.likely)) || (a.start - b.start));
+    return out.sort((a, b) => (!!a.skip - !!b.skip) || (b.active - a.active) || ((b.worth.worth || b.likely) - (a.worth.worth || a.likely)) || (a.start - b.start));
   }
 
   // Community Days (and similar events) on the calendar whose featured Pokemon is not announced yet. Nothing can be held for them,
@@ -19583,10 +19594,10 @@ class Component extends DCLogic {
           badgeColor: this.dsTypeColor(o.p),
           initial: (o.p.name || '?').charAt(0),
           arrow: (o.p.cp != null ? o.p.cp + ' CP  →  ' : '→  ') + o.to + (o.move ? ' with ' + o.move + ' (' + kindWord + ')' : ' with its exclusive move'),
-          when: o.active ? 'EVOLVE NOW · until ' + fmtD(o.end) + ' ' + fmtT(o.end) : (o.held ? 'WAIT · ' : 'EVENT · ') + fmtD(o.start) + ' ' + fmtT(o.start) + ' (in ' + o.days + (o.days === 1 ? ' day' : ' days') + ') to ' + fmtD(o.end) + ' ' + fmtT(o.end),
-          whenColor: o.active ? 'var(--grass-700)' : o.held ? 'var(--type-electric)' : 'var(--ink-400)',
-          border: o.active ? 'var(--grass-500)' : o.held ? 'var(--type-electric)' : 'var(--line-200)',
-          note: [o.e.eventName + (o.e.scope === 'caught-or-evolved' ? ' (caught or evolved during the event)' : ''), o.likely ? 'Move not announced yet: the last evolution of a Community Day line usually learns an exclusive move that day. Check the move when it is announced' : (o.worth.worth ? 'Saves an Elite TM' + (why ? ' — ' + why : '') : 'Exclusive move, value not rated'), o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' · '),
+          when: o.skip ? 'SKIP · a better copy of this line exists' : o.active ? (o.steps > 1 ? 'EVOLVE ' + o.next + ' NOW, THEN ' + o.to + ' · until ' : 'EVOLVE NOW · until ') + fmtD(o.end) + ' ' + fmtT(o.end) : (o.held ? 'WAIT · ' : 'EVENT · ') + fmtD(o.start) + ' ' + fmtT(o.start) + ' (in ' + o.days + (o.days === 1 ? ' day' : ' days') + ') to ' + fmtD(o.end) + ' ' + fmtT(o.end),
+          whenColor: o.skip ? 'var(--type-fighting)' : o.active ? 'var(--grass-700)' : o.held ? 'var(--type-electric)' : 'var(--ink-400)',
+          border: o.skip ? 'var(--line-200)' : o.active ? 'var(--grass-500)' : o.held ? 'var(--type-electric)' : 'var(--line-200)',
+          note: [o.skip ? 'Your ' + o.better.q.cp + ' CP ' + o.better.q.name + ' (' + Math.round(o.better.rank) + '% vs ' + Math.round(o.better.mine) + '%) is the better ' + o.to + ': evolving this one wastes candy' : null, o.steps > 1 && !o.skip ? 'Evolve into ' + o.next + ' whenever, then into ' + o.to + ' inside the window' : null, o.e.eventName + (o.e.scope === 'caught-or-evolved' ? ' (caught or evolved during the event)' : ''), o.likely ? 'Move not announced yet: the last evolution of a Community Day line usually learns an exclusive move that day. Check the move when it is announced' : (o.worth.worth ? 'Saves an Elite TM' + (why ? ' — ' + why : '') : 'Exclusive move, value not rated'), o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' · '),
           onClick: () => this.openDetail(o.p)
         };
       }),
