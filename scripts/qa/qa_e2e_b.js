@@ -1320,6 +1320,28 @@ module.exports = async function suiteB() {
     expect(past && past.n === 0 && past.inQueue === true, 'a finished event is ignored: ' + JSON.stringify(past));
     expect(none && none.n === 0 && none.inQueue === true, 'no event data changes nothing: ' + JSON.stringify(none));
   });
+  await T('EVENTMOVE-02', 'Today', 'A Community Day with the Pokemon named but the move not announced holds the last evolution as a reminder; far-off Community Days are listed; Elite TM advice says when it is free', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('em2', 'Wartortle', 8, [15, 15, 15], 1200, 25), mk('em3', 'Squirtle', 7, [15, 15, 15], 300, 10)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 300 } }, tab: 'today' });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
+      const D = 86400000;
+      const keep = { feed: l.state.feed, eventMoves: l.state.eventMoves };
+      l.setState({ eventMoves: { moves: [] }, feed: { events: [
+        { id: 'cd1', name: 'Squirtle Community Day', type: 'community-day', start: iso(5 * D), end: iso(5 * D + 3 * 3600000), spawns: ['Squirtle'] },
+        { id: 'cd2', name: 'Far Community Day', type: 'community-day', start: iso(40 * D), end: iso(40 * D + 3 * 3600000) }], gbl: [] } });
+      await new Promise(r => setTimeout(r, 150));
+      const opps = l.eventEvolveOpps(); const q = l.evolveQueue();
+      const out = { likely: opps.map(o => [o.p.idx, o.likely, o.held]), inQueue: q.map(x => x.p.idx), watch: l.eventWatchList().map(x => x.name), note: l.eventFreeNote(l.effectiveRosterForMatch().find(p => p.idx === 'em2')), none: l.eventFreeNote(l.effectiveRosterForMatch().find(p => p.idx === 'em3')) };
+      l.setState(keep); return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
+    expect(r && r.likely.some(x => x[0] === 'em2' && x[1] === true && x[2] === true) && r.inQueue.indexOf('em2') < 0, 'the final evolution of the featured line is held with a reminder: ' + JSON.stringify(r));
+    expect(r.likely.every(x => x[0] !== 'em3'), 'a Squirtle (not the last step) is not held: ' + JSON.stringify(r));
+    expect(r.watch.length === 1 && r.watch[0] === 'Far Community Day', 'the far-off Community Day is on the watch list: ' + JSON.stringify(r));
+    expect(/may be free on .*evolve into Blastoise/.test(r.note) && r.none === '', 'the Elite TM advice says when it may be free, and only for the held Pokemon: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
