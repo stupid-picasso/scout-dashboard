@@ -1364,6 +1364,25 @@ module.exports = async function suiteB() {
     const w3 = r.rows.find(x => x[0] === 'ln3');
     expect(w2 && w2[2] === false && w3 && w3[2] === true && w3[3] === false, 'the better Wartortle is not skipped; the 93% one that it replaces is marked SKIP and never held: ' + JSON.stringify(r));
   });
+  await T('EVENTMOVE-04', 'Today', 'Copies heading to the same event form share one candy pool: the best copy is funded first and the rest are flagged short, with rank and keep reason shown', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('mc1', 'Machop', 66, [1, 15, 15], 300, 10), mk('mc2', 'Machop', 66, [2, 14, 14], 300, 10), mk('mc3', 'Machop', 66, [3, 13, 14], 300, 10)].map(x => ({ ...x, favorite: true })), roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { machop: { name: 'Machop', candy: 130 } }, tab: 'today' });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
+      const keep = l.state.eventMoves;
+      l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Modern Jacket Machamp', move: 'Karate Chop', kind: 'fast', graceHours: 0, scope: 'caught-or-evolved' }] } });
+      await new Promise(r => setTimeout(r, 150));
+      const out = l.eventEvolveOpps().filter(o => /^mc/.test(o.p.idx)).map(o => ({ id: o.p.idx, steps: o.steps, skip: !!o.skip, fundable: o.fundable, short: o.short, shortBy: o.shortBy, group: o.groupSize, rank: Math.round(o.rank * 10) / 10, why: !!o.why }));
+      l.setState({ eventMoves: keep }); return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
+    const live = r.filter(x => !x.skip);
+    expect(live.length >= 2 && live.every(x => x.steps === 2 && x.group === live.length), 'the Machop copies are grouped into one pool: ' + JSON.stringify(r));
+    expect(live.filter(x => x.fundable === true).length === 1 && live.filter(x => x.fundable === false).every(x => x.short && x.shortBy > 0), '130 candy funds exactly one 125-candy chain, the rest are short: ' + JSON.stringify(r));
+    const funded = live.find(x => x.fundable === true);
+    expect(live.every(x => x.rank <= funded.rank + 1e-9), 'the funded copy is the best-ranked one: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];

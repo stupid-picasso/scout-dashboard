@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.293</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.294</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -15596,6 +15596,28 @@ class Component extends DCLogic {
           held: !active && !short, days: Math.max(0, Math.ceil((w.start - now) / 86400000)) });
       });
     });
+    // Copies heading to the same form from the same event share ONE candy pool, so the pool is spent best copy first (by league rank,
+    // then IV) and the rest are flagged short instead of all looking affordable. `cost` is the candy the whole remaining chain takes.
+    const groups = {};
+    out.forEach(o => {
+      o.rank = 0;
+      ['great', 'ultra'].forEach(lk => { const a = this.pvpAssess(o.p, lk); if (a && a.rank > o.rank) { o.rank = a.rank; o.rankLeague = lk; o.rankTier = a.tier; } });
+      o.why = this.keepReasons(o.p, ctx || this.keepContext(roster))[0] || '';
+      if (o.skip) return;
+      (groups[(o.e.eventId || '') + '|' + String(o.to).toLowerCase()] = groups[(o.e.eventId || '') + '|' + String(o.to).toLowerCase()] || []).push(o);
+    });
+    Object.values(groups).forEach(g => {
+      g.sort((a, b) => (b.rank - a.rank) || ((b.p.ivAvg || 0) - (a.p.ivAvg || 0)));
+      const haves = g.map(o => o.evo.have).filter(h => h != null);
+      let remaining = haves.length ? Math.max(...haves) : null;
+      g.forEach(o => {
+        const cost = o.evo.chainNeed != null && o.steps > 1 ? o.evo.chainNeed : o.evo.need;
+        o.groupSize = g.length; o.poolHave = haves.length ? Math.max(...haves) : null; o.cost = cost;
+        if (remaining == null || cost == null) { o.fundable = null; return; }
+        if (remaining >= cost) { o.fundable = true; remaining -= cost; } else { o.fundable = false; o.shortBy = cost - remaining; o.short = true; o.held = false; }
+        o.candyAfter = remaining;
+      });
+    });
     return out.sort((a, b) => (!!a.skip - !!b.skip) || (b.active - a.active) || ((b.worth.worth || b.likely) - (a.worth.worth || a.likely)) || (a.start - b.start));
   }
 
@@ -19597,7 +19619,7 @@ class Component extends DCLogic {
           when: o.skip ? 'SKIP · a better copy of this line exists' : o.active ? (o.steps > 1 ? 'EVOLVE ' + o.next + ' NOW, THEN ' + o.to + ' · until ' : 'EVOLVE NOW · until ') + fmtD(o.end) + ' ' + fmtT(o.end) : (o.held ? 'WAIT · ' : 'EVENT · ') + fmtD(o.start) + ' ' + fmtT(o.start) + ' (in ' + o.days + (o.days === 1 ? ' day' : ' days') + ') to ' + fmtD(o.end) + ' ' + fmtT(o.end),
           whenColor: o.skip ? 'var(--type-fighting)' : o.active ? 'var(--grass-700)' : o.held ? 'var(--type-electric)' : 'var(--ink-400)',
           border: o.skip ? 'var(--line-200)' : o.active ? 'var(--grass-500)' : o.held ? 'var(--type-electric)' : 'var(--line-200)',
-          note: [o.skip ? 'Your ' + o.better.q.cp + ' CP ' + o.better.q.name + ' (' + Math.round(o.better.rank) + '% vs ' + Math.round(o.better.mine) + '%) is the better ' + o.to + ': evolving this one wastes candy' : null, o.steps > 1 && !o.skip ? 'Evolve into ' + o.next + ' whenever, then into ' + o.to + ' inside the window' : null, o.e.eventName + (o.e.scope === 'caught-or-evolved' ? ' (caught or evolved during the event)' : ''), o.likely ? 'Move not announced yet: the last evolution of a Community Day line usually learns an exclusive move that day. Check the move when it is announced' : (o.worth.worth ? 'Saves an Elite TM' + (why ? ' — ' + why : '') : 'Exclusive move, value not rated'), o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' · '),
+          note: [o.skip ? 'Your ' + o.better.q.cp + ' CP ' + o.better.q.name + ' (' + Math.round(o.better.rank) + '% vs ' + Math.round(o.better.mine) + '%) is the better ' + o.to + ': evolving this one wastes candy' : null, o.steps > 1 && !o.skip ? 'Evolve into ' + o.next + ' whenever, then into ' + o.to + ' inside the window' : null, o.rank ? 'As ' + o.to + ': ' + (o.rankLeague === 'ultra' ? 'Ultra' : 'Great') + ' League rank ' + Math.round(o.rank) + '%' + (o.rankTier ? ' (tier ' + o.rankTier + ')' : '') : null, o.why ? 'Kept: ' + o.why : null, (o.groupSize > 1 && !o.skip) ? 'Candy pool ' + (o.poolHave != null ? o.poolHave : '?') + ' shared by ' + o.groupSize + ' copies, ' + (o.fundable === true ? 'this one is funded (' + o.candyAfter + ' left after it)' : o.fundable === false ? 'NOT enough for this one, ' + o.shortBy + ' candy short' : 'stock unknown') : (o.fundable === false ? 'Needs ' + o.cost + ' candy, ' + o.shortBy + ' short' : null), o.e.eventName + (o.e.scope === 'caught-or-evolved' ? ' (caught or evolved during the event)' : ''), o.likely ? 'Move not announced yet: the last evolution of a Community Day line usually learns an exclusive move that day. Check the move when it is announced' : (o.worth.worth ? 'Saves an Elite TM' + (why ? ' — ' + why : '') : 'Exclusive move, value not rated'), o.short ? 'Candy or item short: not held back, evolve it when you can' : null].filter(Boolean).join(' · '),
           onClick: () => this.openDetail(o.p)
         };
       }),
