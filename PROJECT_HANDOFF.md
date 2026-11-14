@@ -608,3 +608,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - `eventWatchList()`: upcoming Community Days with no Pokemon named yet are listed in the Today section (next 4).
 - `eventFreeNote(p)`: " · free on <date>: evolve into X for <move>" appended to the Elite TM advice (TM targets, raid line in the detail sheet, PvP missing-moves status).
 - Test EVENTMOVE-02. A held copy that is not worth waiting for (value not rated) is still never held when the move is announced.
+
+## "Caught or evolved during the event" lists (2026-11-14)
+- `update_event_moves.parse_table` reads the Wild Area / Go Fest "featured attacks" block (Move / Fast|Charged Attack / Pokemon) into entries with `species: null`, `scope: 'caught-or-evolved'`. The app matches them to any owned Pokemon whose evolution is `to` (outfit names match on their trailing species). Test EVENTMOVE-01 (anyMon case) and `test_event_moves.py`.
