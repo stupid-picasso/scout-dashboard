@@ -1469,6 +1469,21 @@ module.exports = async function suiteB() {
       return { scrolled, after, transform: nav.style.transform, watched: l._viewportWatched === true }; } } return null; });
     expect(r && r.scrolled === 0 && r.after === 0 && /translateZ/.test(r.transform) && r.watched, 'the tab bar sits on the bottom edge before and after the nudge: ' + JSON.stringify(r));
   });
+  await T('NAVFIX-02', 'Layout', 'The page never scrolls sideways, and the clip sits on the app root, not on body (overflow on body reaches the viewport and iOS then floats the fixed tab bar)', async () => {
+    await s.set({ tab: 'today' }); await s.page.waitForTimeout(400);
+    const r = await s.page.evaluate(async () => {
+      const bodyX = getComputedStyle(document.body).overflowX, htmlX = getComputedStyle(document.documentElement).overflowX;
+      const nav = document.querySelector('[data-navbar]'); const root = nav.parentElement;
+      const rootX = getComputedStyle(root).overflowX;
+      const wide = document.createElement('div'); wide.style.cssText = 'width:3000px;height:10px'; root.appendChild(wide);
+      await new Promise(r => setTimeout(r, 150));
+      const sw = document.scrollingElement.scrollWidth, cw = document.scrollingElement.clientWidth;
+      wide.remove();
+      return { bodyX, htmlX, rootX, sw, cw };
+    });
+    expect(r.bodyX === 'visible' && r.htmlX === 'visible' && r.rootX === 'clip', 'overflow-x is clipped on the app root only: ' + JSON.stringify(r));
+    expect(r.sw <= r.cw, 'an over-wide child does not make the page scroll sideways: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
