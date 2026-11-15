@@ -1498,6 +1498,20 @@ module.exports = async function suiteB() {
     expect(r && r.plain === false && r.gapPlain === 0, 'on a non-iOS browser the bar stays on bottom:0: ' + JSON.stringify(r));
     expect(r.forced === true && r.navBottom === r.vvBottom && /auto/.test(r.navBottomCss) && Math.abs(r.bubBottom - r.expectBub) <= 1 && r.info === true, 'in iOS mode the bar ends exactly on the visual viewport bottom, the bubble sits its offset above it, and the screen numbers can be shown: ' + JSON.stringify(r));
   });
+  await T('CHATMENTION-01', 'Chat', 'A species named in the question is sent to the chat in full (every copy, its family candy, ranks) with the app\'s own cross-stage verdict, even when it is not among the 240 detailed rows', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('cm1', 'Axew', 610, [3, 15, 14], 851, 20), mk('cm2', 'Axew', 610, [10, 12, 11], 761, 20), mk('cm3', 'Fraxure', 611, [2, 14, 15], 1521, 30), mk('cm4', 'Ralts', 280, [10, 10, 10], 200, 10)], roster: [], ivOverrides: {}, candyInventory: { axew: { name: 'Axew', candy: 131, xlCandy: 8 } }, cutTarget: 900 });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(600);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch();
+      return { hit: l.chatMentionLines('which is best, axew or fraxure, for the league?', ros), none: l.chatMentionLines('how are my ralts doing? and hello', ros.filter(p => p.name !== 'Ralts')), plural: l.chatMentionLines('my axews', ros).length }; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {} });
+    const txt = r.hit.join('\n');
+    expect(r.hit.length === 2 && /ASKED ABOUT: the (axew|fraxure) family, 3 owned, candy 131 \+ 8 XL/i.test(txt), 'one family block with all three owned copies and the shared candy: ' + txt.slice(0, 400));
+    expect(/Axew 851CP IV 3\/15\/14/.test(txt) && /Fraxure 1521CP/.test(txt), 'every copy is listed in full: ' + txt.slice(0, 600));
+    expect(/APP VERDICT/.test(txt), 'the app verdict line is there (a ranked line or the none-is-good statement): ' + txt.slice(-400));
+    expect(r.none.length === 0 && r.plural === 2, 'no named species adds nothing, a plural still matches: ' + JSON.stringify(r.none) + ' / ' + r.plural);
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];

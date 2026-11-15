@@ -293,7 +293,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.311</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.312</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -17170,6 +17170,50 @@ class Component extends DCLogic {
     return 'CANDY ON HAND per species (a family shares one pool, e.g. Axew, Fraxure and Haxorus spend Axew candy; "?" = no count scanned yet; XL = Candy XL): ' + parts.slice(0, 260).join('; ') + '.';
   }
 
+  // The chat only carried full detail for 240 of the roster (the 90 best-ranked and the 150 weakest), so a question about a mid-ranked species
+  // ("Axew or Fraxure, which do I invest in?") got "they lack detailed entries, scan them". Every owned Pokemon of a species the message names
+  // (and its evolution family) is now sent in full, with the app's own cross-stage answer per league: which copy of the line is best for the
+  // form it would be played as, and how many evolutions it still needs. Capped at 4 families and 40 Pokemon each.
+  chatMentionLines(text, roster) {
+    const t = String(text || '').toLowerCase();
+    if (!t.trim()) return [];
+    const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const names = [...new Set(roster.map(p => String(p.name || '').toLowerCase()).filter(n => n.length >= 3))];
+    const fams = new Map();
+    names.forEach(n => { if (new RegExp('(^|[^a-z])' + esc(n) + '(s|es)?([^a-z]|$)', 'i').test(t)) { const k = this.candyKey(n); if (!fams.has(k)) fams.set(k, n); } });
+    if (!fams.size) return [];
+    const ctx = this.keepContext(roster);
+    const idx = this.leagueIndexOf(ctx);
+    const lines = [];
+    const LG = { great: 'Great League', ultra: 'Ultra League', little: 'Little Cup' };
+    [...fams.keys()].slice(0, 4).forEach(key => {
+      const fam = roster.filter(p => this.candyKey(p.name) === key).sort((a, b) => (b.cp || 0) - (a.cp || 0)).slice(0, 40);
+      if (!fam.length) return;
+      const ids = new Set(fam.map(p => String(p.idx)));
+      const st = this.candyStockFor(fam[0]) || {};
+      const detail = fam.map(p => {
+        const moves = [p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.promptSafe(this.formatMoveName(n), 24)).join('/') || 'moves not on file';
+        const rk = lk => { const f = this.freshRank(p, lk); const v = f != null ? f : (p[lk] && p[lk].rankPct); return v == null ? '-' : Math.round(v * 10) / 10; };
+        const why = this.keepReasons(p, ctx).slice(0, 2).join('; ');
+        const evo = this.evoInfoFor(p);
+        return this.promptSafe(p.name) + (p.form ? '/' + this.promptSafe(p.form, 16) : '') + ' ' + (p.cp != null ? p.cp + 'CP' : 'CP?') + ' IV ' + (p.atkIV ?? '?') + '/' + (p.defIV ?? '?') + '/' + (p.staIV ?? '?') + (this.isShadow(p) ? ' shadow' : '') + (p.lucky ? ' lucky' : '')
+          + ' GL ' + rk('great') + '% UL ' + rk('ultra') + '% ' + moves + (evo && evo.to ? ' | next evolution ' + evo.to + (evo.need != null ? ' costs ' + evo.need + ' candy' : '') : ' | final form') + (why ? ' | app keeps it: ' + why : ' | app would offer it for transfer');
+      });
+      lines.push('ASKED ABOUT: the ' + this.promptSafe(fams.get(key), 24) + ' family, ' + fam.length + ' owned, candy ' + (st.candy != null ? st.candy : 'not scanned') + (st.xlCandy != null ? ' + ' + st.xlCandy + ' XL' : '') + '. Full detail: ' + detail.join('; '));
+      const verdicts = [];
+      idx.forEach((list, k) => {
+        const mine = list.filter(e => ids.has(String(e.q.idx)));
+        if (!mine.length) return;
+        const [lk, to, shadow] = k.split('|');
+        const ranked = mine.slice().sort((a, b) => (b.rank - (b.steps > 0 ? 1 : 0)) - (a.rank - (a.steps > 0 ? 1 : 0))).slice(0, 4);
+        verdicts.push((LG[lk] || lk) + ' as ' + (shadow === 'true' ? 'shadow ' : '') + (ranked[0].toName || to) + ': ' + ranked.map((e, i) => '#' + (i + 1) + ' ' + this.promptSafe(e.q.name) + ' ' + (e.q.cp != null ? e.q.cp + 'CP' : '') + ' rank ' + Math.round(e.rank * 10) / 10 + '%' + (e.steps > 0 ? ' (needs ' + e.steps + ' evolution' + (e.steps > 1 ? 's' : '') + (e.aff ? ', candy covers it' : ', candy not confirmed') + ')' : ' (already this form)')).join(', '));
+      });
+      lines.push(verdicts.length ? 'APP VERDICT for that family (computed from the same cross-stage comparison the keep/transfer check uses; a copy that still has to evolve needs 1 more rank point to win; only leagues where a copy is good enough are listed): ' + verdicts.join(' || ')
+        : 'APP VERDICT for that family: none of these copies reaches a good rank (90%+ in a league where the evolved form is S/A/B tier), so the app does not recommend investing candy in any of them for PvP.');
+    });
+    return lines;
+  }
+
   async sendChat() {
     const text = this.state.chatInput.trim();
     if (!text || this.state.chatBusy) return;
@@ -17286,7 +17330,7 @@ class Component extends DCLogic {
             cutCandidates.map(chatLine).join('; ')
         ].filter(Boolean).join('\n');
       })()
-    ].join('\n');
+    ].concat((() => { try { return this.chatMentionLines(text, roster); } catch (e) { return []; } })()).join('\n');
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
