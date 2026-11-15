@@ -1374,7 +1374,7 @@ module.exports = async function suiteB() {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
       const keep = l.state.eventMoves;
-      l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Modern Jacket Machamp', move: 'Karate Chop', kind: 'fast', graceHours: 0, scope: 'caught-or-evolved' }] } });
+      l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Machamp', move: 'Karate Chop', kind: 'fast', graceHours: 0, scope: 'caught-or-evolved' }] } });
       await new Promise(r => setTimeout(r, 150));
       const out = l.eventEvolveOpps().filter(o => /^mc/.test(o.p.idx)).map(o => ({ id: o.p.idx, steps: o.steps, skip: !!o.skip, fundable: o.fundable, short: o.short, shortBy: o.shortBy, group: o.groupSize, rank: Math.round(o.rank * 10) / 10, why: !!o.why }));
       l.setState({ eventMoves: keep }); return out; } } return null; });

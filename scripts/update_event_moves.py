@@ -65,6 +65,9 @@ def parse_table(text):
             to = lines[i + 1]
             if to in ('Fast Attack', 'Charged Attack') or len(to) > 40 or len(lines[i - 1]) > 40:
                 continue
+            # An outfit variant ("Machamp wearing a modern jacket") is a special encounter, not what evolving the plain Pokemon gives.
+            if i - 2 > start and re.search(r'wearing|costume|outfit|jacket|hat\b|cap\b', lines[i - 2], re.I):
+                continue
             hits.append({'species': None, 'to': to, 'move': lines[i - 1], 'kind': 'fast' if lines[i] == 'Fast Attack' else 'charged',
                          'graceHours': 0, 'scope': 'caught-or-evolved', 'sentence': 'Pokemon caught or evolved during the event know ' + lines[i - 1] + ' (' + lines[i] + ')'})
         if re.match(r'(Sales|Purchase|New Avatar|Bonuses)', lines[i]) and i > start + 3:
