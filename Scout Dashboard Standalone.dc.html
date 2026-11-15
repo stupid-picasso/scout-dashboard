@@ -1317,7 +1317,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.305</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.306</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -1386,7 +1386,7 @@
       <span>A new version is ready</span><span style="letter-spacing:.05em">TAP TO RELOAD</span>
     </div>
   </sc-if>
-  <nav data-navbar="1" class="ios-nav" aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:var(--nav-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid var(--nav-line)">
+  <nav data-navbar="1" class="ios-nav" aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;transform:translateZ(0);-webkit-transform:translateZ(0);z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:var(--nav-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid var(--nav-line)">
     <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="5">
       <button type="button" onClick="{{ t.onClick }}" class="om-press" aria-label="{{ t.label }}" aria-current="{{ t.current }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
         <span style="position:relative;display:inline-flex">
@@ -5171,6 +5171,7 @@ class Component extends DCLogic {
     try { const ps = localStorage.getItem('scout.protectSizes'); if (ps === 'extreme' || ps === 'all' || ps === 'off') this.setState({ protectSizes: ps }); } catch (e) {}
     this.loadLocalSecrets();
     this.loadFeed();
+    this.watchViewport();
     try { const y = Number(localStorage.getItem('scout.bubbleY')); if (Number.isFinite(y) && y >= 76 && y <= 2000) this.setState({ bubbleY: y }); } catch (e) {}
     try { this.enhanceAccessibility(); } catch (e) { console.error(e); }
     try { this.bindCsvDrop(); } catch (e) { console.error(e); }
@@ -9504,11 +9505,40 @@ class Component extends DCLogic {
     this.setState({ closestMissRevealed: !this.state.closestMissRevealed });
   }
 
+  // iOS Safari (and installed web apps) can leave the layout viewport shorter than the visible one after the keyboard closes, the toolbar
+  // collapses or the phone turns, so position:fixed bars stop at the old bottom and seem to float with the page. Re-compositing the fixed
+  // bars and re-applying the scroll position makes the browser lay them out again. Cheap, and a no-op elsewhere.
+  fixFixedBars() {
+    try {
+      document.querySelectorAll('[data-navbar], button[aria-label="Ask the Professor"]').forEach(el => {
+        const keep = el.style.transform;
+        el.style.transform = 'translate3d(0,0,1px)';
+        void el.offsetHeight;
+        requestAnimationFrame(() => { el.style.transform = keep; });
+      });
+      window.scrollTo(window.scrollX, window.scrollY);
+    } catch (e) { /* nothing to fix */ }
+  }
+
+  watchViewport() {
+    if (this._viewportWatched || typeof window === 'undefined') return;
+    this._viewportWatched = true;
+    let t = null;
+    const later = () => { clearTimeout(t); t = setTimeout(() => this.fixFixedBars(), 180); };
+    try {
+      if (window.visualViewport) { window.visualViewport.addEventListener('resize', later); window.visualViewport.addEventListener('scroll', later); }
+      window.addEventListener('orientationchange', later);
+      window.addEventListener('pageshow', later);
+      document.addEventListener('focusout', later, true);   // the keyboard closing
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) later(); });
+    } catch (e) { /* older browser */ }
+  }
+
   // ---- Floating chat bubble ----------------------------------------------------------------------------------------------------
   // The same conversation as the one on Home (chatMessages), reachable from every other tab. The bubble sits above the tab bar, can be
   // dragged up and down (remembered), and fades to the edge while a page scrolls so it never covers what is being read.
   openChatBubble() { this.setState({ chatOpen: true }); }
-  closeChatBubble() { this.setState({ chatOpen: false }); }
+  closeChatBubble() { this.setState({ chatOpen: false }, () => setTimeout(() => this.fixFixedBars(), 250)); }
   toggleChatBubble() { if (Date.now() - (this._bubbleDragAt || 0) < 400) return; this.setState({ chatOpen: !this.state.chatOpen }); }
 
   bindChatBubble(el) {
