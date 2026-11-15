@@ -34,8 +34,10 @@
   /* The page must never scroll sideways. Any single over-wide child (a long
      unbroken string, a wide grid, the negative-margin sticky header) used to
      drag the whole layout off-centre on the phone, which reads as the frame
-     wobbling as you scroll. Clipping at the document level pins it. */
-  body{max-width:100%;overflow-x:clip;margin:0;background:var(--surface-page);}
+     wobbling as you scroll. The root container clips it (overflow-x:clip on the app root). Not on body: overflow on
+     body propagates to the viewport, and iOS then lays position:fixed bars out against a shorter viewport, so the
+     tab bar floated above the screen bottom and moved with the page. */
+  body{max-width:100%;margin:0;background:var(--surface-page);}
   ::selection{background:var(--type-electric);color:var(--surface-page)}
   a{color:var(--type-electric);}
   a:hover{color:var(--type-electric);}
@@ -275,7 +277,7 @@
 <script type="module" src="./pokemon-data.js"></script>
 <script type="module" src="./pokemon-mechanics.js"></script>
 </helmet>
-<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;min-height:100dvh;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}">
+<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;overflow-x:clip;min-height:100dvh;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}">
 
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
   <header style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
@@ -291,7 +293,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.306</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.307</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
