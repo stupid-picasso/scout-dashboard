@@ -1489,10 +1489,10 @@ module.exports = async function suiteB() {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.placeBars) { const l = g.stateNode.logic;
       const nav = document.querySelector('[data-navbar]'), bub = document.querySelector('button[aria-label="Ask the Professor"]');
       const plain = l.placeBars(); const gapPlain = Math.round(window.innerHeight - nav.getBoundingClientRect().bottom);
-      const forced = l.placeBars(true); await new Promise(r => setTimeout(r, 100));
+      const forced = l.placeBars(true);
       const vv = window.visualViewport;
       const out = { plain, gapPlain, forced, navBottom: Math.round(nav.getBoundingClientRect().bottom), vvBottom: Math.round(vv.offsetTop + vv.height), navBottomCss: nav.style.bottom, bubBottom: Math.round(bub.getBoundingClientRect().bottom), expectBub: Math.round(vv.offsetTop + vv.height - (l.state.bubbleY || 86)) };
-      l.showLayoutInfo(); await new Promise(r => setTimeout(r, 100)); out.info = l.state.pendingConfirm && l.state.pendingConfirm.title === 'Screen numbers' && /inner \d+/.test(l.state.pendingConfirm.message) && /visual \d+/.test(l.state.pendingConfirm.message); l.closeConfirm();
+      l.showLayoutInfo(); await new Promise(r => setTimeout(r, 100)); out.info = l.state.pendingConfirm && l.state.pendingConfirm.title === 'Screen numbers' && /inner \d+/.test(l.state.pendingConfirm.message) && /visual \d+/.test(l.state.pendingConfirm.message) && /ancestors /.test(l.state.pendingConfirm.message) && /bar position fixed/.test(l.state.pendingConfirm.message); l.closeConfirm();
       l.placeBars(); nav.style.removeProperty('top'); nav.style.bottom = '0'; bub.style.removeProperty('top'); bub.style.removeProperty('bottom');
       return out; } } return null; });
     expect(r && r.plain === false && r.gapPlain === 0, 'on a non-iOS browser the bar stays on bottom:0: ' + JSON.stringify(r));
