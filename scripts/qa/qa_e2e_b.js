@@ -1459,6 +1459,16 @@ module.exports = async function suiteB() {
     expect(/^Screen: Roster/.test(r.a) && /the details sheet is open on Gengar 2400 CP IV 14\/14\/14/.test(r.b), 'the screen line names the tab and the open Pokemon: ' + r.a + ' || ' + r.b);
     expect(r.hasScreen && /should I keep this one\?\|ok/.test(r.reply), 'the model is sent the screen line and the same chat holds the reply: ' + JSON.stringify(r));
   });
+  await T('NAVFIX-01', 'Layout', 'The bottom bar stays on the bottom edge after scrolling, and the iOS re-layout nudge leaves it exactly there', async () => {
+    await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.fixFixedBars) { const l = g.stateNode.logic;
+      const nav = document.querySelector('[data-navbar]'); const gap = () => Math.round(window.innerHeight - nav.getBoundingClientRect().bottom);
+      window.scrollTo(0, 400); await new Promise(r => setTimeout(r, 200));
+      const scrolled = gap(); l.fixFixedBars(); await new Promise(r => setTimeout(r, 200));
+      const after = gap();
+      return { scrolled, after, transform: nav.style.transform, watched: l._viewportWatched === true }; } } return null; });
+    expect(r && r.scrolled === 0 && r.after === 0 && /translateZ/.test(r.transform) && r.watched, 'the tab bar sits on the bottom edge before and after the nudge: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
