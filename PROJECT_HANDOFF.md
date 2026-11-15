@@ -631,3 +631,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 
 ## Event moves: outfit variants are not what evolving gives (2026-11-15)
 - The Wild Area table listed "Machamp wearing a modern jacket: Karate Chop". That is a special-research encounter, not what evolving a Machoke gives, but the app matched it to every Machamp evolution. `parse_table` now drops entries whose preceding line says wearing/costume/outfit/jacket/hat/cap, and the app matches forms exactly (no trailing-name match).
+
+## Chat knows the candy on hand (2026-11-15)
+- `chatCandyLine(roster)` adds a "CANDY ON HAND per species" line (family-aware via `candyKey`/`candyStockFor`, `?` where nothing was scanned) to the chat context, and the system prompt says candy counts come from scanning detail screens, not the RESOURCES form. Before, asking "how many candies do I have" got "not logged, enter it under HOME > RESOURCES" even with the count scanned. Test CHATCANDY-01. Chat engine: Gemini free-tier text rotation (see `geminiRotation`, fallbacks gemini-3.1-flash-lite / 3.5-flash-lite / 3.5-flash) unless another engine is configured.
