@@ -1432,6 +1432,33 @@ module.exports = async function suiteB() {
     expect(/(Axew|Fraxure) 150 \+7XL/.test(r.line) && (r.line.match(/(Axew|Fraxure) 150/g) || []).length === 1, 'the Axew family shows one pool of 150 candy and 7 XL: ' + r.line);
     expect(/Ralts \?/.test(r.line) && r.src, 'an unscanned species is marked ? and the prompt carries the candy rule: ' + r.line);
   });
+  await T('CHATBUBBLE-01', 'Chat', 'A floating chat bubble on every tab except Home opens the same chat as a sheet, tells the model which screen and which Pokemon is open, and fades while the page scrolls', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('cb1', 'Gengar', 94, [14, 14, 14], 2400, 40)], roster: [], ivOverrides: {}, chatMessages: [], chatInput: '', chatOpen: false, detailPoke: null, tab: 'today' });
+    await s.page.waitForTimeout(700);
+    const bubble = s.page.locator('button[aria-label="Ask the Professor"]');
+    const onToday = await bubble.count();
+    await s.set({ tab: 'home' }); await s.page.waitForTimeout(400);
+    const onHome = await s.page.locator('button[aria-label="Ask the Professor"]').count();
+    await s.set({ tab: 'roster' }); await s.page.waitForTimeout(500);
+    await s.page.locator('button[aria-label="Ask the Professor"]').click(); await s.page.waitForTimeout(400);
+    const opened = await s.page.locator('[role=dialog][aria-label="Ask the Professor"]').count();
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const a = l.chatScreenLine();
+      l.setState({ detailPoke: l.effectiveRosterForMatch().find(p => p.idx === 'cb1') }); await new Promise(r => setTimeout(r, 150));
+      const b = l.chatScreenLine();
+      let sent = null; const keep = l.completeWithRetry; l.completeWithRetry = async o => { sent = o.system; return 'ok'; };
+      l.setState({ chatInput: 'should I keep this one?' }); await new Promise(r => setTimeout(r, 100)); await l.sendChat(); await new Promise(r => setTimeout(r, 200));
+      l.completeWithRetry = keep;
+      const out = { a, b, reply: (l.state.chatMessages || []).map(m => m.content).join('|'), hasScreen: !!sent && /Screen: Roster; the details sheet is open on Gengar/.test(sent), faded: (() => { const el = document.querySelector('button[aria-label="Ask the Professor"]'); document.dispatchEvent(new Event('scroll')); return !!el; })() };
+      l.setState({ detailPoke: null, chatOpen: false, chatMessages: [] }); return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, chatMessages: st0.chatMessages || [], chatOpen: false, detailPoke: null, tab: 'home' });
+    expect(onToday === 1 && onHome === 0, 'the bubble is on Today and not on Home: ' + onToday + '/' + onHome);
+    expect(opened === 1, 'tapping the bubble opens the chat sheet');
+    expect(/^Screen: Roster/.test(r.a) && /the details sheet is open on Gengar 2400 CP IV 14\/14\/14/.test(r.b), 'the screen line names the tab and the open Pokemon: ' + r.a + ' || ' + r.b);
+    expect(r.hasScreen && /should I keep this one\?\|ok/.test(r.reply), 'the model is sent the screen line and the same chat holds the reply: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];

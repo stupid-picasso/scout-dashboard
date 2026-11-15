@@ -634,3 +634,7 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 
 ## Chat knows the candy on hand (2026-11-15)
 - `chatCandyLine(roster)` adds a "CANDY ON HAND per species" line (family-aware via `candyKey`/`candyStockFor`, `?` where nothing was scanned) to the chat context, and the system prompt says candy counts come from scanning detail screens, not the RESOURCES form. Before, asking "how many candies do I have" got "not logged, enter it under HOME > RESOURCES" even with the count scanned. Test CHATCANDY-01. Chat engine: Gemini free-tier text rotation (see `geminiRotation`, fallbacks gemini-3.1-flash-lite / 3.5-flash-lite / 3.5-flash) unless another engine is configured.
+
+## Floating chat bubble (2026-11-15)
+- A round chat button above the tab bar on every tab except Home (the chat lives there) and while selecting rows or importing screenshots. Draggable up/down (position kept in localStorage `scout.bubbleY`), fades to the edge while any page scrolls (`bindChatBubble`). Tapping opens a bottom sheet with the same `chatMessages`, NEW CHAT, input and SEND.
+- `chatScreenLine()` adds "Screen: <tab>; the details sheet is open on <Pokemon> ... (the app keeps it because: ...)" and the selected raid boss to the model context, so "should I keep this one?" needs no name. Test CHATBUBBLE-01.
