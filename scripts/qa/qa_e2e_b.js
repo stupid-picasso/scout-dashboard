@@ -1484,6 +1484,20 @@ module.exports = async function suiteB() {
     expect(r.bodyX === 'visible' && r.htmlX === 'visible' && r.rootX === 'clip', 'overflow-x is clipped on the app root only: ' + JSON.stringify(r));
     expect(r.sw <= r.cw, 'an over-wide child does not make the page scroll sideways: ' + JSON.stringify(r));
   });
+  await T('NAVFIX-03', 'Layout', 'On iPhone the tab bar and chat bubble are anchored by top from the visual viewport (bottom:auto), so a drifted layout viewport cannot float them; elsewhere they stay on bottom:0', async () => {
+    await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.placeBars) { const l = g.stateNode.logic;
+      const nav = document.querySelector('[data-navbar]'), bub = document.querySelector('button[aria-label="Ask the Professor"]');
+      const plain = l.placeBars(); const gapPlain = Math.round(window.innerHeight - nav.getBoundingClientRect().bottom);
+      const forced = l.placeBars(true); await new Promise(r => setTimeout(r, 100));
+      const vv = window.visualViewport;
+      const out = { plain, gapPlain, forced, navBottom: Math.round(nav.getBoundingClientRect().bottom), vvBottom: Math.round(vv.offsetTop + vv.height), navBottomCss: nav.style.bottom, bubBottom: Math.round(bub.getBoundingClientRect().bottom), expectBub: Math.round(vv.offsetTop + vv.height - (l.state.bubbleY || 86)) };
+      l.showLayoutInfo(); await new Promise(r => setTimeout(r, 100)); out.info = l.state.pendingConfirm && l.state.pendingConfirm.title === 'Screen numbers' && /inner \d+/.test(l.state.pendingConfirm.message) && /visual \d+/.test(l.state.pendingConfirm.message); l.closeConfirm();
+      l.placeBars(); nav.style.removeProperty('top'); nav.style.bottom = '0'; bub.style.removeProperty('top'); bub.style.removeProperty('bottom');
+      return out; } } return null; });
+    expect(r && r.plain === false && r.gapPlain === 0, 'on a non-iOS browser the bar stays on bottom:0: ' + JSON.stringify(r));
+    expect(r.forced === true && r.navBottom === r.vvBottom && /auto/.test(r.navBottomCss) && Math.abs(r.bubBottom - r.expectBub) <= 1 && r.info === true, 'in iOS mode the bar ends exactly on the visual viewport bottom, the bubble sits its offset above it, and the screen numbers can be shown: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
