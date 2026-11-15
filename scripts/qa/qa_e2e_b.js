@@ -1400,6 +1400,28 @@ module.exports = async function suiteB() {
     expect(r.ev.length === 1 && r.ev[0][0] === 1 && r.ev[0][1] === 1, 'the next Max event names its boss and your best attacker against it: ' + JSON.stringify(r.ev));
     expect(r.keep.join() === 'mx1:1,mx2:1', 'the top Max attackers of each Max Attack type carry a keep reason: ' + JSON.stringify(r.keep));
   });
+  await T('MAXPARTY-01', 'Max', 'Max party builder: two attackers that hit the boss hardest plus a tank, a type verdict; the battle log tallies wins per verdict and tier and finds the damage line between wins and losses', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl, extra) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), dynamax: true, favorite: true, ...extra });
+    await s.set({ addedPokemon: [mk('pt1', 'Pikachu', 25, [15, 15, 15], 1500, 40, { quickMove: 'thunder shock', gigantamax: true, maxAttackLevel: 3 }), mk('pt2', 'Rillaboom', 812, [15, 14, 15], 3000, 40, { quickMove: 'vine whip', gigantamax: true, maxAttackLevel: 3 }), mk('pt3', 'Snorlax', 143, [12, 14, 14], 3200, 40, { quickMove: 'lick', maxAttackLevel: 2, maxGuardLevel: 1 }), mk('pt4', 'Machamp', 68, [14, 14, 14], 3000, 40, { quickMove: 'karate chop', maxAttackLevel: 1 })], roster: [], ivOverrides: {}, completedIds: [], maxBattles: [], raidBossName: 'Kingler', raidBossTypes: ['Water'], tab: 'raid' });
+    await s.page.waitForTimeout(900);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const pt = l.maxParty();
+      const out = { members: pt.members.map(x => [x.role, x.r.p.name, Math.round(x.r.r.damage)]), verdict: pt.verdict, damage: pt.damage, shown: document.body.innerText.includes('PARTY OF 3 vs Kingler') };
+      l.setState({ maxStar: 3 });
+      const mkB = (res, dmg) => ({ id: 'x' + Math.random(), at: Date.now(), boss: 'Kingler', types: ['Water'], star: 3, party: [], verdict: 'Strong', damage: dmg, result: res });
+      l.setState({ maxBattles: [mkB('win', 900), mkB('win', 1100), mkB('loss', 600)] });
+      await new Promise(r => setTimeout(r, 100));
+      out.calib = l.maxCalibration();
+      const before = (l.state.maxBattles || []).length; l.logMaxBattle('win'); await new Promise(r => setTimeout(r, 100)); out.logged = (l.state.maxBattles || []).length - before; l.undoMaxBattle(); await new Promise(r => setTimeout(r, 100)); out.undone = (l.state.maxBattles || []).length === before;
+      return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, maxBattles: st0.maxBattles || [], raidBossName: st0.raidBossName, raidBossTypes: st0.raidBossTypes || [], tab: 'home' });
+    const names = r.members.map(x => x[1]);
+    expect(r.members.length === 3 && r.members.filter(x => x[0] === 'Attacker').map(x => x[1]).sort().join() === 'Pikachu,Rillaboom', 'the two super-effective attackers (Electric, Grass) lead a Water boss: ' + JSON.stringify(r.members));
+    expect(r.members.find(x => x[0] === 'Tank') && names.indexOf('Snorlax') >= 0 && r.verdict === 'Strong' && r.shown, 'the tank is a third Pokemon, the verdict is Strong and the party is shown: ' + JSON.stringify(r));
+    expect(r.calib && r.calib.total === 3 && r.calib.wins === 2 && r.calib.lines.some(x => /3\u2605: 2 of 3 won .*aim above 600/.test(x)) && r.calib.verdicts.indexOf('Strong matchup: 2 of 3 won') >= 0, 'the log tallies wins and finds the line between them: ' + JSON.stringify(r.calib));
+    expect(r.logged === 1 && r.undone === true, 'a battle can be logged and undone: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
