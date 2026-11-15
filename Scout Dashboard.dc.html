@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.294</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.299</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -2760,6 +2760,35 @@
       <div style="font:700 11px var(--font-display);color:var(--type-electric);letter-spacing:.06em">RAID COUNTERS</div>
       <div style="font:12.5px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types, and this ranks your own Pokemon against it by damage per second (STAB, type effectiveness and optional weather) weighted by how well each one survives the boss&rsquo;s own types. It assumes the boss uses moves of its own types, so it is an estimate, not a battle simulation. Pokemon whose moves aren&rsquo;t in the move database are left out rather than guessed.</div>
     </div>
+
+    <sc-if value="{{ maxPlan }}" hint-placeholder-val="{{ false }}">
+      <section aria-label="Max planner" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:14px 16px;margin-bottom:18px">
+        <div style="font:800 13px var(--font-display);letter-spacing:.05em;color:var(--ink-900)">MAX PLANNER</div>
+        <div style="font:13px/1.5 var(--font-body);margin-top:6px">{{ maxPlan.balance }}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <input type="text" inputmode="numeric" placeholder="Max Particles you hold" onChange="{{ onMaxParticles }}" style="flex:1;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:8px;padding:8px 10px;font:13px var(--font-body);color:var(--ink-900)" />
+        </div>
+        <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-500);margin-top:6px;text-wrap:pretty">{{ maxPlan.free }}</div>
+        <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin-top:12px">DYNAMAX THESE FIRST (best Max Attack at level 3)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          <sc-for list="{{ maxPlan.rows }}" as="pr" hint-placeholder-count="0">
+            <button type="button" onClick="{{ pr.onClick }}" style="text-align:left;background:var(--surface-sunken);border-radius:12px;padding:10px 12px">
+              <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span style="font:700 11px var(--font-display);color:var(--ink-500)">{{ pr.rank }}</span><span style="font:600 14px var(--font-body)">{{ pr.name }}</span></div>
+              <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);margin-top:2px">{{ pr.sub }}</div>
+              <div style="font:700 12px/1.4 var(--font-display);color:{{ pr.color }};margin-top:3px">{{ pr.next }}</div>
+            </button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ maxPlan.empty }}" hint-placeholder-val="{{ false }}"><div style="font:13px/1.5 var(--font-body);color:var(--ink-500);margin-top:8px">{{ maxPlan.empty }}</div></sc-if>
+        <sc-if value="{{ maxPlan.eventsHas }}" hint-placeholder-val="{{ false }}"><div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin-top:12px">NEXT MAX EVENTS</div></sc-if>
+        <sc-for list="{{ maxPlan.events }}" as="me" hint-placeholder-count="0">
+          <div style="font:12.5px/1.5 var(--font-body);margin-top:4px;text-wrap:pretty">{{ me }}</div>
+        </sc-for>
+        <sc-if value="{{ maxPlan.tank }}" hint-placeholder-val="{{ false }}"><div style="font:12.5px/1.5 var(--font-body);margin-top:10px;text-wrap:pretty">{{ maxPlan.tank }}</div></sc-if>
+        <sc-if value="{{ maxPlan.healer }}" hint-placeholder-val="{{ false }}"><div style="font:12.5px/1.5 var(--font-body);margin-top:4px;text-wrap:pretty">{{ maxPlan.healer }}</div></sc-if>
+        <div style="font:11px/1.4 var(--font-body);color:var(--ink-500);margin-top:10px;text-wrap:pretty">{{ maxPlan.note }}</div>
+      </section>
+    </sc-if>
 
     <sc-if value="{{ raidTopHas }}" hint-placeholder-val="{{ false }}">
       <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:16px;padding:14px 16px;margin-bottom:18px">
@@ -6604,7 +6633,7 @@ class Component extends DCLogic {
   // XXL/XXS, legendary/mythical (best two), nondo, anything unmeasured or inconsistent. SOFT reasons (good IV, best
   // league copy, Master tier, raid role, Mega-capable, good IV with moves) hold until the roster is over its keep
   // target; then the floating keep line (`floatCut`) lets the weakest of them go first.
-  isSoftKeep(reason) { return /^(Worth building: |In the .+ group$|IV \d|Rising: |Upcoming cup: |Favourited from the keeper list|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
+  isSoftKeep(reason) { return /^(Worth building: |In the .+ group$|IV \d|Rising: |Upcoming cup: |Favourited from the keeper list|Shadow with good IVs|Best (Great|Ultra) League copy|Best Little Cup copy|Master League tier|Raid attacker role|Max attacker|Mega-capable with good IVs|Good IV with known moves)/.test(reason); }
 
   keepReasons(p, ctx) {
     const c = ctx || this.keepContext(this.effectiveRosterForMatch());
@@ -6728,6 +6757,8 @@ class Component extends DCLogic {
     const masterBest = this.masterBestFor(p);
     if (masterBest) out.push('Master League tier ' + masterBest.tier + (masterBest.name !== p.name ? ' as ' + masterBest.name : ''));
     if (this.hasRaidRole(p, c.typeBest)) out.push('Raid attacker role');
+    const maxTop = this.maxTopFor(p, c);
+    if (maxTop) out.push(maxTop);
     const rising = this.risingReason(p);
     if (rising) out.push(rising);
     const cupKeep = this.cupKeepMap(c).get(p.idx);
@@ -13604,7 +13635,7 @@ class Component extends DCLogic {
     const pick = (a, b) => (o[a] != null ? o[a] : o[b]);
     if (o.dynamax === true || o.gigantamax === true) out.dynamax = true;
     if (o.gigantamax === true) out.gigantamax = true;
-    const lvl = v => { const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) && n >= 1 && n <= 4 ? Math.floor(n) : null; };
+    const lvl = v => { const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) && n >= 1 && n <= 3 ? Math.floor(n) : null; };
     const a = lvl(pick('maxAttackLevel', 'max_attack_level')), g = lvl(pick('maxGuardLevel', 'max_guard_level')), sp = lvl(pick('maxSpiritLevel', 'max_spirit_level'));
     const mn = pick('maxMoveName', 'max_move_name');
     if (typeof mn === 'string' && /^(g-?max|max)\s+[a-z]/i.test(mn.trim())) out.maxMoveName = mn.trim().replace(/\s+/g, ' ').slice(0, 40);
@@ -13675,10 +13706,90 @@ class Component extends DCLogic {
     };
   }
 
-  // Ranks the person's Max-capable Pokemon against the boss chosen on the Raid tab.
-  maxAttackers() {
+  // The two best Max Attackers of each Max Attack type among the Max-capable Pokemon with measured IVs (one Max Attack at level 3 against a
+  // neutral target, the same score the Max planner uses). Computed once per keep context; a Max Battle team wants a few attackers per type.
+  maxTopFor(p, c) {
+    if (!c) return '';
+    if (!c.maxTop) {
+      const m = this.mechanics, byType = {};
+      c.maxTop = new Map();
+      if (m && m.maxRating) c.roster.forEach(q => {
+        if (!this.isMaxCapable(q) || this.needsAppraisal(q)) return;
+        const base = this.baseStatsOf(q), ivs = this.ivsOf(q), lv = this.evalLevelOf(q), info = this.maxInfoFor(q);
+        if (!base || !ivs || lv.level == null || !info || !info.moveType) return;
+        const r = m.maxRating(base, ivs, lv.level, { moveType: info.moveType, ownTypes: this.typesOf(q), gmax: info.gmax, isShadow: this.isShadow(q), incoming: 1, attackLevel: 3 });
+        if (r) (byType[info.moveType + '|' + (info.gmax ? 1 : 0)] = byType[info.moveType + '|' + (info.gmax ? 1 : 0)] || []).push({ q, score: r.score, type: info.moveType, gmax: info.gmax });
+      });
+      Object.keys(byType).forEach(k => byType[k].sort((a, b) => b.score - a.score).slice(0, 2).forEach(x => c.maxTop.set(String(x.q.idx), 'Max attacker: top 2 for ' + x.type + (x.gmax ? ' G-Max' : '') + ' Max Attacks')));
+    }
+    return c.maxTop.get(String(p.idx)) || '';
+  }
+
+  // ---- Max planner: who to Dynamax first and what each Max Move upgrade costs ----------------------------------------------------
+  // Every Max-capable Pokemon with measured IVs is scored on one Max Attack at its best (level 3) against a neutral target, so the order
+  // does not depend on a boss. The next Max Attack level of each is priced in Max Particles, Candy and Candy XL (mechanics MAX_MOVE_STEP_COST;
+  // Candy XL is 40 to 55 by species group, 40 is assumed) and set against what you hold, with the days of free Particles (800 a day) a
+  // shortfall takes. The tank (best HP x DEF, for Max Guard) and healer (Max Spirit) are named too. Numbers are estimates, not Niantic's.
+  maxPlanner() {
     const m = this.mechanics;
-    const defenderTypes = this.state.raidBossTypes || [];
+    if (!m || !m.maxRating || !m.maxUpgradeCost) return null;
+    const bal = Number((this.state.resources || {}).maxParticles);
+    const have = Number.isFinite(bal) ? bal : null;
+    const ros = this.effectiveRosterForMatch();
+    const ctx = ros.length ? this.keepContext(ros) : null;
+    const cand = [];
+    ros.forEach(p => {
+      if (!this.isMaxCapable(p) || this.needsAppraisal(p)) return;
+      const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
+      const lv = this.evalLevelOf(p);
+      const info = this.maxInfoFor(p);
+      if (!base || !ivs || lv.level == null || !info || !info.moveType) return;
+      const opts = { moveType: info.moveType, ownTypes: this.typesOf(p), gmax: info.gmax, isShadow: this.isShadow(p), incoming: 1 };
+      const now = m.maxRating(base, ivs, lv.level, { ...opts, attackLevel: info.level });
+      const top = m.maxRating(base, ivs, lv.level, { ...opts, attackLevel: 3 });
+      if (!now || !top) return;
+      cand.push({ p, info, now, top, bulk: top.hp * top.def, kept: ctx ? this.keepReasons(p, ctx).length > 0 : true });
+    });
+    const keptRows = cand.filter(c => c.kept);
+    const attackers = keptRows.slice().sort((a, b) => b.top.score - a.top.score).slice(0, 8);
+    const stock = p => this.candyStockFor(p) || {};
+    const rows = attackers.map((c, i) => {
+      const lvl = Math.min(3, c.info.level);
+      const cost = lvl < 3 ? m.maxUpgradeCost('attack', lvl, lvl + 1) : null;
+      const st = stock(c.p);
+      const xlNeed = cost ? cost.xl : 0;
+      const short = [];
+      if (cost) {
+        if (have != null && have < cost.mp) short.push((cost.mp - have) + ' Particles (about ' + m.maxDaysToEarn(cost.mp - have) + ' day' + (m.maxDaysToEarn(cost.mp - have) === 1 ? '' : 's') + ' of free ones)');
+        if (st.candy != null && st.candy < cost.candy) short.push((cost.candy - st.candy) + ' Candy');
+        if (xlNeed && st.xlCandy != null && st.xlCandy < xlNeed) short.push((xlNeed - st.xlCandy) + '+ Candy XL');
+      }
+      const nextPower = lvl < 3 ? m.maxAttackPower(lvl + 1, c.info.gmax) : null;
+      const gain = nextPower ? Math.round((nextPower / c.info.power - 1) * 100) : 0;
+      return { c, rank: i + 1, cost, short, gain, perK: cost && cost.mp ? gain / (cost.mp / 1000) : 0, ready: !!cost && short.length === 0 && (have != null) };
+    });
+    const tank = keptRows.slice().sort((a, b) => b.bulk - a.bulk)[0] || null;
+    const guardCost = tank ? m.maxUpgradeCost('guard', tank.info.guard, Math.min(3, tank.info.guard + 1)) : null;
+    const healer = keptRows.filter(c => !tank || c.p.idx !== tank.p.idx).sort((a, b) => b.bulk - a.bulk)[0] || null;
+    const spiritCost = healer ? m.maxUpgradeCost('spirit', healer.info.spirit, Math.min(3, healer.info.spirit + 1)) : null;
+    const tiers = have != null ? [1, 3, 5].map(t => ({ star: t, mp: m.maxEntryCost(t), battles: Math.floor(have / m.maxEntryCost(t)) })) : [];
+    // The next Max events on the calendar and the best of your Max attackers for each named boss.
+    const feed = (this.state.feed && this.state.feed.events) || [], nowT = Date.now();
+    const events = feed.filter(e => (e.type === 'max-battles' || e.type === 'max-mondays') && new Date(e.end).getTime() >= nowT)
+      .sort((a, b) => new Date(a.start) - new Date(b.start)).slice(0, 3).map(e => {
+        const bosses = this.maxBossNames(e.name).map(n => ({ n, t: this.raidBossTarget(n) })).filter(x => x.t).slice(0, 2);
+        const best = bosses.map(b => { const r = this.maxAttackers(b.t.types)[0]; return r ? { boss: b.n, name: r.p.name + (r.info.gmax ? ' (G-Max)' : ''), dmg: Math.round(r.r.damage), eff: r.eff } : null; }).filter(Boolean);
+        return { e, bosses, best };
+      });
+    return { have, events, rows, tank: tank && { c: tank, cost: guardCost }, healer: healer && { c: healer, cost: spiritCost }, tiers, total: cand.length };
+  }
+
+  setMaxParticles(v) { this.noteMaxParticles({ maxParticles: v }); }
+
+  // Ranks the person's Max-capable Pokemon against the boss chosen on the Raid tab.
+  maxAttackers(typesOverride) {
+    const m = this.mechanics;
+    const defenderTypes = typesOverride || this.state.raidBossTypes || [];
     if (!m || !m.maxRating || !defenderTypes.length) return [];
     const weatherTypes = (m.WEATHER_TYPES && m.WEATHER_TYPES[this.state.raidWeather]) || null;
     const rows = [];
@@ -19905,6 +20016,32 @@ class Component extends DCLogic {
           : '',
         onClick: () => this.openDetail(r.p)
       })),
+      maxPlan: (() => {
+        const pl = this.maxPlanner();
+        if (!pl) return null;
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const costText = c => c ? fmt(c.mp) + ' Max Particles' + (c.candy ? ' + ' + c.candy + ' Candy' : '') + (c.xl ? ' + ' + c.xl + '\u201355 Candy XL' : '') : '';
+        const nm = c => c.p.name + (c.info.gmax ? ' (G-Max)' : '') + ' ' + (c.p.cp != null ? c.p.cp + ' CP' : '');
+        return {
+          balance: pl.have != null ? fmt(pl.have) + ' Max Particles' + (pl.tiers.length ? ' \u00b7 ' + pl.tiers.map(t => t.battles + '\u00d7 ' + t.star + '\u2605 (' + t.mp + ')').join(' \u00b7 ') : '') : 'Max Particles balance not known yet \u2014 type it below or scan your Max screen',
+          free: 'Free Particles: 800 a day (Power Spot 100, 120 the first of the day; 300 per 2 km walked); you can hold 1,500; a battle takes them only when you win.',
+          rows: pl.rows.map(r => ({
+            rank: '#' + r.rank,
+            name: nm(r.c),
+            sub: r.c.info.moveName + ' (' + r.c.info.moveType + ') level ' + Math.min(3, r.c.info.level) + (r.c.info.levelsKnown ? '' : ' (not scanned)') + ' \u00b7 ' + Math.round(r.c.now.damage) + ' per hit now, ' + Math.round(r.c.top.damage) + ' at level 3',
+            next: r.cost ? 'Next: level ' + (Math.min(3, r.c.info.level) + 1) + ' = +' + r.gain + '% damage for ' + costText(r.cost) + (r.ready ? ' \u2014 you can afford it' : (r.short.length ? ' \u2014 short ' + r.short.join(', ') : '')) : 'Max Attack is at level 3',
+            color: r.ready ? 'var(--grass-700)' : 'var(--ink-700, var(--ink-500))',
+            onClick: () => this.openDetail(r.c.p)
+          })),
+          eventsHas: pl.events.length ? true : null,
+          events: pl.events.map(x => new Date(x.e.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ' \u00b7 ' + x.e.name + (x.best.length ? ' \u2014 best of yours: ' + x.best.map(b => b.name + ' vs ' + b.boss + ' (' + b.dmg + ' per hit' + (b.eff > 1 ? ', super effective' : b.eff < 1 ? ', resisted' : '') + ')').join('; ') : (x.bosses.length ? ' \u2014 no Max attacker of yours ready' : ' \u2014 boss not named yet'))),
+          tank: pl.tank ? 'Tank (Max Guard, the one the boss targets): ' + nm(pl.tank.c) + (pl.tank.cost ? ' \u2014 Guard ' + (pl.tank.c.info.guard ? 'level ' + pl.tank.c.info.guard : 'locked') + ', next ' + costText(pl.tank.cost) : ' \u2014 Guard at level 3') : '',
+          healer: pl.healer ? 'Healer (Max Spirit heals the whole team): ' + nm(pl.healer.c) + (pl.healer.cost ? ' \u2014 Spirit ' + (pl.healer.c.info.spirit ? 'level ' + pl.healer.c.info.spirit : 'locked') + ', next ' + costText(pl.healer.cost) : ' \u2014 Spirit at level 3') : '',
+          empty: pl.rows.length === 0 ? (pl.total ? 'Your Max-capable Pokemon are not in your keep list.' : 'No Max-capable Pokemon with measured IVs and a fast move on file yet.') : '',
+          note: 'Estimates from public guides (Nov 2026): Candy XL is 40 to 55 by species group, Max Meter fill rates and boss stats are not published, so battles are not simulated.'
+        };
+      })(),
+      onMaxParticles: v => this.setMaxParticles(v && v.target ? v.target.value : v),
       maxRows: (() => this.maxAttackers().map((r, i) => ({
         rank: '#' + (i + 1), name: (r.p.name || '?') + (r.info.gmax ? ' (G-Max)' : ''),
         moveLine: (r.info.moveName || 'Max attack') + ' \u00b7 Lv ' + r.info.level + (r.info.levelsKnown ? '' : ' assumed') + ' \u00b7 power ' + r.info.power + ' \u00b7 L' + r.level,
