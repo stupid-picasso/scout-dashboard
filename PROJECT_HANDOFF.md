@@ -644,3 +644,7 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 
 ## Floating tab bar: real cause (2026-11-15)
 - The first fix (re-compositing on viewport changes) did not help. The likelier cause, matching the date it started: `body{overflow-x:clip}` added on 2026-11-12 (sheet sideways fix). Overflow on body propagates to the viewport; iOS then lays `position:fixed` bars out against a shorter viewport, so the tab bar and chat bubble stop above the screen bottom and move with the page. The clip now sits on the app root div (`overflow-x:clip`), body and html are `visible`. Test NAVFIX-02. `fixFixedBars()` stays as a second line of defence. Still unverified on an iPhone (CI runs WebKit, not iOS Safari).
+
+## Tab bar floating, third attempt (2026-11-15)
+- The body overflow fix did not cure it on the user's iPhone (screenshots: the bar's bottom edge sits at 64-82% of the screen height and drifts, with page content visible below it). `placeBars()` now anchors the nav and chat bubble with `top` computed from `visualViewport` (offset + height) on iPhone/iPad (`bottom:auto !important`), re-applied on viewport/scroll/orientation events and every 500 ms (a render rewrites the style attribute). Non-iOS browsers keep `bottom:0`. Test NAVFIX-03 forces iOS mode.
+- Diagnostics: tapping the "N Pokemon loaded" line in the header opens "Screen numbers" (inner/visual/doc/screen sizes, bar top/bottom, scrollY, standalone, UA). If the bar still floats, ask for a screenshot of that box plus one of the floating bar.

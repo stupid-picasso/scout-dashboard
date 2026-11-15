@@ -293,7 +293,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.307</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.309</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -8496,17 +8496,59 @@ class Component extends DCLogic {
     } catch (e) { /* nothing to fix */ }
   }
 
+  // Tap the "N Pokemon loaded" line in the header to see the screen numbers behind a misplaced tab bar (send a screenshot of it).
+  showLayoutInfo() {
+    try {
+      const vv = window.visualViewport, nav = document.querySelector('[data-navbar]'), r = nav ? nav.getBoundingClientRect() : null;
+      const rows = ['inner ' + window.innerWidth + '\u00d7' + window.innerHeight, 'visual ' + (vv ? Math.round(vv.width) + '\u00d7' + Math.round(vv.height) + ' offset ' + Math.round(vv.offsetTop) + ' scale ' + vv.scale : 'n/a'),
+        'doc ' + document.documentElement.clientWidth + '\u00d7' + document.documentElement.clientHeight, 'screen ' + screen.width + '\u00d7' + screen.height,
+        'bar top ' + (r ? Math.round(r.top) : '?') + ' bottom ' + (r ? Math.round(r.bottom) : '?') + ' css top ' + (nav ? nav.style.top || '-' : '?'),
+        'scrollY ' + Math.round(window.scrollY) + ' standalone ' + String(navigator.standalone), 'ua ' + (navigator.userAgent || '').slice(0, 90)];
+      this.askConfirm({ title: 'Screen numbers', message: rows.join(' | '), actions: [] });
+    } catch (e) { /* nothing to show */ }
+  }
+
+  // The tab bar and chat bubble are anchored with `top`, from the visual viewport, on iPhone/iPad. position:fixed + bottom is measured against
+  // the layout viewport, which iOS lets drift to a shorter height than the visible screen (the bar then floats mid-screen and moves with
+  // the page). `top` is measured from the layout viewport's top, which stays put, and the visual viewport's height is what is on screen.
+  placeBars(force) {
+    try {
+      const ios = force === true || /iPhone|iPad|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const nav = document.querySelector('[data-navbar]');
+      const bub = document.querySelector('button[aria-label="Ask the Professor"]');
+      const vv = window.visualViewport;
+      if (!ios || !vv) {
+        if (nav && nav.style.top) { nav.style.removeProperty('top'); nav.style.removeProperty('bottom'); nav.style.bottom = '0'; }
+        return false;
+      }
+      const bottomEdge = vv.offsetTop + vv.height;
+      if (nav) {
+        nav.style.setProperty('bottom', 'auto', 'important');
+        nav.style.setProperty('top', Math.round(bottomEdge - nav.offsetHeight) + 'px', 'important');
+      }
+      if (bub) {
+        const off = (this.state.bubbleY || 86);
+        bub.style.setProperty('bottom', 'auto', 'important');
+        bub.style.setProperty('top', Math.round(bottomEdge - off - bub.offsetHeight - (nav ? 0 : 0)) + 'px', 'important');
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
   watchViewport() {
     if (this._viewportWatched || typeof window === 'undefined') return;
     this._viewportWatched = true;
     let t = null;
-    const later = () => { clearTimeout(t); t = setTimeout(() => this.fixFixedBars(), 180); };
+    const later = () => { this.placeBars(); clearTimeout(t); t = setTimeout(() => { this.fixFixedBars(); this.placeBars(); }, 180); };
     try {
       if (window.visualViewport) { window.visualViewport.addEventListener('resize', later); window.visualViewport.addEventListener('scroll', later); }
       window.addEventListener('orientationchange', later);
       window.addEventListener('pageshow', later);
       document.addEventListener('focusout', later, true);   // the keyboard closing
       document.addEventListener('visibilitychange', () => { if (!document.hidden) later(); });
+      window.addEventListener('scroll', () => { if (!this._placeRaf) this._placeRaf = requestAnimationFrame(() => { this._placeRaf = 0; this.placeBars(); }); }, { passive: true });
+      this._placeTimer = setInterval(() => this.placeBars(), 500);   // a re-render rewrites the style attribute; this puts the bars back
+      this.placeBars();
     } catch (e) { /* older browser */ }
   }
 
@@ -8526,7 +8568,7 @@ class Component extends DCLogic {
     el.addEventListener('touchmove', e => {
       const t = e.touches[0], dy = startY - t.clientY;
       if (Math.abs(dy) > 6) moved = true;
-      if (moved) { e.preventDefault(); this.setState({ bubbleY: Math.max(76, Math.min(maxBottom(), Math.round(startBottom + dy))) }); }
+      if (moved) { e.preventDefault(); this.setState({ bubbleY: Math.max(76, Math.min(maxBottom(), Math.round(startBottom + dy))) }, () => this.placeBars()); }
     }, { passive: false });
     el.addEventListener('touchend', () => {
       if (!moved) return;
@@ -20472,6 +20514,7 @@ class Component extends DCLogic {
       checklistItems,
       chatMessagesDisplay,
       clearChat: () => this.clearChat(),
+      showLayoutInfo: () => this.showLayoutInfo(),
       chatBubbleShow: (tab !== 'home' && !this.state.selectMode && !this.state.ocrBusy && !this.state.ocrParsed && !(this.state.ocrQueue || []).length) ? true : null,
       chatBubbleStyle: 'bottom:calc(' + (this.state.bubbleY || 86) + 'px + env(safe-area-inset-bottom))',
       chatBubbleRef: el => this.bindChatBubble(el),
