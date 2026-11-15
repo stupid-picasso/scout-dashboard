@@ -1422,6 +1422,16 @@ module.exports = async function suiteB() {
     expect(r.calib && r.calib.total === 3 && r.calib.wins === 2 && r.calib.lines.some(x => /3\u2605: 2 of 3 won .*aim above 600/.test(x)) && r.calib.verdicts.indexOf('Strong matchup: 2 of 3 won') >= 0, 'the log tallies wins and finds the line between them: ' + JSON.stringify(r.calib));
     expect(r.logged === 1 && r.undone === true, 'a battle can be logged and undone: ' + JSON.stringify(r));
   });
+  await T('CHATCANDY-01', 'Chat', 'The chat is told the candy on hand for every owned species family (one pool for Axew, Fraxure and Haxorus), with ? where none was scanned, and the prompt no longer sends candy questions to RESOURCES', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('cc1', 'Axew', 610, [10, 10, 10], 300, 10), mk('cc2', 'Axew', 610, [11, 10, 10], 310, 10), mk('cc3', 'Fraxure', 611, [12, 12, 12], 900, 20), mk('cc4', 'Ralts', 280, [10, 10, 10], 200, 10)], roster: [], ivOverrides: {}, candyInventory: { axew: { name: 'Axew', candy: 150, xlCandy: 7 } } });
+    await s.page.waitForTimeout(500);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; return { line: l.chatCandyLine(l.effectiveRosterForMatch()), src: l.sendChat.toString().includes('chatCandyLine') && l.sendChat.toString().includes('NOT in the RESOURCES form') }; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {} });
+    expect(/(Axew|Fraxure) 150 \+7XL/.test(r.line) && (r.line.match(/(Axew|Fraxure) 150/g) || []).length === 1, 'the Axew family shows one pool of 150 candy and 7 XL: ' + r.line);
+    expect(/Ralts \?/.test(r.line) && r.src, 'an unscanned species is marked ? and the prompt carries the candy rule: ' + r.line);
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];
