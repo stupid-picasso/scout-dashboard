@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.299</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.301</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -2784,6 +2784,37 @@
         <sc-for list="{{ maxPlan.events }}" as="me" hint-placeholder-count="0">
           <div style="font:12.5px/1.5 var(--font-body);margin-top:4px;text-wrap:pretty">{{ me }}</div>
         </sc-for>
+        <sc-if value="{{ maxPlan.party }}" hint-placeholder-val="{{ false }}">
+          <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin-top:14px">{{ maxPlan.party.title }}</div>
+          <div style="font:12.5px/1.5 var(--font-body);margin-top:4px;text-wrap:pretty">{{ maxPlan.party.verdict }}</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            <sc-for list="{{ maxPlan.party.members }}" as="pm" hint-placeholder-count="0">
+              <button type="button" onClick="{{ pm.onClick }}" style="text-align:left;background:var(--surface-sunken);border-radius:12px;padding:9px 12px">
+                <div style="font:600 13.5px var(--font-body)">{{ pm.name }}</div>
+                <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);margin-top:2px">{{ pm.sub }}</div>
+              </button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ maxPlan.party.canLog }}" hint-placeholder-val="{{ false }}">
+            <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);margin-top:10px">Fought this boss? Log it so the app learns from your results:</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+              <sc-for list="{{ maxPlan.party.stars }}" as="st" hint-placeholder-count="0">
+                <button type="button" onClick="{{ st.onPick }}" style="min-height:36px;min-width:44px;border-radius:999px;background:{{ st.bg }};color:{{ st.fg }};font:700 12px var(--font-display)">{{ st.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button type="button" onClick="{{ maxPlan.party.onWin }}" class="om-press" style="flex:1;min-height:44px;border-radius:999px;background:var(--grass-500);color:var(--grass-700);font:800 13px var(--font-display)">WON</button>
+              <button type="button" onClick="{{ maxPlan.party.onLoss }}" class="om-press" style="flex:1;min-height:44px;border-radius:999px;background:var(--type-fighting);color:white;font:800 13px var(--font-display)">LOST</button>
+              <button type="button" onClick="{{ maxPlan.party.onUndo }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--surface-sunken);color:var(--ink-900);font:700 12px var(--font-display)">UNDO</button>
+            </div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ maxPlan.calib }}" hint-placeholder-val="{{ false }}">
+          <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.06em;margin-top:14px">{{ maxPlan.calib.head }}</div>
+          <sc-for list="{{ maxPlan.calib.lines }}" as="cl" hint-placeholder-count="0">
+            <div style="font:12.5px/1.5 var(--font-body);margin-top:3px;text-wrap:pretty">{{ cl }}</div>
+          </sc-for>
+        </sc-if>
         <sc-if value="{{ maxPlan.tank }}" hint-placeholder-val="{{ false }}"><div style="font:12.5px/1.5 var(--font-body);margin-top:10px;text-wrap:pretty">{{ maxPlan.tank }}</div></sc-if>
         <sc-if value="{{ maxPlan.healer }}" hint-placeholder-val="{{ false }}"><div style="font:12.5px/1.5 var(--font-body);margin-top:4px;text-wrap:pretty">{{ maxPlan.healer }}</div></sc-if>
         <div style="font:11px/1.4 var(--font-body);color:var(--ink-500);margin-top:10px;text-wrap:pretty">{{ maxPlan.note }}</div>
@@ -3981,6 +4012,8 @@ class Component extends DCLogic {
     evolveSort: 'value',
     pvpMaxLevel: 50,
     ocrAutoApply: false,
+    maxBattles: [],
+    maxStar: 3,
     cutTargetDraft: '300',
     cutListRevealed: false,
     githubToken: '',
@@ -4253,7 +4286,7 @@ class Component extends DCLogic {
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'candyAiDecisions',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply', 'maxBattles'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -4532,7 +4565,7 @@ class Component extends DCLogic {
       cutTarget: 300, pvpMaxLevel: 50, cutTargetDraft: '300',
       megaEnergyInventory: {}, megaEvolvedHistory: {}, evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, triageKeep: {}, transferQueue: [],
       syncedFrom: '',
-      events: [], savedTeams: []
+      events: [], savedTeams: [], maxBattles: []
     };
   }
 
@@ -4670,6 +4703,7 @@ class Component extends DCLogic {
       pvpMaxLevel: [40, 50, 51].includes(remote.pvpMaxLevel) ? remote.pvpMaxLevel : 50,
       events: Array.isArray(remote.events) ? remote.events : [],
       savedTeams: Array.isArray(remote.savedTeams) ? remote.savedTeams : [],
+      maxBattles: Array.isArray(remote.maxBattles) ? remote.maxBattles : (this.state.maxBattles || []),
       githubToken: this.state.githubToken || remote.githubToken || '',
       megaEnergyInventory: remote.megaEnergyInventory || {},
       megaEvolvedHistory: remote.megaEvolvedHistory || {},
@@ -4831,7 +4865,7 @@ class Component extends DCLogic {
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
       'chatMessages',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply', 'maxBattles'];
   }
 
   // Credentials are excluded from a restore by NAME, not by being forgotten, so
@@ -4945,7 +4979,7 @@ class Component extends DCLogic {
       checklistDone: s.checklistDone, resources: s.resources, evolutionItems: s.evolutionItems, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
       triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
       bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, pvpMaxLevel: s.pvpMaxLevel,
-      events: s.events || [], savedTeams: s.savedTeams || [],
+      events: s.events || [], savedTeams: s.savedTeams || [], maxBattles: s.maxBattles || [],
       // Trimmed on write: an unbounded transcript would eventually crowd out the
       // roster, which is the data that actually matters.
       chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
@@ -13725,6 +13759,60 @@ class Component extends DCLogic {
     return c.maxTop.get(String(p.idx)) || '';
   }
 
+  // A party of three for the boss chosen on the Raid tab, from type matchups only (no boss HP or Max Meter figures exist, so no win chance
+  // is claimed): the two Max attackers that hit it hardest, and a tank (the one that takes the least from the boss's own types, weighted by
+  // HP x DEF, with a small credit for an unlocked Max Guard). Verdict: both attackers super effective = Strong, on average neutral = Even,
+  // otherwise Weak. `damage` is the party's summed damage of one Max Attack each, the figure the battle log calibrates.
+  maxParty(typesIn) {
+    const types = typesIn || this.state.raidBossTypes || [];
+    if (!types.length) return null;
+    const rows = this.maxAttackers(types, 400);
+    if (!rows.length) return { types, members: [], verdict: 'none', damage: 0 };
+    const attackers = rows.slice(0, 2);
+    const rest = rows.filter(r => attackers.indexOf(r) < 0)
+      .map(r => ({ r, tank: (r.r.hp * r.r.def) / (r.incoming || 1) * (1 + (r.info.guard > 0 ? 0.15 : 0)) })).sort((a, b) => b.tank - a.tank);
+    const members = attackers.map(r => ({ role: 'Attacker', r }));
+    if (rest[0]) members.push({ role: 'Tank', r: rest[0].r });
+    const avgEff = attackers.reduce((a, r) => a + r.eff, 0) / attackers.length;
+    const verdict = attackers.every(r => r.eff >= 1.6) ? 'Strong' : avgEff >= 1 ? 'Even' : 'Weak';
+    return { types, members, verdict, damage: Math.round(members.reduce((a, x) => a + x.r.r.damage, 0)) };
+  }
+
+  logMaxBattle(result) {
+    const party = this.maxParty();
+    if (!party || !party.members.length || (result !== 'win' && result !== 'loss')) return null;
+    const entry = { id: 'mb' + Date.now(), at: Date.now(), boss: this.state.raidBossName || party.types.join('/'), types: party.types, star: Number(this.state.maxStar) || 3,
+      party: party.members.map(x => String(x.r.p.idx)), verdict: party.verdict, damage: party.damage, result };
+    this.haptic && this.haptic('light');
+    this.setState({ maxBattles: [...(this.state.maxBattles || []), entry].slice(-200) });
+    return entry;
+  }
+
+  undoMaxBattle() { this.setState({ maxBattles: (this.state.maxBattles || []).slice(0, -1) }); }
+
+  // What the person's own results say: wins per verdict and per star tier, and for a tier the party damage of the weakest win against the
+  // strongest loss (a rough line, shown only once there are 2+ wins and 1+ loss at that tier; it says so when wins and losses overlap).
+  maxCalibration() {
+    const log = this.state.maxBattles || [];
+    if (!log.length) return null;
+    const tally = key => { const t = {}; log.forEach(b => { const k = key(b); (t[k] = t[k] || { w: 0, n: 0 }).n++; if (b.result === 'win') t[k].w++; }); return t; };
+    const byVerdict = tally(b => b.verdict || '?'), byStar = tally(b => b.star + '★');
+    const lines = [];
+    Object.keys(byStar).sort().forEach(k => {
+      const star = parseInt(k, 10);
+      const rows = log.filter(b => b.star === star && Number.isFinite(b.damage));
+      const wins = rows.filter(b => b.result === 'win').map(b => b.damage), losses = rows.filter(b => b.result === 'loss').map(b => b.damage);
+      let line = k + ': ' + byStar[k].w + ' of ' + byStar[k].n + ' won';
+      if (wins.length >= 2 && losses.length >= 1) {
+        const minWin = Math.min(...wins), maxLoss = Math.max(...losses);
+        line += minWin > maxLoss ? ' · your wins started at ' + minWin + ' party damage, your losses topped out at ' + maxLoss + ': aim above ' + maxLoss : ' · wins and losses overlap (' + minWin + ' to ' + Math.max(...wins) + ' vs up to ' + maxLoss + '), so damage alone does not decide it yet';
+      }
+      lines.push(line);
+    });
+    const verdicts = ['Strong', 'Even', 'Weak'].filter(v => byVerdict[v]).map(v => v + ' matchup: ' + byVerdict[v].w + ' of ' + byVerdict[v].n + ' won');
+    return { total: log.length, wins: log.filter(b => b.result === 'win').length, verdicts, lines };
+  }
+
   // ---- Max planner: who to Dynamax first and what each Max Move upgrade costs ----------------------------------------------------
   // Every Max-capable Pokemon with measured IVs is scored on one Max Attack at its best (level 3) against a neutral target, so the order
   // does not depend on a boss. The next Max Attack level of each is priced in Max Particles, Candy and Candy XL (mechanics MAX_MOVE_STEP_COST;
@@ -13787,7 +13875,7 @@ class Component extends DCLogic {
   setMaxParticles(v) { this.noteMaxParticles({ maxParticles: v }); }
 
   // Ranks the person's Max-capable Pokemon against the boss chosen on the Raid tab.
-  maxAttackers(typesOverride) {
+  maxAttackers(typesOverride, limit) {
     const m = this.mechanics;
     const defenderTypes = typesOverride || this.state.raidBossTypes || [];
     if (!m || !m.maxRating || !defenderTypes.length) return [];
@@ -13807,7 +13895,7 @@ class Component extends DCLogic {
       if (!r) return;
       rows.push({ p, info, r, level: lv.level, eff: m.typeMultiplier(info.moveType, defenderTypes), incoming });
     });
-    return rows.sort((a, b) => b.r.score - a.r.score).slice(0, 12);
+    return rows.sort((a, b) => b.r.score - a.r.score).slice(0, limit || 12);
   }
 
   // ---- Derived-data cache ----
@@ -20035,6 +20123,27 @@ class Component extends DCLogic {
           })),
           eventsHas: pl.events.length ? true : null,
           events: pl.events.map(x => new Date(x.e.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ' \u00b7 ' + x.e.name + (x.best.length ? ' \u2014 best of yours: ' + x.best.map(b => b.name + ' vs ' + b.boss + ' (' + b.dmg + ' per hit' + (b.eff > 1 ? ', super effective' : b.eff < 1 ? ', resisted' : '') + ')').join('; ') : (x.bosses.length ? ' \u2014 no Max attacker of yours ready' : ' \u2014 boss not named yet'))),
+          party: (() => {
+            const pt = this.maxParty();
+            if (!pt) return null;
+            const nm2 = r => r.p.name + (r.info.gmax ? ' (G-Max)' : '') + ' ' + (r.p.cp != null ? r.p.cp + ' CP' : '');
+            return {
+              title: 'PARTY OF 3 vs ' + (this.state.raidBossName || pt.types.join('/')) + ' (' + pt.types.join('/') + ')',
+              verdict: pt.verdict === 'none' ? 'No Max-capable Pokemon with a fast move on file to build a party from.' : 'Type matchup: ' + pt.verdict + ' \u00b7 party damage ' + pt.damage + ' per round of Max Attacks. This is a type matchup, not a win chance: boss HP and Max Meter speed are not published.',
+              members: pt.members.map(x => ({
+                name: x.role + ': ' + nm2(x.r),
+                sub: x.role === 'Tank'
+                  ? 'takes ' + (x.r.incoming).toFixed(2) + '\u00d7 from the boss\u2019s types \u00b7 Max Guard ' + (x.r.info.guard ? 'level ' + x.r.info.guard : 'locked') + ' \u00b7 ' + x.r.info.moveName + ' ' + Math.round(x.r.r.damage) + ' per hit'
+                  : x.r.info.moveName + ' (' + x.r.info.moveType + ') ' + Math.round(x.r.r.damage) + ' per hit' + (x.r.eff > 1 ? ', super effective' : x.r.eff < 1 ? ', resisted' : ''),
+                onClick: () => this.openDetail(x.r.p)
+              })),
+              canLog: pt.members.length > 0,
+              star: this.state.maxStar || 3,
+              stars: [1, 2, 3, 4, 5, 6].map(n => ({ label: n + '\u2605', bg: (this.state.maxStar || 3) === n ? 'var(--ink-900)' : 'var(--surface-sunken)', fg: (this.state.maxStar || 3) === n ? 'var(--surface-card)' : 'var(--ink-900)', onPick: () => this.setState({ maxStar: n }) })),
+              onWin: () => this.logMaxBattle('win'), onLoss: () => this.logMaxBattle('loss'), onUndo: () => this.undoMaxBattle()
+            };
+          })(),
+          calib: (() => { const c = this.maxCalibration(); return c ? { head: 'Your Max Battle log: ' + c.wins + ' won of ' + c.total, lines: [...c.lines, ...c.verdicts] } : null; })(),
           tank: pl.tank ? 'Tank (Max Guard, the one the boss targets): ' + nm(pl.tank.c) + (pl.tank.cost ? ' \u2014 Guard ' + (pl.tank.c.info.guard ? 'level ' + pl.tank.c.info.guard : 'locked') + ', next ' + costText(pl.tank.cost) : ' \u2014 Guard at level 3') : '',
           healer: pl.healer ? 'Healer (Max Spirit heals the whole team): ' + nm(pl.healer.c) + (pl.healer.cost ? ' \u2014 Spirit ' + (pl.healer.c.info.spirit ? 'level ' + pl.healer.c.info.spirit : 'locked') + ', next ' + costText(pl.healer.cost) : ' \u2014 Spirit at level 3') : '',
           empty: pl.rows.length === 0 ? (pl.total ? 'Your Max-capable Pokemon are not in your keep list.' : 'No Max-capable Pokemon with measured IVs and a fast move on file yet.') : '',
