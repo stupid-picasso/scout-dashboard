@@ -22,9 +22,9 @@ hits, un = u.parse_page("Intro\nEvolve Bisharp during the event or up to four ho
 check('page hits', len(hits), 1); check('page unparsed', len(un), 0)
 t = "Intro\nMoves\nCertain Pok\u00e9mon caught or evolved during the event will know the following featured attacks:\nMachamp wearing a modern jacket\nKarate Chop\nFast Attack\nModern Jacket Machamp\nFlygon\nEarth Power\nCharged Attack\nFlygon\nMetagross\nMeteor Mash\nCharged Attack\nMetagross\nSales\nGlobal Event Ticket"
 h = u.parse_table(t)
-check('table count', len(h), 3)
-check('table first', (h[0]['to'], h[0]['move'], h[0]['kind'], h[0]['species']), ('Modern Jacket Machamp', 'Karate Chop', 'fast', None))
-check('table charged', (h[1]['to'], h[1]['move'], h[1]['kind']), ('Flygon', 'Earth Power', 'charged'))
-check('table via page', len(u.parse_page(t)[0]), 3)
+check('table count (the outfit variant is left out)', len(h), 2)
+check('table first', (h[0]['to'], h[0]['move'], h[0]['kind'], h[0]['species']), ('Flygon', 'Earth Power', 'charged', None))
+check('table second', (h[1]['to'], h[1]['move']), ('Metagross', 'Meteor Mash'))
+check('table via page', len(u.parse_page(t)[0]), 2)
 print('%d failed' % fail)
 sys.exit(1 if fail else 0)

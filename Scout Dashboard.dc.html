@@ -291,7 +291,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.301</span></div>
+        <div style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.302</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -15750,9 +15750,9 @@ class Component extends DCLogic {
       // `species` is the Pokemon to evolve; without it (Wild Area / Go Fest lists: "caught or evolved during the event") any Pokemon
       // whose line leads to `to` qualifies. A copy one or two stages earlier counts too (Axew, Fraxure and Haxorus all compete for the one
       // Haxorus slot): it is judged on the form it would become, and a copy that a better copy of the line replaces is marked SKIP so the
-      // candy is not spent on it. Outfit variants ("Modern Jacket Machamp") match on their trailing species name.
+      // candy is not spent on it.
       if (!e.to) return;
-      const sameTo = a => lower(a) === lower(e.to) || lower(e.to).endsWith(' ' + lower(a));
+      const sameTo = a => lower(a) === lower(e.to);
       roster.forEach(p => {
         if (done.has(p.idx)) return;
         const evo = this.evoInfoFor(p);

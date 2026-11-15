@@ -628,3 +628,6 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - `maxParty()` (Raid tab, needs a boss chosen): two Max attackers that hit the boss hardest + a tank (least damage taken from the boss's types x HP x DEF, small credit for an unlocked Max Guard). Verdict Strong/Even/Weak from type effectiveness only; says it is not a win chance (boss HP / meter speed unpublished).
 - `logMaxBattle('win'|'loss')`, `undoMaxBattle()`: `state.maxBattles` (synced, last 200: boss, star, party, verdict, party damage, result). `maxCalibration()`: wins per verdict and per star tier, and for a tier with 2+ wins and 1+ loss the party damage of the weakest win vs the strongest loss ("aim above N", or "overlap"). Test MAXPARTY-01.
 - Still open: Candy XL groups (needs user screenshots), station bonus amounts, a real simulator (needs measured meter/boss data; option C = video recording).
+
+## Event moves: outfit variants are not what evolving gives (2026-11-15)
+- The Wild Area table listed "Machamp wearing a modern jacket: Karate Chop". That is a special-research encounter, not what evolving a Machoke gives, but the app matched it to every Machamp evolution. `parse_table` now drops entries whose preceding line says wearing/costume/outfit/jacket/hat/cap, and the app matches forms exactly (no trailing-name match).
