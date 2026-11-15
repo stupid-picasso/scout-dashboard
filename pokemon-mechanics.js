@@ -5288,26 +5288,35 @@ function candyFamilyKey(name) {
 
 // ---- Max (Dynamax / Gigantamax) data ----------------------------------------------------------
 // The game master carries none of this, so it is curated by hand from public Max Battle guides
-// (Oct 2026) and is PARTIAL by design: scans of the "Dynamax" mark on a Pokemon's screen add
-// species this list does not know. Names are lowercase species names.
-const MAX_DYNAMAX_SEED = ['bulbasaur', 'ivysaur', 'venusaur', 'charmander', 'charmeleon', 'charizard', 'squirtle', 'wartortle', 'blastoise',
-  'caterpie', 'metapod', 'butterfree', 'gastly', 'haunter', 'gengar', 'beldum', 'metang', 'metagross',
-  'wooloo', 'dubwool', 'skwovet', 'greedent', 'falinks', 'grookey', 'thwackey', 'rillaboom', 'scorbunny', 'raboot', 'cinderace',
-  'sobble', 'drizzile', 'inteleon', 'arcanine', 'pikachu', 'meowth', 'machamp', 'kingler', 'lapras', 'snorlax', 'garbodor', 'toxtricity', 'grimmsnarl'];
+// (Serebii's Dynamax list, Pokemon GO Hub, Bulbapedia, Nov 2026) and can fall behind the game: scans of the "Dynamax"
+// mark on a Pokemon's screen add species this list does not know. Names are lowercase species names.
+const MAX_DYNAMAX_SEED = ['bulbasaur', 'ivysaur', 'venusaur', 'charmander', 'charmeleon', 'charizard', 'squirtle', 'wartortle', 'blastoise', 'caterpie', 'metapod', 'butterfree', 'pikachu', 'raichu', 'growlithe', 'arcanine', 'abra', 'kadabra', 'alakazam', 'machop', 'machoke', 'machamp', 'gastly', 'haunter', 'gengar', 'krabby', 'kingler', 'hitmonlee', 'hitmonchan', 'rhyhorn', 'rhydon', 'chansey', 'electabuzz', 'magmar', 'eevee', 'vaporeon', 'jolteon', 'flareon', 'omanyte', 'omastar', 'kabuto', 'kabutops', 'articuno', 'zapdos', 'moltres', 'hoothoot', 'noctowl', 'espeon', 'umbreon', 'shuckle', 'hitmontop', 'blissey', 'raikou', 'entei', 'suicune', 'lugia', 'ho-oh', 'ralts', 'kirlia', 'gardevoir', 'sableye', 'mawile', 'wailmer', 'wailord', 'trapinch', 'vibrava', 'flygon', 'beldum', 'metang', 'metagross', 'regirock', 'regice', 'registeel', 'latias', 'latios', 'combee', 'vespiquen', 'rhyperior', 'electivire', 'magmortar', 'leafeon', 'glaceon', 'gallade', 'uxie', 'mesprit', 'azelf', 'dialga', 'palkia', 'pidove', 'tranquill', 'unfezant', 'roggenrola', 'boldore', 'gigalith', 'woobat', 'swoobat', 'drilbur', 'excadrill', 'darumaka', 'darmanitan', 'trubbish', 'garbodor', 'cryogonal', 'deino', 'zweilous', 'hydreigon', 'inkay', 'malamar', 'sylveon', 'bounsweet', 'steenee', 'tsareena', 'passimian', 'drampa', 'meltan', 'melmetal', 'grookey', 'thwackey', 'rillaboom', 'scorbunny', 'raboot', 'cinderace', 'sobble', 'drizzile', 'inteleon', 'skwovet', 'greedent', 'rookidee', 'corvisquire', 'corviknight', 'wooloo', 'dubwool', 'toxtricity', 'sizzlipede', 'centiskorch', 'hatenna', 'hattrem', 'hatterene', 'falinks', 'duraludon', 'kubfu', 'urshifu', 'regidrago', 'meowth', 'lapras', 'snorlax', 'grimmsnarl'];
 // Gigantamax: the species-fixed G-Max Move and its type.
 const MAX_GMAX = {
   venusaur: ['G-Max Vine Lash', 'Grass'], charizard: ['G-Max Wildfire', 'Fire'], blastoise: ['G-Max Cannonade', 'Water'],
   butterfree: ['G-Max Befuddle', 'Bug'], pikachu: ['G-Max Volt Crash', 'Electric'], meowth: ['G-Max Gold Rush', 'Normal'],
   machamp: ['G-Max Chi Strike', 'Fighting'], gengar: ['G-Max Terror', 'Ghost'], kingler: ['G-Max Foam Burst', 'Water'],
-  lapras: ['G-Max Resonance', 'Ice'], snorlax: ['G-Max Replenish', 'Normal'], garbodor: ['G-Max Malodor', 'Poison'],
+  lapras: ['G-Max Resonance', 'Ice'], snorlax: ['G-Max Replenish', 'Normal'],
   rillaboom: ['G-Max Drum Solo', 'Grass'], cinderace: ['G-Max Fireball', 'Fire'], inteleon: ['G-Max Hydrosnipe', 'Water'],
-  toxtricity: ['G-Max Stun Shock', 'Electric'], grimmsnarl: ['G-Max Snooze', 'Dark']
+  toxtricity: ['G-Max Stun Shock', 'Electric'], grimmsnarl: ['G-Max Snooze', 'Dark'], duraludon: ['G-Max Depletion', 'Dragon']
 };
 // Max Move base power by move level (index 0 = level 1); a Gigantamax attack starts at what a Max
 // attack reaches at level 3. Max Guard = HP per shield, Max Spirit = % of max HP healed.
-const MAX_ATTACK_POWER = { max: [250, 300, 350, 450], gmax: [350, 400, 450, 550] };
-const MAX_GUARD_HP = [20, 40, 60, 80];
-const MAX_SPIRIT_PCT = [8, 12, 16, 20];
+const MAX_ATTACK_POWER = { max: [250, 300, 350], gmax: [350, 400, 450] };
+const MAX_GUARD_HP = [20, 40, 60];
+const MAX_SPIRIT_PCT = [8, 12, 16];
+// Max Move levels run 1..3. Max Attack starts unlocked at level 1; Max Guard and Max Spirit start locked (level 0) and are unlocked by
+// the first step. Cost of reaching a level (Max Particles + the species' Candy / Candy XL), Nov 2026 guides: unlock 400 MP + 50 Candy,
+// level 2 = 600 MP + 100 Candy, level 3 = 800 MP + 40 Candy XL. Candy XL is 40 to 55 depending on the species' upgrade group (the
+// group list is not published anywhere reliable), so 40 is the floor. Traded Pokemon keep unlocks but drop to level 1.
+const MAX_MOVE_STEP_COST = { 1: { mp: 400, candy: 50, xl: 0 }, 2: { mp: 600, candy: 100, xl: 0 }, 3: { mp: 800, candy: 0, xl: 40 } };
+const MAX_XL_RANGE = [40, 55];
+// Max Battle entry cost in Max Particles by star tier (spent only on a win) and the XP of a win.
+const MAX_BATTLE_TIERS = { 1: { mp: 250, xp: 5000 }, 2: { mp: 400, xp: 7500 }, 3: { mp: 400, xp: 7500 }, 4: { mp: 800, xp: 25000 }, 5: { mp: 800, xp: 25000 }, 6: { mp: 800, xp: 25000 } };
+// Max Particle economy: Power Spot visit 100 (120 the first of the day), 300 per 2 km walked, 800 free a day, 1500 held at most.
+const MAX_PARTICLES = { spot: 100, firstSpot: 120, walk2km: 300, dailyFree: 800, holdCap: 1500 };
+// Max Meter: 100 to fill, an orb of 10 every 15 s, a cheer 20; a full meter gives every trainer 3 Max turns in which the boss cannot attack.
+const MAX_METER = { cap: 100, orb: 10, orbEverySec: 15, cheer: 20, turns: 3 };
 // A Max attack takes the type of the Pokemon's fast move.
 const MAX_MOVE_BY_TYPE = { Normal: 'Max Strike', Fire: 'Max Flare', Water: 'Max Geyser', Electric: 'Max Lightning', Grass: 'Max Overgrowth',
   Ice: 'Max Hailstorm', Fighting: 'Max Knuckle', Poison: 'Max Ooze', Ground: 'Max Quake', Flying: 'Max Airstream', Psychic: 'Max Mindstorm',
@@ -5336,6 +5345,21 @@ function maxAttackPower(level, gmax) {
 }
 function maxGuardHp(level) { return level >= 1 ? MAX_GUARD_HP[Math.min(MAX_GUARD_HP.length, Math.floor(level)) - 1] : 0; }
 function maxSpiritPct(level) { return level >= 1 ? MAX_SPIRIT_PCT[Math.min(MAX_SPIRIT_PCT.length, Math.floor(level)) - 1] : 0; }
+// Cost of raising one Max Move from `from` to `to` (1..3; Guard/Spirit start at 0 = locked, Attack at 1). `xlBase` is the Candy XL of the
+// species' group (40 to 55, see MAX_XL_RANGE). Returns { mp, candy, xl, steps } or null when there is nothing to buy.
+function maxUpgradeCost(move, from, to, xlBase) {
+  const lo = Math.max(move === 'attack' ? 1 : 0, Math.floor(Number(from)) || 0), hi = Math.min(3, Math.floor(Number(to)) || 0);
+  if (!(hi > lo)) return null;
+  const out = { mp: 0, candy: 0, xl: 0, steps: 0 };
+  for (let lv = lo + 1; lv <= hi; lv++) {
+    const c = MAX_MOVE_STEP_COST[lv];
+    out.mp += c.mp; out.candy += c.candy; out.xl += c.xl ? (xlBase > 0 ? xlBase : c.xl) : 0; out.steps++;
+  }
+  return out;
+}
+function maxEntryCost(star) { const t = MAX_BATTLE_TIERS[Math.max(1, Math.min(6, Math.floor(Number(star)) || 1))]; return t ? t.mp : null; }
+// Whole days of free Max Particles (800 a day) it takes to make up `short` Particles.
+function maxDaysToEarn(short) { return short > 0 ? Math.ceil(short / MAX_PARTICLES.dailyFree) : 0; }
 
 // Estimate of a Max attacker against a boss. damage = one Max Attack (STAB, effectiveness, the
 // Pokemon's real attack stat, move level; G-Max when the Pokemon is Gigantamax). bulk = how long it
@@ -5960,7 +5984,7 @@ if (typeof window !== 'undefined') {
   window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
-    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxRating,
+    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxEntryCost, maxDaysToEarn, maxRating,
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,

@@ -133,18 +133,20 @@ module.exports = async function suiteB() {
     const a = await s.call('maxPatch', { dynamax: true, gigantamax: true, maxAttackLevel: 2, maxGuardLevel: '3', maxSpiritLevel: null });
     expect(a.dynamax === true && a.gigantamax === true && a.maxAttackLevel === 2 && a.maxGuardLevel === 3 && !('maxSpiritLevel' in a), JSON.stringify(a));
     const b = await s.call('maxPatch', { dynamax: false, gigantamax: false, max_attack_level: 4, max_guard_level: 0, max_spirit_level: 9 });
-    expect(!('dynamax' in b) && b.maxAttackLevel === 4 && !('maxGuardLevel' in b) && !('maxSpiritLevel' in b), 'false/zero/out-of-range must be ignored: ' + JSON.stringify(b));
+    expect(!('dynamax' in b) && !('maxAttackLevel' in b) && !('maxGuardLevel' in b) && !('maxSpiritLevel' in b), 'false/zero/out-of-range must be ignored: ' + JSON.stringify(b));
     expect(Object.keys(await s.call('maxPatch', null)).length === 0 && Object.keys(await s.call('maxPatch', { dynamax: 'yes', maxAttackLevel: 'x' })).length === 0, 'junk');
   }, 'critical');
   await T('MAX-02', 'Max', 'Mechanics: species list, G-Max moves and the Max Move tables', async () => {
     const r = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { seed: m.isMaxSeedSpecies('Charizard') && m.isMaxSeedSpecies('G-Max Gengar') && !m.isMaxSeedSpecies('Magikarp'), g: m.gmaxFor('Lapras'), none: m.gmaxFor('Pidgey'), p: [m.maxAttackPower(1, false), m.maxAttackPower(3, false), m.maxAttackPower(1, true), m.maxAttackPower(9, true)], guard: [m.maxGuardHp(1), m.maxGuardHp(3), m.maxGuardHp(0)], spirit: [m.maxSpiritPct(2), m.maxSpiritPct(0)], mv: m.MAX_MOVE_BY_TYPE.Fire }; });
     expect(r.seed, 'seed'); expect(r.g.move === 'G-Max Resonance' && r.g.type === 'Ice' && r.none === null, JSON.stringify(r.g));
-    expect(r.p.join() === '250,350,350,550', r.p.join()); expect(r.guard.join() === '20,60,0' && r.spirit.join() === '12,0', 'guard/spirit'); expect(r.mv === 'Max Flare');
+    expect(r.p.join() === '250,350,350,450', r.p.join()); expect(r.guard.join() === '20,60,0' && r.spirit.join() === '12,0', 'guard/spirit'); expect(r.mv === 'Max Flare');
   }, 'high');
   await T('MAX-03', 'Max', 'Roster shows MAX on capable species and the MAX filter lists only those', async () => {
     await s.go('ROSTER'); await s.page.locator('.om-press', { hasText: /^MAX$/ }).click(); await s.page.waitForTimeout(500);
-    const rows = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.map(e => /\bMAX\b|G-MAX/.test(e.innerText)));
-    expect(rows.length > 0 && rows.every(Boolean), 'rows ' + rows.length + ' tagged ' + rows.filter(Boolean).length);
+    const rowsT = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.map(e => ({ ok: /\bMAX\b|G-MAX/.test(e.innerText), x: e.innerText.replace(/\n+/g, ' | ').slice(0, 90) })));
+    const rows = rowsT.filter(r => r.x.trim()).map(r => r.ok);   // rows scrolled out of view render no text
+    await s.page.locator('.om-press', { hasText: /^ALL$/ }).click(); await s.page.waitForTimeout(300);
+    expect(rows.length > 0 && rows.every(Boolean), 'rows ' + rows.length + ' tagged ' + rows.filter(Boolean).length + ' untagged: ' + rowsT.filter(r => !r.ok).map(r => r.x).join(' // '));
     await s.page.locator('.om-press', { hasText: /^ALL$/ }).click(); await s.page.waitForTimeout(300);
   }, 'high');
   await T('MAX-04', 'Max', 'Screenshot import: the Dynamax mark, Gigantamax and Max Move levels land on the matched Pokemon', async () => {
@@ -1382,6 +1384,21 @@ module.exports = async function suiteB() {
     expect(live.filter(x => x.fundable === true).length === 1 && live.filter(x => x.fundable === false).every(x => x.short && x.shortBy > 0), '130 candy funds exactly one 125-candy chain, the rest are short: ' + JSON.stringify(r));
     const funded = live.find(x => x.fundable === true);
     expect(live.every(x => x.rank <= funded.rank + 1e-9), 'the funded copy is the best-ranked one: ' + JSON.stringify(r));
+  });
+  await T('MAXPLAN-01', 'Max', 'The Max planner ranks Max-capable Pokemon, prices the next Max Attack level in Particles and Candy, says what is short, and names a tank and a healer', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl, extra) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...extra });
+    await s.set({ addedPokemon: [mk('mx1', 'Machamp', 68, [15, 15, 15], 3000, 40, { quickMove: 'karate chop', chargeMove: 'cross chop', gigantamax: true, dynamax: true, maxAttackLevel: 1, favorite: true }), mk('mx2', 'Snorlax', 143, [12, 14, 14], 3200, 40, { quickMove: 'lick', chargeMove: 'body slam', dynamax: true, maxAttackLevel: 2, favorite: true })], roster: [], ivOverrides: {}, completedIds: [], candyInventory: { machop: { name: 'Machop', candy: 120, xlCandy: 10 }, snorlax: { name: 'Snorlax', candy: 40, xlCandy: 60 } }, resources: { ...(st0.resources || {}), maxParticles: 700 }, tab: 'raid' });
+    await s.page.waitForTimeout(900);
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const pl = l.maxPlanner(); const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
+      return { rows: pl.rows.map(x => [x.c.p.name, x.c.info.level, x.gain, x.cost, x.short.length, x.ready]), tank: pl.tank && pl.tank.c.p.name, healer: pl.healer && pl.healer.c.p.name, tiers: pl.tiers.map(t => t.battles), shown: document.body.innerText.includes('MAX PLANNER'), ev: (() => { const keepF = l.state.feed; l.setState({ feed: { events: [{ id: 'mm1', name: 'Dynamax Espurr during Max Monday', type: 'max-mondays', start: new Date(Date.now() + 864e5).toISOString().slice(0, 23), end: new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 23) }], gbl: [] } }); const out = l.maxPlanner().events.map(x => [x.bosses.length, x.best.length]); l.setState({ feed: keepF }); return out; })(), keep: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).filter(x => /^Max attacker/.test(x)).length) }; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, resources: st0.resources || {}, tab: 'home' });
+    const mach = r && r.rows.find(x => x[0] === 'Machamp'), snor = r && r.rows.find(x => x[0] === 'Snorlax');
+    expect(mach && mach[3].mp === 600 && mach[3].candy === 100 && mach[2] === 14 && mach[5] === true, 'G-Max Machamp level 1 -> 2: 600 Particles + 100 Candy, +14%, affordable with 700 / 120: ' + JSON.stringify(r));
+    expect(snor && snor[3].mp === 800 && snor[3].xl === 40 && snor[2] === 17 && snor[4] >= 1 && snor[5] === false, 'Snorlax level 2 -> 3: 800 Particles + 40 Candy XL, +17%, short 100 Particles with 700: ' + JSON.stringify(r));
+    expect(r.tank === 'Snorlax' && r.healer === 'Machamp' && r.tiers.join() === '2,1,0' && r.shown, 'tank, healer, battles affordable and the section shown: ' + JSON.stringify(r));
+    expect(r.ev.length === 1 && r.ev[0][0] === 1 && r.ev[0][1] === 1, 'the next Max event names its boss and your best attacker against it: ' + JSON.stringify(r.ev));
+    expect(r.keep.join() === 'mx1:1,mx2:1', 'the top Max attackers of each Max Attack type carry a keep reason: ' + JSON.stringify(r.keep));
   });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
