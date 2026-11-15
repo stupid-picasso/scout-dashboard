@@ -293,7 +293,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.310</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.311</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -8504,6 +8504,22 @@ class Component extends DCLogic {
         'doc ' + document.documentElement.clientWidth + '\u00d7' + document.documentElement.clientHeight, 'screen ' + screen.width + '\u00d7' + screen.height,
         'bar top ' + (r ? Math.round(r.top) : '?') + ' bottom ' + (r ? Math.round(r.bottom) : '?') + ' css top ' + (nav ? nav.style.top || '-' : '?'),
         'scrollY ' + Math.round(window.scrollY) + ' standalone ' + String(navigator.standalone), 'ua ' + (navigator.userAgent || '').slice(0, 90)];
+      // Anything above the bar that makes it position against itself instead of the screen (transform, filter, contain, will-change,
+      // perspective, backdrop-filter) or clips/scrolls: the usual reason a fixed bar rides along with the page.
+      const odd = [];
+      for (let el = nav; el && el !== document.documentElement.parentNode && odd.length < 8; el = el.parentElement) {
+        const cs = getComputedStyle(el), f = [];
+        if (cs.transform !== 'none') f.push('transform');
+        if (cs.filter !== 'none') f.push('filter');
+        if (cs.contain && cs.contain !== 'none') f.push('contain ' + cs.contain);
+        if (cs.willChange && cs.willChange !== 'auto') f.push('will-change ' + cs.willChange);
+        if (cs.perspective !== 'none') f.push('perspective');
+        const bf = cs.backdropFilter || cs.webkitBackdropFilter; if (bf && bf !== 'none') f.push('backdrop');
+        if (el !== nav && (cs.overflowX !== 'visible' || cs.overflowY !== 'visible')) f.push('overflow ' + cs.overflowX + '/' + cs.overflowY);
+        if (el !== nav && (cs.position === 'sticky' || cs.position === 'fixed')) f.push(cs.position);
+        if (f.length) odd.push((el.tagName || '?').toLowerCase() + (el.id ? '#' + el.id : '') + ': ' + f.join(','));
+      }
+      rows.push('bar position ' + (nav ? getComputedStyle(nav).position : '?'), 'ancestors ' + (odd.length ? odd.join(' ; ') : 'none odd'), 'html/body height ' + document.documentElement.scrollHeight + '/' + document.body.scrollHeight);
       this.askConfirm({ title: 'Screen numbers', message: rows.join(' | '), actions: [] });
     } catch (e) { /* nothing to show */ }
   }
@@ -8566,13 +8582,16 @@ class Component extends DCLogic {
     el._bubbleBound = true;
     let startY = 0, startBottom = 86, moved = false, fade = null;
     const maxBottom = () => Math.max(120, (window.innerHeight || 700) - 150);
-    el.addEventListener('touchstart', e => { const t = e.touches[0]; startY = t.clientY; startBottom = this.state.bubbleY || 86; moved = false; }, { passive: true });
+    let press = null;
+    el.addEventListener('touchstart', e => { const t = e.touches[0]; startY = t.clientY; startBottom = this.state.bubbleY || 86; moved = false; clearTimeout(press); press = setTimeout(() => { if (!moved) { this._bubbleDragAt = Date.now(); this.showLayoutInfo(); } }, 900); }, { passive: true });
+    el.addEventListener('touchcancel', () => clearTimeout(press), { passive: true });
     el.addEventListener('touchmove', e => {
       const t = e.touches[0], dy = startY - t.clientY;
       if (Math.abs(dy) > 6) moved = true;
       if (moved) { e.preventDefault(); this.setState({ bubbleY: Math.max(76, Math.min(maxBottom(), Math.round(startBottom + dy))) }, () => this.placeBars()); }
     }, { passive: false });
     el.addEventListener('touchend', () => {
+      clearTimeout(press);
       if (!moved) return;
       this._bubbleDragAt = Date.now();
       try { localStorage.setItem('scout.bubbleY', String(this.state.bubbleY)); } catch (e) {}
