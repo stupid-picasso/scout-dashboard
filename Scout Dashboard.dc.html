@@ -307,7 +307,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.325</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.326</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -1957,6 +1957,10 @@
         <div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.05em">ASK THE PROFESSOR ANYTHING</div>
         <div onClick="{{ clearChat }}" style="cursor:pointer;padding:5px 11px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-500);font:700 11px var(--font-display);letter-spacing:.03em;white-space:nowrap">NEW CHAT</div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font:12px var(--font-body);color:var(--ink-500);cursor:pointer;min-height:36px">
+        <input type="checkbox" checked="{{ chatBubbleOn }}" onChange="{{ toggleChatBubbleSetting }}" />
+        <span>Show the floating chat button on the other tabs</span>
+      </label>
       <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{ chatMessagesDisplay }}" as="m" hint-placeholder-count="0">
           <div style="align-self:{{ m.alignSelf }};max-width:85%;background:{{ m.bg }};color:var(--ink-900);padding:9px 13px;border-radius:10px;font:13px/1.4 var(--font-body)">{{ m.content }}</div>
@@ -20734,6 +20738,8 @@ class Component extends DCLogic {
       chatBubbleStyle: 'bottom:calc(' + (this.state.bubbleY || 86) + 'px + env(safe-area-inset-bottom))',
       chatBubbleRef: el => this.bindChatBubble(el),
       chatBubbleToggle: () => this.toggleChatBubble(),
+      chatBubbleOn: !this.state.chatBubbleOff,
+      toggleChatBubbleSetting: () => { const off = !this.state.chatBubbleOff; try { localStorage.setItem('scout.bubble', off ? 'off' : 'on'); } catch (e) {} this.setState({ chatBubbleOff: off, chatOpen: false }); },
       chatPanelOpen: this.state.chatOpen ? true : null,
       closeChatPanel: () => this.closeChatBubble(),
       chatPanelScroll: el => { if (el) el.scrollTop = el.scrollHeight; },
