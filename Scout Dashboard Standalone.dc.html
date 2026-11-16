@@ -1063,6 +1063,15 @@
      body propagates to the viewport, and iOS then lays position:fixed bars out against a shorter viewport, so the
      tab bar floated above the screen bottom and moved with the page. */
   body{max-width:100%;margin:0;background:var(--surface-page);}
+  /* App shell (the default). The page itself never scrolls: the app root is a screen-sized box that scrolls inside, and the tab bar is the
+     last thing in that box, sticky to its bottom. On iOS installed apps a long document scroll leaves bottom-anchored bars measured against
+     the wrong viewport height (the bar floated up the screen as you scrolled), and an inner scroller has no such problem. "Classic
+     scrolling" (Screen numbers box) puts the old document scroll and fixed bar back. */
+  html:not(.classic), html:not(.classic) body{height:100%;overflow:hidden}
+  html:not(.classic) .app-root{position:fixed;inset:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none;padding-bottom:0 !important}
+  html:not(.classic) .ios-nav{position:sticky;bottom:0}
+  html.classic .app-root{position:relative;min-height:100dvh;overflow-x:clip}
+  html.classic .ios-nav{position:fixed;left:0;right:0;bottom:0;margin:0 !important}
   ::selection{background:var(--type-electric);color:var(--surface-page)}
   a{color:var(--type-electric);}
   a:hover{color:var(--type-electric);}
@@ -1303,7 +1312,7 @@
 <script type="module" src="./pokemon-data.js"></script>
 <script type="module" src="./pokemon-mechanics.js"></script>
 </helmet>
-<div ref="{{ rootRef }}" style="position:relative;isolation:isolate;overflow-x:clip;min-height:100dvh;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}">
+<div ref="{{ rootRef }}" class="app-root" data-app-scroll="1" style="isolation:isolate;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}">
 
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
   <header style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
@@ -1319,7 +1328,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.312</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.314</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -1388,17 +1397,7 @@
       <span>A new version is ready</span><span style="letter-spacing:.05em">TAP TO RELOAD</span>
     </div>
   </sc-if>
-  <nav data-navbar="1" class="ios-nav" aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;transform:translateZ(0);-webkit-transform:translateZ(0);z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:var(--nav-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid var(--nav-line)">
-    <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="5">
-      <button type="button" onClick="{{ t.onClick }}" class="om-press" aria-label="{{ t.label }}" aria-current="{{ t.current }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
-        <span style="position:relative;display:inline-flex">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.iconPath }}"/></svg>
-          <sc-if value="{{ t.badge }}" hint-placeholder-val="{{ false }}"><span aria-label="{{ t.badge }} to review" style="position:absolute;top:-4px;right:-10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ios-red);color:#fff;font:700 11px/18px var(--font-body);text-align:center;box-sizing:border-box">{{ t.badge }}</span></sc-if>
-        </span>
-        <span style="font:600 10.5px var(--font-body);letter-spacing:.01em;color:{{ t.labelColor }};white-space:nowrap">{{ t.navLabel }}</span>
-      </button>
-    </sc-for>
-  </nav>
+
 
   <sc-if value="{{ chatBubbleShow }}" hint-placeholder-val="{{ false }}">
     <button type="button" ref="{{ chatBubbleRef }}" onClick="{{ chatBubbleToggle }}" aria-label="Ask the Professor" class="om-press" style="position:fixed;right:14px;{{ chatBubbleStyle }};z-index:52;width:52px;height:52px;border-radius:50%;background:var(--brand-primary-strong);color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.35);transition:opacity .2s,transform .2s;touch-action:none">
@@ -4905,6 +4904,17 @@
   </div>
   </sc-if>
 
+  <nav data-navbar="1" class="ios-nav" aria-label="Main" style="margin:0 calc(-1 * {{ rootPadX }});transform:translateZ(0);-webkit-transform:translateZ(0);z-index:40;display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:var(--nav-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-top:.5px solid var(--nav-line)">
+    <sc-for list="{{ tabList }}" as="t" hint-placeholder-count="5">
+      <button type="button" onClick="{{ t.onClick }}" class="om-press" aria-label="{{ t.label }}" aria-current="{{ t.current }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;min-height:46px">
+        <span style="position:relative;display:inline-flex">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.iconPath }}"/></svg>
+          <sc-if value="{{ t.badge }}" hint-placeholder-val="{{ false }}"><span aria-label="{{ t.badge }} to review" style="position:absolute;top:-4px;right:-10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ios-red);color:#fff;font:700 11px/18px var(--font-body);text-align:center;box-sizing:border-box">{{ t.badge }}</span></sc-if>
+        </span>
+        <span style="font:600 10.5px var(--font-body);letter-spacing:.01em;color:{{ t.labelColor }};white-space:nowrap">{{ t.navLabel }}</span>
+      </button>
+    </sc-for>
+  </nav>
 </div>
 
 </x-dc>
@@ -5267,7 +5277,7 @@ class Component extends DCLogic {
     this._onTouchStart = (e) => {
       if (this.state.ptrRefreshing) return;
       // Only arm the gesture at the very top, so it never fights a normal scroll.
-      const top = window.scrollY || document.documentElement.scrollTop || 0;
+      const top = this.scrollTopNow();
       if (top > 2 || !e.touches || e.touches.length !== 1) { pulling = false; return; }
       startY = e.touches[0].clientY;
       pulling = true;
@@ -7003,9 +7013,23 @@ class Component extends DCLogic {
     };
   }
 
+  // The page scrolls inside the app root (see the App shell CSS); "Classic scrolling" puts the document scroll back.
+  appScroller() {
+    if (typeof document === 'undefined' || document.documentElement.classList.contains('classic')) return null;
+    return document.querySelector('[data-app-scroll]');
+  }
+  scrollTopNow() { const sc = this.appScroller(); return sc ? sc.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0); }
+  scrollToY(y, smooth) {
+    const sc = this.appScroller();
+    try {
+      if (sc) sc.scrollTo({ top: y, behavior: smooth ? 'smooth' : 'auto' });
+      else window.scrollTo({ top: y, behavior: smooth ? 'smooth' : 'auto' });
+    } catch (e) { if (sc) sc.scrollTop = y; else window.scrollTo(0, y); }
+  }
+
   goToTab(key) {
     this.setState({ tab: key }, () => {
-      try { window.scrollTo(0, 0); } catch (e) {}
+      this.scrollToY(0);
     });
   }
 
@@ -7018,15 +7042,16 @@ class Component extends DCLogic {
     const el = document.querySelector('[data-today-section="' + key + '"]');
     if (!el) return;
     this.haptic('light');
-    const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 76);
+    const sc = this.appScroller();
+    const target = Math.max(0, el.getBoundingClientRect().top - (sc ? sc.getBoundingClientRect().top : 0) + this.scrollTopNow() - 76);
     // Ask for a smooth scroll, but do not trust it: some webviews ignore
     // behavior:'smooth' silently (and requestAnimationFrame can be throttled to
     // never firing), which is what made these chips look inert. The follow-up
     // check guarantees arrival either way.
-    try { window.scrollTo({ top: target, behavior: 'smooth' }); } catch (e) {}
+    this.scrollToY(target, true);
     clearTimeout(this._jumpTimer);
     this._jumpTimer = setTimeout(() => {
-      if (Math.abs(window.scrollY - target) > 8) window.scrollTo(0, target);
+      if (Math.abs(this.scrollTopNow() - target) > 8) this.scrollToY(target);
     }, 240);
   }
 
@@ -9529,7 +9554,7 @@ class Component extends DCLogic {
       const rows = ['inner ' + window.innerWidth + '\u00d7' + window.innerHeight, 'visual ' + (vv ? Math.round(vv.width) + '\u00d7' + Math.round(vv.height) + ' offset ' + Math.round(vv.offsetTop) + ' scale ' + vv.scale : 'n/a'),
         'doc ' + document.documentElement.clientWidth + '\u00d7' + document.documentElement.clientHeight, 'screen ' + screen.width + '\u00d7' + screen.height,
         'bar top ' + (r ? Math.round(r.top) : '?') + ' bottom ' + (r ? Math.round(r.bottom) : '?') + ' css top ' + (nav ? nav.style.top || '-' : '?'),
-        'scrollY ' + Math.round(window.scrollY) + ' standalone ' + String(navigator.standalone), 'ua ' + (navigator.userAgent || '').slice(0, 90)];
+        'scroller ' + (this.appScroller() ? 'app shell, scrollTop ' + Math.round(this.appScroller().scrollTop) : 'classic') + ' scrollY ' + Math.round(window.scrollY) + ' standalone ' + String(navigator.standalone), 'ua ' + (navigator.userAgent || '').slice(0, 90)];
       // Anything above the bar that makes it position against itself instead of the screen (transform, filter, contain, will-change,
       // perspective, backdrop-filter) or clips/scrolls: the usual reason a fixed bar rides along with the page.
       const odd = [];
@@ -9546,53 +9571,23 @@ class Component extends DCLogic {
         if (f.length) odd.push((el.tagName || '?').toLowerCase() + (el.id ? '#' + el.id : '') + ': ' + f.join(','));
       }
       rows.push('bar position ' + (nav ? getComputedStyle(nav).position : '?'), 'ancestors ' + (odd.length ? odd.join(' ; ') : 'none odd'), 'html/body height ' + document.documentElement.scrollHeight + '/' + document.body.scrollHeight);
-      this.askConfirm({ title: 'Screen numbers', message: rows.join(' | '), actions: [] });
+      const classic = document.documentElement.classList.contains('classic');
+      this.askConfirm({ title: 'Screen numbers', message: rows.join(' | '), actions: [{ label: classic ? 'BACK TO APP SCROLLING' : 'CLASSIC SCROLLING', style: 'primary', run: () => { try { localStorage.setItem('scout.shell', classic ? 'app' : 'classic'); } catch (e) {} location.reload(); } }] });
     } catch (e) { /* nothing to show */ }
-  }
-
-  // The tab bar and chat bubble are anchored with `top`, from the visual viewport, on iPhone/iPad. position:fixed + bottom is measured against
-  // the layout viewport, which iOS lets drift to a shorter height than the visible screen (the bar then floats mid-screen and moves with
-  // the page). `top` is measured from the layout viewport's top, which stays put, and the visual viewport's height is what is on screen.
-  placeBars(force) {
-    try {
-      // Opt-in only (localStorage scout.navTop = '1'): on a real iPhone this anchoring pushed the bar off the screen, so it is off by default.
-      let optIn = false; try { optIn = localStorage.getItem('scout.navTop') === '1'; } catch (e2) {}
-      const ios = force === true || (optIn && (/iPhone|iPad|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)));
-      const nav = document.querySelector('[data-navbar]');
-      const bub = document.querySelector('button[aria-label="Ask the Professor"]');
-      const vv = window.visualViewport;
-      if (!ios || !vv) {
-        if (nav && nav.style.top) { nav.style.removeProperty('top'); nav.style.removeProperty('bottom'); nav.style.bottom = '0'; }
-        return false;
-      }
-      const bottomEdge = vv.offsetTop + vv.height;
-      if (nav) {
-        nav.style.setProperty('bottom', 'auto', 'important');
-        nav.style.setProperty('top', Math.round(bottomEdge - nav.offsetHeight) + 'px', 'important');
-      }
-      if (bub) {
-        const off = (this.state.bubbleY || 86);
-        bub.style.setProperty('bottom', 'auto', 'important');
-        bub.style.setProperty('top', Math.round(bottomEdge - off - bub.offsetHeight - (nav ? 0 : 0)) + 'px', 'important');
-      }
-      return true;
-    } catch (e) { return false; }
   }
 
   watchViewport() {
     if (this._viewportWatched || typeof window === 'undefined') return;
     this._viewportWatched = true;
     let t = null;
-    const later = () => { this.placeBars(); clearTimeout(t); t = setTimeout(() => { this.fixFixedBars(); this.placeBars(); }, 180); };
+    const later = () => { clearTimeout(t); t = setTimeout(() => this.fixFixedBars(), 180); };
     try {
       if (window.visualViewport) { window.visualViewport.addEventListener('resize', later); window.visualViewport.addEventListener('scroll', later); }
       window.addEventListener('orientationchange', later);
       window.addEventListener('pageshow', later);
       document.addEventListener('focusout', later, true);   // the keyboard closing
       document.addEventListener('visibilitychange', () => { if (!document.hidden) later(); });
-      window.addEventListener('scroll', () => { if (!this._placeRaf) this._placeRaf = requestAnimationFrame(() => { this._placeRaf = 0; this.placeBars(); }); }, { passive: true });
-      this._placeTimer = setInterval(() => this.placeBars(), 500);   // a re-render rewrites the style attribute; this puts the bars back
-      this.placeBars();
+
     } catch (e) { /* older browser */ }
   }
 
@@ -9614,7 +9609,7 @@ class Component extends DCLogic {
     el.addEventListener('touchmove', e => {
       const t = e.touches[0], dy = startY - t.clientY;
       if (Math.abs(dy) > 6) moved = true;
-      if (moved) { e.preventDefault(); this.setState({ bubbleY: Math.max(76, Math.min(maxBottom(), Math.round(startBottom + dy))) }, () => this.placeBars()); }
+      if (moved) { e.preventDefault(); this.setState({ bubbleY: Math.max(76, Math.min(maxBottom(), Math.round(startBottom + dy))) }); }
     }, { passive: false });
     el.addEventListener('touchend', () => {
       clearTimeout(press);
