@@ -32,7 +32,7 @@ jobs:
         if: matrix.browser == 'chromium'
         run: node scripts/qa/qa_accuracy.js qa-accuracy.json
       - name: End-to-end suites
-        run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c
+        run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c e
       - name: Accessibility (axe) - reports only until the semantic-markup phase lands
         continue-on-error: true
         run: QA_OUT=qa-axe-${{ matrix.browser }}.json QA_AXE_OUT=axe-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
