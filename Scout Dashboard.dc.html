@@ -641,6 +641,7 @@
           <div style="font:650 19px var(--font-display);letter-spacing:-.012em;color:var(--ink-900);margin-bottom:4px">Events &middot; next 14 days</div>
           <button type="button" onClick="{{ toggleReminders }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:4px 2px">{{ remindLabel }}</button>
         </div>
+        <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-500);margin:-4px 0 10px">Reminders appear while the app is open or when you come back to it. An iPhone cannot wake a web app that is closed.</div>
         <sc-for list="{{ feedEventRows }}" as="fe" hint-placeholder-count="3">
           <div style="background:var(--surface-sunken);border-radius:10px;padding:12px;margin-bottom:10px">
             <div style="font:700 13px var(--font-display)">{{ fe.title }}</div>
@@ -769,6 +770,9 @@
         <div style="font:11.5px var(--font-display);color:var(--ink-500);text-align:right">{{ todayEventEvolveCount }}</div>
       </div>
       <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-500);margin-bottom:10px;text-wrap:pretty">Evolving during these events teaches a move that otherwise needs an Elite TM. Held out of Evolve now until the window opens.</div>
+      <sc-if value="{{ eventMoveHealthNote }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11.5px/1.4 var(--font-display);color:var(--ios-orange, #d97706);margin-bottom:10px;text-wrap:pretty">{{ eventMoveHealthNote }}</div>
+      </sc-if>
       <sc-if value="{{ todayEventWatch }}" hint-placeholder-val="{{ false }}">
         <div style="font:11.5px/1.4 var(--font-display);color:var(--type-electric);margin-bottom:10px;text-wrap:pretty">{{ todayEventWatch }}</div>
       </sc-if>
@@ -18480,8 +18484,9 @@ class Component extends DCLogic {
     const notDone = (p) => !completedSet.has(p.idx);
 
     const powerUpPool = roster.filter(p => this.isPvpWorthy(p) && !p.favorite && notDone(p));
-    const pvpKey = p => { const b = this.pvpBest(p); return b ? (4 - Math.min(4, b.tierRank)) * 1000 + (b.movesOk ? 100 : 0) + b.rank : this.bestRank(p); };
-    powerUpPool.sort((a, b) => pvpKey(b) - pvpKey(a));
+    // One key per Pokemon, not one per comparison: sorting 2,000 rows called pvpBest ~40,000 times on every render.
+    const pvpKeyOf = new Map(powerUpPool.map(p => { const b = this.pvpBest(p); return [p, b ? (4 - Math.min(4, b.tierRank)) * 1000 + (b.movesOk ? 100 : 0) + b.rank : this.bestRank(p)]; }));
+    powerUpPool.sort((a, b) => pvpKeyOf.get(b) - pvpKeyOf.get(a));
     const powerUpList = powerUpPool.slice(0, 12).map(p => {
       const best = this.bestLeagueInfo(p);
       return {
@@ -20194,7 +20199,8 @@ class Component extends DCLogic {
         }] : []),
 
       todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' + (this._evolveSkipped ? ' \u00b7 ' + this._evolveSkipped + ' hidden: you would transfer them' : '') + (this._evolveHeld ? ' \u00b7 ' + this._evolveHeld + ' waiting for an event' : '') : '',
-      todayEventSection: (eventOpps.length || eventWatch.length) ? true : null,
+      todayEventSection: (eventOpps.length || eventWatch.length || (this.state.eventMoves && this.state.eventMoves.health && this.state.eventMoves.health.status === 'degraded')) ? true : null,
+      eventMoveHealthNote: (() => { const h = this.state.eventMoves && this.state.eventMoves.health; return h && h.status === 'degraded' ? 'Event move data may be incomplete: the page for ' + ((h.pagesParsedNothing || []).slice(0, 2).join(', ') || 'an event') + ' changed and could not be read. Check the event page before you evolve.' : ''; })(),
       todayEventWatch: eventWatch.length ? 'Coming up, Pokemon not announced yet: ' + eventWatch.map(ev => new Date(ev.start).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + ev.name).join(' · ') + '. Hold a final evolution you care about until the Pokemon is named (usually 1–2 weeks ahead).' : '',
       todayEventEvolve: eventOpps.slice(0, 12).map(o => {
         const fmtD = t => new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });

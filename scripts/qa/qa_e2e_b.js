@@ -1366,6 +1366,13 @@ module.exports = async function suiteB() {
     const w3 = r.rows.find(x => x[0] === 'ln3');
     expect(w2 && w2[2] === false && w3 && w3[2] === true && w3[3] === false, 'the better Wartortle is not skipped; the 93% one that it replaces is marked SKIP and never held: ' + JSON.stringify(r));
   });
+  await T('EVENTMOVE-05', 'Today', 'When the event-move parser reports a page it could not read, Today says the data may be incomplete; a healthy file shows no warning', async () => {
+    await s.set({ tab: 'today', eventMoves: { moves: [], health: { status: 'degraded', pagesParsedNothing: ['QA Community Day'] } } }); await s.page.waitForTimeout(500);
+    const t1 = await s.text();
+    await s.set({ eventMoves: { moves: [], health: { status: 'ok', pagesParsedNothing: [] } } }); await s.page.waitForTimeout(400);
+    const t2 = await s.text();
+    expect(/Event move data may be incomplete.*QA Community Day/.test(t1) && !/Event move data may be incomplete/.test(t2), 'warning shown/hidden wrongly');
+  });
   await T('EVENTMOVE-04', 'Today', 'Copies heading to the same event form share one candy pool: the best copy is funded first and the rest are flagged short, with rank and keep reason shown', async () => {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
@@ -1431,6 +1438,29 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {} });
     expect(/(Axew|Fraxure) 150 \+7XL/.test(r.line) && (r.line.match(/(Axew|Fraxure) 150/g) || []).length === 1, 'the Axew family shows one pool of 150 candy and 7 XL: ' + r.line);
     expect(/Ralts \?/.test(r.line) && r.src, 'an unscanned species is marked ? and the prompt carries the candy rule: ' + r.line);
+  });
+  await T('CHATEVAL-01', 'Chat', 'Grounding score: for 14 typical questions the chat is sent the facts needed to answer them (counts, candy, hundo, dex, line and evolution detail), at least 90%', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...(extra || {}) });
+    const ros = [mk('ce1', 'Axew', 610, [10, 10, 10], 300, 10), mk('ce2', 'Axew', 610, [11, 10, 10], 310, 10), mk('ce3', 'Fraxure', 611, [12, 12, 12], 900, 20), mk('ce4', 'Ralts', 280, [10, 10, 10], 200, 10),
+      mk('ce5', 'Gengar', 94, [15, 15, 15], 2400, 40), mk('ce6', 'Machop', 66, [5, 5, 5], 400, 15), mk('ce7', 'Azumarill', 184, [2, 15, 15], 1420, 30), mk('ce8', 'Pikachu', 25, [8, 8, 8], 300, 10), mk('ce9', 'Pikachu', 25, [9, 8, 8], 310, 10), mk('ce10', 'Pikachu', 25, [7, 8, 8], 290, 10),
+      mk('ce11', 'Eevee', 133, [6, 6, 6], 250, 10), mk('ce12', 'Eevee', 133, [7, 6, 6], 260, 10, { lucky: true })];
+    await s.set({ addedPokemon: ros, roster: [], ivOverrides: {}, chatMessages: [], candyInventory: { axew: { name: 'Axew', candy: 150, xlCandy: 7 } }, resources: { rareCandy: 3, rareCandyXL: 9, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null } });
+    await s.page.waitForTimeout(600);
+    const Q = [
+      ['How many Pikachu do I have?', /Pikachu x3/], ['How many Eevee are there?', /Eevee x2/], ['How many Axew candies do I have?', /Axew 150 \+7XL/],
+      ['Axew or Fraxure, which should I invest in?', /Fraxure[^|]*\| (next evolution|final form)/], ['Is my Machop worth keeping?', /Machop[^|]*\| next evolution/],
+      ['How many hundos do I have?', /Hundo: 1\b/], ['How is my Kanto dex?', /Kanto Dex: \d+\/151/], ['Do I have Rare Candy XL?', /Rare Candy XL 9/],
+      ['What is my strongest Pokemon?', /Gengar[^;]*2400/], ['How is my living dex doing?', /Living Dex: \d+\//], ['Which need a second move?', /second charge move/i],
+      ['How many lucky Pokemon?', /Lucky: 1\b/], ['What should I evolve soon?', /Evolve-soon candidates/], ['What can I safely transfer?', /Transfer-safe candidates/]];
+    const out = await s.page.evaluate(async Q => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const keep = l.completeWithRetry; const res = [];
+      for (const q of Q) { let sent = ''; l.completeWithRetry = async o => { sent = JSON.stringify(o); return 'ok'; }; l.setState({ chatInput: q[0], chatMessages: [] }); await new Promise(r => setTimeout(r, 80)); await l.sendChat(); await new Promise(r => setTimeout(r, 80)); res.push(sent); }
+      l.completeWithRetry = keep; l.setState({ chatMessages: [] }); return res; } } return null; }, Q.map(q => [q[0]]));
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, resources: st0.resources, chatMessages: [] });
+    const hits = Q.filter((q, i) => out && q[1].test(out[i] || ''));
+    const score = hits.length / Q.length;
+    expect(score >= 0.9, 'grounding ' + Math.round(score * 100) + '%; missed: ' + Q.filter((q, i) => !(out && q[1].test(out[i] || ''))).map(q => q[0]).join(' | '));
   });
   await T('CHATBUBBLE-01', 'Chat', 'A floating chat bubble on every tab except Home opens the same chat as a sheet, tells the model which screen and which Pokemon is open, and fades while the page scrolls', async () => {
     const st0 = await s.state();
