@@ -1468,6 +1468,7 @@ module.exports = async function suiteB() {
       const out = { shell: !document.documentElement.classList.contains('classic'), rootPos: getComputedStyle(sc).position, rootOy: getComputedStyle(sc).overflowY, bodyOv: getComputedStyle(document.body).overflow, navPos: getComputedStyle(nav).position, tall: sc.scrollHeight > sc.clientHeight + 400 };
       const gap0 = gap();
       sc.scrollTop = 600; await wait(250);
+      const hd = document.querySelector('header'); out.headerTop = Math.round(hd.getBoundingClientRect().top); out.rootBottom = Math.round(sc.getBoundingClientRect().bottom); out.appH = document.documentElement.style.getPropertyValue('--app-h'); out.inner = window.innerHeight;
       out.scrolled = Math.round(sc.scrollTop); out.docY = Math.round(window.scrollY); out.gap0 = gap0; out.gapScrolled = gap(); out.navFull = Math.round(nav.getBoundingClientRect().width) === Math.round(window.innerWidth);
       sc.scrollTop = sc.scrollHeight; await wait(250); out.gapEnd = gap();
       l.goToTab('roster'); await wait(400); out.afterTab = Math.round(sc.scrollTop);
@@ -1482,6 +1483,7 @@ module.exports = async function suiteB() {
       return out; } } return null; });
     expect(r && r.shell && r.rootPos === 'fixed' && r.rootOy === 'auto' && r.bodyOv === 'hidden' && r.navPos === 'sticky' && r.tall, 'the app root is a fixed, scrolling box inside a body that does not scroll: ' + JSON.stringify(r));
     expect(r.scrolled > 100 && r.docY === 0 && r.gap0 === 0 && r.gapScrolled === 0 && r.gapEnd === 0 && r.navFull, 'scrolling moves the root, never the page, and the tab bar stays on the bottom edge and full width: ' + JSON.stringify(r));
+    expect(r.headerTop === 0 && r.rootBottom === r.inner && r.appH === r.inner + 'px', 'the sticky header sticks to the very top, and the root fills the screen height exactly: ' + JSON.stringify(r));
     expect(r.afterTab === 0 && r.jumped !== false, 'a tab change returns to the top and a section chip scrolls the root: ' + JSON.stringify(r));
     expect(r.classic.rootPos === 'relative' && r.classic.navPos === 'fixed' && r.classic.scroller === true && r.info === true, 'Classic scrolling restores the document scroll and the fixed bar, and the Screen numbers box offers the switch: ' + JSON.stringify(r));
   });
