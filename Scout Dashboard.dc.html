@@ -308,7 +308,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.319</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.320</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -8588,18 +8588,14 @@ class Component extends DCLogic {
     } catch (e) { /* nothing to show */ }
   }
 
-  // The app root's height: the real screen height in an installed iPhone app (screen.* is stable there; the window can report a shorter
-  // layout viewport once the page stops scrolling), the window height elsewhere. Written to --app-h, which the shell CSS reads.
+  // The app root's height = the window's own height (--app-h, read by the shell CSS), kept in step with it. An earlier version used the
+  // screen height in installed iPhone apps, but iOS paints only the window: the tab bar's labels and padding fell below it and were cut
+  // off, leaving a dead strip. The window height is what iOS actually shows; it is re-read on resize, rotation, keyboard changes and twice a
+  // second, because iOS changes it without always firing an event.
   sizeShell() {
     try {
-      const w = window.innerWidth, h = window.innerHeight, standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-      let H = h;
-      if (standalone && window.screen && window.screen.width && window.screen.height) {
-        const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
-        H = w <= h ? long : short;
-        if (!(w <= h) && Math.abs(window.innerWidth - long) > 40) H = h;   // not a plain phone rotation: trust the window
-      }
-      document.documentElement.style.setProperty('--app-h', Math.max(H, h) + 'px');
+      const h = Math.round(window.innerHeight || 0);
+      if (h > 200 && this._shellH !== h) { this._shellH = h; document.documentElement.style.setProperty('--app-h', h + 'px'); }
     } catch (e) { /* the CSS falls back to 100dvh */ }
   }
 
@@ -8610,6 +8606,7 @@ class Component extends DCLogic {
     const later = () => { this.sizeShell(); clearTimeout(t); t = setTimeout(() => { this.sizeShell(); this.fixFixedBars(); }, 180); };
     this.sizeShell();
     window.addEventListener('resize', later);
+    this._shellTimer = setInterval(() => this.sizeShell(), 500);
     try {
       if (window.visualViewport) { window.visualViewport.addEventListener('resize', later); window.visualViewport.addEventListener('scroll', later); }
       window.addEventListener('orientationchange', later);
