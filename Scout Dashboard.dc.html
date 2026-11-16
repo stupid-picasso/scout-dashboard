@@ -44,7 +44,12 @@
      the wrong viewport height (the bar floated up the screen as you scrolled), and an inner scroller has no such problem. "Classic
      scrolling" (Screen numbers box) puts the old document scroll and fixed bar back. */
   html:not(.classic), html:not(.classic) body{height:100%;overflow:hidden}
-  html:not(.classic) .app-root{position:fixed;inset:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none;padding-bottom:0 !important}
+  html{background:var(--surface-page)}
+  /* The height is set from script (--app-h = the real screen height, see sizeShell): on an iPhone installed app a page that cannot scroll is
+     laid out in a layout viewport ~90pt shorter than the screen, so inset:0 left a blank strip under the tab bar. The sticky header must
+     stick to the very top of the box, not to the padding edge, hence the negative top equal to the root's top padding. */
+  html:not(.classic) .app-root{position:fixed;top:0;left:0;right:0;height:var(--app-h,100dvh);overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none;padding-bottom:0 !important}
+  html:not(.classic) .app-header{top:calc(-1 * var(--root-pt, 0px)) !important}
   html:not(.classic) .ios-nav{position:sticky;bottom:0}
   html.classic .app-root{position:relative;min-height:100dvh;overflow-x:clip}
   html.classic .ios-nav{position:fixed;left:0;right:0;bottom:0;margin:0 !important}
@@ -287,10 +292,10 @@
 <script type="module" src="./pokemon-data.js"></script>
 <script type="module" src="./pokemon-mechanics.js"></script>
 </helmet>
-<div ref="{{ rootRef }}" class="app-root" data-app-scroll="1" style="isolation:isolate;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}">
+<div ref="{{ rootRef }}" class="app-root" data-app-scroll="1" style="--root-pt:{{ rootPadTop }};isolation:isolate;width:100%;max-width:100%;box-sizing:border-box;background:var(--surface-page);font-family:var(--font-body);color:var(--ink-900);padding:{{ rootPadding }}">
 
   <div ref="{{ headerSentinelRef }}" style="height:1px;margin-bottom:-1px"></div>
-  <header style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
+  <header class="app-header" style="position:sticky;top:0;z-index:30;margin-left:calc(-1 * {{ rootPadX }});margin-right:calc(-1 * {{ rootPadX }});margin-bottom:22px">
     <sc-if value="{{ statusBanner }}" hint-placeholder-val="{{ false }}">
       <div role="status" aria-live="polite" class="ios-toast">
         <div style="width:10px;height:10px;border-radius:50%;background:{{ statusBanner.dot }};flex-shrink:0"></div>
@@ -303,7 +308,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.314</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.315</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -8545,17 +8550,38 @@ class Component extends DCLogic {
         if (el !== nav && (cs.position === 'sticky' || cs.position === 'fixed')) f.push(cs.position);
         if (f.length) odd.push((el.tagName || '?').toLowerCase() + (el.id ? '#' + el.id : '') + ': ' + f.join(','));
       }
+      const rr = document.querySelector('[data-app-scroll]'), rrr = rr ? rr.getBoundingClientRect() : null, hd = document.querySelector('header'), hdr = hd ? hd.getBoundingClientRect() : null;
+      const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0'; document.body.appendChild(probe);
+      const envT = Math.round(parseFloat(getComputedStyle(probe).paddingTop) || 0), envB = Math.round(parseFloat(getComputedStyle(probe).paddingBottom) || 0); probe.remove();
+      rows.push('root top ' + (rrr ? Math.round(rrr.top) : '?') + ' bottom ' + (rrr ? Math.round(rrr.bottom) : '?') + ' h ' + (rrr ? Math.round(rrr.height) : '?') + ' --app-h ' + document.documentElement.style.getPropertyValue('--app-h'), 'header top ' + (hdr ? Math.round(hdr.top) : '?') + ' bottom ' + (hdr ? Math.round(hdr.bottom) : '?'), 'env top ' + envT + ' bottom ' + envB, 'dvh ' + Math.round(window.innerHeight));
       rows.push('bar position ' + (nav ? getComputedStyle(nav).position : '?'), 'ancestors ' + (odd.length ? odd.join(' ; ') : 'none odd'), 'html/body height ' + document.documentElement.scrollHeight + '/' + document.body.scrollHeight);
       const classic = document.documentElement.classList.contains('classic');
       this.askConfirm({ title: 'Screen numbers', message: rows.join(' | '), actions: [{ label: classic ? 'BACK TO APP SCROLLING' : 'CLASSIC SCROLLING', style: 'primary', run: () => { try { localStorage.setItem('scout.shell', classic ? 'app' : 'classic'); } catch (e) {} location.reload(); } }] });
     } catch (e) { /* nothing to show */ }
   }
 
+  // The app root's height: the real screen height in an installed iPhone app (screen.* is stable there; the window can report a shorter
+  // layout viewport once the page stops scrolling), the window height elsewhere. Written to --app-h, which the shell CSS reads.
+  sizeShell() {
+    try {
+      const w = window.innerWidth, h = window.innerHeight, standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      let H = h;
+      if (standalone && window.screen && window.screen.width && window.screen.height) {
+        const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
+        H = w <= h ? long : short;
+        if (!(w <= h) && Math.abs(window.innerWidth - long) > 40) H = h;   // not a plain phone rotation: trust the window
+      }
+      document.documentElement.style.setProperty('--app-h', Math.max(H, h) + 'px');
+    } catch (e) { /* the CSS falls back to 100dvh */ }
+  }
+
   watchViewport() {
     if (this._viewportWatched || typeof window === 'undefined') return;
     this._viewportWatched = true;
     let t = null;
-    const later = () => { clearTimeout(t); t = setTimeout(() => this.fixFixedBars(), 180); };
+    const later = () => { this.sizeShell(); clearTimeout(t); t = setTimeout(() => { this.sizeShell(); this.fixFixedBars(); }, 180); };
+    this.sizeShell();
+    window.addEventListener('resize', later);
     try {
       if (window.visualViewport) { window.visualViewport.addEventListener('resize', later); window.visualViewport.addEventListener('scroll', later); }
       window.addEventListener('orientationchange', later);
@@ -19314,6 +19340,7 @@ class Component extends DCLogic {
         : 'sheetRise .44s cubic-bezier(.22,1,.36,1) backwards',
       rootPadding: isMobile ? 'calc(env(safe-area-inset-top) + 10px) 14px calc(96px + env(safe-area-inset-bottom))' : '28px 40px calc(96px + env(safe-area-inset-bottom))',
       rootPadX: isMobile ? '14px' : '40px',
+      rootPadTop: isMobile ? 'calc(env(safe-area-inset-top) + 10px)' : '28px',
       statGridCols: isMobile ? 'repeat(auto-fit,minmax(88px,1fr))' : 'repeat(5,minmax(0,1fr))',
       rosterGridCols: isMobile ? '1fr' : 'repeat(auto-fill,minmax(380px,1fr))',
       cardPadding: isCompact ? '10px' : '16px',
