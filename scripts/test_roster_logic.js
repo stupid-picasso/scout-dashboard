@@ -492,8 +492,9 @@ function buildLists(roster, bestRank) {
   check('missing move data returns null', m.raidRating([200, 100, 100], [15, 15, 15], 50, null, charged, {}), null);
 
   const ctx = { mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } };
-  ['moveKey', 'lookupMove', 'raidProfile', 'pvpFormName', 'pvpAssess', 'needsEliteTM', 'pvpBest', 'isPvpWorthy', 'needsAppraisal', 'leagueUsable', 'bestRank', 'bestLeagueInfo'].forEach(n => {
-    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpFormName: 'p, leagueKey', pvpAssess: 'p, leagueKey, tableKey', needsEliteTM: 'speciesName, form, moveName', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
+  ctx._rmemo = (tag, obj, key, fn) => fn();
+  ['moveKey', 'lookupMove', 'raidProfile', 'pvpFormName', '_pvpAssessRaw', '_needsEliteTMRaw', 'pvpAssess', 'needsEliteTM', 'pvpBest', 'isPvpWorthy', 'needsAppraisal', 'leagueUsable', 'bestRank', 'bestLeagueInfo'].forEach(n => {
+    const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpFormName: 'p, leagueKey', pvpAssess: 'p, leagueKey, tableKey', _pvpAssessRaw: 'p, leagueKey, tableKey', _needsEliteTMRaw: 'speciesName, form, moveName', needsEliteTM: 'speciesName, form, moveName', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
     ctx[n] = new Function(...sig.split(', '), extractMethodBody(SRC, `${n}(${sig}) {`)).bind(ctx);
   });
   ctx.baseStatsOf = p => m.BASE_STATS[p.dex];

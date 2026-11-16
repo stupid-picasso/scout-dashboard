@@ -6384,7 +6384,9 @@ class Component extends DCLogic {
 
   // The league rank worked out from the IVs now (stat product against the best spread, for the form the rank is judged on),
   // not the number stored at the last recalculation. Null when the IVs are not measured or the form has no base stats.
-  freshRank(p, lk) {
+  freshRank(p, lk) { return this._rmemo('fr', p, lk, () => this._freshRankRaw(p, lk)); }
+
+  _freshRankRaw(p, lk) {
     try {
       if (!p || this.needsAppraisal(p) || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV) || !this.gradeStanding) return null;
       const st = this.gradeStanding(p, lk);
@@ -6510,7 +6512,9 @@ class Component extends DCLogic {
   }
 
   // { rank, topPct } of this copy for the league, judged as the form its rank is for; cached per stat line.
-  gradeStanding(p, lk) {
+  gradeStanding(p, lk) { return this._rmemo('gs', p, lk, () => this._gradeStandingRaw(p, lk)); }
+
+  _gradeStandingRaw(p, lk) {
     const m = this.mechanics, ivs = this.ivsOf(p);
     if (!m || !m.spreadStanding || !ivs) return null;
     const base = this.gradeBaseFor(p, lk);
@@ -7597,7 +7601,9 @@ class Component extends DCLogic {
     return leagueKey !== 'little' && lg && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
   }
 
-  pvpAssess(p, leagueKey, tableKey) {
+  pvpAssess(p, leagueKey, tableKey) { return this._rmemo('pa', p, leagueKey + '|' + (tableKey || ''), () => this._pvpAssessRaw(p, leagueKey, tableKey)); }
+
+  _pvpAssessRaw(p, leagueKey, tableKey) {
     const m = this.mechanics;
     const tk = tableKey || leagueKey;
     const lg = p[leagueKey];
@@ -7801,7 +7807,9 @@ class Component extends DCLogic {
   // league, or 90%+ in Little Cup (no tier data exists there). IV rank alone
   // is not enough: a perfect-IV Pikachu is 100% and still weak.
   // True when this species learns the move only from an Elite TM (it sits in the legacy pool and not in the regular one).
-  needsEliteTM(speciesName, form, moveName) {
+  needsEliteTM(speciesName, form, moveName) { return this._rmemo('et', speciesName, form + '|' + moveName, () => this._needsEliteTMRaw(speciesName, form, moveName)); }
+
+  _needsEliteTMRaw(speciesName, form, moveName) {
     const m = this.mechanics;
     const pool = m && m.movepoolFor ? m.movepoolFor(speciesName, form) : null;
     if (!pool) return false;
@@ -18096,7 +18104,26 @@ class Component extends DCLogic {
     });
   }
 
+  // Within ONE render the state cannot change, so a Pokemon's assessment is the same however many places ask (a 2,000-Pokemon roster made
+  // ~40,000 identical pvpAssess calls per render). The memo exists only while renderVals runs; handlers and tests always compute fresh.
+  _rmemo(tag, obj, key, fn) {
+    const m = this._rm;
+    if (!m) return fn();
+    let per = m.get(obj);
+    if (!per) { per = new Map(); m.set(obj, per); }
+    const k = tag + '|' + key;
+    if (per.has(k)) return per.get(k);
+    const v = fn();
+    per.set(k, v);
+    return v;
+  }
+
   renderVals() {
+    this._rm = new Map();
+    try { return this.renderValsInner(); } finally { this._rm = null; }
+  }
+
+  renderValsInner() {
     this.installDerivedCache();
     // The same merged list every other reader uses (overrides applied, plus added, minus removed), built once per state.
     const roster = this.effectiveRosterForMatch();
