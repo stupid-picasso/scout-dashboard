@@ -258,6 +258,7 @@ function collectInPage(sampleStep) {
   stats.errors.slice(0, 10).forEach(e => console.log('ERR', e));
   console.log('distinct violating Pokemon by root cause:'); Object.entries(uniq).forEach(([k, v]) => console.log('  ', v.size, k)); console.log('violation rows by cause @ output:'); Object.entries(dedup).forEach(([k, v]) => console.log('  ', v.length, k));
   const soft = {}; stats.softViolations.forEach(v => { const key = v.severity + ' ' + v.violates.join('|') + '@' + v.output; (soft[key] = soft[key] || []).push(v); });
+  const sev = {}; stats.softViolations.forEach(v => { sev[v.severity] = (sev[v.severity] || 0) + 1; }); console.log('soft violations by severity (over-cap: the Pokemon is above that league cap, so the rank cannot be used; tie-only: equal-rank copies):', JSON.stringify(sev));
   const sc = {}; stats.softViolations.forEach(v => { sc[v.output] = (sc[v.output] || 0) + 1; }); console.log('soft (CP-over-cap / tie-only) violations by output:', JSON.stringify(sc));
   const outFile = '/tmp/fuzz_keep_result.json';
   fs.writeFileSync(outFile, JSON.stringify({ seeds: SEEDS, violations: stats.violations.slice(0, 200), softViolations: stats.softViolations.slice(0, 100), stats: { ...stats, violations: undefined, softViolations: undefined } }, null, 1));

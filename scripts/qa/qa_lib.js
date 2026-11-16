@@ -1,4 +1,5 @@
 // Shared helpers for the QA suites: test registry, fresh app sessions, navigation.
+const fs = require('fs');
 const path = require('path');
 const pw = require(path.join(__dirname, '..', '..', 'node_modules', 'playwright'));
 const chromium = pw[process.env.QA_BROWSER || 'chromium'];
@@ -52,6 +53,13 @@ async function session(opts = {}) {
   const t0 = Date.now();
   await page.goto(opts.url || PAGE, { waitUntil: 'load' });
   await page.waitForFunction(() => document.body.innerText.length > 100, null, { timeout: 15000 }).catch(() => {});
+  // PvPoke tiers change every week; pin them so a data refresh cannot move the expected results of these tests.
+  if (opts.pinTiers !== false) {
+    try {
+      const pins = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'pvp_tiers_pinned.json'), 'utf8'));
+      await page.evaluate(p => { const M = window.PokemonMechanics; if (!M) return; [['great', 'PVP_TIER_GREAT'], ['ultra', 'PVP_TIER_ULTRA']].forEach(([k, n]) => { const t = M[n]; if (!t) return; Object.keys(p[k]).forEach(sp => { if (t[sp]) Object.assign(t[sp], p[k][sp]); }); }); }, pins);
+    } catch (e) { console.error("pinTiers failed:", e.message); }
+  }
   const s = { ctx, page, errors, logs, loadMs: Date.now() - t0 };
   // Tab bar: Today / Roster / PvP / Raid, then More (Home, Recs, Intel, Attack, Log).
   const BAR = { TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };

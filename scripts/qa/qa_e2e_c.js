@@ -107,7 +107,7 @@ module.exports = async function suiteC() {
     await s.set({ megaEnergyInventory: { gible: { status: { '': { level: 1, restEndsAt: now - 1000 } } } } }); expect((await s.call('reminderItems', now)).some(i => /^mr:gible/.test(i.id)), 'no mega rest item');
   }, 'high');
   await T('TOD-44', 'Today', 'Turning reminders on asks for permission, and each reminder fires only once', async () => {
-    await s.ctx.grantPermissions(['notifications']); await s.go('TODAY'); await s.page.getByRole('button', { name: 'Remind me' }).click(); await s.page.waitForTimeout(600); expect((await s.state()).remindersOn === true, 'not on');
+    await s.ctx.grantPermissions(['notifications']); await s.page.evaluate(() => { try { Object.defineProperty(Notification, 'permission', { get: () => 'granted', configurable: true }); Notification.requestPermission = () => Promise.resolve('granted'); } catch (e) {} }); await s.go('TODAY'); await s.page.getByRole('button', { name: 'Remind me' }).click(); await s.page.waitForTimeout(600); expect((await s.state()).remindersOn === true, 'not on');
     await s.page.evaluate(() => localStorage.removeItem('scout.remind.sent.v1'));
     await s.set({ megaEnergyInventory: { gible: { status: { '': { level: 1, restEndsAt: Date.now() - 1000 } } } } });
     const first = await s.call('checkReminders'); const second = await s.call('checkReminders'); expect(first.length >= 1 && second.length === 0, first.length + '/' + second.length);

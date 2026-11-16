@@ -94,15 +94,28 @@ def parse_page(text):
     return hits, unparsed
 
 
+def has_move_text(text):
+    """True when the page text talks about evolving and about an Attack/move at all (so zero parsed hits means the parser broke, not that there was nothing to learn)."""
+    return any(re.search(r'evolv', l, re.I) and re.search(r'(Charged|Fast) Attack', l) for l in text.split('\n')) or bool(re.search(r'featured (?:attacks|moves)', text, re.I) and re.search(r'evolved', text, re.I))
+
+
 def main():
     feed = json.load(open(FEED))
     old = json.load(open(OUT)) if os.path.exists(OUT) else {'moves': [], 'unparsed': []}
     now = datetime.datetime.utcnow() - datetime.timedelta(days=1)
     events = [e for e in feed.get('events', []) if e.get('type') in TYPES and e.get('link') and e['end'][:10] >= now.strftime('%Y-%m-%d')]
     moves, unparsed, failed = [], [], 0
+    health = {'events': len(events), 'pagesRead': 0, 'pagesWithMoveText': 0, 'pagesParsedNothing': []}
     for e in events:
         try:
-            hits, un = parse_page(get_text(e['link']))
+            page = get_text(e['link'])
+            hits, un = parse_page(page)
+            health['pagesRead'] += 1
+            if has_move_text(page):
+                health['pagesWithMoveText'] += 1
+                if not hits:
+                    health['pagesParsedNothing'].append(e['name'])
+                    print('::warning::event page has move text but nothing parsed: ' + e['name'], file=sys.stderr)
         except Exception as ex:  # keep what this event had
             failed += 1
             print('could not read', e['link'], ex, file=sys.stderr)
@@ -113,7 +126,8 @@ def main():
         unparsed += [{'eventId': e['id'], 'eventName': e['name'], 'sentence': s} for s in un]
     if failed and failed == len(events) and old.get('moves'):
         sys.exit('every event page failed; keeping the old file')
-    out = {'fetchedAt': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'moves': moves, 'unparsed': unparsed}
+    health['status'] = 'degraded' if (health['pagesParsedNothing'] or (events and not health['pagesRead'])) else 'ok'
+    out = {'fetchedAt': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'health': health, 'moves': moves, 'unparsed': unparsed}
     new = json.dumps(out, indent=1, ensure_ascii=False)
     if os.path.exists(OUT):
         prev = json.load(open(OUT)); prev['fetchedAt'] = out['fetchedAt']
