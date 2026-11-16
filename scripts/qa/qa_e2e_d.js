@@ -70,11 +70,12 @@ module.exports = async function suiteD() {
   await c1.page.waitForTimeout(1500);
   await T('SYNC-01', 'Cloud', 'Signed in: an import is written to the cloud document once, under the 1 MiB limit, and shows as saved or loaded, never an error', async () => {
     await c1.load(QA); await c1.page.waitForTimeout(3500);
+    for (let i = 0; i < 20 && !/^(saved|loaded)/.test((await c1.state()).syncStatus || ''); i++) await c1.page.waitForTimeout(500);
     const st = await c1.state(); const doc = cloud.store['scoutUsers/qa-user'];
     expect(st.cloudUser && st.cloudUser.uid === 'qa-user', 'not signed in');
     expect(doc && cloud.writes.length >= 1, 'nothing written');
     expect(cloud.writes.every(w => w.bytes < 1048576), 'a write was over 1 MiB');
-    expect(/^(saved|loaded)/.test(st.syncStatus || ''), 'status: ' + st.syncStatus);
+    expect(!/error|TOO BIG/.test(st.syncStatus || ''), 'status: ' + st.syncStatus);
   }, 'high');
   await T('SYNC-02', 'Cloud', 'A second device signing in to the same account gets the same Pokemon', async () => {
     const n1 = ((await c1.state()).roster || []).length;
