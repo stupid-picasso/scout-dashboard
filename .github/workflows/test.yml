@@ -29,6 +29,7 @@ jobs:
           node scripts/test_rank_reference.js
           node scripts/test_pvp_sim.js
           node scripts/test_max.js
+          node scripts/test_cp_recovery.js
 
       - name: Gemini pipeline tests
         run: |

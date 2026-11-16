@@ -1487,6 +1487,74 @@ module.exports = async function suiteB() {
     expect(r.afterTab === 0 && r.jumped !== false, 'a tab change returns to the top and a section chip scrolls the root: ' + JSON.stringify(r));
     expect(r.classic.rootPos === 'relative' && r.classic.navPos === 'fixed' && r.classic.scroller === true && r.info === true, 'Classic scrolling restores the document scroll and the fixed bar, and the Screen numbers box offers the switch: ' + JSON.stringify(r));
   });
+  await T('CPHIDDEN-01', 'Import', 'A CP hidden behind the Pokemon is recovered from the visible digits, HP and Power Up cost (recording path), matched by name+HP when it is in the roster, checked when it cannot fit, and tagged CHECK CP with candidates', async () => {
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [], roster: [], ivOverrides: {}, removedIds: [], candyInventory: {}, tab: 'roster' });
+    const kingdra = { name: 'Kingdra', dex: 230, cp: null, cpCovered: true, cpVisible: '2??6', hp: 155, powerUpStardust: 11000, powerUpCandy: 10, powerUpIsXl: true, candy: 116, xlCandy: 25 };
+    await s.call('mergeVideoImport', [kingdra]); await s.page.waitForTimeout(400);
+    const r1 = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const p = l.effectiveRosterForMatch().find(x => x.name === 'Kingdra'); return p && { cp: p.cp, check: p.cpCheck, cands: p.cpCandidates, note: p.cpNote, tag: l.cpTagFor(p) }; } } return null; });
+    // a one-digit misread that cannot fit its own HP and level is kept but tagged
+    await s.call('mergeVideoImport', [{ name: 'Kingdra', dex: 230, cp: 1111, hp: 155, powerUpStardust: 11000, powerUpCandy: 10, powerUpIsXl: true }]); await s.page.waitForTimeout(400);
+    const rk = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return g.stateNode.logic.effectiveRosterForMatch().filter(x => x.name === 'Kingdra').map(x => [x.cp, !!x.cpCheck]); } return null; });
+    // the same Pokemon already in the roster (CP known): the hidden scan is matched by name and HP, no new row, no tag
+    await s.set({ addedPokemon: [{ idx: 'ch9', name: 'Gyarados', dex: 130, cp: 2301, hp: 160, atkIV: null, defIV: null, staIV: null, great: { rankPct: null }, ultra: { rankPct: null }, little: { rankPct: null }, scanDate: '2026-11-01' }], ivOverrides: {} });
+    await s.call('mergeVideoImport', [{ name: 'Gyarados', dex: 130, cp: null, cpCovered: true, cpVisible: '2??1', hp: 160 }]); await s.page.waitForTimeout(400);
+    const r2 = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const gy = l.effectiveRosterForMatch().filter(x => x.name === 'Gyarados'); const kd = l.effectiveRosterForMatch().filter(x => x.name === 'Kingdra'); return { gy: gy.length, gyCheck: gy.map(x => !!x.cpCheck), gyCp: gy.map(x => x.cp) }; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, removedIds: st0.removedIds || [], candyInventory: st0.candyInventory || {}, tab: 'home' });
+    expect(r1 && r1.cp === null && r1.check === true && Array.isArray(r1.cands) && r1.cands.indexOf(2656) >= 0 && r1.cands.length <= 24 && r1.tag === 'CHECK CP' && /hidden behind the Pokemon/.test(r1.note), 'a covered CP is left unset, tagged, and lists the CPs that fit (2656 among them): ' + JSON.stringify(r1));
+    expect(r2.gy === 1 && r2.gyCheck[0] === false && r2.gyCp[0] === 2301, 'a covered CP is matched to the roster Pokemon of the same name and HP, with no duplicate and no tag: ' + JSON.stringify(r2));
+    expect(rk && rk.length === 2 && rk.some(x => x[0] === 1111 && x[1] === true), 'a CP that cannot fit is kept as read and tagged: ' + JSON.stringify(rk));
+  });
+  await T('CPHIDDEN-02', 'Import', 'Screenshot path: the review panel shows the candidates, a typed or tapped CP confirms it, an unconfirmed add is tagged, and a covered read is never applied automatically', async () => {
+    const st0 = await s.state();
+    await s.set({ addedPokemon: [], roster: [], ivOverrides: {}, removedIds: [], ocrAutoApply: true, tab: 'home' });
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const wait = ms => new Promise(r => setTimeout(r, ms)); window.__noPrefetch = true; window.__noImportGate = true;
+      l.preprocessImage = async () => document.createElement('canvas');
+      l.readScreenshotWithVision = async () => ({ pokemon_name: 'Kingdra', cp: null, cp_covered: true, cp_visible: '2??6', hp: 155, power_up_stardust: 11000, power_up_candy: 10, power_up_is_xl: true, candy: 116, xl_candy: 25 });
+      const out = {};
+      try {
+        l.handleScreenshotUpload({ name: 'k' }); await wait(600);
+        const p = l.state.ocrParsed; Object.assign(out, { parsed: !!p, check: p && p.cpCheck, cands: p && p.cpCandidates, cp: p && p.cp, waiting: !!l.state.ocrParsed });
+        out.auto = (l.state.addedPokemon || []).length + (l.state.roster || []).length;
+        l.addOcrAsNew(true); await wait(300);
+        const mon = [...(l.state.roster || []), ...(l.state.addedPokemon || [])].find(x => x.name === 'Kingdra'); out.added = mon ? { cpCheck: mon.cpCheck, cp: mon.cp, n: (mon.cpCandidates || []).length } : null;
+        // second scan: the person taps a candidate, so the add carries no tag
+        l.readScreenshotWithVision = async () => ({ pokemon_name: 'Kingdra', cp: null, cp_covered: true, cp_visible: '2??6', hp: 155, power_up_stardust: 11000, power_up_candy: 10, power_up_is_xl: true });
+        l.setState({ ocrParsed: null }); await wait(100);
+        l.handleScreenshotUpload({ name: 'k2' }); await wait(600);
+        l.setState({ ocrParsed: { ...l.state.ocrParsed, cp: 2656, cpConfirmed: true } }); await wait(100);
+        l.addOcrAsNew(true); await wait(300);
+        const mons = [...(l.state.roster || []), ...(l.state.addedPokemon || [])].filter(x => x.name === 'Kingdra');
+        out.second = mons.map(x => [x.cp, !!x.cpCheck]);
+      } finally { delete l.readScreenshotWithVision; delete l.preprocessImage; delete window.__noPrefetch; delete window.__noImportGate; l.setState({ ocrParsed: null, ocrAutoApply: false, ocrQueue: [], ocrBusy: false }); }
+      return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, removedIds: st0.removedIds || [], tab: 'home' });
+    expect(r.parsed && r.check === true && r.cp === null && r.cands && r.cands.indexOf(2656) >= 0 && r.auto === 0, 'the panel is held (never auto-applied) with the candidates: ' + JSON.stringify(r));
+    expect(r.added && r.added.cpCheck === true && r.added.cp === null && r.added.n >= 2, 'an unconfirmed add is tagged CHECK CP and keeps the candidates: ' + JSON.stringify(r));
+    expect(r.second.some(x => x[0] === 2656 && x[1] === false), 'a CP the person confirmed carries no tag: ' + JSON.stringify(r));
+  });
+  await T('CPHIDDEN-03', 'Roster', 'A tagged Pokemon shows CHECK CP in the roster and the filter, and confirming the CP (candidate, typed or "CP is right") removes the tag', async () => {
+    const st0 = await s.state();
+    const base = { idx: 'cz1', name: 'Kingdra', dex: 230, cp: null, hp: 155, atkIV: null, defIV: null, staIV: null, great: { rankPct: null }, ultra: { rankPct: null }, little: { rankPct: null }, scanDate: '2026-11-16', cpCheck: true, cpCandidates: [2636, 2646, 2656], cpNote: 'The CP was hidden behind the Pokemon.' };
+    await s.set({ addedPokemon: [base, { ...base, idx: 'cz2', cp: 2400, cpCandidates: null }], roster: [], ivOverrides: {}, tab: 'roster' }); await s.page.waitForTimeout(700);
+    const tagRows = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.filter(e => /CHECK CP/.test(e.innerText)).length);
+    const chip = await s.page.locator('.om-press', { hasText: /^CHECK CP$/ }).count();
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const wait = ms => new Promise(r => setTimeout(r, ms));
+      const get = id => l.effectiveRosterForMatch().find(x => x.idx === id);
+      l.openDetail(get('cz1')); await wait(600);
+      const shown = document.body.innerText.includes('CP NEEDS A CHECK') && /2646/.test(document.body.innerText);
+      l.confirmCp(get('cz1'), 2646); await wait(250);
+      const a = get('cz1'); const out = { shown, cp: a.cp, check: !!a.cpCheck };
+      l.confirmCp(get('cz2'), null); await wait(250);   // "CP is right" with the CP already set
+      l.confirmCp(get('cz2'), 2400); await wait(250);
+      out.b = [get('cz2').cp, !!get('cz2').cpCheck];
+      l.closeDetail && l.closeDetail();
+      return out; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
+    expect(tagRows === 2 && chip >= 1, 'both tagged rows show CHECK CP and the filter chip exists: ' + tagRows + '/' + chip);
+    expect(r.shown && r.cp === 2646 && r.check === false && r.b[0] === 2400 && r.b[1] === false, 'the detail sheet offers the candidates; confirming a CP sets it and clears the tag: ' + JSON.stringify(r));
+  });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
       const calls = [];

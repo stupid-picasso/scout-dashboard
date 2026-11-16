@@ -308,7 +308,7 @@
     <div ref="{{ headerRef }}" style="padding:6px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.315</span></div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }} <span style="color:var(--ink-300)">&middot; v53.319</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -1553,6 +1553,16 @@
             <div style="font:11px var(--font-display);color:var(--type-electric)">{{ ocrParsedDisplay.readerLine }}</div>
           </sc-if>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <sc-if value="{{ ocrParsedDisplay.cpNote }}" hint-placeholder-val="{{ false }}">
+              <div style="grid-column:1 / -1;background:color-mix(in oklab, var(--type-electric) 12%, var(--surface-card));border:1px solid var(--type-electric);border-radius:8px;padding:8px 10px">
+                <div style="font:12px/1.45 var(--font-body);color:var(--ink-900);text-wrap:pretty">{{ ocrParsedDisplay.cpNote }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                  <sc-for list="{{ ocrParsedDisplay.cpChips }}" as="cc" hint-placeholder-count="0">
+                    <button type="button" onClick="{{ cc.onPick }}" class="om-press" style="min-height:36px;min-width:56px;padding:0 12px;border-radius:999px;background:var(--surface-sunken);border:1px solid var(--line-300);color:var(--ink-900);font:700 13px var(--font-display)">{{ cc.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
             <div><div style="font:11px var(--font-display);color:var(--ink-300)">NAME</div><input type="text" value="{{ ocrParsedDisplay.name }}" onChange="{{ onOcrName }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
             <div><div style="font:11px var(--font-display);color:var(--ink-300)">CP</div><input type="number" value="{{ ocrParsedDisplay.cp }}" onChange="{{ onOcrCp }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
             <div><div style="font:11px var(--font-display);color:var(--ink-300)">HP</div><input type="number" value="{{ ocrParsedDisplay.hp }}" onChange="{{ onOcrHp }}" style="width:100%;box-sizing:border-box;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:6px 8px;border-radius:5px;font:13px var(--font-body)" /></div>
@@ -2311,6 +2321,24 @@
           </sc-if>
         </div>
         </div>
+        <sc-if value="{{ detail.cpCard }}" hint-placeholder-val="{{ false }}">
+          <section aria-label="CP needs a check" style="margin:14px 16px 0;background:color-mix(in oklab, var(--type-electric) 12%, var(--surface-card));border:1px solid var(--type-electric);border-radius:16px;padding:12px 14px">
+            <div style="font:800 11px var(--font-display);letter-spacing:.06em;color:var(--ink-900)">CP NEEDS A CHECK</div>
+            <div style="font:13px/1.45 var(--font-body);margin-top:6px;text-wrap:pretty">{{ detail.cpCard.note }}</div>
+            <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:4px">{{ detail.cpCard.cp }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+              <sc-for list="{{ detail.cpCard.chips }}" as="cc" hint-placeholder-count="0">
+                <button type="button" onClick="{{ cc.onPick }}" class="om-press" style="min-height:40px;min-width:60px;padding:0 14px;border-radius:999px;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);font:700 14px var(--font-display)">{{ cc.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+              <input type="number" inputmode="numeric" placeholder="Type the CP from the game" onChange="{{ detail.cpCard.onType }}" style="flex:1;min-width:0;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:10px 12px;border-radius:8px;font:16px var(--font-body)" />
+              <sc-if value="{{ detail.cpCard.canConfirm }}" hint-placeholder-val="{{ false }}">
+                <button type="button" onClick="{{ detail.cpCard.onRight }}" class="om-press" style="min-height:44px;padding:0 14px;border-radius:999px;background:var(--grass-500);color:var(--grass-700);font:800 12px var(--font-display);white-space:nowrap">CP IS RIGHT</button>
+              </sc-if>
+            </div>
+          </section>
+        </sc-if>
         <section aria-label="Max Battles" style="margin:14px 16px 0;background:color-mix(in oklab, #bf5af2 14%, var(--surface-card));border-radius:16px;padding:12px 14px">
           <sc-if value="{{ detail.maxCard.capable }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -9709,11 +9737,11 @@ class Component extends DCLogic {
     const data = await this.fileToVisionJpeg(file, 760);
     const prompt = 'This is a Pokemon GO detail screen. Extract every visible field EXACTLY as printed. '
       + 'Respond with ONLY a JSON object, no markdown fences, no commentary: '
-      + '{"name":string|null,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,'
+      + '{"name":string|null,"gender":"M"|"F"|null,"cp":number|null,"cpCovered":true|false|null,"cpVisible":string|null,"hp":number|null,'
       + '"candy":number|null,"xlCandy":number|null,"stardust":number|null,'
       + '"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,"sizeClass":"XXS"|"XS"|"XL"|"XXL"|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,'
-      + '"powerUpStardust":number|null,"powerUpCandy":number|null,"evolveCandy":number|null,"evolveButton":true|false|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
+      + '"powerUpStardust":number|null,"powerUpCandy":number|null,"powerUpIsXl":true|false|null,"evolveCandy":number|null,"evolveButton":true|false|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
       + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,'
       + '"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
@@ -9725,6 +9753,7 @@ class Component extends DCLogic {
       + 'Mega: if the screen shows a single "<SPECIES> MEGA ENERGY" count return it as megaEnergy; if it shows "MEGA ENERGY X" and "MEGA ENERGY Y" return megaEnergyX and megaEnergyY. '
       + 'For each MEGA EVOLVE button add one megaForms entry: form "X" or "Y" (from the "MEGA <SPECIES> X/Y" label, else null), cost = the number on that button, dotsFilled = how many of the small round Mega Level dots under the button are filled with colour, dotsTotal = how many dots there are, rest = the rest-period text such as "4 DAYS" if shown on the Mega badge, else null. Return an empty megaForms array when there is no MEGA EVOLVE button. '
       + 'powerUpStardust/powerUpCandy are the two costs on the POWER UP button; evolveCandy is the candy cost on the EVOLVE button. ' + 'evolveButton: true if an EVOLVE button is visible on the detail card, false if the card\u2019s button area is visible (POWER UP shown) but there is NO EVOLVE button (some event costumes cannot evolve), null if the buttons are not on screen or you cannot tell. Never guess. '
+      + 'CP COVERED: the big CP number at the top can be partly hidden behind the Pokemon (a tall Pokemon covers its own digits). When ANY digit of it is hidden or unclear, set cp to null, cpCovered to true, and cpVisible to the digits you CAN see in order with a ? for every hidden digit (e.g. \"2??6\" for a four-digit CP whose middle two digits are hidden). Never guess a hidden digit. When every digit is clearly visible set cpCovered false and cpVisible null. powerUpIsXl: true when the second cost on the POWER UP button is Candy XL (the striped candy icon), false when it is plain Candy, null if unsure. '
       + 'gender: "M" for the male symbol, "F" for the female symbol, null if neither. '
       + 'sizeClass: "XXL", "XL", "XS" or "XXS" only if that tag appears next to height/weight. '
       + 'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '
@@ -9752,7 +9781,7 @@ class Component extends DCLogic {
     return {
       pokemon_name: o.name ? this.capitalizeName(o.name) : undefined,
       gender: o.gender === 'M' || o.gender === 'F' ? o.gender : undefined,
-      cp: num(o.cp), hp: num(o.hp), candy: num(o.candy), xl_candy: num(o.xlCandy), stardust: num(o.stardust),
+      cp: num(o.cp), cp_covered: o.cpCovered === true ? true : undefined, cp_visible: typeof o.cpVisible === 'string' && /[0-9?]/.test(o.cpVisible) ? o.cpVisible.replace(/[^0-9?]/g, '?').slice(0, 5) : undefined, power_up_is_xl: o.powerUpIsXl === true ? true : o.powerUpIsXl === false ? false : undefined, hp: num(o.hp), candy: num(o.candy), xl_candy: num(o.xlCandy), stardust: num(o.stardust),
       type_1: o.type1 ? this.capitalizeName(o.type1) : undefined,
       type_2: o.type2 ? this.capitalizeName(o.type2) : undefined,
       weight: o.weight || undefined, height: o.height || undefined,
@@ -9939,6 +9968,13 @@ class Component extends DCLogic {
         const f = this.mechanics.formForTypes(rec.pokemon_name, rec.type_2 ? rec.type_1 + ' / ' + rec.type_2 : rec.type_1, rec.dex_number);
         if (f && f !== 'normal') { rec = { ...rec, form: f }; cleaned.notes.push('form ' + f + ' (from types)'); }
       }
+      // A CP hidden behind the Pokemon is worked out from the digits seen, the HP and the Power Up cost, or matched to a roster Pokemon of the
+      // same name and HP; anything not certain is tagged CHECK CP (see recoverItemCp).
+      const cpItem = { name: rec.pokemon_name, dex: rec.dex_number, matchedForm: rec.form, cp: rec.cp, cpCovered: rec.cp_covered === true, cpVisible: rec.cp_visible, hp: rec.hp,
+        powerUpStardust: rec.power_up_stardust, powerUpCandy: rec.power_up_candy, powerUpIsXl: rec.power_up_is_xl, lucky: rec.lucky, shadow: rec.shadow, shadowPurified: rec.purified ? '2' : rec.shadow ? '1' : '0',
+        atkIV: rec.attack_iv, defIV: rec.defense_iv, staIV: rec.stamina_iv };
+      try { this.recoverItemCp(cpItem, this.effectiveRosterForMatch()); } catch (e) { /* keep the read */ }
+      if (cpItem.cpFrom === 'roster' || cpItem.cpFrom === 'solved') rec = { ...rec, cp: cpItem.cp };
       // Still try to match an existing roster row (keeps IV-solving working), but
       // no longer require one — an unmatched read becomes a new record.
       // CP-alone matching is ONLY safe when OCR genuinely couldn't read a name at
@@ -9980,6 +10016,7 @@ class Component extends DCLogic {
           staIV: rec.stamina_iv != null ? rec.stamina_iv : null,
           type: rec.type_1 ? (rec.type_2 ? rec.type_1 + ' / ' + rec.type_2 : rec.type_1) : '',
           _rec: rec,
+          cpCheck: cpItem.cpCheck === true, cpCandidates: cpItem.cpCandidates || null, cpNote: cpItem.cpNote || '', cpFrom: cpItem.cpFrom || null, cpVisible: rec.cp_visible || null,
           readerUsed,
           aiError: this._lastAiError || '',
           cleanNotes: cleaned.notes,
@@ -9997,7 +10034,7 @@ class Component extends DCLogic {
   autoApplyOcr() {
     const p = this.state.ocrParsed;
     if (!this.state.ocrAutoApply || !p || this.state.ocrBusy) return false;
-    if ((p.cleanNotes && p.cleanNotes.length) || p.aiError || !(p.name || p.matchedName)) return false;
+    if ((p.cleanNotes && p.cleanNotes.length) || p.aiError || !(p.name || p.matchedName) || (p.cpCheck && !p.cpConfirmed)) return false;
     if (p.matchedIdx != null) { this.applyOcrResult(); return true; }
     if ([p.cp, p.hp, p.atkIV, p.defIV, p.staIV].some(v => v == null)) return false;
     return this.addOcrAsNew(false, true) === true;
@@ -10028,6 +10065,7 @@ class Component extends DCLogic {
     }
     if (!rec.pokemon_name) { if (!auto) this.setState({ ocrError: 'Need a name before this can be added.' }); return false; }
     const mon = this.buildPokemonRecord(rec);
+    if (p.cpCheck && !p.cpConfirmed) { mon.cpCheck = true; mon.cpCandidates = p.cpCandidates || null; mon.cpNote = p.cpNote || ''; }
     // The same import gate as the other imports: a read that does not add up asks first.
     if (!skipCheck && !(typeof window !== 'undefined' && window.__noImportGate)) {
       const why = this.importCheck({ name: mon.name, dex: mon.dex, cp: mon.cp, hp: mon.hp, atkIV: mon.atkIV, defIV: mon.defIV, staIV: mon.staIV, form: mon.form });
@@ -11662,7 +11700,7 @@ class Component extends DCLogic {
       const prompt = importMode === 'appraisal' ? this.appraisalPrompt() : ('These are frames sampled from a Pokemon GO screen recording (collection list and/or Pokemon detail/appraise screens). '
         + 'Identify every distinct Pokemon shown. Merge repeat sightings of the same Pokemon across frames into one entry, using the most complete data seen. '
         + 'Respond with ONLY a JSON array, no markdown fences, no commentary. Each item: '
-        + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, '
+        + '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "cpCovered": true|false|null, "cpVisible": string|null, "hp": number|null, "candy": number|null, "xlCandy": number|null, "powerUpStardust": number|null, "powerUpCandy": number|null, "powerUpIsXl": true|false|null, '
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
         + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, "evolveButton": true|false|null, '
         + '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, "megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}], '
@@ -11670,6 +11708,7 @@ class Component extends DCLogic {
         + 'Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array if no MEGA EVOLVE button. '
         + 'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
+        + 'CP COVERED: the big CP number at the top can be partly hidden behind the Pokemon (a tall Pokemon covers its own digits). When ANY digit of it is hidden or unclear, set cp to null, cpCovered to true, and cpVisible to the digits you CAN see in order with a ? for every hidden digit (e.g. \\"2??6\\" for a four-digit CP whose middle two digits are hidden). Never guess a hidden digit. When every digit is clearly visible set cpCovered false and cpVisible null. powerUpIsXl: true when the second cost on the POWER UP button is Candy XL (the striped candy icon), false when it is plain Candy, null if unsure. '
         + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring or the small sparkles icon on the card, never guess from name or CP alone. Set shinyIcon true ONLY if you can actually see that sparkles icon. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
         + 'A partially-readable Pokemon is still a Pokemon \u2014 emit it with nulls. The null/never-guess rules below apply to individual FIELDS, never to whether a Pokemon is listed. '
@@ -11796,7 +11835,7 @@ class Component extends DCLogic {
       const seen = new Map();
       collected.forEach(item => {
         if (!item || !item.name) return;
-        const key = String(item.name).toLowerCase() + '|' + (item.cp == null ? '?' : item.cp);
+        const key = String(item.name).toLowerCase() + '|' + (item.cp == null ? '?' + (item.cpCovered === true ? '|' + (item.hp == null ? '' : item.hp) + '|' + (item.cpVisible || '') : '') : item.cp);
         const prev = seen.get(key);
         if (!prev) { seen.set(key, { ...item }); return; }
         // Prefer non-null values from whichever sighting had them.
@@ -12034,7 +12073,7 @@ class Component extends DCLogic {
   importPromptText() {
     return 'Read every Pokemon GO screenshot I have attached. For each Pokemon, extract exactly what is printed on screen.\n\n'
       + 'Respond with ONLY a JSON array \u2014 no commentary, no markdown fences. One object per Pokemon:\n'
-      + '{"name":string,"gender":"M"|"F"|null,"cp":number|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,'
+      + '{"name":string,"gender":"M"|"F"|null,"cp":number|null,"cpCovered":true|false|null,"cpVisible":string|null,"hp":number|null,"candy":number|null,"xlCandy":number|null,"powerUpStardust":number|null,"powerUpCandy":number|null,"powerUpIsXl":true|false|null,'
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,"evolveButton":true|false|null,'
       + '"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
@@ -12043,6 +12082,7 @@ class Component extends DCLogic {
       + 'Rules:\n'
       + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
       + '- CP is NEVER the stardust figure (the large comma-grouped number such as 148,482).\n'
+      + '- CP COVERED: the big CP number at the top can be partly hidden behind the Pokemon (a tall Pokemon covers its own digits). When ANY digit of it is hidden or unclear, set cp to null, cpCovered to true, and cpVisible to the digits you CAN see in order with a ? for every hidden digit (e.g. \\"2??6\\" for a four-digit CP whose middle two digits are hidden). Never guess a hidden digit. When every digit is clearly visible set cpCovered false and cpVisible null. powerUpIsXl: true when the second cost on the POWER UP button is Candy XL (the striped candy icon), false when it is plain Candy, null if unsure. \n'
       + '- hp is the first number in the "NN / NN HP" line.\n'
       + '- candy is the count beside "<SPECIES> CANDY"; xlCandy only if a separate "<SPECIES> CANDY XL" is shown.\n'
       + '- evolveCandy is the candy cost on the EVOLVE button.\n'
@@ -12540,7 +12580,7 @@ class Component extends DCLogic {
     const kept = [];
     let mergedIn = 0, discarded = 0;
     items.forEach(item => {
-      if (item.cp != null) { kept.push({ ...item }); return; }
+      if (item.cp != null || item.cpCovered === true) { kept.push({ ...item }); return; }   // a CP hidden behind the Pokemon is still a Pokemon (see recoverItemCp)
       const name = String(item.name || '').toLowerCase();
       const target = name && kept.find(p =>
         String(p.name || '').toLowerCase() === name &&
@@ -12562,6 +12602,88 @@ class Component extends DCLogic {
   // A read that cannot be right should not become a roster entry. importCheck lists high-confidence problems only (so a real
   // Pokemon is not held for nothing): an unknown species, a CP or IV that cannot exist, IVs that no level of the species can
   // turn into this CP, or an HP above the most it could have. The Pokemon's current HP may be below its maximum, so a low HP is fine.
+  // ---- CP hidden behind the Pokemon ----------------------------------------------------------------------------------------------
+  // A tall Pokemon can cover digits of the CP at the top of its detail screen. The reader then reports the digits it can see (cpVisible,
+  // "2??6") and marks cpCovered. What else the screen shows pins the CP down: the species, the HP and the Power Up cost (which fixes the
+  // level). cpAssess lists the CPs that fit; a CP that WAS read is checked against the same facts. Item fields (camelCase, as the video
+  // reader returns them): name, dex, matchedForm, cp, cpCovered, cpVisible, hp, powerUpStardust|powerUpDust, powerUpCandy, powerUpIsXl,
+  // lucky, shadow, shadowPurified, atkIV/defIV/staIV.
+  cpAssess(item) {
+    const m = this.mechanics;
+    const out = { status: 'unknown', cps: [], note: '' };
+    if (!m || !m.cpCandidatesFor || !item) return out;
+    const dex = item.dex != null ? item.dex : (m.resolveDexByName && item.name ? m.resolveDexByName(item.name) : null);
+    const bases = dex ? this.baseStatCandidates({ dex, matchedForm: item.matchedForm || item.form }).map(c => c.base) : [];
+    if (!bases.length) return out;
+    const hasCp = Number.isFinite(Number(item.cp)) && item.cp !== null && item.cp !== '';
+    const dust = Number.isFinite(item.powerUpStardust) ? item.powerUpStardust : (Number.isFinite(item.powerUpDust) ? item.powerUpDust : null);
+    const pc = Number.isFinite(item.powerUpCandy) ? item.powerUpCandy : null;
+    const hp = Number.isFinite(Number(item.hp)) && item.hp !== null ? Number(item.hp) : null;
+    const ivs = [item.atkIV, item.defIV, item.staIV].map(v => (Number.isInteger(Number(v)) && v !== null && v !== '' ? Number(v) : null));
+    const obs = { hp, dust, xlCandy: item.powerUpIsXl === true ? pc : null, candy: item.powerUpIsXl === false ? pc : null,
+      lucky: !!item.lucky, shadow: !!item.shadow || item.shadowPurified === '1', purified: item.shadowPurified === '2', ivs };
+    const covered = item.cpCovered === true;
+    const enough = hp != null || dust != null;
+    if (covered) {
+      const pattern = typeof item.cpVisible === 'string' && /[0-9]/.test(item.cpVisible) ? item.cpVisible : null;
+      if (!enough && !pattern) { out.status = 'covered'; out.note = 'The CP is hidden and there is not enough on the screen to work it out.'; return out; }
+      const r = m.cpCandidatesFor(bases, { ...obs, pattern });
+      out.status = 'covered'; out.cps = r.cps;
+      out.note = r.cps.length === 1 ? 'The CP was hidden behind the Pokemon; the only CP that fits the visible digits' + (pattern ? ' ' + pattern : '') + ', the HP and the Power Up cost is ' + r.cps[0] + '.'
+        : r.cps.length ? 'The CP was hidden behind the Pokemon. ' + r.cps.length + ' CPs fit the visible digits' + (pattern ? ' ' + pattern : '') + ', the HP and the Power Up cost.'
+        : 'The CP was hidden and no CP fits what the screen shows: check the HP and Power Up cost, or type the CP.';
+      return out;
+    }
+    if (!hasCp || !enough) { out.status = 'clean'; return out; }
+    const fit = m.cpCandidatesFor(bases, { ...obs, cp: Number(item.cp) });
+    if (fit.fits !== false) { out.status = 'clean'; return out; }
+    // A read that cannot be right: offer the CPs that differ from it in one digit.
+    const digits = String(Math.round(Number(item.cp)));
+    const near = new Set();
+    for (let i = 0; i < digits.length; i++) m.cpCandidatesFor(bases, { ...obs, pattern: digits.slice(0, i) + '?' + digits.slice(i + 1) }).cps.forEach(c => near.add(c));
+    out.status = 'doubt'; out.cps = [...near].sort((a, b) => a - b);
+    out.note = 'CP ' + item.cp + ' cannot be right for ' + (item.name || 'this Pokemon') + (hp != null ? ' with ' + hp + ' HP' : '') + (dust != null ? ' and a ' + dust + ' stardust Power Up' : '') + (out.cps.length ? '; CPs one digit away that fit: ' + out.cps.slice(0, 6).join(', ') : '') + '.';
+    return out;
+  }
+
+  // Decide the CP of one scanned item (recording or screenshot read) and say whether a person should check it. Order: a unique Pokemon of the
+  // same name and HP already in the roster (its CP is known); else the only CP that fits the visible digits, HP and Power Up cost (tagged to
+  // check); else no CP, the candidates kept, tagged. A CP that was read but cannot be right keeps its value and is tagged. Returns the item.
+  recoverItemCp(item, roster) {
+    const a = this.cpAssess(item);
+    item.cpCheck = false;
+    if (a.status === 'covered') {
+      const nm = String(item.name || '').toLowerCase();
+      // The roster's own CP only has to agree with the digits that were visible (it is a real CP, so it needs no solving).
+      const pat = typeof item.cpVisible === 'string' ? item.cpVisible.replace(/[^0-9?]/g, '?') : '';
+      const fitsDigits = cp => { const t = String(cp); if (!pat) return !a.cps.length || a.cps.indexOf(cp) >= 0; if (t.length !== pat.length) return false; for (let i = 0; i < t.length; i++) if (pat[i] !== '?' && pat[i] !== t[i]) return false; return true; };
+      const rows = item.hp != null ? (roster || []).filter(p => String(p.name || '').toLowerCase() === nm && Number.isFinite(p.cp) && Number(p.hp) === Number(item.hp) && fitsDigits(p.cp)) : [];
+      if (rows.length === 1) { item.cp = rows[0].cp; item.cpNote = 'CP taken from your roster: the only ' + item.name + ' with ' + item.hp + ' HP' + (pat ? ' that fits the digits seen' : '') + '.'; item.cpFrom = 'roster'; }
+      else if (a.cps.length === 1) { item.cp = a.cps[0]; item.cpCheck = true; item.cpNote = a.note; item.cpFrom = 'solved'; }
+      else { item.cp = null; item.cpCheck = true; item.cpCandidates = a.cps.slice(0, 24); item.cpNote = a.note; item.cpFrom = 'hidden'; }
+    } else if (a.status === 'doubt') {
+      item.cpCheck = true; item.cpCandidates = a.cps.slice(0, 24); item.cpNote = a.note; item.cpFrom = 'doubt';
+    }
+    return item;
+  }
+
+  // The tag shown on a Pokemon whose CP still needs a look.
+  cpTagFor(p) { return p && p.cpCheck ? 'CHECK CP' : ''; }
+
+  // The person confirmed the CP (typed it, picked a candidate, or said it is right): the tag goes away.
+  confirmCp(p, value) {
+    if (!p || p.idx == null) return;
+    const cp = value == null || value === '' ? null : Math.round(Number(value));
+    const patch = { cpCheck: false, cpCandidates: null, cpNote: '' };
+    if (cp != null && Number.isFinite(cp) && cp >= 10 && cp <= 6000) patch.cp = cp;
+    else if (value != null && value !== '') return;
+    const ov = { ...(this.state.ivOverrides || {}) };
+    ov[p.idx] = { ...(ov[p.idx] || {}), ...patch };
+    const dp = this.state.detailPoke;
+    this.haptic && this.haptic('light');
+    this.setState({ ivOverrides: ov, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, ...patch } } : {}) }, () => this.queueCloudPush && this.queueCloudPush());
+  }
+
   importCheck(item) {
     const m = this.mechanics, out = [];
     if (!item) return out;
@@ -12618,6 +12740,8 @@ class Component extends DCLogic {
     try { this.logMegaScans(rawItems || []); } catch (e) {}
     try { (rawItems || []).forEach(o => this.noteMaxParticles(o)); } catch (e) {}
     let items = this.coalesceFragments(rawItems || []);
+    // A CP hidden behind the Pokemon, or one that cannot fit its HP and Power Up cost, is worked out or tagged CHECK CP (see recoverItemCp).
+    { const rosterNow = this.effectiveRosterForMatch(); items.forEach(it => { if (it && it.name) { if (it.powerUpDust == null && it.powerUpStardust != null) it.powerUpDust = it.powerUpStardust; try { this.recoverItemCp(it, rosterNow); } catch (e) { /* leave the read as it is */ } } }); }
     // The import gate: reads that cannot be right wait in Bulk update > Import check until you accept or discard them.
     let heldNow = 0;
     if (!this._gateBypass && !(typeof window !== 'undefined' && window.__noImportGate)) {   // __noImportGate: the QA harness feeds synthetic reads
@@ -12878,6 +13002,7 @@ class Component extends DCLogic {
           catchDate: null, scanDate: today,
           lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
           ...this.maxPatch(item),
+          ...(item.cpCheck ? { cpCheck: true, cpCandidates: item.cpCandidates || null, cpNote: item.cpNote || '' } : {}),
           // Never null — the render path reads p.great.rankPct directly.
           great: ivPatch.great || this.emptyLeague(),
           ultra: ivPatch.ultra || this.emptyLeague(),
@@ -12888,7 +13013,7 @@ class Component extends DCLogic {
         inserted++;
         touchedIdx.push(newRec.idx);
         revertMap[newRec.idx] = { kind: 'insert' };
-        sheetRows.push({ idx: newRec.idx, name: newRec.name + (newRec.form ? ' (' + newRec.form + ')' : ''), cp: item.cp, kind: 'new', text: 'New in your roster' });
+        sheetRows.push({ idx: newRec.idx, name: newRec.name + (newRec.form ? ' (' + newRec.form + ')' : ''), cp: item.cp, kind: 'new', text: 'New in your roster' + (item.cpCheck ? ' \u00b7 CP needs a check' + (item.cp != null ? ' (' + item.cp + ' is the only CP that fits)' : ' (hidden behind the Pokemon)') : '') });
       }
       if (item.candy != null || item.xlCandy != null) {
         const famKey = this.candyKey(item.name);
@@ -18012,6 +18137,7 @@ class Component extends DCLogic {
       if (rosterFilter === 'shinyCheck') return !!p.shiny && p.shinyState === 'suspected';
       if (rosterFilter === 'pvp') return this.isPvpWorthy(p);
       if (rosterFilter === 'max') return this.isMaxCapable(p);
+      if (rosterFilter === 'cpcheck') return !!p.cpCheck;
       if (rosterFilter === 'formCheck') return !p.formReviewed && !!(this.mechanics && this.mechanics.hasRegionalForms && p.dex != null && this.mechanics.hasRegionalForms(p.name, p.dex));
       if (rosterFilter === 'costume') return !!p.costume;
       if (rosterFilter === 'noType') return !this.typeOf(p);
@@ -18057,7 +18183,7 @@ class Component extends DCLogic {
     const filteredRoster = pagedFiltered.map((p, i) => {
       const best = this.bestLeagueInfo(p);
       const rs = this.rowSpread(p), tl = this.typeLook(p), tcol = this.dsTypeColor(p);
-      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p), this.maxTagFor(p), this.sizeTagOf(p)].filter(Boolean).join(' ');
+      const flags = [p.lucky ? '★' : '', p.shadowPurified === '1' || p.shadowPurified === 1 ? '◆' : '', p.shiny ? (p.shinyState === 'suspected' ? '✨?' : '✨') : '', this.megaTagFor(p), this.maxTagFor(p), this.cpTagFor(p), this.sizeTagOf(p)].filter(Boolean).join(' ');
       const ring = this.ringGeom(p.ivAvg, 26);
       return {
         raw: p,
@@ -18574,6 +18700,8 @@ class Component extends DCLogic {
       cp: this.state.ocrParsed.cp ?? '',
       hp: this.state.ocrParsed.hp ?? '',
       matchedName: this.state.ocrParsed.matchedName,
+      cpNote: this.state.ocrParsed.cpCheck && !this.state.ocrParsed.cpConfirmed ? (this.state.ocrParsed.cpNote || 'Check the CP.') + (this.state.ocrParsed.cpCandidates && this.state.ocrParsed.cpCandidates.length ? ' Tap the right one, or type it:' : ' Type the CP from the game, or add it and it is tagged CHECK CP.') : '',
+      cpChips: this.state.ocrParsed.cpCheck && !this.state.ocrParsed.cpConfirmed ? (this.state.ocrParsed.cpCandidates || []).map(n => ({ label: String(n), onPick: () => this.setState({ ocrParsed: { ...this.state.ocrParsed, cp: n, cpConfirmed: true }, solvedIvResult: null }) })) : [],
       stardust: this.state.ocrParsed.stardust ?? '',
       weight: this.state.ocrParsed.weight || '',
       height: this.state.ocrParsed.height || '',
@@ -19076,6 +19204,14 @@ class Component extends DCLogic {
         favPressed: !!p.favorite,
         favAria: (p.favorite ? 'Remove ' : 'Mark ') + (p.name || 'Pokemon') + (p.favorite ? ' from favourites' : ' as favourite'),
         mega: this.megaCardFor(p),
+        cpCard: p.cpCheck ? {
+          note: (p.cpNote || 'This CP was hidden or unclear in the scan.') + ' Check it against the game and confirm it.',
+          cp: p.cp != null ? 'Current CP: ' + p.cp : 'CP not set yet',
+          chips: (p.cpCandidates || []).map(n => ({ label: String(n), onPick: () => this.confirmCp(p, n) })),
+          onType: (e) => { const v = parseInt(e.target.value, 10); if (v) this.confirmCp(p, v); },
+          onRight: () => this.confirmCp(p, p.cp != null ? p.cp : null),
+          canConfirm: p.cp != null
+        } : null,
         maxCard: (() => {
           const cap = this.isMaxCapable(p), info = this.maxInfoFor(p);
           const lv = n => (n ? 'Lv ' + n : 'locked / not scanned');
@@ -19464,6 +19600,7 @@ class Component extends DCLogic {
         { key: 'pvp', label: 'PVP READY' },
         { key: 'lucky', label: 'LUCKY' },
         { key: 'max', label: 'MAX' },
+        ...(roster.some(p => p.cpCheck) ? [{ key: 'cpcheck', label: 'CHECK CP' }] : []),
         { key: 'sizeXx', label: 'XXL / XXS' },
         { key: 'formCheck', label: 'FORM TO CHECK' },
         ...(roster.some(p => p.costume) ? [{ key: 'costume', label: 'COSTUME' }] : []),
@@ -19702,7 +19839,7 @@ class Component extends DCLogic {
       apprShotError: this.state.apprShotError || '',
       addOcrAsNew: () => this.addOcrAsNew(),
       onOcrName: (e) => this.updateOcrField('name', e.target.value),
-      onOcrCp: (e) => this.updateOcrField('cp', parseInt(e.target.value, 10) || null),
+      onOcrCp: (e) => this.setState({ ocrParsed: { ...this.state.ocrParsed, cp: parseInt(e.target.value, 10) || null, cpConfirmed: true }, solvedIvResult: null }),
       onOcrCandy: (e) => this.updateOcrField('candy', parseInt(e.target.value, 10) || null),
       onOcrStardust: (e) => this.updateOcrField('stardust', parseInt(String(e.target.value).replace(/,/g, ''), 10) || null),
       onOcrXl: (e) => this.updateOcrField('xlCandy', parseInt(e.target.value, 10) || null),
