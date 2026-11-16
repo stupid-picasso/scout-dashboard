@@ -675,3 +675,11 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - The floating bar started on 2026-11-15 right after the chat bubble shipped (screenshots at 11:10 and 13:17 were fine). New suspect: the bubble's scroll-time style changes (opacity/transform on every scroll event, `touch-action:none`) making iOS re-layer the fixed bars. Removed: the scroll fade, `touch-action:none`, the nav's `translateZ(0)`, and `fixFixedBars()` (now a no-op). The Screen numbers box also has "HIDE THE CHAT BUBBLE" (`localStorage scout.bubble = 'off'`) to test the hypothesis.
 - Gotcha: inline `<script>` in the `<head>` of the .dc.html source is dropped by the bundler and the framework rewrites `html.className`; the shell class is added from `componentDidMount` with `classList.add`.
 - 2026-11-16: Home has a "Show the floating chat button on the other tabs" checkbox (same `scout.bubble` setting as the Screen numbers box) so a hidden bubble can be brought back without the debug box.
+
+## Audit follow-up, batch 1 (2026-11-16)
+- TOD-44 was a headless-Chromium permission flake (Notification.permission stayed "denied" in a file:// context); the test now stubs permission, so it is deterministic.
+- qa_accuracy.js: A18 compared movepools under the wrong name keys (hyphen/accent/dot) and counted game-master moves that only have a number; fixed in the audit, 100% now. A02/A04/A04b keep a short, reviewed list of game-master mirror quirks (Urshifu, Flabebe).
+- Weekly PvPoke import (tiers, gamemaster) refreshed; A16 is back to 30/30. e2e tests pin the tier tables to scripts/fixtures/pvp_tiers_pinned.json (applied in qa_lib.js after load) so a weekly data refresh cannot move expected results.
+- pogo_extract.py prompts now ask for cpCovered, cpVisible, powerUpCandy, powerUpIsXl; merge_frames lets a true cpCovered win; tests in test_postprocess.py. Python tests need `pip install -r requirements.txt` (use a venv here).
+- Keep fuzz: all soft violations are "CP over league cap" (the Pokemon cannot be used in that league), none are rule errors; the fuzz now prints that split.
+- update_event_moves.py writes a `health` block (pages read, pages with move text, pages that parsed nothing) and a ::warning:: when a page has move text but nothing parsed.

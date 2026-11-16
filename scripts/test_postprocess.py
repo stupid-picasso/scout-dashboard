@@ -148,5 +148,15 @@ check("weight that is a height swaps into an empty height", px.fix_units({"weigh
 check("weight that is a height is dropped when height is set", px.fix_units({"weight": "1.18m", "height": "0.4m"}) == {"weight": None, "height": "0.4m"})
 check("good units untouched", px.fix_units({"weight": "45.42kg", "height": "0.45m"}) == {"weight": "45.42kg", "height": "0.45m"})
 check("junk units dropped", px.fix_units({"weight": "heavy", "height": "12"}) == {"weight": None, "height": None})
+
+# CP hidden behind the Pokemon (server path must carry cpCovered / cpVisible / powerUpIsXl through the merge)
+seqc = [(1, {"name": "Machamp", "cp": None, "cpCovered": True, "cpVisible": "2??6", "hp": 150, "powerUpDust": 9000, "powerUpIsXl": True}),
+        (2, {"name": "Machamp", "cp": None, "cpCovered": True, "cpVisible": "2??6", "hp": 150, "powerUpDust": 9000, "powerUpIsXl": True}),
+        (3, {"name": "Machamp", "cp": None, "cpCovered": False, "cpVisible": None, "hp": 150})]
+outc = px.merge_frames(seqc)
+check("covered CP survives the frame merge", len(outc) == 1 and outc[0].get("cpCovered") is True and outc[0].get("cpVisible") == "2??6" and outc[0].get("powerUpIsXl") is True, str(outc))
+check("covered CP is not dropped as sparse", len(px.drop_sparse(outc)[0]) == 1)
+check("video prompt asks for the hidden-CP fields", all(k in px.VIDEO_IMPORT_PROMPT for k in ("cpCovered", "cpVisible", "powerUpIsXl")))
+check("per-frame prompt carries them too", all(k in px.VIDEO_FRAME_PROMPT for k in ("cpCovered", "cpVisible", "powerUpIsXl")))
 print("%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

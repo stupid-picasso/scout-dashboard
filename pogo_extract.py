@@ -993,7 +993,7 @@ def drop_sparse(records):
 
 
 _SCALAR_KEYS = ("cp", "hp", "weight", "height")
-_FLAG_KEYS = ("favorite", "lucky", "shadow", "dynamax", "gigantamax", "shiny", "evolveButton")
+_FLAG_KEYS = ("favorite", "lucky", "shadow", "dynamax", "gigantamax", "shiny", "evolveButton", "cpCovered")
 
 
 def _vote(values):
@@ -1156,9 +1156,10 @@ VIDEO_IMPORT_PROMPT = (
     "Merge repeat sightings of the same Pokemon across frames into one entry, using "
     "the most complete data seen. Respond with ONLY a JSON array, no markdown fences, "
     "no commentary. Each item: "
-    '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "hp": number|null, '
+    '{"name": string, "gender":"M"|"F"|null, "cp": number|null, "cpCovered": true|false|null, '
+    '"cpVisible": string|null, "hp": number|null, '
     '"candy": number|null, "xlCandy": number|null, "stardust": number|null, '
-    '"powerUpDust": number|null, '
+    '"powerUpDust": number|null, "powerUpCandy": number|null, "powerUpIsXl": true|false|null, '
     '"type": string|null, "weight": string|null, "height": string|null, '
     '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, '
     '"evolveCandy": number|null, "evolveButton": true|false|null, "atkIV": number|null, "defIV": number|null, '
@@ -1193,6 +1194,12 @@ VIDEO_IMPORT_PROMPT = (
     "on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all "
     "dots, rest = rest text such as \"4 DAYS\" on the Mega badge. Empty array if there "
     "is no MEGA EVOLVE button. "
+    "CP COVERED: the big CP number at the top can be partly hidden behind the Pokemon (a tall Pokemon "
+    "covers its own digits). When ANY digit of it is hidden or unclear, set cp to null, cpCovered to true, "
+    "and cpVisible to the digits you CAN see in order with a ? for every hidden digit (e.g. \"2??6\" for a "
+    "four-digit CP whose middle two digits are hidden). Never guess a hidden digit. When every digit is "
+    "clearly visible set cpCovered false and cpVisible null. powerUpIsXl: true when the second cost on the "
+    "POWER UP button is Candy XL (the striped candy icon), false when it is plain Candy, null if unsure. "
     "CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the "
     "large comma-grouped number). If a card is scrolled past its top and no CP badge "
     "is visible in any frame, use null. A shadow Pokemon shows a PURIFY button and the "
