@@ -1454,6 +1454,14 @@ module.exports = async function suiteB() {
       const out = { a, b, reply: (l.state.chatMessages || []).map(m => m.content).join('|'), hasScreen: !!sent && /Screen: Roster; the details sheet is open on Gengar/.test(sent), faded: (() => { const el = document.querySelector('button[aria-label="Ask the Professor"]'); document.dispatchEvent(new Event('scroll')); return !!el; })() };
       l.setState({ detailPoke: null, chatOpen: false, chatMessages: [] }); return out; } } return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, chatMessages: st0.chatMessages || [], chatOpen: false, detailPoke: null, tab: 'home' });
+    // the Home checkbox brings a hidden bubble back
+    await s.set({ tab: 'home', chatBubbleOff: true }); await s.page.waitForTimeout(400);
+    const homeBox = s.page.locator('label', { hasText: 'Show the floating chat button' }).locator('input');
+    const boxCount = await homeBox.count(); if (boxCount) await homeBox.first().click(); await s.page.waitForTimeout(300);
+    await s.set({ tab: 'roster' }); await s.page.waitForTimeout(400);
+    const backOn = await s.page.locator('button[aria-label="Ask the Professor"]').count();
+    await s.set({ chatBubbleOff: false });
+    expect(boxCount === 1 && backOn === 1, 'the Home checkbox brings a hidden chat bubble back: ' + boxCount + '/' + backOn);
     expect(onToday === 1 && onHome === 0, 'the bubble is on Today and not on Home: ' + onToday + '/' + onHome);
     expect(opened === 1, 'tapping the bubble opens the chat sheet');
     expect(/^Screen: Roster/.test(r.a) && /the details sheet is open on Gengar 2400 CP IV 14\/14\/14/.test(r.b), 'the screen line names the tab and the open Pokemon: ' + r.a + ' || ' + r.b);
