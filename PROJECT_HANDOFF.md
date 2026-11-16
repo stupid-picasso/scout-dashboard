@@ -683,3 +683,9 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - pogo_extract.py prompts now ask for cpCovered, cpVisible, powerUpCandy, powerUpIsXl; merge_frames lets a true cpCovered win; tests in test_postprocess.py. Python tests need `pip install -r requirements.txt` (use a venv here).
 - Keep fuzz: all soft violations are "CP over league cap" (the Pokemon cannot be used in that league), none are rule errors; the fuzz now prints that split.
 - update_event_moves.py writes a `health` block (pages read, pages with move text, pages that parsed nothing) and a ::warning:: when a page has move text but nothing parsed.
+
+## Audit follow-up, batch 2 and 3 (2026-11-16)
+- Render speed: renderVals now memoises pvpAssess/freshRank/gradeStanding/needsEliteTM per render (`_rmemo`, active only while renderVals runs) and the power-up sort computes one key per Pokemon; movepoolFor is cached. 190 -> 46 ms at 2,000 Pokemon. Tests that extract method bodies (test_roster_logic.js) need the `_...Raw` methods and an `_rmemo` stub.
+- Sync: qa_lib `session({cloud})` swaps Firebase for an in-memory stand-in shared between sessions; SYNC-01..04 in suite D.
+- UI quality bar: suite E (qa_e2e_e.js) scans every screen; global CSS gives buttons/summaries/tabs/inputs a 44 px minimum; text under 11 px was raised to 11 px. qa.yml now runs `a b c e`.
+- Chat: CHATEVAL-01 scores whether 14 typical questions get the facts needed.

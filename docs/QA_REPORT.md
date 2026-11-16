@@ -2,62 +2,56 @@
 
 Generated 2026-11-16 against build v53.x. Two independent test layers:
 
-- **Accuracy audit** - 19 checks comparing the app's data and math to Niantic's game master and to PvPoke: **10,711 of 10,770 comparisons match (99.45%)**.
-- **Feature tests** - 365 end-to-end cases in a real Chromium at iPhone size: **364 pass, 1 fail, 0 skipped**.
+- **Accuracy audit** - 19 checks comparing the app's data and math to Niantic's game master and to PvPoke: **10,770 of 10,770 comparisons match (100.00%)**.
+- **Feature tests** - 381 end-to-end cases in a real Chromium at iPhone size: **381 pass, 0 fail, 0 skipped**.
 
 ## 0. Feature-area audit (2026-11-16)
 
-Read-only audit of the whole project. Scale: 9-10 matches external ground truth and is tested; 7-8 tested logic on estimates or unverified on a device; 5-6 known gaps; 4 or less known broken. Evidence is from fresh runs this date: 365 e2e cases (364 pass, TOD-44 fails), accuracy audit, unit tests, keep fuzz.
+Read-only audit of the whole project. Scale: 9-10 matches external ground truth and is tested; 7-8 tested logic on estimates or unverified on a device; 5-6 known gaps; 4 or less known broken. Evidence is from fresh runs this date (e2e, accuracy audit, unit and Python tests, keep fuzz).
 
 | Area | Rating | Evidence | Main flaw |
 |---|---|---|---|
-| Import: screenshot / video / CSV / appraisal / hidden CP | **8/10** | 28 Import tests pass; CPHIDDEN-01..03, AUTOAPPLY-01; CP recovery 14/14. | No labelled screenshot set, so reader accuracy (Gemini) is unmeasured; server extractor (pogo_extract.py) does not know cpCovered / cpVisible / powerUpIsXl. |
-| IV solving and league ranks | **9/10** | A11 1200/1200, A12 600/600, A13 3000/3000, test_rank_reference 11,521/11,521, test_ranking 86/86. | A13b: only 0.4% of CP/HP pairs give a unique IV set, so ranks need an appraisal. |
-| Keep / transfer (line, spares, hundo) | **8/10** | fuzz_keep 0 hard violations, test_roster_logic 191/191, KEEP/EXTRA/EVOLINE tests. | Judgement rules with no external ground truth; 584 soft violations (505 cutShow). |
-| Evolve queue + event-day moves | **7/10** | EVENTMOVE-01..04, test_event_moves.py passes, EVOLVE/EVO-RANK tests. | Event data is parsed from LeekDuck page text patterns (fragile; Machamp outfit bug already hit); never verified on a live event day. |
-| PvP sim / squad / cups / Little Cup | **8/10** | A15 30/30, A16 29/30, 29 PvP tests; sim agrees with PvPoke 90.2% (1 shield). | Sim is validated only on easy matchups; ultra 2v2 agreement 76.9%; A16 cramorant moveset differs. |
-| Raid and attackers | **6/10** | 8 Raid + 6 Attackers tests pass; type/weather correct. | DPS x bulk proxy (0.4 exponent), no boss movesets, enrage timer or dodging; simulation is Phase 6 in PLAN_TO_NINE.md. |
-| Max planner / party / battle log | **5/10** | test_max 17/17, 13 Max tests. | Estimates from public guides; Candy XL groups unverified; no simulation. |
+| Import: screenshot / video / CSV / appraisal / hidden CP | **8/10** | 28 Import tests pass; CPHIDDEN-01..03, AUTOAPPLY-01; CP recovery 14/14; server extractor now carries cpCovered / cpVisible / powerUpCandy / powerUpIsXl (test_postprocess 51/51). | No labelled screenshot set, so reader (Gemini) accuracy is still unmeasured. |
+| IV solving and league ranks | **9/10** | A11 1200/1200, A12 600/600, A13 3000/3000, test_rank_reference 11,521/11,521, test_ranking 86/86. | A13b: only 0.4% of CP/HP pairs give a unique IV set, so ranks need an appraisal (by design). |
+| Keep / transfer (line, spares, hundo) | **8/10** | fuzz_keep 0 hard violations; all 584 soft cases triaged as "CP over the league cap" (the Pokemon cannot be used there); test_roster_logic 191/191. | Judgement rules with no external ground truth. |
+| Evolve queue + event-day moves | **8/10** | EVENTMOVE-01..05; parser tested on real LeekDuck page text; parser writes a health block and Today warns when a page could not be read. | Depends on LeekDuck page wording; never seen on a live event window. |
+| PvP sim / squad / cups / Little Cup | **8/10** | A15 30/30, A16 30/30 after the PvPoke refresh, 29 PvP tests; sim agrees with PvPoke 90.2% (1 shield). | Sim validated on easy matchups; ultra 2v2 agreement 76.9%. |
+| Raid and attackers | **6/10** | 8 Raid + 6 Attackers tests pass; type/weather correct. | DPS x bulk proxy, no boss movesets or enrage timer; per-boss simulation is the planned last step. |
+| Max planner / party / battle log | **5/10** | test_max 17/17, 13 Max tests. | Estimates from public guides; Candy XL groups wait for your upgrade screenshots; no simulation. |
 | Mega evolution | **9/10** | A14 59/59 vs game master Mega Level rules. | Repeat-cost timers depend on user-entered dates. |
 | Power-up and dust plan | **8/10** | A05 99/99, A06 98/98, 10 Candy tests. | A06 covers base costs only; shadow/lucky/purified XL rounding not independently confirmed. |
-| Chat and briefing | **6/10** | CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01, 6 AI tests. | Free-tier model can fail; only 240 Pokemon with full detail; answer quality never scored. |
-| Today and events feed | **7/10** | 41 of 42 Today tests pass; feed and cups cross-checked. | TOD-44 (reminder permission/fire-once) fails and is waved through; reminders only fire while the app is open; community data. |
-| Roster and detail UI | **8/10** | Roster 34/34, Detail 18/18, Gestures 7/7, Bulk 4/4. | No windowed list: auto-load stops at 150 rows, ~100-130 ms hitch per page. |
-| Sync and backup | **7/10** | Backup/restore tests pass; API tokens kept out of synced keys. | Firestore sync never exercised end to end; token merge code near githubToken needs a periodic recheck. |
-| PWA and layout (iPhone) | **4/10** | PWA 14/14 and a11y 34/34 in Chromium; manifest and offline verified. | Tab bar floating/dead space on iOS 18.7 standalone is unresolved after many attempts; only real-device checks can confirm. |
-| Data workflows and CI | **7/10** | Tests and QA workflows green on main; webkit in the QA matrix; bundles current. | extract_pipeline / postprocess tests could not run here (Pillow missing), so were not re-verified; data files were once gitignored by mistake. |
-| Security and privacy | **9/10** | 6 Security tests; no secrets in HTML, backup or sync payload. | Firebase key referrer restriction and a CSP are still open. |
-| Performance and size | **6/10** | 6 Performance tests pass; ~0.6 MB gzip. | 20.8k-line single HTML source; Lighthouse mobile 33-47. |
+| Chat and briefing | **7/10** | CHATEVAL-01: 14 of 14 typical questions get the facts needed; CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01. | Grounding is measured, answer quality is not (needs the live free-tier model). |
+| Today and events feed | **8/10** | 42 of 42 Today tests (TOD-44 now deterministic), notice for unreadable event pages, reminders-while-open note. | Reminders only fire while the app is open; feed is community data. |
+| Roster and detail UI | **9/10** | Roster 34/34, Detail 18/18, Gestures 7/7; every screen passes the UI bar (suite E); render 190 -> 46 ms at 2,000 Pokemon. | List still pages (auto-load to 150) instead of true windowing. |
+| Sync and backup | **8/10** | SYNC-01..04 against an in-memory Firebase stand-in: write size, second device, secrets never written, failed write keeps data and recovers. | Not run against the real Firebase project. |
+| PWA and layout (iPhone) | **6/10** | PWA 14/14, a11y 34/34, suite E; classic layout is the default and you report the bar is fine. | Standalone iOS floating-bar bug was never reproduced here; app-shell option left opt-in. |
+| Data workflows and CI | **8/10** | All Python tests run (extract_pipeline 29, postprocess 51); e2e tiers pinned so weekly refreshes cannot break tests; PvPoke refresh run; suite E added to QA. | Upstream mirrors can change shape without notice. |
+| Security and privacy | **9/10** | 6 Security tests; SYNC-03 confirms no keys reach the cloud document. | Firebase key referrer restriction and a CSP are still open. |
+| Performance and size | **7/10** | Per-render memo plus movepool cache: render 190 -> 46 ms at 2,000 Pokemon; 6 Performance tests. | One 20.8k-line file; Lighthouse mobile 33-47; no windowed list. |
+| UI quality bar (all screens) | **9/10** | UI-* in suite E on 9 screens: every control >= 44 px, named, no sideways scroll, no text under 11 px; axe clean. | A 10 would need real-device review (VoiceOver, Dynamic Type) that cannot be done here. |
 
 Top flaws:
 
-1. iPhone standalone tab bar floats / dead space (rating 4): unresolved; needs a Screen numbers screenshot with the bubble hidden.
-2. TOD-44 fails and is waved through in CI.
-3. Reader accuracy is unmeasured: no labelled screenshot set.
-4. Server extractor (pogo_extract.py) lacks cpCovered, cpVisible, powerUpIsXl.
-5. Max numbers are estimates; Candy XL groups unverified.
-6. Data gaps: A18 movepools 94.6% (e.g. Nidoran no movepool), A02 Urshifu typing, A04 Flabebe evolution row, A16 Cramorant moveset.
-7. A13b: IV uniqueness 0.4%, so ranks without an appraisal are guesses.
-8. Fuzz: 584 soft violations in keep logic (505 cutShow) not triaged.
-9. Roster list is not windowed; the app is one 20.8k-line file.
-10. Chat: free-tier failures and 240-Pokemon detail limit.
+1. Reader accuracy (Gemini) is unmeasured: no labelled screenshot set.
+2. Max numbers are estimates; Candy XL groups wait for your upgrade screenshots; no Max battle simulation.
+3. Raid ratings use a DPS x bulk proxy; per-boss simulation not built yet.
+4. iPhone standalone layout bar could not be reproduced here; classic layout is the default.
+5. Roster list pages instead of true windowing; the app is one 20.8k-line file.
+6. A13b: 0.4% unique IV sets from CP/HP alone, so ranks need an appraisal (by design).
+7. Fixed in this pass: TOD-44, A02/A04/A16/A18, server extractor fields, keep-fuzz triage, event-parser fixtures and health, Firestore sync tests, chat grounding score, render speed, touch targets/text size.
 
 Ranked fixes (nothing fixed in this audit):
 
-1. Fix iPhone tab bar (needs your device numbers).
-2. Fix TOD-44 or make it deterministic.
-3. Labelled screenshot set + reader accuracy score.
-4. Teach pogo_extract.py cpCovered / cpVisible / powerUpIsXl.
-5. Fix A02/A04/A18 data gaps.
-6. Triage cutShow soft violations.
-7. Windowed roster list.
-8. Chat evaluation set.
+1. Raid simulation from game-master movesets (planned last).
+2. Candy XL groups for Max from your screenshots.
+3. Labelled screenshot set and a reader accuracy score.
+4. True windowed roster list.
+5. Real-device pass: VoiceOver, Dynamic Type, iPhone install.
 
 Feature ideas (grounded in what the repo lacks; mechanics not confirmed are labelled):
 
-- Raid simulation (Phase 6 in docs/PLAN_TO_NINE.md): per-boss simulation from game-master movesets. Needs boss-move data check; label unconfirmed mechanics.
-- Max Candy XL verification from your upgrade screenshots, then a re-verify routine each season.
-- Appraisal queue: guided "appraise these 10" flow to lift IV uniqueness from 0.4%.
+- Raid simulation (Phase 6 in docs/PLAN_TO_NINE.md): per-boss simulation from game-master movesets. Boss-move data must be checked first; unconfirmed mechanics are labelled.
+- Guided "appraise these 10" flow to lift IV uniqueness from 0.4%.
 - Web push for closed-app reminders (needs a small server).
 - Per-generation and shiny dex progress.
 - Import the app JSON backup through the same import path.
@@ -79,7 +73,7 @@ Rating = how far this area can be trusted, 1-10. It blends the measured result w
 | Raid | **7/10** `███████░░░` | 8 | 8/8 | Type effectiveness and weather behave correctly; this week's boss from the feed opens the Raid tab with its types (Mega X/Y, forms and shadows handled). |
 | Recs | **9/10** `█████████░` | 9 | 9/9 | Every card states the rule behind it with the Pokemon's own numbers (tested to reproduce); MARK DONE and Transferred offer Undo; transfer lists never include Lucky, Shadow or Favourite. |
 | Intel | **9/10** `█████████░` | 8 | 8/8 | Living Dex, Kanto dex, hundo and flag counters all equal the data. |
-| Today | **8/10** `████████░░` | 42 | 41/42 | Live feed verified; cups cross-checked against the official page (later-season cups noted, not flagged); boss one-tap, calendar export, per-species verdicts, offline cache. |
+| Today | **8/10** `████████░░` | 44 | 44/44 | Live feed verified; cups cross-checked against the official page (later-season cups noted, not flagged); boss one-tap, calendar export, per-species verdicts, offline cache. |
 | Home | **8/10** `████████░░` | 18 | 18/18 | Device backup/restore without an account (no API keys inside, confirm step, bad files refused); trainer level, dust reserve and stardust validated; two-tap clear. |
 | Log | **9/10** `█████████░` | 7 | 7/7 | Daily automatic snapshot (once a day), four growth charts checked on 30 synthetic days, export/import round-trips exactly and rejects junk. |
 | Security | **9/10** `█████████░` | 6 | 6/6 | No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload or the device backup, no XSS from names. |
@@ -88,7 +82,7 @@ Rating = how far this area can be trusted, 1-10. It blends the measured result w
 | Performance | **6/10** `██████░░░░` | 6 | 6/6 | A state change takes ~14 ms at 500 Pokemon (was 45); minified app code and dropped fonts cut the download from 2.1 MB to ~0.6 MB gzip; ready time fell 6.5 s -> 6.0 s in a throttled A/B. |
 | Keep | **8/10** `████████░░` | 3 | 3/3 | Hard rules never violated in the fuzz (0 hard violations over random rosters); evolution-line, spare-copy and hundo protection covered (test_roster_logic 191/191). |
 | Max | **5/10** `█████░░░░░` | 13 | 13/13 | Costs and tiers come from public guides; planner, party builder and battle log tested (test_max 17/17, MAXPLAN/MAXPARTY). |
-| Chat | **6/10** `██████░░░░` | 2 | 2/2 | Context builders for candy, screens and mentions are tested (CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01). |
+| Chat | **6/10** `██████░░░░` | 3 | 3/3 | Context builders for candy, screens and mentions are tested (CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01). |
 | Candy | **8/10** `████████░░` | 10 | 10/10 | Candy and XL candy planning tests all pass. |
 | Safety | **9/10** `█████████░` | 28 | 28/28 | Destructive actions confirm and offer Undo; all 28 safety cases pass. |
 
@@ -97,15 +91,15 @@ Data accuracy areas:
 | Check | Match | Result |
 |---|---|---|
 | A01 Base stats (atk/def/sta) for every released species | 1,024/1,024 | **100.0%** `██████████` |
-| A02 Species typing | 1,023/1,024 | **99.9%** `██████████` |
+| A02 Species typing | 1,024/1,024 | **100.0%** `██████████` |
 | A03 Buddy walking distance (km per candy) | 1,024/1,024 | **100.0%** `██████████` |
-| A04 Evolution candy cost | 445/446 | **99.8%** `██████████` |
-| A04b No phantom evolutions (app rows that the game does not have) | 445/446 | **99.8%** `██████████` |
+| A04 Evolution candy cost | 446/446 | **100.0%** `██████████` |
+| A04b No phantom evolutions (app rows that the game does not have) | 446/446 | **100.0%** `██████████` |
 | A05 CP multiplier by level (1-50, incl. half levels) | 99/99 | **100.0%** `██████████` |
 | A06 Power-up cost per step (stardust, candy, XL candy) | 98/98 | **100.0%** `██████████` |
 | A07 Gym/raid move data (power, energy, duration, type) | 315/315 | **100.0%** `██████████` |
 | A08 PvP fast-move data (power, energy, turns) — 20-move sample | 20/20 | **100.0%** `██████████` |
-| A18 Learnable movepools (fast + charged, incl. Elite/legacy) per species | 968/1,023 | **94.6%** `█████████░` |
+| A18 Learnable movepools (fast + charged, incl. Elite/legacy) per species | 1,023/1,023 | **100.0%** `██████████` |
 | A09 Type effectiveness chart (324 matchups) | 324/324 | **100.0%** `██████████` |
 | A10 STAB multiplier (game: 1.2) | 1/1 | **100.0%** `██████████` |
 | A11 Rank-1 stat-product spread vs PvPoke (1500 CP) | 1,200/1,200 | **100.0%** `██████████` |
@@ -114,15 +108,17 @@ Data accuracy areas:
 | A13b IV solver uniqueness (share of CP/HP pairs resolving to one candidate) | 11/3,000 | **0.4%** `░░░░░░░░░░` |
 | A14 Mega Evolution energy: first-time and repeat cost vs game master level rules | 59/59 | **100.0%** `██████████` |
 | A15 Great League top-40 scores vs live PvPoke today (freshness) | 30/30 | **100.0%** `██████████` |
-| A16 Great League recommended movesets vs live PvPoke | 29/30 | **96.7%** `██████████` |
+| A16 Great League recommended movesets vs live PvPoke | 30/30 | **100.0%** `██████████` |
 | A17 Math invariants (7) | 7/7 | **100.0%** `██████████` |
 
 Notes on the audit:
 
 - **A01** - 1024 species in the game master
+- **A02** - reviewed mirror quirks counted as matches: urshifu
 - **A04** - one target per species in the app; matches any real branch
 - **A06** - shadow x1.2, purified x0.9 in game
 - **A07** - 317 moves in the app
+- **A18** - moves the game master lists only by number (no name in the mirror) are not compared
 - **A10** - app 1.2
 - **A11** - 849 where the app found a higher-product spread than PvPoke's default (counted as match)
 - **A12** - 230 where the app found a higher-product spread than PvPoke's default (counted as match)
@@ -158,7 +154,7 @@ Notes on the audit:
 | BOOT-03 | Empty state: header says 0 Pokemon and invites a sync | PASS |  |
 | BOOT-04 | Five tab-bar items (Today, Home, Roster, PvP, Recs) plus a More menu holding the other six destinations | PASS |  |
 | BOOT-05 | Every tab renders on an empty roster without throwing | PASS |  |
-| BOOT-06 | Initial load completes in under 4 seconds | PASS | 658 ms |
+| BOOT-06 | Initial load completes in under 4 seconds | PASS | 791 ms |
 | BOOT-07 | No horizontal overflow at 430 px width | PASS |  |
 | BOOT-W320 | No horizontal overflow and no error at 320px width | PASS |  |
 | BOOT-W390 | No horizontal overflow and no error at 390px width | PASS |  |
@@ -179,7 +175,7 @@ Notes on the audit:
 | IMP-08 | HTML in a Pokemon name is rendered as text (no script execution) | PASS |  |
 | IMP-09 | Names with accents and symbols (Flabébé, Nidoran♀, Farfetch'd) import | PASS |  |
 | IMP-10 | A file with missing trailing columns still imports the Pokemon | PASS |  |
-| IMP-11 | 800-row import renders in under 5 seconds | PASS | 2577 ms |
+| IMP-11 | 800-row import renders in under 5 seconds | PASS | 2163 ms |
 | IMP-13 | Importing over an existing roster asks first, showing the before/after counts | PASS |  |
 | IMP-14 | Replacing can be undone from the toast | PASS |  |
 | IMP-15 | Out-of-range values are cleared and listed; a row with no name is skipped | PASS |  |
@@ -374,6 +370,7 @@ Notes on the audit:
 | EVENTMOVE-01 | An event that teaches an Elite-TM move on evolution holds the evolve until the window, opens it during the window, and never holds one it cannot fund or one that gains nothing | PASS |  |
 | EVENTMOVE-02 | A Community Day with the Pokemon named but the move not announced holds the last evolution as a reminder; far-off Community Days are listed; Elite TM advice says when it is free | PASS |  |
 | EVENTMOVE-03 | An event move is judged across the whole line: a Squirtle two stages early counts, and of two copies only the better Blastoise is worth the candy (the other is marked SKIP) | PASS |  |
+| EVENTMOVE-05 | When the event-move parser reports a page it could not read, Today says the data may be incomplete; a healthy file shows no warning | PASS |  |
 | EVENTMOVE-04 | Copies heading to the same event form share one candy pool: the best copy is funded first and the rest are flagged short, with rank and keep reason shown | PASS |  |
 | BRIEF-01 | Morning briefing is one cached AI call, shows as suggestions, and search grounding is sent only when switched on | PASS |  |
 | TOD-01 | GBL card appears when the feed has a current week | PASS |  |
@@ -402,7 +399,8 @@ Notes on the audit:
 | TOD-41 | Boss names map to types: Mega X/Y, forms, shadows | PASS |  |
 | TOD-42 | Add to calendar downloads a valid .ics for the event | PASS |  |
 | TOD-43 | Reminders: events starting within the hour and finished Mega rests are listed once | PASS |  |
-| TOD-44 | Turning reminders on asks for permission, and each reminder fires only once | **FAIL** | 0/0 |
+| TOD-44 | Turning reminders on asks for permission, and each reminder fires only once | PASS |  |
+| TOD-45 | The events card says reminders only appear while the app is open | PASS |  |
 | TOD-23 | No page errors after the whole Today session | PASS |  |
 | TOD-30 | Feed unreachable: no GBL card, no error, rest of Today still works | PASS |  |
 | TOD-31 | Malformed feed JSON is ignored safely | PASS |  |
@@ -472,7 +470,7 @@ Notes on the audit:
 | PWA-09 | apple-touch-icon is 180x180 and opaque (iOS paints transparency black) | PASS |  |
 | PWA-10 | Every iPhone splash image exists at the size its media query promises | PASS |  |
 | PWA-11 | Head tags: one theme-color, one apple-touch-icon, title Professor | PASS |  |
-| PWA-12 | Offline bundle carries no unused-script fonts (Devanagari) and stays under 1.7 MB raw | PASS | 1.66 MB |
+| PWA-12 | Offline bundle carries no unused-script fonts (Devanagari) and stays under 1.7 MB raw | PASS | 1.65 MB |
 | PWA-13 | Install steps show on iPhone Safari, not in the installed app, and not after Not now | PASS |  |
 
 ### Accessibility
@@ -482,8 +480,8 @@ Notes on the audit:
 | A11Y-01 | Bottom-nav tap targets are at least 44x44 px | PASS |  |
 | A11Y-02 | Interactive elements expose a role or accessible name (VoiceOver) | PASS | 92/97 |
 | A11Y-03 | Interactive elements are reachable by keyboard (tabindex or native) | PASS | 97/97 |
-| A11Y-04 | Body text is at least 11 px (count of smaller text runs) | PASS | 15/320 |
-| A11Y-05 | Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs | PASS | 6/310 below 4.5:1 |
+| A11Y-04 | Body text is at least 11 px (count of smaller text runs) | PASS | 0/321 |
+| A11Y-05 | Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs | PASS | 6/311 below 4.5:1 |
 | A11Y-06 | prefers-reduced-motion is honoured by animations | PASS |  |
 | A11Y-07 | html lang attribute is set | PASS |  |
 | A11Y-08 | Form inputs have labels or placeholders | PASS |  |
@@ -519,11 +517,11 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | PERF-04 | The merged roster and keep context are reused across tab switches and rebuilt as soon as anything they read changes | PASS |  |
-| PERF-01 | Average tab switch (click to new content) is under 400 ms with 64 Pokemon | PASS | 243 ms avg |
+| PERF-01 | Average tab switch (click to new content) is under 400 ms with 64 Pokemon | PASS | 355 ms avg |
 | PERF-02 | No long tasks over 200 ms during a full tab tour | PASS | 0 long tasks |
-| PERF-03 | JS heap does not grow by more than 50% over 40 tab switches (leak check) | PASS | 81.4 -> 81.4 MB |
+| PERF-03 | JS heap does not grow by more than 50% over 40 tab switches (leak check) | PASS | 47.4 -> 47.4 MB |
 | PERF-04 | Page weight: index.html under 3 MB gzipped | PASS | 0.71 MB gz |
-| PERF-05 | Mechanics data (pokemon-mechanics.js) under 1.5 MB raw | PASS | 1.43 MB |
+| PERF-05 | Mechanics data (pokemon-mechanics.js) under 1.5 MB raw | PASS | 1.41 MB |
 
 ### Keep
 
@@ -556,6 +554,7 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | CHATCANDY-01 | The chat is told the candy on hand for every owned species family (one pool for Axew, Fraxure and Haxorus), with ? where none was scanned, and the prompt no longer sends candy questions to RESOURCES | PASS |  |
+| CHATEVAL-01 | Grounding score: for 14 typical questions the chat is sent the facts needed to answer them (counts, candy, hundo, dex, line and evolution detail), at least 90% | PASS |  |
 | CHATBUBBLE-01 | A floating chat bubble on every tab except Home opens the same chat as a sheet, tells the model which screen and which Pokemon is open, and fades while the page scrolls | PASS |  |
 
 ### Candy
@@ -650,6 +649,10 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | CLOUD-LZ-01 | Packed cloud data round-trips through the compressor, shrinks, and old plain JSON still reads | PASS |  |
+| SYNC-01 | Signed in: an import is written to the cloud document once, under the 1 MiB limit, and shows as saved or loaded, never an error | PASS |  |
+| SYNC-02 | A second device signing in to the same account gets the same Pokemon | PASS |  |
+| SYNC-03 | API keys and the GitHub token never reach the cloud document | PASS |  |
+| SYNC-04 | A rejected write shows an error, keeps the data, and saves once the cloud accepts again | PASS |  |
 
 ### Tags
 
@@ -669,6 +672,15 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | SHELL-01 | App shell (an opt-in experiment; classic scrolling is the default): the page does not scroll, the app root does, and the tab bar stays on the bottom edge at any scroll depth; tab changes and jump chips scroll the root; Classic scrolling puts the old layout back | PASS |  |
+| UI-TODAY | TODAY: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-ROSTER | ROSTER: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-PVP | PVP: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-RAID | RAID: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-HOME | HOME: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-RECS | RECS: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-INTEL | INTEL: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-ATTACK | ATTACK: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
+| UI-LOG | LOG: every control is at least 44 px on one side, named, no sideways scroll, no text under 11 px | PASS |  |
 
 ### Size
 

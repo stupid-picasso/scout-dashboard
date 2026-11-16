@@ -48,6 +48,36 @@ async function session(opts = {}) {
   }
   await page.route('**/data/feed_check.json*', r => r.abort());
   // QA runs signed-out of a cloud that is not there: with real network access Firebase would load and its signed-out callback empties the roster mid-test.
+  if (opts.cloud) {
+    // A tiny in-memory stand-in for Firebase Auth + Firestore, backed by opts.cloud.store (shared between sessions to model two devices).
+    const C = opts.cloud; C.store = C.store || {}; C.writes = C.writes || [];
+    await page.exposeFunction('__fsGet', p => C.store[p] === undefined ? null : JSON.parse(JSON.stringify(C.store[p])));
+    await page.exposeFunction('__fsSet', (p, data, merge) => {
+      if (C.failWrites) return { error: 'permission-denied (QA)' };
+      const cur = merge && C.store[p] ? C.store[p] : {};
+      const next = { ...cur };
+      Object.keys(data).forEach(k => { if (data[k] && data[k].__del) delete next[k]; else next[k] = data[k]; });
+      C.store[p] = next; C.writes.push({ p, bytes: JSON.stringify(next).length, keys: Object.keys(data) });
+      return { ok: true };
+    });
+    await page.route(/gstatic\.com\/firebasejs\/.*firebase-app-compat/, r => r.fulfill({ contentType: 'application/javascript', body: `(function(){
+      const listeners = {};
+      const del = { __del: true };
+      function ref(path) { return { path, collection: c => ref(path + '/' + c), doc: d => ref(path + '/' + d),
+        get: async () => { const d = await window.__fsGet(path); return { exists: d !== null, data: () => d }; },
+        add: async data => { const r = await window.__fsSet(path + '/' + Math.random().toString(36).slice(2), data, false); return r; },
+        set: async (data, o) => { const r = await window.__fsSet(path, JSON.parse(JSON.stringify(data, (k, v) => (v && v.__del) ? { __del: true } : v)), !!(o && o.merge)); if (r && r.error) throw new Error(r.error);
+          (listeners[path] || []).forEach(cb => window.__fsGet(path).then(d => cb({ exists: d !== null, data: () => d, metadata: { hasPendingWrites: false } }))); },
+        onSnapshot: (cb, err) => { (listeners[path] = listeners[path] || []).push(cb); window.__fsGet(path).then(d => cb({ exists: d !== null, data: () => d, metadata: { hasPendingWrites: false } })); return () => { listeners[path] = (listeners[path] || []).filter(x => x !== cb); }; },
+        orderBy: () => ref(path), limit: () => ref(path) }; }
+      const fs = () => ({ collection: c => ref(c) });
+      fs.FieldValue = { delete: () => del };
+      const auth = { currentUser: null, onAuthStateChanged(cb) { setTimeout(() => { auth.currentUser = { uid: 'qa-user', email: 'qa@example.test' }; cb(auth.currentUser); }, 30); }, signOut() { auth.currentUser = null; }, signInWithEmailAndPassword: async () => {}, createUserWithEmailAndPassword: async () => {} };
+      window.firebase = { apps: [], initializeApp() { const a = {}; window.firebase.apps.push(a); return a; }, auth: () => auth, firestore: fs };
+    })();` }));
+    await page.route(/gstatic\.com\/firebasejs\/.*firebase-(auth|firestore)-compat/, r => r.fulfill({ contentType: 'application/javascript', body: '' }));
+    await page.route(/(googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
+  } else
   await page.route(/(gstatic\.com|googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
   if (opts.offline) await ctx.setOffline(true);
   const t0 = Date.now();

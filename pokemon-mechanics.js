@@ -4122,7 +4122,17 @@ const MOVEPOOL_TABLE = {
 // Move pool for a species (and form). Regional forms have their own rows ("wooper|paldea");
 // a form without a row (Shadow, costumes) uses the plain species' pool. Names are matched
 // loosely (hyphens, accents), like evolutionInfoFor.
+// The movepool table is fixed, and the app asks for the same species/form many times per render (Elite-TM checks per move per Pokemon),
+// so a lookup is remembered; building the name variants was the biggest cost left in a render of a 2,000-Pokemon roster.
+const _movepoolCache = new Map();
 function movepoolFor(name, form) {
+  const ck = (name == null ? '' : name) + '\u0000' + (form == null ? '' : form);
+  if (_movepoolCache.has(ck)) return _movepoolCache.get(ck);
+  const res = _movepoolForUncached(name, form);
+  _movepoolCache.set(ck, res);
+  return res;
+}
+function _movepoolForUncached(name, form) {
   const n = String(name || '').toLowerCase().trim();
   const alt = n.replace(/-/g, ' ').replace(/\u00e9/g, 'e').replace(/\s+/g, ' ');
   const f = String(form || '').toLowerCase().trim();

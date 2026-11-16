@@ -112,6 +112,7 @@ module.exports = async function suiteC() {
     await s.set({ megaEnergyInventory: { gible: { status: { '': { level: 1, restEndsAt: Date.now() - 1000 } } } } });
     const first = await s.call('checkReminders'); const second = await s.call('checkReminders'); expect(first.length >= 1 && second.length === 0, first.length + '/' + second.length);
   }, 'high');
+  await T('TOD-45', 'Today', 'The events card says reminders only appear while the app is open', async () => { await s.go('TODAY'); expect(/Reminders appear while the app is open/.test(await s.text()), 'note missing'); });
   await T('TOD-23', 'Today', 'No page errors after the whole Today session', async () => expect(s.errors.length === 0, s.errors[0]));
   await s.close();
 

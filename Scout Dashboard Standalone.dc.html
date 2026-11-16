@@ -1259,6 +1259,10 @@
   .go-card input:not([type]){background:var(--surface-field) !important;color:var(--ink-900) !important;border:1.5px solid var(--line-300) !important;border-radius:12px !important}
   .go-card input:not([type])::placeholder{color:var(--ink-400) !important}
   .go-card button{text-align:center;display:inline-flex;align-items:center;justify-content:center}
+  /* Touch targets: Apple's minimum is 44 pt. Every button, summary, tab and checkbox label is at least 44 px tall, whatever its inline size. */
+  button, summary, [role=button], [role=tab], [role=checkbox], select{min-height:44px !important;min-width:44px}
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), textarea{min-height:44px}
+  label:has(> input[type=checkbox]), label:has(> input[type=radio]){min-height:44px;display:flex;align-items:center}
   /* Primary action: system blue capsule. */
   [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue-fill) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
   [style*="background: var(--grass-500)"]{background:var(--ios-blue-fill) !important;color:#fff !important}
@@ -1667,6 +1671,7 @@
           <div style="font:650 19px var(--font-display);letter-spacing:-.012em;color:var(--ink-900);margin-bottom:4px">Events &middot; next 14 days</div>
           <button type="button" onClick="{{ toggleReminders }}" style="font:500 14px var(--font-body);color:var(--ios-blue);padding:4px 2px">{{ remindLabel }}</button>
         </div>
+        <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-500);margin:-4px 0 10px">Reminders appear while the app is open or when you come back to it. An iPhone cannot wake a web app that is closed.</div>
         <sc-for list="{{ feedEventRows }}" as="fe" hint-placeholder-count="3">
           <div style="background:var(--surface-sunken);border-radius:10px;padding:12px;margin-bottom:10px">
             <div style="font:700 13px var(--font-display)">{{ fe.title }}</div>
@@ -1795,6 +1800,9 @@
         <div style="font:11.5px var(--font-display);color:var(--ink-500);text-align:right">{{ todayEventEvolveCount }}</div>
       </div>
       <div style="font:11.5px/1.4 var(--font-body);color:var(--ink-500);margin-bottom:10px;text-wrap:pretty">Evolving during these events teaches a move that otherwise needs an Elite TM. Held out of Evolve now until the window opens.</div>
+      <sc-if value="{{ eventMoveHealthNote }}" hint-placeholder-val="{{ false }}">
+        <div style="font:11.5px/1.4 var(--font-display);color:var(--ios-orange, #d97706);margin-bottom:10px;text-wrap:pretty">{{ eventMoveHealthNote }}</div>
+      </sc-if>
       <sc-if value="{{ todayEventWatch }}" hint-placeholder-val="{{ false }}">
         <div style="font:11.5px/1.4 var(--font-display);color:var(--type-electric);margin-bottom:10px;text-wrap:pretty">{{ todayEventWatch }}</div>
       </sc-if>
@@ -1822,7 +1830,7 @@
         <div style="font:800 12px var(--font-display);color:var(--grass-700);letter-spacing:.06em;white-space:nowrap">EVOLVE NOW</div>
         <div style="font:11.5px var(--font-display);color:var(--ink-500);text-align:right">{{ todayEvolveCount }}</div>
       </div>
-      <button type="button" onClick="{{ toggleEvolveSort }}" class="om-press" aria-label="Change the evolve order" style="margin:-4px 0 10px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line-200);background:var(--surface-card);color:var(--ink-500);font:700 10.5px var(--font-display);letter-spacing:.05em;cursor:pointer">{{ evolveSortLabel }}</button>
+      <button type="button" onClick="{{ toggleEvolveSort }}" class="om-press" aria-label="Change the evolve order" style="margin:-4px 0 10px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line-200);background:var(--surface-card);color:var(--ink-500);font:700 11px var(--font-display);letter-spacing:.05em;cursor:pointer">{{ evolveSortLabel }}</button>
       <sc-if value="{{ todayEvolveEmpty }}" hint-placeholder-val="{{ false }}">
         <div style="font:12.5px var(--font-body);color:var(--ink-400)">Nothing ready to evolve.</div>
       </sc-if>
@@ -1855,7 +1863,7 @@
                 <sc-for list="{{ row.branches }}" as="b" hint-placeholder-count="3">
                   <button type="button" onClick="{{ b.onPick }}" aria-pressed="{{ b.selected }}" class="om-press" style="text-align:left;min-height:44px;padding:6px 10px;border-radius:10px;border:1px solid {{ b.border }};background:{{ b.bg }};color:var(--ink-900);cursor:pointer">
                     <span style="display:block;font:700 12.5px var(--font-body)">{{ b.label }}</span>
-                    <span style="display:block;font:10.5px var(--font-display);color:var(--ink-500)">{{ b.sub }}</span>
+                    <span style="display:block;font:11px var(--font-display);color:var(--ink-500)">{{ b.sub }}</span>
                   </button>
                 </sc-for>
               </div>
@@ -2224,7 +2232,7 @@
       <div style="display:flex;gap:18px;flex-wrap:wrap">
         <div>
           <div style="font:11px var(--font-display);color:var(--ink-400);letter-spacing:.04em;margin-bottom:6px">TRAINER LEVEL</div>
-          <input type="number" min="1" max="50" value="{{ trainerLevelValue }}" onChange="{{ onTrainerLevelChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid var(--line-300);color:var(--ink-900);font:800 20px var(--font-display);padding:4px 0;width:90px" />
+          <input type="number" aria-label="Trainer level" min="1" max="50" value="{{ trainerLevelValue }}" onChange="{{ onTrainerLevelChange }}" style="display:block;background:transparent;border:none;border-bottom:1px solid var(--line-300);color:var(--ink-900);font:800 20px var(--font-display);padding:4px 0;width:90px" />
           <div style="font:11px var(--font-display);color:var(--ink-400);margin-top:5px">{{ levelCeilingNote }}</div>
         </div>
         <div>
@@ -3643,7 +3651,7 @@
             <div style="display:flex;flex-wrap:wrap;gap:8px">
               <sc-for list="{{ detail.weaknesses }}" as="w" hint-placeholder-count="4">
                 <span style="display:inline-flex;align-items:center;gap:6px;background:{{ w.fill }};color:{{ w.ink }};border-radius:var(--r-pill);padding:5px 11px 5px 6px;font:700 11px var(--font-display)">
-                  <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);font-size:10px;line-height:1">{{ w.icon }}</span>{{ w.label }} <span style="opacity:.75;font-weight:600">{{ w.multLabel }}</span></span>
+                  <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);font-size:11px;line-height:1">{{ w.icon }}</span>{{ w.label }} <span style="opacity:.75;font-weight:600">{{ w.multLabel }}</span></span>
               </sc-for>
             </div>
           </div>
@@ -4006,7 +4014,7 @@
                 <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span style="font:700 11px var(--font-display);color:var(--ink-400)">{{ mr.rank }}</span><span style="font:600 15px var(--font-body)">{{ mr.name }}</span><span style="font:700 11px var(--font-display);letter-spacing:.05em;color:{{ mr.effColor }}">{{ mr.effLabel }}</span></div>
                 <div style="font:12.5px var(--font-body);color:var(--ink-500);margin-top:2px">{{ mr.moveLine }}</div>
               </div>
-              <div style="text-align:right;flex-shrink:0"><div style="font:800 20px var(--font-display);color:#d7a8ff">{{ mr.damage }}</div><div style="font:700 10px var(--font-display);color:var(--ink-400);letter-spacing:.1em">PER MAX HIT</div></div>
+              <div style="text-align:right;flex-shrink:0"><div style="font:800 20px var(--font-display);color:#d7a8ff">{{ mr.damage }}</div><div style="font:700 11px var(--font-display);color:var(--ink-400);letter-spacing:.1em">PER MAX HIT</div></div>
             </button>
           </sc-for>
         </div>
@@ -4632,7 +4640,7 @@
               <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
                 <sc-for list="{{ row.options }}" as="opt" hint-placeholder-count="2">
                   <button type="button" onClick="{{ opt.onPick }}" class="om-press" aria-label="{{ opt.aria }}" style="text-align:left;display:flex;flex-direction:column;gap:2px;padding:10px 12px;min-height:44px;border-radius:12px;background:var(--surface-sunken);border:1.5px solid {{ opt.border }}">
-                    <span style="display:flex;justify-content:space-between;gap:8px;font:700 14px var(--font-body);color:var(--ink-900)"><span>{{ opt.label }} &middot; {{ opt.types }}</span><span style="font:700 10px var(--font-display);color:var(--ios-blue);letter-spacing:.05em">{{ opt.tag }}</span></span>
+                    <span style="display:flex;justify-content:space-between;gap:8px;font:700 14px var(--font-body);color:var(--ink-900)"><span>{{ opt.label }} &middot; {{ opt.types }}</span><span style="font:700 11px var(--font-display);color:var(--ios-blue);letter-spacing:.05em">{{ opt.tag }}</span></span>
                     <span style="font:11.5px var(--font-display);color:var(--ink-500)">Base {{ opt.stats }} &middot; <span style="color:{{ opt.fitColor }}">{{ opt.fit }}</span></span>
                   </button>
                 </sc-for>
@@ -4882,7 +4890,7 @@
           <div onClick="{{ clearDiagnostics }}" class="om-press" style="cursor:pointer;padding:7px 14px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font:700 11px var(--font-display)">CLEAR</div>
         </div>
       </sc-if>
-      <div style="font:700 10.5px var(--font-display);color:var(--ink-500);letter-spacing:.05em;margin-top:14px">AI CALLS &middot; {{ aiLogSummary }}</div>
+      <div style="font:700 11px var(--font-display);color:var(--ink-500);letter-spacing:.05em;margin-top:14px">AI CALLS &middot; {{ aiLogSummary }}</div>
       <sc-if value="{{ hasAiLog }}" hint-placeholder-val="{{ false }}">
         <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
           <sc-for list="{{ aiLogRows }}" as="a" hint-placeholder-count="0">
@@ -4930,7 +4938,7 @@
           <div style="font:var(--font-display)">{{ h.count }}</div>
           <div style="font:var(--font-display)">{{ h.avgIV }}</div>
           <div style="font:var(--font-display);color:var(--type-electric)">{{ h.lucky }}</div>
-          <div style="font:var(--font-display);color:var(--ink-600)">{{ h.stardustDisplay }} <span style="font-size:10.5px">({{ h.dustDelta }})</span></div>
+          <div style="font:var(--font-display);color:var(--ink-600)">{{ h.stardustDisplay }} <span style="font-size:11px">({{ h.dustDelta }})</span></div>
           <div style="font:700 var(--font-display);color:{{ h.deltaColor }}">{{ h.delta }}</div>
         </div>
       </sc-for>
@@ -4948,7 +4956,7 @@
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{ t.color }}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.iconPath }}"/></svg>
           <sc-if value="{{ t.badge }}" hint-placeholder-val="{{ false }}"><span aria-label="{{ t.badge }} to review" style="position:absolute;top:-4px;right:-10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ios-red);color:#fff;font:700 11px/18px var(--font-body);text-align:center;box-sizing:border-box">{{ t.badge }}</span></sc-if>
         </span>
-        <span style="font:600 10.5px var(--font-body);letter-spacing:.01em;color:{{ t.labelColor }};white-space:nowrap">{{ t.navLabel }}</span>
+        <span style="font:600 11px var(--font-body);letter-spacing:.01em;color:{{ t.labelColor }};white-space:nowrap">{{ t.navLabel }}</span>
       </button>
     </sc-for>
   </nav>
@@ -7406,7 +7414,9 @@ class Component extends DCLogic {
 
   // The league rank worked out from the IVs now (stat product against the best spread, for the form the rank is judged on),
   // not the number stored at the last recalculation. Null when the IVs are not measured or the form has no base stats.
-  freshRank(p, lk) {
+  freshRank(p, lk) { return this._rmemo('fr', p, lk, () => this._freshRankRaw(p, lk)); }
+
+  _freshRankRaw(p, lk) {
     try {
       if (!p || this.needsAppraisal(p) || !Number.isFinite(p.atkIV) || !Number.isFinite(p.defIV) || !Number.isFinite(p.staIV) || !this.gradeStanding) return null;
       const st = this.gradeStanding(p, lk);
@@ -7532,7 +7542,9 @@ class Component extends DCLogic {
   }
 
   // { rank, topPct } of this copy for the league, judged as the form its rank is for; cached per stat line.
-  gradeStanding(p, lk) {
+  gradeStanding(p, lk) { return this._rmemo('gs', p, lk, () => this._gradeStandingRaw(p, lk)); }
+
+  _gradeStandingRaw(p, lk) {
     const m = this.mechanics, ivs = this.ivsOf(p);
     if (!m || !m.spreadStanding || !ivs) return null;
     const base = this.gradeBaseFor(p, lk);
@@ -8619,7 +8631,9 @@ class Component extends DCLogic {
     return leagueKey !== 'little' && lg && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
   }
 
-  pvpAssess(p, leagueKey, tableKey) {
+  pvpAssess(p, leagueKey, tableKey) { return this._rmemo('pa', p, leagueKey + '|' + (tableKey || ''), () => this._pvpAssessRaw(p, leagueKey, tableKey)); }
+
+  _pvpAssessRaw(p, leagueKey, tableKey) {
     const m = this.mechanics;
     const tk = tableKey || leagueKey;
     const lg = p[leagueKey];
@@ -8823,7 +8837,9 @@ class Component extends DCLogic {
   // league, or 90%+ in Little Cup (no tier data exists there). IV rank alone
   // is not enough: a perfect-IV Pikachu is 100% and still weak.
   // True when this species learns the move only from an Elite TM (it sits in the legacy pool and not in the regular one).
-  needsEliteTM(speciesName, form, moveName) {
+  needsEliteTM(speciesName, form, moveName) { return this._rmemo('et', speciesName, form + '|' + moveName, () => this._needsEliteTMRaw(speciesName, form, moveName)); }
+
+  _needsEliteTMRaw(speciesName, form, moveName) {
     const m = this.mechanics;
     const pool = m && m.movepoolFor ? m.movepoolFor(speciesName, form) : null;
     if (!pool) return false;
@@ -19118,7 +19134,26 @@ class Component extends DCLogic {
     });
   }
 
+  // Within ONE render the state cannot change, so a Pokemon's assessment is the same however many places ask (a 2,000-Pokemon roster made
+  // ~40,000 identical pvpAssess calls per render). The memo exists only while renderVals runs; handlers and tests always compute fresh.
+  _rmemo(tag, obj, key, fn) {
+    const m = this._rm;
+    if (!m) return fn();
+    let per = m.get(obj);
+    if (!per) { per = new Map(); m.set(obj, per); }
+    const k = tag + '|' + key;
+    if (per.has(k)) return per.get(k);
+    const v = fn();
+    per.set(k, v);
+    return v;
+  }
+
   renderVals() {
+    this._rm = new Map();
+    try { return this.renderValsInner(); } finally { this._rm = null; }
+  }
+
+  renderValsInner() {
     this.installDerivedCache();
     // The same merged list every other reader uses (overrides applied, plus added, minus removed), built once per state.
     const roster = this.effectiveRosterForMatch();
@@ -19506,8 +19541,9 @@ class Component extends DCLogic {
     const notDone = (p) => !completedSet.has(p.idx);
 
     const powerUpPool = roster.filter(p => this.isPvpWorthy(p) && !p.favorite && notDone(p));
-    const pvpKey = p => { const b = this.pvpBest(p); return b ? (4 - Math.min(4, b.tierRank)) * 1000 + (b.movesOk ? 100 : 0) + b.rank : this.bestRank(p); };
-    powerUpPool.sort((a, b) => pvpKey(b) - pvpKey(a));
+    // One key per Pokemon, not one per comparison: sorting 2,000 rows called pvpBest ~40,000 times on every render.
+    const pvpKeyOf = new Map(powerUpPool.map(p => { const b = this.pvpBest(p); return [p, b ? (4 - Math.min(4, b.tierRank)) * 1000 + (b.movesOk ? 100 : 0) + b.rank : this.bestRank(p)]; }));
+    powerUpPool.sort((a, b) => pvpKeyOf.get(b) - pvpKeyOf.get(a));
     const powerUpList = powerUpPool.slice(0, 12).map(p => {
       const best = this.bestLeagueInfo(p);
       return {
@@ -21220,7 +21256,8 @@ class Component extends DCLogic {
         }] : []),
 
       todayEvolveCount: evoQueueAll.length ? evoQueueAll.length + ' ready' + (this._evolveSkipped ? ' \u00b7 ' + this._evolveSkipped + ' hidden: you would transfer them' : '') + (this._evolveHeld ? ' \u00b7 ' + this._evolveHeld + ' waiting for an event' : '') : '',
-      todayEventSection: (eventOpps.length || eventWatch.length) ? true : null,
+      todayEventSection: (eventOpps.length || eventWatch.length || (this.state.eventMoves && this.state.eventMoves.health && this.state.eventMoves.health.status === 'degraded')) ? true : null,
+      eventMoveHealthNote: (() => { const h = this.state.eventMoves && this.state.eventMoves.health; return h && h.status === 'degraded' ? 'Event move data may be incomplete: the page for ' + ((h.pagesParsedNothing || []).slice(0, 2).join(', ') || 'an event') + ' changed and could not be read. Check the event page before you evolve.' : ''; })(),
       todayEventWatch: eventWatch.length ? 'Coming up, Pokemon not announced yet: ' + eventWatch.map(ev => new Date(ev.start).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + ev.name).join(' · ') + '. Hold a final evolution you care about until the Pokemon is named (usually 1–2 weeks ahead).' : '',
       todayEventEvolve: eventOpps.slice(0, 12).map(o => {
         const fmtD = t => new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });

@@ -63,4 +63,45 @@ module.exports = async function suiteD() {
     }, 'high');
   }
   await sl.close();
+
+  // ------------------------------------------------------------------ CLOUD SYNC against an in-memory Firebase stand-in
+  const cloud = { store: {}, writes: [] };
+  let c1 = await session({ feed: false, cloud });
+  await c1.page.waitForTimeout(1500);
+  await T('SYNC-01', 'Cloud', 'Signed in: an import is written to the cloud document once, under the 1 MiB limit, and shows as saved or loaded, never an error', async () => {
+    await c1.load(QA); await c1.page.waitForTimeout(3500);
+    for (let i = 0; i < 20 && !/^(saved|loaded)/.test((await c1.state()).syncStatus || ''); i++) await c1.page.waitForTimeout(500);
+    const st = await c1.state(); const doc = cloud.store['scoutUsers/qa-user'];
+    expect(st.cloudUser && st.cloudUser.uid === 'qa-user', 'not signed in');
+    expect(doc && cloud.writes.length >= 1, 'nothing written');
+    expect(cloud.writes.every(w => w.bytes < 1048576), 'a write was over 1 MiB');
+    expect(!/error|TOO BIG/.test(st.syncStatus || ''), 'status: ' + st.syncStatus);
+  }, 'high');
+  await T('SYNC-02', 'Cloud', 'A second device signing in to the same account gets the same Pokemon', async () => {
+    const n1 = ((await c1.state()).roster || []).length;
+    const c2 = await session({ feed: false, cloud }); await c2.page.waitForTimeout(2500);
+    const st2 = await c2.state();
+    expect(n1 > 0 && (st2.roster || []).length === n1, 'device 1 ' + n1 + ' vs device 2 ' + (st2.roster || []).length);
+    expect(c2.errors.length === 0, c2.errors[0]);
+    await c2.close();
+  }, 'high');
+  await T('SYNC-03', 'Cloud', 'API keys and the GitHub token never reach the cloud document', async () => {
+    await c1.set({ geminiKeys: ['AIzaQAKEY111111111111111111111111111'], geminiKey: 'AIzaQAKEY111111111111111111111111111', githubToken: 'ghp_QAKEY' });
+    await c1.call('pushCloud'); await c1.page.waitForTimeout(1500);
+    const txt = JSON.stringify(cloud.store['scoutUsers/qa-user'] || {});
+    expect(!/AIzaQAKEY|ghp_QAKEY/.test(txt), 'a secret was written');
+  }, 'high');
+  await T('SYNC-04', 'Cloud', 'A rejected write shows an error, keeps the data, and saves once the cloud accepts again', async () => {
+    const before = ((await c1.state()).roster || []).length;
+    cloud.failWrites = true;
+    await c1.set({ cutTarget: 123 }); await c1.call('pushCloud'); await c1.page.waitForTimeout(1500);
+    let st = await c1.state();
+    expect(/error/.test(st.syncStatus || ''), 'status: ' + st.syncStatus);
+    expect((st.roster || []).length === before, 'roster changed after a failed write');
+    cloud.failWrites = false;
+    await c1.call('pushCloud'); await c1.page.waitForTimeout(1500);
+    st = await c1.state();
+    expect(/^(saved|loaded)/.test(st.syncStatus || '') && cloud.store['scoutUsers/qa-user'].cutTarget === 123, 'did not recover: ' + st.syncStatus);
+  }, 'high');
+  await c1.close();
 };
