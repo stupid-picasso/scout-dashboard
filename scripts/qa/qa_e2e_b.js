@@ -1459,13 +1459,15 @@ module.exports = async function suiteB() {
     expect(/^Screen: Roster/.test(r.a) && /the details sheet is open on Gengar 2400 CP IV 14\/14\/14/.test(r.b), 'the screen line names the tab and the open Pokemon: ' + r.a + ' || ' + r.b);
     expect(r.hasScreen && /should I keep this one\?\|ok/.test(r.reply), 'the model is sent the screen line and the same chat holds the reply: ' + JSON.stringify(r));
   });
-  await T('SHELL-01', 'Layout', 'App shell: the page does not scroll, the app root does, and the tab bar stays on the bottom edge at any scroll depth; tab changes and jump chips scroll the root; Classic scrolling puts the old layout back', async () => {
+  await T('SHELL-01', 'Layout', 'App shell (an opt-in experiment; classic scrolling is the default): the page does not scroll, the app root does, and the tab bar stays on the bottom edge at any scroll depth; tab changes and jump chips scroll the root; Classic scrolling puts the old layout back', async () => {
     await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.appScroller) { const l = g.stateNode.logic;
+    const r = await s.page.evaluate(async () => { let out0 = null; for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.appScroller) { const l = g.stateNode.logic;
       const wait = ms => new Promise(r => setTimeout(r, ms));
+      const wasClassic = !document.documentElement.classList.contains('shell'); out0 = wasClassic;
+      document.documentElement.classList.add('shell'); l.sizeShell(); await wait(200);
       const sc = document.querySelector('[data-app-scroll]'), nav = document.querySelector('[data-navbar]');
       const gap = () => Math.round(window.innerHeight - nav.getBoundingClientRect().bottom);
-      const out = { shell: !document.documentElement.classList.contains('classic'), rootPos: getComputedStyle(sc).position, rootOy: getComputedStyle(sc).overflowY, bodyOv: getComputedStyle(document.body).overflow, navPos: getComputedStyle(nav).position, tall: sc.scrollHeight > sc.clientHeight + 400 };
+      const out = { shell: document.documentElement.classList.contains('shell'), rootPos: getComputedStyle(sc).position, rootOy: getComputedStyle(sc).overflowY, bodyOv: getComputedStyle(document.body).overflow, navPos: getComputedStyle(nav).position, tall: sc.scrollHeight > sc.clientHeight + 400 };
       const gap0 = gap();
       sc.scrollTop = 600; await wait(250);
       const hd = document.querySelector('header'); out.headerTop = Math.round(hd.getBoundingClientRect().top); out.rootBottom = Math.round(sc.getBoundingClientRect().bottom); out.appH = document.documentElement.style.getPropertyValue('--app-h'); out.inner = window.innerHeight;
@@ -1476,12 +1478,13 @@ module.exports = async function suiteB() {
       const chip = document.querySelector('[data-today-section="evolve"]');
       if (chip) { l.jumpToSection('evolve'); await wait(900); out.jumped = Math.round(sc.scrollTop) > 50; } else out.jumped = null;
       sc.scrollTop = 0;
-      document.documentElement.classList.add('classic'); await wait(150);
+      document.documentElement.classList.remove('shell'); await wait(150);
       out.classic = { rootPos: getComputedStyle(sc).position, navPos: getComputedStyle(nav).position, scroller: l.appScroller() === null };
-      document.documentElement.classList.remove('classic'); await wait(100);
-      l.showLayoutInfo(); await wait(100); const pc = l.state.pendingConfirm; out.info = !!pc && pc.title === 'Screen numbers' && /scroller app shell/.test(pc.message) && pc.actions.length === 1 && /CLASSIC/.test(pc.actions[0].label); l.closeConfirm();
+      document.documentElement.classList.add('shell'); await wait(100);
+      l.showLayoutInfo(); await wait(100); const pc = l.state.pendingConfirm; out.info = !!pc && pc.title === 'Screen numbers' && /scroller app shell/.test(pc.message) && pc.actions.length === 2 && /CLASSIC/.test(pc.actions[0].label) && /CHAT BUBBLE/.test(pc.actions[1].label); l.closeConfirm();
+      out.defaultClassic = out0; if (out0) { document.documentElement.classList.remove('shell'); l.sizeShell(); await wait(100); }
       return out; } } return null; });
-    expect(r && r.shell && r.rootPos === 'fixed' && r.rootOy === 'auto' && r.bodyOv === 'hidden' && r.navPos === 'sticky' && r.tall, 'the app root is a fixed, scrolling box inside a body that does not scroll: ' + JSON.stringify(r));
+    expect(r && r.defaultClassic === true && r.shell && r.rootPos === 'fixed' && r.rootOy === 'auto' && r.bodyOv === 'hidden' && r.navPos === 'sticky' && r.tall, 'the app root is a fixed, scrolling box inside a body that does not scroll: ' + JSON.stringify(r));
     expect(r.scrolled > 100 && r.docY === 0 && r.gap0 === 0 && r.gapScrolled === 0 && r.gapEnd === 0 && r.navFull, 'scrolling moves the root, never the page, and the tab bar stays on the bottom edge and full width: ' + JSON.stringify(r));
     expect(r.headerTop === 0 && r.rootBottom === r.inner && r.appH === r.inner + 'px', 'the sticky header sticks to the very top, and the root fills the screen height exactly: ' + JSON.stringify(r));
     expect(r.afterTab === 0 && r.jumped !== false, 'a tab change returns to the top and a section chip scrolls the root: ' + JSON.stringify(r));
