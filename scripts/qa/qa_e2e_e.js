@@ -18,6 +18,9 @@ const SCAN = () => {
     const inline = el.tagName === 'A' && el.parentElement && el.parentElement.childNodes.length > 1 && getComputedStyle(el).display === 'inline';
     const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || el.getAttribute('placeholder') || (el.labels && el.labels[0] && el.labels[0].textContent) || '').trim();
     if (!label && el.tagName !== 'INPUT') unnamed.push((el.tagName + '.' + (el.className || '')).slice(0, 40));
+    // the stylesheet gives every button a 44 px invisible tap strip (::before)
+    const strip = parseFloat(getComputedStyle(el, '::before').height) >= 44 && getComputedStyle(el, '::before').content !== 'none';
+    if (strip) r = { width: Math.max(r.width, 44), height: Math.max(r.height, 44) };
     if (!inline && Math.min(r.width, r.height) < 44 && Math.max(r.width, r.height) < 44 * 3) small.push({ t: label.slice(0, 24) || el.tagName, w: Math.round(r.width), h: Math.round(r.height) });
   });
   const tinyEls = [...document.querySelectorAll('body *')].filter(el => el.children.length === 0 && el.textContent.trim() && vis(el) && parseFloat(getComputedStyle(el).fontSize) < 11);
