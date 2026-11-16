@@ -234,10 +234,10 @@
   .go-card input:not([type]){background:var(--surface-field) !important;color:var(--ink-900) !important;border:1.5px solid var(--line-300) !important;border-radius:12px !important}
   .go-card input:not([type])::placeholder{color:var(--ink-400) !important}
   .go-card button{text-align:center;display:inline-flex;align-items:center;justify-content:center}
-  /* Touch targets: Apple's minimum is 44 pt. Every button, summary, tab and checkbox label is at least 44 px tall, whatever its inline size. */
-  button, summary, [role=button], [role=tab], [role=checkbox], select{min-height:44px !important;min-width:44px}
+  /* Touch targets: Apple's minimum is 44 pt. The visible control keeps its own size; an invisible 44 px-tall strip behind it takes the tap. */
+  button, summary, [role=button], [role=tab], [role=checkbox]{position:relative}
+  button::before, summary::before, [role=button]::before, [role=tab]::before, [role=checkbox]::before{content:"";position:absolute;left:-2px;right:-2px;top:50%;min-width:44px;height:44px;transform:translateY(-50%)}
   input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), textarea{min-height:44px}
-  label:has(> input[type=checkbox]), label:has(> input[type=radio]){min-height:44px;display:flex;align-items:center}
   /* Primary action: system blue capsule. */
   [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue-fill) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
   [style*="background: var(--grass-500)"]{background:var(--ios-blue-fill) !important;color:#fff !important}
