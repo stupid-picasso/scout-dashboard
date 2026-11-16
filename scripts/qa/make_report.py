@@ -12,7 +12,7 @@ e2e = json.load(open(sys.argv[2]))
 out = sys.argv[3]
 before = json.load(open(sys.argv[4])) if len(sys.argv) > 4 else None
 
-AREA_ORDER = ['Boot', 'Import', 'Roster', 'Gestures', 'Detail', 'Ranks', 'PvP', 'Attackers', 'Raid', 'Recs', 'Intel', 'Today', 'Home', 'Log', 'Security', 'PWA', 'Accessibility', 'Performance']
+AREA_ORDER = ['Boot', 'Import', 'Roster', 'Gestures', 'Detail', 'Ranks', 'PvP', 'Attackers', 'Raid', 'Recs', 'Intel', 'Today', 'Home', 'Log', 'Security', 'PWA', 'Accessibility', 'Performance', 'Keep', 'Max', 'Chat', 'Candy', 'Safety']
 
 # area -> (rating, what is solid, what is weak / untested, suggestions)
 RATINGS = {
@@ -35,6 +35,68 @@ RATINGS = {
  'Accessibility': (9, 'axe-core clean on every screen, the More menu, select mode and the detail sheet; Lighthouse accessibility 100; keyboard-only paths pass; real buttons and named controls.', 'No VoiceOver pass on a device yet; Dynamic Type not tested on a phone.', ['Do the VoiceOver pass in docs/DEVICE_CHECKS.md.']),
  'Performance': (6, 'A state change takes ~14 ms at 500 Pokemon (was 45); minified app code and dropped fonts cut the download from 2.1 MB to ~0.6 MB gzip; ready time fell 6.5 s -> 6.0 s in a throttled A/B.', 'Lighthouse mobile reads 33-47 depending on host load; the remaining cost is bandwidth plus the runtime (React, the template engine, 650 KB of app logic). Measured and rejected: separate mechanics file (no gain), precompiled templates (~4%).', ['Split the app logic per tab and replace the in-browser template engine.', 'Windowed roster list.']),
 }
+RATINGS.update({
+ 'Keep': (8, 'Hard rules never violated in the fuzz (0 hard violations over random rosters); evolution-line, spare-copy and hundo protection covered (test_roster_logic 191/191).', 'Judgement logic: no external ground truth. 584 soft/tie violations in the fuzz, mostly cutShow (CP-over-cap ties).', ['Review the 505 cutShow soft cases and decide whether they are real or tie noise.']),
+ 'Max': (5, 'Costs and tiers come from public guides; planner, party builder and battle log tested (test_max 17/17, MAXPLAN/MAXPARTY).', 'Estimates, not Niantic data: Candy XL species groups unchecked (to-do 17), no battle simulation (no published boss HP / meter data).', ['Send Max Move upgrade screenshots to verify the Candy XL groups.', 'Re-verify numbers each season.']),
+ 'Chat': (6, 'Context builders for candy, screens and mentions are tested (CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01).', 'Free-tier Gemini rotation can fail or answer "lack detailed entries"; only 240 Pokemon get full detail; no answer-quality evaluation.', ['Build a small question set with known answers and score the chat against it.']),
+ 'Candy': (8, 'Candy and XL candy planning tests all pass.', 'Candy XL groups for Max not checked.', ['Verify against the game.']),
+ 'Safety': (9, 'Destructive actions confirm and offer Undo; all 28 safety cases pass.', 'Not tested on a real device.', ['Keep.']),
+})
+
+AUDIT_DATE = '2026-11-16'
+# (area, rating, evidence, main flaw / improvement)
+AUDIT = [
+ ('Import: screenshot / video / CSV / appraisal / hidden CP', 8, '28 Import tests pass; CPHIDDEN-01..03, AUTOAPPLY-01; CP recovery 14/14.', 'No labelled screenshot set, so reader accuracy (Gemini) is unmeasured; server extractor (pogo_extract.py) does not know cpCovered / cpVisible / powerUpIsXl.'),
+ ('IV solving and league ranks', 9, 'A11 1200/1200, A12 600/600, A13 3000/3000, test_rank_reference 11,521/11,521, test_ranking 86/86.', 'A13b: only 0.4% of CP/HP pairs give a unique IV set, so ranks need an appraisal.'),
+ ('Keep / transfer (line, spares, hundo)', 8, 'fuzz_keep 0 hard violations, test_roster_logic 191/191, KEEP/EXTRA/EVOLINE tests.', 'Judgement rules with no external ground truth; 584 soft violations (505 cutShow).'),
+ ('Evolve queue + event-day moves', 7, 'EVENTMOVE-01..04, test_event_moves.py passes, EVOLVE/EVO-RANK tests.', 'Event data is parsed from LeekDuck page text patterns (fragile; Machamp outfit bug already hit); never verified on a live event day.'),
+ ('PvP sim / squad / cups / Little Cup', 8, 'A15 30/30, A16 29/30, 29 PvP tests; sim agrees with PvPoke 90.2% (1 shield).', 'Sim is validated only on easy matchups; ultra 2v2 agreement 76.9%; A16 cramorant moveset differs.'),
+ ('Raid and attackers', 6, '8 Raid + 6 Attackers tests pass; type/weather correct.', 'DPS x bulk proxy (0.4 exponent), no boss movesets, enrage timer or dodging; simulation is Phase 6 in PLAN_TO_NINE.md.'),
+ ('Max planner / party / battle log', 5, 'test_max 17/17, 13 Max tests.', 'Estimates from public guides; Candy XL groups unverified; no simulation.'),
+ ('Mega evolution', 9, 'A14 59/59 vs game master Mega Level rules.', 'Repeat-cost timers depend on user-entered dates.'),
+ ('Power-up and dust plan', 8, 'A05 99/99, A06 98/98, 10 Candy tests.', 'A06 covers base costs only; shadow/lucky/purified XL rounding not independently confirmed.'),
+ ('Chat and briefing', 6, 'CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01, 6 AI tests.', 'Free-tier model can fail; only 240 Pokemon with full detail; answer quality never scored.'),
+ ('Today and events feed', 7, '41 of 42 Today tests pass; feed and cups cross-checked.', 'TOD-44 (reminder permission/fire-once) fails and is waved through; reminders only fire while the app is open; community data.'),
+ ('Roster and detail UI', 8, 'Roster 34/34, Detail 18/18, Gestures 7/7, Bulk 4/4.', 'No windowed list: auto-load stops at 150 rows, ~100-130 ms hitch per page.'),
+ ('Sync and backup', 7, 'Backup/restore tests pass; API tokens kept out of synced keys.', 'Firestore sync never exercised end to end; token merge code near githubToken needs a periodic recheck.'),
+ ('PWA and layout (iPhone)', 4, 'PWA 14/14 and a11y 34/34 in Chromium; manifest and offline verified.', 'Tab bar floating/dead space on iOS 18.7 standalone is unresolved after many attempts; only real-device checks can confirm.'),
+ ('Data workflows and CI', 7, 'Tests and QA workflows green on main; webkit in the QA matrix; bundles current.', 'extract_pipeline / postprocess tests could not run here (Pillow missing), so were not re-verified; data files were once gitignored by mistake.'),
+ ('Security and privacy', 9, '6 Security tests; no secrets in HTML, backup or sync payload.', 'Firebase key referrer restriction and a CSP are still open.'),
+ ('Performance and size', 6, '6 Performance tests pass; ~0.6 MB gzip.', '20.8k-line single HTML source; Lighthouse mobile 33-47.'),
+]
+
+AUDIT_FLAWS = [
+ 'iPhone standalone tab bar floats / dead space (rating 4): unresolved; needs a Screen numbers screenshot with the bubble hidden.',
+ 'TOD-44 fails and is waved through in CI.',
+ 'Reader accuracy is unmeasured: no labelled screenshot set.',
+ 'Server extractor (pogo_extract.py) lacks cpCovered, cpVisible, powerUpIsXl.',
+ 'Max numbers are estimates; Candy XL groups unverified.',
+ 'Data gaps: A18 movepools 94.6% (e.g. Nidoran no movepool), A02 Urshifu typing, A04 Flabebe evolution row, A16 Cramorant moveset.',
+ 'A13b: IV uniqueness 0.4%, so ranks without an appraisal are guesses.',
+ 'Fuzz: 584 soft violations in keep logic (505 cutShow) not triaged.',
+ 'Roster list is not windowed; the app is one 20.8k-line file.',
+ 'Chat: free-tier failures and 240-Pokemon detail limit.',
+]
+
+AUDIT_FIXES = [
+ 'Fix iPhone tab bar (needs your device numbers).',
+ 'Fix TOD-44 or make it deterministic.',
+ 'Labelled screenshot set + reader accuracy score.',
+ 'Teach pogo_extract.py cpCovered / cpVisible / powerUpIsXl.',
+ 'Fix A02/A04/A18 data gaps.',
+ 'Triage cutShow soft violations.',
+ 'Windowed roster list.',
+ 'Chat evaluation set.',
+]
+
+AUDIT_FEATURES = [
+ 'Raid simulation (Phase 6 in docs/PLAN_TO_NINE.md): per-boss simulation from game-master movesets. Needs boss-move data check; label unconfirmed mechanics.',
+ 'Max Candy XL verification from your upgrade screenshots, then a re-verify routine each season.',
+ 'Appraisal queue: guided "appraise these 10" flow to lift IV uniqueness from 0.4%.',
+ 'Web push for closed-app reminders (needs a small server).',
+ 'Per-generation and shiny dex progress.',
+ 'Import the app JSON backup through the same import path.',
+]
 
 def bar(p):
     n = round(p * 10)
@@ -63,6 +125,27 @@ if before:
     w(f'Before the fixes in this pass the same suite had {bt["fail"]} failures; now {tot["fail"]}.')
     w('')
 
+w('## 0. Feature-area audit (' + AUDIT_DATE + ')')
+w('')
+w('Read-only audit of the whole project. Scale: 9-10 matches external ground truth and is tested; 7-8 tested logic on estimates or unverified on a device; 5-6 known gaps; 4 or less known broken. Evidence is from fresh runs this date: 365 e2e cases (364 pass, TOD-44 fails), accuracy audit, unit tests, keep fuzz.')
+w('')
+w('| Area | Rating | Evidence | Main flaw |')
+w('|---|---|---|---|')
+for a_, r_, e_, f_ in AUDIT:
+    w(f'| {a_} | **{r_}/10** | {e_} | {f_} |')
+w('')
+w('Top flaws:')
+w('')
+for i_, t_ in enumerate(AUDIT_FLAWS, 1): w(f'{i_}. {t_}')
+w('')
+w('Ranked fixes (nothing fixed in this audit):')
+w('')
+for i_, t_ in enumerate(AUDIT_FIXES, 1): w(f'{i_}. {t_}')
+w('')
+w('Feature ideas (grounded in what the repo lacks; mechanics not confirmed are labelled):')
+w('')
+for t_ in AUDIT_FEATURES: w('- ' + t_)
+w('')
 w('## 1. Scorecard')
 w('')
 w('Rating = how far this area can be trusted, 1-10. It blends the measured result with what the tests could not see.')
