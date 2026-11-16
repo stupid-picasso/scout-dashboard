@@ -211,7 +211,7 @@ module.exports = async function suiteA() {
   await T('ROS-18', 'Roster', 'Scrolling to the bottom loads the next page without tapping', async () => {
     await s.page.locator('select').first().selectOption('cp'); await s.page.waitForTimeout(300);
     expect((await rowCount()) === 30, 'start ' + (await rowCount()));
-    await s.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await s.page.waitForTimeout(1200);
+    await s.page.evaluate(() => (() => { const sc = document.querySelector('[data-app-scroll]'); if (sc) sc.scrollTop = sc.scrollHeight; else window.scrollTo(0, document.body.scrollHeight); })()); await s.page.waitForTimeout(1200);
     expect((await rowCount()) > 30, 'still ' + (await rowCount()));
   }, 'high');
   await T('ROS-19', 'Roster', 'Rows skip off-screen rendering (content-visibility) so long lists scroll smoothly', async () => {

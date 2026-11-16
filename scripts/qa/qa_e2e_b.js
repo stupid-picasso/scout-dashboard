@@ -1459,58 +1459,31 @@ module.exports = async function suiteB() {
     expect(/^Screen: Roster/.test(r.a) && /the details sheet is open on Gengar 2400 CP IV 14\/14\/14/.test(r.b), 'the screen line names the tab and the open Pokemon: ' + r.a + ' || ' + r.b);
     expect(r.hasScreen && /should I keep this one\?\|ok/.test(r.reply), 'the model is sent the screen line and the same chat holds the reply: ' + JSON.stringify(r));
   });
-  await T('NAVFIX-01', 'Layout', 'The bottom bar stays on the bottom edge after scrolling, and the iOS re-layout nudge leaves it exactly there', async () => {
+  await T('SHELL-01', 'Layout', 'App shell: the page does not scroll, the app root does, and the tab bar stays on the bottom edge at any scroll depth; tab changes and jump chips scroll the root; Classic scrolling puts the old layout back', async () => {
     await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.fixFixedBars) { const l = g.stateNode.logic;
-      const nav = document.querySelector('[data-navbar]'); const gap = () => Math.round(window.innerHeight - nav.getBoundingClientRect().bottom);
-      window.scrollTo(0, 400); await new Promise(r => setTimeout(r, 200));
-      const scrolled = gap(); l.fixFixedBars(); await new Promise(r => setTimeout(r, 200));
-      const after = gap();
-      return { scrolled, after, transform: nav.style.transform, watched: l._viewportWatched === true }; } } return null; });
-    expect(r && r.scrolled === 0 && r.after === 0 && /translateZ/.test(r.transform) && r.watched, 'the tab bar sits on the bottom edge before and after the nudge: ' + JSON.stringify(r));
-  });
-  await T('NAVFIX-02', 'Layout', 'The page never scrolls sideways, and the clip sits on the app root, not on body (overflow on body reaches the viewport and iOS then floats the fixed tab bar)', async () => {
-    await s.set({ tab: 'today' }); await s.page.waitForTimeout(400);
-    const r = await s.page.evaluate(async () => {
-      const bodyX = getComputedStyle(document.body).overflowX, htmlX = getComputedStyle(document.documentElement).overflowX;
-      const nav = document.querySelector('[data-navbar]'); const root = nav.parentElement;
-      const rootX = getComputedStyle(root).overflowX;
-      const wide = document.createElement('div'); wide.style.cssText = 'width:3000px;height:10px'; root.appendChild(wide);
-      await new Promise(r => setTimeout(r, 150));
-      const sw = document.scrollingElement.scrollWidth, cw = document.scrollingElement.clientWidth;
-      wide.remove();
-      return { bodyX, htmlX, rootX, sw, cw };
-    });
-    expect(r.bodyX === 'visible' && r.htmlX === 'visible' && r.rootX === 'clip', 'overflow-x is clipped on the app root only: ' + JSON.stringify(r));
-    expect(r.sw <= r.cw, 'an over-wide child does not make the page scroll sideways: ' + JSON.stringify(r));
-  });
-  await T('NAVFIX-03', 'Layout', 'On iPhone the tab bar and chat bubble are anchored by top from the visual viewport (bottom:auto), so a drifted layout viewport cannot float them; elsewhere they stay on bottom:0', async () => {
-    await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.placeBars) { const l = g.stateNode.logic;
-      const nav = document.querySelector('[data-navbar]'), bub = document.querySelector('button[aria-label="Ask the Professor"]');
-      const plain = l.placeBars(); const gapPlain = Math.round(window.innerHeight - nav.getBoundingClientRect().bottom);
-      const forced = l.placeBars(true);
-      const vv = window.visualViewport;
-      const out = { plain, gapPlain, forced, navBottom: Math.round(nav.getBoundingClientRect().bottom), vvBottom: Math.round(vv.offsetTop + vv.height), navBottomCss: nav.style.bottom, bubBottom: Math.round(bub.getBoundingClientRect().bottom), expectBub: Math.round(vv.offsetTop + vv.height - (l.state.bubbleY || 86)) };
-      l.showLayoutInfo(); await new Promise(r => setTimeout(r, 100)); out.info = l.state.pendingConfirm && l.state.pendingConfirm.title === 'Screen numbers' && /inner \d+/.test(l.state.pendingConfirm.message) && /visual \d+/.test(l.state.pendingConfirm.message) && /ancestors /.test(l.state.pendingConfirm.message) && /bar position fixed/.test(l.state.pendingConfirm.message); l.closeConfirm();
-      l.placeBars(); nav.style.removeProperty('top'); nav.style.bottom = '0'; bub.style.removeProperty('top'); bub.style.removeProperty('bottom');
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.appScroller) { const l = g.stateNode.logic;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const sc = document.querySelector('[data-app-scroll]'), nav = document.querySelector('[data-navbar]');
+      const gap = () => Math.round(window.innerHeight - nav.getBoundingClientRect().bottom);
+      const out = { shell: !document.documentElement.classList.contains('classic'), rootPos: getComputedStyle(sc).position, rootOy: getComputedStyle(sc).overflowY, bodyOv: getComputedStyle(document.body).overflow, navPos: getComputedStyle(nav).position, tall: sc.scrollHeight > sc.clientHeight + 400 };
+      const gap0 = gap();
+      sc.scrollTop = 600; await wait(250);
+      out.scrolled = Math.round(sc.scrollTop); out.docY = Math.round(window.scrollY); out.gap0 = gap0; out.gapScrolled = gap(); out.navFull = Math.round(nav.getBoundingClientRect().width) === Math.round(window.innerWidth);
+      sc.scrollTop = sc.scrollHeight; await wait(250); out.gapEnd = gap();
+      l.goToTab('roster'); await wait(400); out.afterTab = Math.round(sc.scrollTop);
+      l.goToTab('today'); await wait(500);
+      const chip = document.querySelector('[data-today-section="evolve"]');
+      if (chip) { l.jumpToSection('evolve'); await wait(900); out.jumped = Math.round(sc.scrollTop) > 50; } else out.jumped = null;
+      sc.scrollTop = 0;
+      document.documentElement.classList.add('classic'); await wait(150);
+      out.classic = { rootPos: getComputedStyle(sc).position, navPos: getComputedStyle(nav).position, scroller: l.appScroller() === null };
+      document.documentElement.classList.remove('classic'); await wait(100);
+      l.showLayoutInfo(); await wait(100); const pc = l.state.pendingConfirm; out.info = !!pc && pc.title === 'Screen numbers' && /scroller app shell/.test(pc.message) && pc.actions.length === 1 && /CLASSIC/.test(pc.actions[0].label); l.closeConfirm();
       return out; } } return null; });
-    expect(r && r.plain === false && r.gapPlain === 0, 'on a non-iOS browser the bar stays on bottom:0: ' + JSON.stringify(r));
-    expect(r.forced === true && r.navBottom === r.vvBottom && /auto/.test(r.navBottomCss) && Math.abs(r.bubBottom - r.expectBub) <= 1 && r.info === true, 'in iOS mode the bar ends exactly on the visual viewport bottom, the bubble sits its offset above it, and the screen numbers can be shown: ' + JSON.stringify(r));
-  });
-  await T('CHATMENTION-01', 'Chat', 'A species named in the question is sent to the chat in full (every copy, its family candy, ranks) with the app\'s own cross-stage verdict, even when it is not among the 240 detailed rows', async () => {
-    const st0 = await s.state();
-    const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
-    await s.set({ addedPokemon: [mk('cm1', 'Axew', 610, [3, 15, 14], 851, 20), mk('cm2', 'Axew', 610, [10, 12, 11], 761, 20), mk('cm3', 'Fraxure', 611, [2, 14, 15], 1521, 30), mk('cm4', 'Ralts', 280, [10, 10, 10], 200, 10)], roster: [], ivOverrides: {}, candyInventory: { axew: { name: 'Axew', candy: 131, xlCandy: 8 } }, cutTarget: 900 });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(600);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch();
-      return { hit: l.chatMentionLines('which is best, axew or fraxure, for the league?', ros), none: l.chatMentionLines('how are my ralts doing? and hello', ros.filter(p => p.name !== 'Ralts')), plural: l.chatMentionLines('my axews', ros).length }; } } return null; });
-    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {} });
-    const txt = r.hit.join('\n');
-    expect(r.hit.length === 2 && /ASKED ABOUT: the (axew|fraxure) family, 3 owned, candy 131 \+ 8 XL/i.test(txt), 'one family block with all three owned copies and the shared candy: ' + txt.slice(0, 400));
-    expect(/Axew 851CP IV 3\/15\/14/.test(txt) && /Fraxure 1521CP/.test(txt), 'every copy is listed in full: ' + txt.slice(0, 600));
-    expect(/APP VERDICT/.test(txt), 'the app verdict line is there (a ranked line or the none-is-good statement): ' + txt.slice(-400));
-    expect(r.none.length === 0 && r.plural === 2, 'no named species adds nothing, a plural still matches: ' + JSON.stringify(r.none) + ' / ' + r.plural);
+    expect(r && r.shell && r.rootPos === 'fixed' && r.rootOy === 'auto' && r.bodyOv === 'hidden' && r.navPos === 'sticky' && r.tall, 'the app root is a fixed, scrolling box inside a body that does not scroll: ' + JSON.stringify(r));
+    expect(r.scrolled > 100 && r.docY === 0 && r.gap0 === 0 && r.gapScrolled === 0 && r.gapEnd === 0 && r.navFull, 'scrolling moves the root, never the page, and the tab bar stays on the bottom edge and full width: ' + JSON.stringify(r));
+    expect(r.afterTab === 0 && r.jumped !== false, 'a tab change returns to the top and a section chip scrolls the root: ' + JSON.stringify(r));
+    expect(r.classic.rootPos === 'relative' && r.classic.navPos === 'fixed' && r.classic.scroller === true && r.info === true, 'Classic scrolling restores the document scroll and the fixed bar, and the Screen numbers box offers the switch: ' + JSON.stringify(r));
   });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
     const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
