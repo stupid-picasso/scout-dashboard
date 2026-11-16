@@ -1149,6 +1149,66 @@ function solveIVs(base, cp, hp, hint, levelFilter) {
   return hint ? filterByAppraisal(candidates, hint) : candidates;
 }
 
+// The CPs a Pokemon can have when the CP on its screen is hidden (the model covers digits) or doubtful, from what else the screen shows:
+// the species (`bases`: one or more [atk, def, sta] for its forms), the HP, the Power Up stardust cost (which fixes the level to one or two
+// values, see levelsForPowerUpDust), the digits of the CP that can be seen (`pattern`, e.g. "2??6" with ? for a hidden digit) and any IVs
+// already known. Every level/IV combination that gives that HP and a CP matching the pattern is tried.
+//   obs = { hp, dust, xlCandy, candy, lucky, shadow, purified, pattern, ivs: [atk|null, def|null, sta|null], cp }
+// With `cp` given (a CP that was read, not hidden) it answers whether that CP is possible at all.
+// Returns { cps: [sorted CPs], levels: [levels tried], dustMatched, combos, fits }.
+function cpCandidatesFor(bases, obs) {
+  obs = obs || {};
+  const out = { cps: [], levels: [], dustMatched: null, combos: 0, fits: null };
+  const list = (bases || []).filter(b => Array.isArray(b) && b.length === 3);
+  if (!list.length) return out;
+  let levels = Object.keys(CPM).map(Number).filter(l => l <= MAX_POKEMON_LEVEL).sort((a, b) => a - b);
+  if (Number.isFinite(obs.dust)) {
+    const byDust = levelsForPowerUpDust(obs.dust, { lucky: !!obs.lucky, shadow: !!obs.shadow, purified: !!obs.purified });
+    out.dustMatched = byDust.length > 0;
+    if (byDust.length) levels = levels.filter(l => byDust.indexOf(l) >= 0);
+  }
+  // The candy on the same button narrows the level further (41 to 41.5 cost 10 Candy XL, 42 to 42.5 cost 12), shadow +20% / purified -10%.
+  const cMult = (obs.shadow ? 1.2 : 1) * (obs.purified ? 0.9 : 1);
+  if (Number.isFinite(obs.xlCandy) || Number.isFinite(obs.candy)) {
+    const kept = levels.filter(l => {
+      const st = powerUpStepCost(l);
+      if (!st) return false;
+      if (Number.isFinite(obs.xlCandy) && Math.round(st.xlCandy * cMult) !== obs.xlCandy) return false;
+      if (Number.isFinite(obs.candy) && Math.round(st.candy * cMult) !== obs.candy) return false;
+      return true;
+    });
+    if (kept.length) levels = kept;
+  }
+  out.levels = levels.slice();
+  const pat = typeof obs.pattern === 'string' ? obs.pattern.replace(/[^0-9?]/g, '?') : null;
+  const ivs = Array.isArray(obs.ivs) ? obs.ivs : [null, null, null];
+  const hp = Number.isFinite(obs.hp) ? obs.hp : null;
+  const want = Number.isFinite(obs.cp) ? obs.cp : null;
+  const seen = new Set();
+  const rng = v => (v == null ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : [v]);
+  for (const base of list) for (const L of levels) {
+    for (const s of rng(ivs[2])) {
+      if (hp != null && hpFor(base, s, L) !== hp) continue;
+      for (const a of rng(ivs[0])) for (const d of rng(ivs[1])) {
+        const cp = cpFor(base, [a, d, s], L);
+        if (cp == null) continue;
+        if (want != null) { if (cp === want) { out.combos++; seen.add(cp); } continue; }
+        if (pat) {
+          const t = String(cp);
+          if (t.length !== pat.length) continue;
+          let ok = true;
+          for (let i = 0; i < t.length; i++) if (pat[i] !== '?' && pat[i] !== t[i]) { ok = false; break; }
+          if (!ok) continue;
+        }
+        out.combos++; seen.add(cp);
+      }
+    }
+  }
+  out.cps = [...seen].sort((x, y) => x - y);
+  if (want != null) out.fits = out.combos > 0;
+  return out;
+}
+
 // Total-IV range for each appraisal star tier.
 const STAR_BANDS = [[0, 22], [23, 29], [30, 36], [37, 44], [45, 45]];
 
@@ -5981,7 +6041,7 @@ function pvpMovesetFor(name, isShadow, leagueKey, form) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
+  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
     MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxEntryCost, maxDaysToEarn, maxRating,
