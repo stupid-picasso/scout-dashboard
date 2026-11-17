@@ -34,6 +34,6 @@ sending anything to Google.
 * **Delete my account and cloud data:** Settings > Your data > Delete my account and cloud data (asks twice). It deletes your
   snapshots, then your cloud document, then your sign-in, then this device's copy. If the sign-in is too old it asks you to sign
   in again first.
-* Signing out removes the signed-in copy from the device.
+* Signing out removes the signed-in copy of your roster from the device. **Your Gemini key and GitHub token stay on the device after you sign out** (they are device settings, also used when signed out); on a shared device use the remove-key buttons in Settings or delete your account, which clears them.
 
 Professor is not meant for children under 13, and the Gemini path is for adults.

@@ -386,14 +386,20 @@ module.exports = async function suiteC() {
     const st = await x.state();
     const all = [...(st.roster || []), ...(st.addedPokemon || [])];
     expect(all.some(p => JSON.stringify(p).indexOf('<img') >= 0 || JSON.stringify(p).indexOf('<svg') >= 0), 'setup: the markup did not reach the roster (' + all.length + ' rows)');
+    const vis = () => x.page.evaluate(() => document.body.innerText);
     await x.go('ROSTER'); await x.page.waitForTimeout(800);
-    const row = x.page.locator('[data-swipe-row]').first(); if (await row.count()) { await row.click(); await x.page.waitForTimeout(800); }
+    expect(/<img src=x onerror=window\.__xss=1>|<svg onload=window\.__xss=2>/.test(await vis()), 'setup: the hostile text is not shown on the roster as text');
+    const row = x.page.locator('[data-swipe-row]').first(); expect(await row.count() > 0, 'no roster row to open'); await row.click(); await x.page.waitForTimeout(900);
+    expect(!!(await x.state()).detailPoke, 'the detail sheet did not open');
+    expect(/<img src=x|<svg onload/.test(await vis()), 'setup: the hostile text is not shown in the detail sheet as text');
+    await x.call('closeDetail');
     await x.set({ chatMessages: [{ role: 'user', content: X }, { role: 'assistant', content: X2 + X }] });
-    await x.call('goToTab', 'today'); await x.page.waitForTimeout(500);
-    try { await x.call('openChatBubble'); await x.page.waitForTimeout(700); } catch (e) {}
-    const r = await x.page.evaluate(() => ({ xss: window.__xss, img: !!document.querySelector('img[src="x"]'), svg: !!document.querySelector('svg[onload]'), txt: document.body.innerText.indexOf('<img') >= 0 }));
+    await x.call('openChatBubble'); await x.page.waitForTimeout(700);
+    expect(!!(await x.state()).chatOpen, 'the chat sheet did not open');
+    expect(/<img src=x onerror=window\.__xss=1>/.test(await vis()), 'setup: the hostile chat text is not shown as text');
+    const r = await x.page.evaluate(() => ({ xss: window.__xss, img: !!document.querySelector('img[src="x"]'), svg: !!document.querySelector('svg[onload]'), any: !![...document.querySelectorAll('[onerror],[onload]')].length }));
     expect(r.xss === undefined, 'script ran: window.__xss = ' + r.xss);
-    expect(!r.img && !r.svg, 'the markup became real elements');
+    expect(!r.img && !r.svg && !r.any, 'the markup became real elements');
     await x.close();
   }, 'critical');
   await s.close();

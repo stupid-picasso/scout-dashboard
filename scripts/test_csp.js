@@ -43,6 +43,16 @@ async function child() {
   must((await s.state()).detailPoke, 'the detail sheet did not open');
   await s.call('closeDetail'); await s.call('openChatBubble'); await s.page.waitForTimeout(700);
   must((await s.state()).chatOpen, 'the chat sheet did not open');
+  // The owner features that stay on (import from server, workflow dispatch) and the Gemini host must be inside connect-src.
+  const hits = { raw: 0, api: 0, gem: 0 };
+  await s.page.route(/raw\.githubusercontent\.com/, r => { hits.raw++; r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }); });
+  await s.page.route(/api\.github\.com/, r => { hits.api++; r.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' }, body: '' }); });
+  await s.page.route(/generativelanguage\.googleapis\.com/, r => { hits.gem++; r.fulfill({ status: 400, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }); });
+  await s.set({ githubToken: 'ghp_FAKE_NOT_A_TOKEN', driveVideoLink: 'https://drive.google.com/file/d/x' });
+  await s.call('importFromServer'); await s.call('importIvFromServer'); await s.call('runGithubWorkflow', 'video');
+  await s.page.evaluate(() => fetch('https://generativelanguage.googleapis.com/v1beta/models', { headers: { 'x-goog-api-key': 'fake' } }).catch(() => {}));
+  await s.page.waitForTimeout(1200);
+  must(hits.raw >= 2 && hits.api >= 1 && hits.gem >= 1, 'allowed hosts were not reached (raw ' + hits.raw + ', api ' + hits.api + ', gemini ' + hits.gem + ')');
   const before = await s.page.evaluate(() => window.__csp.slice());
   must(before.length === 0, 'CSP violations during normal use: ' + JSON.stringify(before));
   must(consoleCsp.length === 0, 'CSP console messages: ' + consoleCsp.join(' | '));

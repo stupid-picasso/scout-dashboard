@@ -16,6 +16,9 @@ invite testers. The automated ones are in `scripts/test_firestore_rules.js` and 
 | 9 | Delete with an old sign-in | Same, but wait more than 5 minutes after signing in | the app says to sign in again and deletes nothing |
 | 10 | Shared device | Account A signs out, account B signs in on the same browser | B sees none of A's Pokemon; devtools > Application > Local Storage has no `scout.local.v1.<A's uid>` |
 | 11 | Quota | Firebase console > Usage after one launch of a signed-in account | about 1 document read per launch, no writes unless data changed |
+| 12 | CSP and SRI on the real site (after publishing) | Open the published page in a fresh browser profile with devtools Console open; sign in, edit one value, wait for "saved", import a CSV, import one screenshot with your Gemini key, tap Import from server | no console message mentioning "Content Security Policy", "Refused to" or "integrity"; the Network tab shows the three `firebase-*-compat.js` files loading (status 200) |
+| 13 | Sign-in popup under the CSP | Same profile, sign in with Google or GitHub once that exists | popup opens and closes, no CSP message (the frame-src and script-src entries for the popup come from community reports and are not verified) |
+| 14 | WebKit | Repeat row 12 in Safari (desktop or iOS) | same as row 12 |
 
 Keys stay per device: `scout.secrets.v1` is not cleared by signing out (it is a device setting), only by "Delete my account",
 the existing remove-keys buttons, or clearing site data. On a shared device, remove the keys before handing it over.

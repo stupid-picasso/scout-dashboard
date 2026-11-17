@@ -58,10 +58,10 @@ jobs:
           IN_DRIVE_LINK: ${{ inputs.drive_link }}
       - name: Run benchmark
         run: |
-          ARGS="--video /tmp/drive_video/clip.mp4 --batches $IN_BATCHES --fps $IN_FPS"
-          if [ -n "$IN_TRUTH_CSV" ]; then ARGS="$ARGS --truth $IN_TRUTH_CSV"; fi
+          ARGS=(--video /tmp/drive_video/clip.mp4 --batches "$IN_BATCHES" --fps "$IN_FPS")
+          if [ -n "$IN_TRUTH_CSV" ]; then ARGS+=(--truth "$IN_TRUTH_CSV"); fi
           mkdir -p data
-          python scripts/benchmark_models.py $ARGS
+          python scripts/benchmark_models.py "${ARGS[@]}"
         env:
           IN_BATCHES: ${{ inputs.batches || '6' }}
           IN_FPS: ${{ inputs.fps || '3' }}

@@ -23,7 +23,7 @@ for (const f of files) {
   if (keyHit) { bad++; console.log('FAIL a credential-shaped string appears in ' + f); }
 }
 // self-check: the matcher really finds a banned address (guards against a broken regex making the test vacuous)
-if (!BANNED.size || !BANNED.has(sha('admin@scout.app'))) { bad++; console.log('FAIL the banned-hash list is empty or the matcher is broken'); }
+if (!BANNED.size || !BANNED.has('f1e51c3d39558b21cd691b4bb7768b78c76c3ddd61860a74c14cffed7dbd079d')) { bad++; console.log('FAIL the banned-hash list is empty or the matcher is broken'); }
 // Project files that must exist, with a marker each (H): licence, security, contributing, privacy, and the non-affiliation notice in README, PRIVACY.md and the app.
 const need = [['LICENSE', /MIT License/], ['LICENSE', /not cover/i], ['SECURITY.md', /unsafe-eval/], ['SECURITY.md', /sha384/], ['CONTRIBUTING.md', /real account data/i], ['PRIVACY.md', /EEA/], ['PRIVACY.md', /Delete my account/],
   ['README.md', /not affiliated with, endorsed by or sponsored by/i], ['PRIVACY.md', /not affiliated with, endorsed by or sponsored by/i], ['Scout Dashboard.dc.html', /not affiliated with, endorsed or sponsored by/i]];

@@ -749,7 +749,7 @@ Nothing here touched the real Firebase project. Source: `docs/research/manager-r
 | 4 partial delete message | "Some backups may already be deleted; your roster and sign-in are still there"; the stored `snapshotIndex` is rewritten without the deleted ids | DATA-05 (stand-in: `failSnapDeleteAfter`); old message -> FAIL |
 | 5 `stampOk()` removable | rules test asserts `allow update:` calls `stampOk()`, `updateKeysOk()`, `verifiedIdentity()`, create requires `request.time`, `updateKeysOk` calls `scrubOk` | mutation (remove `&& stampOk()`) -> FAIL |
 | 6 one edit = one write | `pushCloud` clears the debounce timer when it proceeds (fixes all 13 `setState(..., () => this.pushCloud())` sites at once, no site edits) | SYNC-12: debounced edit = 1 write, <= 1 read; `clearMoveData` (direct push with the 1.2 s timer pending) = 1 write; old code -> 2 writes/2 reads -> FAIL |
-| 8 `scout.secrets.v1` survives sign-out | **Not changed.** The Gemini key is a per-device setting that is also used signed-out, and `docs/SECURITY_CHECKS.md`, SEC-01 and DATA-03 encode that; only "Delete my account" clears it. Revisit with Task 3's account switch. | - |
+| 8 `scout.secrets.v1` survives sign-out | **Not changed.** The Gemini key is a per-device setting that is also used signed-out, and `docs/SECURITY_CHECKS.md` (the closing paragraph) documents it; only "Delete my account" clears it. Revisit with Task 3's account switch. | - |
 
 **Part 2 deliverables**
 - **D URL validation.** `icsLines()` (used by `downloadIcs`): control chars/CR/LF stripped from every field, UID and file name restricted to `[A-Za-z0-9._-]`, `URL:` only for `https://` links without whitespace. `safePromoUrl()` (used by `promoRedeem`): code `^[A-Za-z0-9]{4,32}$` and link on `https://store.pokemongo.com/` (prefix and parsed hostname). `scripts/update_promo_codes.py`: `redeem_link()` returns None for a bad code and `build()` skips such codes. Tests: URL-01, URL-02 (suite c), `scripts/test_promo_codes.py` (hostile codes).
@@ -759,4 +759,19 @@ Nothing here touched the real Firebase project. Source: `docs/research/manager-r
 - **H Files.** `LICENSE` (MIT + NOTICE), `SECURITY.md`, `CONTRIBUTING.md`, `PRIVACY.md`, notice in README and in Settings > About; placeholders `<... the owner fills this in>` for the copyright holder and both contacts (no address invented). Presence/markers checked in `test_tracked_tree.js`.
 - **J (owner decision).** `data/pokemon_import.json`, `data/appraisal_import.json`, `logs/` are KEPT and import is NOT gated. The four `scripts/fixtures/detail_screens/*.png` were read: they show a status bar (time, LTE, battery), a Pokemon, stardust/candy counts and move lists; **no trainer name or friend code is visible**. `scripts/test_tracked_tree.js` fails if an address whose SHA-256 is on its list (the removed admin addresses; only hashes are stored) appears in any tracked text file outside `docs/research`, or a credential-shaped string (other than the public Firebase `apiKey` line) in non-test files.
 - **K Guard.** `scripts/test_no_dangerous_sinks.js` (innerHTML, outerHTML, dangerouslySetInnerHTML, document.write, eval(, insertAdjacentHTML, new Function); self-checked) and XSS-01 (suite c): a roster with `<img onerror>`/`<svg onload>` in names, nicknames, moves, and chat text never sets `window.__xss` through the roster, detail and chat sheets.
+**Launch-readiness finding -> change -> test (part 2 items; ids from the table in `launch-readiness.md`)**
+| Finding | Change | Test / check |
+|---|---|---|
+| C-8 CSP (and the apiEndpoint conflict) | meta tag from `build_index.js`; custom endpoint dropped | `test_csp.js` (also reaches raw.githubusercontent, api.github.com and the Gemini host under the policy), `test_no_dangerous_sinks.js`; SECURITY_CHECKS 12-14 |
+| C-9 Firebase SDK without SRI | sha384 + crossorigin in `loadFirebaseSdk` | `test_sri.js`, SYNC-13, real Chromium accept/refuse check |
+| C-10 workflows | permissions, `env:` for inputs/outputs, array args in benchmark | `test_workflows.py` |
+| C-12 privacy | `PRIVACY.md` | `test_tracked_tree.js` markers; (in-app export/delete were part 1) |
+| C-13 personal data / hygiene | personal files kept by owner decision; admin address hashes guarded; notice added | `test_tracked_tree.js`; PNGs inspected, nothing personal visible |
+| C-15 Gemini free-tier terms | stated in PRIVACY.md | marker check only (text, no code behaviour) |
+| C-16 XSS regression | sink grep + hostile-import e2e | `test_no_dangerous_sinks.js`, XSS-01 |
+| C-17 ICS URL/CRLF | `icsLines` | URL-01 |
+| C-18 promo link | `safePromoUrl`, `redeem_link` | URL-02, `test_promo_codes.py` |
+| C-21 LICENSE and files | LICENSE, SECURITY, CONTRIBUTING, PRIVACY | `test_tracked_tree.js` |
+| C-19 Gemini key in URL | done in part 1 (header) | GEM-KEY-01 |
+- **Unverified here.** WebKit could not be installed in this sandbox (browser host requirements), so the CSP test and the SRI-stripping harness hook ran on Chromium only; `qa.yml` runs them on WebKit with `CSP_REQUIRE_WEBKIT=1`. Real sign-in, Firestore and Gemini under the CSP/SRI are manual (SECURITY_CHECKS 12-14). The hash list in `test_tracked_tree.js` is an unsalted SHA-256 of the owner's old address: low-entropy inputs can be guessed from it, so the owner may prefer to drop that entry (the test still guards the removed admin-by-email address).
 - **Not done / for the owner.** Rules still not deployed (DEPLOY.md). Real-WebKit CSP run only in CI. Local-first IndexedDB with opt-in cloud sync: **not done** (next step). Personal data files remain public in the tree and in history (owner's call). `.claude/skills` licence check and history purge from C-13 not touched.
