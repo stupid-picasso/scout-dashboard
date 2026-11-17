@@ -1931,6 +1931,30 @@
       <sc-if value="{{ candyAiBusy }}" hint-placeholder-val="{{ false }}">
         <div style="font:11px var(--font-display);color:var(--ink-400);margin-bottom:10px">Asking AI whether to evolve or power up on shared candy&hellip;</div>
       </sc-if>
+      <sc-if value="{{ dustPvpSection }}" hint-placeholder-val="{{ false }}">
+        <div style="font:700 11px var(--font-display);letter-spacing:.06em;color:var(--ink-500);margin:2px 0 6px">PVP BUILDS</div>
+        <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);margin-bottom:8px;text-wrap:pretty">{{ dustPvpNote }}</div>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:8px">
+          <sc-for list="{{ dustPvpRows }}" as="row" hint-placeholder-count="2">
+            <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:10px 12px;display:flex;align-items:center;gap:11px">
+              <div style="width:44px;height:44px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--font-display);color:var(--surface-page)">{{ row.initial }}</span>
+                <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font:700 14px var(--font-body);color:var(--ink-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-500);margin-top:2px">{{ row.levelLine }}</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font:800 13px var(--font-display);color:var(--type-electric);white-space:nowrap">{{ row.costNow }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-300);margin-top:2px;white-space:nowrap">{{ row.costAt40 }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ dustPvpBlocked }}" hint-placeholder-val="{{ false }}"><div style="font:11.5px/1.4 var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Waiting: {{ dustPvpBlocked }}</div></sc-if>
+        <div style="font:700 11px var(--font-display);letter-spacing:.06em;color:var(--ink-500);margin:6px 0">RAID ATTACKERS, WITH WHAT IS LEFT</div>
+      </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px">
         <sc-for list="{{ dustPlanRows }}" as="row" hint-placeholder-count="4">
           <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border:1px solid var(--brand-primary-strong);border-radius:var(--r-pill);padding:10px 12px;display:flex;align-items:center;gap:11px">
@@ -15420,7 +15444,7 @@ class Component extends DCLogic {
     if (this._derivedCacheOn) return;
     this._derivedCacheOn = true;
     this._memoStore = {};
-    const names = ['attackerBoard', 'buddyPlan', 'raidRoleTypeBest', 'dataQualityIssues', 'dustPlan', 'evolveQueue', 'megaWorth', 'buildOptimizePlan', 'actionableDexGaps', 'tmAiCandidates', 'tradeAdvice', 'dominatedDuplicates', 'triageQueue', 'raidCounters', 'missingMoveNames', 'missingEvoNames', 'effectiveRosterForMatch', 'learnedMaxSpecies', 'maxAttackers'];
+    const names = ['attackerBoard', 'buddyPlan', 'raidRoleTypeBest', 'dataQualityIssues', 'dustPlan', 'dustAllocator', 'evolveQueue', 'megaWorth', 'buildOptimizePlan', 'actionableDexGaps', 'tmAiCandidates', 'tradeAdvice', 'dominatedDuplicates', 'triageQueue', 'raidCounters', 'missingMoveNames', 'missingEvoNames', 'effectiveRosterForMatch', 'learnedMaxSpecies', 'maxAttackers'];
     names.forEach(n => {
       const orig = this[n];
       if (typeof orig !== 'function') return;
@@ -17440,17 +17464,18 @@ class Component extends DCLogic {
     return Math.min(40, lv + 2);
   }
 
-  dustPlan() {
+  dustPlan(budgetOverride, skipCsv) {
     const m = this.mechanics;
     if (!m || !m.powerUpCostBetween) return { rows: [], spend: 0, reserve: 0, budget: 0 };
     const reserve = Number(this.state.dustReserve) || 0;
     const balance = Number(this.state.stardustBalance) || 0;
-    const budget = Math.max(0, balance - reserve);
+    const budget = (budgetOverride != null && budgetOverride !== '') ? Math.max(0, Number(budgetOverride)) : Math.max(0, balance - reserve);
+    const skip = new Set(String(skipCsv || '').split(',').filter(Boolean));
     const ceiling = this.levelCeiling();
     const done = new Set(this.state.completedIds || []);
     const rows = [];
     this.effectiveRosterForMatch().forEach(p => {
-      if (done.has(p.idx)) return;
+      if (done.has(p.idx) || skip.has(String(p.idx))) return;
       const level = Number.isFinite(p.lvlMin) ? p.lvlMin : null;
       if (level == null || level >= ceiling) return;
       const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
@@ -17517,6 +17542,58 @@ class Component extends DCLogic {
     });
     const rest = rows.filter(r => picked.indexOf(r) < 0 && !picked.some(x => x.p.idx === r.p.idx)).slice(0, 10);
     return { rows: picked, blocked: rest, spend, xl, reserve, budget, balance, ceiling };
+  }
+
+  // Where to spend the Stardust. Lane 1 is PvP builds: a keeper that is S/A/B tier with a 90%+ measured IV rank gets powered to the highest level
+  // still under its league's CP cap (the cheapest power-up with the biggest PvP payoff, since a league caps CP). Lane 2 is raid attackers, filled
+  // from whatever the PvP lane leaves. Candy is a pool per species, so the same candy is never promised twice.
+  dustAllocator() {
+    const m = this.mechanics;
+    const reserve = Number(this.state.dustReserve) || 0, balance = Number(this.state.stardustBalance) || 0;
+    const budget = Math.max(0, balance - reserve);
+    const empty = { budget, balance, reserve, pvp: { rows: [], blocked: [], spend: 0, xl: 0, need: 0, short: 0 }, raid: this.dustPlan() };
+    if (!m || !m.powerUpCostBetween || !m.maxLevelUnderCap || !m.LEAGUE_CAPS) return empty;
+    const roster = this.effectiveRosterForMatch();
+    const keepCtx = this.keepContext(roster);
+    const done = new Set(this.state.completedIds || []);
+    const cands = [];
+    roster.forEach(p => {
+      if (done.has(p.idx) || !this.isPvpWorthy(p) || !this.keepReasons(p, keepCtx).length) return;
+      const lv = this.evalLevelOf(p);
+      if (lv.level == null) return;
+      const ivs = this.ivsOf(p);
+      let best = null;
+      ['great', 'ultra'].forEach(lk => {
+        const a = this.pvpAssess(p, lk);
+        if (!a || !a.confirmed || a.rank < 90 || a.tierRank > 2) return;
+        const base = this.gradeBaseFor(p, lk);
+        if (!base || !ivs) return;
+        const target = m.maxLevelUnderCap(base, ivs, m.LEAGUE_CAPS[lk]);
+        if (target == null || target <= lv.level) return;
+        const cost = m.powerUpCostBetween(lv.level, target, { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) });
+        if (!cost || !cost.reachable || !cost.steps) return;
+        const row = { p, lk, a, level: lv.level, target, cost };
+        if (!best || row.a.tierRank < best.a.tierRank || (row.a.tierRank === best.a.tierRank && row.a.rank > best.a.rank)) best = row;
+      });
+      if (best) cands.push(best);
+    });
+    cands.sort((x, y) => (x.a.tierRank - y.a.tierRank) || (y.a.rank - x.a.rank) || (x.cost.dust - y.cost.dust));
+    const candyLeft = {};
+    const rows = [], blocked = [];
+    let spend = 0, xl = 0, need = 0;
+    cands.forEach(r => {
+      need += r.cost.dust;
+      const k = String(r.p.name || '').toLowerCase();
+      if (!(k in candyLeft)) candyLeft[k] = this.candyStockFor(r.p).candy;
+      const candy = r.cost.candy || 0;
+      if (spend + r.cost.dust > budget) { blocked.push({ ...r, why: 'dust' }); return; }
+      if (candy > 0 && candyLeft[k] != null && candy > candyLeft[k]) { blocked.push({ ...r, why: 'candy' }); return; }
+      spend += r.cost.dust; xl += r.cost.xlCandy || 0;
+      if (candy > 0 && candyLeft[k] != null) candyLeft[k] -= candy;
+      rows.push(r);
+    });
+    const raid = this.dustPlan(budget - spend, rows.map(r => r.p.idx).join(','));
+    return { budget, balance, reserve, pvp: { rows, blocked, spend, xl, need, short: Math.max(0, need - budget) }, raid };
   }
 
   // Builds a stable fingerprint of the contested set so a decision is only
@@ -20506,7 +20583,8 @@ class Component extends DCLogic {
     const eventOpps = this.eventEvolveOpps(roster);
     const eventWatch = this.eventWatchList();
     const triageAll = this.triageQueue();
-    const dustPlan = this.dustPlan();
+    const dustAlloc = this.dustAllocator();
+    const dustPlan = dustAlloc.raid;
     const candyAiBusy = this.state.candyAiBusy;
     const candyAiNotes = this.state.candyAiNotes || [];
     const dexGapsAll = this.actionableDexGaps();
@@ -21446,12 +21524,25 @@ class Component extends DCLogic {
       toggleEvolveSort: () => this.toggleEvolveSort(),
       evolveSortLabel: this.state.evolveSort === 'perCandy' ? 'ORDER: PER CANDY' : 'ORDER: VALUE',
 
-      dustPlanHeadline: dustPlan.rows.length
-        ? fmt(dustPlan.spend) + ' of ' + fmt(dustPlan.budget)
+      dustPlanHeadline: (dustPlan.rows.length || dustAlloc.pvp.rows.length)
+        ? fmt(dustAlloc.pvp.spend + dustPlan.spend) + ' of ' + fmt(dustAlloc.budget)
         : '',
-      dustSpendPct: dustPlan.budget > 0
-        ? Math.min(100, Math.round(dustPlan.spend / dustPlan.budget * 100)) + '%'
+      dustSpendPct: dustAlloc.budget > 0
+        ? Math.min(100, Math.round((dustAlloc.pvp.spend + dustPlan.spend) / dustAlloc.budget * 100)) + '%'
         : '0%',
+      dustPvpSection: dustAlloc.pvp.rows.length || dustAlloc.pvp.blocked.length ? true : null,
+      dustPvpNote: (() => { const a = dustAlloc.pvp; const parts = ['PvP builds first: ' + fmt(a.spend) + ' for ' + a.rows.length + ' Pok\u00e9mon' + (a.xl ? ' (' + a.xl + ' Candy XL)' : '') + '.']; if (a.short > 0) parts.push('All ' + (a.rows.length + a.blocked.length) + ' builds need ' + fmt(a.need) + ', so you are ' + fmt(a.short) + ' short.'); return parts.join(' '); })(),
+      dustPvpRows: dustAlloc.pvp.rows.map(r => ({
+        name: r.p.name + (r.p.form ? ' \u00b7 ' + r.p.form : ''),
+        spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form),
+        badgeColor: this.dsTypeColor(r.p),
+        initial: (r.p.name || '?').charAt(0),
+        levelLine: 'Lv ' + r.level + ' \u2192 ' + r.target + ' \u00b7 ' + (r.lk === 'ultra' ? 'Ultra' : 'Great') + ' League cap' + (r.cost.xlCandy ? '  \u00b7  ' + r.cost.xlCandy + ' XL' : ''),
+        costNow: fmt(r.cost.dust),
+        costAt40: r.a.tier + ' tier \u00b7 ' + Math.round(r.a.rank) + '% rank',
+        onClick: () => this.openDetail(r.p)
+      })),
+      dustPvpBlocked: dustAlloc.pvp.blocked.slice(0, 5).map(r => r.p.name + (r.p.form ? ' (' + r.p.form + ')' : '') + ': ' + (r.why === 'candy' ? 'short on candy' : 'not enough dust left') + ' (' + fmt(r.cost.dust) + ')').join(' \u00b7 '),
       dustBudgetShort: 'lvl ' + dustPlan.ceiling + ' cap',
       levelCeilingNote: 'Power-ups are planned up to level ' + dustPlan.ceiling + (dustPlan.ceiling < 40 ? ' (your level + 2). Level 40 costs are shown beside each row.' : '.'),
       dustBudgetNote: (Number(this.state.stardustBalance) > 0
@@ -21460,7 +21551,7 @@ class Component extends DCLogic {
       candyAiBusy: candyAiBusy,
       candyAiNotes: candyAiNotes,
       hasCandyAiNotes: candyAiNotes.length > 0,
-      dustPlanEmpty: dustPlan.rows.length ? null
+      dustPlanEmpty: (dustPlan.rows.length || dustAlloc.pvp.rows.length) ? null
         : (dustPlan.budget <= 0
           ? 'Balance is at or below your ' + fmt(dustPlan.reserve) + ' reserve. Adjust it in Settings.'
           : 'Nothing worth powering up in budget \u2014 most of your roster is already at the level cap.'),

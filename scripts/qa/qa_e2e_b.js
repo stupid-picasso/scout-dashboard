@@ -1439,6 +1439,24 @@ module.exports = async function suiteB() {
     expect(/(Axew|Fraxure) 150 \+7XL/.test(r.line) && (r.line.match(/(Axew|Fraxure) 150/g) || []).length === 1, 'the Axew family shows one pool of 150 candy and 7 XL: ' + r.line);
     expect(/Ralts \?/.test(r.line) && r.src, 'an unscanned species is marked ? and the prompt carries the candy rule: ' + r.line);
   });
+  await T('DUST-01', 'Power up', 'The dust allocator pays PvP builds first, to the highest level under the league cap, never promises candy twice, and gives the raid lane only what is left', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl, g) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
+    await s.set({ addedPokemon: [mk('du1', 'Azumarill', 184, [2, 15, 15], 900, 18, 98)], roster: [], ivOverrides: {}, completedIds: [], stardustBalance: 400000, dustReserve: 0, trainerLevel: 40, candyInventory: { azurill: { name: 'Azurill', candy: 500, xlCandy: 0 } }, cutTarget: 900 });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const m = l.mechanics;
+      const a = l.dustAllocator(); const row = a.pvp.rows[0];
+      const base = row ? l.gradeBaseFor(row.p, row.lk) : null; const ivs = row ? l.ivsOf(row.p) : null;
+      const wantTarget = row ? m.maxLevelUnderCap(base, ivs, m.LEAGUE_CAPS[row.lk]) : null; const wantCost = row ? m.powerUpCostBetween(row.level, wantTarget, {}).dust : null;
+      l.setState({ stardustBalance: 1000 }); await new Promise(r => setTimeout(r, 150));
+      const b = l.dustAllocator();
+      return { n: a.pvp.rows.length, name: row && row.p.name, target: row && row.target, wantTarget, cost: row && row.cost.dust, wantCost, spent: a.pvp.spend, budget: a.budget, raidHasIt: a.raid.rows.some(x => x.p.idx === 'du1'), poorRows: b.pvp.rows.length, poorBlocked: b.pvp.blocked.length, poorWhy: b.pvp.blocked[0] && b.pvp.blocked[0].why }; } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, stardustBalance: st0.stardustBalance, dustReserve: st0.dustReserve, trainerLevel: st0.trainerLevel, candyInventory: st0.candyInventory || {} });
+    expect(r && r.n === 1 && r.name === 'Azumarill', 'one PvP build: ' + JSON.stringify(r));
+    expect(r.target === r.wantTarget && r.cost === r.wantCost && r.cost > 0, 'target level and cost match the mechanics: ' + JSON.stringify(r));
+    expect(r.spent === r.cost && r.spent <= r.budget && !r.raidHasIt, 'spend within budget and the Pokemon is not also in the raid lane: ' + JSON.stringify(r));
+    expect(r.poorRows === 0 && r.poorBlocked === 1 && r.poorWhy === 'dust', 'with too little dust it waits instead: ' + JSON.stringify(r));
+  }, 'high');
   await T('CHATEVAL-01', 'Chat', 'Grounding score: for 14 typical questions the chat is sent the facts needed to answer them (counts, candy, hundo, dex, line and evolution detail), at least 90%', async () => {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...(extra || {}) });
