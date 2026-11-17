@@ -2188,7 +2188,7 @@
     <sc-if value="{{ deviceBackupShown }}" hint-placeholder-val="{{ false }}">
       <section aria-label="Backup and restore on this device" style="background:var(--surface-card);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:8px">
         <div style="font:600 17px var(--font-body)">Backup &amp; restore</div>
-        <div style="font:15px/1.45 var(--font-body);color:var(--ink-500);text-wrap:pretty">One file with your roster, IVs, candy, stardust and log. Keys are never included.</div>
+        <div style="font:15px/1.45 var(--font-body);color:var(--ink-500);text-wrap:pretty">Your roster, IVs, candy, stardust and log in one file.</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
           <button type="button" onClick="{{ backupDevice }}" style="font:600 17px var(--font-body);color:var(--accent-text);padding:8px 0">Back up this device</button>
           <label style="font:600 17px var(--font-body);color:var(--accent-text);padding:8px 0;cursor:pointer">Restore from file<input type="file" accept=".json,application/json" onChange="{{ onRestoreFile }}" aria-label="Restore from backup file" style="display:none" /></label>
@@ -3308,21 +3308,21 @@
 
       <div style="position:relative;min-height:230px;background:{{ detail.headerGradient }};overflow-x:clip;overflow-y:visible;display:flex;flex-direction:column">
         <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:8px 12px 0">
-          <button type="button" onClick="{{ closeDetail }}" aria-label="Close details" class="om-press" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);background:transparent;color:#fff;font:700 22px var(--font-body)">&#8249;</button>
+          <button type="button" onClick="{{ closeDetail }}" aria-label="Close details" class="om-press" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);background:transparent;color:var(--text);font:700 22px var(--font-body)">&#8249;</button>
           <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;align-items:center;gap:2px;min-width:0">
-              <button type="button" onClick="{{ detail.goPrev }}" aria-label="{{ detail.prevAria }}" style="font:600 12px var(--font-body);color:rgba(255,255,255,.9);padding:8px 8px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ detail.prevOpacity }}">&lsaquo; {{ detail.prevName }}</button>
-              <div style="font:700 12px var(--font-display);color:rgba(255,255,255,.8);letter-spacing:.04em;white-space:nowrap">{{ detail.navPositionLabel }}</div>
-              <button type="button" onClick="{{ detail.goNext }}" aria-label="{{ detail.nextAria }}" style="font:600 12px var(--font-body);color:rgba(255,255,255,.9);padding:8px 8px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ detail.nextOpacity }}">{{ detail.nextName }} &rsaquo;</button>
+              <button type="button" onClick="{{ detail.goPrev }}" aria-label="{{ detail.prevAria }}" style="font:600 12px var(--font-body);color:var(--text);padding:8px 8px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ detail.prevOpacity }}">&lsaquo; {{ detail.prevName }}</button>
+              <div style="font:700 12px var(--font-display);color:var(--text);letter-spacing:.04em;white-space:nowrap">{{ detail.navPositionLabel }}</div>
+              <button type="button" onClick="{{ detail.goNext }}" aria-label="{{ detail.nextAria }}" style="font:600 12px var(--font-body);color:var(--text);padding:8px 8px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:{{ detail.nextOpacity }}">{{ detail.nextName }} &rsaquo;</button>
             </div>
           </sc-if>
           <button type="button" onClick="{{ detail.toggleFav }}" aria-label="{{ detail.favAria }}" aria-pressed="{{ detail.favPressed }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);background:transparent;color:{{ detail.favoriteFilled }}">&#9829;</button>
         </div>
-        <div data-countup="1" style="position:absolute;top:44px;left:14px;font:700 22px var(--font-display);color:rgba(255,255,255,.95);text-shadow:0 2px 6px rgba(0,0,0,.45);z-index:2"><span style="font-size:12px;font-weight:700;opacity:.75;vertical-align:2px;margin-right:2px">CP</span><span>{{ detail.cp }}</span></div>
+        <div data-countup="1" style="position:absolute;top:44px;left:14px;font:700 22px var(--font-display);color:var(--text);z-index:2"><span style="font-size:12px;font-weight:700;opacity:.75;vertical-align:2px;margin-right:2px">CP</span><span>{{ detail.cp }}</span></div>
         <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding-top:2px;padding-bottom:8px">
           <div style="position:relative;width:180px;height:180px">
             <svg width="180" height="180" viewBox="0 0 148 148" style="position:absolute;inset:0">
-              <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="5" stroke-linecap="round"></path>
+              <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="var(--line-strong)" stroke-width="5" stroke-linecap="round"></path>
               <path d="M 27 121 A 66 66 0 1 1 121 121" fill="none" stroke="{{ detail.badgeColor }}" stroke-width="5" stroke-linecap="round" class="om-arc" stroke-dasharray="{{ detail.overallRing.dasharray }}" stroke-dashoffset="{{ detail.overallRing.dashoffset }}" style="transition:stroke-dashoffset 0.52s ease"></path>
             </svg>
             <div ref="{{ detail.heroTiltRef }}" style="position:absolute;inset:0 -70px -6px;touch-action:pan-y">
