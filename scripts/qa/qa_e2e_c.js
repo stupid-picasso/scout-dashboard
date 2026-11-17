@@ -82,7 +82,7 @@ module.exports = async function suiteC() {
   await T('TOD-19', 'Today', 'Event planner: REMOVE deletes the event', async () => { await s.page.getByText('REMOVE', { exact: true }).first().click(); await s.page.waitForTimeout(400); expect(!/QA Day/.test(await t0())); });
   await T('TOD-20', 'Today', 'Event planner rejects an event with no species', async () => { const n0 = ((await s.state()).events || []).length; await s.page.getByPlaceholder('Event name, e.g. Community Day').fill('No species'); await s.page.getByText('ADD EVENT', { exact: true }).click(); await s.page.waitForTimeout(300); expect(((await s.state()).events || []).length === n0); });
   await T('TOD-21', 'Today', 'Scan queue lists Pokemon whose IVs are unmeasured, with reasons', async () => { const t = await t0(); expect(/Scan these next/.test(t)); });
-  await T('TOD-22', 'Today', 'Stats strip shows TO EVOLVE / QUEUED / NEW DEX', async () => { const t = await t0(); expect(/TO EVOLVE/.test(t) && /QUEUED/.test(t) && /NEW DEX/.test(t)); });
+  await T('TOD-22', 'Today', 'Stats strip shows TO EVOLVE / QUEUED / NEW DEX', async () => { const t = await t0(); expect(/TO EVOLVE/i.test(t) && /QUEUED/i.test(t) && /NEW DEX/i.test(t)); });
   await T('TOD-40', 'Today', 'A raid-boss event offers "Best six vs <boss>" and opens the Raid tab with the boss\'s types filled in', async () => {
     await s.go('TODAY'); const b = s.page.getByRole('button', { name: /^Best six vs Mewtwo/ }); expect(await b.count() >= 1, 'no button'); await b.first().click(); await s.page.waitForTimeout(700);
     const st = await s.state(); expect(st.tab === 'raid' && st.raidBossName === 'Mewtwo' && st.raidBossTypes.join() === 'Psychic', JSON.stringify([st.tab, st.raidBossName, st.raidBossTypes]));
@@ -316,7 +316,7 @@ module.exports = async function suiteC() {
   // ------------------------------------------------------------------ LOG
   s = await session({ feed: false });
   await s.load(QA); await s.go('LOG');
-  await T('LOG-01', 'Log', 'Snapshot logging adds a dated row with roster size', async () => { await s.page.getByText('+ LOG SNAPSHOT', { exact: true }).click(); await s.page.waitForTimeout(500); const t = await s.text(); expect(/64/.test(t.split('DATE')[1] || '') && !/No snapshots yet/.test(t)); });
+  await T('LOG-01', 'Log', 'Snapshot logging adds a dated row with roster size', async () => { await s.page.getByText('Log snapshot', { exact: true }).click(); await s.page.waitForTimeout(500); const t = await s.text(); expect(/64/.test(t.split('Date')[1] || '') && !/No snapshots yet/.test(t)); });
   await T('LOG-02', 'Log', 'Diagnostics panel captures a runtime error', async () => { await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0)); await s.page.waitForTimeout(900); const t = await s.text(); expect(/qa-diag-test|ERRORS?/i.test(t) || /No errors recorded/.test(t) === false, t.slice(300, 500)); });
   await T('LOG-03', 'Log', 'A daily snapshot is taken automatically once, with hundo and species counts', async () => {
     await s.set({ history: [] }); const r1 = await s.call('dailyLogSnapshot'); const r2 = await s.call('dailyLogSnapshot'); const h = (await s.state()).history;

@@ -10,6 +10,16 @@ module.exports = async function suiteA() {
   // ------------------------------------------------------------------ BOOT
   let s = await session({ feed: false });
   await T('BOOT-01', 'Boot', 'App loads and renders content without a page error', async () => { expect(s.errors.length === 0, s.errors[0]); expect((await s.text()).length > 80, 'visible text'); expect(/No Pokemon yet/.test(await s.text()) && /Import roster/.test(await s.text()), 'empty state with its import button is shown'); });   // with no roster Today shows the header, the empty state and the tab bar
+  // BOOT-01 used to demand 300 characters of visible text on a first launch. The empty first launch is now a deliberate
+  // one-card empty state (UI polish), so that number is no longer reachable there; the same strength is kept where it still
+  // means something: the loaded app renders more than 300 characters on every one of its screens, with no page error.
+  await T('BOOT-01b', 'Boot', 'With a roster loaded, every screen renders more than 300 characters of visible text and no page error', async () => {
+    const r = await session({ feed: false }); await r.load(QA); await r.page.waitForTimeout(1200);
+    const bad = [];
+    for (const scr of ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG']) { await r.go(scr); await r.page.waitForTimeout(500); const n = (await r.text()).length; if (n <= 300) bad.push(scr + ' ' + n); }
+    expect(r.errors.length === 0, r.errors[0]); await r.close();
+    expect(bad.length === 0, 'too little text on: ' + bad.join(', '));
+  });
   await T('BOOT-02', 'Boot', 'Version string vNN.NN is shown in Home > About', async () => { await s.go('HOME'); expect(/v53\.\d+/.test(await s.text())); await s.go('TODAY'); });
   await T('BOOT-03', 'Boot', 'Empty state: header says 0 Pokemon and invites a sync', async () => { const t = await s.text(); expect(/0 Pokemon|Loading roster/.test(t), t.slice(0, 120)); });
   await T('BOOT-04', 'Boot', 'Five tab-bar items (Today, Roster, PvP, Recs, More); the More menu holds Settings and the other destinations', async () => { const t = await s.text(); for (const x of ['Today', 'Roster', 'PvP', 'Recs', 'More']) expect(t.includes(x), 'missing tab ' + x); const order = await s.page.evaluate(() => [...document.querySelectorAll('nav[data-navbar] button')].map(b => b.innerText.trim())); expect(order.join() === 'Today,Roster,PvP,Recs,More', 'tab order: ' + order.join()); await s.page.getByText('More', { exact: true }).last().click(); await s.page.waitForTimeout(400); const t2 = await s.text(); for (const x of ['Settings', 'Raid counters', 'Bulk update', 'Collection intel', 'Attackers', 'Progress log', 'Rename & search']) expect(t2.includes(x), 'missing More item ' + x); await s.page.mouse.click(215, 120); await s.page.waitForTimeout(300); });
@@ -205,7 +215,7 @@ module.exports = async function suiteA() {
   await T('ROS-17', 'Roster', 'Sort "Mega ready" lists Mega-capable Pokemon first', async () => {
     await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2500); await s.load(QA, {}); await s.go('ROSTER');
     await s.page.locator('select').first().selectOption('megaReady'); await s.page.waitForTimeout(500);
-    const tags = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.slice(0, 30).map(e => /MEGA ✓/.test(e.innerText) ? 2 : /MEGA/.test(e.innerText) ? 1 : 0));
+    const tags = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.slice(0, 30).map(e => /mega ✓/i.test(e.innerText) ? 2 : /mega/i.test(e.innerText) ? 1 : 0));
     expect(tags.some(t => t > 0), 'fixture has no Mega-capable Pokemon in view'); expect(tags.every((v, i) => i === 0 || tags[i - 1] >= v), 'order ' + tags.join(''));
   }, 'medium');
   await T('ROS-18', 'Roster', 'Scrolling to the bottom loads the next page without tapping', async () => {
