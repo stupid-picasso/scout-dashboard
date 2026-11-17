@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: WebKit fails to launch on the 26.04 image behind ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
