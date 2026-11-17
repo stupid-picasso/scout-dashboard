@@ -2101,7 +2101,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.332{{ aboutBuild }}. Not affiliated with Niantic or The Pokemon Company.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.339{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -4698,14 +4698,18 @@ class Component extends DCLogic {
 
   loadFirebaseSdk() {
     if (window.__scoutFirebaseSdkPromise) return window.__scoutFirebaseSdkPromise;
+    // Pinned version, pinned content: each file carries its SHA-384 (Subresource Integrity). If Google ever serves different bytes
+    // at these URLs the browser refuses to run them. To recompute: see SECURITY.md. The QA harness serves stand-ins and drops the attribute.
     const urls = [
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'
+      ['https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js', 'sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9'],
+      ['https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js', 'sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1'],
+      ['https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js', 'sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC']
     ];
-    const loadOne = (url) => new Promise((resolve, reject) => {
+    const loadOne = ([url, sri]) => new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = url;
+      s.integrity = sri;
+      s.crossOrigin = 'anonymous';
       s.onload = resolve;
       s.onerror = () => reject(new Error('Failed to load ' + url));
       document.head.appendChild(s);
@@ -10871,12 +10875,6 @@ class Component extends DCLogic {
     this._lastVideoFrames = null;
   }
 
-  saveApiEndpoint() {
-    const url = (this.state.apiEndpointDraft || '').trim();
-    this.setState({ apiEndpoint: url });
-    this.queueCloudPush();
-  }
-
   // Google AI Studio free tier. Key is stored locally on this device only.
   // Rotates across every stored key. Both Gemini limits (10 rpm and 1,500/day)
   // are PER KEY, so a 429 on one key is not a 429 on the next — rotating turns
@@ -11298,20 +11296,12 @@ class Component extends DCLogic {
             if (terminal) throw gErr;
           }
         }
-        if (!this.state.apiEndpoint) {
-          const why = this._lastAiError ? ' Last engine said: ' + this._lastAiError : '';
-          throw new Error(this.state.geminiKey
-            ? 'Every AI engine failed for this batch.' + why
-            : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
-        }
-        const res = await fetch(this.state.apiEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        if (!res.ok) throw new Error('Proxy error ' + res.status + ': ' + (await res.text().catch(() => '')));
-        const data = await res.json();
-        return data.text != null ? data.text : data;
+        // No custom proxy endpoint in the public build: a request to an arbitrary host would be blocked by the page's
+        // Content-Security-Policy (connect-src) and is how a stolen setting could send screenshots elsewhere.
+        const why = this._lastAiError ? ' Last engine said: ' + this._lastAiError : '';
+        throw new Error(this.state.geminiKey
+          ? 'Every AI engine failed for this batch.' + why
+          : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
       } catch (err) {
         lastErr = err;
         const msg = (err && (err.message || err.error && err.error.message)) || String(err);
@@ -14081,16 +14071,25 @@ class Component extends DCLogic {
 
   // Calendar file for one event. Feed times are the local wall-clock times the event
   // runs at, so they are written as floating times (no zone).
+  // The calendar text for one event. Every field loses line breaks (a CR/LF in a name or id could add an ICS property), and the
+  // link is kept only when it is an https URL without spaces or control characters.
+  icsLines(e) {
+    const one = v => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').trim();
+    const f = iso => one(iso).replace(/[-:]/g, '').replace(/\.\d+$/, '').slice(0, 15);
+    const esc = v => one(v).replace(/([,;\\])/g, '\\$1');
+    const link = one(e.link);
+    const okLink = /^https:\/\/[^\s<>"\\]+$/i.test(link) ? link : '';
+    return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Professor//Events//EN', 'BEGIN:VEVENT',
+      'UID:' + one(e.id).replace(/[^A-Za-z0-9._-]/g, '') + '@professor', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'),
+      'DTSTART:' + f(e.start), 'DTEND:' + f(e.end), 'SUMMARY:' + esc(e.name), okLink ? 'URL:' + okLink : '', 'END:VEVENT', 'END:VCALENDAR'].filter(Boolean);
+  }
+
   downloadIcs(e) {
-    const f = iso => String(iso).replace(/[-:]/g, '').replace(/\.\d+$/, '').slice(0, 15);
-    const esc = v => String(v || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Professor//Events//EN', 'BEGIN:VEVENT',
-      'UID:' + e.id + '@professor', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'),
-      'DTSTART:' + f(e.start), 'DTEND:' + f(e.end), 'SUMMARY:' + esc(e.name), e.link ? 'URL:' + e.link : '', 'END:VEVENT', 'END:VCALENDAR'].filter(Boolean);
+    const lines = this.icsLines(e);
     const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/calendar' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = String(e.id).slice(0, 40) + '.ics';
+    a.href = url; a.download = String(e.id).replace(/[^A-Za-z0-9._-]/g, '').slice(0, 40) + '.ics';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     this.haptic('light');
@@ -14202,9 +14201,22 @@ class Component extends DCLogic {
     done();
   }
 
+  // The redeem link for a promo code, or '' when it must not be opened: the code has to be 4-32 letters and digits, and the link
+  // (the feed's, or the one built from the code) has to be on https://store.pokemongo.com/.
+  safePromoUrl(c) {
+    const code = c && typeof c.code === 'string' ? c.code : '';
+    if (!/^[A-Za-z0-9]{4,32}$/.test(code)) return '';
+    const url = (c.link != null && c.link !== '') ? String(c.link) : ('https://store.pokemongo.com/offer-redemption?passcode=' + code);
+    if (url.indexOf('https://store.pokemongo.com/') !== 0) return '';
+    try { if (new URL(url).hostname !== 'store.pokemongo.com') return ''; } catch (e) { return ''; }
+    return url;
+  }
+
   promoRedeem(c) {
     this.promoMarkSeen(c.code);
-    try { window.open(c.link || ('https://store.pokemongo.com/offer-redemption?passcode=' + encodeURIComponent(c.code)), '_blank', 'noopener'); } catch (e) {}
+    const url = this.safePromoUrl(c);
+    if (!url) return;
+    try { window.open(url, '_blank', 'noopener'); } catch (e) {}
   }
 
   promoToggleDone(code) {
@@ -20317,7 +20329,6 @@ class Component extends DCLogic {
       onOcrHp: (e) => this.updateOcrField('hp', parseInt(e.target.value, 10) || null),
       onVideoUpload: (e) => this.onVideoUpload(e),
       onApiEndpointDraftChange: (e) => this.setState({ apiEndpointDraft: e.target.value }),
-      saveApiEndpoint: () => this.saveApiEndpoint(),
       onGeminiKeyDraftChange: (e) => this.setState({ geminiKeyDraft: e.target.value }),
       saveGeminiKey: () => this.setGeminiKey(this.state.geminiKeyDraft),
       clearGeminiKey: () => { this.setState({ geminiKeyDraft: '' }); this.setGeminiKey(''); },

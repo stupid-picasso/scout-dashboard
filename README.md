@@ -123,3 +123,9 @@ and are never written to the cloud document, its snapshots or the backup file.
 ## License
 
 MIT
+
+## Notice
+
+Professor is an unofficial fan-made tool. It is not affiliated with, endorsed by or sponsored by Niantic, Inc., Scopely, Nintendo,
+Creatures Inc., GAME FREAK inc. or The Pokemon Company. Pokemon, Pokemon GO and character names are trademarks of their owners.
+The code is MIT licensed (see `LICENSE`; game names, sprites and data are not covered). See `PRIVACY.md`, `SECURITY.md` and `CONTRIBUTING.md`.

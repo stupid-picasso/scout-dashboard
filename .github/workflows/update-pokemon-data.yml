@@ -6,6 +6,9 @@ on:
     - cron: '0 9 * * 1'
   workflow_dispatch: {}
 
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -41,7 +44,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No staged changes"
           else
-            git commit -m "Auto-update base stats from pogoapi.net (${{ steps.refresh.outputs.stat_fixes }} correction(s)) [skip ci]"
+            git commit -m "Auto-update base stats from pogoapi.net ($IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES correction(s)) [skip ci]"
             for attempt in 1 2 3 4 5; do
               if git push; then
                 break
@@ -56,6 +59,8 @@ jobs:
             done
           fi
 
+        env:
+          IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES: ${{ steps.refresh.outputs.stat_fixes }}
       - name: Open PR for new Pokemon / sprites
         if: steps.refresh.outputs.new_pokemon != '0'
         run: |
@@ -72,8 +77,10 @@ jobs:
           git push origin "$BRANCH" --force
           gh pr create \
             --title "New Pokemon detected: review stats/sprites before merging" \
-            --body "Auto-detected ${{ steps.refresh.outputs.new_pokemon }} dex number(s) present in pogoapi.net but missing from DEX_NAMES/BASE_STATS (this diff also includes ${{ steps.refresh.outputs.stat_fixes }} routine stat correction(s) found in the same run). Review data/new_pokemon.json and the fetched sprite(s) in sprites/ before merging \u2014 this is NOT auto-merged since it needs a sprite/name sanity check." \
+            --body "Auto-detected $IN_STEPS_REFRESH_OUTPUTS_NEW_POKEMON dex number(s) present in pogoapi.net but missing from DEX_NAMES/BASE_STATS (this diff also includes $IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES routine stat correction(s) found in the same run). Review data/new_pokemon.json and the fetched sprite(s) in sprites/ before merging \u2014 this is NOT auto-merged since it needs a sprite/name sanity check." \
             --base main \
             --head "$BRANCH" || echo "PR may already exist for this branch"
         env:
+          IN_STEPS_REFRESH_OUTPUTS_NEW_POKEMON: ${{ steps.refresh.outputs.new_pokemon }}
+          IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES: ${{ steps.refresh.outputs.stat_fixes }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

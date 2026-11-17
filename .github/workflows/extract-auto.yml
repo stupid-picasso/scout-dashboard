@@ -13,6 +13,9 @@ on:
     - cron: '17 */6 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
 jobs:
   auto:
     runs-on: ubuntu-latest

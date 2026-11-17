@@ -10,6 +10,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -31,6 +34,9 @@ jobs:
           node scripts/test_max.js
           node scripts/test_cp_recovery.js
           node scripts/test_firestore_rules.js
+          node scripts/test_no_dangerous_sinks.js
+          node scripts/test_tracked_tree.js
+          node scripts/test_sri.js
 
       - name: Gemini pipeline tests
         run: |
@@ -42,6 +48,7 @@ jobs:
           python3 scripts/test_tier_trends.py
           python3 scripts/test_event_moves.py
           python3 scripts/test_promo_codes.py
+          python3 scripts/test_workflows.py
 
       - name: Install Playwright
         run: |
@@ -51,6 +58,9 @@ jobs:
       - name: Bundles match the source
         run: |
           python3 scripts/test_bundles_current.py
+
+      - name: Content-Security-Policy over http://localhost (Chromium; WebKit runs in the QA workflow)
+        run: QA_BROWSER=chromium node scripts/test_csp.js
 
       - name: Smoke render
         run: node scripts/smoke_render.js

@@ -13,6 +13,26 @@ const { minify } = require('terser');
 const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'Scout Dashboard.html'), OUT = path.join(ROOT, 'index.html');
 
+// Content-Security-Policy for the deployed page, injected here (never hand-edited into index.html). GitHub Pages sends no
+// headers, so it is a <meta> tag. 'unsafe-inline' and 'unsafe-eval' are required by the runtime (see SECURITY.md): this policy
+// limits where code may load from and where data may be sent, it does not stop injected inline script.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com https://www.gstatic.com https://apis.google.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://raw.githubusercontent.com https://*.githubusercontent.com",
+  "media-src 'self' blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' blob: https://*.googleapis.com https://raw.githubusercontent.com https://api.github.com",
+  "frame-src https://pokemon-professor.firebaseapp.com https://accounts.google.com https://apis.google.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'"
+].join('; ');
+const CSP_META = '<meta http-equiv="Content-Security-Policy" content="' + CSP + '">';
+
 async function build() {
   const src = fs.readFileSync(SRC, 'utf8');
   const st = src.indexOf('<script type="__bundler/template">');
@@ -33,7 +53,8 @@ async function build() {
   if (!r.code || r.code.length < code.length * 0.2) throw new Error('minifier produced no output');
   const newTpl = tpl.slice(0, s0) + r.code + tpl.slice(e0);
   const esc = JSON.stringify(newTpl).replace(/<\/([sS][cC][rR][iI][pP][tT])/g, '<\\u002F$1');
-  return src.slice(0, a) + '\n' + esc + '\n' + src.slice(b);
+  const withCsp = (html) => { const h = html.indexOf('<head>'); if (h < 0) throw new Error('no <head> to put the CSP in'); const c = html.indexOf('>', html.indexOf('<meta charset', h)) + 1; return html.slice(0, c) + '\n  ' + CSP_META + html.slice(c); };
+  return withCsp(src.slice(0, a) + '\n' + esc + '\n' + src.slice(b));
 }
 
 build().then(out => {

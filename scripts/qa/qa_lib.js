@@ -88,6 +88,13 @@ function cloudDecide(C, op, p, data) {   // returns '' when allowed, else the re
 async function installCloud(page, C) {
   C.store = C.store || {}; C.writes = C.writes || []; C.denied = C.denied || []; C.stats = C.stats || {};
   C.authUsers = C.authUsers || {};
+  // The stand-in serves its own script bodies for the three Firebase files, which could never match the real files' SRI hashes: the harness
+  // records the integrity value the app asks for (window.__sriSeen) and then drops it so the stand-in can run. SYNC-13 checks what was asked.
+  await page.addInitScript(() => {
+    window.__sriSeen = [];
+    const d = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'integrity');
+    Object.defineProperty(HTMLScriptElement.prototype, 'integrity', { configurable: true, get() { return ''; }, set(v) { window.__sriSeen.push({ el: this, integrity: v }); } });
+  });
   if (C.user === undefined) C.user = { uid: 'qa-user', email: 'qa@example.test', provider: 'google.com', emailVerified: true };
   if (C.user) C.authUsers[C.user.uid] = C.user;
   const deny = (op, p, why) => { C.denied.push({ op, p, why }); return { error: 'Missing or insufficient permissions. (' + why + ')', code: 'permission-denied' }; };

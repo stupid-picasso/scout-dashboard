@@ -295,6 +295,10 @@ module.exports = async function suiteD() {
     expect(await attempt('get', ['scoutUsers', 'qa-user']) === 'ok' && await attempt('delete', ['scoutUsers', 'qa-user']) === 'ok', 'an unverified identity could not read or delete its own data');
     await s1.close();
   }, 'high');
+  await T('SYNC-13', 'Security', 'The three Firebase SDK scripts are loaded with a SHA-384 integrity value and crossorigin=anonymous (the harness records what was asked, then drops it for the stand-in)', async () => {
+    const seen = await k1.page.evaluate(() => window.__sriSeen.map(x => ({ src: x.el.src, integrity: x.integrity, cors: x.el.crossOrigin })));
+    expect(seen.length === 3 && seen.every(x => /^sha384-[A-Za-z0-9+/]{64}$/.test(x.integrity) && x.cors === 'anonymous' && /^https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.2\/firebase-(app|auth|firestore)-compat\.js$/.test(x.src)), 'asked for: ' + JSON.stringify(seen));
+  }, 'high');
   await T('SYNC-12', 'Quota', 'One edit is exactly one write and at most one read: the debounced path, and a direct push from a setState callback while the debounce is pending (no second write 1.2 s later)', async () => {
     await k1.page.waitForTimeout(1500);
     zero(K); await k1.set({ cutTarget: 111 }); await k1.page.waitForTimeout(3500);

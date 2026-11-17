@@ -34,6 +34,9 @@ on:
         required: false
         default: '0.3'
 
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
 jobs:
   extract-iv:
     runs-on: ubuntu-latest
@@ -63,9 +66,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.drive_link != ''
         run: |
           mkdir -p /tmp/drive_video
-          gdown "${{ inputs.drive_link }}" -O /tmp/drive_video/appraisal.mp4
+          gdown "$IN_DRIVE_LINK" -O /tmp/drive_video/appraisal.mp4
           echo "DRIVE_VIDEO_PATH=/tmp/drive_video/appraisal.mp4" >> $GITHUB_ENV
 
+        env:
+          IN_DRIVE_LINK: ${{ inputs.drive_link }}
       - name: Check for appraisal videos
         id: check_videos
         run: |
@@ -89,9 +94,9 @@ jobs:
       - name: Extract IV ratings (repo appraisal_videos/*)
         if: steps.check_videos.outputs.count > 0
         run: |
-          FPS="${{ inputs.fps || '6' }}"
-          SCENE="${{ inputs.scene_detect || 'true' }}"
-          THRESH="${{ inputs.scene_threshold || '0.3' }}"
+          FPS="$IN_FPS"
+          SCENE="$IN_SCENE_DETECT"
+          THRESH="$IN_SCENE_THRESHOLD"
           mkdir -p data
           for video in appraisal_videos/*.mp4 appraisal_videos/*.mov; do
             [ -f "$video" ] || continue
@@ -103,6 +108,9 @@ jobs:
             fi
           done
         env:
+          IN_FPS: ${{ inputs.fps || '6' }}
+          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
+          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
           PYTHONUNBUFFERED: "1"
           GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
@@ -110,9 +118,9 @@ jobs:
       - name: Extract IV ratings (Google Drive link)
         if: env.DRIVE_VIDEO_PATH != ''
         run: |
-          FPS="${{ inputs.fps || '6' }}"
-          SCENE="${{ inputs.scene_detect || 'true' }}"
-          THRESH="${{ inputs.scene_threshold || '0.3' }}"
+          FPS="$IN_FPS"
+          SCENE="$IN_SCENE_DETECT"
+          THRESH="$IN_SCENE_THRESHOLD"
           mkdir -p data
           if [ "$SCENE" = "true" ]; then
             python pogo_extract.py --appraisal "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
@@ -120,6 +128,9 @@ jobs:
             python pogo_extract.py --appraisal "$DRIVE_VIDEO_PATH" --fps "$FPS"
           fi
         env:
+          IN_FPS: ${{ inputs.fps || '6' }}
+          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
+          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
           PYTHONUNBUFFERED: "1"
           GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
