@@ -27,7 +27,8 @@ async function T(id, area, name, fn, sev = 'normal') {
 let browser;
 async function launch() {
   if (browser) return browser;
-  const o = { args: ['--no-sandbox'] };
+  const o = {};
+  if ((process.env.QA_BROWSER || 'chromium') === 'chromium') o.args = ['--no-sandbox'];   // WebKit rejects Chromium flags and fails to launch
   if (process.env.PW_CHROMIUM) o.executablePath = process.env.PW_CHROMIUM;
   browser = await chromium.launch(o);
   return browser;
