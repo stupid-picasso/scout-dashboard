@@ -316,7 +316,7 @@ module.exports = async function suiteC() {
   // ------------------------------------------------------------------ LOG
   s = await session({ feed: false });
   await s.load(QA); await s.go('LOG');
-  await T('LOG-01', 'Log', 'Snapshot logging adds a dated row with roster size', async () => { await s.page.getByText('Log snapshot', { exact: true }).click(); await s.page.waitForTimeout(500); const t = await s.text(); expect(/64/.test(t.split('Date')[1] || '') && !/No snapshots yet/.test(t)); });
+  await T('LOG-01', 'Log', 'Snapshot logging adds a dated row with roster size', async () => { await s.page.getByText('Log snapshot', { exact: true }).click(); await s.page.waitForTimeout(500); const t = await s.text(); const row = t.match(/\d{4}-\d{2}-\d{2}[\s\S]{0,60}/); expect(row && /64/.test(row[0]) && !/No snapshots yet/.test(t), 'no dated row with 64: ' + (row && row[0])); });
   await T('LOG-02', 'Log', 'Diagnostics panel captures a runtime error', async () => { await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0)); await s.page.waitForTimeout(900); const t = await s.text(); expect(/qa-diag-test|ERRORS?/i.test(t) || /No errors recorded/.test(t) === false, t.slice(300, 500)); });
   await T('LOG-03', 'Log', 'A daily snapshot is taken automatically once, with hundo and species counts', async () => {
     await s.set({ history: [] }); const r1 = await s.call('dailyLogSnapshot'); const r2 = await s.call('dailyLogSnapshot'); const h = (await s.state()).history;

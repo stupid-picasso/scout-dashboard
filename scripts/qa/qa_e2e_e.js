@@ -288,8 +288,20 @@ const GEOM768 = () => {
   return [...new Set(bad)];
 };
 const HEADERCELLS = () => {
+  // a table header's cells must not touch: neither their boxes nor the text they hold (text that runs on into the next column)
   const bad = [];
-  document.querySelectorAll('[data-table-header]').forEach(h => { const k = [...h.children].map(c => c.getBoundingClientRect()).filter(r => r.width > 0); for (let i = 0; i < k.length; i++) for (let j = i + 1; j < k.length; j++) if (!(k[i].right <= k[j].left + 0.5 || k[j].right <= k[i].left + 0.5 || k[i].bottom <= k[j].top || k[j].bottom <= k[i].top)) bad.push('cells overlap: ' + (h.textContent || '').trim().slice(0, 30)); h.querySelectorAll('*').forEach(c => { if (c.children.length === 0 && c.scrollWidth > c.clientWidth + 1) bad.push('header cell clipped: ' + c.textContent.trim().slice(0, 16)); }); });
+  const textBox = c => { const rg = document.createRange(); rg.selectNodeContents(c); const rs = [...rg.getClientRects()].filter(x => x.width > 0); if (!rs.length) return null; return { left: Math.min(...rs.map(x => x.left)), right: Math.max(...rs.map(x => x.right)), top: Math.min(...rs.map(x => x.top)), bottom: Math.max(...rs.map(x => x.bottom)) }; };
+  const hit = (a, b) => !(a.right <= b.left + 0.5 || b.right <= a.left + 0.5 || a.bottom <= b.top || b.bottom <= a.top);
+  document.querySelectorAll('[data-table-header]').forEach(h => {
+    if (h.getBoundingClientRect().width < 1) return;
+    const cells = [...h.children].filter(c => c.getBoundingClientRect().width > 0);
+    const boxes = cells.map(c => c.getBoundingClientRect()), texts = cells.map(textBox);
+    for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) {
+      if (hit(boxes[i], boxes[j])) bad.push('cells overlap: ' + cells[i].textContent.trim() + ' / ' + cells[j].textContent.trim());
+      if (texts[i] && texts[j] && hit({ left: texts[i].left - 4, right: texts[i].right + 4, top: texts[i].top, bottom: texts[i].bottom }, texts[j])) bad.push('text runs into its neighbour (less than 4 px between): ' + cells[i].textContent.trim() + ' / ' + cells[j].textContent.trim());
+    }
+    cells.forEach((c, i) => { const r = boxes[i], t = texts[i]; if (t && (t.right > r.right + 1 || t.left < r.left - 1)) bad.push('text runs out of its cell: ' + c.textContent.trim().slice(0, 16)); });
+  });
   return bad;
 };
 

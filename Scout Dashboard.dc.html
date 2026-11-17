@@ -517,7 +517,7 @@
       <div style="font:13px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ pendingConfirm.message }}</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
         <sc-for list="{{ pendingConfirm.actions }}" as="a" hint-placeholder-count="2">
-          <div onClick="{{ a.run }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);font:700 13px var(--font-display);background:{{ a.style === 'danger' ? 'var(--type-fighting)' : (a.style === 'primary' ? 'var(--brand-primary-strong)' : 'var(--surface-muted)') }};color:{{ a.style === 'neutral' ? 'var(--ink-700)' : 'white' }}">{{ a.label }}</div>
+          <div onClick="{{ a.run }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);font:700 13px var(--font-display);background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</div>
         </sc-for>
         <div onClick="{{ closeConfirm }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);background:transparent;color:var(--ink-400);font:700 12px var(--font-display)">CANCEL</div>
       </div>
@@ -21026,7 +21026,7 @@ class Component extends DCLogic {
       closeFileFallback: () => this.closeFileFallback(),
       copyFileFallback: () => this.copyFileFallback(),
       openFileFallback: () => this.openFileFallback(),
-      pendingConfirm: this.state.pendingConfirm,
+      pendingConfirm: this.state.pendingConfirm ? { ...this.state.pendingConfirm, actions: (this.state.pendingConfirm.actions || []).map(a => ({ ...a, bg: a.style === 'danger' ? 'var(--bad-fill)' : (a.style === 'primary' ? 'var(--accent-fill)' : 'var(--surface-3)'), fg: (a.style === 'danger' || a.style === 'primary') ? '#fff' : 'var(--text)' })) } : null,
       closeConfirm: () => this.closeConfirm(),
       needsFirebaseConfig: !this.state.firebaseConfigured,
       firebaseConfigDraft: this.state.firebaseConfigDraft,
