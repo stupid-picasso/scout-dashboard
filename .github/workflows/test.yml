@@ -40,6 +40,7 @@ jobs:
           python3 scripts/test_evolution_branches.py
           python3 scripts/test_tier_trends.py
           python3 scripts/test_event_moves.py
+          python3 scripts/test_promo_codes.py
 
       - name: Install Playwright
         run: |
