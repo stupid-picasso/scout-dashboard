@@ -775,3 +775,8 @@ Nothing here touched the real Firebase project. Source: `docs/research/manager-r
 | C-19 Gemini key in URL | done in part 1 (header) | GEM-KEY-01 |
 - **Unverified here.** WebKit could not be installed in this sandbox (browser host requirements), so the CSP test and the SRI-stripping harness hook ran on Chromium only; `qa.yml` runs them on WebKit with `CSP_REQUIRE_WEBKIT=1`. Real sign-in, Firestore and Gemini under the CSP/SRI are manual (SECURITY_CHECKS 12-14). The hash list in `test_tracked_tree.js` is an unsalted SHA-256 of the owner's old address: low-entropy inputs can be guessed from it, so the owner may prefer to drop that entry (the test still guards the removed admin-by-email address).
 - **Not done / for the owner.** Rules still not deployed (DEPLOY.md). Real-WebKit CSP run only in CI. Local-first IndexedDB with opt-in cloud sync: **not done** (next step). Personal data files remain public in the tree and in history (owner's call). `.claude/skills` licence check and history purge from C-13 not touched.
+
+## TODO: CI e2e gate is report-only (owner decision)
+`qa_run.js` used to exit 0 on failure, so the QA suites never gated CI. It now exits 1, which exposed failures, so the e2e step in `.github/workflows/qa.yml` is `continue-on-error: true` (both browsers) and the WebKit CSP step is report-only. Fix, then remove those lines:
+- Chromium suite e on CI: UIQ-09, UIQ-15-320, UIQ-17-320, UIQ-28-ROSTER-390/320 (pass locally; CI fonts wrap differently).
+- WebKit: about 14 in suite a, 7 in b, 6 in c, 3 in e (CDP-only gesture tests, file:// feed loads, ROS-02, ROS-S-name) and test_csp "allowed hosts were not reached".

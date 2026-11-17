@@ -35,8 +35,13 @@ jobs:
         if: matrix.browser == 'chromium'
         run: node scripts/qa/qa_accuracy.js qa-accuracy.json
       - name: End-to-end suites
+        # Report-only (owner decision): these suites never gated CI before, because qa_run.js exited 0 on failure. Failures show in
+        # the log and the qa-*.json artifact. TODO: fix the 5 chromium suite-e layout failures and the ~30 WebKit failures, then remove this line.
+        continue-on-error: true
         run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c e
       - name: Content-Security-Policy over http://localhost
+        # Chromium gates. WebKit is report-only until its allowed-hosts check is fixed (see the TODO above).
+        continue-on-error: ${{ matrix.browser == 'webkit' }}
         run: CSP_REQUIRE_WEBKIT=1 node scripts/test_csp.js
       - name: Cloud sync, data and security suite (gating)
         # Suite d minus the accessibility checks: SYNC, STANDIN and DATA tests. A failure fails the job.
