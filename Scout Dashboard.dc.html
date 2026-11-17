@@ -615,6 +615,20 @@
                     <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);min-width:0">{{ lg.squadLine }}</div>
                   </div>
                 </sc-if>
+                <sc-if value="{{ lg.hasBuild }}" hint-placeholder-val="{{ false }}">
+                  <details data-cup-build style="margin-top:14px">
+                    <summary style="cursor:pointer;list-style:none;font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400)">WHAT TO BUILD FOR THIS CUP &#9662;</summary>
+                    <div style="display:flex;flex-direction:column;gap:2px;margin-top:8px">
+                      <sc-for list="{{ lg.buildRows }}" as="br" hint-placeholder-count="5">
+                        <div onClick="{{ br.onClick }}" class="om-tap" style="display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer">
+                          <span style="position:relative;width:40px;height:40px;border-radius:50%;background:var(--surface-card);flex:none"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:650 15px var(--font-display);color:var(--ink-400)">{{ br.initial }}</span><img ref="{{ br.spriteRef }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></span>
+                          <span style="flex:1;min-width:0"><span style="display:flex;align-items:baseline;gap:8px"><span style="font:600 13px var(--font-body);color:var(--ink-900)">{{ br.name }}</span><span style="font:700 11px var(--font-display);color:{{ br.color }}">{{ br.status }}</span></span><span style="display:block;font:12px/1.35 var(--font-body);color:var(--ink-500)">{{ br.detail }}</span></span>
+                          <span style="font:700 11px var(--font-display);color:var(--ink-400);flex:none">{{ br.tier }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </details>
+                </sc-if>
                 <sc-if value="{{ lg.hasMegaCards }}" hint-placeholder-val="{{ false }}">
                   <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400);margin:14px 0 8px">MEGA-READY</div>
                   <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px 2px">
@@ -904,6 +918,30 @@
       </sc-if>
       <sc-if value="{{ candyAiBusy }}" hint-placeholder-val="{{ false }}">
         <div style="font:11px var(--font-display);color:var(--ink-400);margin-bottom:10px">Asking AI whether to evolve or power up on shared candy&hellip;</div>
+      </sc-if>
+      <sc-if value="{{ dustPvpSection }}" hint-placeholder-val="{{ false }}">
+        <div style="font:700 11px var(--font-display);letter-spacing:.06em;color:var(--ink-500);margin:2px 0 6px">PVP BUILDS</div>
+        <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);margin-bottom:8px;text-wrap:pretty">{{ dustPvpNote }}</div>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:8px">
+          <sc-for list="{{ dustPvpRows }}" as="row" hint-placeholder-count="2">
+            <div onClick="{{ row.onClick }}" class="om-tap" style="cursor:pointer;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:10px 12px;display:flex;align-items:center;gap:11px">
+              <div style="width:44px;height:44px;border-radius:50%;background:{{ row.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--font-display);color:var(--surface-page)">{{ row.initial }}</span>
+                <img ref="{{ row.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:100%;height:100%;object-fit:contain" />
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font:700 14px var(--font-body);color:var(--ink-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-500);margin-top:2px">{{ row.levelLine }}</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font:800 13px var(--font-display);color:var(--type-electric);white-space:nowrap">{{ row.costNow }}</div>
+                <div style="font:11px var(--font-display);color:var(--ink-300);margin-top:2px;white-space:nowrap">{{ row.costAt40 }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ dustPvpBlocked }}" hint-placeholder-val="{{ false }}"><div style="font:11.5px/1.4 var(--font-body);color:var(--ink-400);margin-bottom:10px;text-wrap:pretty">Waiting: {{ dustPvpBlocked }}</div></sc-if>
+        <div style="font:700 11px var(--font-display);letter-spacing:.06em;color:var(--ink-500);margin:6px 0">RAID ATTACKERS, WITH WHAT IS LEFT</div>
       </sc-if>
       <div style="display:flex;flex-direction:column;gap:7px">
         <sc-for list="{{ dustPlanRows }}" as="row" hint-placeholder-count="4">
@@ -14394,7 +14432,7 @@ class Component extends DCLogic {
     if (this._derivedCacheOn) return;
     this._derivedCacheOn = true;
     this._memoStore = {};
-    const names = ['attackerBoard', 'buddyPlan', 'raidRoleTypeBest', 'dataQualityIssues', 'dustPlan', 'evolveQueue', 'megaWorth', 'buildOptimizePlan', 'actionableDexGaps', 'tmAiCandidates', 'tradeAdvice', 'dominatedDuplicates', 'triageQueue', 'raidCounters', 'missingMoveNames', 'missingEvoNames', 'effectiveRosterForMatch', 'learnedMaxSpecies', 'maxAttackers'];
+    const names = ['attackerBoard', 'buddyPlan', 'raidRoleTypeBest', 'dataQualityIssues', 'dustPlan', 'dustAllocator', 'evolveQueue', 'megaWorth', 'buildOptimizePlan', 'actionableDexGaps', 'tmAiCandidates', 'tradeAdvice', 'dominatedDuplicates', 'triageQueue', 'raidCounters', 'missingMoveNames', 'missingEvoNames', 'effectiveRosterForMatch', 'learnedMaxSpecies', 'maxAttackers'];
     names.forEach(n => {
       const orig = this[n];
       if (typeof orig !== 'function') return;
@@ -16414,17 +16452,18 @@ class Component extends DCLogic {
     return Math.min(40, lv + 2);
   }
 
-  dustPlan() {
+  dustPlan(budgetOverride, skipCsv) {
     const m = this.mechanics;
     if (!m || !m.powerUpCostBetween) return { rows: [], spend: 0, reserve: 0, budget: 0 };
     const reserve = Number(this.state.dustReserve) || 0;
     const balance = Number(this.state.stardustBalance) || 0;
-    const budget = Math.max(0, balance - reserve);
+    const budget = (budgetOverride != null && budgetOverride !== '') ? Math.max(0, Number(budgetOverride)) : Math.max(0, balance - reserve);
+    const skip = new Set(String(skipCsv || '').split(',').filter(Boolean));
     const ceiling = this.levelCeiling();
     const done = new Set(this.state.completedIds || []);
     const rows = [];
     this.effectiveRosterForMatch().forEach(p => {
-      if (done.has(p.idx)) return;
+      if (done.has(p.idx) || skip.has(String(p.idx))) return;
       const level = Number.isFinite(p.lvlMin) ? p.lvlMin : null;
       if (level == null || level >= ceiling) return;
       const base = this.baseStatsOf(p), ivs = this.ivsOf(p);
@@ -16491,6 +16530,58 @@ class Component extends DCLogic {
     });
     const rest = rows.filter(r => picked.indexOf(r) < 0 && !picked.some(x => x.p.idx === r.p.idx)).slice(0, 10);
     return { rows: picked, blocked: rest, spend, xl, reserve, budget, balance, ceiling };
+  }
+
+  // Where to spend the Stardust. Lane 1 is PvP builds: a keeper that is S/A/B tier with a 90%+ measured IV rank gets powered to the highest level
+  // still under its league's CP cap (the cheapest power-up with the biggest PvP payoff, since a league caps CP). Lane 2 is raid attackers, filled
+  // from whatever the PvP lane leaves. Candy is a pool per species, so the same candy is never promised twice.
+  dustAllocator() {
+    const m = this.mechanics;
+    const reserve = Number(this.state.dustReserve) || 0, balance = Number(this.state.stardustBalance) || 0;
+    const budget = Math.max(0, balance - reserve);
+    const empty = { budget, balance, reserve, pvp: { rows: [], blocked: [], spend: 0, xl: 0, need: 0, short: 0 }, raid: this.dustPlan() };
+    if (!m || !m.powerUpCostBetween || !m.maxLevelUnderCap || !m.LEAGUE_CAPS) return empty;
+    const roster = this.effectiveRosterForMatch();
+    const keepCtx = this.keepContext(roster);
+    const done = new Set(this.state.completedIds || []);
+    const cands = [];
+    roster.forEach(p => {
+      if (done.has(p.idx) || !this.isPvpWorthy(p) || !this.keepReasons(p, keepCtx).length) return;
+      const lv = this.evalLevelOf(p);
+      if (lv.level == null) return;
+      const ivs = this.ivsOf(p);
+      let best = null;
+      ['great', 'ultra'].forEach(lk => {
+        const a = this.pvpAssess(p, lk);
+        if (!a || !a.confirmed || a.rank < 90 || a.tierRank > 2) return;
+        const base = this.gradeBaseFor(p, lk);
+        if (!base || !ivs) return;
+        const target = m.maxLevelUnderCap(base, ivs, m.LEAGUE_CAPS[lk]);
+        if (target == null || target <= lv.level) return;
+        const cost = m.powerUpCostBetween(lv.level, target, { lucky: !!p.lucky, shadow: this.isShadow(p), purified: this.isPurified(p) });
+        if (!cost || !cost.reachable || !cost.steps) return;
+        const row = { p, lk, a, level: lv.level, target, cost };
+        if (!best || row.a.tierRank < best.a.tierRank || (row.a.tierRank === best.a.tierRank && row.a.rank > best.a.rank)) best = row;
+      });
+      if (best) cands.push(best);
+    });
+    cands.sort((x, y) => (x.a.tierRank - y.a.tierRank) || (y.a.rank - x.a.rank) || (x.cost.dust - y.cost.dust));
+    const candyLeft = {};
+    const rows = [], blocked = [];
+    let spend = 0, xl = 0, need = 0;
+    cands.forEach(r => {
+      need += r.cost.dust;
+      const k = String(r.p.name || '').toLowerCase();
+      if (!(k in candyLeft)) candyLeft[k] = this.candyStockFor(r.p).candy;
+      const candy = r.cost.candy || 0;
+      if (spend + r.cost.dust > budget) { blocked.push({ ...r, why: 'dust' }); return; }
+      if (candy > 0 && candyLeft[k] != null && candy > candyLeft[k]) { blocked.push({ ...r, why: 'candy' }); return; }
+      spend += r.cost.dust; xl += r.cost.xlCandy || 0;
+      if (candy > 0 && candyLeft[k] != null) candyLeft[k] -= candy;
+      rows.push(r);
+    });
+    const raid = this.dustPlan(budget - spend, rows.map(r => r.p.idx).join(','));
+    return { budget, balance, reserve, pvp: { rows, blocked, spend, xl, need, short: Math.max(0, need - budget) }, raid };
   }
 
   // Builds a stable fingerprint of the contested set so a decision is only
@@ -17104,6 +17195,47 @@ class Component extends DCLogic {
     return out.slice(0, n || 5);
   }
 
+  // "What to build for this cup": the cup's strongest species, each matched against the copies you own (judged as the form they would be played
+  // as), with the next concrete step: play it, power it up, evolve, appraise, find a better spread, or catch one (with the IVs to look for).
+  cupBuildRows(league, cup, tableKey, cp, mega) {
+    const m = this.mechanics;
+    if (!m || !league || mega || !m.LEAGUE_CAPS) return [];
+    const top = this.leagueTopSpecies(cp, 10, cup, false, tableKey) || [];
+    if (!top.length) return [];
+    const roster = this.effectiveRosterForMatch();
+    const cap = m.LEAGUE_CAPS[league];
+    const rankOf = p => { const f = this.freshRank(p, league); return f != null ? f : (p[league] && Number.isFinite(p[league].rankPct) ? p[league].rankPct : null); };
+    return top.map(t => {
+      const wantShadow = / \(Shadow\)$/.test(t.name);
+      const sp = String(t.name).replace(/ \(Shadow\)$/, '').toLowerCase();
+      const copies = roster.filter(p => String(this.pvpFormName(p, league) || '').toLowerCase() === sp && !!this.isShadow(p) === wantShadow && (!cup || this.cupAllows(cup, p)) && this.leagueUsable(p, league));
+      copies.sort((a, b) => ((!this.needsAppraisal(b)) - (!this.needsAppraisal(a))) || ((rankOf(b) || 0) - (rankOf(a) || 0)));
+      const best = copies[0] || null;
+      const row = { name: t.name, tier: t.tier, dex: t.dex, p: best };
+      if (!best) {
+        const dex = m.resolveDexByName ? m.resolveDexByName(sp) : null;
+        const base = dex != null ? m.BASE_STATS[dex] : null;
+        const sb = base && m.bestSpreadUnderCap ? m.bestSpreadUnderCap(base, cap, wantShadow) : null;
+        return { ...row, status: 'GET', color: 'var(--ink-500)', detail: 'Not in your box' + (sb ? '. Look for IVs near ' + sb.ivs.join('/') + ' (level ' + sb.level + ').' : '.') };
+      }
+      const rank = rankOf(best);
+      if (this.needsAppraisal(best)) return { ...row, status: 'APPRAISE', color: 'var(--ios-yellow)', detail: 'Your ' + best.name + ' has estimated IVs only. Appraise it to know if it is worth building.' };
+      const evo = this.evoInfoFor(best);
+      if (String(best.name).toLowerCase() !== sp) {
+        return { ...row, status: 'EVOLVE', color: 'var(--ios-blue)', detail: 'Evolve your ' + best.name + (evo && evo.need != null ? ' (' + evo.need + ' candy)' : '') + (rank != null ? ', ' + rank.toFixed(0) + '% rank as ' + t.name : '') + '.' };
+      }
+      if (rank != null && rank < 80) return { ...row, status: 'WEAK', color: 'var(--type-fighting)', detail: 'Your best is ' + rank.toFixed(0) + '% rank. Hunt a better spread.' };
+      if (rank != null && rank < 90) return { ...row, status: 'DECENT', color: 'var(--type-electric)', detail: rank.toFixed(0) + '% rank. Playable; a 90%+ spread would be better.' };
+      const lv = this.evalLevelOf(best).level, base = this.gradeBaseFor(best, league), ivs = this.ivsOf(best);
+      const target = base && ivs ? m.maxLevelUnderCap(base, ivs, cap) : null;
+      if (lv != null && target != null && target > lv) {
+        const c = m.powerUpCostBetween(lv, target, { lucky: !!best.lucky, shadow: this.isShadow(best), purified: this.isPurified(best) });
+        return { ...row, status: 'POWER UP', color: 'var(--ios-blue)', detail: rank.toFixed(0) + '% rank. Power up Lv ' + lv + ' to ' + target + (c && c.dust ? ' (' + c.dust.toLocaleString() + ' dust)' : '') + '.' };
+      }
+      return { ...row, status: 'READY', color: 'var(--grass-700)', detail: rank != null ? rank.toFixed(0) + '% rank, already at the cap level.' : 'At the cap level.' };
+    });
+  }
+
   // Current and next GBL week: rules, top species and a squad from the user's
   // own roster, both filtered by each cup's real rules.
   gblWeeks(now) {
@@ -17138,6 +17270,11 @@ class Component extends DCLogic {
         if (l.cup && l.cup.caught) notes.push('Catch Cup: only Pokemon caught in the window are legal \u2014 checked against your catch dates.');
         if (l.cup && l.cup.level && l.cup.level.maxLevel) notes.push('Level cap ' + l.cup.level.maxLevel + ' applies \u2014 checked against your levels.');
         const picks = l.mega ? this.megaReadyData(4, l.cp) : [];
+        const buildRows = wi === 0 ? this.cupBuildRows(league, cup, tableKey, l.cp, l.mega).map(r => ({
+          name: r.name.replace(/ \(Shadow\)$/, ' (Shadow)'), tier: r.tier, status: r.status, color: r.color, detail: r.detail,
+          spriteRef: r.dex != null ? this.makeSpriteRefByDex(r.dex, null) : null, initial: r.dex != null ? '' : String(r.name).charAt(0),
+          onClick: () => { if (r.p) this.openDetail(r.p); }
+        })) : [];
         const selKey = wi + '|' + l.name;
         const sel = this.state.leagueSel && this.state.leagueSel.k === selKey ? this.state.leagueSel.n : null;
         const topCards = (top || []).map(t => ({ name: t.name.replace(/ \(Shadow\)$/, '').replace(/ (Mega|Primal)\b/, ''), tier: t.tier, initial: t.dex != null ? '' : String(t.name).charAt(0),
@@ -17160,6 +17297,7 @@ class Component extends DCLogic {
           squadMoves, squadMovesWarn: squadLack ? squadLack + ' of 3 do not have the recommended moves. The rating assumes them, so expect these to play weaker until you teach them.' : '',
           squadCards, hasSquadCards: squadCards.length > 0, squadSlots: squad ? [] : [1, 2, 3], hasSquadEmpty: !squad && canSquad,
           megaCards, hasMegaCards: megaCards.length > 0,
+          buildRows, hasBuild: buildRows.length > 0,
           squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ' for: ' + squad.members.filter(c => this.cupUnknown(cup, c.p).length).map(c => c.p.name).join(', ') + ')' : '') : (wi === 0 && canSquad ? 'Not enough measured, in-cap, legal A-tier Pokemon yet' : ''),
           megaLine: picks.length ? 'Mega-ready from your roster: ' + picks.join('; ') : '',
           note: notes.join(' ')
@@ -19480,7 +19618,8 @@ class Component extends DCLogic {
     const eventOpps = this.eventEvolveOpps(roster);
     const eventWatch = this.eventWatchList();
     const triageAll = this.triageQueue();
-    const dustPlan = this.dustPlan();
+    const dustAlloc = this.dustAllocator();
+    const dustPlan = dustAlloc.raid;
     const candyAiBusy = this.state.candyAiBusy;
     const candyAiNotes = this.state.candyAiNotes || [];
     const dexGapsAll = this.actionableDexGaps();
@@ -20420,12 +20559,25 @@ class Component extends DCLogic {
       toggleEvolveSort: () => this.toggleEvolveSort(),
       evolveSortLabel: this.state.evolveSort === 'perCandy' ? 'ORDER: PER CANDY' : 'ORDER: VALUE',
 
-      dustPlanHeadline: dustPlan.rows.length
-        ? fmt(dustPlan.spend) + ' of ' + fmt(dustPlan.budget)
+      dustPlanHeadline: (dustPlan.rows.length || dustAlloc.pvp.rows.length)
+        ? fmt(dustAlloc.pvp.spend + dustPlan.spend) + ' of ' + fmt(dustAlloc.budget)
         : '',
-      dustSpendPct: dustPlan.budget > 0
-        ? Math.min(100, Math.round(dustPlan.spend / dustPlan.budget * 100)) + '%'
+      dustSpendPct: dustAlloc.budget > 0
+        ? Math.min(100, Math.round((dustAlloc.pvp.spend + dustPlan.spend) / dustAlloc.budget * 100)) + '%'
         : '0%',
+      dustPvpSection: dustAlloc.pvp.rows.length || dustAlloc.pvp.blocked.length ? true : null,
+      dustPvpNote: (() => { const a = dustAlloc.pvp; const parts = ['PvP builds first: ' + fmt(a.spend) + ' for ' + a.rows.length + ' Pok\u00e9mon' + (a.xl ? ' (' + a.xl + ' Candy XL)' : '') + '.']; if (a.short > 0) parts.push('All ' + (a.rows.length + a.blocked.length) + ' builds need ' + fmt(a.need) + ', so you are ' + fmt(a.short) + ' short.'); return parts.join(' '); })(),
+      dustPvpRows: dustAlloc.pvp.rows.map(r => ({
+        name: r.p.name + (r.p.form ? ' \u00b7 ' + r.p.form : ''),
+        spriteRef: this.makeSpriteRefByDex(r.p.dex, r.p.form),
+        badgeColor: this.dsTypeColor(r.p),
+        initial: (r.p.name || '?').charAt(0),
+        levelLine: 'Lv ' + r.level + ' \u2192 ' + r.target + ' \u00b7 ' + (r.lk === 'ultra' ? 'Ultra' : 'Great') + ' League cap' + (r.cost.xlCandy ? '  \u00b7  ' + r.cost.xlCandy + ' XL' : ''),
+        costNow: fmt(r.cost.dust),
+        costAt40: r.a.tier + ' tier \u00b7 ' + Math.round(r.a.rank) + '% rank',
+        onClick: () => this.openDetail(r.p)
+      })),
+      dustPvpBlocked: dustAlloc.pvp.blocked.slice(0, 5).map(r => r.p.name + (r.p.form ? ' (' + r.p.form + ')' : '') + ': ' + (r.why === 'candy' ? 'short on candy' : 'not enough dust left') + ' (' + fmt(r.cost.dust) + ')').join(' \u00b7 '),
       dustBudgetShort: 'lvl ' + dustPlan.ceiling + ' cap',
       levelCeilingNote: 'Power-ups are planned up to level ' + dustPlan.ceiling + (dustPlan.ceiling < 40 ? ' (your level + 2). Level 40 costs are shown beside each row.' : '.'),
       dustBudgetNote: (Number(this.state.stardustBalance) > 0
@@ -20434,7 +20586,7 @@ class Component extends DCLogic {
       candyAiBusy: candyAiBusy,
       candyAiNotes: candyAiNotes,
       hasCandyAiNotes: candyAiNotes.length > 0,
-      dustPlanEmpty: dustPlan.rows.length ? null
+      dustPlanEmpty: (dustPlan.rows.length || dustAlloc.pvp.rows.length) ? null
         : (dustPlan.budget <= 0
           ? 'Balance is at or below your ' + fmt(dustPlan.reserve) + ' reserve. Adjust it in Settings.'
           : 'Nothing worth powering up in budget \u2014 most of your roster is already at the level cap.'),
