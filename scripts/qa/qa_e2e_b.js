@@ -15,7 +15,7 @@ module.exports = async function suiteB() {
   // ------------------------------------------------------------------ RANK RECALC
   await T('RNK-01', 'Ranks', 'Recalculate-all-ranks fills Great/Ultra/Little ranks for every Pokemon with IVs', async () => { const st2 = await s.state(); const ov = st2.ivOverrides || {}; expect(Object.keys(ov).length > 0 || roster.every(p => p.great && p.great.rankPct != null), 'no ranks computed'); });
   await s.go('PVP');
-  const rowsOf = async () => s.page.evaluate(() => [...document.querySelectorAll('div')].filter(d => /^#\d+$/.test((d.firstElementChild || {}).innerText || '') && d.children.length >= 4 && d.innerText.split('\n').length > 3).map(d => d.innerText.split('\n').map(x => x.trim()).filter(Boolean)));
+  const rowsOf = async () => s.page.evaluate(() => [...document.querySelectorAll('div')].filter(d => /^#\d+$/.test((d.firstElementChild || {}).innerText || '') && d.children.length >= 3 && d.innerText.split('\n').length > 3).map(d => d.innerText.split('\n').map(x => x.trim()).filter(Boolean)));
   for (const [label, cap] of Object.entries(CAPS)) {
     await T('PVP-L-' + label.split(' ')[0], 'PvP', `${label}: list shows only Pokemon whose CP is within the cap`, async () => {
       await s.go(label); const rows = await rowsOf(); if (!rows.length && cap === Infinity) return 'empty';

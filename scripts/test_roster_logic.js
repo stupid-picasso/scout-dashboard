@@ -741,6 +741,7 @@ function buildLists(roster, bestRank) {
     const name = sig.slice(0, sig.indexOf('(')), args = sig.slice(sig.indexOf('(') + 1, -1);
     ctx[name] = new Function(...(args ? args.split(', ') : []), extractMethodBody(SRC, sig + ' {')).bind(ctx);
   });
+  ctx.cupBuildRows = () => [];   // pre-existing gap: gblWeeks calls it, the extractor list above never bound it
   ctx.pvpTeamFor = () => null; ctx.makeSpriteRefByDex = () => null; ctx.openDetail = () => {}; ctx.mechanics = ctx.mechanics || m; ctx.typeOf = p => (m.speciesInfo(p.name, p.form) || { types: [] }).types.join(' / ');
   ctx.effectiveRosterForMatch = () => []; ctx.megaEvolveInfoFor = () => null;
   ctx.feedVerifyLine = new Function(extractMethodBody(SRC, 'feedVerifyLine() {')).bind(ctx);

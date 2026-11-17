@@ -94,11 +94,11 @@ async function session(opts = {}) {
     } catch (e) { console.error("pinTiers failed:", e.message); }
   }
   const s = { ctx, page, errors, logs, loadMs: Date.now() - t0 };
-  // Tab bar: Today / Roster / PvP / Raid, then More (Home, Recs, Intel, Attack, Log).
-  const BAR = { TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
-  const MORE = { RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search' };
+  // Tab bar: Today / Roster / PvP / Recs, then More (Settings = HOME, Raid, Intel, Attack, Log...).
+  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
+  const MORE = { HOME: 'Settings', RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search' };
   s.go = async label => {
-    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(350); await page.getByText(MORE[label], { exact: true }).last().click(); await page.waitForTimeout(600); return; }
+    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(350); await page.locator('[role=menuitem][aria-label="' + MORE[label] + '"]').last().click(); await page.waitForTimeout(600); return; }
     const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(500);
   };
   s.text = () => page.evaluate(() => document.body.innerText);

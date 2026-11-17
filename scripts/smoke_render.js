@@ -33,9 +33,7 @@ const check = (name, ok, extra) => {
 
   await page.goto(PAGE, { waitUntil: 'load' });
   await page.waitForTimeout(3000);
-  const version = await page.evaluate(() => (document.body.innerText.match(/v53\.\d+/) || [])[0]);
   check('the bundle ships current mechanics (Mega rules, cup tables)', await page.evaluate(() => { const m = window.PokemonMechanics; return !!(m && m.megaFormsFor && m.PVP_CUP_TABLES && m.pvpTableFor('cup:mega@1500')); }));
-  check('app boots and shows a version', !!version, String(version));
 
   async function loadCsv() { await page.setInputFiles('input[type=file][accept=".csv"]', CSV); await page.waitForTimeout(700); const b = page.getByText('REPLACE', { exact: true }); if (await b.count()) { await b.first().click(); await page.waitForTimeout(500); } }
   await loadCsv();
@@ -53,13 +51,16 @@ const check = (name, ok, extra) => {
       }
     }
   });
-  const BAR = { TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
-  const MORE = { RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search' };
+  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
+  const MORE = { HOME: 'Settings', RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search' };
   const go = async label => {
-    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(400); await page.getByText(MORE[label], { exact: true }).last().click(); await page.waitForTimeout(1200); return; }
+    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(400); await page.locator('[role=menuitem][aria-label="' + MORE[label] + '"]').last().click(); await page.waitForTimeout(1200); return; }
     const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(1200);
   };
 
+  await go('HOME');
+  const version = await page.evaluate(() => (document.body.innerText.match(/v53\.\d+/) || [])[0]);
+  check('app boots and shows a version (Settings > About)', !!version, String(version));
   await go('ROSTER');
   const rows = await page.locator('[data-swipe-row]').count();
   check('roster rows carry data-swipe-row', rows >= 5, 'rows=' + rows);
