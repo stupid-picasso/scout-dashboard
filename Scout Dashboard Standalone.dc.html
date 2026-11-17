@@ -1641,6 +1641,20 @@
                     <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);min-width:0">{{ lg.squadLine }}</div>
                   </div>
                 </sc-if>
+                <sc-if value="{{ lg.hasBuild }}" hint-placeholder-val="{{ false }}">
+                  <details data-cup-build style="margin-top:14px">
+                    <summary style="cursor:pointer;list-style:none;font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400)">WHAT TO BUILD FOR THIS CUP &#9662;</summary>
+                    <div style="display:flex;flex-direction:column;gap:2px;margin-top:8px">
+                      <sc-for list="{{ lg.buildRows }}" as="br" hint-placeholder-count="5">
+                        <div onClick="{{ br.onClick }}" class="om-tap" style="display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer">
+                          <span style="position:relative;width:40px;height:40px;border-radius:50%;background:var(--surface-card);flex:none"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:650 15px var(--font-display);color:var(--ink-400)">{{ br.initial }}</span><img ref="{{ br.spriteRef }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></span>
+                          <span style="flex:1;min-width:0"><span style="display:flex;align-items:baseline;gap:8px"><span style="font:600 13px var(--font-body);color:var(--ink-900)">{{ br.name }}</span><span style="font:700 11px var(--font-display);color:{{ br.color }}">{{ br.status }}</span></span><span style="display:block;font:12px/1.35 var(--font-body);color:var(--ink-500)">{{ br.detail }}</span></span>
+                          <span style="font:700 11px var(--font-display);color:var(--ink-400);flex:none">{{ br.tier }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </details>
+                </sc-if>
                 <sc-if value="{{ lg.hasMegaCards }}" hint-placeholder-val="{{ false }}">
                   <div style="font:700 11px var(--font-display);letter-spacing:.08em;color:var(--ink-400);margin:14px 0 8px">MEGA-READY</div>
                   <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px 2px">
@@ -18207,6 +18221,47 @@ class Component extends DCLogic {
     return out.slice(0, n || 5);
   }
 
+  // "What to build for this cup": the cup's strongest species, each matched against the copies you own (judged as the form they would be played
+  // as), with the next concrete step: play it, power it up, evolve, appraise, find a better spread, or catch one (with the IVs to look for).
+  cupBuildRows(league, cup, tableKey, cp, mega) {
+    const m = this.mechanics;
+    if (!m || !league || mega || !m.LEAGUE_CAPS) return [];
+    const top = this.leagueTopSpecies(cp, 10, cup, false, tableKey) || [];
+    if (!top.length) return [];
+    const roster = this.effectiveRosterForMatch();
+    const cap = m.LEAGUE_CAPS[league];
+    const rankOf = p => { const f = this.freshRank(p, league); return f != null ? f : (p[league] && Number.isFinite(p[league].rankPct) ? p[league].rankPct : null); };
+    return top.map(t => {
+      const wantShadow = / \(Shadow\)$/.test(t.name);
+      const sp = String(t.name).replace(/ \(Shadow\)$/, '').toLowerCase();
+      const copies = roster.filter(p => String(this.pvpFormName(p, league) || '').toLowerCase() === sp && !!this.isShadow(p) === wantShadow && (!cup || this.cupAllows(cup, p)) && this.leagueUsable(p, league));
+      copies.sort((a, b) => ((!this.needsAppraisal(b)) - (!this.needsAppraisal(a))) || ((rankOf(b) || 0) - (rankOf(a) || 0)));
+      const best = copies[0] || null;
+      const row = { name: t.name, tier: t.tier, dex: t.dex, p: best };
+      if (!best) {
+        const dex = m.resolveDexByName ? m.resolveDexByName(sp) : null;
+        const base = dex != null ? m.BASE_STATS[dex] : null;
+        const sb = base && m.bestSpreadUnderCap ? m.bestSpreadUnderCap(base, cap, wantShadow) : null;
+        return { ...row, status: 'GET', color: 'var(--ink-500)', detail: 'Not in your box' + (sb ? '. Look for IVs near ' + sb.ivs.join('/') + ' (level ' + sb.level + ').' : '.') };
+      }
+      const rank = rankOf(best);
+      if (this.needsAppraisal(best)) return { ...row, status: 'APPRAISE', color: 'var(--ios-yellow)', detail: 'Your ' + best.name + ' has estimated IVs only. Appraise it to know if it is worth building.' };
+      const evo = this.evoInfoFor(best);
+      if (String(best.name).toLowerCase() !== sp) {
+        return { ...row, status: 'EVOLVE', color: 'var(--ios-blue)', detail: 'Evolve your ' + best.name + (evo && evo.need != null ? ' (' + evo.need + ' candy)' : '') + (rank != null ? ', ' + rank.toFixed(0) + '% rank as ' + t.name : '') + '.' };
+      }
+      if (rank != null && rank < 80) return { ...row, status: 'WEAK', color: 'var(--type-fighting)', detail: 'Your best is ' + rank.toFixed(0) + '% rank. Hunt a better spread.' };
+      if (rank != null && rank < 90) return { ...row, status: 'DECENT', color: 'var(--type-electric)', detail: rank.toFixed(0) + '% rank. Playable; a 90%+ spread would be better.' };
+      const lv = this.evalLevelOf(best).level, base = this.gradeBaseFor(best, league), ivs = this.ivsOf(best);
+      const target = base && ivs ? m.maxLevelUnderCap(base, ivs, cap) : null;
+      if (lv != null && target != null && target > lv) {
+        const c = m.powerUpCostBetween(lv, target, { lucky: !!best.lucky, shadow: this.isShadow(best), purified: this.isPurified(best) });
+        return { ...row, status: 'POWER UP', color: 'var(--ios-blue)', detail: rank.toFixed(0) + '% rank. Power up Lv ' + lv + ' to ' + target + (c && c.dust ? ' (' + c.dust.toLocaleString() + ' dust)' : '') + '.' };
+      }
+      return { ...row, status: 'READY', color: 'var(--grass-700)', detail: rank != null ? rank.toFixed(0) + '% rank, already at the cap level.' : 'At the cap level.' };
+    });
+  }
+
   // Current and next GBL week: rules, top species and a squad from the user's
   // own roster, both filtered by each cup's real rules.
   gblWeeks(now) {
@@ -18241,6 +18296,11 @@ class Component extends DCLogic {
         if (l.cup && l.cup.caught) notes.push('Catch Cup: only Pokemon caught in the window are legal \u2014 checked against your catch dates.');
         if (l.cup && l.cup.level && l.cup.level.maxLevel) notes.push('Level cap ' + l.cup.level.maxLevel + ' applies \u2014 checked against your levels.');
         const picks = l.mega ? this.megaReadyData(4, l.cp) : [];
+        const buildRows = wi === 0 ? this.cupBuildRows(league, cup, tableKey, l.cp, l.mega).map(r => ({
+          name: r.name.replace(/ \(Shadow\)$/, ' (Shadow)'), tier: r.tier, status: r.status, color: r.color, detail: r.detail,
+          spriteRef: r.dex != null ? this.makeSpriteRefByDex(r.dex, null) : null, initial: r.dex != null ? '' : String(r.name).charAt(0),
+          onClick: () => { if (r.p) this.openDetail(r.p); }
+        })) : [];
         const selKey = wi + '|' + l.name;
         const sel = this.state.leagueSel && this.state.leagueSel.k === selKey ? this.state.leagueSel.n : null;
         const topCards = (top || []).map(t => ({ name: t.name.replace(/ \(Shadow\)$/, '').replace(/ (Mega|Primal)\b/, ''), tier: t.tier, initial: t.dex != null ? '' : String(t.name).charAt(0),
@@ -18263,6 +18323,7 @@ class Component extends DCLogic {
           squadMoves, squadMovesWarn: squadLack ? squadLack + ' of 3 do not have the recommended moves. The rating assumes them, so expect these to play weaker until you teach them.' : '',
           squadCards, hasSquadCards: squadCards.length > 0, squadSlots: squad ? [] : [1, 2, 3], hasSquadEmpty: !squad && canSquad,
           megaCards, hasMegaCards: megaCards.length > 0,
+          buildRows, hasBuild: buildRows.length > 0,
           squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ' for: ' + squad.members.filter(c => this.cupUnknown(cup, c.p).length).map(c => c.p.name).join(', ') + ')' : '') : (wi === 0 && canSquad ? 'Not enough measured, in-cap, legal A-tier Pokemon yet' : ''),
           megaLine: picks.length ? 'Mega-ready from your roster: ' + picks.join('; ') : '',
           note: notes.join(' ')

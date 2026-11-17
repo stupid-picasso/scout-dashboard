@@ -1457,6 +1457,20 @@ module.exports = async function suiteB() {
     expect(r.spent === r.cost && r.spent <= r.budget && !r.raidHasIt, 'spend within budget and the Pokemon is not also in the raid lane: ' + JSON.stringify(r));
     expect(r.poorRows === 0 && r.poorBlocked === 1 && r.poorWhy === 'dust', 'with too little dust it waits instead: ' + JSON.stringify(r));
   }, 'high');
+  await T('CUPBUILD-01', 'Today', 'What to build for a cup: each top species is matched to your copies with the next step (ready, power up, evolve, appraise, weak, or not owned with the IVs to hunt)', async () => {
+    const st0 = await s.state();
+    const mk = (idx, name, dex, iv, cp, lvl, g, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...(extra || {}) });
+    await s.set({ addedPokemon: [mk('cb1', 'Azumarill', 184, [2, 15, 15], 900, 18, 98), mk('cb2', 'Altaria', 334, [3, 14, 15], 1480, 25, 70)], roster: [], ivOverrides: {}, completedIds: [], stardustBalance: 400000, trainerLevel: 40, cutTarget: 900 });
+    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const rows = l.cupBuildRows('great', null, null, 1500, false); return rows.map(x => ({ n: x.name, s: x.status, d: x.detail })); } } return null; });
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, stardustBalance: st0.stardustBalance, trainerLevel: st0.trainerLevel });
+    expect(r && r.length >= 8, 'ten top species listed: ' + JSON.stringify(r && r.length));
+    const az = r.find(x => /^Azumarill$/.test(x.n)), al = r.find(x => /^Altaria$/.test(x.n)), un = r.find(x => x.s === 'GET');
+    if (az) expect(az.s === 'POWER UP' && /Lv 18 to /.test(az.d), 'Azumarill 98% at level 18 should be a power-up: ' + JSON.stringify(az));
+    if (al) expect(al.s !== 'GET' && /rank/.test(al.d), 'an owned Altaria is matched to your copy: ' + JSON.stringify(al));
+    expect(un && /IVs near \d+\/\d+\/\d+ \(level [\d.]+\)/.test(un.d), 'an unowned species says which IVs to hunt: ' + JSON.stringify(un));
+  }, 'high');
   await T('CHATEVAL-01', 'Chat', 'Grounding score: for 14 typical questions the chat is sent the facts needed to answer them (counts, candy, hundo, dex, line and evolution detail), at least 90%', async () => {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...(extra || {}) });

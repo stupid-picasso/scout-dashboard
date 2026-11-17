@@ -2,11 +2,14 @@
 
 Audit date: 2026-11-17. Scope: research only, nothing in the app was changed. Source reviewed: `Scout Dashboard.dc.html` (cited as `DC:<line>`), `support.js`, `sw.js`, `README.md`, `PROJECT_HANDOFF.md`, `.github/workflows/*`, full git history (252 commits). No Firebase project was contacted.
 
-Labels used: **[verified]** = read on the cited page by me this session; **[summary-only]** = came back from a page-summariser and I could not re-read the exact wording, treat with care; **[NOT VERIFIED]** = could not confirm, test before relying; **[assumption]** = my modelling input.
+**Line numbers.** `DC:<n>` refers to the working-tree copy of `Scout Dashboard.dc.html` as of 2026-11-17 02:15 UTC. Five tracked files (`Scout Dashboard*.html/.dc.html`, `index.html`, `scripts/qa/qa_e2e_b.js`, plus `docs/research/ui-polish-audit.md` and deleted audit screenshots) show as modified in `git status`; I did not edit them, another session is editing the tree, and my first reads were about 24 lines earlier than the final numbers (I re-anchored every citation by symbol name against the latest tree). Treat line numbers as approximate and search by the symbol named next to them.
+
+Labels used: **[verified]** = the cited page's text came back as a direct statement in my fetch (every page passed through a fetch summariser, so wording was not independently re-read); **[summary-only]** = came back from a page-summariser and I could not re-read the exact wording, treat with care; **[NOT VERIFIED]** = could not confirm, test before relying; **[assumption]** = my modelling input.
 
 ## 0. Executive summary
 
-1. **Do not open registration yet.** Two things block launch: (a) the Firestore rules are not in the repo and the only copy (README:112-122) is incomplete and contains an admin-by-email check with no `email_verified` test; (b) the app as written burns the Firestore free **egress** quota with about 15-30 daily users (section B), because every app launch writes a backup snapshot and then downloads about 16 full documents.
+0. **Do today, independent of any launch (the app and repo are already live):** read the live Firestore rules in the console; check whether `admin@scout.app` is a registered Auth user; check Auth settings (enumeration protection, authorized domains). Sign-up is already open and the README rules grant shared-data writes by email without `email_verified` (C-2). This is an existing exposure, not a launch risk.
+1. **Before inviting the public, fix two blockers.** (a) The Firestore rules are not in the repo and the only copy (README:112-122) is incomplete and has the admin-by-email check with no `email_verified` test. (b) **If the live rules allow `snapshots` and `sprites` (unknown, see B.3 Case 1 vs 2)**, every app launch writes a backup snapshot and downloads about 16 full documents plus about 180 sprite documents, which exhausts the free egress quota at roughly 8-30 daily users depending on roster size. If the live rules deny them (what the README rules would do), cloud backups have silently never worked and the quota is not the problem; the first step either way is the same, read the rules.
 2. **The repo is already public** (`gh api` returned `public`) and served from `stupid-picasso.github.io`, a Pages origin shared with every other project on that account. Treat anything in history as disclosed. History scan: only the Firebase web key (public by design) and no private keys/tokens. One personal email address is in the source and README (DC:6135, README:121).
 3. **Recommendation (B):** keep the app local-first (it already writes `scout.local.v1` to localStorage, DC:4564-4571), move to IndexedDB, make cloud sync opt-in, and keep Firestore only as that optional sync after four cheap fixes (stop snapshot reads, remove shared `gameData`/`sprites` reads, persist the snapshot clock, lock the rules). With those, about 70-200 daily-active users fit the free plan. Past that, move sync to Cloudflare Workers + D1 or require a user-held backup file. Do not move to Supabase free (pauses after a week idle, 5 GB egress).
 4. **Login (A):** add Google and GitHub with `signInWithPopup`, keep email/password as fallback, add a one-time "link a provider" step for existing users, and add a first-run page. iOS standalone-PWA behaviour of popups is **[NOT VERIFIED]** and must be gated by a real-device test.
@@ -101,7 +104,7 @@ Functions/templates that change:
 Full-screen overlay, 6 short steps, skippable, resumable, re-openable from Settings ("Welcome tour"). State key `scout.firstRun.v1` (localStorage only; wrap in try/catch like the rest of the file).
 
 1. **Welcome.** One sentence on what it does; "No account needed to try it" (sample data); two sign-in buttons + "Use email" + "Continue without an account".
-2. **Bring your Pokemon.** Three cards reusing existing handlers: Screenshot import, Screen recording, CSV import, plus "Restore from a Professor backup file" (`onRestoreFile`). Skip allowed. Remove the "IMPORT FROM SERVER" button for public users (see C-8).
+2. **Bring your Pokemon.** Three cards reusing existing handlers: Screenshot import, Screen recording, CSV import, plus "Restore from a Professor backup file" (`onRestoreFile`). Skip allowed. Remove the "IMPORT FROM SERVER" button for public users (see C-6).
 3. **Look and feel.** Theme (Auto/Light/Dark via `setThemePref`), text size (`setUiZoom`, choices at DC:20667), live preview.
 4. **Optional: AI reading (Gemini key).** Plain text: what it is for (reading screenshots/recordings and the chat), how to get a free key (https://aistudio.google.com/apikey), that the key stays on this device only, that free-tier requests may be used by Google to improve its products and may be read by humans, that the free tier is for adults (18+) and **not available for users in the EEA, UK or Switzerland** (C-15), that nothing breaks if skipped (manual entry and CSV still work). Show the data flow in one line: "screenshots you import are sent to Google Gemini with your key".
 5. **Reminders.** Explain, then call the existing permission flow (DC:14082-14087) only after the user taps; on iOS say it requires the Home Screen install.
@@ -185,7 +188,19 @@ The remaining egress is dominated by whole-document echo reads after each push (
 
 **Reading the table for 20 / 100 / 1,000 registered users** (assume 50% are daily-active, the rest monthly): 20 users is fine after fixes (even with current code only if rosters are small); 100 users is fine after fixes at 100-300 kB docs; 1,000 users (500 DAU) exceeds the egress quota even after the fixes, so it needs the local-first model (most users never touch the cloud) or another backend.
 
-**Other items:** Auth has no practical limit at these sizes. Storage is not the constraint after moving snapshots off-cloud. **Abuse is the larger risk** (C-9): a single signed-in client can burn 20,000 writes in minutes and take the daily quota away from everyone, and there is no server-side throttle.
+**Excluded from the model:** listener reconnects on app resume. With no persistence enabled, every reconnect re-bills the whole document as a new query (summary-only, pricing page), and the app is foregrounded many times a day on a phone. Each extra resume that re-attaches the listener adds 1 read and one document of egress (about 0.3 MB at 300 kB); at 5 resumes/day that is +5 reads and +1.5 MB/day/user, about +30% egress after the fixes. Treat the capacities above as upper bounds, and measure with the counter proposed in D.1.
+
+**Totals for 20 / 100 / 1,000 registered users** (all daily-active, 300 kB documents, the worst-case rows of the tables above; a 50% DAU assumption halves the daily columns but not storage):
+
+| Users | Reads/day (quota 50,000) current / fixed | Writes/day (20,000) | Egress GB/month (10) current / fixed | Storage GB (1) current / fixed | Verdict |
+|---|---|---|---|---|---|
+| 20 | 8,260 / 340 | 340 / 300 | 12.6 / 2.9 | 0.035 / 0.006 | current: egress 126% of quota with all 20 active, fine at about 16 daily users; fixed: fine |
+| 100 | 41,300 / 1,700 | 1,700 / 1,500 | 63 / 14.6 | 0.17 / 0.03 | current: fails (egress 630%); fixed: egress 150%, so only about 65 daily users fit at 300 kB |
+| 1,000 | 413,000 / 17,000 | 17,000 / 15,000 | 630 / 147 | 1.7 / 0.29 | current: fails everything; fixed: egress about 15x over, reads fine, writes at 75% of quota |
+
+Numbers = per-user figures from the tables times the user count (current: 413 reads, 17 writes, 21.5 MB/day, 1.76 MB stored; fixed: 17 reads, 15 writes, 5.0 MB/day, 0.29 MB stored). A 1,000-user userbase therefore cannot be served from Firestore even after the fixes unless most users are local-only or the document is split (B.3 text above).
+
+**Other items:** Auth has no practical limit at these sizes. Storage is not the constraint after moving snapshots off-cloud. **Abuse is the larger risk** (C-5): a single signed-in client can burn 20,000 writes in minutes and take the daily quota away from everyone, and there is no server-side throttle.
 
 **Other bandwidth consumers outside Firebase:** GitHub Pages has a soft 100 GB/month bandwidth limit and a 1 GB site limit **[verified]** https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits. The shell files are served network-first (`sw.js`), and `index.html` is 1.6 MB, `pokemon-mechanics.js` 1.4 MB, so a cold launch is about 3 MB before gzip **[assumption: about 1 MB gzipped]**, so about 100,000 launches/month before the soft limit. Pages also states it is not for commercial SaaS; a free, non-commercial app is within that.
 
@@ -193,13 +208,13 @@ The remaining egress is dominated by whole-document echo reads after each push (
 
 | Option | Free limits (cited) | Pause / inactivity | Fit for this app | Migration effort |
 |---|---|---|---|---|
-| **A. Stay on Firestore + fixes** | see B.1 | none documented | Good to about 70-300 DAU after fixes; hard outage at quota | Small: 2-4 days (B.5) |
+| **A. Stay on Firestore + fixes** | see B.1 | none documented | About 30-200 DAU after fixes (700 kB down to 100 kB documents); about 300 with the doc split in B.3; hard outage at quota | Small: 2-4 days (B.5) |
 | **B. Local-first (IndexedDB) + optional cloud sync / file export** | no server quota for local; sync limited by chosen backend | none | Best fit: the app already keeps `scout.local.v1` (DC:4564) and has file backup (DC:10557). Roster is private, single-user, about 0.1-1 MB, so a server is only needed for cross-device. Eliminates the shared-quota outage mode. | 3-6 days: move storage from localStorage (about 5 MB cap, DC:4567 refuses over 4.2 MB) to IndexedDB, add versioned export/import, make sync a toggle |
 | **C. Supabase free** | 2 free projects, 500 MB DB, 50K MAU, **5 GB egress**, 1 GB storage, 500K edge-function calls, 200 realtime peak connections (https://supabase.com/docs/guides/platform/billing-on-supabase) | **Paused after 7 days of too little activity; restorable up to 1 year** (https://supabase.com/docs/guides/platform/free-project-pausing, summary-only; a changelog and forum posts mention 90 days, so conflicting) | Postgres with row-level security and built-in GitHub/Google OAuth, nicer for per-user rows (roster rows instead of 1 MB blobs). Egress limit is half of Firestore's; a paused project means a dead app for everyone after a quiet week. | 8-15 days: new schema + RLS, auth migration, SDK swap, existing-user data move |
 | **D. Cloudflare Workers + D1 (+ Pages)** | Workers 100,000 requests/day, 10 ms CPU, 50 subrequests (https://developers.cloudflare.com/workers/platform/limits/); D1 5 M rows read/day, 100K rows written/day, 5 GB total, 500 MB per DB, 2 MB max row (https://developers.cloudflare.com/d1/platform/pricing/, https://developers.cloudflare.com/d1/platform/limits/); KV only 1,000 writes/day so unsuitable (https://developers.cloudflare.com/kv/platform/pricing/); Pages free 500 builds/month, 20,000 files, 25 MiB/file (https://developers.cloudflare.com/pages/platform/limits/) | none documented; over the daily limit D1 stops answering until reset (same page) | Most headroom for writes (100K/day vs 20K) and no egress charge documented on the pages I fetched **[egress NOT VERIFIED]**. Needs custom auth (verify Firebase ID tokens in the Worker, or run OAuth yourself) and a Worker API. Pages also gives custom response headers (`_headers`), so a real CSP with reporting and a separate origin. 10 ms CPU per request is tight for large-JSON handling; store the blob opaquely as one TEXT/BLOB row (<2 MB). | 10-20 days |
 | **E. Firebase kept, static assets off Firestore** | same as A; sprites and base stats served from Pages | n/a | This is just the fix in A: the repo already ships `sprites/` (1,026 files, 17 MB) and `pokemon-mechanics.js`, so `gameData` and `sprites` collections are redundant. | included in A |
 
-**Recommendation:** **B + A + E** as one plan: local-first by default, Firestore as optional sync with the four fixes, static assets only from Pages. It is the only option that keeps the "no paid services, never a hard dependency on a shared free quota" rule true at 1,000 users, because most users would never consume cloud quota. Keep D as the escape hatch if sync demand exceeds about 150 DAU. Do not choose C: the 7-day pause rule and 5 GB egress are worse for an app that needs to be up on game events.
+**Recommendation:** **B + A + E** as one plan: local-first by default, Firestore as optional sync with the four fixes, static assets only from Pages. It is the only option that keeps the "no paid services, never a hard dependency on a shared free quota" rule true at 1,000 users, because most users would never consume cloud quota. Keep D as the escape hatch if sync demand exceeds about 100 daily-active syncing users. Do not choose C: the 7-day pause rule and 5 GB egress are worse for an app that needs to be up on game events.
 
 ### B.5 Firestore fix list (A/E) with locations
 
@@ -257,8 +272,8 @@ service cloud.firestore {
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
 
     // Whitelist of fields the client writes (from buildCloudBlob DC:5119 + packed *Json keys + legacy keys)
-    function okKeys() {
-      return request.resource.data.keys().hasOnly([
+    function allowedKeysList() {
+      return [
         'rosterJson','addedPokemonJson','ivOverridesJson','candyInventoryJson','typeTableJson',
         'moveDBJson','evoTableJson','candyAiDecisionsJson','historyJson','completedIdsJson',
         'removedIdsJson','checklistDoneJson','resourcesJson','evolutionItemsJson',
@@ -271,18 +286,25 @@ service cloud.firestore {
         'candyAiDecisions','history','completedIds','removedIds','checklistDone','resources',
         'evolutionItems','megaEnergyInventory','megaEvolvedHistory','triageKeep','transferQueue',
         'chatMessages'
-      ]);
+      ];
     }
+    function okKeys() { return request.resource.data.keys().hasOnly(allowedKeysList()); }
 
-    // Per-user throttle (needs the client to send updatedAt = serverTimestamp()):
-    function notTooFast() {
-      return !('updatedAt' in resource.data) || request.time > resource.data.updatedAt + duration.value(5, 's');
+    // Throttle. Requires the client to write updatedAt = serverTimestamp() (today it writes Date.now(), a number, DC:5136).
+    // Old documents hold a number, so guard the type or the comparison errors and denies every update.
+    function throttleOk() {
+      return request.resource.data.updatedAt == request.time
+          && (!('updatedAt' in resource.data) || !(resource.data.updatedAt is timestamp)
+              || request.time > resource.data.updatedAt + duration.value(30, 's'));
     }
 
     match /scoutUsers/{uid} {
       allow get:    if isOwner(uid);
-      allow create: if isOwner(uid) && okKeys();
-      allow update: if isOwner(uid) && okKeys() && notTooFast();
+      allow create: if isOwner(uid) && okKeys() && request.resource.data.updatedAt == request.time;
+      // On update check only the keys being CHANGED, so legacy or stale fields already in the document do not block every write.
+      allow update: if isOwner(uid)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeysList())
+                    && throttleOk();
       allow delete: if isOwner(uid);
 
       match /snapshots/{id} {
@@ -303,11 +325,11 @@ service cloud.firestore {
 }
 ```
 
-Notes on these rules: (a) `request.resource.data` on a `merge:true` set is the merged result, so `hasOnly` checks the resulting document, which is what we want; the `FieldValue.delete()` scrub (DC:4796) stays allowed. (b) A 1 MiB cap is enforced by Firestore itself. (c) The `notTooFast` throttle requires changing `updatedAt: Date.now()` (DC:5136) to `firebase.firestore.FieldValue.serverTimestamp()` and adding client back-off, because the app pushes at 150 ms on some paths (DC:4824, 4882). Test that before enabling. (d) To change shared data after the fix: do it from your machine with an Admin SDK script, or a CI job holding a service account, never from the client. (e) Mental IDOR/overwrite tests: a signed-in user B reading `scoutUsers/A` is denied (`isOwner`); B writing `gameData/baseStats` is denied (`write:false`); B writing `sprites/*` is denied; B creating `scoutUsers/B/snapshots/x` with a non-numeric id is denied; unauthenticated anything is denied; a wildcard `list` on `scoutUsers` is denied because only `get` is allowed. Re-run these in the emulator with `@firebase/rules-unit-testing`.
+Notes on these rules: (a) `request.resource.data` on a `merge:true` set is the merged result (used by `create`/`okKeys`); `update` checks `diff(...).affectedKeys()`. The one-time `FieldValue.delete()` scrub (DC:4796) touches `githubToken`, `geminiKey`, `geminiKeys`, `apiEndpoint`, which are not in the list; add them to `allowedKeysList()` for a short migration window so old documents can be scrubbed, then remove them (while present, writing them is also allowed, so keep the window short). (b) A 1 MiB cap is enforced by Firestore itself. (c) The throttle requires changing `updatedAt: Date.now()` (DC:5136) to `firebase.firestore.FieldValue.serverTimestamp()` and adding client queuing/back-off, because the app pushes after 150 ms on some paths (DC:4824, 4898). It also depends on the rule's `is timestamp` guard, otherwise existing documents (numeric `updatedAt`) would make the comparison error and deny every update. A 30 s gap still allows 2,880 writes per account per day; 5 s would allow 17,280, which does not protect the 20,000/day quota at all, so the throttle slows abuse but only App Check, verified-account checks and removing cloud snapshots really bound it. (f) `create` uses `okKeys()` on the full document; `update` checks only changed keys, so old fields (including old secret fields not yet scrubbed, DC:4791) cannot lock a user out, and the scrub can still delete them. List the live document's actual keys before deploying and adjust the whitelist. (g) **Sequencing:** ship the client change first (server timestamp, no secrets in the blob, no snapshot-index fields the whitelist lacks), then deploy the rules; deploying the rules first would deny every existing client's writes. (d) To change shared data after the fix: do it from your machine with an Admin SDK script, or a CI job holding a service account, never from the client. (e) Mental IDOR/overwrite tests: a signed-in user B reading `scoutUsers/A` is denied (`isOwner`); B writing `gameData/baseStats` is denied (`write:false`); B writing `sprites/*` is denied; B creating `scoutUsers/B/snapshots/x` with a non-numeric id is denied; unauthenticated anything is denied; a wildcard `list` on `scoutUsers` is denied because only `get` is allowed. Re-run these in the emulator with `@firebase/rules-unit-testing`.
 
 ### C-2 Admin by email (Critical, conditional)
 
-README:119-122 grants shared-data writes to `request.auth.token.email in ['abhi.patel@gmail.com','admin@scout.app']`. Problems: (1) sign-up is open (DC:4693) and no email verification is enforced, so if `admin@scout.app` has never been registered anyone can register it with a password and become admin; `scout.app` is not a mailbox the owner necessarily controls. Whether it is registered is **[NOT VERIFIED]**. (2) GitHub is an untrusted provider for email verification (https://firebase.google.com/docs/auth/users, summary-only), so `token.email` from GitHub is not a reliable identity. (3) The same emails are hard-coded in the shipped file (DC:6135-6137) and README:121, which discloses a personal address. Fix: use the UID or a custom claim (`request.auth.token.admin == true`, https://firebase.google.com/docs/rules/rules-and-auth) or, better, remove client-side admin entirely (rules above). Also delete `migrateStatsAndSprites` and `refreshCloudGameData` from the public build.
+README:119-122 grants shared-data writes to `request.auth.token.email in [<owner's personal address>, 'admin@scout.app']` (README:121). Problems: (1) sign-up is open (DC:4693) and no email verification is enforced, so if `admin@scout.app` has never been registered anyone can register it with a password and become admin; `scout.app` is not a mailbox the owner necessarily controls. Whether it is registered is **[NOT VERIFIED]**. (2) GitHub is an untrusted provider for email verification (https://firebase.google.com/docs/auth/users, summary-only), so `token.email` from GitHub is not a reliable identity. (3) The same emails are hard-coded in the shipped file (DC:6135-6137) and README:121, which discloses a personal address. Fix: use the UID or a custom claim (`request.auth.token.admin == true`, https://firebase.google.com/docs/rules/rules-and-auth) or, better, remove client-side admin entirely (rules above). Also delete `migrateStatsAndSprites` and `refreshCloudGameData` from the public build.
 
 ### C-3 Shared origin (High)
 
@@ -415,7 +437,7 @@ Gaps and tasks: no privacy policy, no terms, no in-app account deletion (`auth.c
 
 Remove/redact **before** announcing (repo is already public, so also assume anything in history is mirrored; history rewrite only helps going forward):
 - `data/pokemon_import.json`, `data/appraisal_import.json` (the owner's roster, stardust 1,735,056 etc.; they are in history and in git packs too), `logs/import-log-2026-08-04...json` (owner's iPhone UA and deployed URL), `scripts/fixtures/detail_screens/*.png` (screenshots of a real account, check for trainer name/friend code **[not inspected]**).
-- `abhi.patel@gmail.com` in `README.md:121`, `DC:6136` (and in the generated bundles; found in 12 commits). Decide whether to purge: GitHub commit identity is already a noreply for the owner and 74 commits are by `stupid-picasso`; Claude and bot commits only otherwise.
+- The owner's personal email address in `README.md:121`, `DC:6136` (and in the generated bundles; 12 matches across history, so at least several commits). Decide whether to purge: GitHub commit identity is already a noreply for the owner and 74 commits are by `stupid-picasso`; Claude and bot commits only otherwise.
 - Do not commit real `pokemon-data.js` (already ignored; the committed one is an empty stub).
 - `.claude/skills/` (80 files tracked; third-party skills such as `impeccable`, `emil-design-eng`): check their licences before redistribution, otherwise untrack.
 - `PROJECT_HANDOFF.md` (92 kB), `github.md`, `docs/QA_REPORT.md`: these include internal notes; grep for names/links before publishing (my scan found no Drive links or friend codes in text files, **[binary/HTML files not scanned]**).
@@ -453,7 +475,7 @@ ICS (`DC:13922`): `'URL:' + e.link` is not escaped and not scheme-checked; the l
 | # | Step | Days | Exit criteria |
 |---|---|---|---|
 | 0 | **Read the live Firestore rules and Auth user list; screenshot them.** Check whether `admin@scout.app` exists. Check Auth settings (enumeration protection, account linking mode, authorized domains). | 0.25 | Know the real exposure (C-1/C-2) |
-| 1 | Publish `firestore.rules` (C-1), emulator tests for IDOR/overwrite, deploy; remove client admin and shared-collection writes | 1 | Tests green, console matches repo |
+| 1 | Client changes the rules depend on first (server timestamp for `updatedAt`, no secrets in the blob, no client writes to shared collections), release and let installed PWAs update (`CACHE_NAME` bump); **then** publish `firestore.rules` (C-1), emulator tests for IDOR/overwrite, deploy | 1-1.5 | Tests green, console matches repo, old clients still write |
 | 2 | Restrict the API key; turn on secret scanning + push protection; set Actions default token to read-only; add `permissions:` to `qa.yml`/`test.yml` | 0.5 | Console checks |
 | 3 | Firestore cost fixes B.5 #1-#4 (snapshot clock, no snapshot body reads, drop gameData/sprites reads, drop listener or visibility-gate it) | 2-3 | Repeat the B.3 model with real counters (add a debug read/write counter to the Log tab) |
 | 4 | Remove/hide owner-only features for non-owners (C-6), delete personal files from the default branch, add LICENSE/NOTICE/SECURITY/CONTRIBUTING/PRIVACY | 1.5 | Fresh clone shows no personal data |
