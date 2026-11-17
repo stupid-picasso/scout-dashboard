@@ -51,7 +51,7 @@ No existing test line was removed or loosened in part 2 (`git diff d7bc2a4..HEAD
 3. **Fixed.**
    - `deleteAccountNow` sets `_deleting`, then awaits `_snapChain` before listing.
    - `takeSnapshot` re-checks `_deleting` after the write and inside the prune loop.
-   - `writeSnapshotMeta` returns when `_deleting` is set, both before and after its write. A meta write already in flight is part of the chain, so it lands before `userRef.delete()` and cannot re-create the document.
+   - `writeSnapshotMeta` returns when `_deleting` is set, both before and after its write. Its write from `takeSnapshot` is part of the chain, so it lands before `userRef.delete()`. The other caller, `ensureSnapshotIndex` (a one-time step at launch for accounts that have no index), is outside the chain; see defect 8.
    - DATA-04 proves it (see the mutations).
 4. **Fixed.** The message now reads "Some backups may already be deleted; your roster and sign-in are still there". `snapshotIndex` is rewritten without the ids already deleted. DATA-05 checks the message, the count and the index.
 5. **Fixed.** The test asserts the call sites `allow update:… && stampOk()` and `verifiedIdentity()…updateKeysOk()`, that the create rule requires `request.time`, and that `updateKeysOk` calls `scrubOk()`. The mutation is caught.
@@ -68,7 +68,7 @@ No existing test line was removed or loosened in part 2 (`git diff d7bc2a4..HEAD
   - `safePromoUrl`: `javascript:`, another host, `store.pokemongo.com.evil`, `store.pokemongo.com@evil` and http are all refused. A CRLF or `/../` inside a link that is on the store host is accepted. That is harmless for `window.open`, because the hostname is checked after parsing.
   - `update_promo_codes.redeem_link`: rejects `javascript:`, CRLF and fullwidth digits, but accepts a trailing newline (defect 2).
 - **E. CSP.**
-  - `build_index.js` injects the meta tag right after `<meta charset>`. Only `index.html` gets it; that is the deployed file.
+  - `build_index.js` injects the meta tag right after `<meta charset>`, but only into `index.html`. That is the entry point (`manifest.json` `start_url` `./`). `Scout Dashboard.html`, `Scout Dashboard Standalone.dc.html` and `Scout Dashboard.dc.html` are published on the same origin without it, and `sw.js` caches the last one as a shell asset (defect 9).
   - I loaded the built page over local http with every external request aborted. It produced no violation, and the service worker reached `active`.
   - The external hosts it requested are the same as the `fe5b35a` page: PokeAPI sprites and gstatic firebase. The one 404 (`{{ m.spriteRef }}`, an unrendered template) is the same on the old page.
   - The policy covers the features that need the network:
@@ -76,7 +76,7 @@ No existing test line was removed or loosened in part 2 (`git diff d7bc2a4..HEAD
     - GitHub raw and the API (feed, import from server, workflow dispatch): `test_csp` routes these and counts the hits.
     - Sprites: `img-src` allows raw.githubusercontent.com.
     - Fonts: system fonts only. The `ds/` Google Fonts import is not in the bundle.
-    - PvPoke: its data ships in `data/`.
+    - PvPoke: the tables are embedded (`pokemon-mechanics.js`). Neither the source grep nor the load trace shows a request to a PvPoke host.
     - React and Babel fallback: unpkg with SRI (`support.js` cdn.ts). The SECURITY.md claim is accurate.
     - Sign-in: the Firebase auth iframe is on the `authDomain` (`pokemon-professor.firebaseapp.com`, which matches `frame-src`), and gapi comes from apis.google.com. The Google/GitHub popup itself is not exercised; SECURITY_CHECKS row 13 is right to call it unverified.
   - **Dropping `apiEndpoint` is acceptable.** The plan allowed it, it had no UI row, and it was an exfiltration path. Dead state remains (defect 5).
@@ -90,7 +90,7 @@ No existing test line was removed or loosened in part 2 (`git diff d7bc2a4..HEAD
   - Every job that commits keeps job-level `contents: write`; update-pokemon-data and update-pvpoke-data also keep `pull-requests: write`.
   - I parsed every file with PyYAML. No `${{ }}` is left in any `run:` except the trusted `matrix.browser`, and each `IN_*` env sits on the step that uses it.
   - Triggers and crons are unchanged. There is no `pull_request_target` or `workflow_run`, and no secrets in qa.yml or test.yml.
-  - The extract and extract-iv `git add -f data/*_import.json` flows and update-events-gbl's commit step are untouched.
+  - The commit steps are untouched: extract-iv's `git add -f data/appraisal_import.json`, extract's `git add data/` (which works through the `.gitignore` exceptions `!data/pokemon_import.json` and `!data/appraisal_import.json`), and update-events-gbl's `git add data/feed.json …`.
   - `test_workflows.py` self-tests its three cases.
 - **H. Files.**
   - LICENSE is MIT, plus a NOTICE excluding Pokemon names, sprites and game data.
@@ -126,3 +126,10 @@ No existing test line was removed or loosened in part 2 (`git diff d7bc2a4..HEAD
    - The scrub list must keep `apiEndpoint`; the rest can go.
 6. **`promoRedeem` (Low, UX).** On a rejected link the Redeem button marks the code seen and silently does nothing. Hide the button, or say why, when `safePromoUrl(c)` is `''`.
 7. **Not verified here:** WebKit (not installed; qa.yml runs it with `CSP_REQUIRE_WEBKIT=1`), real Google or GitHub popups under the CSP, and real Firestore and Gemini under the CSP and SRI. SECURITY_CHECKS rows 12-14 cover these for the owner.
+8. **`ensureSnapshotIndex` → `writeSnapshotMeta` (Very low).**
+   - This call is not on `_snapChain`. If a delete starts while its `set` is in flight, the set can land after `userRef.delete()`.
+   - Under the old rules it can re-create a document that holds only the index. Under the new rules it is denied, because there is no `updatedAt` once `_docExists`.
+   - It can happen only during the one-time index build at launch. Fix: chain it, or await it in the delete.
+9. **`scripts/build_index.js` `withCsp`: only `index.html` gets the policy (Low).**
+   - The other generated pages are reachable on the same origin and share its `localStorage` (keys included). An injection there would run without `connect-src` limits.
+   - Fix: inject the meta into the bundles as well, or stop publishing them and drop `Scout%20Dashboard.dc.html` from `sw.js` `SHELL_ASSETS` if it is not needed.
