@@ -46,6 +46,9 @@ async function session(opts = {}) {
   if (opts.feed !== undefined) {
     await page.route('**/data/feed.json*', r => opts.feed ? r.fulfill({ contentType: 'application/json', body: JSON.stringify(opts.feed) }) : r.abort());
   }
+  if (opts.promo !== undefined) {
+    await page.route('**/data/promo_codes.json*', r => opts.promo ? r.fulfill({ contentType: 'application/json', body: JSON.stringify(opts.promo) }) : r.abort());
+  }
   await page.route('**/data/feed_check.json*', r => r.abort());
   // QA runs signed-out of a cloud that is not there: with real network access Firebase would load and its signed-out callback empties the roster mid-test.
   if (opts.cloud) {

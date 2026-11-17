@@ -689,3 +689,8 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - Sync: qa_lib `session({cloud})` swaps Firebase for an in-memory stand-in shared between sessions; SYNC-01..04 in suite D.
 - UI quality bar: suite E (qa_e2e_e.js) scans every screen; global CSS gives buttons/summaries/tabs/inputs a 44 px minimum; text under 11 px was raised to 11 px. qa.yml now runs `a b c e`.
 - Chat: CHATEVAL-01 scores whether 14 typical questions get the facts needed.
+
+## Promo codes (2026-11-17)
+- scripts/update_promo_codes.py scrapes leekduck.com/promo-codes (code, name, rewards, expiry, expired class) into data/promo_codes.json (tracked via .gitignore exception), run by the Update Events & GBL workflow. Pocket Gamer's "Active codes" list is read only for codes LeekDuck does not list at all (live or expired); those are verified=false and shown as "Unconfirmed". An empty or unreadable LeekDuck parse keeps the old file.
+- Today has a Promo codes card: Copy (clipboard, with fallback), Redeem (store.pokemongo.com/offer-redemption?passcode=CODE), Redeemed/Undo (localStorage scout.promo.redeemed.v1), NEW tag and one reminder per code that appeared after the device first read the list (baseline scout.promo.seen.v1). Reminders only fire while the app is open.
+- Tests: scripts/test_promo_codes.py (real page fixtures), PROMO-01..05 in suite C. A file:// QA page cannot fetch the data file, so tests hand the content to state.

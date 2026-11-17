@@ -116,6 +116,58 @@ module.exports = async function suiteC() {
   await T('TOD-23', 'Today', 'No page errors after the whole Today session', async () => expect(s.errors.length === 0, s.errors[0]));
   await s.close();
 
+  const promoFile = () => ({ fetchedAt: iso(Date.now()), codes: [
+    { code: 'QACODEONE', name: 'QA Berries', description: '', rewards: ['x5 Razz Berry', 'x10 Poke Ball'], expires: null, expired: false, source: 'LeekDuck', verified: true, link: 'https://store.pokemongo.com/offer-redemption?passcode=QACODEONE' },
+    { code: 'QACODETWO', name: 'QA Shoes', description: '', rewards: ['QA shoes'], expires: new Date(Date.now() + 3 * day).toISOString().slice(0, 10), expired: false, source: 'LeekDuck', verified: true, link: 'https://store.pokemongo.com/offer-redemption?passcode=QACODETWO' },
+    { code: 'QAUNCONF', name: 'QAUNCONF', description: '', rewards: ['Something'], expires: null, expired: false, source: 'Pocket Gamer', verified: false, link: 'https://store.pokemongo.com/offer-redemption?passcode=QAUNCONF' },
+    { code: 'QAEXPIRED', name: 'QA Old', description: '', rewards: ['Gone'], expires: null, expired: true, source: 'LeekDuck', verified: true },
+    { code: 'QAPASTDATE', name: 'QA Past', description: '', rewards: ['Gone'], expires: '2020-01-01', expired: false, source: 'LeekDuck', verified: true }] });
+  s = await session({ feed: false });
+  await s.load(QA);
+  // a file:// page cannot fetch data/promo_codes.json, so the file's content is handed to the app as the first read would
+  await s.page.evaluate(f => { localStorage.setItem('scout.promo.seen.v1', JSON.stringify(f.codes.map(c => c.code))); }, promoFile());
+  await s.set({ promoCodes: promoFile() }); await s.go('TODAY'); await s.page.waitForTimeout(900);
+  await T('PROMO-01', 'Today', 'Today lists live promo codes with rewards, expiry and source; expired and past-date codes are hidden; Unconfirmed codes say so', async () => {
+    const t = await s.text();
+    expect(/Promo codes/.test(t) && /QA Berries/.test(t) && /x5 Razz Berry/.test(t) && /QACODETWO/.test(t) && /QAUNCONF/.test(t), 'live codes missing');
+    expect(!/QAEXPIRED|QAPASTDATE/.test(t), 'an expired code is shown');
+    expect(/Unconfirmed: only on Pocket Gamer/.test(t) && /Listed by LeekDuck/.test(t), 'source labels');
+    expect(/\d days left/.test(t), 'expiry countdown');
+  }, 'high');
+  await T('PROMO-02', 'Today', 'Copy puts exactly the code on the clipboard and Redeem opens the web store with that code', async () => {
+    await s.page.evaluate(() => { window.__copied = null; window.__opened = null; Object.defineProperty(navigator, 'clipboard', { value: { writeText: t => { window.__copied = t; return Promise.resolve(); } }, configurable: true }); window.open = (u) => { window.__opened = u; return null; }; });
+    await s.page.locator('button[aria-label="Copy code QACODEONE"]').click(); await s.page.waitForTimeout(300);
+    await s.page.locator('button[aria-label^="Open the Pokemon GO web store to redeem QACODEONE"]').click(); await s.page.waitForTimeout(200);
+    const r = await s.page.evaluate(() => ({ c: window.__copied, o: window.__opened }));
+    expect(r.c === 'QACODEONE', 'copied: ' + r.c);
+    expect(r.o === 'https://store.pokemongo.com/offer-redemption?passcode=QACODEONE', 'opened: ' + r.o);
+    expect(/Copied/.test(await s.text()), 'no Copied feedback');
+  }, 'high');
+  await T('PROMO-03', 'Today', 'Marking a code redeemed dims it, sorts it last, survives a reload, and Undo brings it back', async () => {
+    await s.page.locator('button[aria-label="Mark QACODEONE as redeemed"]').click(); await s.page.waitForTimeout(300);
+    const saved = await s.page.evaluate(() => localStorage.getItem('scout.promo.redeemed.v1'));
+    const order = await s.page.evaluate(() => [...document.querySelectorAll('[data-promo-code]')].map(e => e.textContent.trim()));
+    expect(/QACODEONE/.test(saved || '') && order[order.length - 1] === 'QACODEONE', 'redeemed not saved/last: ' + saved + ' ' + order);
+    await s.page.locator('button[aria-label="Mark QACODEONE as not redeemed"]').click(); await s.page.waitForTimeout(300);
+    expect(!/QACODEONE/.test(await s.page.evaluate(() => localStorage.getItem('scout.promo.redeemed.v1') || '')), 'undo did not clear it');
+  });
+  await T('PROMO-04', 'Today', 'A code that appears after the first read is NEW and raises one notification; the codes already there do not', async () => {
+    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
+      const before = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
+      const c = l.state.promoCodes; l.setState({ promoCodes: { ...c, codes: c.codes.concat([{ code: 'QABRANDNEW', name: 'QA Brand New', rewards: ['Gift'], expires: null, expired: false, source: 'LeekDuck', verified: true }]) } }); await new Promise(r => setTimeout(r, 200));
+      const items = l.reminderItems().filter(i => /^pc:/.test(i.id)); const text = document.body.innerText;
+      l.promoCopy('QABRANDNEW'); await new Promise(r => setTimeout(r, 200));
+      const after = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
+      return { before, items: items.map(i => i.id + ' | ' + i.title), hasNew: /NEW/.test(text), after }; } } return null; });
+    expect(r && r.before === 0, 'codes present at first read raise no notification: ' + JSON.stringify(r));
+    expect(r.items.length === 1 && /QABRANDNEW/.test(r.items[0]) && /New promo code/.test(r.items[0]) && r.hasNew, 'new code: ' + JSON.stringify(r));
+    expect(r.after === 0, 'copying a new code clears its notification');
+  }, 'high');
+  await s.close();
+  s = await session({ feed: false });
+  await s.load(QA); await s.go('TODAY'); await s.page.waitForTimeout(600);
+  await T('PROMO-05', 'Today', 'With no promo file there is no card and no error', async () => { expect(!/Promo codes/.test(await s.text()) && s.errors.length === 0, s.errors[0] || 'card shown'); });
+  await s.close();
   s = await session({ feed: false });
   await s.load(QA); await s.go('TODAY');
   await T('TOD-30', 'Today', 'Feed unreachable: no GBL card, no error, rest of Today still works', async () => { const t = await s.text(); expect(!/GO Battle League/.test(t) && /Event planner/.test(t) && s.errors.length === 0); }, 'high');

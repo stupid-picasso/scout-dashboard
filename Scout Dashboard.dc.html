@@ -639,6 +639,28 @@
         </sc-for>
       </div>
     </sc-if>
+    <sc-if value="{{ promoSection }}" hint-placeholder-val="{{ false }}">
+      <div data-promo-card style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font:650 19px var(--font-display);letter-spacing:-.012em;color:var(--ink-900);margin-bottom:2px">Promo codes</div>
+        <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);margin-bottom:10px">{{ promoNote }}</div>
+        <sc-for list="{{ promoRows }}" as="pc" hint-placeholder-count="2">
+          <div style="border-top:1px solid var(--line-200);padding:10px 0;opacity:{{ pc.opacity }}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <div style="font:600 14px var(--font-body);color:var(--ink-900);min-width:0;overflow:hidden;text-overflow:ellipsis">{{ pc.name }}</div>
+              <sc-if value="{{ pc.isNew }}" hint-placeholder-val="{{ false }}"><span style="font:700 11px var(--font-display);color:var(--ios-blue);flex-shrink:0">NEW</span></sc-if>
+            </div>
+            <div style="font:12px/1.4 var(--font-body);color:var(--ink-500);margin-top:2px">{{ pc.rewards }}</div>
+            <div style="font:12px/1.4 var(--font-body);color:{{ pc.expiryColor }};margin-top:2px">{{ pc.expiry }} &middot; {{ pc.sourceLabel }}</div>
+            <code data-promo-code style="display:block;margin-top:8px;font:600 13px ui-monospace,Menlo,monospace;background:var(--surface-muted);color:var(--ink-900);padding:8px 10px;border-radius:8px;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere">{{ pc.code }}</code>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <button type="button" onClick="{{ pc.onCopy }}" class="om-press" aria-label="Copy code {{ pc.code }}" style="padding:6px 14px;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 12px var(--font-body)">{{ pc.copyLabel }}</button>
+              <button type="button" onClick="{{ pc.onRedeem }}" class="om-press" aria-label="Open the Pokemon GO web store to redeem {{ pc.code }}" style="padding:6px 14px;border-radius:999px;background:var(--surface-muted);color:var(--ios-blue);font:700 12px var(--font-body)">Redeem</button>
+              <button type="button" onClick="{{ pc.onDone }}" class="om-press" aria-label="{{ pc.doneAria }}" style="padding:6px 8px;color:var(--ink-500);font:600 12px var(--font-body)">{{ pc.doneLabel }}</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
     <sc-if value="{{ hasFeedEvents }}" hint-placeholder-val="{{ false }}">
       <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:12px;padding:14px">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
@@ -4146,6 +4168,9 @@ class Component extends DCLogic {
     eventDraft: { title: '', date: '', species: '' },
     feed: null,
     eventMoves: null,
+    promoCodes: null,
+    promoRedeemed: [],
+    promoCopied: '',
     feedCheck: null,
     importReport: [],
     importUndoable: false,
@@ -13887,6 +13912,13 @@ class Component extends DCLogic {
   reminderItems(now) {
     const t = now || Date.now();
     const out = [];
+    // A promo code that appeared after this device first read the list (never the ones already there), until it is copied or marked redeemed.
+    try {
+      const seen = this.promoSeenSet();
+      if (seen) this.promoLive().forEach(c => {
+        if (!seen.has(c.code) && !this.promoDone(c.code)) out.push({ id: 'pc:' + c.code, title: c.verified ? 'New promo code' : 'Unconfirmed promo code', body: (c.name && c.name !== c.code ? c.name + ': ' : '') + c.code + ' (tap Today to copy)' });
+      });
+    } catch (e) {}
     const f = this.state.feed;
     if (this.validFeed(f)) {
       f.events.filter(e => e.type !== 'season').forEach(e => {
@@ -13920,6 +13952,101 @@ class Component extends DCLogic {
       try { localStorage.setItem('scout.remind.sent.v1', JSON.stringify(sent)); } catch (e) {}
       return due;
     } catch (e) { return []; }
+  }
+
+  // ---- Promo codes (data/promo_codes.json, written by the Update Events & GBL workflow) ----
+  promoLive() {
+    const c = this.state.promoCodes;
+    if (!c || !Array.isArray(c.codes)) return [];
+    const today = new Date().toISOString().slice(0, 10);
+    return c.codes.filter(x => x && typeof x.code === 'string' && x.code && !x.expired && !(x.expires && x.expires < today));
+  }
+
+  promoDone(code) { return (this.state.promoRedeemed || []).indexOf(code) >= 0; }
+
+  // Codes already known when this device first read the file: they are not "new", so enabling reminders does not announce them all.
+  promoSeenSet() {
+    try { const raw = localStorage.getItem('scout.promo.seen.v1'); return raw ? new Set(JSON.parse(raw)) : null; } catch (e) { return null; }
+  }
+
+  promoMarkSeen(code) {
+    try {
+      const seen = this.promoSeenSet() || new Set();
+      if (seen.has(code)) return;
+      seen.add(code); localStorage.setItem('scout.promo.seen.v1', JSON.stringify([...seen]));
+    } catch (e) {}
+  }
+
+  promoLoad() {
+    try { const raw = localStorage.getItem('scout.promo.v1'); const c = raw ? JSON.parse(raw) : null; if (c && Array.isArray(c.codes)) this.setState({ promoCodes: c }); } catch (e) {}
+    try { const r = JSON.parse(localStorage.getItem('scout.promo.redeemed.v1') || '[]'); if (Array.isArray(r)) this.setState({ promoRedeemed: r }); } catch (e) {}
+    fetch('data/promo_codes.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(c => {
+        if (!c || !Array.isArray(c.codes)) return;
+        try {
+          localStorage.setItem('scout.promo.v1', JSON.stringify(c));
+          if (!localStorage.getItem('scout.promo.seen.v1')) localStorage.setItem('scout.promo.seen.v1', JSON.stringify(c.codes.map(x => x.code)));
+        } catch (e) {}
+        this.setState({ promoCodes: c }, () => this.checkReminders());
+      })
+      .catch(() => {});
+  }
+
+  promoCopy(code) {
+    const done = () => { this.promoMarkSeen(code); this.setState({ promoCopied: code }); clearTimeout(this._promoCopyTimer); this._promoCopyTimer = setTimeout(() => this.setState({ promoCopied: '' }), 1600); };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).then(done, () => this.promoCopyFallback(code, done)); return; }
+    } catch (e) {}
+    this.promoCopyFallback(code, done);
+  }
+
+  promoCopyFallback(code, done) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = code; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, code.length);
+      document.execCommand('copy'); document.body.removeChild(ta);
+    } catch (e) {}
+    done();
+  }
+
+  promoRedeem(c) {
+    this.promoMarkSeen(c.code);
+    try { window.open(c.link || ('https://store.pokemongo.com/offer-redemption?passcode=' + encodeURIComponent(c.code)), '_blank', 'noopener'); } catch (e) {}
+  }
+
+  promoToggleDone(code) {
+    const cur = this.state.promoRedeemed || [];
+    const next = cur.indexOf(code) >= 0 ? cur.filter(x => x !== code) : cur.concat(code);
+    this.promoMarkSeen(code);
+    try { localStorage.setItem('scout.promo.redeemed.v1', JSON.stringify(next)); } catch (e) {}
+    this.setState({ promoRedeemed: next });
+  }
+
+  promoRows() {
+    const seen = this.promoSeenSet();
+    const today = Date.now();
+    const rows = this.promoLive().map(c => {
+      const done = this.promoDone(c.code);
+      let expiry = 'No end date listed', soon = false;
+      if (c.expires) {
+        const days = Math.ceil((new Date(c.expires + 'T23:59:00').getTime() - today) / 86400000);
+        soon = days <= 7;
+        expiry = 'Expires ' + new Date(c.expires + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + (soon ? ' (' + (days <= 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' left') + ')' : '');
+      }
+      return {
+        code: c.code, name: c.name && c.name !== c.code ? c.name : 'Promo code', rewards: (c.rewards && c.rewards.length) ? c.rewards.join(', ') : 'Rewards not listed',
+        expiry, expiryColor: soon ? 'var(--type-fire, #ff9500)' : 'var(--ink-500)',
+        sourceLabel: c.verified ? 'Listed by ' + (c.source || 'LeekDuck') : 'Unconfirmed: only on ' + (c.source || 'another site'),
+        isNew: !!seen && !seen.has(c.code) && !done, opacity: done ? 0.5 : 1, verified: !!c.verified, done,
+        copyLabel: this.state.promoCopied === c.code ? 'Copied' : 'Copy',
+        doneLabel: done ? 'Undo' : 'Redeemed', doneAria: done ? 'Mark ' + c.code + ' as not redeemed' : 'Mark ' + c.code + ' as redeemed',
+        onCopy: () => this.promoCopy(c.code), onRedeem: () => this.promoRedeem(c), onDone: () => this.promoToggleDone(c.code)
+      };
+    });
+    rows.sort((a, b) => (a.done - b.done) || (b.verified - a.verified));
+    return rows;
   }
 
   toggleReminders() {
@@ -16818,6 +16945,7 @@ class Component extends DCLogic {
         .catch(() => attempt(i + 1));
     };
     attempt(0);
+    this.promoLoad();
     // Events that teach a move when a Pokemon is evolved during them (data/event_moves.json, written by the same workflow).
     try { const raw = localStorage.getItem('scout.eventmoves.v1'); const c = raw ? JSON.parse(raw) : null; if (c && Array.isArray(c.moves)) this.setState({ eventMoves: c }); } catch (e) {}
     fetch('data/event_moves.json?t=' + Date.now(), { cache: 'no-store' })
@@ -20457,6 +20585,9 @@ class Component extends DCLogic {
       remindLabel: this.state.remindersOn ? 'Reminders on' : 'Remind me',
       toggleReminders: () => this.toggleReminders(),
       hasFeedEvents: this.feedEvents().length > 0,
+      promoSection: this.promoLive().length ? true : null,
+      promoRows: this.promoRows(),
+      promoNote: (() => { const c = this.state.promoCodes; const when = c && c.fetchedAt ? new Date(c.fetchedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''; return 'Copied from public lists, checked ' + (when || 'recently') + '. A listed code can still be used up or expired: the web store has the final say.'; })(),
       feedVerify: this.feedVerifyLine(),
       feedShort: this.validFeed(this.state.feed) ? 'Community data \u00b7 ' + new Date(this.state.feed.fetchedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Feed not loaded yet',
       feedStamp: this.validFeed(this.state.feed) ? 'Community data (not official) \u00b7 refreshed ' + new Date(this.state.feed.fetchedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Feed not loaded yet.',
