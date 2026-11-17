@@ -37,8 +37,11 @@ const SCAN = () => {
 const SIZES = [12, 13, 15, 17, 22, 28, 32];          // type scale
 const WEIGHTS = [400, 500, 600, 700];
 const RADII = [6, 10, 14, 20];                        // plus pill (>=999) and 50%
-const ALLOW_CAPS = ['PWA', 'GBL', 'GREAT', 'ULTRA', 'MASTER', 'LITTLE'];   // acronym-like words that are not shouting (also matched case-sensitively as a whole run)
-const ALLOW_EMOJI = ['✓'];                       // check mark, used as a glyph in the evolve-done and verified marks
+const ALLOW_CAPS = [
+  'XXL / XXS',                                  // size-class acronyms (chip label)
+  'MEGA XXS', 'MEGA MAX XXS',                   // roster tags: Mega / Max flag followed by a size-class acronym
+  'EXCELLENT'                                   // keeper grade name: a logic key (TOP / EXCELLENT / GOOD) quoted in the grade explanation
+];
 const BANNED_COPY = [/SYNC CSV/i, /Build dev/i, /^free$/i];
 const MOTION_MS = [100, 160, 240, 360, 520];
 
@@ -57,9 +60,9 @@ const CONFORM = ({ SIZES, WEIGHTS, RADII }) => {
       const sz = parseFloat(cs.fontSize), wt = parseInt(cs.fontWeight, 10);
       if (!SIZES.includes(sz) || !WEIGHTS.includes(wt)) out.type.push(tag + ' ' + sz + '/' + wt + ' "' + el.textContent.trim().slice(0, 14) + '"');
       const t = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').trim();
-      const m = t.match(/[A-Z0-9][A-Z0-9 \-\/&]{7,}/g);
+      const m = el.closest('[data-promo-card]') ? null : t.match(/[A-Z0-9][A-Z0-9 \-\/&]{7,}/g);   // promo codes are shown verbatim
       if (m) m.forEach(x => { if (/[A-Z]{3}/.test(x) && !/^[A-Z0-9 ]*\d/.test(x) ) out.caps.push(x.trim().slice(0, 30)); });
-      if (el.closest('header, nav, button, [role=button], [role=menuitem], [data-swipe-row], [role=tab]') && emojiRe.test(t.replace(/✓/g, ''))) out.emoji.push(tag + ' ' + t.slice(0, 20));
+      if (el.closest('header, nav, button, [role=button], [role=menuitem], [data-swipe-row], [role=tab]') && emojiRe.test(t.replace(/[\u2713\u2640\u2642]/g, ''))   /* check mark; the gender signs belong to the species names Nidoran-f and Nidoran-m */) out.emoji.push(tag + ' ' + t.slice(0, 20));
     }
     ['TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'].forEach(c => {
       const v = cs['border' + c + 'Radius']; if (!v || v === '0px') return;
@@ -89,6 +92,15 @@ const CONFORM = ({ SIZES, WEIGHTS, RADII }) => {
     const inf = cs.animationIterationCount.includes('infinite');
     list.forEach((d, i) => { const ms = parseFloat(d) * (d.endsWith('ms') ? 1 : 1000); if (!ms) return; if (![100, 160, 240, 360, 520].includes(Math.round(ms)) && !(inf && el.closest('[data-ambient]'))) out.motion.push(el.tagName + '.' + String(el.className || '').split(' ')[0] + ' ' + d); });
   });
+  // stylesheets: every transition/animation duration written in a rule outside the reduced-motion block
+  const walkRules = (rules, inRM) => [...rules].forEach(rule => {
+    if (rule.cssRules && rule.media) return walkRules(rule.cssRules, inRM || /reduced-motion/.test(rule.media.mediaText));
+    if (rule.cssRules && rule.type === 4) return;
+    if (inRM || !rule.style) return;
+    ['transition', 'animation'].forEach(pn => { const v = rule.style.getPropertyValue(pn); if (!v) return; const inf = /infinite/.test(v);
+      (v.match(/(?<![\w.-])\d*\.?\d+m?s\b/g) || []).forEach(d => { const ms = parseFloat(d) * (d.endsWith('ms') ? 1 : 1000); if (ms && ![100, 160, 240, 360, 520].includes(Math.round(ms)) && !(inf && /data-ambient/.test(rule.selectorText || '')) && !/sc-dc-streaming/.test(rule.selectorText || ''))   /* sc-dc-streaming: the host runtime's own placeholder shimmer in the bundle head, not app CSS */ out.motion.push('css ' + (rule.selectorText || '').slice(0, 30) + ' ' + d); }); });
+  });
+  [...document.styleSheets].forEach(ss => { try { walkRules(ss.cssRules, false); } catch (e) {} });
   for (const k in out) out[k] = [...new Set(out[k])];
   return out;
 };
@@ -109,14 +121,13 @@ const CONTRAST = () => {
     const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return;
     const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none') return;
     const fg0 = rgba(cs.color); if (fg0[3] < .3) return;           // decorative watermark letters behind a sprite
-    if (el.closest('[data-skip-contrast]')) return;
     const bg = bgOf(el); if (!bg) return;                          // gradients are skipped
     const o = op(el); const fg = over([fg0[0], fg0[1], fg0[2], fg0[3] * o], bg);
     const L1 = lum(fg), L2 = lum(bg); const ratio = (Math.max(L1, L2) + .05) / (Math.min(L1, L2) + .05);
     const sz = parseFloat(cs.fontSize), wt = parseInt(cs.fontWeight, 10);
     const large = sz >= 24 || (sz >= 18.66 && wt >= 700);
     n++;
-    if (ratio < (large ? 3 : 4.5)) bad.push(((el.className && String(el.className).split(' ')[0]) || el.tagName) + ' "' + el.textContent.trim().slice(0, 16) + '" ' + ratio.toFixed(2));
+    if (ratio < (large ? 3 : 4.5)) bad.push(((el.className && String(el.className).split(' ')[0]) || el.tagName) + ' "' + el.textContent.trim().slice(0, 16) + '" ' + ratio.toFixed(2) + ' fg ' + cs.color.replace(/ /g, '') + ' bg ' + bg.map(Math.round).join(',') + (window.__contrastDebug ? ' ' + el.outerHTML.slice(0, 140) : ''));
   });
   return { n, bad: [...new Set(bad)] };
 };
@@ -149,11 +160,19 @@ const EDGE = () => {
 
 const VISIBLE_BTN_H = () => {
   const bad = [];
+  const fixedUp = el => { for (let e = el; e; e = e.parentElement) if (getComputedStyle(e).position === 'fixed') return true; return false; };
   document.querySelectorAll('button, [role=button], label.ios-icon-btn').forEach(el => {
     const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return; const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none') return;
     if (el.closest('[role=menuitem]')) return;
-    const full = r.width > 300;   // a full-width list row is not a chip or a button face
-    if (r.height > 48 && !full) bad.push((el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 20) + ' ' + Math.round(r.height));
+    const full = r.width > 300 || !!el.querySelector('img');   // a full-width list row, or a card with a sprite in it (a button element used as a tappable card), is not a chip or a button face
+    // not a chip or a button face: a clickable row/card (two or more block children), or an action that fills its container's height (the swipe actions behind a roster row)
+    const kids = [...el.children].filter(c => /block|flex|grid/.test(getComputedStyle(c).display)).length;
+    const fills = el.parentElement && el.parentElement.getBoundingClientRect().height - r.height < 2;
+    const txt = (el.textContent || '').trim();
+    const pill = parseFloat(cs.borderTopLeftRadius) >= 999 && txt && !el.querySelector('img') && r.width < 300 && !fixedUp(el);
+    if (pill && r.height > 40) bad.push('chip too tall: ' + txt.slice(0, 20) + ' ' + Math.round(r.height));          // chips and pills keep their own height; 44 px comes from the invisible strip
+    if (pill && cs.backgroundColor === 'rgb(10, 100, 214)' && txt.length >= 5 && txt.length < 24 && !el.hasAttribute('aria-pressed') && (r.height < 36 || r.height > 40) && r.height < 60) bad.push('filled button not 36-40: ' + txt.slice(0, 20) + ' ' + Math.round(r.height));
+    if (r.height > 48 && !full && kids < 2 && !fills) bad.push((el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 20) + ' ' + Math.round(r.height));
   });
   return bad;
 };
@@ -166,10 +185,11 @@ const LINT = () => {
 };
 
 const SECTION_CAPTIONS = () => {
-  // a section title (h2/h3 or 17-22px 600 text) followed directly by a caption block: no more than 2 lines of caption prose
+  // a section title (h2/h3 or any 17-22 px, weight 600+ text) followed directly by a caption block: no more than 2 lines of caption prose
   const bad = [];
-  document.querySelectorAll('h2, h3, [data-section-title]').forEach(t => { const n = t.nextElementSibling; if (!n) return; const cs = getComputedStyle(n); const r = n.getBoundingClientRect(); if (r.height < 1 || n.children.length > 0 || !n.textContent.trim()) return; const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3; const lines = Math.round(r.height / lh); if (lines > 2 && parseFloat(cs.fontSize) <= 15) bad.push(t.textContent.trim().slice(0, 20) + ' ' + lines + ' lines'); });
-  return bad;
+  const titles = [...document.querySelectorAll('h2, h3, [data-section-title], div, span')].filter(t => { if (t.children.length > 1 || !t.textContent.trim() || t.textContent.length > 60) return false; const cs = getComputedStyle(t); const r = t.getBoundingClientRect(); return r.height > 0 && (/^H[23]$/.test(t.tagName) || t.hasAttribute('data-section-title') || (parseFloat(cs.fontSize) >= 17 && parseInt(cs.fontWeight, 10) >= 600 && t.parentElement && t.parentElement.children.length > 1)); });
+  titles.forEach(t => { const n = t.nextElementSibling; if (!n) return; const cs = getComputedStyle(n); const r = n.getBoundingClientRect(); if (r.height < 1 || n.children.length > 1 || !n.textContent.trim()) return; const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3; const lines = Math.round(r.height / lh); if (lines > 2 && parseFloat(cs.fontSize) <= 15) bad.push(t.textContent.trim().slice(0, 20) + ' ' + lines + ' lines'); });
+  return [...new Set(bad)];
 };
 
 module.exports = async function suiteE() {
@@ -193,8 +213,8 @@ module.exports = async function suiteE() {
   await s.close();
 
   // ---- UI polish scans, both themes, the way a user sees the app (sentence-case layer on, real feed and promo codes)
-  const feed = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'feed.json'), 'utf8'));
-  const promo = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'promo_codes.json'), 'utf8'));
+  const feed = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'ui_feed.json'), 'utf8'));
+  const promo = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'ui_promo.json'), 'utf8'));
   const R = {};
   for (const theme of ['dark', 'light']) {
     const q = await session({ feed, colorScheme: theme, sentenceCase: true, width: 390, height: 844 });
@@ -207,7 +227,7 @@ module.exports = async function suiteE() {
     // an open toast
     await q.go('TODAY'); await q.set({ undoLabel: 'Transferred Latios' }); await q.page.waitForTimeout(600);
     per.TOAST = { k: await q.page.evaluate(CONTRAST) };
-    per.TOAST.box = await q.page.evaluate(() => { const rc = e => { if (!e) return null; const r = e.getBoundingClientRect(); return r.width ? { l: r.left, t: r.top, r: r.right, b: r.bottom } : null; }; return { toast: rc(document.querySelector('.ios-toast')), title: rc(document.querySelector('header h1')), btns: [...document.querySelectorAll('header button, header label')].map(rc).filter(Boolean), nav: rc(document.querySelector('nav[data-navbar]')) }; });
+    per.TOAST.box = await q.page.evaluate(() => { const rc = e => { if (!e) return null; const r = e.getBoundingClientRect(); return r.width ? { l: r.left, t: r.top, r: r.right, b: r.bottom } : null; }; return { toast: rc(document.querySelector('.ios-toast')), title: rc(document.querySelector('header h1')), btns: [...document.querySelectorAll('header button, header label')].filter(b => !b.closest('.ios-toast')).map(rc).filter(Boolean), nav: rc(document.querySelector('nav[data-navbar]')) }; });
     await q.set({ undoLabel: '' });
     R[theme] = per;
     // reduced motion: nothing keeps running on the detail sheet after 50 ms
@@ -273,3 +293,5 @@ module.exports = async function suiteE() {
     await q.close();
   }
 };
+
+module.exports.__scans = { CONTRAST, CONFORM, NAMES, EDGE, VISIBLE_BTN_H, LINT, SECTION_CAPTIONS, SIZES, WEIGHTS, RADII };

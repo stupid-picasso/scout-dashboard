@@ -37,10 +37,10 @@ module.exports = async function suiteD() {
     const tap = async () => { await sl.page.locator('header button[aria-label^="Theme"]').click(); await sl.page.waitForTimeout(250); return th(); };
     await sl.call('setThemePref', 'auto'); await sl.page.waitForTimeout(250);
     let t = await th();
-    expect(t.attr === null && /246, 246, 247/.test(t.bg) && /Auto/.test(t.label), 'auto in a light phone is light: ' + JSON.stringify(t));
+    expect(t.attr === null && /242, 242, 245/.test(t.bg) && /Auto/.test(t.label), 'auto in a light phone is light: ' + JSON.stringify(t));
     t = await tap(); expect(t.attr === 'light' && /Light/.test(t.label) && t.ls === 'light', 'first tap is Light: ' + JSON.stringify(t));
     expect(/Theme: Light/.test(await sl.text()), 'a note says which mode it landed on');
-    t = await tap(); expect(t.attr === 'dark' && /15, 15, 16/.test(t.bg) && /Dark/.test(t.label) && t.ls === 'dark', 'second tap is Dark: ' + JSON.stringify(t));
+    t = await tap(); expect(t.attr === 'dark' && /11, 11, 13/.test(t.bg) && /Dark/.test(t.label) && t.ls === 'dark', 'second tap is Dark: ' + JSON.stringify(t));
     t = await tap(); expect(t.attr === null && t.ls === 'auto' && /Auto/.test(t.label), 'third tap is Auto again: ' + JSON.stringify(t));
   }, 'high');
   await T('CASE-01', 'Theme', 'Labels written in capitals are shown in sentence case, acronyms kept', async () => {
