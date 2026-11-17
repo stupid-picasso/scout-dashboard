@@ -2101,7 +2101,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.330{{ aboutBuild }}. Not affiliated with Niantic or The Pokemon Company.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.332{{ aboutBuild }}. Not affiliated with Niantic or The Pokemon Company.</div>
   </div>
   </sc-if>
 
@@ -5103,11 +5103,12 @@ class Component extends DCLogic {
   // Writes the small bookkeeping fields (never the roster): the index of snapshots and the clock of the last one.
   async writeSnapshotMeta(index, clock) {
     const cu = this.state.cloudUser;
-    if (!this.db || !cu) return;
+    if (!this.db || !cu || this._deleting) return;
     const data = { snapshotIndex: index, lastSnapshotAt: clock };
     // A document that does not exist yet can only be created with a server timestamp (the rules say so).
     if (!this._docExists) { try { data.updatedAt = firebase.firestore.FieldValue.serverTimestamp(); } catch (e) {} }
     await this.db.collection('scoutUsers').doc(cu.uid).set(data, { merge: true });
+    if (this._deleting) return;
     this._docExists = true;
     this._snapIndex = index;
     this.writeSnapClock(cu.uid, clock);
@@ -5153,12 +5154,13 @@ class Component extends DCLogic {
         pokemonCount: roster.length,
         data: blob
       });
+      if (this._deleting) return false;   // the account is being erased: the delete lists the snapshots after this chain, so this one goes with them
       this._lastSnapshotAt = now;
       // Index first, then delete the entries that fell out of it by id: no snapshot is read to prune.
       const all = this.cleanSnapshotIndex([{ id, reason: reason || 'periodic', count: roster.length, createdAt: now }, ...(this._snapIndex || []).filter(x => x.id !== id)]);
       const keep = all.slice(0, this.MAX_SNAPSHOTS), drop = all.slice(this.MAX_SNAPSHOTS);
       await this.writeSnapshotMeta(keep, now);
-      for (const d of drop) { try { await ref.doc(d.id).delete(); } catch (e) {} }
+      for (const d of drop) { if (this._deleting) return false; try { await ref.doc(d.id).delete(); } catch (e) {} }
       return true;
     } catch (e) {
       // A failed snapshot must never block the operation it was protecting.
@@ -5395,6 +5397,8 @@ class Component extends DCLogic {
     this._dirtyUntilPush = true;
     // A snapshot echo arriving mid-apply must not bounce straight back up.
     if (this._applyingRemote) return;
+    // A direct call (setState callback) may arrive while the debounce is pending: it supersedes that timer, so no second write follows.
+    clearTimeout(this._pushTimer);
     const blob = this.buildCloudBlob();
     // Drop literal `undefined`s (JSON.stringify silently omits them) before
     // Firestore ever sees the blob \u2014 e.g. a video-imported Pokemon missing
@@ -10696,15 +10700,23 @@ class Component extends DCLogic {
     this.setState({ dataMsg: 'Deleting your data…' });
     const userRef = this.db.collection('scoutUsers').doc(user.uid);
     let authLeft = false;
+    const gone = [];
     try {
+      // A snapshot already on its way must land before the listing, or it would be left behind. Nothing new starts once _deleting is set.
+      try { await this._snapChain; } catch (e) {}
       // Every snapshot document, found by listing the collection, not from the index, so none is left behind.
       const list = await userRef.collection('snapshots').get();
-      for (const d of (list.docs || [])) await d.ref.delete();
+      for (const d of (list.docs || [])) { await d.ref.delete(); gone.push(d.id); }
       await userRef.delete();
     } catch (e) {
       this._deleting = false;
       this.attachCloudListener();
-      this.setState({ dataMsg: 'Could not delete your cloud data (' + ((e && e.message) || e) + '). Nothing else was removed. Try again.' });
+      // Some backups may already be gone: take them out of the stored list so it does not name documents that no longer exist.
+      if (gone.length) {
+        const left = (this._snapIndex || []).filter(x => gone.indexOf(x.id) < 0);
+        try { await userRef.set({ snapshotIndex: left }, { merge: true }); this._snapIndex = left; this.setState({ snapshots: left.map(x => ({ id: x.id, reason: x.reason, createdAt: x.createdAt, pokemonCount: x.count })) }); } catch (e2) {}
+      }
+      this.setState({ dataMsg: 'Could not delete all of your cloud data (' + ((e && e.message) || e) + '). ' + (gone.length ? 'Some backups may already be deleted; your roster and sign-in are still there. ' : 'Your roster and sign-in are still there. ') + 'Try again.' });
       return;
     }
     try { await cu.delete(); }

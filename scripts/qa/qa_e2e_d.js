@@ -295,6 +295,15 @@ module.exports = async function suiteD() {
     expect(await attempt('get', ['scoutUsers', 'qa-user']) === 'ok' && await attempt('delete', ['scoutUsers', 'qa-user']) === 'ok', 'an unverified identity could not read or delete its own data');
     await s1.close();
   }, 'high');
+  await T('SYNC-12', 'Quota', 'One edit is exactly one write and at most one read: the debounced path, and a direct push from a setState callback while the debounce is pending (no second write 1.2 s later)', async () => {
+    await k1.page.waitForTimeout(1500);
+    zero(K); await k1.set({ cutTarget: 111 }); await k1.page.waitForTimeout(3500);
+    expect(n(K, 'scoutUsers', 'writes') === 1 && n(K, 'scoutUsers', 'reads') <= 1 && K.store['scoutUsers/qa-user'].cutTarget === 111, 'debounced edit: writes ' + n(K, 'scoutUsers', 'writes') + ', reads ' + n(K, 'scoutUsers', 'reads'));
+    await k1.set({ moveDB: { 'QA Move': { type: 'Fire', power: 10, energy: 5, durationMs: 1000, kind: 'fast' } } }); await k1.page.waitForTimeout(3500);
+    zero(K); await k1.call('clearMoveData'); await k1.page.waitForTimeout(4000);   // setState(..., () => this.pushCloud()) with the 1.2 s debounce also pending
+    expect(n(K, 'scoutUsers', 'writes') === 1 && n(K, 'scoutUsers', 'reads') <= 1, 'direct push: writes ' + n(K, 'scoutUsers', 'writes') + ', reads ' + n(K, 'scoutUsers', 'reads'));
+    expect(JSON.stringify(K.store['scoutUsers/qa-user'].moveDBJson || '').length > 0 && K.denied.length === 0, 'refused or lost: ' + JSON.stringify(K.denied[0]));
+  }, 'high');
   await k1.close();
 
   // ------------------------------------------------------------------ DATA CONTROLS (I): export, delete account, per-account device copy
@@ -384,6 +393,42 @@ module.exports = async function suiteD() {
     expect((C.deletedUsers || []).join() === 'qa-user' && !C.authUsers['qa-user'], 'the second delete did not remove the sign-in');
     expect(C.denied.length === 0, 'refused ' + JSON.stringify(C.denied[0]));
     await e2.close();
+  }, 'high');
+
+  const mkDel = async (C, nSnaps) => {
+    const e = await session({ feed: false, cloud: C }); await e.page.waitForTimeout(1500);
+    await e.load(QA); await savedOk(e); await e.page.waitForTimeout(2000);
+    for (let i = 0; i < nSnaps; i++) { await e.call('autoSnapshot', 'manual', { force: true }); await e.page.waitForTimeout(1100); }
+    await e.page.waitForTimeout(1000);
+    e.del = async () => { await e.go('HOME'); await clickText(e.page, /^Delete my account and cloud data$/); await e.page.locator('[role=alertdialog] [role=button]').filter({ hasText: /Continue/i }).first().click(); await e.page.waitForTimeout(400); await e.page.locator('[role=alertdialog] [role=button]').filter({ hasText: /Delete everything/i }).first().click(); await e.page.waitForTimeout(4500); };
+    return e;
+  };
+  await T('DATA-04', 'Data', 'A snapshot still being written when the account is deleted does not survive it: nothing is left under the user, no user document is re-created, and the delete waits for it', async () => {
+    const C = { store: {}, writes: [], user: A };
+    const e = await mkDel(C, 1);
+    C.delaySnapMs = 3000; C.delayDocDeleteMs = 4000; zero(C);
+    await e.page.evaluate(() => { for (const x of document.querySelectorAll('*')) { const k = Object.keys(x).find(y => y.startsWith('__reactFiber')); if (!k) continue; for (let f = x[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.autoSnapshot) { window.__snapP = f.stateNode.logic.autoSnapshot('manual', { force: true }); return; } } });
+    await e.page.waitForTimeout(100);
+    await e.del(); await e.page.waitForTimeout(4000);
+    const left = Object.keys(C.store).filter(k => /^scoutUsers\/qa-user/.test(k));
+    expect(left.length === 0, 'left in the cloud after delete: ' + left.join(', '));
+    expect((C.deletedUsers || []).join() === 'qa-user', 'the sign-in was not deleted');
+    await e.close();
+  }, 'high');
+  await T('DATA-05', 'Data', 'A delete that fails half-way says some backups may already be gone (not "nothing was removed"), keeps the roster, and the stored list no longer names the deleted backups', async () => {
+    const C = { store: {}, writes: [], user: A };
+    const e = await mkDel(C, 3);
+    const before = snapIds(C).length;
+    expect(before >= 3, 'setup: ' + before + ' snapshots');
+    C.failSnapDeleteAfter = 1; zero(C);
+    await e.del();
+    const st = await e.state();
+    expect(!/Nothing else was removed/i.test(st.dataMsg || '') && /may already be deleted/i.test(st.dataMsg || ''), 'message: ' + st.dataMsg);
+    expect(!!C.store['scoutUsers/qa-user'] && snapIds(C).length === before - 1, 'expected the document and ' + (before - 1) + ' snapshots, got ' + snapIds(C).length);
+    const idx = (C.store['scoutUsers/qa-user'].snapshotIndex || []).map(x => x.id).sort();
+    expect(idx.length === snapIds(C).length && idx.every(i => snapIds(C).indexOf(i) >= 0), 'the index still names deleted backups: ' + idx.join());
+    expect(!!st.cloudUser && ((st.roster || []).length + (st.addedPokemon || []).length) > 0, 'the roster must stay');
+    await e.close();
   }, 'high');
 
   await T('DATA-03', 'Data', 'User A signs out, user B signs in on the same device: B never sees A\'s roster, on screen or in storage, also when B signs in without A signing out', async () => {

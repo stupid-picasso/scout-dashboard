@@ -115,7 +115,8 @@ async function installCloud(page, C) {
     const st = statsFor(C, p + '/x'); st.reads += Math.max(1, rows.length); rows.forEach(r => { st.bytesRead += JSON.stringify(r.data).length; });
     return { rows };
   });
-  await page.exposeFunction('__fsSet', (p, data, merge) => {
+  await page.exposeFunction('__fsSet', async (p, data, merge) => {
+    if (C.delaySnapMs && /\/snapshots\//.test(p)) await new Promise(r => setTimeout(r, C.delaySnapMs));   // a slow snapshot write, to test races with delete
     if (C.failWrites) return C.failWrites === 'quota' ? { error: 'Quota exceeded.', code: 'resource-exhausted' } : { error: 'permission-denied (QA)', code: 'permission-denied' };
     const why = cloudDecide(C, 'write', p, data); if (why) return deny('write', p, why);
     const cur = merge && C.store[p] ? C.store[p] : {};
@@ -126,7 +127,10 @@ async function installCloud(page, C) {
     C.writes.push({ p, bytes, keys: Object.keys(data) });
     return { ok: true };
   });
-  await page.exposeFunction('__fsDelete', p => {
+  await page.exposeFunction('__fsDelete', async p => {
+    if (C.delayDocDeleteMs && !/\/snapshots\//.test(p)) await new Promise(r => setTimeout(r, C.delayDocDeleteMs));   // a slow user-document delete
+    // C.failSnapDeleteAfter = n: the (n+1)th snapshot delete is refused, to test a delete that fails half-way.
+    if (C.failSnapDeleteAfter !== undefined && /\/snapshots\//.test(p)) { if ((C.snapDeletesSeen = (C.snapDeletesSeen || 0) + 1) > C.failSnapDeleteAfter) return { error: 'unavailable (QA)', code: 'unavailable' }; }
     const why = cloudDecide(C, 'delete', p, {}); if (why) return deny('delete', p, why);
     delete C.store[p]; (C.log = C.log || []).push(['delete', p]); statsFor(C, p).deletes += 1; return { ok: true };
   });

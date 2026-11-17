@@ -14,7 +14,8 @@ service cloud.firestore {
     // email/password sign-up is NOT enough (anyone can create one with an address they do not own) until
     // the address is verified. Reads and deletes are not gated, so a user can always export and erase their data.
     function verifiedIdentity() {
-      return request.auth.token.email_verified == true
+      // .get() with a default: a token without the claim (GitHub with no public email) is false, never an evaluation error.
+      return request.auth.token.get('email_verified', false) == true
           || request.auth.token.firebase.sign_in_provider in ['google.com', 'github.com'];
     }
 

@@ -49,6 +49,17 @@ check('scrub keys may be deleted, never written or changed (scrubOk for all four
 check('updatedAt must be the server time', /updatedAt\s*==\s*request\.time/.test(rules));
 check('writes need a verified identity (function, google.com / github.com)', /function verifiedIdentity\(\)/.test(rules) && /google\.com/.test(rules) && /github\.com/.test(rules) && (rules.match(/verifiedIdentity\(\)/g) || []).length >= 4);
 check('snapshots: id pattern, key allow-list, no update', /match \/snapshots\/\{id\}/.test(rules) && /id\.matches\('\[0-9\]\{13\}'\)/.test(rules) && /hasOnly\(\['reason','createdAt','pokemonCount','data'\]\)/.test(rules) && /allow update:\s*if false/.test(rules));
+check('verifiedIdentity reads email_verified with a default (a missing claim is false, not an error)', /function verifiedIdentity\(\)\s*\{[^}]*token\.get\('email_verified',\s*false\)/.test(rules) && !/token\.email_verified/.test(rules));
+check('update rule calls stampOk() (not only defines it)', /allow update:[^;]*&&\s*stampOk\(\)/.test(rules));
+check('update rule calls updateKeysOk() and verifiedIdentity()', /allow update:[^;]*verifiedIdentity\(\)[^;]*updateKeysOk\(\)/.test(rules));
+check('create rule requires the server time', /allow create:[^;]*updatedAt\s*==\s*request\.time/.test(rules));
+check('updateKeysOk calls scrubOk()', /function updateKeysOk\(\)\s*\{[^}]*scrubOk\(\)/.test(rules));
+const dep = read('DEPLOY.md');
+const depLines = dep.split('\n');
+check('DEPLOY.md opens with the unverified-accounts banner', /^>/.test(depLines[2] || '') && /unverified/i.test(depLines.slice(0, 8).join(' ')) && /read-only/i.test(depLines.slice(0, 8).join(' ')));
+check('DEPLOY.md: Playground checks come before Publish', (() => { const pg = dep.search(/Playground/); const pub = dep.search(/\*\*Publish\.\*\*/); return pg > 0 && pub > pg && /BEFORE you publish/.test(dep); })());
+check('DEPLOY.md: the evil:1 check names provider google.com and updatedAt = request time, and a positive check exists', /evil: 1[\s\S]{0,200}updatedAt/.test(dep) && /google\.com/.test(dep) && /allowed\*\*/.test(dep));
+check('DEPLOY.md does not claim the new client works under the old rules unconditionally', !/the new client works under the old rules too\./.test(dep));
 check('rules_version 2', /rules_version\s*=\s*'2'/.test(rules));
 const fj = JSON.parse(read('firebase.json'));
 check('firebase.json points at firestore.rules', fj.firestore && fj.firestore.rules === 'firestore.rules');
