@@ -3376,8 +3376,7 @@
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <sc-for list="{{ detail.dsTypeBadges }}" as="tb" hint-placeholder-count="2">
-              <span style="display:inline-flex;align-items:center;gap:8px;background:{{ tb.fill }};color:{{ tb.ink }};border-radius:var(--r-pill);padding:4px 12px 4px 4px;font-family:var(--font-display);font-weight:700;font-size:12px;line-height:1">
-                <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.3);font-size:12px;line-height:1">{{ tb.icon }}</span>{{ tb.name }}</span>
+              <span style="display:inline-flex;align-items:center;gap:8px;background:{{ tb.fill }};color:{{ tb.ink }};border-radius:var(--r-pill);padding:4px 12px;font-family:var(--font-display);font-weight:700;font-size:12px;line-height:1">{{ tb.name }}</span>
             </sc-for>
             <span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-sunken);color:var(--ink-600);font-family:var(--font-display);font-weight:700;font-size:12px;line-height:1"><span data-countup="1">{{ detail.cp }}</span>&nbsp;CP</span>
             <sc-if value="{{ detail.sizeChip }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:{{ detail.sizeChip.bg }};color:{{ detail.sizeChip.fg }};font-family:var(--font-display);font-weight:700;font-size:12px;line-height:1" aria-label="Size {{ detail.sizeChip.label }}">{{ detail.sizeChip.label }}</span></sc-if>
@@ -3783,8 +3782,7 @@
             <div style="font:600 12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:12px">WEAK TO</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
               <sc-for list="{{ detail.weaknesses }}" as="w" hint-placeholder-count="4">
-                <span style="display:inline-flex;align-items:center;gap:8px;background:{{ w.fill }};color:{{ w.ink }};border-radius:var(--r-pill);padding:4px 12px 4px 8px;font:700 12px var(--font-display)">
-                  <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);font-size:12px;line-height:1" aria-hidden="true">{{ w.icon }}</span>{{ w.label }} <span style="font-weight:600">{{ w.multLabel }}</span></span>
+                <span style="display:inline-flex;align-items:center;gap:8px;background:{{ w.fill }};color:{{ w.ink }};border-radius:var(--r-pill);padding:4px 12px;font:700 12px var(--font-display)">{{ w.label }} <span style="font-weight:600">{{ w.multLabel }}</span></span>
               </sc-for>
             </div>
           </div>
@@ -20890,7 +20888,7 @@ class Component extends DCLogic {
       themeIsAuto: (this.state.themePref || 'auto') === 'auto', themeIsLight: this.state.themePref === 'light', themeIsDark: this.state.themePref === 'dark',
       themeLabel: 'Theme: ' + ((this.state.themePref || 'auto') === 'auto' ? 'Auto, tap for Light' : this.state.themePref === 'light' ? 'Light, tap for Dark' : 'Dark, tap for Auto'),
       statusBanner: (() => {
-        if ((this.state.moreOpen || this.state.selectMode) && !this.state.csvError) return null;   // a notice does not sit on top of an open menu or the select bar
+        const b = (() => {
         if (this.state.csvError) return { text: this.state.csvError, dot: 'var(--ios-red)' };
         if (this.state.themeToast) return { text: this.state.themeToast, dot: 'var(--ios-blue)' };
         if (!this.state.online) return { text: 'OFFLINE — your roster still works; AI reading and sync resume when you reconnect.', bg: 'var(--brand-primary-strong)', fg: 'var(--type-electric)', dot: 'var(--type-electric)' };
@@ -20899,6 +20897,9 @@ class Component extends DCLogic {
         if (this.state.undoLabel) return { text: this.state.undoLabel + '.', dot: 'var(--ios-green)', action: { label: 'Undo', run: () => this.performUndo() } };
         if (this.state.csvNotice) return { text: this.state.csvNotice, dot: 'var(--ios-green)', action: this.state.importUndoable ? { label: 'Undo', run: () => this.undoImport() } : null };
         return null;
+        })();
+        // a plain notice does not sit on top of an open menu or the select bar; errors and notices with an Undo still show
+        return b && (this.state.moreOpen || this.state.selectMode) && !b.action && !this.state.csvError ? null : b;
       })(),
       headerRef: (el) => { if (el) this._headerEl = el; },
       headerSentinelRef: (el) => this.headerSentinelRef(el),

@@ -14,7 +14,8 @@ module.exports = async function suiteA() {
   // one-card empty state (UI polish), so that number is no longer reachable there; the same strength is kept where it still
   // means something: the loaded app renders more than 300 characters on every one of its screens, with no page error.
   await T('BOOT-01b', 'Boot', 'With a roster loaded, every screen renders more than 300 characters of visible text and no page error', async () => {
-    const r = await session({ feed: false }); await r.load(QA); await r.page.waitForTimeout(1200);
+    const feedFx = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'ui_feed.json'), 'utf8'));   // the person's Today: events and GBL from the feed, the long tail collapsed
+    const r = await session({ feed: feedFx, collapsedTail: true }); await r.load(QA); await r.page.waitForTimeout(1200);
     const bad = [];
     for (const scr of ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG']) { await r.go(scr); await r.page.waitForTimeout(500); const n = (await r.text()).length; if (n <= 300) bad.push(scr + ' ' + n); }
     expect(r.errors.length === 0, r.errors[0]); await r.close();
@@ -215,7 +216,7 @@ module.exports = async function suiteA() {
   await T('ROS-17', 'Roster', 'Sort "Mega ready" lists Mega-capable Pokemon first', async () => {
     await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2500); await s.load(QA, {}); await s.go('ROSTER');
     await s.page.locator('select').first().selectOption('megaReady'); await s.page.waitForTimeout(500);
-    const tags = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.slice(0, 30).map(e => /mega ✓/i.test(e.innerText) ? 2 : /mega/i.test(e.innerText) ? 1 : 0));
+    const tags = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.slice(0, 30).map(e => /MEGA ✓/.test(e.innerText) ? 2 : /MEGA/.test(e.innerText) ? 1 : 0));
     expect(tags.some(t => t > 0), 'fixture has no Mega-capable Pokemon in view'); expect(tags.every((v, i) => i === 0 || tags[i - 1] >= v), 'order ' + tags.join(''));
   }, 'medium');
   await T('ROS-18', 'Roster', 'Scrolling to the bottom loads the next page without tapping', async () => {

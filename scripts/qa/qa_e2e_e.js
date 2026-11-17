@@ -195,8 +195,9 @@ const SECTION_CAPTIONS = () => {
   const bad = [];
   const vis = e => { const r = e.getBoundingClientRect(); return r.height > 0 && r.width > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   const card = e => { if (!e) return false; const cs = getComputedStyle(e); const a = (cs.backgroundColor.match(/[\d.]+/g) || []).map(Number); return a.length >= 3 && (a.length === 3 || a[3] > 0.5) && parseFloat(cs.borderTopLeftRadius) >= 10 && e.getBoundingClientRect().width > 200; };
-  const titles = [...document.body.querySelectorAll('h1, h2, h3, div, span, summary')].filter(t => { if (t.closest('svg, script, style, template, x-dc, nav, button, [role=menuitem], [data-swipe-row]')) return false; if (t.children.length > 1 || !t.textContent.trim() || t.textContent.length > 60) return false; const cs = getComputedStyle(t); if (!vis(t)) return false; if (/^H[123]$/.test(t.tagName) || t.hasAttribute('data-section-title')) return true; return parseFloat(cs.fontSize) >= 13 && parseInt(cs.fontWeight, 10) >= 600 && t.parentElement && t.parentElement.firstElementChild === t && card(t.parentElement); });
-  titles.forEach(t => { const n = t.nextElementSibling; if (!n || !vis(n) || n.children.length > 1 || !n.textContent.trim() || n.tagName === 'DETAILS') return; const cs = getComputedStyle(n); const r = n.getBoundingClientRect(); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3; const lines = Math.round(r.height / lh); if (lines > 2 && parseFloat(cs.fontSize) <= 15 && n.textContent.trim().length > 50) bad.push(t.textContent.trim().slice(0, 20) + ' ' + lines + ' lines'); });
+  const titles = [...document.body.querySelectorAll('h1, h2, h3, div, span, summary')].filter(t => { if (t.closest('svg, script, style, template, x-dc, nav, button, [role=menuitem], [data-swipe-row]')) return false; if (t.children.length > 1 || !t.textContent.trim() || t.textContent.length > 60) return false; const cs = getComputedStyle(t); if (!vis(t)) return false; if (/^H[123]$/.test(t.tagName) || t.hasAttribute('data-section-title')) return true; if (parseFloat(cs.fontSize) >= 17 && parseInt(cs.fontWeight, 10) >= 600 && t.parentElement && t.parentElement.children.length > 1) return true;   // the original rule: any 17 px+ title with a sibling
+    return parseFloat(cs.fontSize) >= 13 && parseInt(cs.fontWeight, 10) >= 600 && t.parentElement && t.parentElement.firstElementChild === t && card(t.parentElement); });   // plus any card heading, whatever its size
+  titles.forEach(t => { const n = t.nextElementSibling; if (!n || !vis(n) || n.children.length > 1 || !n.textContent.trim() || n.tagName === 'DETAILS') return; const cs = getComputedStyle(n); const r = n.getBoundingClientRect(); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3; const lines = Math.round(r.height / lh); if (lines > 2 && parseFloat(cs.fontSize) <= 15 ) bad.push(t.textContent.trim().slice(0, 20) + ' ' + lines + ' lines'); });
   return [...new Set(bad)];
 };
 
@@ -460,11 +461,13 @@ module.exports = async function suiteE() {
     const t1 = (await reach()).top;
     const gl2 = await m.page.evaluate(OVERLAP);
     await T('UIQ-13-' + w + 'x' + h, 'Polish', 'More menu at ' + w + 'x' + h + ': scrolls by wheel and touch, every row can be brought fully inside it, bubble out of the way', async () => {
-      expect(/auto|scroll/.test(info.oy), 'overflow-y is ' + info.oy);
-      expect(info.n >= 10, 'rows ' + info.n);
-      expect(seen.size === info.n, 'rows reached by wheel ' + seen.size + ' of ' + info.n);
-      if (info.sh > info.ch + 1) { expect(wheelTop > 0, 'wheel did not move the menu'); expect(t1 > t0, 'touch swipe did not move the menu (' + t0 + ' -> ' + t1 + ')'); }
-      expect(gl2.length === 0, 'bubble: ' + gl2.join(', '));
+      const bad = [];   // every failure is reported, so the reachability part is checked even when the overflow style is wrong
+      if (!/auto|scroll/.test(info.oy)) bad.push('overflow-y is ' + info.oy);
+      if (info.n < 10) bad.push('rows ' + info.n);
+      if (seen.size !== info.n) bad.push('rows reached by wheel ' + seen.size + ' of ' + info.n);
+      if (info.sh > info.ch + 1) { if (!(wheelTop > 0)) bad.push('wheel did not move the menu'); if (!(t1 > t0)) bad.push('touch swipe did not move the menu (' + t0 + ' -> ' + t1 + ')'); }
+      if (gl2.length) bad.push('bubble: ' + gl2.join(', '));
+      expect(bad.length === 0, bad.join('; '));
     }, 'high');
     await m.close();
   }
@@ -473,7 +476,7 @@ module.exports = async function suiteE() {
     const o = await session({ collapsedTail: true, feed, sentenceCase: true, width: w, height: h, touch: true });
     await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000);
     const bad = [];
-    for (const st of ['MORE', 'DETAIL', 'DETAIL_END', 'SELECT', 'LONG', 'CHAT']) { await openState(o, st); (await o.page.evaluate(OVERLAP)).forEach(x => bad.push(st + ': ' + x)); await closeState(o, st); }
+    for (const st of ['MORE', 'DETAIL', 'DETAIL_END', 'SELECT', 'LONG', 'CHAT']) { await openState(o, st); (await o.page.evaluate(OVERLAP)).forEach(x => bad.push(st + ': ' + x)); (await o.page.evaluate(EDGE)).forEach(x => bad.push(st + ' past the right edge: ' + x)); await closeState(o, st); }
     await T('UIQ-14-' + w, 'Polish', 'Width ' + w + ': the chat bubble does not cover the More menu, detail sheet, long-press sheet or select bar', async () => expect(bad.length === 0, gl(bad)), 'high');
     await o.close();
   }
@@ -568,7 +571,7 @@ module.exports = async function suiteE() {
     src.split('\n').filter(l => !/data-ambient/.test(l)).forEach(l => {
       (l.match(/(?:animation|transition)[^;"{}]*?(?<![\w.-])(?:0?\.9|1\.5|1\.6|2\.6|1\.2)s\b[^;"{}]*/g) || []).forEach(x => bad.push('duration ' + x.slice(0, 50)));
       (l.match(/(?<![\w.-])620ms/g) || []).forEach(() => bad.push('620ms'));
-      (l.match(/font:[0-9 ]*\b(18|20)px/g) || []).forEach(x => bad.push('size ' + x));
+      (l.match(/font:\s*(?:\d{3}\s+)?(?:18|20)px\b(?!\s*\/)|font-size:\s*(?:18|20)px/g) || []).forEach(x => bad.push('size ' + x));
       (l.match(/margin-bottom:22px/g) || []).forEach(() => bad.push('margin-bottom:22px'));
     });
     expect(bad.length === 0, gl([...new Set(bad)]));
