@@ -15,7 +15,7 @@ module.exports = async function suiteB() {
   // ------------------------------------------------------------------ RANK RECALC
   await T('RNK-01', 'Ranks', 'Recalculate-all-ranks fills Great/Ultra/Little ranks for every Pokemon with IVs', async () => { const st2 = await s.state(); const ov = st2.ivOverrides || {}; expect(Object.keys(ov).length > 0 || roster.every(p => p.great && p.great.rankPct != null), 'no ranks computed'); });
   await s.go('PVP');
-  const rowsOf = async () => s.page.evaluate(() => [...document.querySelectorAll('div')].filter(d => /^#\d+$/.test((d.firstElementChild || {}).innerText || '') && d.children.length >= 4 && d.innerText.split('\n').length > 3).map(d => d.innerText.split('\n').map(x => x.trim()).filter(Boolean)));
+  const rowsOf = async () => s.page.evaluate(() => [...document.querySelectorAll('div')].filter(d => /^#\d+$/.test((d.firstElementChild || {}).innerText || '') && d.children.length >= 3 && d.innerText.split('\n').length > 3).map(d => d.innerText.split('\n').map(x => x.trim()).filter(Boolean)));
   for (const [label, cap] of Object.entries(CAPS)) {
     await T('PVP-L-' + label.split(' ')[0], 'PvP', `${label}: list shows only Pokemon whose CP is within the cap`, async () => {
       await s.go(label); const rows = await rowsOf(); if (!rows.length && cap === Infinity) return 'empty';
@@ -86,7 +86,7 @@ module.exports = async function suiteB() {
   const species = new Set(roster.map(p => p.dex)).size;
   const hundo = roster.filter(p => p.atkIV === 15 && p.defIV === 15 && p.staIV === 15).length;
   await T('INT-01', 'Intel', 'Living Dex count equals the number of unique species in the roster', async () => { const t = await s.text(); const m = t.match(/(\d+) \/ \d+ species owned/); expect(m && +m[1] === species, `${m && m[1]} vs ${species}`); }, 'high');
-  await T('INT-02', 'Intel', 'Hundo count matches the number of 15/15/15 Pokemon', async () => { const t = await s.text(); const m = t.match(/(\d+) hundo/); expect(m && +m[1] === hundo, `${m && m[1]} vs ${hundo}`); }, 'high');
+  await T('INT-02', 'Intel', 'Hundo count matches the number of 15/15/15 Pokemon', async () => { const t = await s.text(); const m = t.match(/(\d+) perfect/); expect(m && +m[1] === hundo, `${m && m[1]} vs ${hundo}`); }, 'high');
   await T('INT-03', 'Intel', 'Lucky / Shadow / Favourite counters match the data', async () => { const t = await s.text(); const lucky = roster.filter(p => p.lucky).length; const m = t.match(/Lucky (\d+)/); expect(m && +m[1] === lucky, `${m && m[1]} vs ${lucky}`); });
   await T('INT-04', 'Intel', 'Kanto dex percentage is computed from owned Kanto species', async () => { const k = new Set(roster.filter(p => p.dex <= 151).map(p => p.dex)).size; const m = (await s.text()).match(/(\d+) \/ 151 owned/); expect(m && +m[1] === k, `${m && m[1]} vs ${k}`); });
   await T('INT-05', 'Intel', 'Trade advisor names Pokemon whose lowest IV is under 12', async () => { const t = await s.text(); if (!/WORTH A LUCKY TRADE/.test(t)) skip('none'); expect(/lowest IV is \d+/.test(t)); });

@@ -16,7 +16,7 @@ async function T(id, area, name, fn, sev = 'normal') {
   const t0 = Date.now();
   const rec = { id, area, name, sev, status: 'pass', note: '', ms: 0 };
   try { const n = await fn(); if (typeof n === 'string') rec.note = n; }
-  catch (e) { if (e instanceof Skip) { rec.status = 'skip'; rec.note = e.message; } else { rec.status = 'fail'; rec.note = String(e.message || e).split('\n')[0].slice(0, 300); } }
+  catch (e) { if (e instanceof Skip) { rec.status = 'skip'; rec.note = e.message; } else { rec.status = 'fail'; rec.note = String(e.message || e).split('\n')[0].slice(0, +process.env.QA_NOTE || 300); } }
   rec.ms = Date.now() - t0; results.push(rec);
   process.stdout.write((rec.status === 'pass' ? '.' : rec.status === 'skip' ? 's' : 'F'));
   return rec;
@@ -37,7 +37,8 @@ async function close() { if (browser) await browser.close(); }
 async function session(opts = {}) {
   const b = await launch();
   const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark' });
-  await ctx.addInitScript(() => { window.__noImportGate = true; });   // tests feed synthetic reads; IMPCHK-01 turns the import gate on
+  await ctx.addInitScript(() => { window.__noImportGate = true; });
+  if (!opts.collapsedTail) await ctx.addInitScript(() => { window.__todayTailOpen = true; });   // the long tail of Today is collapsed for users; most tests read it, the UI suite turns this off to see the default   // tests feed synthetic reads; IMPCHK-01 turns the import gate on
   if (!opts.sentenceCase) await ctx.addInitScript(() => { window.__keepCaps = true; });   // tests read the source wording; CASE-01 turns the display layer on
   const page = await ctx.newPage();
   const errors = [], logs = [];
@@ -94,11 +95,11 @@ async function session(opts = {}) {
     } catch (e) { console.error("pinTiers failed:", e.message); }
   }
   const s = { ctx, page, errors, logs, loadMs: Date.now() - t0 };
-  // Tab bar: Today / Roster / PvP / Raid, then More (Home, Recs, Intel, Attack, Log).
-  const BAR = { TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
-  const MORE = { RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search' };
+  // Tab bar: Today / Roster / PvP / Recs, then More (Settings = HOME, Raid, Intel, Attack, Log...).
+  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
+  const MORE = { HOME: 'Settings', RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search', BESTIV: 'Best IV', DITTO: 'Ditto ranking', KEEP: 'Keeper review' };
   s.go = async label => {
-    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(350); await page.getByText(MORE[label], { exact: true }).last().click(); await page.waitForTimeout(600); return; }
+    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(350); await page.locator('[role=menuitem][aria-label="' + MORE[label] + '"]').last().click(); await page.waitForTimeout(600); return; }
     const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(500);
   };
   s.text = () => page.evaluate(() => document.body.innerText);
