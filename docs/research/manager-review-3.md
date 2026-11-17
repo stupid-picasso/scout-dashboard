@@ -26,7 +26,15 @@ The rules match C-1 with the agreed changes (no throttle, verified identity, scr
 | `&& stampOk()` removed from `allow update` | **not caught**: `test_firestore_rules` still passes 26/26 (defect 5). |
 | `verifiedIdentity()` removed from update / `|| true` / `allow get: if signedIn()` | caught by `test_firestore_rules`. |
 
-Probe (scratch script, stand-in): with the listener attached, one debounced edit costs exactly **1 write + 1 read** over 9 s. There is no write loop. The extra read is the echo of the server timestamp (defect 6).
+Probe (scratch script, stand-in, listener attached, 9 s per case), writes / reads on `scoutUsers`:
+
+| Case | Writes | Reads |
+|---|---|---|
+| debounced edit (`queueCloudPush`) | 1 | 1 |
+| `clearTimeout(_pushTimer); pushCloud()` (how most call sites do it) | 1 | 1 |
+| `setState(..., () => this.pushCloud())` without clearing the timer | 2 | 2 |
+
+There is no write loop. The second write in the last case is the 1.2 s debounce firing after the direct push. That is pre-existing: the same 13 non-clearing call sites (e.g. ~7351, ~16965) exist at `fe5b35a`. The extra read per write is new: it is the echo of the server timestamp (defect 6).
 
 ## 1. `firestore.rules`, line by line
 
@@ -49,12 +57,12 @@ Probe (scratch script, stand-in): with the listener attached, one debounced edit
 - `autoSnapshot`/`takeSnapshot` are serialised through `_snapChain`. They write the body, then the index and clock, then delete the entries that dropped out, by id (`pruneSnapshots`/`loadSnapshots` were folded in and are gone).
 - `restoreSnapshot` reads one body. `ensureSnapshotIndex` does a one-time listing for accounts made before the index.
 - `subscribeCloudDoc`/`attachCloudListener` are visibility-gated and idempotent. `onAuthChange` no longer calls `checkMigrationStatus`/`loadMechanicsFromCloud`. On an account switch, `forgetAccount` resets timers, flags and the uid's device copy. `resolveSpriteSrc` uses shipped files only.
-- Exact numbers: SYNC-05 compares the whole counter object to `{userReads:1, userWrites:0, gameData:0, sprites:0, snapR:0, snapW:0, snapD:0, deletes:0}` (reload and a new browser). SYNC-06 expects snapshots w1/r0/d0 and user r1/w1 with keys exactly `lastSnapshotAt,snapshotIndex`, then w1/d1/r0 with five stored. SYNC-07 expects 1 body read before and after confirm. SYNC-08 expects listener counts 1/0/1/1 and reads 1/0/1. SYNC-10 expects 3 reads then 0. DATA-01 expects snapshot reads = deletes = nSnap and the order snapshot < doc < deleteUser. All are `===` checks.
+- Exact numbers: SYNC-05 compares the whole counter object to `{userReads:1, userWrites:0, gameData:0, sprites:0, snapR:0, snapW:0, snapD:0, deletes:0}` (reload and a new browser). SYNC-06 expects snapshots w1/r0/d0 and user r1/w1 with keys exactly `lastSnapshotAt,snapshotIndex`, then w1/d1/r0 with five stored. SYNC-07 expects 1 body read before and after confirm. SYNC-08 expects listener counts 1/0/1/1 and reads 1/0/1. SYNC-10 expects 3 reads then 0. DATA-01 expects snapshot reads = deletes = nSnap and the order snapshot < doc < deleteUser. All of these are `===` checks. Tests that do not pin counts: SYNC-09 (status, state and device copy), SYNC-11 (scrub result, nothing adopted), DATA-02 (file contents), DATA-03 (state and storage), and SYNC-01, which is still `writes.length >= 1` (unchanged from before). SYNC-09 and SYNC-11 have no natural count to assert, so this is acceptable. SYNC-01 is covered by the probe above and by defect 6.
 - Sign-out isolation: DATA-03 covers A out then B in, B in without A signing out, and a signed-out reload.
 
 ## 3. Secrets
 
-`git grep` finds the owner's address in no tracked file; it survives only in git history (old README). `admin@scout.app`, `ADMIN_EMAILS`, `migrateStatsAndSprites`, `refreshCloudGameData` and `checkMigrationStatus` appear only in `docs/research/*`, `PROJECT_HANDOFF.md` (prose naming the removed functions), `DEPLOY.md` (`token.email in [...]` as prose) and the test's own regex. Generated bundles are clean. The Gemini key is sent only as an `x-goog-api-key` header on the three `generativelanguage` calls (lines ~10994, 11004, 11118); there is no `key=` in any URL. GEM-KEY-01 asserts this.
+`git grep` finds the owner's address in no tracked file; it survives only in git history (old README). `admin@scout.app`, `ADMIN_EMAILS`, `migrateStatsAndSprites`, `refreshCloudGameData` and `checkMigrationStatus` appear only in `docs/research/*`, `PROJECT_HANDOFF.md` (prose naming the removed functions), `DEPLOY.md` (`token.email in [...]` as prose) and the test's own regex. Generated bundles are clean. Against the literal bar ("only docs/research hits") the result is **not met**. The extra hits are function names in `PROJECT_HANDOFF.md` prose, the guard regex in `scripts/test_firestore_rules.js`, and `token.email in [...]` as an instruction in `DEPLOY.md`. None holds an address or live code, so I judge them harmless. The Gemini key is sent only as an `x-goog-api-key` header on the three `generativelanguage` calls (lines ~10994, 11004, 11118); there is no `key=` in any URL. GEM-KEY-01 asserts this. The custom-endpoint path (`fetch(this.state.apiEndpoint`, ~11295) sends only `Content-Type` and the body, never the key.
 
 ## 4. `test_roster_logic.js` changes: justified
 
