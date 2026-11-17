@@ -220,6 +220,9 @@ const ROWLINES = () => {
   [...document.querySelectorAll('[data-swipe-row]')].slice(0, 30).forEach(row => {
     const t = row.innerText.replace(/\s+/g, ' ');
     if (/(^|\s)[\u2014\u2013-]($|\s)/.test(t) || /\u00b7\s*[\u2014-]\s*$/.test(t)) bad.push('dash: ' + t.slice(0, 40));
+    // a middot separator must share its line with the word that follows it (never left at the end of a line)
+    row.querySelectorAll('span').forEach(sp => { if (sp.children.length || sp.textContent.trim() !== '\u00b7') return; const n = sp.nextElementSibling, r = sp.getBoundingClientRect(); if (r.width < 1) return;
+      if (!n || !n.textContent.trim()) bad.push('dangling middot: ' + t.slice(0, 40)); else if (n.getBoundingClientRect().top - r.top > 4) bad.push('middot ends a line: ' + t.slice(0, 40)); });
     row.querySelectorAll('svg[aria-label="IVs measured"]').forEach(sv => { const n = sv.nextElementSibling; if (!n || !n.textContent.trim()) bad.push('lone check: ' + t.slice(0, 30)); });
   });
   return bad;
@@ -491,7 +494,7 @@ module.exports = async function suiteE() {
       (await o.page.evaluate(CLIPPED, { sel: '[data-first20]', strict: true })).forEach(x => bad.push(mode + ' clipped ' + x));
       (await o.page.evaluate(ROWLINES)).forEach(x => bad.push(mode + ' ' + x));
     }
-    await T('UIQ-15-' + w, 'Polish', 'Roster rows at ' + w + ': nothing clipped in the first 20 rows (normal and select mode), no lone check mark, no dangling dash', async () => expect(bad.length === 0, gl(bad)), 'high');
+    await T('UIQ-15-' + w, 'Polish', 'Roster rows at ' + w + ': nothing clipped in the first 20 rows (normal and select mode), no lone check mark, no dangling dash or middot', async () => expect(bad.length === 0, gl(bad)), 'high');
     await o.close();
   }
   // UIQ-16: Today is short, in render order, one stat strip, the tail collapsed behind one disclosure
@@ -576,6 +579,100 @@ module.exports = async function suiteE() {
     });
     expect(bad.length === 0, gl([...new Set(bad)]));
   }, 'high');
+
+
+  // ---- pass 3 tests (UIQ-23 ...): each one fails on the behaviour it replaced
+  // pixel centroid of a control's ink, measured from a screenshot (a text glyph's box says nothing about where it is drawn)
+  const INK_OFFSET = async (page, sel) => {
+    const buf = await page.locator(sel).first().screenshot();
+    return page.evaluate(async b64 => {
+      const img = new Image(); await new Promise(r => { img.onload = r; img.src = 'data:image/png;base64,' + b64; });
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height;
+      const hist = new Map(); for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { if (Math.hypot(i - W / 2, j - H / 2) > W * 0.36) continue; const o = (j * W + i) * 4; const key = d[o] + ',' + d[o + 1] + ',' + d[o + 2]; hist.set(key, (hist.get(key) || 0) + 1); }
+      const bg = [...hist.entries()].sort((a, b) => b[1] - a[1])[0][0].split(',').map(Number);
+      let sx = 0, sy = 0, n = 0;
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { if (Math.hypot(i - W / 2, j - H / 2) > W * 0.36) continue; const o = (j * W + i) * 4; if (Math.abs(d[o] - bg[0]) + Math.abs(d[o + 1] - bg[1]) + Math.abs(d[o + 2] - bg[2]) > 90) { sx += i; sy += j; n++; } }
+      const dpr = window.devicePixelRatio || 1;
+      return n ? { dx: (sx / n - W / 2) / dpr, dy: (sy / n - H / 2) / dpr, n } : { n: 0 };
+    }, buf.toString('base64'));
+  };
+  if (['UIQ-23', 'UIQ-24', 'UIQ-25', 'UIQ-27'].some(want)) for (const theme of ['dark', 'light']) {
+    const o = await session({ collapsedTail: true, feed, promo, colorScheme: theme, sentenceCase: true, width: 390, height: 844, touch: true });
+    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000);
+    // UIQ-23: Settings: the "Don't spend dust on" card is hidden when it is empty; the dust cards use the 14 px card radius
+    await o.go('HOME'); await o.page.waitForTimeout(700);
+    const dust = await o.page.evaluate(() => [...document.querySelectorAll('[role=main] div')].filter(d => d.firstElementChild && /^(stardust priority|don.t spend dust on)$/i.test((d.firstElementChild.textContent || '').trim()) && d.firstElementChild.children.length === 0).map(d => ({ h: d.firstElementChild.textContent.trim(), radius: getComputedStyle(d).borderTopLeftRadius, extra: d.innerText.replace(d.firstElementChild.innerText, '').trim().length })));
+    await T('UIQ-23-' + theme, 'Polish', 'Settings (' + theme + '): no empty "Don\'t spend dust on" card, dust cards use a 14 px radius', async () => {
+      expect(dust.length > 0, 'no dust card found');
+      expect(dust.every(c => c.extra > 0), 'empty card: ' + dust.filter(c => !c.extra).map(c => c.h).join(', '));
+      expect(dust.every(c => parseFloat(c.radius) >= 14), 'radius ' + dust.map(c => c.radius).join(', '));
+      const src = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8').split('\n'); const ix = src.findIndex(l => /STARDUST PRIORITY/.test(l)), iy = src.findIndex(l => /SPEND DUST ON/.test(l));
+      expect(/border-radius:14px/.test(src[ix - 1]) && /border-radius:14px/.test(src[iy - 1]), 'dust card source radius is not 14px');
+    }, 'high');
+    if (want('UIQ-23')) {   // with a transfer candidate on the plan the card is back and is not empty
+      const full = await o.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const orig = l.buildOptimizePlan; l.buildOptimizePlan = r => { const p = orig.call(l, r); if (!p.transferSafe.length) p.transferSafe = [r[0]]; return p; }; l.setState({ tick: Date.now() }); await new Promise(r => setTimeout(r, 500)); const d = [...document.querySelectorAll('[role=main] div')].find(x => x.firstElementChild && /^don.t spend dust on$/i.test(x.firstElementChild.textContent.trim())); l.buildOptimizePlan = orig; return d ? d.innerText.replace(d.firstElementChild.innerText, '').trim().length : -1; } } return -2; });
+      await T('UIQ-23b-' + theme, 'Polish', 'Settings (' + theme + '): with a transfer candidate the "Don\'t spend dust on" card is shown with a row', async () => expect(full > 0, 'card text length ' + full), 'high');
+    }
+    // UIQ-24 / UIQ-25: the detail sheet
+    await openState(o, 'DETAIL');
+    const det = await o.page.evaluate(() => {
+      const d = document.querySelector('[role=dialog][aria-label="Pokemon details"]'); const sheet = getComputedStyle(d).backgroundColor;
+      const label = [...d.querySelectorAll('[role=button]')].map(b => b.textContent.trim()).find(t => /^set$/i.test(t));
+      const chips = [...d.querySelectorAll('span')].filter(e => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= 12 && /^(#\d+|[\d,]+\s*CP|XXL|XL|XS|XXS)(\s.*)?$/.test(e.textContent.replace(/\s+/g, ' ').trim()) && e.getBoundingClientRect().width > 0);
+      return { sheet, label, note: (d.innerText.match(/[^\n]*(?:candy count|Candy for the whole family)[^\n]*/) || [''])[0], chips: chips.map(c => ({ t: c.textContent.trim().slice(0, 12), bg: getComputedStyle(c).backgroundColor })) };
+    });
+    await T('UIQ-24-' + theme, 'Polish', 'Detail sheet (' + theme + '): copy that names the candy button uses its label ("Set"), never SET in capitals', async () => {
+      expect(!!det.label, 'candy button not found');
+      expect(!/\bSET\b/.test(det.note), 'note says: ' + det.note);
+      const src = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8'); const at = src.indexOf('  candyNoteFor(p) {'); const fn = src.slice(at, src.indexOf('\n  }\n', at));
+      expect(!/\bSET\b/.test(fn.replace(/\/\/.*$/gm, '')), 'candyNoteFor still has SET in capitals');
+    }, 'high');
+    await T('UIQ-25-' + theme, 'Polish', 'Detail sheet (' + theme + '): CP, size and #id chips keep a fill that differs from the sheet', async () => {
+      expect(det.chips.length >= 2, 'chips found: ' + det.chips.length);
+      expect(det.chips.every(c => c.bg !== det.sheet && c.bg !== 'rgba(0, 0, 0, 0)'), 'no fill: ' + det.chips.filter(c => c.bg === det.sheet || c.bg === 'rgba(0, 0, 0, 0)').map(c => c.t + ' ' + c.bg + ' on ' + det.sheet).join('; '));
+    }, 'high');
+    await closeState(o, 'DETAIL_END');
+    // UIQ-27: the "What to build for this cup" summary reads as a heading and is a real tap target
+    if (want('UIQ-27')) {
+      await o.go('TODAY'); await o.page.waitForTimeout(800);
+      const sm = await o.page.evaluate(() => { document.querySelectorAll('[role=main] details').forEach(d => { d.open = true; }); const m = [...document.querySelectorAll('details[data-cup-build] > summary')].filter(e => e.getBoundingClientRect().width > 0);
+        return m.map(e => { const cs = getComputedStyle(e), b = getComputedStyle(e, '::before'); return { h: Math.round(e.getBoundingClientRect().height), size: parseFloat(cs.fontSize), weight: parseInt(cs.fontWeight, 10), ls: cs.letterSpacing, strip: b.position === 'absolute' && parseFloat(b.height) >= 44 }; }); });
+      await T('UIQ-27-' + theme, 'Polish', 'Today (' + theme + '): "What to build for this cup" is at least 24 px tall, 13 px or more, weight 600+, untracked, with the invisible 44 px tap strip', async () => {
+        expect(sm.length > 0, 'no cup build summary on screen');
+        expect(sm.every(x => x.h >= 24 && x.size >= 13 && x.weight >= 600 && x.ls === 'normal' && x.strip), JSON.stringify(sm));
+      }, 'high');
+    }
+    await o.close();
+  }
+  // UIQ-26 lives in UIQ-15 (ROWLINES now catches a dangling middot).
+  // UIQ-28: the chat bubble never sits on list content: scrolling the whole screen, no painted text (CP, rank %, names) is under the bubble
+  if (want('UIQ-28')) for (const [scr, w, h, theme] of [['ROSTER', 390, 844, 'light'], ['PVP', 320, 568, 'dark'], ['ROSTER', 320, 568, 'dark'], ['PVP', 390, 844, 'light']]) {
+    const o = await session({ collapsedTail: true, feed, colorScheme: theme, sentenceCase: true, width: w, height: h, touch: true });
+    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000); await o.go(scr); await o.page.waitForTimeout(900);
+    const g = await o.page.evaluate(async () => {
+      const b = document.querySelector('button[aria-label="Ask the Professor"]'); if (!b) return { none: true }; b.style.pointerEvents = 'none';
+      const sc = document.querySelector('[data-app-scroll]'); const hits = new Set(); let steps = 0; const max = () => Math.max(document.documentElement.scrollHeight - innerHeight, sc ? sc.scrollHeight - sc.clientHeight : 0);
+      for (let y = 0; y <= max() + 1 && steps < 80; y += Math.round(innerHeight / 3), steps++) {
+        window.scrollTo(0, y); if (sc) sc.scrollTop = y; await new Promise(r => setTimeout(r, 120));
+        const rb = b.getBoundingClientRect(); const walk = document.createTreeWalker(document.querySelector('[role=main]'), NodeFilter.SHOW_TEXT);
+        for (let n = walk.nextNode(); n; n = walk.nextNode()) { if (!n.textContent.trim()) continue; const el = n.parentElement, rg = document.createRange(); rg.selectNodeContents(n);
+          [...rg.getClientRects()].forEach(r => { if (r.width < 1 || r.bottom <= 0 || r.top >= innerHeight || r.right <= rb.left || r.left >= rb.right || r.bottom <= rb.top || r.top >= rb.bottom) return; const e = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2); if (e && document.querySelector('[role=main]').contains(e)) hits.add(n.textContent.trim().slice(0, 14)); }); }
+      }
+      const rb = b.getBoundingClientRect(); return { hits: [...hits], steps, onScreen: rb.left + rb.width / 2 < innerWidth && rb.right > innerWidth - 16 };
+    });
+    await T('UIQ-28-' + scr + '-' + w, 'Polish', scr + ' at ' + w + ' (' + theme + '): scrolled top to bottom, no text is ever under the chat bubble, and the bubble is still on screen', async () => { expect(!g.none, 'bubble missing'); expect(g.steps > 2, 'only ' + g.steps + ' scroll steps'); expect(g.onScreen, 'bubble centre is off screen'); expect(g.hits.length === 0, 'under the bubble: ' + g.hits.slice(0, 6).join(' | ')); }, 'high');
+    await o.close();
+  }
+  // UIQ-29: the chat close glyph is centred in its button (measured from pixels) at 320 and 390
+  if (want('UIQ-29')) for (const w of [320, 390]) for (const theme of ['dark', 'light']) {
+    const o = await session({ collapsedTail: true, feed, colorScheme: theme, sentenceCase: true, width: w, height: 568, touch: true });
+    await o.load(QA); await o.page.waitForTimeout(800); await o.go('TODAY'); await o.set({ chatOpen: true }); await o.page.waitForTimeout(900);
+    await o.page.addStyleTag({ content: '.ios-toast{display:none !important}' });
+    const k = await INK_OFFSET(o.page, 'button[aria-label="Close chat"]');
+    await T('UIQ-29-' + w + '-' + theme, 'Polish', 'Chat close glyph at ' + w + ' (' + theme + '): ink centre within 1 px of the button centre', async () => expect(k.n > 20 && Math.abs(k.dx) <= 1 && Math.abs(k.dy) <= 1, 'ink offset ' + JSON.stringify(k)), 'high');
+    await o.close();
+  }
 
 };
 
