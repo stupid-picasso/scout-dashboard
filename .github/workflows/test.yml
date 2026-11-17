@@ -30,6 +30,7 @@ jobs:
           node scripts/test_pvp_sim.js
           node scripts/test_max.js
           node scripts/test_cp_recovery.js
+          node scripts/test_firestore_rules.js
 
       - name: Gemini pipeline tests
         run: |

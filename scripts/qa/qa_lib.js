@@ -13,6 +13,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg || 'assertion fai
 const skip = msg => { throw new Skip(msg); };
 
 async function T(id, area, name, fn, sev = 'normal') {
+  if (process.env.QA_ONLY && !new RegExp(process.env.QA_ONLY).test(id)) return null;   // QA_ONLY=SYNC-0[5-9]|DATA runs just those tests
   const t0 = Date.now();
   const rec = { id, area, name, sev, status: 'pass', note: '', ms: 0 };
   try { const n = await fn(); if (typeof n === 'string') rec.note = n; }
@@ -32,12 +33,150 @@ async function launch() {
 }
 async function close() { if (browser) await browser.close(); }
 
+// ---- In-memory stand-in for Firebase Auth + Cloud Firestore ---------------------------------------------------------------
+// Backed by C.store (path -> document), shared between sessions to model two devices. It enforces the same allow-list as
+// firestore.rules (read from that file, so the two cannot drift), refuses other users' paths and writes to gameData/sprites,
+// and counts every read, write, delete and byte per collection in C.stats. Nothing here talks to the real Firebase project.
+function rulesLists() {
+  const t = fs.readFileSync(path.join(REPO, 'firestore.rules'), 'utf8').replace(/\/\/.*$/gm, '');
+  const list = name => { const m = t.match(new RegExp('function ' + name + '\\(\\)\\s*\\{([\\s\\S]*?)\\}')); return m ? (m[1].match(/'([^']+)'/g) || []).map(x => x.slice(1, -1)) : []; };
+  const sn = t.match(/match \/snapshots\/\{id\}[\s\S]*?hasOnly\(\[([^\]]*)\]/);
+  return { allowed: list('allowedKeysList'), scrub: list('scrubKeysList'), snapKeys: sn ? (sn[1].match(/'([^']+)'/g) || []).map(x => x.slice(1, -1)) : [] };
+}
+const colOf = p => { const g = p.split('/'); return g.length >= 4 ? g[2] : g[0]; };
+function statsFor(C, p) { C.stats = C.stats || {}; return (C.stats[colOf(p)] = C.stats[colOf(p)] || { reads: 0, writes: 0, deletes: 0, bytesRead: 0, bytesWritten: 0 }); }
+const isDelMark = v => v && typeof v === 'object' && v.__del;
+const isStamp = v => v && typeof v === 'object' && v.__ts === true;
+
+function cloudDecide(C, op, p, data) {   // returns '' when allowed, else the reason
+  const u = C.user; const g = p.split('/'); const rl = C.rules = C.rules || rulesLists();
+  if (!u) return 'not signed in';
+  const verified = u.emailVerified === true || ['google.com', 'github.com'].indexOf(u.provider) >= 0;
+  if (g[0] === 'gameData' || g[0] === 'sprites') return op === 'read' ? '' : g[0] + ' is read-only';
+  if (g[0] !== 'scoutUsers' || g.length < 2) return 'no rule for ' + g[0];
+  if (g[1] !== u.uid) return 'not the owner of ' + p;
+  if (g.length === 2) {
+    if (op === 'read' || op === 'delete') return '';
+    if (!verified) return 'unverified identity';
+    const exists = C.store[p] !== undefined;
+    const keys = Object.keys(data);
+    if (!exists) {
+      const bad = keys.filter(k => !isDelMark(data[k]) && rl.allowed.indexOf(k) < 0);
+      if (bad.length) return 'create with keys outside the allow-list: ' + bad.join(',');
+      if (!isStamp(data.updatedAt)) return 'updatedAt is not a server timestamp';
+      return '';
+    }
+    for (const k of keys) {
+      if (isDelMark(data[k])) { if (rl.allowed.indexOf(k) < 0 && rl.scrub.indexOf(k) < 0) return 'delete of unlisted key ' + k; }
+      else if (rl.scrub.indexOf(k) >= 0) { if (JSON.stringify(C.store[p][k]) !== JSON.stringify(data[k])) return 'credential field ' + k + ' may only be deleted'; }
+      else if (rl.allowed.indexOf(k) < 0) return 'update with key outside the allow-list: ' + k;
+    }
+    if (keys.indexOf('updatedAt') >= 0 && !isStamp(data.updatedAt)) return 'updatedAt is not a server timestamp';
+    return '';
+  }
+  if (g.length === 4 && g[2] === 'snapshots') {
+    if (op === 'read' || op === 'delete') return '';
+    if (!verified) return 'unverified identity';
+    if (C.store[p] !== undefined) return 'snapshots are immutable';
+    if (!/^[0-9]{13}$/.test(g[3])) return 'snapshot id is not 13 digits';
+    const bad = Object.keys(data).filter(k => rl.snapKeys.indexOf(k) < 0);
+    return bad.length ? 'snapshot keys outside the allow-list: ' + bad.join(',') : '';
+  }
+  return 'no rule for ' + p;
+}
+
+async function installCloud(page, C) {
+  C.store = C.store || {}; C.writes = C.writes || []; C.denied = C.denied || []; C.stats = C.stats || {};
+  C.authUsers = C.authUsers || {};
+  if (C.user === undefined) C.user = { uid: 'qa-user', email: 'qa@example.test', provider: 'google.com', emailVerified: true };
+  if (C.user) C.authUsers[C.user.uid] = C.user;
+  const deny = (op, p, why) => { C.denied.push({ op, p, why }); return { error: 'Missing or insufficient permissions. (' + why + ')', code: 'permission-denied' }; };
+  const view = d => d === undefined ? null : JSON.parse(JSON.stringify(d));
+  const read = (p, n) => { const st = statsFor(C, p); st.reads += n; };
+  await page.exposeFunction('__fsAuthInit', () => C.user || null);
+  await page.exposeFunction('__fsAuthSet', u => { C.user = u; if (u) C.authUsers[u.uid] = u; return true; });
+  await page.exposeFunction('__fsAuthDelete', () => {
+    if (C.requireRecentLogin) return { error: 'This operation is sensitive and requires recent authentication.', code: 'auth/requires-recent-login' };
+    if (C.user) { (C.log = C.log || []).push(['deleteUser', C.user.uid]); delete C.authUsers[C.user.uid]; (C.deletedUsers = C.deletedUsers || []).push(C.user.uid); C.user = null; }
+    return { ok: true };
+  });
+  await page.exposeFunction('__fsAuthTime', () => (C.authTime !== undefined ? C.authTime : Date.now()));
+  await page.exposeFunction('__fsGet', (p, kind) => {
+    const why = cloudDecide(C, 'read', p, {}); if (why) return deny('read', p, why);
+    const d = C.store[p]; const st = statsFor(C, p); st.reads += 1; if (d !== undefined) st.bytesRead += JSON.stringify(d).length;
+    return { data: view(d) };
+  });
+  await page.exposeFunction('__fsList', (p, order, desc, lim) => {
+    const why = cloudDecide(C, 'read', p + '/x', {}); if (why) return deny('read', p, why);
+    const pre = p + '/';
+    let rows = Object.keys(C.store).filter(k => k.startsWith(pre) && k.slice(pre.length).indexOf('/') < 0).map(k => ({ id: k.slice(pre.length), data: view(C.store[k]) }));
+    if (order) rows.sort((a, b) => (a.data[order] > b.data[order] ? 1 : a.data[order] < b.data[order] ? -1 : 0) * (desc ? -1 : 1));
+    if (lim) rows = rows.slice(0, lim);
+    const st = statsFor(C, p + '/x'); st.reads += Math.max(1, rows.length); rows.forEach(r => { st.bytesRead += JSON.stringify(r.data).length; });
+    return { rows };
+  });
+  await page.exposeFunction('__fsSet', (p, data, merge) => {
+    if (C.failWrites) return C.failWrites === 'quota' ? { error: 'Quota exceeded.', code: 'resource-exhausted' } : { error: 'permission-denied (QA)', code: 'permission-denied' };
+    const why = cloudDecide(C, 'write', p, data); if (why) return deny('write', p, why);
+    const cur = merge && C.store[p] ? C.store[p] : {};
+    const next = { ...cur };
+    Object.keys(data).forEach(k => { if (isDelMark(data[k])) delete next[k]; else if (isStamp(data[k])) next[k] = { __tsval: Date.now() }; else next[k] = data[k]; });
+    C.store[p] = next; (C.log = C.log || []).push(['set', p]); const bytes = JSON.stringify(next).length;
+    const st = statsFor(C, p); st.writes += 1; st.bytesWritten += JSON.stringify(data).length;
+    C.writes.push({ p, bytes, keys: Object.keys(data) });
+    return { ok: true };
+  });
+  await page.exposeFunction('__fsDelete', p => {
+    const why = cloudDecide(C, 'delete', p, {}); if (why) return deny('delete', p, why);
+    delete C.store[p]; (C.log = C.log || []).push(['delete', p]); statsFor(C, p).deletes += 1; return { ok: true };
+  });
+  await page.route(/gstatic\.com\/firebasejs\/.*firebase-app-compat/, r => r.fulfill({ contentType: 'application/javascript', body: `(function(){
+    const listeners = {};
+    const del = { __del: true }, stampMark = { __ts: true };
+    class Timestamp { constructor(ms) { this._ms = ms; this.seconds = Math.floor(ms / 1000); this.nanoseconds = (ms % 1000) * 1e6; } toMillis() { return this._ms; } toDate() { return new Date(this._ms); } }
+    const rev = d => d === null ? null : JSON.parse(JSON.stringify(d), (k, v) => (v && typeof v === 'object' && v.__tsval !== undefined) ? new Timestamp(v.__tsval) : v);
+    const wire = o => JSON.parse(JSON.stringify(o, (k, v) => (v && v.__del) ? { __del: true } : (v && v.__ts) ? { __ts: true } : v));
+    const fail = r => { const e = new Error(r.error); e.code = r.code; return e; };
+    const snapOf = (path, d) => ({ id: path.split('/').pop(), exists: d !== null, data: () => rev(d), metadata: { hasPendingWrites: false }, ref: ref(path) });
+    const notify = path => (listeners[path] || []).slice().forEach(cb => window.__fsGet(path).then(r => { if (!r.error) cb(snapOf(path, r.data)); }));
+    window.__fsListeners = () => Object.keys(listeners).reduce((n, k) => n + listeners[k].length, 0);
+    function query(path, o) { return { path, o,
+      orderBy: (f, dir) => query(path, { ...o, order: f, desc: dir === 'desc' }), limit: n => query(path, { ...o, lim: n }),
+      get: async () => { const r = await window.__fsList(path, o.order || '', !!o.desc, o.lim || 0); if (r.error) throw fail(r); const docs = r.rows.map(x => snapOf(path + '/' + x.id, x.data)); return { docs, empty: !docs.length, size: docs.length, forEach: f => docs.forEach(f) }; } }; }
+    function ref(path) { const isDoc = path.split('/').length % 2 === 0;
+      if (!isDoc) return { path, doc: d => ref(path + '/' + d), orderBy: (f, dir) => query(path, { order: f, desc: dir === 'desc' }).orderBy(f, dir), limit: n => query(path, { lim: n }), get: () => query(path, {}).get(),
+        add: async data => { const r = await window.__fsSet(path + '/' + Math.random().toString(36).slice(2), wire(data), false); if (r.error) throw fail(r); } };
+      return { path, id: path.split('/').pop(), collection: c => ref(path + '/' + c),
+        get: async () => { const r = await window.__fsGet(path); if (r.error) throw fail(r); return snapOf(path, r.data); },
+        set: async (data, o) => { const r = await window.__fsSet(path, wire(data), !!(o && o.merge)); if (r.error) throw fail(r);
+          // A listener hears a write again only when the server filled something in (a server timestamp): otherwise the local echo equals the confirmed data and is not billed.
+          if (JSON.stringify(wire(data)).indexOf('"__ts":true') >= 0) notify(path); },
+        delete: async () => { const r = await window.__fsDelete(path); if (r.error) throw fail(r); notify(path); },
+        onSnapshot: (cb, err) => { (listeners[path] = listeners[path] || []).push(cb); window.__fsGet(path).then(r => { if (r.error) { if (err) err(fail(r)); } else cb(snapOf(path, r.data)); }); return () => { listeners[path] = (listeners[path] || []).filter(x => x !== cb); }; } }; }
+    const fs = () => ({ collection: c => ref(c) });
+    fs.FieldValue = { delete: () => del, serverTimestamp: () => stampMark };
+    const authCbs = [];
+    const mk = u => u && ({ uid: u.uid, email: u.email, providerData: [{ providerId: u.provider }],
+      getIdTokenResult: async () => ({ authTime: new Date(await window.__fsAuthTime()).toISOString() }),
+      delete: async () => { const r = await window.__fsAuthDelete(); if (r.error) throw fail(r); auth.currentUser = null; authCbs.forEach(cb => cb(null)); } });
+    const auth = { currentUser: null,
+      onAuthStateChanged(cb) { authCbs.push(cb); setTimeout(async () => { const u = await window.__fsAuthInit(); auth.currentUser = mk(u); cb(auth.currentUser); }, 30); },
+      async signOut() { auth.currentUser = null; await window.__fsAuthSet(null); authCbs.forEach(cb => cb(null)); },
+      signInWithEmailAndPassword: async () => {}, createUserWithEmailAndPassword: async () => {} };
+    window.__qaAuth = { async signIn(u) { await window.__fsAuthSet(u); auth.currentUser = mk(u); authCbs.forEach(cb => cb(auth.currentUser)); }, signOut: () => auth.signOut() };
+    window.firebase = { apps: [], initializeApp() { const a = {}; window.firebase.apps.push(a); return a; }, auth: () => auth, firestore: fs };
+  })();` }));
+  await page.route(/gstatic\.com\/firebasejs\/.*firebase-(auth|firestore)-compat/, r => r.fulfill({ contentType: 'application/javascript', body: '' }));
+  await page.route(/(googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
+}
+
 // A fresh, isolated app session. opts: csv (path), feed (object|false), width/height,
 // types (inject typeTable), offline, init (fn run before load)
 async function session(opts = {}) {
   const b = await launch();
   const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark' });
   await ctx.addInitScript(() => { window.__noImportGate = true; });
+  if (opts.init) await ctx.addInitScript(opts.init);
   if (!opts.collapsedTail) await ctx.addInitScript(() => { window.__todayTailOpen = true; });   // the long tail of Today is collapsed for users; most tests read it, the UI suite turns this off to see the default   // tests feed synthetic reads; IMPCHK-01 turns the import gate on
   if (!opts.sentenceCase) await ctx.addInitScript(() => { window.__keepCaps = true; });   // tests read the source wording; CASE-01 turns the display layer on
   const page = await ctx.newPage();
@@ -53,34 +192,7 @@ async function session(opts = {}) {
   await page.route('**/data/feed_check.json*', r => r.abort());
   // QA runs signed-out of a cloud that is not there: with real network access Firebase would load and its signed-out callback empties the roster mid-test.
   if (opts.cloud) {
-    // A tiny in-memory stand-in for Firebase Auth + Firestore, backed by opts.cloud.store (shared between sessions to model two devices).
-    const C = opts.cloud; C.store = C.store || {}; C.writes = C.writes || [];
-    await page.exposeFunction('__fsGet', p => C.store[p] === undefined ? null : JSON.parse(JSON.stringify(C.store[p])));
-    await page.exposeFunction('__fsSet', (p, data, merge) => {
-      if (C.failWrites) return { error: 'permission-denied (QA)' };
-      const cur = merge && C.store[p] ? C.store[p] : {};
-      const next = { ...cur };
-      Object.keys(data).forEach(k => { if (data[k] && data[k].__del) delete next[k]; else next[k] = data[k]; });
-      C.store[p] = next; C.writes.push({ p, bytes: JSON.stringify(next).length, keys: Object.keys(data) });
-      return { ok: true };
-    });
-    await page.route(/gstatic\.com\/firebasejs\/.*firebase-app-compat/, r => r.fulfill({ contentType: 'application/javascript', body: `(function(){
-      const listeners = {};
-      const del = { __del: true };
-      function ref(path) { return { path, collection: c => ref(path + '/' + c), doc: d => ref(path + '/' + d),
-        get: async () => { const d = await window.__fsGet(path); return { exists: d !== null, data: () => d }; },
-        add: async data => { const r = await window.__fsSet(path + '/' + Math.random().toString(36).slice(2), data, false); return r; },
-        set: async (data, o) => { const r = await window.__fsSet(path, JSON.parse(JSON.stringify(data, (k, v) => (v && v.__del) ? { __del: true } : v)), !!(o && o.merge)); if (r && r.error) throw new Error(r.error);
-          (listeners[path] || []).forEach(cb => window.__fsGet(path).then(d => cb({ exists: d !== null, data: () => d, metadata: { hasPendingWrites: false } }))); },
-        onSnapshot: (cb, err) => { (listeners[path] = listeners[path] || []).push(cb); window.__fsGet(path).then(d => cb({ exists: d !== null, data: () => d, metadata: { hasPendingWrites: false } })); return () => { listeners[path] = (listeners[path] || []).filter(x => x !== cb); }; },
-        orderBy: () => ref(path), limit: () => ref(path) }; }
-      const fs = () => ({ collection: c => ref(c) });
-      fs.FieldValue = { delete: () => del };
-      const auth = { currentUser: null, onAuthStateChanged(cb) { setTimeout(() => { auth.currentUser = { uid: 'qa-user', email: 'qa@example.test' }; cb(auth.currentUser); }, 30); }, signOut() { auth.currentUser = null; }, signInWithEmailAndPassword: async () => {}, createUserWithEmailAndPassword: async () => {} };
-      window.firebase = { apps: [], initializeApp() { const a = {}; window.firebase.apps.push(a); return a; }, auth: () => auth, firestore: fs };
-    })();` }));
-    await page.route(/gstatic\.com\/firebasejs\/.*firebase-(auth|firestore)-compat/, r => r.fulfill({ contentType: 'application/javascript', body: '' }));
-    await page.route(/(googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
+    await installCloud(page, opts.cloud);
   } else
   await page.route(/(gstatic\.com|googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
   if (opts.offline) await ctx.setOffline(true);

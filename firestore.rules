@@ -42,17 +42,25 @@ service cloud.firestore {
       ];
     }
 
-    // Credentials an older client may have uploaded. They may be DELETED (the one-time scrub) but never written.
+    // Credentials an older client may have uploaded. They may be DELETED (the one-time scrub) but never written or changed.
     // Remove this list once every installed client has scrubbed (see DEPLOY.md, migration window).
     function scrubKeysList() { return ['githubToken','geminiKey','geminiKeys','apiEndpoint']; }
+
+    // A scrub field must be gone from the result or exactly as it was: a document that still holds one must not lock its owner out.
+    function scrubOk() {
+      return (!('githubToken' in request.resource.data) || request.resource.data.githubToken == resource.data.githubToken)
+          && (!('geminiKey' in request.resource.data) || request.resource.data.geminiKey == resource.data.geminiKey)
+          && (!('geminiKeys' in request.resource.data) || request.resource.data.geminiKeys == resource.data.geminiKeys)
+          && (!('apiEndpoint' in request.resource.data) || request.resource.data.apiEndpoint == resource.data.apiEndpoint);
+    }
 
     function createKeysOk() { return request.resource.data.keys().hasOnly(allowedKeysList()); }
 
     // Only the keys being CHANGED are checked, so stale fields already in an old document never lock the owner out.
-    // A scrub key may only disappear: it must not be present in the resulting document.
+    // A scrub key may only disappear or stay as it is (scrubOk).
     function updateKeysOk() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeysList().concat(scrubKeysList()))
-          && !request.resource.data.keys().hasAny(scrubKeysList());
+          && scrubOk();
     }
 
     // updatedAt must be the server clock (FieldValue.serverTimestamp()), never a client number. Old documents
