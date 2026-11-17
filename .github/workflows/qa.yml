@@ -38,9 +38,12 @@ jobs:
         run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c e
       - name: Content-Security-Policy over http://localhost
         run: CSP_REQUIRE_WEBKIT=1 node scripts/test_csp.js
+      - name: Cloud sync, data and security suite (gating)
+        # Suite d minus the accessibility checks: SYNC, STANDIN and DATA tests. A failure fails the job.
+        run: QA_SKIP='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-sync-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
       - name: Accessibility (axe) - reports only until the semantic-markup phase lands
         continue-on-error: true
-        run: QA_OUT=qa-axe-${{ matrix.browser }}.json QA_AXE_OUT=axe-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
+        run: QA_ONLY='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-axe-${{ matrix.browser }}.json QA_AXE_OUT=axe-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
       - name: Lighthouse (mobile)
         if: matrix.browser == 'chromium'
         run: |

@@ -96,5 +96,18 @@ if not files:
 for f in files:
     check(f)
 selftest()
+
+
+def qa_gates_suite_d(text):
+    """qa.yml must run suite d in a step that is not continue-on-error (the SYNC, STANDIN and DATA tests live there)."""
+    steps = re.split(r'\n      - ', text)
+    return any(re.search(r'qa_run\.js[^\n]*\bd\b', st) and 'continue-on-error' not in st and 'QA_ONLY' not in st for st in steps)
+
+
+qa = os.path.join(ROOT, '.github', 'workflows', 'qa.yml')
+if os.path.exists(qa) and not qa_gates_suite_d(open(qa, encoding='utf-8').read()):
+    bad(qa, 'suite d (SYNC, STANDIN, DATA tests) is not run in a gating step')
+if qa_gates_suite_d('jobs:\n  a:\n    steps:\n      - name: x\n        continue-on-error: true\n        run: node scripts/qa/qa_run.js d\n'):
+    bad('selftest', 'the suite-d check accepted a continue-on-error step')
 print('%d failed (%d workflows)' % (fail, len(files)))
 sys.exit(1 if fail else 0)

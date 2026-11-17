@@ -14,12 +14,12 @@ OUT = os.path.join(ROOT, 'data', 'promo_codes.json')
 LEEKDUCK = 'https://leekduck.com/promo-codes/'
 POCKETGAMER = 'https://www.pocketgamer.com/pokemon-go/promo-codes/'
 REDEEM = 'https://store.pokemongo.com/offer-redemption?passcode='
-CODE_RE = re.compile(r'^[A-Za-z0-9]{4,32}$')
+CODE_RE = re.compile(r'[A-Za-z0-9]{4,32}')
 
 
 def redeem_link(code):
     """The redeem URL for a code, or None when the code is not 4-32 letters and digits (never build a link from scraped text)."""
-    return REDEEM + code if isinstance(code, str) and CODE_RE.match(code) else None
+    return REDEEM + code if isinstance(code, str) and CODE_RE.fullmatch(code) else None
 
 
 def fetch(url):

@@ -33,6 +33,17 @@ const CSP = [
 ].join('; ');
 const CSP_META = '<meta http-equiv="Content-Security-Policy" content="' + CSP + '">';
 
+// The policy goes into every HTML page the site serves, not only the entry point: they share one origin (and its localStorage).
+// Idempotent: an existing policy tag is replaced, so a changed CSP reaches every page.
+const CSP_TAG = /\n?[ \t]*<meta http-equiv="Content-Security-Policy"[^>]*>/;
+const withCsp = (html) => {
+  const h = html.indexOf('<head>'); if (h < 0) throw new Error('no <head> to put the CSP in');
+  html = html.replace(CSP_TAG, '');
+  const c = html.indexOf('>', html.indexOf('<meta charset', h)) + 1;
+  return html.slice(0, c) + '\n  ' + CSP_META + html.slice(c);
+};
+const OTHER_PAGES = ['Scout Dashboard.html', 'Scout Dashboard Standalone.dc.html', 'Scout Dashboard.dc.html'].map(n => path.join(ROOT, n));
+
 async function build() {
   const src = fs.readFileSync(SRC, 'utf8');
   const st = src.indexOf('<script type="__bundler/template">');
@@ -53,17 +64,20 @@ async function build() {
   if (!r.code || r.code.length < code.length * 0.2) throw new Error('minifier produced no output');
   const newTpl = tpl.slice(0, s0) + r.code + tpl.slice(e0);
   const esc = JSON.stringify(newTpl).replace(/<\/([sS][cC][rR][iI][pP][tT])/g, '<\\u002F$1');
-  const withCsp = (html) => { const h = html.indexOf('<head>'); if (h < 0) throw new Error('no <head> to put the CSP in'); const c = html.indexOf('>', html.indexOf('<meta charset', h)) + 1; return html.slice(0, c) + '\n  ' + CSP_META + html.slice(c); };
   return withCsp(src.slice(0, a) + '\n' + esc + '\n' + src.slice(b));
 }
 
 build().then(out => {
+  const pages = OTHER_PAGES.map(f => [f, withCsp(fs.readFileSync(f, 'utf8'))]);
   if (process.argv.includes('--check')) {
     const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
     if (cur !== out) { console.error('index.html is out of date: run node scripts/build_index.js'); process.exit(1); }
-    console.log('index.html is up to date (' + out.length + ' bytes)');
+    const stale = pages.filter(([f, t]) => fs.readFileSync(f, 'utf8') !== t).map(([f]) => path.basename(f));
+    if (stale.length) { console.error('no current CSP tag in: ' + stale.join(', ') + ' (run node scripts/build_index.js)'); process.exit(1); }
+    console.log('index.html is up to date (' + out.length + ' bytes); the CSP tag is current in ' + pages.length + ' other pages');
     return;
   }
   fs.writeFileSync(OUT, out);
-  console.log('index.html written: ' + out.length + ' bytes (from ' + fs.statSync(SRC).size + ')');
+  pages.forEach(([f, t]) => { if (fs.readFileSync(f, 'utf8') !== t) fs.writeFileSync(f, t); });
+  console.log('index.html written: ' + out.length + ' bytes (from ' + fs.statSync(SRC).size + '); CSP tag set in ' + pages.length + ' other pages');
 }).catch(e => { console.error(e); process.exit(1); });

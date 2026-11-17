@@ -23,8 +23,10 @@ Only the latest build published on GitHub Pages (the `main` branch). There are n
 
 ## Content-Security-Policy
 
-`index.html` carries a CSP as a `<meta>` tag, injected by `scripts/build_index.js` (never edit it by hand). GitHub Pages cannot
-send headers, so `frame-ancestors` and report-only mode are not available.
+`index.html` carries a CSP as a `<meta>` tag, injected by `scripts/build_index.js` (never edit it by hand). The same tag is set
+by that script in the other pages served on the same origin (`Scout Dashboard.html`, `Scout Dashboard Standalone.dc.html`,
+`Scout Dashboard.dc.html`), because they share the origin and its `localStorage`. GitHub Pages cannot send headers, so
+`frame-ancestors` and report-only mode are not available.
 
 What it does: scripts load only from this origin, `blob:` (the unpacked page), `unpkg.com` (React, with SRI), `www.gstatic.com`
 (Firebase, with SRI) and `apis.google.com` (sign-in popups); the page may connect only to this origin and `*.googleapis.com`,

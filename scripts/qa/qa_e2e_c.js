@@ -351,7 +351,7 @@ module.exports = async function suiteC() {
     expect(L.indexOf('URL:https://leekduck.com/events/x/') >= 0, 'a good https link was dropped');
     for (const bad of ['javascript:alert(1)', 'http://example.com/', 'data:text/html,x', 'https://x.example/a b', 'ftp://x', '//x.example', 'https://x.example/\r\nATTENDEE:mailto:a@b']) {
       L = await lines({ ...base, link: bad });
-      expect(!L.some(l => /^URL:/.test(l)) || (/\r|\n/.test(bad) && L.filter(l => /^URL:/.test(l)).every(l => /^URL:https:\/\/[^\s]+$/.test(l))), 'link accepted: ' + JSON.stringify(bad));
+      expect(!L.some(l => /^URL:/.test(l)), 'link accepted: ' + JSON.stringify(bad));
       expect(!L.some(l => /^ATTENDEE/.test(l)), 'a property was injected through the link: ' + JSON.stringify(bad));
     }
     L = await lines({ ...base, name: 'Evil\r\nATTENDEE:mailto:x@example.test\nBEGIN:VALARM', id: 'e1\r\nX-EVIL:1', start: '2026-11-20T10:00:00\r\nX-S:1', end: 'x\nX-E:1' });
@@ -372,6 +372,10 @@ module.exports = async function suiteC() {
     await s.call('promoRedeem', { code: 'GOODCODE1', link: 'javascript:alert(1)' }); await s.call('promoRedeem', { code: 'GOODCODE1' });
     const opened = await s.page.evaluate(() => window.__opened);
     expect(opened.length === 1 && /^https:\/\/store\.pokemongo\.com\//.test(opened[0]), 'opened: ' + JSON.stringify(opened));
+    await s.set({ csvError: '', moreOpen: false, selectMode: false });
+    await s.call('promoRedeem', { code: 'GOODCODE1', link: 'javascript:alert(1)' }); await s.page.waitForTimeout(400);
+    expect(/link not opened/i.test(await s.text()), 'a rejected link gave no notice');
+    expect((await s.page.evaluate(() => window.__opened)).length === 1, 'a rejected link was opened');
   }, 'high');
   await T('XSS-01', 'Security', 'A roster whose names, nicknames, moves and chat text are <img onerror> markup never runs script, in the roster, the detail sheet or the chat sheet', async () => {
     const fs2 = require('fs'), os = require('os'), pth = require('path');

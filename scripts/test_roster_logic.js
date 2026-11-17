@@ -595,9 +595,11 @@ function buildLists(roster, bestRank) {
   check('a clean document is never written for the scrub', Object.keys(call('secretScrubFields', ls, ctx, fb)).length, 0);
   check('nothing is deleted when the document was never read', Object.keys(call('secretScrubFields', mkStorage(), { state: {} }, fb)).length, 0);
 
+  // A value an older build stored (including a custom endpoint) is read from the stored secrets, not written back.
+  ls.setItem('scout.secrets.v1', JSON.stringify({ geminiKey: 'AIza1', geminiKeys: ['AIza1', 'AIza2'], apiEndpoint: 'https://x', githubToken: 'ghp_x' }));
   const ctx3 = { _patch: null, setState(p) { this._patch = p; } };
   call('loadLocalSecrets', ls, ctx3);
-  check('a fresh load restores the keys and endpoint', !!ctx3._patch && ctx3._patch.geminiKeys.length === 2 && ctx3._patch.apiEndpoint === 'https://x' && ctx3._patch.githubToken === 'ghp_x', true);
+  check('a fresh load restores the keys and token, and ignores a stored endpoint', !!ctx3._patch && ctx3._patch.geminiKeys.length === 2 && ctx3._patch.githubToken === 'ghp_x' && !('apiEndpoint' in ctx3._patch) && !('apiEndpointDraft' in ctx3._patch), true);
 
   const syncKeys = extractMethodBody(SRC, 'SYNC_KEYS() {') + extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {') + extractMethodBody(SRC, 'get PACKED_KEYS() {');
   check('no credential is in the synced or packed key lists', /geminiKey|githubToken|apiEndpoint/.test(syncKeys), false);

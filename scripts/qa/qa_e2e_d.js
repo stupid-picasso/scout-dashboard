@@ -272,6 +272,18 @@ module.exports = async function suiteD() {
     await s1.close();
   }, 'high');
 
+  await T('SYNC-14', 'Security', 'A custom API endpoint stored by an older build is not loaded into the app and is scrubbed from this device\'s secrets', async () => {
+    const s1 = await session({ feed: false }); await s1.load(QA); await s1.page.waitForTimeout(1500);
+    await s1.page.evaluate(() => localStorage.setItem('scout.secrets.v1', JSON.stringify({ geminiKey: '', geminiKeys: [], apiEndpoint: 'https://qa-old.example/v1', githubToken: 'ghp_QAKEEP' })));
+    await s1.page.reload({ waitUntil: 'load' }); await s1.page.waitForTimeout(3000);
+    const st = await s1.state();
+    expect(!st.apiEndpoint && !st.apiEndpointDraft, 'the old endpoint was loaded into the app: ' + st.apiEndpoint);
+    expect(await s1.page.evaluate(() => typeof document.body.innerText === 'string' && !document.body.innerText.includes('qa-old.example')), 'the old endpoint is shown');
+    await s1.set({ githubToken: 'ghp_QAKEEP2' }); await s1.page.waitForTimeout(1500);
+    const sec = await s1.page.evaluate(() => localStorage.getItem('scout.secrets.v1') || '');
+    expect(!/apiEndpoint|qa-old/.test(sec) && /ghp_QAKEEP2/.test(sec), 'the old endpoint stayed in the stored secrets: ' + sec);
+    await s1.close();
+  }, 'high');
   await T('STANDIN-01', 'Cloud', 'The stand-in enforces the rules: unlisted keys, written credentials, other users, shared collections, bad snapshot ids and unverified identities are refused', async () => {
     const C = { store: {}, writes: [] };
     const s1 = await session({ feed: false, cloud: C }); await s1.page.waitForTimeout(1500);
@@ -417,6 +429,18 @@ module.exports = async function suiteD() {
     const left = Object.keys(C.store).filter(k => /^scoutUsers\/qa-user/.test(k));
     expect(left.length === 0, 'left in the cloud after delete: ' + left.join(', '));
     expect((C.deletedUsers || []).join() === 'qa-user', 'the sign-in was not deleted');
+    await e.close();
+  }, 'high');
+  await T('DATA-06', 'Data', 'The one-time snapshot-index write at launch is not overtaken by a delete: nothing is left, nothing is refused, no user document is re-created', async () => {
+    const C = { store: {}, writes: [], user: A, denied: [] };
+    const e = await mkDel(C, 1);
+    const doc = C.store['scoutUsers/qa-user']; delete doc.snapshotIndex; delete doc.lastSnapshotAt;
+    C.denied.length = 0; C.delayMetaMs = 9000; zero(C);
+    await e.page.reload({ waitUntil: 'load' }); await e.page.waitForTimeout(2500);
+    await e.del(); await e.page.waitForTimeout(11000); C.delayMetaMs = 0;
+    const left = Object.keys(C.store).filter(k => /^scoutUsers\/qa-user/.test(k));
+    expect(left.length === 0, 'left in the cloud after delete: ' + left.join(', '));
+    expect(C.denied.length === 0, 'a write landed after the delete and was refused: ' + JSON.stringify(C.denied[0]));
     await e.close();
   }, 'high');
   await T('DATA-05', 'Data', 'A delete that fails half-way says some backups may already be gone (not "nothing was removed"), keeps the roster, and the stored list no longer names the deleted backups', async () => {

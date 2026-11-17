@@ -14,6 +14,7 @@ const skip = msg => { throw new Skip(msg); };
 
 async function T(id, area, name, fn, sev = 'normal') {
   if (process.env.QA_ONLY && !new RegExp(process.env.QA_ONLY).test(id)) return null;   // QA_ONLY=SYNC-0[5-9]|DATA runs just those tests
+  if (process.env.QA_SKIP && new RegExp(process.env.QA_SKIP).test(id)) return null;   // QA_SKIP=^AXE leaves those out (the opposite of QA_ONLY)
   const t0 = Date.now();
   const rec = { id, area, name, sev, status: 'pass', note: '', ms: 0 };
   try { const n = await fn(); if (typeof n === 'string') rec.note = n; }
@@ -124,6 +125,7 @@ async function installCloud(page, C) {
   });
   await page.exposeFunction('__fsSet', async (p, data, merge) => {
     if (C.delaySnapMs && /\/snapshots\//.test(p)) await new Promise(r => setTimeout(r, C.delaySnapMs));   // a slow snapshot write, to test races with delete
+    if (C.delayMetaMs && !/\/snapshots\//.test(p)) await new Promise(r => setTimeout(r, C.delayMetaMs));   // a slow user-document write, to test races with delete
     if (C.failWrites) return C.failWrites === 'quota' ? { error: 'Quota exceeded.', code: 'resource-exhausted' } : { error: 'permission-denied (QA)', code: 'permission-denied' };
     const why = cloudDecide(C, 'write', p, data); if (why) return deny('write', p, why);
     const cur = merge && C.store[p] ? C.store[p] : {};
