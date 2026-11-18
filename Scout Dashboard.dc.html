@@ -362,6 +362,32 @@
   [style*="linear-gradient(90deg, var(--grass-700), var(--grass-700))"]{background:var(--hp) !important}
   [style*="linear-gradient(90deg, var(--grass-700), var(--type-electric))"]{background:linear-gradient(90deg,var(--hp),var(--ring)) !important}
   [role=dialog]:focus-visible,[role=alertdialog]:focus-visible{outline:0}
+  /* ---- Pokemon GO look, phase 2: Today, PvP, Recs, More, sign-in, empty state, first run (existing tokens only) ---- */
+  .go-sec{display:inline-block;align-self:flex-start;background:var(--fill-grad);color:#fff !important;font:600 12px/1.2 var(--font-body) !important;padding:4px 14px;border-radius:999px;margin:0 0 8px !important}
+  .go-sec.go-rib{background:var(--ribbon);border-radius:0;padding:4px 26px;clip-path:polygon(0 0,100% 0,calc(100% - 10px) 50%,100% 100%,0 100%,10px 50%)}
+  .go-mini{background:var(--fill-grad) !important;border:0 !important;color:#fff !important;padding:4px 14px !important;min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center}
+  .go-list{background:transparent !important;border-color:transparent !important;box-shadow:none !important;border-radius:0 !important;overflow:visible !important;display:flex;flex-direction:column;gap:8px}
+  .go-list>[data-table-header]{border-bottom:0 !important;padding:0 12px}
+  .go-row{background:var(--surface-1) !important;border:0 !important;border-radius:var(--r-md);box-shadow:var(--e1)}
+  .go-row[style*="grid-template-columns"]>div:first-child{color:var(--accent-text) !important}
+  [data-do-now]>[role=button]{background:var(--surface-2);border:0 !important;border-radius:var(--r-md);padding:4px 12px;margin-bottom:8px;min-height:52px}
+  [data-do-now]>[role=button]>span:first-child{min-width:32px;height:32px;box-sizing:border-box;padding:0 8px;border-radius:999px;background:var(--surface-3);color:var(--accent-text);display:inline-flex;align-items:center;justify-content:center}
+  [data-do-now]>[role=button]>span:last-child{color:var(--accent-text)}
+  [role=main] [style*="background: var(--surface-2)"][style*="border-radius: 10px"],[role=main] [style*="background: var(--surface-page)"][style*="border-radius: 10px"]{background:var(--surface-2) !important;border-radius:var(--r-md) !important;box-shadow:inset 3px 0 0 var(--ring)}
+  [role=menu] [role=menuitem]{margin:0 8px 6px;border-top:0 !important;border-radius:var(--r-md);padding:4px 12px !important;background:color-mix(in oklab,var(--surface-3) 70%,var(--menu-bg))}
+  [role=menu] [role=menuitem] svg{box-sizing:content-box;padding:7px;border-radius:50%;background:var(--surface-1)}
+  [role=menu] [role=menuitem]>div:last-child{color:var(--accent-text)}
+  [role=menu] [role=presentation]{padding-top:14px !important}
+  [data-signin-card]{gap:12px}
+  [data-signin-card] .ui-btn-tint{box-shadow:inset 0 0 0 2px var(--ring)}
+  [data-empty-state]{background:var(--surface-1);border-radius:var(--r-lg);box-shadow:var(--e1);padding:32px 24px !important}
+  [data-empty-state] svg{box-sizing:content-box;width:40px;height:40px;padding:20px;border-radius:50%;background:var(--fill-grad);stroke:#fff;box-shadow:0 0 0 8px var(--fill)}
+  [data-firstrun]{background:var(--page-grad),var(--bg) !important}
+  [data-firstrun]::before{content:"Professor";display:block;height:112px;box-sizing:border-box;padding-top:36px;background:var(--fill-grad);color:#fff;font:700 28px/1 var(--font-display);text-align:center;border-radius:0 0 var(--r-lg) var(--r-lg)}
+  [data-firstrun]>div{position:relative;background:var(--surface-1);border-radius:var(--r-lg);box-shadow:var(--e1);margin:-40px auto 24px !important;width:calc(100% - 32px);padding:16px 16px 24px !important}
+  .fr-bar{height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+  .fr-bar i{display:block;height:100%;border-radius:999px;background:var(--fill-grad);transition:width var(--dur-base) var(--ease-out)}
+  .mg-in{padding:12px 8px !important;text-align:center;font-size:12px !important}
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
 <script type="module" src="./pokemon-data.js"></script>
@@ -545,6 +571,7 @@
         <div class="fr-c">Step {{ frStepNo }} of 6</div>
         <button type="button" onClick="{{ frSkip }}" class="om-press ui-btn-plain">Skip</button>
       </div>
+      <div class="fr-bar" aria-hidden="true"><i style="width:{{ frPct }}"></i></div>
 
       <sc-if value="{{ frStep1 }}" hint-placeholder-val="{{ true }}">
         <h2 class="fr-h">Welcome to Professor</h2>
@@ -730,9 +757,9 @@
     </div>
     <sc-if value="{{ hasFeedEvents }}" hint-placeholder-val="{{ false }}">
       <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
           <div style="font:600 22px var(--font-display);letter-spacing:-.012em;color:var(--ink-900);margin-bottom:4px">Events &middot; next 14 days</div>
-          <button type="button" onClick="{{ toggleReminders }}" style="font:500 15px var(--font-body);color:var(--accent-text);padding:4px 2px">{{ remindLabel }}</button>
+          <button type="button" onClick="{{ toggleReminders }}" class="ui-btn-tint" style="font:600 15px var(--font-body);padding:4px 14px;min-height:36px">{{ remindLabel }}</button>
         </div>
         <div style="font:13px var(--font-body);color:var(--ink-500);margin:0 0 12px">Reminders appear while the app is open.</div>
                 <sc-for list="{{ feedEventRows }}" as="fe" hint-placeholder-count="3">
@@ -2280,7 +2307,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.345{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.346{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -2683,12 +2710,12 @@
                 <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:2px">{{ mg.energyLine }} &middot; {{ mg.costLine }}</div>
                 <div style="font:12px var(--font-body);color:var(--ink-500)">{{ mg.levelLine }}</div>
                 <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
-                  <input type="text" inputmode="numeric" placeholder="energy" value="{{ mg.energyVal }}" onChange="{{ mg.onEnergy }}" style="width:70px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
-                  <input type="text" inputmode="numeric" placeholder="cost (optional)" value="{{ mg.costVal }}" onChange="{{ mg.onCost }}" style="width:110px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
-                  <input type="text" inputmode="numeric" placeholder="level" value="{{ mg.dotsVal }}" onChange="{{ mg.onDots }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="energy" value="{{ mg.energyVal }}" onChange="{{ mg.onEnergy }}" class="mg-in" style="width:84px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="cost (optional)" value="{{ mg.costVal }}" onChange="{{ mg.onCost }}" class="mg-in" style="width:124px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="level" value="{{ mg.dotsVal }}" onChange="{{ mg.onDots }}" class="mg-in" style="width:60px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
                   <span style="font:12px var(--font-body);color:var(--ink-400)">of</span>
-                  <input type="text" inputmode="numeric" placeholder="total" value="{{ mg.totalVal }}" onChange="{{ mg.onTotal }}" style="width:48px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
-                  <input type="text" inputmode="decimal" placeholder="rest days left" value="{{ mg.restVal }}" onChange="{{ mg.onRest }}" style="width:96px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
+                  <input type="text" inputmode="numeric" placeholder="total" value="{{ mg.totalVal }}" onChange="{{ mg.onTotal }}" class="mg-in" style="width:60px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
+                  <input type="text" inputmode="decimal" placeholder="rest days left" value="{{ mg.restVal }}" onChange="{{ mg.onRest }}" class="mg-in" style="width:128px;background:var(--surface-sunken);border:1px solid var(--line-200);border-radius:10px;color:var(--ink-900);font:12px var(--font-body);padding:8px 8px" />
                   <sc-if value="{{ mg.evolve }}" hint-placeholder-val="{{ false }}">
                     <div onClick="{{ mg.evolve }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">I MEGA EVOLVED</div>
                   </sc-if>
@@ -3004,10 +3031,10 @@
       <div style="font:13px/1.45 var(--font-body);color:var(--ink-500);margin:0 0 10px">{{ seasonLine }}</div>
     </sc-if>
     <sc-if value="{{ hasMegaPicks }}" hint-placeholder-val="{{ false }}">
-      <div style="font:700 12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:0 0 6px">MEGA-READY PICKS FROM YOUR ROSTER</div>
-      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;overflow:hidden">
+      <div class="go-sec" style="font:700 12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:0 0 6px">MEGA-READY PICKS FROM YOUR ROSTER</div>
+      <div class="go-list" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;overflow:hidden">
         <sc-for list="{{ megaPicks }}" as="mp" hint-placeholder-count="3">
-          <div style="display:flex;gap:8px;align-items:flex-start;padding:12px 12px;border-bottom:1px solid var(--surface-muted)">
+          <div class="go-row" style="display:flex;gap:8px;align-items:flex-start;padding:12px 12px;border-bottom:1px solid var(--surface-muted)">
             <span style="flex-shrink:0;width:17px;height:17px;margin-top:1px;border-radius:6px;background:{{ mp.tierColor }};color:var(--surface-page);font:700 12px var(--font-display);display:flex;align-items:center;justify-content:center">{{ mp.tier }}</span>
             <div style="font:13px/1.45 var(--font-body);color:var(--ink-700)">{{ mp.text }}</div>
           </div>
@@ -3018,13 +3045,13 @@
       </div>
     </sc-if>
     <sc-if value="{{ hasReady }}" hint-placeholder-val="{{ false }}">
-    <div style="font:700 12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:0 0 6px">{{ pvpReadyTitle }}</div>
-    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;overflow:hidden">
+    <div class="go-sec" style="font:700 12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:0 0 6px">{{ pvpReadyTitle }}</div>
+    <div class="go-list" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;overflow:hidden">
       <div data-table-header="1" style="display:grid;grid-template-columns:24px minmax(0,1fr) 92px;gap:8px;padding:8px 12px;font:600 12px var(--font-body);color:var(--ink-400);border-bottom:1px solid var(--line-200)">
         <div>#</div><div>Pokemon</div><div style="text-align:right">CP, rank, level</div>
       </div>
       <sc-for list="{{ pvpList }}" as="p" hint-placeholder-count="8">
-        <div onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;display:grid;grid-template-columns:24px minmax(0,1fr) 92px;gap:8px;padding:12px;font:13px var(--font-body);border-bottom:1px solid var(--surface-muted);align-items:center">
+        <div onClick="{{ p.onClick }}" class="om-stagger om-tap go-row" style="--i:{{ $index }};cursor:pointer;display:grid;grid-template-columns:24px minmax(0,1fr) 92px;gap:8px;padding:12px;font:13px var(--font-body);border-bottom:1px solid var(--surface-muted);align-items:center">
           <div style="font:700 12px var(--font-display);color:var(--ink-300)">{{ p.rankNum }}</div>
           <div style="min-width:0;display:flex;align-items:center;gap:8px">
             <div style="flex-shrink:0;width:40px;height:40px;position:relative;display:flex;align-items:center;justify-content:center">
@@ -3060,10 +3087,10 @@
     </sc-if>
     </sc-if>
     <sc-if value="{{ hasBand }}" hint-placeholder-val="{{ false }}">
-      <div style="font:700 12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:16px 0 6px">{{ pvpUpTitle }}</div>
-      <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;overflow:hidden">
+      <div class="go-sec" style="font:700 12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin:16px 0 6px">{{ pvpUpTitle }}</div>
+      <div class="go-list" style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;overflow:hidden">
         <sc-for list="{{ pvpUp }}" as="u" hint-placeholder-count="3">
-          <div onClick="{{ u.onClick }}" class="om-tap" style="cursor:pointer;display:flex;gap:8px;align-items:center;padding:12px 12px;border-bottom:1px solid var(--surface-muted)">
+          <div onClick="{{ u.onClick }}" class="om-tap go-row" style="cursor:pointer;display:flex;gap:8px;align-items:center;padding:12px 12px;border-bottom:1px solid var(--surface-muted)">
             <div style="flex-shrink:0;width:40px;height:40px;position:relative;display:flex;align-items:center;justify-content:center">
               <span aria-hidden="true" style="position:absolute;font:700 15px var(--font-display);color:rgba(255,255,255,.12)">{{ u.initial }}</span>
               <img ref="{{ u.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:40px;height:40px;object-fit:contain" />
@@ -3569,7 +3596,7 @@
       <div style="border-top:1px solid var(--surface-muted);margin-top:16px;padding-top:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font:12px var(--font-display);color:var(--ink-300)">AI RECOMMENDED PICKS</div>
-          <div onClick="{{ getTmAiRecommendations }}" class="om-press" style="cursor:pointer;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
+          <div onClick="{{ getTmAiRecommendations }}" class="om-press go-mini" style="cursor:pointer;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
         </div>
         <div style="font:12px var(--font-body);color:var(--ink-400);margin-bottom:12px;text-wrap:pretty">Picked from your Lucky/Shadow/Favorite, genuinely Great/Ultra-ranked.</div><details class="ui-more"><summary>More</summary><div>Or heavily-leveled Pokemon &mdash; your actual standouts, not Little Cup mons that rank high just because that league's pool is thin. The suggested move itself is the AI's general Pokemon GO knowledge, not verified against this app's own data &mdash; double check it before committing an Elite TM.</div></details>
         <sc-if value="{{ tmAiError }}" hint-placeholder-val="{{ false }}">
@@ -3598,12 +3625,12 @@
       </div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-lg);padding:20px">
-      <div style="font:700 13px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:4px">DOMINATED DUPLICATES &middot; {{ dominatedCount }}</div>
+      <div class="go-sec go-rib" style="font:700 13px var(--font-display);color:var(--type-fighting);letter-spacing:.05em;margin-bottom:4px">DOMINATED DUPLICATES &middot; {{ dominatedCount }}</div>
       <details style="font:13px var(--font-body);color:var(--ink-500);margin-bottom:16px;max-width:80ch;text-wrap:pretty"><summary style="list-style:none;cursor:pointer">Same species and form, every IV equal or lower, no higher level, and none of them Lucky, Shadow or favorited. <span style="color:var(--accent-text);font-weight:600">More</span></summary><div style="margin-top:4px">Each one loses to another Pokemon you already own on every axis at once, so there is nothing to weigh up.</div></details>
       <sc-if value="{{ dominatedList }}" hint-placeholder-val="{{ true }}">
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
           <sc-for list="{{ dominatedList }}" as="d" hint-placeholder-count="6">
-            <div onClick="{{ d.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-pill);padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div onClick="{{ d.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};cursor:pointer;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-md);padding:12px;display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:30px;height:30px;border-radius:50%;background:{{ d.badgeColor }};position:relative;overflow:hidden;flex-shrink:0">
                   <span aria-hidden="true" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px var(--font-display);color:var(--surface-sunken)">{{ d.initial }}</span>
@@ -21661,7 +21688,7 @@ class Component extends DCLogic {
       authNotice: this.state.authNotice,
       authOfferBackup: !!this.state.authOfferBackup,
       firstRunOpen: !!this.state.firstRunOpen,
-      frStepNo: this.state.firstRunStep || 1,
+      frStepNo: this.state.firstRunStep || 1, frPct: Math.round(100 * (this.state.firstRunStep || 1) / 6) + '%',
       frStep1: (this.state.firstRunStep || 1) === 1, frStep2: this.state.firstRunStep === 2, frStep3: this.state.firstRunStep === 3,
       frStep4: this.state.firstRunStep === 4, frStep5: this.state.firstRunStep === 5, frStep6: this.state.firstRunStep === 6,
       frBackVis: (this.state.firstRunStep || 1) > 1 ? 'visible' : 'hidden',

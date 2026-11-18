@@ -815,6 +815,20 @@ What changed (all in `Scout Dashboard.dc.html`; bundles regenerated):
 - Tests edited (intent kept): suite e now finds the primary fill by the resolved `--accent-fill` colour instead of the literal `rgb(10,100,214)` (3 places: UIQ-11 and two helper checks); suite d THEME-01 expects the new page backgrounds (238,245,234 light / 12,27,31 dark) instead of the old greys.
 - `scripts/qa/go_shots.js` captures the phase-1 screenshots into `docs/research/ui-audit/go-style-phase1/` (env `ZOOM`, `THEMEPREF` supported).
 
+## Pokemon GO restyle, phase 2 (Today, PvP, Recs, More, sign-in, empty state, first run)
+
+All in `Scout Dashboard.dc.html` (one CSS block after the phase-1 rules, plus a few class hooks); bundles regenerated. Tokens, radii (6/10/14/20/pill/50%) and the type scale are unchanged, and the "iOS design layer" phrase is still in the token comment.
+- Today: "Do now" rows are tinted cards with a round count badge; event cards are tinted with a ring-colour edge; "Remind me" is a tint pill.
+- PvP: league pills unchanged; the section labels (`.go-sec`) are gradient pills; the ready, power-up and mega lists (`.go-list`) are separate rounded rows (`.go-row`) instead of one ruled table; the rank number takes the accent.
+- Recs: "Get recommendations" is a gradient pill (it was a near-black chip), "Dominated duplicates" is a ribbon (`--ribbon`), result cards are tinted, dominated tiles use the 14 px radius instead of a pill radius.
+- More: each row is a tinted card with its icon in a round chip, chevrons take the accent.
+- Sign-in (Settings, Cloud sync): both provider buttons stay tint pills, now with a ring outline. Making Google the gradient primary broke UIQ-18 (at most 3 filled buttons per screen on Settings) and UIQ-12 (filled buttons are 36-40 px), so it was reverted. Paddings are multiples of 4 (UIQ-03).
+- Empty account prompt: a card with a gradient circle icon. First run: gradient banner, card, and a step progress bar (`.fr-bar`, width from `frPct`); the "Step N of 6" text is unchanged.
+- Gaps fixed: the Mega-evolution inputs clipped their placeholders ("ener...") because the global field padding is 16 px; `.mg-in` uses 10 px and the widths were raised. The disabled power-up bar ("Short on stardust") and the Evolve pill were checked on screenshots (fixture roster with stardust set to 0) and render correctly; no change needed.
+- UIQ-11 counts elements whose background COLOUR equals `--accent-fill` as primary buttons, so decorative gradient pills (`.go-sec`, the empty-state icon, the progress bar) use `background:var(--fill-grad)` only, never a flat `background-color`.
+- `scripts/qa/go_shots.js` now also captures PVP, RECS, SIGNIN, EMPTY, FIRSTRUN and the detail states (cost, pink, off, evo, mega); the off/evo/mega pass sets `stardustBalance` to 0 first. Screenshots (fixture data only) are in `docs/research/ui-audit/go-style-phase2/`.
+- Not checked on a real iPhone (ui-rounded font, safe-area on the first-run banner).
+
 ## Chat rubric (CHATEVAL-02)
 - Deterministic rubric over the real chat prompt and context (no model call), in suite b: the 7 prompt rules are present (census authoritative, HARD RULE keep:, candy line, no invented explanations, never transfer protected, dps unknown), an asked-about family gets its own detail and verdict, protected Pokemon carry a keep reason, a species not owned is absent from the census, no API key is sent, a newline in a name cannot start a new prompt line, size under 150k chars. A mutation check damages the real prompts one rule at a time and requires the rubric to notice each.
 - It found a real gap: names in the power-up, evolve-soon, transfer-safe, second-move lines and the census were not run through `promptSafe`, so a name with a newline could start a prompt line. Fixed.
