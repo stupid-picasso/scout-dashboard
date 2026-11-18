@@ -19238,10 +19238,10 @@ class Component extends DCLogic {
       this.chatScreenLine(),
       this.chatCandyLine(roster),
       `Roster size: ${roster.length}. Average IV: ${avgIV}%. Lucky: ${roster.filter(p => p.lucky).length}. Shadow: ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length}.`,
-      `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
-      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${this.evolvesToName(p) || '?'}`).join(', ') || 'none'}.`,
-      `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
-      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${this.formatMoveName(p.quickMove) || '?'} / ${this.formatMoveName(p.chargeMove) || '?'})`).join(', ') || 'none'}.`,
+      `Top power-up candidates: ${plan.powerUp.map(p => `${this.promptSafe(p.name)} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
+      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${this.promptSafe(p.name)} -> ${this.promptSafe(this.evolvesToName(p)) || '?'}`).join(', ') || 'none'}.`,
+      `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => this.promptSafe(p.name)).join(', ') || 'none'}.`,
+      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${this.promptSafe(p.name)} (${this.bestRank(p).toFixed(0)}% rank, ${this.formatMoveName(p.quickMove) || '?'} / ${this.formatMoveName(p.chargeMove) || '?'})`).join(', ') || 'none'}.`,
       (() => {
         const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
         const total = Object.keys(dexNames).length;
@@ -19262,7 +19262,7 @@ class Component extends DCLogic {
       (() => {
         const bySpecies = {};
         roster.forEach(p => {
-          const key = `${p.name || '?'}${p.form ? '/' + p.form : ''}`;
+          const key = `${this.promptSafe(p.name) || '?'}${p.form ? '/' + this.promptSafe(p.form, 20) : ''}`;
           if (!bySpecies[key]) bySpecies[key] = { n: 0, cps: [], noCp: 0 };
           bySpecies[key].n++;
           // Test p.cp RAW. Number(null) is 0 and passes Number.isFinite, which

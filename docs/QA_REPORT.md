@@ -20,7 +20,7 @@ Read-only audit of the whole project. Scale: 9-10 matches external ground truth 
 | Max planner / party / battle log | **5/10** | test_max 17/17, 13 Max tests. | Estimates from public guides; Candy XL groups wait for your upgrade screenshots; no simulation. |
 | Mega evolution | **9/10** | A14 59/59 vs game master Mega Level rules. | Repeat-cost timers depend on user-entered dates. |
 | Power-up and dust plan | **8/10** | A05 99/99, A06 98/98, 10 Candy tests. | A06 covers base costs only; shadow/lucky/purified XL rounding not independently confirmed. |
-| Chat and briefing | **7/10** | CHATEVAL-01: 14 of 14 typical questions get the facts needed; CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01. | Grounding is measured, answer quality is not (needs the live free-tier model). |
+| Chat and briefing | **7/10** | CHATEVAL-01: 14 of 14 typical questions get the facts needed; CHATEVAL-02: rule-by-rule rubric over the real prompt (8 rules, each proved scored by a mutation check; it found and fixed a newline-injection gap in names); CHATCANDY-01, CHATMENTION-01, CHATBUBBLE-01. | Grounding and prompt rules are measured, answer quality is not (needs the live free-tier model); the deterministic rubric does not change the rating, stays 7. |
 | Today and events feed | **8/10** | 42 of 42 Today tests (TOD-44 now deterministic), notice for unreadable event pages, reminders-while-open note. | Reminders only fire while the app is open; feed is community data. |
 | Roster and detail UI | **9/10** | Roster 34/34, Detail 18/18, Gestures 7/7; every screen passes the UI bar (suite E); render 190 -> 46 ms at 2,000 Pokemon. | List still pages (auto-load to 150) instead of true windowing. |
 | Sync and backup | **8/10** | SYNC-01..04 against an in-memory Firebase stand-in: write size, second device, secrets never written, failed write keeps data and recovers. | Not run against the real Firebase project. |
@@ -57,6 +57,8 @@ Feature ideas (grounded in what the repo lacks; mechanics not confirmed are labe
 - Import the app JSON backup through the same import path.
 
 ## 1. Scorecard
+
+**Superseded by section 0 (2026-11-16): the ratings in this older scorecard are kept for history only; where they differ, section 0 is current.**
 
 Rating = how far this area can be trusted, 1-10. It blends the measured result with what the tests could not see.
 

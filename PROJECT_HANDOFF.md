@@ -806,3 +806,8 @@ What changed (all in `Scout Dashboard.dc.html`; bundles regenerated):
 - Font stack leads with `ui-rounded` (Safari); not checked on a real iPhone.
 - Tests edited (intent kept): suite e now finds the primary fill by the resolved `--accent-fill` colour instead of the literal `rgb(10,100,214)` (3 places: UIQ-11 and two helper checks); suite d THEME-01 expects the new page backgrounds (238,245,234 light / 12,27,31 dark) instead of the old greys.
 - `scripts/qa/go_shots.js` captures the phase-1 screenshots into `docs/research/ui-audit/go-style-phase1/` (env `ZOOM`, `THEMEPREF` supported).
+
+## Chat rubric (CHATEVAL-02)
+- Deterministic rubric over the real chat prompt and context (no model call), in suite b: the 7 prompt rules are present (census authoritative, HARD RULE keep:, candy line, no invented explanations, never transfer protected, dps unknown), an asked-about family gets its own detail and verdict, protected Pokemon carry a keep reason, a species not owned is absent from the census, no API key is sent, a newline in a name cannot start a new prompt line, size under 150k chars. A mutation check damages the real prompts one rule at a time and requires the rubric to notice each.
+- It found a real gap: names in the power-up, evolve-soon, transfer-safe, second-move lines and the census were not run through `promptSafe`, so a name with a newline could start a prompt line. Fixed.
+- Chat stays 7/10: this shows the model is sent correct facts and rules, not that its answers are good (needs the live free-tier model). QA_REPORT.md section 1 is marked superseded by section 0.
