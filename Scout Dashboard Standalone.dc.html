@@ -1352,6 +1352,12 @@
   .rg-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(86px,30%,170px),1fr)) !important;gap:10px !important}
   .rg-cell{display:flex;flex-direction:column;box-shadow:var(--e1)}
   .rg-cell>.rg-iv{box-shadow:none}
+  .rg-cell:has(.iv-entry){grid-column:1/-1}
+  .rg-iv .iv-entry{display:flex;flex-direction:column;gap:8px;max-width:360px;margin:0 auto}
+  .rg-iv .iv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .rg-iv .iv-grid label{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;font:600 12px var(--font-body);letter-spacing:0;color:var(--ink-500)}
+  .rg-iv .iv-grid input{width:100%;min-width:0;text-align:center;padding:8px 2px !important;border-radius:var(--r-sm) !important}
+  .rg-iv .iv-save{width:100%;min-height:44px;border-radius:var(--r-pill);background-color:var(--accent-fill);background-image:var(--fill-grad);color:var(--on-accent);font:700 15px var(--font-body)}
   .rg-cell [data-swipe-row]{border-radius:var(--r-lg) var(--r-lg) 0 0 !important}
   .rg-cell>[data-swipe-row]:last-child{border-radius:var(--r-lg) !important}
   .rg-cell [data-swipe-row] [data-row-name]{overflow-wrap:anywhere !important;word-break:normal !important}
@@ -3333,7 +3339,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.348{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.353{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -3486,11 +3492,13 @@
           <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
             <div class="rg-iv" style="background:var(--surface-card);border-radius:0 0 var(--r-lg) var(--r-lg);margin-top:-6px;padding:0 12px 12px;position:relative;text-align:center">
               <sc-if value="{{ p.ivEditOpen }}" hint-placeholder-val="{{ false }}">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <input type="text" inputmode="numeric" placeholder="Atk" aria-label="Attack IV" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:8px 2px" />
-                  <input type="text" inputmode="numeric" placeholder="Def" aria-label="Defense IV" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:8px 2px" />
-                  <input type="text" inputmode="numeric" placeholder="Sta" aria-label="Stamina IV" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:8px 2px" />
-                  <button type="button" onClick="{{ p.saveManualIv }}" class="om-tap" style="padding:8px 16px;border-radius:var(--r-pill);background:var(--brand-primary-strong);color:white;font:600 15px var(--font-body)">Save</button>
+                <div class="iv-entry">
+                  <div class="iv-grid">
+                    <label><span>ATK</span><input type="text" inputmode="numeric" maxlength="2" placeholder="" aria-label="Attack IV" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" /></label>
+                    <label><span>DEF</span><input type="text" inputmode="numeric" maxlength="2" placeholder="" aria-label="Defense IV" value="{{ p.manualDef }}" onChange="{{ p.onManualDefChange }}" /></label>
+                    <label><span>STA</span><input type="text" inputmode="numeric" maxlength="2" placeholder="" aria-label="Stamina IV" value="{{ p.manualSta }}" onChange="{{ p.onManualStaChange }}" /></label>
+                  </div>
+                  <button type="button" onClick="{{ p.saveManualIv }}" class="om-tap iv-save">Save</button>
                 </div>
               </sc-if>
               <sc-if value="{{ p.ivEditClosed }}" hint-placeholder-val="{{ true }}">
