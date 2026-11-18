@@ -81,6 +81,20 @@ module.exports = async function suiteB() {
     expect((await s.state()).completedIds.length === n0 + 1, 'not marked'); await s.page.getByRole('button', { name: 'Undo' }).click(); await s.page.waitForTimeout(300); expect((await s.state()).completedIds.length === n0, 'undo failed');
   }, 'medium');
 
+  await T('REC-10', 'Recs', 'One transfer rule: a low-value Pokemon with a raid role is on neither the Recs transfer list nor the optimise plan (chat, Today)', async () => {
+    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const l = f.stateNode.logic;
+      const ros = l.effectiveRosterForMatch(), low = ros.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && l.bestRank(p) < 70);
+      if (low.length < 2) return { low: low.length };
+      const target = low[0].idx, had = { h: l.hasRaidRole, k: l.keepReasons };
+      // The keep check lets everything go (as it does for a spare copy, whose raid-role reason is dropped); only the raid role differs.
+      l.keepReasons = () => []; l.hasRaidRole = p => p.idx === target; l._memoStore = {};
+      try { return { low: low.length, plan: l.buildOptimizePlan(ros).transferSafe.map(p => p.idx), recs: (l.renderVals().transferList || []).map(p => p.idx), target }; }
+      finally { l.keepReasons = had.k; l.hasRaidRole = had.h; delete l.keepReasons; delete l.hasRaidRole; l._memoStore = {}; } } } return null; });
+    expect(r && r.low >= 2, 'setup: the fixture has ' + (r && r.low) + ' low-value Pokemon');
+    expect(r.plan.length > 0 && r.recs.length > 0, 'setup: both lists are empty ' + JSON.stringify(r));
+    expect(r.plan.indexOf(r.target) < 0 && r.recs.indexOf(r.target) < 0, 'the Pokemon with a raid role is offered for transfer: plan ' + r.plan.indexOf(r.target) + ', recs ' + r.recs.indexOf(r.target));
+  }, 'high');
+
   // ------------------------------------------------------------------ INTEL
   await s.go('INTEL');
   const species = new Set(roster.map(p => p.dex)).size;

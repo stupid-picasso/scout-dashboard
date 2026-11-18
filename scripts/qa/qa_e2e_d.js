@@ -466,8 +466,14 @@ module.exports = async function suiteD() {
     await e1.load(QA); await savedOk(e1); await e1.page.waitForTimeout(2200);
     const na = ((await e1.state()).roster || []).length + ((await e1.state()).addedPokemon || []).length;
     expect(na > 0 && await localCount(e1) === na, 'setup: A has ' + na + ' Pokemon and the device copy holds ' + await localCount(e1));
+    // The other synced fields too: none of them may stay on screen for the next account.
+    const OWN = { moveDB: { x: { name: 'x' } }, evoTable: { pidgey: { evolvesTo: 'pidgeotto', candy: 12 } }, candyAiDecisions: { k: { v: 1 } }, chatMessages: [{ role: 'user', content: 'hello' }], triageKeep: { a: 1 }, transferQueue: [999], trainerLevel: 41, dustReserve: 12345 };
+    const stillShown = st => Object.keys(OWN).filter(k => JSON.stringify(st[k]) === JSON.stringify(OWN[k]));
+    await e1.set(OWN); await e1.page.waitForTimeout(2200); await savedOk(e1);
+    expect(stillShown(await e1.state()).length === 8, 'setup: the eight fields did not take');
     await e1.call('signOutCloud'); await e1.page.waitForTimeout(1500);
     let st = await e1.state();
+    expect(stillShown(st).length === 0, 'A\'s ' + stillShown(st).join(', ') + ' are still on screen after signing out');
     expect(!st.cloudUser && (st.roster || []).length + (st.addedPokemon || []).length === 0, 'A is still on screen after signing out');
     expect(await localCount(e1) === 0, 'A\'s roster is still in this device\'s storage after sign-out');
     await e1.page.evaluate(u => window.__qaAuth.signIn(u), B); await e1.page.waitForTimeout(2800);
@@ -478,6 +484,7 @@ module.exports = async function suiteD() {
     // A signs in again on the same device: the cloud brings the roster back.
     await e1.page.evaluate(u => window.__qaAuth.signIn(u), A); await e1.page.waitForTimeout(2800);
     expect(((await e1.state()).roster || []).length + ((await e1.state()).addedPokemon || []).length === na, 'A\'s roster did not come back from the cloud');
+    expect(stillShown(await e1.state()).length === 8, 'A\'s own fields did not come back from the cloud: ' + stillShown(await e1.state()).join(', '));
     // B takes over without A signing out first: A's data must not be written into B's document.
     await e1.page.evaluate(u => window.__qaAuth.signIn(u), B); await e1.page.waitForTimeout(2800);
     await e1.call('pushCloud'); await e1.page.waitForTimeout(1500);
@@ -485,6 +492,7 @@ module.exports = async function suiteD() {
     const b = E.store['scoutUsers/qa-user-b'];
     const bb = b ? await e1.call('unpackCloudBlob', b) : {};
     expect((st.roster || []).length + (st.addedPokemon || []).length === 0 && ((bb.roster || []).length + (bb.addedPokemon || []).length) === 0, 'switching accounts carried A\'s roster into B: ' + ((bb.roster || []).length + (bb.addedPokemon || []).length) + ' Pokemon in B\'s document');
+    expect(stillShown(st).length === 0 && Object.keys(OWN).every(k => stillShown(bb).indexOf(k) < 0 && !(k === 'chatMessages' && (bb.chatMessages || []).length)), 'switching accounts carried A\'s ' + stillShown(st).concat(stillShown(bb)).join(', ') + ' into B');
     expect(await localCount(e1) === 0, 'B\'s device copy holds A\'s roster after the switch');
     // A signed-out device that reloads shows nothing of A.
     await e1.call('signOutCloud'); await e1.page.waitForTimeout(800); E.user = null;
@@ -493,6 +501,31 @@ module.exports = async function suiteD() {
     expect(!st.cloudUser && (st.roster || []).length + (st.addedPokemon || []).length === 0 && await localCount(e1) === 0, 'a signed-out reload shows or keeps A\'s data');
     await e1.close();
   }, 'critical');
+  // The page text without the app's own script and template source (textContent would also read those).
+  const pageText = c => c.page.evaluate(() => { const b = document.body.cloneNode(true); b.querySelectorAll('script,template').forEach(e => e.remove()); return b.textContent; });
+  await T('DATA-07', 'Data', 'Coverage and the clear-roster warning count Pokemon that live in addedPokemon, not only the CSV roster', async () => {
+    const c = await session({ feed: false });
+    await c.load(QA); await c.page.waitForTimeout(800);
+    const n = ((await c.state()).roster || []).length;
+    expect(n > 5, 'setup: the fixture has ' + n);
+    await c.set({ addedPokemon: (await c.state()).roster, roster: [] }); await c.page.waitForTimeout(500);
+    await c.go('HOME'); await c.call('armClearRoster'); await c.page.waitForTimeout(500);
+    const t = await pageText(c);
+    expect(new RegExp(n + ' Pokemon \\u00b7 \\d+% with IVs').test(t), 'the coverage headline does not count the ' + n + ' added Pokemon');
+    expect(t.indexOf('Delete all ' + n + ' Pokemon') >= 0, 'the clear-roster warning does not count the ' + n + ' added Pokemon');
+    await c.close();
+  });
+  await T('DATA-08', 'Data', 'When the sign-in SDK cannot load, the sign-in card says so; with it loaded there is no such notice', async () => {
+    const off = await session({ feed: false });
+    await off.page.waitForTimeout(1500); await off.go('HOME');
+    const t = await pageText(off);
+    expect(/Sign-in is unavailable: /.test(t), 'a failed SDK load shows nothing: ' + (await off.state()).firebaseConfigError);
+    await off.close();
+    const on = await session({ feed: false, cloud: { store: {}, writes: [], user: null } });
+    await on.page.waitForTimeout(1500); await on.go('HOME');
+    expect(!/Sign-in is unavailable/.test(await pageText(on)), 'the notice shows although the SDK loaded');
+    await on.close();
+  });
   // ------------------------------------------------------------------ SIGN-IN: Google and GitHub by popup, linking, empty account (Task 3)
   // Everything runs against the in-memory stand-in; its popups are scripted through cloud.popups. No real provider is contacted.
   const rn = st => (st.roster || []).length + (st.addedPokemon || []).length;
