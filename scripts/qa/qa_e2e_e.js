@@ -176,7 +176,7 @@ const VISIBLE_BTN_H = () => {
     const txt = (el.textContent || '').trim();
     const pill = parseFloat(cs.borderTopLeftRadius) >= 999 && txt && !el.querySelector('img') && r.width < 300 && !fixedUp(el);
     if (pill && r.height > 40) bad.push('chip too tall: ' + txt.slice(0, 20) + ' ' + Math.round(r.height));          // chips and pills keep their own height; 44 px comes from the invisible strip
-    if (pill && cs.backgroundColor === 'rgb(10, 100, 214)' && txt.length >= 5 && txt.length < 24 && !el.hasAttribute('aria-pressed') && (r.height < 36 || r.height > 40) && r.height < 60) bad.push('filled button not 36-40: ' + txt.slice(0, 20) + ' ' + Math.round(r.height));
+    if (pill && cs.backgroundColor === (window.__acc || (window.__acc = (() => { const i = document.createElement('i'); i.style.color = 'var(--accent-fill)'; document.body.appendChild(i); const c = getComputedStyle(i).color; i.remove(); return c; })())) && txt.length >= 5 && txt.length < 24 && !el.hasAttribute('aria-pressed') && (r.height < 36 || r.height > 40) && r.height < 60) bad.push('filled button not 36-40: ' + txt.slice(0, 20) + ' ' + Math.round(r.height));
     if (r.height > 48 && !full && kids < 2 && !fills) bad.push((el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 20) + ' ' + Math.round(r.height));
   });
   return bad;
@@ -258,7 +258,7 @@ const FILLED = () => {
   const out = { fills: [], showAll: [], markDone: [] };
   document.querySelectorAll('button, [role=button], label').forEach(el => {
     const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return; const cs = getComputedStyle(el); const txt = (el.textContent || '').trim();
-    if (cs.backgroundColor === 'rgb(10, 100, 214)' && !fixedUp(el) && !el.closest('nav, header') && txt.length > 2 && el.getAttribute('aria-pressed') == null) out.fills.push(txt.slice(0, 20));
+    if (cs.backgroundColor === (window.__acc || (window.__acc = (() => { const i = document.createElement('i'); i.style.color = 'var(--accent-fill)'; document.body.appendChild(i); const c = getComputedStyle(i).color; i.remove(); return c; })())) && !fixedUp(el) && !el.closest('nav, header') && txt.length > 2 && el.getAttribute('aria-pressed') == null) out.fills.push(txt.slice(0, 20));
     if (/^show all \d+$/i.test(txt) && !el.classList.contains('ui-btn-plain')) out.showAll.push(txt);
     if (/^mark done$/i.test(txt) && !el.classList.contains('ui-btn-tint')) out.markDone.push(txt);
   });
@@ -432,7 +432,7 @@ module.exports = async function suiteE() {
       const o = await q.page.evaluate(() => {
         const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
         const fixedUp = el => { for (let e = el; e; e = e.parentElement) if (getComputedStyle(e).position === 'fixed') return true; return false; };
-        const prim = [...document.querySelectorAll('button, label, [role=button]')].filter(el => vis(el) && getComputedStyle(el).backgroundColor === 'rgb(10, 100, 214)' && !el.closest('nav, header, .ios-toast') && !fixedUp(el));
+        const prim = [...document.querySelectorAll('button, label, [role=button]')].filter(el => vis(el) && getComputedStyle(el).backgroundColor === (window.__acc || (window.__acc = (() => { const i = document.createElement('i'); i.style.color = 'var(--accent-fill)'; document.body.appendChild(i); const c = getComputedStyle(i).color; i.remove(); return c; })())) && !el.closest('nav, header, .ios-toast') && !fixedUp(el));
         return { n: prim.length, th: [...document.querySelectorAll('[data-table-header]')].filter(vis).length };
       });
       if (o.n !== 1) bad.push(scr + ' primary buttons ' + o.n);
