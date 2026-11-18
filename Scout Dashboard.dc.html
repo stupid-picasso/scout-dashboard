@@ -1302,6 +1302,24 @@
 
     <div onClick="{{ openFirstRun }}" role="button" class="om-press ui-row-link" style="padding:0 16px;background:var(--surface-card);border-radius:var(--r-lg)"><span>Welcome tour</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span></div>
 
+    <div data-push-alerts style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="min-width:0"><div style="font:600 15px var(--font-body)">Push alerts</div><div data-push-status style="font:13px var(--font-body);color:var(--ink-500)">{{ pushStatus }}</div></div>
+        <sc-if value="{{ pushCanToggle }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ pushToggle }}" class="om-press ui-btn-tint">{{ pushToggleLabel }}</button></sc-if>
+      </div>
+      <sc-if value="{{ pushNote }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--ink-500);margin-top:8px">{{ pushNote }}</div></sc-if>
+      <sc-if value="{{ pushIsOn }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <sc-for list="{{ pushChips }}" as="z" hint-placeholder-count="4"><button type="button" onClick="{{ z.onClick }}" class="om-press" aria-pressed="{{ z.pressed }}" style="padding:8px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 15px var(--font-body);min-height:40px">{{ z.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <sc-for list="{{ pushTypeChips }}" as="z" hint-placeholder-count="0"><button type="button" onClick="{{ z.onClick }}" class="om-press" aria-pressed="{{ z.pressed }}" style="padding:8px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 15px var(--font-body);min-height:40px">{{ z.label }}</button></sc-for>
+        </div>
+        <button type="button" onClick="{{ pushTest }}" class="om-press ui-btn-tint" style="margin-top:12px">Send test</button>
+      </sc-if>
+      <sc-if value="{{ pushMsg }}" hint-placeholder-val="{{ false }}"><div role="status" style="font:13px var(--font-body);color:var(--ink-700);margin-top:8px">{{ pushMsg }}</div></sc-if>
+    </div>
+
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:4px 16px;margin-bottom:16px">
       <summary style="cursor:pointer;list-style:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:48px;padding:8px 0;font:600 17px var(--font-body)">Setup, sync and backup<span style="font:400 13px var(--font-body);color:var(--ink-500)">Text size, size protection, cloud, backup</span></summary>
       <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0 16px">
@@ -2262,7 +2280,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.343{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.344{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -4309,6 +4327,7 @@ class Component extends DCLogic {
     savedViews: [],
     undoLabel: '',
     remindersOn: false,
+    pushOn: false, pushBusy: false, pushMsg: '', pushPrefs: null,
     installHintHidden: false,
     completedIds: [],
     removedIds: [],
@@ -4524,7 +4543,8 @@ class Component extends DCLogic {
     setTimeout(() => this.maybeSwipeHint(), 3500);
     setTimeout(() => { try { this.maybeOpenFirstRun(); } catch (e) {} }, 900);
     try { if (localStorage.getItem('scout.remind.v1') === '1' && typeof Notification !== 'undefined' && Notification.permission === 'granted') this.setState({ remindersOn: true }); } catch (e) {}
-    this._remindTimer = setInterval(() => { this.checkReminders(); this.maybeBriefing(); }, 60000);
+    this._remindTimer = setInterval(() => { this.checkReminders(); this.maybeBriefing(); this.pushSyncMega(); }, 60000);
+    setTimeout(() => this.pushInit(), 5000);
     setTimeout(() => this.maybeBriefing(), 9000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.checkReminders(); this.dailyLogSnapshot(); } });
     setTimeout(() => this.checkReminders(), 4000);
@@ -11121,6 +11141,7 @@ class Component extends DCLogic {
       ['scout.local.v1', 'scout.local.v1.' + user.uid, 'scout.secrets.v1', this.snapClockKey(user.uid)].forEach(k => localStorage.removeItem(k));
     } catch (e) {}
     this._localSaveOff = true; clearTimeout(this._localTimer);
+    try { this.pushForget(); } catch (e) {}   // the Worker's record of this device goes too
     this._secretsSig = JSON.stringify({ geminiKey: '', geminiKeys: [], githubToken: '' });
     this.setState({ geminiKey: '', geminiKeys: [], geminiKeyDraft: '', githubToken: '', snapshots: [], restorePending: null,
       ...this.EMPTY_USER_DATA(),
@@ -14522,7 +14543,7 @@ class Component extends DCLogic {
       if (!this.state.remindersOn || typeof Notification === 'undefined' || Notification.permission !== 'granted') return [];
       let sent = [];
       try { sent = JSON.parse(localStorage.getItem('scout.remind.sent.v1') || '[]'); } catch (e) {}
-      const due = this.reminderItems().filter(i => sent.indexOf(i.id) < 0);
+      const due = this.reminderItems().filter(i => sent.indexOf(i.id) < 0 && !(this.state.pushOn && /^(pc|ev|mr):/.test(i.id)));   // push alerts cover these while they are on
       if (!due.length) return [];
       due.forEach(i => {
         const opts = { body: i.body, tag: i.id, icon: './icons/icon-192.png' };
@@ -14661,6 +14682,132 @@ class Component extends DCLogic {
     };
     try { const r = Notification.requestPermission(go); if (r && r.then) r.then(go); } catch (e) { go('denied'); }
   }
+
+  // ---- Push alerts while the app is closed (task 28). Off until the owner deploys the Worker and fills the two values below; while they are
+  // empty the row says "Not set up yet" and nothing here touches the network. workerUrl also needs a connect-src entry (docs/OWNER_CHECKLIST.md).
+  PUSH_CONFIG() { return { workerUrl: '', vapidPublicKey: '' }; }
+  PUSH_DEFAULT_PREFS() { return { promo: true, timedResearch: true, events: true, mega: true, ending: false, types: ['community-day', 'raid-hour', 'pokemon-spotlight-hour', 'pokemon-go-tour', 'max-battles'] }; }
+  pushReady() { const c = this.PUSH_CONFIG(); return /^https:\/\/[^/?#\s]+\/?$/.test(c.workerUrl || '') && /^[A-Za-z0-9_-]{80,100}$/.test(c.vapidPublicKey || ''); }
+  pushEnv(nav, sa) {
+    if (!this.pushReady()) return 'setup';
+    const n = nav || navigator, ios = /iPhone|iPad|iPod/.test(String(n.userAgent || '')) || (n.platform === 'MacIntel' && n.maxTouchPoints > 1);
+    if (sa === undefined) { try { sa = n.standalone === true || window.matchMedia('(display-mode: standalone)').matches; } catch (e) { sa = false; } }
+    if (ios && !sa) return 'install';   // iPhone and iPad only deliver web push to an app on the Home Screen
+    if (!('serviceWorker' in n) || !('PushManager' in window) || typeof Notification === 'undefined') return 'unsupported';
+    return Notification.permission === 'denied' ? 'blocked' : 'ready';
+  }
+  pushStore(patch) {
+    let o = {}; try { o = JSON.parse(localStorage.getItem('scout.push.v1') || '{}') || {}; } catch (e) {}
+    if (patch === null) { try { localStorage.removeItem('scout.push.v1'); } catch (e) {} return {}; }
+    if (patch) { o = { ...o, ...patch }; try { localStorage.setItem('scout.push.v1', JSON.stringify(o)); } catch (e) {} }
+    return o;
+  }
+  async pushPost(path, body) {
+    if (!this.pushReady()) return null;
+    const r = await fetch(this.PUSH_CONFIG().workerUrl.replace(/\/$/, '') + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let j = null; try { j = await r.json(); } catch (e) {}
+    return { ok: r.ok, status: r.status, body: j };
+  }
+  pushReg() { return Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error('The app is not ready for push yet. Reload and try again.')), 5000))]); }
+  pushKey() { const s = this.PUSH_CONFIG().vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(s + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0)); }
+  pushBody(sub) { return { subscription: sub.toJSON ? sub.toJSON() : sub, prefs: this.state.pushPrefs || this.PUSH_DEFAULT_PREFS(), tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } })() }; }
+
+  // The tap on "Turn on". Notification.requestPermission is the first call: no await and no sheet before it, or iOS refuses it.
+  pushToggle() {
+    if (this.state.pushBusy) return;
+    if (this.state.pushOn) { this.pushOff(); return; }
+    if (this.pushEnv() !== 'ready') { this.setState({ pushMsg: 'Push alerts are not available here.' }); return; }
+    let ask; try { ask = Notification.requestPermission(); } catch (e) { ask = Promise.resolve('denied'); }
+    this.setState({ pushBusy: true, pushMsg: '', pushPrefs: this.state.pushPrefs || this.PUSH_DEFAULT_PREFS() });
+    Promise.resolve(ask).then(async perm => {
+      if (perm !== 'granted') throw new Error(perm === 'denied' ? 'Blocked. Allow notifications for this app in system settings.' : 'Permission was not given.');
+      const reg = await this.pushReg();
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.pushKey() });
+      let r = null; try { r = await this.pushPost('/subscribe', this.pushBody(sub)); } catch (e) {}
+      if (!r || !r.ok) { try { await sub.unsubscribe(); } catch (e) {} throw new Error(r && r.status === 503 ? 'Push alerts are full right now.' : 'The alert server did not answer. Try again later.'); }
+      this.pushStore({ on: true, endpoint: sub.endpoint, prefs: this.state.pushPrefs, at: Date.now() });
+      this.setState({ pushOn: true });
+    }).catch(e => this.setState({ pushMsg: String((e && e.message) || 'Could not turn on push alerts.') })).then(() => this.setState({ pushBusy: false }));
+  }
+
+  // Turning off removes the browser subscription and asks the Worker to delete its record (a dead one is deleted when the push service answers 410).
+  async pushOff() {
+    this.setState({ pushBusy: true });
+    try {
+      const reg = await this.pushReg(), sub = await reg.pushManager.getSubscription(), ep = (sub && sub.endpoint) || this.pushStore().endpoint;
+      if (ep) { try { await this.pushPost('/unsubscribe', { endpoint: ep }); } catch (e) {} }
+      if (sub) await sub.unsubscribe();
+    } catch (e) {}
+    this.pushStore(null);
+    this.setState({ pushOn: false, pushBusy: false, pushMsg: '' });
+  }
+  pushForget() { if (this.state.pushOn || this.pushStore().endpoint) return this.pushOff(); }
+
+  pushSetPref(key, val) {
+    const p = { ...(this.state.pushPrefs || this.PUSH_DEFAULT_PREFS()) };
+    if (key === 'type') { const t = p.types.indexOf(val) >= 0 ? p.types.filter(x => x !== val) : p.types.concat(val); p.types = t; } else p[key] = !p[key];
+    this.setState({ pushPrefs: p }); this.pushStore({ prefs: p });
+    clearTimeout(this._pushPrefTimer); this._pushPrefTimer = setTimeout(() => this.pushSync(true), 700);
+  }
+
+  // Re-registers with the Worker: after a settings change, when the browser swapped the subscription, and about every two weeks.
+  async pushSync(force) {
+    try {
+      if (!this.state.pushOn || !this.pushReady()) return;
+      const reg = await this.pushReg(), sub = await reg.pushManager.getSubscription(), st = this.pushStore();
+      if (!sub) { this.pushStore(null); this.setState({ pushOn: false }); return; }   // the browser dropped it; the person can turn it on again
+      if (!force && sub.endpoint === st.endpoint && Date.now() - (st.at || 0) < 14 * 86400000) return;
+      const r = await this.pushPost('/subscribe', this.pushBody(sub));
+      if (!r || !r.ok) return;
+      if (st.endpoint && st.endpoint !== sub.endpoint) { try { await this.pushPost('/unsubscribe', { endpoint: st.endpoint }); } catch (e) {} }
+      this.pushStore({ endpoint: sub.endpoint, at: Date.now() });
+    } catch (e) {}
+  }
+  pushInit() {
+    try {
+      const st = this.pushStore();
+      if (!st.on || !this.pushReady()) return;
+      this.setState({ pushOn: true, pushPrefs: st.prefs || this.PUSH_DEFAULT_PREFS() }, () => this.pushSync());
+      if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'push-resync') this.pushSync(true); });
+    } catch (e) {}
+  }
+  async pushTest() {
+    if (this.state.pushBusy || !this.state.pushOn) return;
+    this.setState({ pushBusy: true, pushMsg: '' });
+    let m = 'The alert server did not answer. Try again later.';
+    try {
+      const reg = await this.pushReg(), sub = await reg.pushManager.getSubscription();
+      const r = sub && await this.pushPost('/test', { endpoint: sub.endpoint });
+      if (r) m = r.status === 429 ? 'Wait a minute, then try again.' : r.body && r.body.gone ? 'This device was no longer registered. Turn alerts off and on again.' : r.ok && r.body && r.body.ok ? 'Test sent. It should arrive in a moment.' : m;
+    } catch (e) {}
+    this.setState({ pushBusy: false, pushMsg: m });
+  }
+  // A Mega rest time the person logged (restEndsAt) is handed to the Worker once, with a fixed label; the server never sees which Pokemon.
+  async pushSyncMega() {
+    try {
+      if (!this.state.pushOn || !(this.state.pushPrefs || {}).mega || !this.pushReady()) return;
+      const st = this.pushStore(), done = st.mega || [], now = Date.now(), at = [];
+      Object.keys(this.state.megaEnergyInventory || {}).forEach(k => { const s = ((this.state.megaEnergyInventory[k] || {}).status) || {}; Object.keys(s).forEach(f => { const r = s[f] && s[f].restEndsAt; if (Number.isFinite(r) && r > now + 60000 && r < now + 30 * 86400000 && done.indexOf(Math.round(r)) < 0) at.push(Math.round(r)); }); });
+      if (!at.length || !st.endpoint) return;
+      const sent = [];
+      for (const t of at.sort((a, b) => a - b).slice(0, 5)) { const r = await this.pushPost('/schedule', { endpoint: st.endpoint, fireAt: t, label: 'rest-over' }); if (r && (r.ok || r.status === 429)) sent.push(t); else break; }
+      if (sent.length) this.pushStore({ mega: done.concat(sent).slice(-50) });
+    } catch (e) {}
+  }
+  pushVals() {
+    const env = this.pushEnv(), on = !!this.state.pushOn, pr = this.state.pushPrefs || this.PUSH_DEFAULT_PREFS();
+    const st = on ? (env === 'blocked' ? 'blocked' : 'on') : env === 'ready' ? 'off' : env;
+    const chip = (label, pressed, run) => ({ label, pressed, onClick: run, bg: pressed ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: pressed ? '#fff' : 'var(--ink-700)' });
+    return {
+      pushStatus: { setup: 'Not set up yet', install: 'Add to Home Screen first', unsupported: 'Not supported on this browser', blocked: 'Blocked in system settings', on: 'On', off: 'Off' }[st],
+      pushNote: { install: 'Open the app from its Home Screen icon to turn alerts on.', off: 'Alerts come from a small server. It stores your device address and these choices.', on: 'Alerts arrive when the app is closed.' }[st] || '',
+      pushCanToggle: (on || st === 'off') ? true : null, pushToggleLabel: on ? 'Turn off' : 'Turn on', pushToggle: () => this.pushToggle(),
+      pushIsOn: on ? true : null, pushMsg: this.state.pushMsg || '', pushTest: () => this.pushTest(),
+      pushChips: [chip('Promo codes', !!pr.promo, () => this.pushSetPref('promo')), chip('Timed Research codes', !!pr.timedResearch, () => this.pushSetPref('timedResearch')), chip('Events', !!pr.events, () => this.pushSetPref('events')), chip('Mega timers', !!pr.mega, () => this.pushSetPref('mega'))],
+      pushTypeChips: pr.events ? this.PUSH_TYPES().map(([k, l]) => chip(l, pr.types.indexOf(k) >= 0, () => this.pushSetPref('type', k))).concat(chip('Ending soon', !!pr.ending, () => this.pushSetPref('ending'))) : []
+    };
+  }
+  PUSH_TYPES() { return [['community-day', 'Community Day'], ['raid-hour', 'Raid Hour'], ['pokemon-spotlight-hour', 'Spotlight Hour'], ['pokemon-go-tour', 'GO Tour'], ['max-battles', 'Max Battles'], ['raid-day', 'Raid Day'], ['max-mondays', 'Max Mondays'], ['season', 'Season']]; }
 
   // One sentence naming the rule that put a Pokemon in a recommendation list, with
   // the numbers from the Pokemon itself. The thresholds match buildOptimizePlan and
@@ -14965,7 +15112,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'pushOn', 'pushBusy', 'pushMsg', 'pushPrefs', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -21314,6 +21461,7 @@ class Component extends DCLogic {
       installHint: (() => { const v = this.installHintShown(); return v ? { inSafari: v === true, steps: v === true ? ['Tap the Share button (square with an arrow) in Safari\u2019s bottom bar.', 'Scroll down and tap Add to Home Screen.', 'Tap Add. Open Professor from the new icon \u2014 it runs full screen and works offline.'] : ['Open this page in Safari first: Home Screen install only works from Safari.'], dismiss: () => this.dismissInstallHint() } : null; })(),
       remindLabel: this.state.remindersOn ? 'Reminders on' : 'Remind me',
       toggleReminders: () => this.toggleReminders(),
+      ...this.pushVals(),
       hasFeedEvents: this.feedEvents().length > 0,
       promoSection: this.promoLive().length ? true : null,
       promoRows: this.promoRows(),

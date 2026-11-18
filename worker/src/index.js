@@ -9,6 +9,7 @@ import { buildItems, dueFor, cleanPrefs, validTz, updateFirstSeen, pipelineFresh
 
 export const SUBREQUEST_LIMIT = 50;          // Workers Free: subrequests per invocation. Every fetch and every KV call is counted against it, to be safe.
 const RESERVE = 4;                           // kept back for: index re-read, index write, state write, one spare
+const MAX_SENDS = 40;                        // pushes per run; lower it if a run is ever stopped for CPU time (10 ms on the Free plan)
 const MAX_BODY = 4096;
 const RETENTION_MS = 90 * 24 * HOUR;         // no successful send, no sync and no sign-up for 90 days: deleted
 const SENT_KEEP_MS = 14 * 24 * HOUR;
@@ -128,7 +129,7 @@ export async function runTick(env, deps = defaultDeps) {
 
   const ids = Object.keys(subs), dead = new Set(), cleanup = {}, backoff = new Set(), memo = new Map(), jwtCache = new Map();
   const start = ids.length ? (state.cursor || 0) % ids.length : 0;
-  let sendsLeft = b.left() - RESERVE, next = 0;
+  let sendsLeft = Math.min(b.left() - RESERVE, MAX_SENDS), next = 0;
   for (let k = 0; k < ids.length; k++) {
     const pos = (start + k) % ids.length, id = ids[pos], sub = subs[id];
     if (sendsLeft <= 0) { next = pos; break; }

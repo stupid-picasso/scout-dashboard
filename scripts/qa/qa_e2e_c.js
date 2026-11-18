@@ -407,4 +407,5 @@ module.exports = async function suiteC() {
     await x.close();
   }, 'critical');
   await s.close();
+  await require('./qa_push')();   // PUSH-01..11: push alerts in Settings (stubs only; nothing reaches a push service or Worker)
 };
