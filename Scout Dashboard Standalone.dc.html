@@ -1621,6 +1621,7 @@
             </div>
           </sc-if>
           <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}"><div role="alert" style="font:13px/1.4 var(--font-body);color:var(--red-text);text-wrap:pretty;overflow-wrap:anywhere">{{ authError }}</div></sc-if>
+          <sc-if value="{{ firebaseNotice }}" hint-placeholder-val="{{ false }}"><div role="status" style="font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty;overflow-wrap:anywhere">{{ firebaseNotice }}</div></sc-if>
           <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-plain fr-s">Continue without an account</button>
         </sc-if>
         <sc-if value="{{ frSignedIn }}" hint-placeholder-val="{{ false }}">
@@ -2454,6 +2455,9 @@
           </sc-if>
           <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
             <div role="alert" style="font:13px/1.4 var(--font-body);color:var(--red-text);text-wrap:pretty">{{ authError }}</div>
+          </sc-if>
+          <sc-if value="{{ firebaseNotice }}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty;overflow-wrap:anywhere">{{ firebaseNotice }}</div>
           </sc-if>
           <sc-if value="{{ authNotice }}" hint-placeholder-val="{{ false }}">
             <div role="status" style="font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty">{{ authNotice }}</div>
@@ -3339,7 +3343,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.353{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.354{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -5773,10 +5777,13 @@ class Component extends DCLogic {
     return out;
   }
 
+  // The fields that make up one account's data. SYNC_KEYS (what is watched for a save), SYNCED_STATE_KEYS, buildCloudBlob,
+  // the applyRemote patch and EMPTY_USER_DATA must name the same set (test DATA-04). ocrAutoApply is deliberately not in it: it is
+  // a per-session switch, firestore.rules does not allow it in the user document, and sign-out leaves it alone.
   SYNC_KEYS() {
     return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'candyAiDecisions',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply', 'maxBattles'];
+      'chatMessages', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'maxBattles'];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -6186,6 +6193,7 @@ class Component extends DCLogic {
   EMPTY_USER_DATA() {
     return {
       roster: [], ivOverrides: {}, addedPokemon: [], candyInventory: {}, typeTable: {},
+      moveDB: {}, evoTable: {}, candyAiDecisions: {}, chatMessages: [], trainerLevel: 36, dustReserve: 100000,
       stardustBalance: null, history: [], completedIds: [], removedIds: [],
       checklistDate: this.state.checklistDate, checklistDone: {},
       resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
@@ -6689,7 +6697,7 @@ class Component extends DCLogic {
       'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
       'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
       'chatMessages',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'ocrAutoApply', 'maxBattles'];
+      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'maxBattles'];
   }
 
   // Credentials are excluded from a restore by NAME, not by being forgotten, so
@@ -8004,9 +8012,9 @@ class Component extends DCLogic {
     });
   }
 
-  // Wipes the on-device roster so a fresh video import starts clean. Deliberately
-  // keeps candy/stardust/type inventories and settings — those are trainer-level
-  // and survive a re-scan. Two-step because it also clears the synced copy.
+  // Wipes the roster, the added Pokemon, the IV overrides, the candy counts (candyInventory) and the type table so a
+  // fresh video import starts clean; the confirmation text says so. Stardust, bag items, TM counts and settings stay.
+  // Two-step because it also clears the synced copy.
   armClearRoster() {
     this.setState({ clearArmed: true });
     clearTimeout(this._clearArmTimer);
@@ -8836,16 +8844,16 @@ class Component extends DCLogic {
 
   movePrompt(names) {
     return 'You are a Pokemon GO game-data lookup. For each move name below, return its CURRENT Pokemon GO RAID/gym stats '
-      + '(not the main-series game values, and not the PvP turn-based values).\\n\\n'
-      + 'Respond with ONLY a JSON array, no markdown fences, no commentary. One object per move:\\n'
-      + '{"name":string,"kind":"fast"|"charged","type":string,"power":number,"energy":number,"durationMs":number}\\n\\n'
-      + '- kind: "fast" for fast moves, "charged" for charge moves.\\n'
-      + '- type: the move\u2019s Pokemon type, capitalised (e.g. "Fire", "Dragon").\\n'
-      + '- power: raid damage value.\\n'
-      + '- energy: energy GAINED for a fast move, energy COST for a charged move. Always a positive number.\\n'
-      + '- durationMs: full move duration in milliseconds.\\n'
-      + '- If you are not confident about a move, OMIT it entirely rather than guessing. A missing move is fine; a wrong one is not.\\n\\n'
-      + 'Moves:\\n' + names.join('\\n');
+      + '(not the main-series game values, and not the PvP turn-based values).\n\n'
+      + 'Respond with ONLY a JSON array, no markdown fences, no commentary. One object per move:\n'
+      + '{"name":string,"kind":"fast"|"charged","type":string,"power":number,"energy":number,"durationMs":number}\n\n'
+      + '- kind: "fast" for fast moves, "charged" for charge moves.\n'
+      + '- type: the move\u2019s Pokemon type, capitalised (e.g. "Fire", "Dragon").\n'
+      + '- power: raid damage value.\n'
+      + '- energy: energy GAINED for a fast move, energy COST for a charged move. Always a positive number.\n'
+      + '- durationMs: full move duration in milliseconds.\n'
+      + '- If you are not confident about a move, OMIT it entirely rather than guessing. A missing move is fine; a wrong one is not.\n\n'
+      + 'Moves:\n' + names.join('\n');
   }
 
   clearMoveData() {
@@ -9096,13 +9104,13 @@ class Component extends DCLogic {
   }
 
   typePrompt(names) {
-    return 'For each Pokemon name below, return its Pokemon GO type or types.\\n\\n'
-      + 'Respond with ONLY a JSON array, no markdown fences, no commentary. One object per Pokemon:\\n'
-      + '{"name":string,"type":"Fire" or "Water / Psychic"}\\n\\n'
-      + '- Use the primary type first, then the secondary type after a slash if it has one.\\n'
-      + '- Valid types: Normal Fire Water Electric Grass Ice Fighting Poison Ground Flying Psychic Bug Rock Ghost Dragon Dark Steel Fairy.\\n'
-      + '- If a name is unfamiliar or you are unsure, OMIT it entirely rather than guessing.\\n\\n'
-      + 'Pokemon:\\n' + names.join('\\n');
+    return 'For each Pokemon name below, return its Pokemon GO type or types.\n\n'
+      + 'Respond with ONLY a JSON array, no markdown fences, no commentary. One object per Pokemon:\n'
+      + '{"name":string,"type":"Fire" or "Water / Psychic"}\n\n'
+      + '- Use the primary type first, then the secondary type after a slash if it has one.\n'
+      + '- Valid types: Normal Fire Water Electric Grass Ice Fighting Poison Ground Flying Psychic Bug Rock Ghost Dragon Dark Steel Fairy.\n'
+      + '- If a name is unfamiliar or you are unsure, OMIT it entirely rather than guessing.\n\n'
+      + 'Pokemon:\n' + names.join('\n');
   }
 
   baseStatsOf(p) {
@@ -16285,8 +16293,15 @@ class Component extends DCLogic {
   }
 
   // Wraps the named methods so repeated calls with unchanged data return the same result.
-  // `roster`-style arguments are part of the key by length only: every caller passes the same
-  // merged roster, derived from the same state.
+  // An array of plain values (a boss's types) is keyed by its contents; an array of records (the merged
+  // roster, which every caller takes from the same state) is keyed by identity, so two different lists of
+  // the same length never share a cached result.
+  memoArrayId(a) {
+    const ids = this._memoArrayIds || (this._memoArrayIds = new WeakMap());
+    if (!ids.has(a)) ids.set(a, (this._memoArraySeq = (this._memoArraySeq || 0) + 1));
+    return ids.get(a);
+  }
+
   installDerivedCache() {
     if (this._derivedCacheOn) return;
     this._derivedCacheOn = true;
@@ -16297,7 +16312,7 @@ class Component extends DCLogic {
       if (typeof orig !== 'function') return;
       this[n] = (...args) => {
         const deps = this.memoDeps();
-        const argKey = args.map(a => (Array.isArray(a) ? 'a' + a.length : String(a))).join('|');
+        const argKey = args.map(a => (Array.isArray(a) ? (a.every(x => x == null || typeof x !== 'object') ? JSON.stringify(a) : 'a' + a.length + '#' + this.memoArrayId(a)) : String(a))).join('|');
         const e = this._memoStore[n];
         if (e && e.argKey === argKey && this.sameDeps(e.deps, deps)) return e.val;
         const val = orig.apply(this, args);
@@ -17573,7 +17588,7 @@ class Component extends DCLogic {
     if (!pvp && bestRank >= 85) return 'Strong IVs for Little Cup. Worth keeping for that league only.';
     if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
     if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
-    if (Number.isFinite(p.ivAvg) && p.ivAvg < 51 && bestRank < 70 && !this.keepReasons(p).length) return 'Low IV, no league value — safe to transfer for candy.';
+    if (this.isLowValueMon(p) && !this.keepReasons(p).length) return 'Low IV, no league value — safe to transfer for candy.';
     return 'No urgent action. Keep as roster depth.';
   }
 
@@ -17707,16 +17722,16 @@ class Component extends DCLogic {
   }
 
   evoPrompt(names) {
-    return 'For each Pokemon name below, return its next Pokemon GO evolution and the candy that evolution costs.\\n\\n'
-      + 'Respond with ONLY a JSON array. No markdown fences, no commentary, no explanation before or after. One object per Pokemon:\\n'
-      + '{"name":string,"evolvesTo":string or null,"candy":number or null,"item":string or null}\\n\\n'
-      + '- Be terse. Do not explain your reasoning. Output the array immediately.\\n'
-      + '- evolvesTo is the IMMEDIATE next stage only, not the final one.\\n'
-      + '- Use null for evolvesTo if the Pokemon cannot evolve any further.\\n'
-      + '- candy is the Pokemon GO candy cost (commonly 12, 25, 50, 100, 400).\\n'
-      + '- item is any required special item (e.g. "Sinnoh Stone", "Sun Stone") or null.\\n'
-      + '- If a name is unfamiliar or you are unsure of the cost, OMIT that object entirely rather than guessing.\\n\\n'
-      + names.join('\\n');
+    return 'For each Pokemon name below, return its next Pokemon GO evolution and the candy that evolution costs.\n\n'
+      + 'Respond with ONLY a JSON array. No markdown fences, no commentary, no explanation before or after. One object per Pokemon:\n'
+      + '{"name":string,"evolvesTo":string or null,"candy":number or null,"item":string or null}\n\n'
+      + '- Be terse. Do not explain your reasoning. Output the array immediately.\n'
+      + '- evolvesTo is the IMMEDIATE next stage only, not the final one.\n'
+      + '- Use null for evolvesTo if the Pokemon cannot evolve any further.\n'
+      + '- candy is the Pokemon GO candy cost (commonly 12, 25, 50, 100, 400).\n'
+      + '- item is any required special item (e.g. "Sinnoh Stone", "Sun Stone") or null.\n'
+      + '- If a name is unfamiliar or you are unsure of the cost, OMIT that object entirely rather than guessing.\n\n'
+      + names.join('\n');
   }
 
   candyStockFor(p) {
@@ -18514,7 +18529,7 @@ class Component extends DCLogic {
           ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
             + (pool.fastLegacy.length ? ', Elite-only fast: [' + pool.fastLegacy.join(', ') + ']' : '')
             + (pool.chargeLegacy.length ? ', Elite-only charge: [' + pool.chargeLegacy.join(', ') + ']' : '') + '.'
-          : ' (movepool not in local database \\u2014 use your own knowledge for this one.)';
+          : ' (movepool not in local database \u2014 use your own knowledge for this one.)';
         return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + ', Level ' + (p.lvlMin || '?') + '): current fast move ' + fast + ', current charge move(s) ' + charge
           + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.' + poolLine;
       }).join('\n');
@@ -19411,6 +19426,16 @@ class Component extends DCLogic {
     return out.sort((a, b) => (b.evo.ready ? 1 : 0) - (a.evo.ready ? 1 : 0));
   }
 
+  // The one definition of "safe to transfer", shared by the optimise plan (chat and Today) and the Recs transfer list.
+  // Low value: IV under 51% and best league rank under 70%. Then nothing may protect it: no raid role, no keep reason
+  // (keepReasons is the single gate), not marked done. The Recs list used to add the raid-role test on its own and the
+  // plan did not, so the chat could name a raid attacker as a transfer that Recs held back; the stricter rule is the intended
+  // one (PROJECT_HANDOFF: a raid role is a keep reason, and the keep check is the single gate for every transfer suggestion).
+  isLowValueMon(p) { return Number.isFinite(p.ivAvg) && p.ivAvg < 51 && this.bestRank(p) < 70; }
+  transferSafePool(roster, keepCtx, typeBest, notDone) {
+    return roster.filter(p => this.isLowValueMon(p) && !this.hasRaidRole(p, typeBest) && notDone(p) && !this.keepReasons(p, keepCtx).length);
+  }
+
   buildOptimizePlan(roster) {
     const completedSet = new Set(this.state.completedIds || []);
     const notDone = (p) => !completedSet.has(p.idx);
@@ -19419,8 +19444,7 @@ class Component extends DCLogic {
     const evolveSoon = roster.filter(p => this.evolvesToName(p) && (p.ivAvg || 0) >= 60 && notDone(p))
       .sort((a, b) => (b.ivAvg || 0) - (a.ivAvg || 0)).slice(0, 5);
     const keepCtx = this.keepContext(roster);
-    const transferSafe = roster.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && this.bestRank(p) < 70 && notDone(p) && !this.keepReasons(p, keepCtx).length)
-      .slice(0, 10);
+    const transferSafe = this.transferSafePool(roster, keepCtx, keepCtx.typeBest, notDone).slice(0, 10);
     const dexCounts = {};
     roster.forEach(p => { dexCounts[p.dex] = (dexCounts[p.dex] || 0) + 1; });
     // Trade fodder only from Pokemon the keep check would let go: a trade re-rolls the IVs and the Pokemon is gone.
@@ -20670,7 +20694,7 @@ class Component extends DCLogic {
     // against your OWN roster, never an external tier list.
     const raidTypeBest = this.raidRoleTypeBest(roster);
     const recKeepCtx = this.keepContext(roster);
-    const transferPool = roster.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && this.bestRank(p) < 70 && !this.hasRaidRole(p, raidTypeBest) && notDone(p) && !this.keepReasons(p, recKeepCtx).length);
+    const transferPool = this.transferSafePool(roster, recKeepCtx, raidTypeBest, notDone);
     transferPool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const transferList = transferPool.slice(0, 12).map(p => ({
       idx: p.idx,
@@ -22028,7 +22052,7 @@ class Component extends DCLogic {
       clearGeminiKey: () => { this.setState({ geminiKeyDraft: '' }); this.setGeminiKey(''); },
       clearArmed: !!this.state.clearArmed,
       clearNotArmed: !this.state.clearArmed,
-      clearWarning: 'Delete all ' + ((this.state.roster || []).length) + ' Pokemon, plus every candy and XL candy count?'
+      clearWarning: 'Delete all ' + (this.effectiveRosterForMatch().length) + ' Pokemon, plus every candy and XL candy count?'
         + (this.state.cloudUser ? ' This also clears your synced copy.' : ''),
       armClearRoster: () => this.armClearRoster(),
       cancelClearRoster: () => this.cancelClearRoster(),
@@ -22108,7 +22132,7 @@ class Component extends DCLogic {
       importProgressLine: (() => {
         const p = this.state.importProgress || {};
         if (p.day !== this.todayKey() || !p.clips) return '';
-        const total = (this.state.roster || []).length;
+        const total = this.effectiveRosterForMatch().length;
         return p.clips + (p.clips === 1 ? ' clip' : ' clips')
           + ' \u00b7 ' + (p.added || 0) + ' added, ' + (p.updated || 0) + ' updated'
           + ' \u00b7 ' + total + ' in roster';
@@ -22143,14 +22167,14 @@ class Component extends DCLogic {
       confirmVideoImport: () => this.confirmVideoImport(),
       cancelVideoEstimate: () => this.cancelVideoEstimate(),
       hasSecondMoveList: !!(plan.needsSecondMove && plan.needsSecondMove.length),
-      hasCoverage: (this.state.roster || []).length > 0,
+      hasCoverage: this.effectiveRosterForMatch().length > 0,
       coverageHeadline: (() => {
-        const r = this.state.roster || [];
+        const r = this.effectiveRosterForMatch();
         const withIv = r.filter(p => Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)).length;
         return r.length + ' Pokemon \u00b7 ' + (r.length ? Math.round(withIv / r.length * 100) : 0) + '% with IVs';
       })(),
       coverageStats: (() => {
-        const r = this.state.roster || [];
+        const r = this.effectiveRosterForMatch();
         if (!r.length) return [];
         const pct = (k) => Math.round(k / r.length * 100);
         const withIv = r.filter(p => Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)).length;
@@ -22167,7 +22191,7 @@ class Component extends DCLogic {
         ];
       })(),
       coverageGapLine: (() => {
-        const r = this.state.roster || [];
+        const r = this.effectiveRosterForMatch();
         if (!r.length) return '';
         const noIv = r.filter(p => !(Number.isFinite(p.atkIV) && Number.isFinite(p.defIV) && Number.isFinite(p.staIV)));
         if (!noIv.length) return 'Every Pokemon has exact IVs \u2014 nothing left to re-scan.';
@@ -22177,11 +22201,11 @@ class Component extends DCLogic {
           + '. Record their appraisal screens to fill these in.';
       })(),
       hasStaleList: (() => {
-        const r = this.state.roster || [];
+        const r = this.effectiveRosterForMatch();
         return r.some(p => this.scanAgeDays(p) != null && this.scanAgeDays(p) > 30);
       })(),
       staleLine: (() => {
-        const r = this.state.roster || [];
+        const r = this.effectiveRosterForMatch();
         const stale = r.filter(p => { const d = this.scanAgeDays(p); return d != null && d > 30; });
         if (!stale.length) return '';
         const oldest = stale.reduce((a, p) => Math.max(a, this.scanAgeDays(p) || 0), 0);
@@ -22791,6 +22815,8 @@ class Component extends DCLogic {
       onFirebaseConfigChange: (e) => this.onFirebaseConfigChange(e),
       saveFirebaseConfig: () => this.saveFirebaseConfig(),
       firebaseConfigError: this.state.firebaseConfigError,
+      firebaseNotice: !this.state.firebaseConfigError ? '' : /^Failed to load /.test(this.state.firebaseConfigError)
+        ? 'Sign-in is unavailable: the sign-in service did not load. Check your connection and reload.' : 'Sign-in is unavailable: ' + this.state.firebaseConfigError,
       hasFirebaseNoUser: this.state.firebaseConfigured && !this.state.cloudUser,
       showSignIn: !this.state.cloudUser,   // the unconfigured (fork) case and the signed-out case show the same card
       authEmail: this.state.authEmail,
@@ -22891,7 +22917,7 @@ class Component extends DCLogic {
         const drift = this.SYNC_KEYS().filter(k =>
           this.SYNCED_STATE_KEYS.indexOf(k) < 0 && this.RESTORE_EXCLUDED_KEYS.indexOf(k) < 0);
         return drift.length
-          ? `SYNC/RESTORE KEY DRIFT: ${drift.join(', ')} \\u2014 synced live but a file restore or snapshot restore silently skips ${drift.length === 1 ? 'it' : 'them'}. Add to SYNCED_STATE_KEYS (or RESTORE_EXCLUDED_KEYS if that's deliberate).`
+          ? `SYNC/RESTORE KEY DRIFT: ${drift.join(', ')} \u2014 synced live but a file restore or snapshot restore silently skips ${drift.length === 1 ? 'it' : 'them'}. Add to SYNCED_STATE_KEYS (or RESTORE_EXCLUDED_KEYS if that's deliberate).`
           : null;
       })(),
       onStardustChange: (e) => this.setStardust(e.target.value),
