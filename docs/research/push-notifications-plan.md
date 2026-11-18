@@ -49,10 +49,11 @@ Never in repo: VAPID private key. The public key is public and goes in the clien
 ## 4. Triggers and data
 | Notification | Trigger (computed in cron) | Source | Dedupe id | Lead |
 |---|---|---|---|---|
-| New promo code | code present, `!expired`, not yet announced | `promo_codes.json` | `promo:<code>` | on first sight; first run seeds without sending |
-| Promo expiring | `expires` within 24 h, `!expired` | same | `promoexp:<code>` | 24 h |
+| New promo code | code present, `!expired`, `verified` only (owner decision), not yet announced | `promo_codes.json` | `promo:<code>` | on first sight; first run seeds without sending |
+| Promo expiring | `expires` within 24 h, `!expired`, `verified` only | same | `promoexp:<code>` | 24 h |
 | Event starting | `events[].start` within lead; types per user prefs (community-day, raid-hour, pokemon-spotlight-hour, raid-day, max-battles, max-mondays, go-tour; `season` only if opted) | `feed.json` | `evt:<id>:start` | 60 min (CD/raid hour), 24 h (tour) |
 | Event ending soon (optional) | `end` within 2 h | `feed.json` | `evt:<id>:end` | 2 h |
+| Timed-research promo code | same as new promo code, when the reward text names Timed Research (owner decision: include); add a `kind: timed_research` flag in the data pipeline so the toggle can be separate | `promo_codes.json` (+ official source, see 14) | `promo:<code>` | on first sight |
 | Event move reminder | `moves[]` entry at event start, names the move; `graceHours` for the window | `event_moves.json` | `mv:<eventId>:<species>` | event start |
 | GBL week | `gbl[].start` boundary | `feed.json` | `gbl:<start>` | at start |
 | Mega timer | user-specific: client posts `/schedule {fireAt,label}` when the user logs a Mega evolution (max 5 pending); Worker sends once at fireAt, then drops it | client state only | `mega:<id>` | user-chosen, e.g. 30 min before end |
@@ -131,10 +132,14 @@ No Apple Developer account, no paid plan, no Firebase change.
 
 Estimate: about 6 to 7 working days of agent work, about 1 hour of owner time, plus a real-device pass. Ship phases 0-2 first; stop if spike numbers fail.
 
-## 14. Open questions for the owner
+## 14. Owner decisions (2026-11-18) and open items
+Decided:
+- Promo pushes: verified codes only.
+- Timed-research promo codes are included (new row in section 4; needs the pipeline to flag them).
+- Mega timer: derive from official Pokémon GO data, not only a user-logged expiry. Finding: no official machine-readable source exists (the game master has no timer data, and no official Niantic support page was found). Third-party sources agree the Mega form lasts 8 hours but disagree on cooldown by Mega Level (24-72 h vs days). TODO before building: read the official Niantic/Scopely Pokémon GO news or help page and take the numbers from there; until then the app keeps the user-logged time as the anchor (the app cannot see the game) and shows the official duration only once confirmed.
+- Timed-research code source: official Pokémon GO sources only (confirm which page publishes codes; current `promo_codes.json` sources are listed in its `sources` field).
+Still open:
 1. Accept Cloudflare as a new processor and the PRIVACY.md change? (Alternative: no push, keep local reminders.)
-2. Verified promo codes only?
-3. Which event types notify by default?
-4. Enrolment cap (300?) if free limits bind.
-5. Is a Mega timer a user-logged expiry, or something else?
-6. Any EU users to support? Needs a real-device test.
+2. Which event types notify by default?
+3. Enrolment cap (300?) if free limits bind.
+4. Any EU users to support? Needs a real-device test.
