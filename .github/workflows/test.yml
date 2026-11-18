@@ -37,6 +37,10 @@ jobs:
           node scripts/test_no_dangerous_sinks.js
           node scripts/test_tracked_tree.js
           node scripts/test_sri.js
+          node scripts/test_push_triggers.mjs
+          node scripts/test_push_worker.mjs
+          node scripts/test_push_sw.mjs
+          node scripts/test_push_config.js
 
       - name: Gemini pipeline tests
         run: |

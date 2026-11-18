@@ -42,5 +42,14 @@ for bad in ['javascript:alert(1)', 'AB', 'A' * 33, 'CODE&next=https://evil.examp
 hostile = u.build([{**a, 'code': 'javascript:alert(1)'}, {**a, 'code': 'GOODCODE1'}], [{'code': 'x" onclick="y', 'reward': ''}, {'code': 'ok1234', 'reward': ''}], now)
 check('hostile codes never reach the output; good ones carry a store.pokemongo.com link',
       sorted((c['code'], c['link'].startswith('https://store.pokemongo.com/')) for c in hostile), [('GOODCODE1', True), ('ok1234', True)])
+# kind: the listing's own text decides; nothing is invented. (Fake codes only.)
+check('kind: plain item code is standard', byc['ADIDASxPOKEMON']['kind'], 'standard')
+tr = u.build([{**a, 'code': 'FAKETIMEDRES1', 'name': 'Fake research', 'description': 'Unlocks a Timed Research with rewards.', 'rewards': []},
+              {**a, 'code': 'FAKETIMEDRES2', 'name': 'Fake', 'description': '', 'rewards': ['Timed  Research ticket']},
+              {**a, 'code': 'FAKEPLAINCODE', 'name': 'Fake', 'description': 'Time limited research? no', 'rewards': ['x']}], [{'code': 'FAKEPGTIMED1', 'reward': 'Timed Research'}, {'code': 'FAKEPGPLAIN1', 'reward': 'Poke Balls'}], now)
+check('kind: timed research found in description, rewards (any spacing) and the other site\'s reward text',
+      {c['code']: c['kind'] for c in tr}, {'FAKETIMEDRES1': 'timed_research', 'FAKETIMEDRES2': 'timed_research', 'FAKEPLAINCODE': 'standard', 'FAKEPGTIMED1': 'timed_research', 'FAKEPGPLAIN1': 'standard'})
+check('kind: no code is added by classification', len(tr), 5)
+check('kind_of tolerates missing text', (u.kind_of(None, None, None), u.kind_of('', [])), ('standard', 'standard'))
 print('%d failed' % fail)
 sys.exit(1 if fail else 0)

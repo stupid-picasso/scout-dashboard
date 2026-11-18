@@ -33,6 +33,12 @@ async function child() {
   if (dir('script-src').indexOf('https://apis.google.com') < 0) pre.push('script-src lacks https://apis.google.com');
   if (dir('connect-src').indexOf('https://*.googleapis.com') < 0) pre.push('connect-src lacks https://*.googleapis.com');
   ['connect-src', 'frame-src', 'script-src'].forEach(d => { if (dir(d).some(x => x === '*' || x === 'https:' || x === 'http:')) pre.push(d + ' is a wildcard'); });
+  // Push alerts: the Worker's origin is added to connect-src only when PUSH_CONFIG names one (empty by default, then nothing is added), as that exact origin.
+  { const pc = require('./push_config'), cfg = pc.configured(); if (!cfg) pre.push('PUSH_CONFIG not found in the source');
+    else { const o = pc.workerOrigin(cfg.workerUrl), extra = dir('connect-src').filter(x => /^https:\/\/[^*]+$/.test(x) && x !== 'https://raw.githubusercontent.com' && x !== 'https://api.github.com');
+      if (o === null) pre.push('PUSH_CONFIG.workerUrl is not a plain https origin');
+      else if (o && extra.join(' ') !== o) pre.push('connect-src must carry the Worker origin ' + o + ' and no other extra host (has: ' + (extra.join(' ') || 'none') + ')');
+      else if (!o && extra.length) pre.push('PUSH_CONFIG is empty but connect-src has an extra host: ' + extra.join(' ')); } }
   if (pre.length) throw new Error('CSP does not fit popup sign-in: ' + pre.join('; '));
   let s;
   try {

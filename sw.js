@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scout-v401';
+const CACHE_NAME = 'scout-v403';
 
 // App shell — code that changes on every deploy. NETWORK-FIRST.
 // Cache-first here is what caused the "I pushed the fix but still see the old
@@ -100,4 +100,56 @@ self.addEventListener('fetch', function (event) {
       });
     })
   );
+});
+
+// ---- Web Push (task 28). The Worker sends { t: title, b: body, tag, url } encrypted; every push MUST show a notification (iOS revokes the
+// permission otherwise), so a missing, empty or unreadable payload still shows one. The app works the same with no Worker set up.
+function pushUrl(u) {
+  // Same origin only; anything else (another site, javascript:, garbage) opens the app instead.
+  try {
+    const url = new URL(typeof u === 'string' ? u : './', self.registration.scope);
+    return url.origin === self.location.origin ? url.href : self.registration.scope;
+  } catch (e) { return self.registration.scope; }
+}
+
+self.addEventListener('push', function (event) {
+  let d = null;
+  try { d = event.data ? event.data.json() : null; } catch (e) {
+    try { d = { b: event.data.text() }; } catch (e2) { d = null; }
+  }
+  if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
+  const title = typeof d.t === 'string' && d.t.trim() ? d.t.slice(0, 120) : 'Professor';
+  const opts = {
+    body: typeof d.b === 'string' && d.b ? d.b.slice(0, 300) : 'Open the app to see what is new.',
+    icon: './icons/icon-192.png',
+    data: { url: pushUrl(d.url) }
+  };
+  if (typeof d.tag === 'string' && d.tag) opts.tag = d.tag.slice(0, 100);   // same tag replaces, never stacks
+  event.waitUntil(self.registration.showNotification(title, opts));
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  const target = pushUrl(event.notification.data && event.notification.data.url);
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].url && list[i].url.indexOf(self.registration.scope) === 0 && 'focus' in list[i]) return list[i].focus();
+      }
+      return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+    })
+  );
+});
+
+// The browser replaced or expired the subscription: subscribe again with the same options and tell open windows. The app compares its stored
+// endpoint on every open and re-registers with the Worker, so a closed app catches up the next time it opens.
+self.addEventListener('pushsubscriptionchange', function (event) {
+  event.waitUntil((async function () {
+    try {
+      const old = event.oldSubscription;
+      if (old && old.options) await self.registration.pushManager.subscribe(old.options);
+      const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      list.forEach(function (c) { c.postMessage({ type: 'push-resync' }); });
+    } catch (e) {}
+  })());
 });

@@ -16,6 +16,8 @@ const SRC = path.join(ROOT, 'Scout Dashboard.html'), OUT = path.join(ROOT, 'inde
 // Content-Security-Policy for the deployed page, injected here (never hand-edited into index.html). GitHub Pages sends no
 // headers, so it is a <meta> tag. 'unsafe-inline' and 'unsafe-eval' are required by the runtime (see SECURITY.md): this policy
 // limits where code may load from and where data may be sent, it does not stop injected inline script.
+// The push Worker's origin (PUSH_CONFIG in the source, empty by default) is the only thing added to connect-src for it: no wildcard, no path.
+const pushCfg = require('./push_config');
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com https://www.gstatic.com https://apis.google.com",
@@ -23,7 +25,7 @@ const CSP = [
   "img-src 'self' data: blob: https://raw.githubusercontent.com https://*.githubusercontent.com",
   "media-src 'self' blob:",
   "font-src 'self' data:",
-  "connect-src 'self' blob: https://*.googleapis.com https://raw.githubusercontent.com https://api.github.com",
+  pushCfg.connectSrc((pushCfg.configured() || {}).workerUrl || ''),
   "frame-src https://pokemon-professor.firebaseapp.com https://accounts.google.com https://apis.google.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

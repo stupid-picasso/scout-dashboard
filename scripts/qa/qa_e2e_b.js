@@ -769,6 +769,10 @@ module.exports = async function suiteB() {
     const tBefore = seen.length;
     await call({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 100 });
     expect(seen[tBefore].th === 'none', 'a text call is sent as before (no thinking setting): ' + JSON.stringify(seen[tBefore]));
+    // a text call on the same model must not reset what the image calls learned (a background briefing call used to do exactly that)
+    const b2 = imgs().length;
+    await call(img);
+    expect(imgs().length === b2 + 1 && imgs()[b2].th === '{"thinkingLevel":"low"}', 'the remembered setting survives a text call: ' + JSON.stringify(imgs().slice(b2)));
     const log = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) return f.stateNode.logic._aiLog; } return null; });
     expect(log && log.length >= 3 && log.every(a => typeof a.ms === 'number' && a.model && a.status === 200), 'every call is timed: ' + JSON.stringify(log && log.map(a => [a.model, a.ms, a.status, a.thinking])));
     expect(/thinking low/.test(await s.call('diagnosticsText')), 'the log is in the copyable diagnostics');
