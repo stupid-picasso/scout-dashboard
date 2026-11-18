@@ -160,111 +160,102 @@
   }
 
   /* =====================================================================
-     iOS design layer. One place that gives the whole app the iOS dark look:
-     system font, true-black ground with elevated grouped surfaces, hairline
-     separators, system tint, large-title header, translucent bars, and 44pt
-     targets. Pokemon type colours stay as they are (they are the identity).
-     It sits at the end so it wins over the design-system tokens loaded above.
+     Pokemon GO design layer (it replaced the iOS design layer; the build locates the style block by that phrase). Tokens. ONE source of truth: dark is the :root default, light is :root[data-theme="light"],
+     Auto (no attribute) follows prefers-color-scheme. Only the raw colour roles are themed below; every older name
+     (surface-card, ink-900, grass-500 ...) is an alias declared once at the bottom of :root.
+     Everything is drawn in CSS/SVG: no game art, no logos.
      ===================================================================== */
   :root{
-    --font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-    --font-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --font-display:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --font-body:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
     color-scheme:dark;
-    /* ---- Design tokens (UI polish pass). Use these in new markup; the old names below are aliases of them. ---- */
     /* type scale: display 32, title 22, headline 17, body 15, caption 13, micro 12; numbers 28. Weights 400/500/600/700 only. */
     --t-display:32px; --t-title:22px; --t-headline:17px; --t-body:15px; --t-caption:13px; --t-micro:12px; --t-num:28px;
     /* spacing (4-grid) */
     --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px;
-    /* radii */
-    --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px;
+    /* radii: big and soft */
+    --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:20px;
     /* motion */
     --dur-press:100ms; --dur-fast:160ms; --dur-base:240ms; --dur-sheet:360ms; --dur-slow:520ms;
     --ease-out:cubic-bezier(.2,.8,.2,1); --ease-spring:cubic-bezier(.32,.72,0,1); --ease-in-out:cubic-bezier(.4,0,.2,1);
-    /* colour roles, dark */
-    --bg:#0b0b0d; --surface-1:#17171a; --surface-2:#212125; --surface-3:#2b2b30;
-    --text:#f2f2f4; --text-2:#b4b4bb; --text-3:#8e8e96;
-    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.16);
-    --accent:#0a84ff; --accent-fill:#0a64d6; --accent-text:#6cb2ff; --on-accent:#fff;
-    --good:#4cc38a; --warn:#ffb340; --bad:#ff6961; --info:#6cb2ff;
-    --e0:none; --e1:none; --e2:0 10px 30px rgba(0,0,0,.5);
-    --bad-fill:#d1262c; --on-yellow:#000; --purple-text:#d7a8ff; --cyan-text:#8fd3ff; --green-text:#7cf29a; --amber-text:#ffb454; --red-text:#ff8a80;
-    /* old names, aliased to the tokens above */
-    --surface-page:var(--bg);
-    --surface:var(--surface-1); --surface-card:var(--surface-1); --surface-muted:var(--surface-2); --surface-sunken:var(--surface-2); --surface-field:var(--surface-2);
-    --ink-900:var(--text); --ink-700:var(--text); --ink-600:var(--text-2); --ink-500:var(--text-2);
-    --ink-400:var(--text-3); --ink-300:var(--text-3);
-    --line-100:rgba(237,237,237,.06); --line-200:var(--line); --line-300:var(--line-strong);
-    --brand-primary-strong:var(--accent); --grass-500:var(--good); --grass-600:var(--good); --grass-700:var(--good);
+    /* colour roles, dark: deep teal-navy surfaces, mint accents */
+    --bg:#0c1b1f; --surface-1:#14292e; --surface-2:#1b343a; --surface-3:#254249; --muted:#254249;
+    --text:#e8f4ef; --text-2:#b7cfcb; --text-3:#93aeaa;
+    --line:rgba(190,240,225,.12); --line-strong:rgba(190,240,225,.24); --fill:rgba(190,240,225,.09);
+    --ring:#59c9ad; --ring-bg:#14292e;
+    --accent:#7fe0b8; --accent-text:#7fe0b8; --accent-fill:#1a7a73; --fill-a:#218068; --fill-b:#1a7a73; --on-accent:#fff; --info:#8fd3ff;
+    --good:#6fdc9a; --warn:#ffc659; --bad:#ff8f86; --pink:#ff9ccb; --bad-fill:#c93a58; --ribbon:#c93a58;
+    --cost-bar:#1b343a; --hp:#6fdc9a;
+    --page-grad:linear-gradient(90deg,#123a33 0,#0e2428 6%,#0c1b1f 20%,#0c1b1f 80%,#0e2428 94%,#123a33 100%);
+    --e0:none; --e1:0 4px 16px rgba(0,0,0,.28); --e2:0 14px 36px rgba(0,0,0,.55);
+    --on-yellow:#000; --purple-text:#d7a8ff; --cyan-text:#8fd3ff; --green-text:#7cf29a; --amber-text:#ffb454; --red-text:#ff8a80;
+    --bar-bg:rgba(12,27,31,.82); --nav-bg:rgba(15,32,37,.95); --nav-line:rgba(190,240,225,.14); --menu-bg:rgba(27,52,58,.96); --toast-bg:rgba(37,66,73,.96);
     --type-electric:#ffd60a; --type-fighting:#ff453a;
-    --ios-blue:var(--accent); --ios-blue-fill:var(--accent-fill); --ios-green:var(--good); --ios-red:#ff6961; --ios-yellow:#ffd60a; --ios-fill:rgba(237,237,237,.09);
-    --bar-bg:rgba(11,11,13,.78); --bar-bg-stuck:rgba(11,11,13,.92); --bar-shadow:0 10px 30px rgba(0,0,0,.42); --nav-bg:rgba(11,11,13,.94); --nav-line:rgba(237,237,237,.12); --menu-bg:rgba(33,33,37,.94); --toast-bg:rgba(43,43,48,.94);
-    --accent-on-fill:var(--on-accent);
     --type-lift:#fff; --tt-dragon:#aaa0f4; --tt-ghost:#bdb2ec; --tt-poison:#d6a9ee; --tt-dark:#b0abbd; --tt-psychic:#ff9db8; --tt-fairy:#f5a8d6; --tt-fighting:#ff8a80;
-    --ios-spring:var(--ease-spring);
+    /* aliases: the names the markup already uses */
+    --fill-grad:linear-gradient(100deg,var(--fill-a),var(--fill-b));
+    --surface-page:var(--bg); --surface:var(--surface-1); --surface-card:var(--surface-1); --surface-muted:var(--muted); --surface-sunken:var(--surface-2); --surface-field:var(--surface-2);
+    --ink-900:var(--text); --ink-700:var(--text); --ink-600:var(--text-2); --ink-500:var(--text-2); --ink-400:var(--text-3); --ink-300:var(--text-3);
+    --line-100:var(--fill); --line-200:var(--line); --line-300:var(--line-strong);
+    --brand-primary-strong:var(--accent-text); --grass-500:var(--good); --grass-600:var(--good); --grass-700:var(--good);
+    --ios-blue:var(--accent); --ios-blue-fill:var(--accent-fill); --ios-green:var(--good); --ios-red:var(--bad); --ios-yellow:#ffd60a; --ios-fill:var(--fill);
+    --bar-bg-stuck:var(--bar-bg); --bar-shadow:var(--e1); --accent-on-fill:var(--on-accent); --ios-spring:var(--ease-spring);
   }
-  /* Light: same blue accent as dark; the ramp turned over. */
   :root[data-theme="light"]{
-      color-scheme:light;
-      --bg:#f2f2f5; --surface-1:#ffffff; --surface-2:#f2f2f5; --surface-3:#e8e8ed;
-      --text:#16161a; --text-2:#55555c; --text-3:#62626a;
-      --line:rgba(0,0,0,.08); --line-strong:rgba(0,0,0,.16);
-      --accent:#0a64d6; --accent-fill:#0a64d6; --accent-text:#0a58be; --on-accent:#fff;
-      --good:#12703a; --warn:#8a5a00; --bad:#b3261e; --info:#0a58be;
-      --e0:none; --e1:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08); --e2:0 10px 30px rgba(0,0,0,.18);
-      --bad-fill:#b3261e; --on-yellow:#fff; --purple-text:#6d3a9a; --cyan-text:#0a5a85; --green-text:#12703a; --amber-text:#8a5a00; --red-text:#b3261e;
-      --surface-page:var(--bg);
-      --surface:var(--surface-1); --surface-card:var(--surface-1); --surface-muted:var(--surface-3); --surface-sunken:var(--surface-2); --surface-field:var(--surface-3);
-      --ink-900:var(--text); --ink-700:var(--text); --ink-600:var(--text-2); --ink-500:var(--text-2);
-      --ink-400:var(--text-3); --ink-300:var(--text-3);
-      --line-100:rgba(23,23,23,.06); --line-200:var(--line); --line-300:var(--line-strong);
-      --brand-primary-strong:var(--accent); --grass-500:#16a34a; --grass-600:var(--good); --grass-700:var(--good);
-      --type-electric:#8a5a00; --type-fighting:#b3261e;
-      --ios-blue:var(--accent); --ios-blue-fill:var(--accent-fill); --ios-green:var(--good); --ios-red:#b3261e; --ios-yellow:#8a5a00; --ios-fill:rgba(23,23,23,.07);
-      --type-grass:#2f7d34; --type-poison:#7a3aa0; --type-fire:#b85a10; --type-psychic:#c2185b; --type-flying:#4f66b0; --type-ice:#1f7f78; --type-water:#1d6fb8;
-      --type-ground:#8a6420; --type-rock:#7a6d3f; --type-bug:#5d7d1a; --type-ghost:#5b4c9a; --type-dragon:#4f46b8; --type-dark:#4f4b5c; --type-steel:#506070; --type-fairy:#b43b86; --type-normal:#5f6870;
-      --type-lift:#000; --tt-dragon:#4f46b8; --tt-ghost:#5b4c9a; --tt-poison:#7a3aa0; --tt-dark:#4f4b5c; --tt-psychic:#c2185b; --tt-fairy:#b43b86; --tt-fighting:#b3261e;
-      --bar-bg:rgba(242,242,245,.82); --bar-bg-stuck:rgba(242,242,245,.94); --bar-shadow:0 8px 24px rgba(0,0,0,.08); --nav-bg:rgba(250,250,252,.96); --nav-line:rgba(23,23,23,.12); --menu-bg:rgba(255,255,255,.96); --toast-bg:rgba(255,255,255,.96);
-      --accent-on-fill:var(--on-accent);
+    color-scheme:light;
+    --bg:#eef5ea; --surface-1:#ffffff; --surface-2:#f1f7ed; --surface-3:#e1ecdb; --muted:#e1ecdb;
+    --text:#2c4448; --text-2:#3f5a5e; --text-3:#52696d;
+    --line:rgba(61,90,94,.14); --line-strong:rgba(61,90,94,.26); --fill:rgba(61,90,94,.08);
+    --ring:#2f8f86; --ring-bg:#e6f4ea;
+    --accent:#176b5f; --accent-text:#176b5f; --accent-fill:#1f7f76; --fill-a:#2d8059; --fill-b:#1f7f76; --on-accent:#fff; --info:#0a58be;
+    --good:#12703a; --warn:#8a5a00; --bad:#b3261e; --pink:#b8336f; --bad-fill:#b3261e; --ribbon:#c93a58;
+    --cost-bar:#e4efdb; --hp:#5fcf9d;
+    --page-grad:linear-gradient(90deg,#d6edc4 0,#e6f3de 5%,#f1f8ec 22%,#f1f8ec 78%,#e6f3de 95%,#d6edc4 100%);
+    --e1:0 2px 6px rgba(47,74,78,.06),0 10px 28px rgba(47,74,78,.10); --e2:0 14px 36px rgba(47,74,78,.22);
+    --on-yellow:#fff; --purple-text:#6d3a9a; --cyan-text:#0a5a85; --green-text:#12703a; --amber-text:#8a5a00; --red-text:#b3261e;
+    --bar-bg:rgba(238,245,234,.86); --nav-bg:rgba(250,253,248,.96); --nav-line:rgba(61,90,94,.14); --menu-bg:rgba(255,255,255,.97); --toast-bg:rgba(255,255,255,.97);
+    --type-electric:#8a5a00; --type-fighting:#b3261e; --ios-yellow:#8a5a00;
+    --type-grass:#2f7d34; --type-poison:#7a3aa0; --type-fire:#b85a10; --type-psychic:#c2185b; --type-flying:#4f66b0; --type-ice:#1f7f78; --type-water:#1d6fb8;
+    --type-ground:#8a6420; --type-rock:#7a6d3f; --type-bug:#5d7d1a; --type-ghost:#5b4c9a; --type-dragon:#4f46b8; --type-dark:#4f4b5c; --type-steel:#506070; --type-fairy:#b43b86; --type-normal:#5f6870;
+    --type-lift:#000; --tt-dragon:#4f46b8; --tt-ghost:#5b4c9a; --tt-poison:#7a3aa0; --tt-dark:#4f4b5c; --tt-psychic:#c2185b; --tt-fairy:#b43b86; --tt-fighting:#b3261e;
+    --grass-500:#16a34a;
   }
   @media (prefers-color-scheme: light){
     :root:not([data-theme="dark"]){
       color-scheme:light;
-      --bg:#f2f2f5; --surface-1:#ffffff; --surface-2:#f2f2f5; --surface-3:#e8e8ed;
-      --text:#16161a; --text-2:#55555c; --text-3:#62626a;
-      --line:rgba(0,0,0,.08); --line-strong:rgba(0,0,0,.16);
-      --accent:#0a64d6; --accent-fill:#0a64d6; --accent-text:#0a58be; --on-accent:#fff;
-      --good:#12703a; --warn:#8a5a00; --bad:#b3261e; --info:#0a58be;
-      --e0:none; --e1:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08); --e2:0 10px 30px rgba(0,0,0,.18);
-      --bad-fill:#b3261e; --on-yellow:#fff; --purple-text:#6d3a9a; --cyan-text:#0a5a85; --green-text:#12703a; --amber-text:#8a5a00; --red-text:#b3261e;
-      --surface-page:var(--bg);
-      --surface:var(--surface-1); --surface-card:var(--surface-1); --surface-muted:var(--surface-3); --surface-sunken:var(--surface-2); --surface-field:var(--surface-3);
-      --ink-900:var(--text); --ink-700:var(--text); --ink-600:var(--text-2); --ink-500:var(--text-2);
-      --ink-400:var(--text-3); --ink-300:var(--text-3);
-      --line-100:rgba(23,23,23,.06); --line-200:var(--line); --line-300:var(--line-strong);
-      --brand-primary-strong:var(--accent); --grass-500:#16a34a; --grass-600:var(--good); --grass-700:var(--good);
-      --type-electric:#8a5a00; --type-fighting:#b3261e;
-      --ios-blue:var(--accent); --ios-blue-fill:var(--accent-fill); --ios-green:var(--good); --ios-red:#b3261e; --ios-yellow:#8a5a00; --ios-fill:rgba(23,23,23,.07);
+      --bg:#eef5ea; --surface-1:#ffffff; --surface-2:#f1f7ed; --surface-3:#e1ecdb; --muted:#e1ecdb;
+      --text:#2c4448; --text-2:#3f5a5e; --text-3:#52696d;
+      --line:rgba(61,90,94,.14); --line-strong:rgba(61,90,94,.26); --fill:rgba(61,90,94,.08);
+      --ring:#2f8f86; --ring-bg:#e6f4ea;
+      --accent:#176b5f; --accent-text:#176b5f; --accent-fill:#1f7f76; --fill-a:#2d8059; --fill-b:#1f7f76; --on-accent:#fff; --info:#0a58be;
+      --good:#12703a; --warn:#8a5a00; --bad:#b3261e; --pink:#b8336f; --bad-fill:#b3261e; --ribbon:#c93a58;
+      --cost-bar:#e4efdb; --hp:#5fcf9d;
+      --page-grad:linear-gradient(90deg,#d6edc4 0,#e6f3de 5%,#f1f8ec 22%,#f1f8ec 78%,#e6f3de 95%,#d6edc4 100%);
+      --e1:0 2px 6px rgba(47,74,78,.06),0 10px 28px rgba(47,74,78,.10); --e2:0 14px 36px rgba(47,74,78,.22);
+      --on-yellow:#fff; --purple-text:#6d3a9a; --cyan-text:#0a5a85; --green-text:#12703a; --amber-text:#8a5a00; --red-text:#b3261e;
+      --bar-bg:rgba(238,245,234,.86); --nav-bg:rgba(250,253,248,.96); --nav-line:rgba(61,90,94,.14); --menu-bg:rgba(255,255,255,.97); --toast-bg:rgba(255,255,255,.97);
+      --type-electric:#8a5a00; --type-fighting:#b3261e; --ios-yellow:#8a5a00;
       --type-grass:#2f7d34; --type-poison:#7a3aa0; --type-fire:#b85a10; --type-psychic:#c2185b; --type-flying:#4f66b0; --type-ice:#1f7f78; --type-water:#1d6fb8;
       --type-ground:#8a6420; --type-rock:#7a6d3f; --type-bug:#5d7d1a; --type-ghost:#5b4c9a; --type-dragon:#4f46b8; --type-dark:#4f4b5c; --type-steel:#506070; --type-fairy:#b43b86; --type-normal:#5f6870;
       --type-lift:#000; --tt-dragon:#4f46b8; --tt-ghost:#5b4c9a; --tt-poison:#7a3aa0; --tt-dark:#4f4b5c; --tt-psychic:#c2185b; --tt-fairy:#b43b86; --tt-fighting:#b3261e;
-      --bar-bg:rgba(242,242,245,.82); --bar-bg-stuck:rgba(242,242,245,.94); --bar-shadow:0 8px 24px rgba(0,0,0,.08); --nav-bg:rgba(250,250,252,.96); --nav-line:rgba(23,23,23,.12); --menu-bg:rgba(255,255,255,.96); --toast-bg:rgba(255,255,255,.96);
-      --accent-on-fill:var(--on-accent);
+      --grass-500:#16a34a;
     }
   }
   html{font-family:var(--font-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   body{font-family:var(--font-body);font-size:17px;letter-spacing:0;background:var(--surface-page) !important}
   /* Grouped cards: no outline, continuous corners, the elevation is the surface colour.
      The browser re-serialises inline styles as "prop: value;", so selectors match that form. */
-  [style*="background: var(--surface-card); border: 1px solid"]{border-color:transparent !important;border-radius:20px !important;box-shadow:none !important}
+  [style*="background: var(--surface-card); border: 1px solid"]{border-color:transparent !important;border-radius:var(--r-lg) !important;box-shadow:var(--e1) !important}
   /* Chips and pills: filled, not outlined. */
   [style*="border-radius: 999px"][style*="border: 1px solid"],[style*="border-radius: var(--r-pill)"][style*="border: 1px solid"]{border-color:transparent !important}
   [style*="background: var(--surface-card)"][style*="border-radius: 999px"],[style*="background: var(--surface-card)"][style*="border-radius: var(--r-pill)"],[style*="background: var(--surface-muted)"][style*="border-radius: var(--r-pill)"]{background:var(--ios-fill) !important}
   /* Section headings: grouped-list headers (footnote, secondary label) instead of loud yellow caps. */
   [style*="color: var(--type-electric); letter-spacing: 0.05em"],[style*="color: var(--type-electric); letter-spacing: 0.06em"],[style*="color: var(--type-electric); letter-spacing: 0.04em"]{color:var(--ink-400) !important;font-weight:600 !important;font-size:13px !important;letter-spacing:.04em !important}
   /* Inputs and fields: filled capsule, no border. */
-  input[type=text],input[type=password],input:not([type]),textarea,select{background:var(--ios-fill) !important;border:0 !important;border-radius:14px !important;color:var(--ink-900) !important;min-height:44px;box-sizing:border-box;padding:12px 16px !important}
+  input[type=text],input[type=password],input:not([type]),textarea,select{background:var(--surface-3) !important;border:0 !important;border-radius:999px !important;color:var(--ink-900) !important;min-height:44px;box-sizing:border-box;padding:12px 16px !important;box-shadow:inset 0 0 0 1.5px var(--line) !important}
+  textarea{border-radius:var(--r-lg) !important}
   input::placeholder,textarea::placeholder{color:var(--ink-300) !important}
-  .go-card input:not([type]){background:var(--surface-field) !important;color:var(--ink-900) !important;border:1.5px solid var(--line-300) !important;border-radius:14px !important}
+  .go-card input:not([type]){background:var(--surface-field) !important;color:var(--ink-900) !important;border:1.5px solid var(--line-300) !important;border-radius:999px !important}
   .go-card input:not([type])::placeholder{color:var(--ink-400) !important}
   .go-card button{text-align:center;display:inline-flex;align-items:center;justify-content:center}
   /* Touch targets: Apple's minimum is 44 pt. The visible control keeps its own size; an invisible 44 px-tall strip behind it takes the tap. */
@@ -274,8 +265,8 @@
   /* Primary action: system blue capsule. */
   /* Filled buttons are 36 px high (the 44 px tap area is the invisible strip). */
   [style*="background: var(--ios-blue-fill)"],[style*="background: var(--accent-fill)"],[style*="background: var(--grass-500)"],[style*="background: var(--grass-600)"],[style*="background: var(--brand-primary-strong)"],.ui-btn-fill{min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;padding-top:8px !important;padding-bottom:8px !important;line-height:1.2}
-  [style*="background: var(--brand-primary-strong)"]{background:var(--ios-blue-fill) !important;color:#fff !important;font-weight:600 !important;letter-spacing:0 !important;min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}
-  [style*="background: var(--grass-500)"]{background:var(--ios-blue-fill) !important;color:#fff !important}
+  [style*="background: var(--brand-primary-strong)"]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important;color:#fff !important;font-weight:700 !important;letter-spacing:0 !important;min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}
+  [style*="background: var(--grass-500)"]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important;color:#fff !important}
   /* Coloured type names used as text: lifted so they clear 4.5:1 on the dark cards. */
   [style*="color: var(--type-dragon)"]{color:var(--tt-dragon) !important}[style*="color: var(--type-ghost)"]{color:var(--tt-ghost) !important}[style*="color: var(--type-poison)"]{color:var(--tt-poison) !important}[style*="color: var(--type-dark)"]{color:var(--tt-dark) !important}[style*="color: var(--type-psychic)"]{color:var(--tt-psychic) !important}[style*="color: var(--type-fairy)"]{color:var(--tt-fairy) !important}
   [style*="color: var(--type-fighting)"]{color:var(--tt-fighting) !important}
@@ -297,13 +288,13 @@
   .app-root:not(.tab-today) .stat-strip{display:none}
   /* No roster: each tab shows one empty state with one primary action. */
   .no-roster:is(.tab-today,.tab-roster,.tab-pvp,.tab-recommend) [role=main] > :not([data-empty-state]), .no-roster .stat-strip{display:none !important}
-  .ui-btn-fill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--accent-fill);color:var(--on-accent);font:600 15px var(--font-body)}
+  .ui-btn-fill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background-color:var(--accent-fill);background-image:var(--fill-grad);color:var(--on-accent);font:700 15px var(--font-body);letter-spacing:.02em !important;box-shadow:0 2px 8px color-mix(in oklab,var(--fill-b) 35%,transparent)}
   .ui-btn-tint{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--ios-fill);color:var(--accent-text);font:600 15px var(--font-body)}
   .ui-btn-plain{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 4px;color:var(--accent-text);font:600 15px var(--font-body)}
   @media (max-width:360px){.app-header .app-title{font-size:28px !important}.app-header .app-actions{gap:4px !important}.app-header .ios-icon-btn{width:32px;height:32px}}
-  .ios-icon-btn{cursor:pointer;width:38px;height:38px;border-radius:50%;background:var(--ios-fill);display:flex;align-items:center;justify-content:center;color:var(--accent-text);flex-shrink:0}
+  .ios-icon-btn{cursor:pointer;width:38px;height:38px;border-radius:50%;background:var(--ring-bg);box-shadow:inset 0 0 0 2px var(--ring),var(--e1);display:flex;align-items:center;justify-content:center;color:var(--accent-text);flex-shrink:0}
   .ios-icon-btn:active{opacity:.6}
-  .ios-toast{position:fixed;left:12px;right:12px;bottom:calc(150px + env(safe-area-inset-bottom));max-width:536px;margin:0 auto;z-index:70;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:20px;background:var(--toast-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);color:var(--ink-900);font:15px/1.35 var(--font-body);box-shadow:0 10px 30px rgba(0,0,0,.5);animation:sheetUp 0.36s var(--ios-spring) backwards}
+  .ios-toast{position:fixed;left:12px;right:12px;bottom:calc(150px + env(safe-area-inset-bottom));max-width:536px;margin:0 auto;z-index:70;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:20px;background:var(--toast-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);color:var(--ink-900);font:15px/1.35 var(--font-body);box-shadow:var(--e2);animation:sheetUp 0.36s var(--ios-spring) backwards}
   /* ---- Unslop passes: calm type, no tracking, neutral surfaces ---- */
   body{font-variant-numeric:tabular-nums}
   [style*="letter-spacing"]{letter-spacing:0 !important}
@@ -312,7 +303,7 @@
   h1,h2,h3{font-weight:600 !important}
   /* Yellow stood for "look here" everywhere; emphasis is now the primary text colour, and a selected chip or bar takes the accent. */
   [style*="color:var(--type-electric)"],[style*="color: var(--type-electric)"]{color:var(--ink-900) !important}
-  [style*="background:var(--type-electric)"],[style*="background: var(--type-electric)"]{background:var(--ios-blue-fill) !important;color:#fff !important}
+  [style*="background:var(--type-electric)"],[style*="background: var(--type-electric)"]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important;color:#fff !important}
   .stat-strip{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;padding-bottom:2px}
   .stat-strip>div{flex-shrink:0;display:flex;align-items:baseline;gap:8px;padding:8px 12px;border-radius:10px;background:var(--surface-card);white-space:nowrap}
   .stat-strip .n{font:600 15px var(--font-display);font-variant-numeric:tabular-nums}
@@ -333,10 +324,44 @@
   @media (max-width:520px){.log-head{display:none !important}.log-row{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:4px 16px}.log-row>div:first-child{grid-column:1/-1;font-weight:600}.log-row>div[data-l]::before{content:attr(data-l) " ";color:var(--ink-500);font-weight:400}}
   .ui-chev{font:17px var(--font-body);color:var(--text-3)}
   .fr-h{margin:0;font:600 22px/1.2 var(--font-display);color:var(--ink-900)}.fr-p{font:15px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty;overflow-wrap:anywhere}.fr-c{font:13px/1.4 var(--font-body);color:var(--ink-500);text-wrap:pretty;overflow-wrap:anywhere}.fr-ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}.fr-w{width:100%}.fr-s{align-self:flex-start}.fr-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.fr-n{font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty}
-  @media (max-width:360px){[data-swipe-row]{gap:12px !important;padding-left:12px !important;padding-right:12px !important}[data-swipe-row] [data-sprite]{width:44px !important;height:44px !important}[data-swipe-row] [data-sprite] img{width:40px !important;height:40px !important}[data-swipe-row] [data-cp]{font-size:17px !important}}
+  .rg-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(86px,30%,170px),1fr)) !important;gap:10px !important}
+  .rg-cell{display:flex;flex-direction:column;box-shadow:var(--e1)}
+  .rg-cell>.rg-iv{box-shadow:none}
+  .rg-cell [data-swipe-row]{border-radius:var(--r-lg) var(--r-lg) 0 0 !important}
+  .rg-cell>[data-swipe-row]:last-child{border-radius:var(--r-lg) !important}
+  .rg-cell [data-swipe-row] [data-row-name]{overflow-wrap:anywhere !important;word-break:normal !important}
+  .rg-acts{flex-direction:column !important}
+  .rg-acts>div{width:auto !important;flex:1 !important;gap:2px !important}
+  @media (max-width:360px){.rg-grid{gap:8px !important}[data-swipe-row] [data-sprite]{width:60px !important;height:60px !important}[data-swipe-row] [data-sprite] img{width:54px !important;height:54px !important}[data-swipe-row] [data-cp]{font-size:17px !important}[data-swipe-row] [data-row-name]{font-size:13px !important}}
   details.ui-more>summary{list-style:none;cursor:pointer;display:flex;align-items:center;min-height:28px;margin-top:4px;font:600 13px var(--font-body);color:var(--accent-text)}
   details.ui-more>summary::-webkit-details-marker{display:none}
   details.ui-more>div{margin-top:4px;font:13px/1.4 var(--font-body);color:var(--ink-500)}
+  /* ---- Pokemon GO look: shell, tabs, buttons, sheets ---- */
+  html,body{background:var(--bg)}
+  .app-root{background:var(--page-grad),var(--bg) !important}
+  .app-header>div{border-bottom:0 !important;box-shadow:0 1px 0 var(--line)}
+  .app-header .app-title{font-weight:700;color:var(--text)}
+  .app-header>div{flex-wrap:wrap}.app-header>div>div:first-child{flex:1 1 auto}
+  .ios-nav{border-top:0 !important;border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:0 -4px 22px rgba(20,60,50,.12)}
+  .ios-nav button[aria-current=page]>span:last-child{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+  [style*="background: var(--accent-fill)"]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important}
+  .ui-btn-tint{background:var(--fill);color:var(--accent-text);font-weight:700}
+  /* detail: arena header above a rounded card; inner cards are a tint of the card */
+  .go-body{--surface-card:var(--surface-2);--ios-fill:var(--surface-3);position:relative;margin-top:-16px;background:var(--surface-1);border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.10)}
+  .go-body [style*="background: var(--surface-card)"]{box-shadow:none !important}
+  .go-name{text-align:center;flex:1}
+  .go-label{text-transform:uppercase;letter-spacing:.06em !important;font-size:12px}
+  .go-cost[style]{background:var(--cost-bar) !important;color:var(--text) !important;padding:0 16px 0 0 !important;border-radius:var(--r-sm) !important;overflow:hidden;min-height:52px}
+  .go-cost>span:last-child{order:-1;background-color:var(--accent-fill);background-image:var(--fill-grad);color:#fff !important;padding:14px 22px;border-radius:999px;font:700 15px var(--font-display) !important;letter-spacing:.02em !important;white-space:nowrap}
+  .go-cost-off>span:last-child{background:var(--surface-3);color:var(--text-2) !important}
+  .go-pink[style]{background:linear-gradient(100deg,#c0407a,#a82a68) !important;color:#fff !important}
+  .go-evo[style]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important;color:#fff !important}
+  .go-ribbon{background:var(--ribbon);padding:7px 26px;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 50%,100% 100%,0 100%,12px 50%);text-transform:uppercase;letter-spacing:.05em !important}
+  .go-body details>summary{color:var(--text-2)}
+  .rg-cell [data-sep-pair]>span:first-child{display:none}
+  [style*="linear-gradient(90deg, var(--grass-700), var(--grass-700))"]{background:var(--hp) !important}
+  [style*="linear-gradient(90deg, var(--grass-700), var(--type-electric))"]{background:linear-gradient(90deg,var(--hp),var(--ring)) !important}
+  [role=dialog]:focus-visible,[role=alertdialog]:focus-visible{outline:0}
 </style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}</script>
 <script type="module" src="./pokemon-data.js"></script>
@@ -437,7 +462,7 @@
   </sc-if>
   <sc-if value="{{ chatPanelOpen }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ closeChatPanel }}" style="position:fixed;inset:0;z-index:53;background:rgba(10,12,18,.55);display:flex;align-items:flex-end;justify-content:center">
-      <div onClick="{{ stopProp }}" role="dialog" aria-modal="true" aria-label="Ask the Professor" style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;max-height:78vh;box-sizing:border-box"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
+      <div onClick="{{ stopProp }}" role="dialog" aria-modal="true" aria-label="Ask the Professor" style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-xl) var(--r-xl) 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;max-height:78vh;box-sizing:border-box"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div style="min-width:0">
             <div style="font:700 12px var(--font-display);color:var(--ink-700, var(--ink-500));letter-spacing:.05em">ASK THE PROFESSOR</div>
@@ -481,7 +506,7 @@
 
   <sc-if value="{{ importSheetOpen }}" hint-placeholder-val="{{ false }}">
   <div onClick="{{ closeImportSheet }}" style="position:fixed;inset:0;z-index:58;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:scrimIn 0.24s ease both"></div>
-  <div role="dialog" aria-modal="true" aria-label="What the last import changed" style="position:fixed;left:0;right:0;bottom:0;z-index:59;max-height:82vh;display:flex;flex-direction:column;background:var(--surface-card);border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:sheetUp 0.36s cubic-bezier(.32,.72,0,1) backwards"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
+  <div role="dialog" aria-modal="true" aria-label="What the last import changed" style="position:fixed;left:0;right:0;bottom:0;z-index:59;max-height:82vh;display:flex;flex-direction:column;background:var(--surface-card);border-radius:var(--r-xl) var(--r-xl) 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:sheetUp 0.36s cubic-bezier(.32,.72,0,1) backwards"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font:700 22px var(--font-display);letter-spacing:-.015em">What the import changed</div><button type="button" onClick="{{ closeImportSheet }}" class="om-press" style="font:600 17px var(--font-body);color:var(--accent-text);padding:0 8px">Done</button></div>
     <div style="font:500 13px var(--font-body);color:var(--ink-400);margin-bottom:12px">Undo puts one Pokemon back as it was. Shared candy counts are not undone.</div>
     <div class="om-scroll" style="overflow:auto;display:flex;flex-direction:column;gap:2px">
@@ -497,7 +522,7 @@
 
   <sc-if value="{{ fileFallback }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;z-index:60;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:max(16px, env(safe-area-inset-bottom));animation:scrimIn 0.24s ease">
-    <div role="dialog" aria-modal="true" aria-label="Save or copy file" tabindex="-1" style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-300);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
+    <div role="dialog" aria-modal="true" aria-label="Save or copy file" tabindex="-1" style="width:100%;max-width:560px;background:var(--surface-card);border:0;border-radius:var(--r-xl);box-shadow:var(--e2);padding:20px;display:flex;flex-direction:column;gap:8px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div style="font:700 12px var(--font-display);color:var(--type-electric);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fileFallback.filename }}</div>
         <div onClick="{{ closeFileFallback }}" class="om-press" style="cursor:pointer;flex-shrink:0;font:600 12px var(--font-display);color:var(--ink-500)">&times; CLOSE</div>
@@ -622,14 +647,14 @@
 
   <sc-if value="{{ pendingConfirm }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;z-index:65;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:max(16px, env(safe-area-inset-bottom));animation:scrimIn 0.24s ease">
-    <div role="alertdialog" aria-modal="true" aria-label="Confirm" tabindex="-1" style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-300);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
-      <div style="font:700 15px var(--font-display);color:var(--ink-900)">{{ pendingConfirm.title }}</div>
-      <div style="font:13px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty">{{ pendingConfirm.message }}</div>
+    <div role="alertdialog" aria-modal="true" aria-label="Confirm" tabindex="-1" style="width:100%;max-width:560px;background:var(--surface-card);border:0;border-radius:var(--r-xl);box-shadow:var(--e2);padding:20px;display:flex;flex-direction:column;gap:12px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
+      <div style="font:700 17px var(--font-display);color:var(--ink-900);text-align:center">{{ pendingConfirm.title }}</div>
+      <div style="font:13px/1.5 var(--font-body);color:var(--ink-500);text-wrap:pretty;text-align:center">{{ pendingConfirm.message }}</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
         <sc-for list="{{ pendingConfirm.actions }}" as="a" hint-placeholder-count="2">
-          <div onClick="{{ a.run }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);font:700 13px var(--font-display);background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</div>
+          <div onClick="{{ a.run }}" class="om-press go-pill" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);font:700 13px var(--font-display);background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</div>
         </sc-for>
-        <div onClick="{{ closeConfirm }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);background:transparent;color:var(--ink-400);font:700 12px var(--font-display)">CANCEL</div>
+        <div onClick="{{ closeConfirm }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);background:transparent;color:var(--ink-500);font:700 13px var(--font-display);letter-spacing:.06em">CANCEL</div>
       </div>
     </div>
   </div>
@@ -637,7 +662,7 @@
 
   <sc-if value="{{ carryPrompt }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;z-index:68;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:max(16px, env(safe-area-inset-bottom));animation:scrimIn 0.24s ease">
-    <div role="alertdialog" aria-modal="true" aria-label="Roster on this device" tabindex="-1" data-carry-prompt="1" style="box-sizing:border-box;width:100%;max-width:560px;max-height:100%;overflow-y:auto;background:var(--surface-card);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)">
+    <div role="alertdialog" aria-modal="true" aria-label="Roster on this device" tabindex="-1" data-carry-prompt="1" style="box-sizing:border-box;width:100%;max-width:560px;max-height:100%;overflow-y:auto;background:var(--surface-card);border-radius:var(--r-xl);box-shadow:var(--e2);padding:20px;display:flex;flex-direction:column;gap:12px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)">
       <div style="font:600 17px var(--font-display);color:var(--ink-900)">This account has no Pokemon yet</div>
       <div style="font:15px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty">This device holds {{ carryPrompt.count }} Pokemon from before you signed in. Nothing changes until you choose.</div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -2237,7 +2262,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.342{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.343{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -2317,7 +2342,7 @@
       </sc-for>
     </div>
     <sc-if value="{{ rosterLoading }}" hint-placeholder-val="{{ false }}">
-      <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
+      <div class="rg-grid" style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
         <sc-for list="{{ skeletonCards }}" as="s" hint-placeholder-count="8">
           <div style="background:var(--surface-card);border:1px solid var(--surface-muted);border-radius:10px;padding:{{ cardPadding }};display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
@@ -2336,10 +2361,10 @@
         </sc-for>
       </div>
     </sc-if>
-    <div style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
+    <div class="rg-grid" style="display:grid;grid-template-columns:{{ rosterGridCols }};gap:{{ cardGap }}">
       <sc-for list="{{ filteredRoster }}" as="p" hint-placeholder-count="8">
-        <div style="position:relative;overflow:hidden;border-radius:14px;content-visibility:auto;contain-intrinsic-size:auto 84px">
-          <div style="position:absolute;inset:0;display:flex;justify-content:flex-end;align-items:stretch">
+        <div class="rg-cell" style="position:relative;overflow:hidden;border-radius:var(--r-lg);content-visibility:auto;contain-intrinsic-size:auto 176px">
+          <div class="rg-acts" style="position:absolute;inset:0;display:flex;justify-content:flex-end;align-items:stretch">
             <div onClick="{{ p.markTransferredCandy }}" class="om-press" aria-label="Transfer, plus 1 candy" style="cursor:pointer;width:68px;flex-shrink:0;background:var(--surface-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-700)">
               <span style="font:700 17px var(--font-display)">&#8617;</span>
               <span style="font:600 12px var(--font-body)">Transfer</span>
@@ -2349,20 +2374,20 @@
               <span style="font:600 12px var(--font-body)">Remove</span>
             </div>
           </div>
-          <div data-swipe-row="{{ p.idx }}" data-changed="{{ p.changedFlag }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;align-items:center;gap:16px;background:var(--surface-card);border-radius:{{ p.rowRadius }};padding:12px 16px;touch-action:pan-y">
+          <div data-swipe-row="{{ p.idx }}" data-changed="{{ p.changedFlag }}" onClick="{{ p.onClick }}" class="om-stagger om-tap" style="--i:{{ $index }};position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;flex:1 0 auto;background:var(--surface-card);border-radius:{{ p.rowRadius }};padding:12px 10px;touch-action:pan-y;text-align:center;box-sizing:border-box">
           <sc-if value="{{ p.selectMode }}" hint-placeholder-val="{{ false }}">
-            <span role="checkbox" aria-checked="{{ p.isSelected }}" aria-label="Select {{ p.displayName }}" style="flex-shrink:0;width:24px;height:24px;border-radius:50%;border:2px solid {{ p.selectBorder }};background:{{ p.selectBg }};color:#fff;font:700 15px/20px var(--font-body);text-align:center">{{ p.selectGlyph }}</span>
+            <span role="checkbox" aria-checked="{{ p.isSelected }}" aria-label="Select {{ p.displayName }}" style="position:absolute;top:46px;left:6px;z-index:2;flex-shrink:0;width:24px;height:24px;border-radius:50%;border:2px solid {{ p.selectBorder }};background:{{ p.selectBg }};color:#fff;font:700 15px/20px var(--font-body);text-align:center">{{ p.selectGlyph }}</span>
           </sc-if>
-          <div data-sprite="1" style="flex-shrink:0;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 50% 38%, color-mix(in oklab, {{ p.typeAccent }} 34%, transparent), color-mix(in oklab, {{ p.typeAccent }} 5%, transparent) 72%)">
+          <div data-sprite="1" style="order:2;flex-shrink:0;width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 50% 38%, color-mix(in oklab, {{ p.typeAccent }} 34%, transparent), color-mix(in oklab, {{ p.typeAccent }} 5%, transparent) 72%)">
             <span aria-hidden="true" style="position:absolute;font:700 22px var(--font-display);color:rgba(255,255,255,.14)">{{ p.initial }}</span>
-            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))" />
+            <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))" />
           </div>
-          <div style="flex:1;min-width:0">
+          <div style="order:3;flex:0 1 auto;width:100%;min-width:0">
             <div style="min-width:0">
-              <div data-row-name="1" style="font:600 17px/1.2 var(--font-body);min-width:0;overflow-wrap:normal;word-break:keep-all">{{ p.displayName }}</div>
+              <div data-row-name="1" style="font:600 15px/1.2 var(--font-body);min-width:0;overflow-wrap:normal;word-break:keep-all">{{ p.displayName }}</div>
               <sc-if value="{{ p.flags }}" hint-placeholder-val="{{ false }}"><div style="min-width:0;margin-top:2px"><span style="font:600 12px var(--font-body);color:var(--accent-text)">{{ p.flags }}</span></div></sc-if>
             </div>
-            <div style="font:13px/1.3 var(--font-body);color:var(--ink-400);margin-top:2px;display:flex;gap:0 8px;align-items:baseline;flex-wrap:wrap;min-width:0">
+            <div style="font:12px/1.3 var(--font-body);color:var(--ink-400);margin-top:2px;display:flex;gap:0 6px;align-items:baseline;justify-content:center;flex-wrap:wrap;min-width:0">
               <sc-if value="{{ p.rowSpreadMeasured }}" hint-placeholder-val="{{ true }}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ios-green)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-label="IVs measured" style="flex-shrink:0;align-self:center"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
               </sc-if>
@@ -2376,19 +2401,19 @@
                 <span style="color:{{ p.bestLeagueColor }};font-weight:600">{{ p.bestLeagueLabel }}</span></span>
               </sc-if>
             </div>
-            <div style="height:3px;border-radius:6px;background:var(--ios-fill);margin-top:8px;overflow:hidden">
+            <div style="height:5px;width:76%;border-radius:6px;background:var(--ios-fill);margin:8px auto 0;overflow:hidden">
               <div class="om-bar" style="--i:{{ $index }};height:100%;width:{{ p.ivBarPct }};background:{{ p.rowSpreadColor }};border-radius:6px"></div>
             </div>
           </div>
-          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1">
+          <div style="order:-1;width:100%;display:flex;align-items:center;justify-content:center;gap:2px;line-height:1">
             <sc-if value="{{ p.isFav }}" hint-placeholder-val="{{ false }}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--ios-yellow)" stroke="var(--ios-yellow)" stroke-width="1.75" stroke-linejoin="round" aria-label="Favorite"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--ios-yellow)" stroke="var(--ios-yellow)" stroke-width="1.75" stroke-linejoin="round" aria-label="Favorite" style="position:absolute;top:48px;right:8px"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z"/></svg>
             </sc-if>
-            <div style="white-space:nowrap;display:flex;align-items:baseline;gap:3px"><span style="font:500 12px var(--font-body);color:var(--ink-400)">CP</span><span data-cp="1" style="font:600 22px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ p.cp }}</span></div>
+            <div style="white-space:nowrap;display:flex;align-items:baseline;gap:4px"><span style="font:600 12px var(--font-body);color:var(--ink-400)">CP</span><span data-cp="1" style="font:700 22px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ p.cp }}</span></div>
           </div>
           </div>
           <sc-if value="{{ p.showManualIv }}" hint-placeholder-val="{{ false }}">
-            <div style="background:var(--surface-card);border-radius:0 0 14px 14px;margin-top:-6px;padding:0 16px 12px 88px;position:relative">
+            <div class="rg-iv" style="background:var(--surface-card);border-radius:0 0 var(--r-lg) var(--r-lg);margin-top:-6px;padding:0 12px 12px;position:relative;text-align:center">
               <sc-if value="{{ p.ivEditOpen }}" hint-placeholder-val="{{ false }}">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <input type="text" inputmode="numeric" placeholder="Atk" aria-label="Attack IV" value="{{ p.manualAtk }}" onChange="{{ p.onManualAtkChange }}" style="width:48px;text-align:center;font:600 15px var(--font-display);padding:8px 2px" />
@@ -2433,7 +2458,7 @@
   <div onClick="{{ closeDetail }}" style="animation:scrimIn 0.24s ease both;position:fixed;inset:0;background:rgba(10,12,18,.72);display:flex;align-items:{{ sheetAlign }};justify-content:center;z-index:50;font-family:var(--font-body)">
     <div onClick="{{ stopProp }}" ref="{{ sheetRef }}" class="om-scroll" role="dialog" aria-modal="true" aria-label="Pokemon details" tabindex="-1" style="position:relative;touch-action:pan-y;background:var(--surface-page);border-radius:{{ sheetRadius }};width:400px;max-width:{{ sheetMaxW }};max-height:{{ sheetMaxH }};overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;padding-bottom:env(safe-area-inset-bottom);animation:{{ sheetAnim }};box-shadow:var(--shadow-pop)"><div aria-hidden="true" data-grabber="1" style="position:absolute;top:6px;left:50%;margin-left:-18px;width:36px;height:5px;border-radius:6px;background:rgba(255,255,255,.5);z-index:2"></div>
 
-      <div style="position:relative;min-height:230px;background:{{ detail.headerGradient }};overflow-x:clip;overflow-y:visible;display:flex;flex-direction:column">
+      <div style="position:relative;min-height:250px;background:{{ detail.headerGradient }};overflow-x:clip;overflow-y:visible;display:flex;flex-direction:column">
         <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:8px 12px 0">
           <button type="button" onClick="{{ closeDetail }}" aria-label="Close details" class="om-press" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-pill);background:transparent;color:var(--text);font:700 22px var(--font-body)">&#8249;</button>
           <sc-if value="{{ detail.navPositionLabel }}" hint-placeholder-val="{{ false }}">
@@ -2454,8 +2479,8 @@
             </svg>
             <div ref="{{ detail.heroTiltRef }}" style="position:absolute;inset:0 -70px -6px;touch-action:pan-y">
               <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:190px;height:190px;margin:-98px 0 0 -95px;border-radius:50%;background:radial-gradient(circle, {{ detail.auraColor }} 0%, transparent 68%);opacity:.8"></div>
-              <div aria-hidden="true" style="position:absolute;bottom:20px;left:50%;width:128px;height:18px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.5), transparent 70%);transform:translateX(-50%);animation:heroShadow 0.52s var(--ease-out) 1"></div>
-              <div style="position:absolute;bottom:6px;left:50%;margin-left:-86px;width:172px;height:172px">
+              <div aria-hidden="true" style="position:absolute;bottom:36px;left:50%;width:128px;height:18px;border-radius:50%;background:radial-gradient(ellipse, rgba(0,0,0,.5), transparent 70%);transform:translateX(-50%);animation:heroShadow 0.52s var(--ease-out) 1"></div>
+              <div style="position:absolute;bottom:22px;left:50%;margin-left:-86px;width:172px;height:172px">
                 <div style="width:100%;height:100%;animation:heroPop 0.52s cubic-bezier(.2,.9,.3,1.15) 0.1s backwards">
                   <div style="width:100%;height:100%;animation:heroFloat 0.52s var(--ease-out) 1">
                     <div class="hero-img" style="width:100%;height:100%"><img ref="{{ detail.spriteRef }}" alt="{{ detail.displayName }}" draggable="false" style="width:100%;height:100%;object-fit:contain;filter:{{ detail.heroFilter }};-webkit-user-drag:none;user-select:none" /></div>
@@ -2474,11 +2499,11 @@
         </div>
       </div>
 
-      <div style="padding:16px 20px 16px;display:flex;flex-direction:column;gap:8px">
+      <div class="go-body" style="padding:20px 20px 16px;display:flex;flex-direction:column;gap:8px">
 
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-            <div style="font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:-.3px;color:var(--ink-900)">{{ detail.displayName }}</div>
+            <div class="go-name" style="font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:-.3px;color:var(--ink-900)">{{ detail.displayName }}</div>
             <span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font-family:var(--font-display);font-weight:700;font-size:12px;line-height:1;white-space:nowrap">#{{ detail.dex }}</span>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -2527,9 +2552,9 @@
         <div class="om-rise" style="--i:0">
         <div style="background:var(--surface-card);border-radius:14px;padding:16px;margin-bottom:16px">
           <div style="display:flex;justify-content:space-around;text-align:center">
-            <div><div data-countup="1" style="font:700 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.stardust }}</div><div style="font:600 12px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">STARDUST</div></div>
-            <div><div data-countup="1" style="font:700 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.xl }}</div><div style="font:600 12px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">XL CANDY</div></div>
-            <div><div data-countup="1" style="font:700 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.candy }}</div><div style="font:600 12px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">CANDY</div></div>
+            <div><div data-countup="1" style="font:700 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.stardust }}</div><div class="go-label" style="font:600 12px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">STARDUST</div></div>
+            <div><div data-countup="1" style="font:700 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.xl }}</div><div class="go-label" style="font:600 12px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">XL CANDY</div></div>
+            <div><div data-countup="1" style="font:700 15px var(--font-display);color:var(--ink-900);font-variant-numeric:tabular-nums">{{ detail.resources.candy }}</div><div class="go-label" style="font:600 12px var(--font-display);color:var(--ink-400);letter-spacing:.06em;margin-top:2px">CANDY</div></div>
           </div>
           <sc-if value="{{ detail.levelBar }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin:12px 2px 4px">
@@ -2581,13 +2606,13 @@
             <sc-if value="{{ detail.powerPlan.quickStep }}" hint-placeholder-val="{{ false }}">
               <div style="margin-top:12px">
                 <sc-if value="{{ detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }}">
+                  <div onClick="{{ detail.powerPlan.quickStep.apply }}" class="om-press go-cost" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }}">
                     <span style="display:flex;flex-wrap:wrap;gap:2px 8px;min-width:0;font:600 12px var(--font-display);font-variant-numeric:tabular-nums;white-space:nowrap"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><sc-if value="{{ detail.powerPlan.quickStep.hasXl }}" hint-placeholder-val="{{ false }}"><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></sc-if></span>
                     <span style="font:700 13px var(--font-display);letter-spacing:.03em;white-space:nowrap;flex-shrink:0">POWER UP &#8594; {{ detail.powerPlan.quickStep.nextLevel }}</span>
                   </div>
                 </sc-if>
                 <sc-if value="{{ !detail.powerPlan.quickStep.apply }}" hint-placeholder-val="{{ true }}">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-radius:var(--r-pill);background:var(--surface-muted)">
+                  <div class="go-cost go-cost-off" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-radius:var(--r-pill);background:var(--surface-muted)">
                     <span style="display:flex;flex-wrap:wrap;gap:2px 8px;min-width:0;font:600 12px var(--font-display);font-variant-numeric:tabular-nums;color:var(--ink-500);white-space:nowrap"><span>&#10023; {{ detail.powerPlan.quickStep.dust }}</span><span>{{ detail.powerPlan.quickStep.candy }} candy</span><sc-if value="{{ detail.powerPlan.quickStep.hasXl }}" hint-placeholder-val="{{ false }}"><span>{{ detail.powerPlan.quickStep.xlCandy }} XL</span></sc-if></span>
                     <span style="font:700 12px var(--font-display);letter-spacing:.05em;color:var(--type-fighting)">{{ detail.powerPlan.quickStep.statusLabel }}</span>
                   </div>
@@ -2618,7 +2643,7 @@
         <section aria-label="Max Battles" style="margin:16px 16px 0;background:color-mix(in oklab, #bf5af2 14%, var(--surface-card));border-radius:14px;padding:12px 16px">
           <sc-if value="{{ detail.maxCard.capable }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;justify-content:space-between;align-items:baseline">
-              <div style="font:700 12px var(--font-display);color:var(--ink-400);letter-spacing:.06em">MAX BATTLES</div>
+              <div class="go-ribbon" style="font:700 13px var(--font-display);color:#fff;letter-spacing:.04em">MAX BATTLES</div>
               <div style="font:700 12px var(--font-display);letter-spacing:.06em;color:var(--purple-text)">{{ detail.maxCard.title }}</div>
             </div>
             <div style="font:15px/1.4 var(--font-body);margin-top:6px">{{ detail.maxCard.attackLine }}</div>
@@ -2662,7 +2687,7 @@
               <div style="font:700 12px var(--font-display);letter-spacing:.05em;color:{{ detail.evo.statusColor }}">{{ detail.evo.statusLabel }}</div>
             </div>
             <div style="font:12px var(--font-display);color:var(--ink-500);margin-bottom:12px">{{ detail.evo.candyLine }}</div>
-            <button onClick="{{ detail.evo.onEvolve }}" class="om-press" style="display:block;width:100%;cursor:pointer;text-align:center;padding:12px 24px;border:none;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 13px var(--font-display);letter-spacing:.03em">{{ detail.evo.buttonLabel }}</button>
+            <button onClick="{{ detail.evo.onEvolve }}" class="om-press go-pill go-evo" style="display:block;width:100%;cursor:pointer;text-align:center;padding:12px 24px;border:none;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 13px var(--font-display);letter-spacing:.03em">{{ detail.evo.buttonLabel }}</button>
           </div>
         </sc-if>
         </div>
@@ -2693,7 +2718,7 @@
             </div>
             <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:12px">{{ detail.purify.costLine }} &middot; IVs +2 each (capped 15), level raised to at least 25, learns Return</div>
             <sc-if value="{{ detail.purify.onPurify }}" hint-placeholder-val="{{ false }}">
-              <div onClick="{{ detail.purify.onPurify }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 12px var(--font-display)">PURIFY</div>
+              <div onClick="{{ detail.purify.onPurify }}" class="om-press go-pill go-pink" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);background:{{ detail.accentColor }};color:{{ detail.accentInk }};font:700 12px var(--font-display)">PURIFY</div>
             </sc-if>
           </div>
         </sc-if>
@@ -18187,10 +18212,10 @@ class Component extends DCLogic {
       this.chatScreenLine(),
       this.chatCandyLine(roster),
       `Roster size: ${roster.length}. Average IV: ${avgIV}%. Lucky: ${roster.filter(p => p.lucky).length}. Shadow: ${roster.filter(p => p.shadowPurified === '1' || p.shadowPurified === 1).length}.`,
-      `Top power-up candidates: ${plan.powerUp.map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
-      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${p.name} -> ${this.evolvesToName(p) || '?'}`).join(', ') || 'none'}.`,
-      `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => p.name).join(', ') || 'none'}.`,
-      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${p.name} (${this.bestRank(p).toFixed(0)}% rank, ${this.formatMoveName(p.quickMove) || '?'} / ${this.formatMoveName(p.chargeMove) || '?'})`).join(', ') || 'none'}.`,
+      `Top power-up candidates: ${plan.powerUp.map(p => `${this.promptSafe(p.name)} (${this.bestRank(p).toFixed(0)}% rank, ${p.cp} CP)`).join(', ') || 'none'}.`,
+      `Evolve-soon candidates: ${plan.evolveSoon.map(p => `${this.promptSafe(p.name)} -> ${this.promptSafe(this.evolvesToName(p)) || '?'}`).join(', ') || 'none'}.`,
+      `Transfer-safe candidates: ${plan.transferSafe.slice(0, 10).map(p => this.promptSafe(p.name)).join(', ') || 'none'}.`,
+      `Strong Pokemon missing a second charge move: ${(plan.needsSecondMove || []).map(p => `${this.promptSafe(p.name)} (${this.bestRank(p).toFixed(0)}% rank, ${this.formatMoveName(p.quickMove) || '?'} / ${this.formatMoveName(p.chargeMove) || '?'})`).join(', ') || 'none'}.`,
       (() => {
         const dexNames = (this.mechanics && this.mechanics.DEX_NAMES) || {};
         const total = Object.keys(dexNames).length;
@@ -18211,7 +18236,7 @@ class Component extends DCLogic {
       (() => {
         const bySpecies = {};
         roster.forEach(p => {
-          const key = `${p.name || '?'}${p.form ? '/' + p.form : ''}`;
+          const key = `${this.promptSafe(p.name) || '?'}${p.form ? '/' + this.promptSafe(p.form, 20) : ''}`;
           if (!bySpecies[key]) bySpecies[key] = { n: 0, cps: [], noCp: 0 };
           bySpecies[key].n++;
           // Test p.cp RAW. Number(null) is 0 and passes Number.isFinite, which
