@@ -68,7 +68,6 @@
   @keyframes riseIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
   @keyframes shimmerSlide{0%{background-position:-460px 0}100%{background-position:460px 0}}
   @keyframes sheetRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-  /* Phone-width sheets come up from the bottom edge the way an iOS sheet does. */
   @keyframes sheetUp{0%{opacity:.4;transform:translateY(100%)}68%{opacity:1;transform:translateY(-1.4%)}100%{opacity:1;transform:translateY(0)}}
   @keyframes rowFlash{0%{background:color-mix(in oklab, var(--ios-green) 26%, var(--surface-card))}100%{background:var(--surface-card)}}
   [data-changed="1"]{animation:rowFlash 0.52s ease-out both}
@@ -78,8 +77,6 @@
   button:not(.om-press):not(.om-tap):not(:disabled){transition:transform 0.24s cubic-bezier(.32,.72,0,1)}
   button:not(.om-press):not(.om-tap):not(:disabled):active{transform:scale(.97)}
   @keyframes scrimIn{from{opacity:0}to{opacity:1}}
-  /* Entrance stagger: --i is set per card so lists cascade instead of popping
-     in all at once. Capped so a 200-row roster never waits seconds. */
   .om-stagger{animation:riseIn 0.36s cubic-bezier(.22,1,.36,1) both;animation-delay:min(calc(var(--i, 0) * 34ms), 520ms)}
   /* IV bar on roster rows grows in from the left. fill-mode is `backwards`
      (not `both`) so no finished transform is left behind on the element. */
@@ -95,7 +92,6 @@
   .om-has-prop .om-count{counter-reset:om-n var(--n);animation:countUp 0.52s cubic-bezier(.2,.8,.2,1) 0.16s both}
   .om-has-prop .om-count::after{content:counter(om-n)}
   .om-has-prop .om-count-real{display:none}
-  /* Loading placeholders: a moving highlight band over a flat card. */
   .om-skel{background:linear-gradient(100deg, var(--surface-card) 28%, var(--line-200) 46%, var(--surface-card) 64%);background-size:460px 100%}
   .om-skel[data-ambient]{animation:shimmerSlide 1.25s linear infinite}
   :focus-visible{outline:2px solid var(--type-electric);outline-offset:2px;border-radius:6px}
@@ -123,7 +119,6 @@
   */
   [data-swipe-row]{box-shadow:0 0 0 1px var(--surface-card);touch-action:pan-y !important;animation-fill-mode:backwards !important;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .om-tap:active{transform:scale(.985);border-color:var(--ink-300)}
-  /* Momentum inside panels, and no scroll chaining to the page behind. */
   .om-scroll{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   /* iOS zooms the whole page in whenever a focused field is under 16px, and
      never zooms back out. Every field in here is 11-13px by design, so on
@@ -156,11 +151,8 @@
     color-scheme:dark;
     /* type scale: display 32, title 22, headline 17, body 15, caption 13, micro 12; numbers 28. Weights 400/500/600/700 only. */
     --t-display:32px; --t-title:22px; --t-headline:17px; --t-body:15px; --t-caption:13px; --t-micro:12px; --t-num:28px;
-    /* spacing (4-grid) */
     --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px;
-    /* radii: big and soft */
     --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:20px;
-    /* motion */
     --dur-press:100ms; --dur-fast:160ms; --dur-base:240ms; --dur-sheet:360ms; --dur-slow:520ms;
     --ease-out:cubic-bezier(.2,.8,.2,1); --ease-spring:cubic-bezier(.32,.72,0,1); --ease-in-out:cubic-bezier(.4,0,.2,1);
     /* colour roles, dark: deep teal-navy surfaces, mint accents */
@@ -177,7 +169,6 @@
     --bar-bg:rgba(12,27,31,.82); --nav-bg:rgba(15,32,37,.95); --nav-line:rgba(190,240,225,.14); --menu-bg:rgba(27,52,58,.96); --toast-bg:rgba(37,66,73,.96);
     --type-electric:#ffd60a; --type-fighting:#ff453a;
     --type-lift:#fff; --tt-dragon:#aaa0f4; --tt-ghost:#bdb2ec; --tt-poison:#d6a9ee; --tt-dark:#b0abbd; --tt-psychic:#ff9db8; --tt-fairy:#f5a8d6; --tt-fighting:#ff8a80;
-    /* aliases: the names the markup already uses */
     --fill-grad:linear-gradient(100deg,var(--fill-a),var(--fill-b));
     --surface-page:var(--bg); --surface:var(--surface-1); --surface-card:var(--surface-1); --surface-muted:var(--muted); --surface-sunken:var(--surface-2); --surface-field:var(--surface-2);
     --ink-900:var(--text); --ink-700:var(--text); --ink-600:var(--text-2); --ink-500:var(--text-2); --ink-400:var(--text-3); --ink-300:var(--text-3);
@@ -231,12 +222,9 @@
   /* Grouped cards: no outline, continuous corners, the elevation is the surface colour.
      The browser re-serialises inline styles as "prop: value;", so selectors match that form. */
   [style*="background: var(--surface-card); border: 1px solid"]{border-color:transparent !important;border-radius:var(--r-lg) !important;box-shadow:var(--e1) !important}
-  /* Chips and pills: filled, not outlined. */
   [style*="border-radius: 999px"][style*="border: 1px solid"],[style*="border-radius: var(--r-pill)"][style*="border: 1px solid"]{border-color:transparent !important}
   [style*="background: var(--surface-card)"][style*="border-radius: 999px"],[style*="background: var(--surface-card)"][style*="border-radius: var(--r-pill)"],[style*="background: var(--surface-muted)"][style*="border-radius: var(--r-pill)"]{background:var(--ios-fill) !important}
-  /* Section headings: grouped-list headers (footnote, secondary label) instead of loud yellow caps. */
   [style*="color: var(--type-electric); letter-spacing: 0.05em"],[style*="color: var(--type-electric); letter-spacing: 0.06em"],[style*="color: var(--type-electric); letter-spacing: 0.04em"]{color:var(--ink-400) !important;font-weight:600 !important;font-size:13px !important;letter-spacing:.04em !important}
-  /* Inputs and fields: filled capsule, no border. */
   input[type=text],input[type=password],input:not([type]),textarea,select{background:var(--surface-3) !important;border:0 !important;border-radius:999px !important;color:var(--ink-900) !important;min-height:44px;box-sizing:border-box;padding:12px 16px !important;box-shadow:inset 0 0 0 1.5px var(--line) !important}
   textarea{border-radius:var(--r-lg) !important}
   input::placeholder,textarea::placeholder{color:var(--ink-300) !important}
@@ -256,20 +244,16 @@
   [style*="color: var(--type-fighting)"]{color:var(--tt-fighting) !important}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:inherit;cursor:pointer}
-  /* Focus ring for keyboard and switch users. */
   :focus-visible{outline:3px solid color-mix(in oklab,var(--ios-blue) 80%,#fff);outline-offset:2px;border-radius:10px}
-  /* Press feedback: scale + dim, the way a UIButton responds. */
   .om-press{transition:transform var(--dur-press) var(--ease-out),opacity var(--dur-fast) ease}
   .om-press:active{transform:scale(.97);opacity:.85}
 
-  /* Sheets and scrims: real blur materials. */
   [style*="backdrop-filter: blur(6px)"]{-webkit-backdrop-filter:blur(24px) saturate(1.4) !important;backdrop-filter:blur(24px) saturate(1.4) !important;background:rgba(0,0,0,.45) !important}
   .ios-nav svg{display:block}
   /* Horizontal scrollers: snap, a leading inset and a trailing fade so a clipped edge reads as "more", not as overflow. */
   [data-scroller]{scroll-snap-type:x proximity;scroll-padding-left:16px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 12px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 12px),transparent)}
   [data-scroller]>*{scroll-snap-align:start}
   .app-root:not(.tab-today) .stat-strip{display:none}
-  /* No roster: each tab shows one empty state with one primary action. */
   .no-roster:is(.tab-today,.tab-roster,.tab-pvp,.tab-recommend) [role=main] > :not([data-empty-state]), .no-roster .stat-strip{display:none !important}
   .ui-btn-fill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background-color:var(--accent-fill);background-image:var(--fill-grad);color:var(--on-accent);font:700 15px var(--font-body);letter-spacing:.02em !important;box-shadow:0 2px 8px color-mix(in oklab,var(--fill-b) 35%,transparent)}
   .ui-btn-tint{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--ios-fill);color:var(--accent-text);font:600 15px var(--font-body)}
@@ -284,7 +268,6 @@
   [style*="font:700"],[style*="font: 700"],[style*="font:800"],[style*="font: 800"],[style*="font:900"],[style*="font: 900"],[style*="font:750"],[style*="font: 750"]{font-weight:600 !important}
   [style*="font:650"],[style*="font: 650"]{font-weight:600 !important}
   h1,h2,h3{font-weight:600 !important}
-  /* Yellow stood for "look here" everywhere; emphasis is now the primary text colour, and a selected chip or bar takes the accent. */
   [style*="color:var(--type-electric)"],[style*="color: var(--type-electric)"]{color:var(--ink-900) !important}
   [style*="background:var(--type-electric)"],[style*="background: var(--type-electric)"]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important;color:#fff !important}
   .stat-strip{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;padding-bottom:2px}
@@ -4612,9 +4595,6 @@ class Component extends DCLogic {
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
       this.mechanics = mechanics;
       try { const ci = this.normalizeCandyInventory(this.state.candyInventory || {}); if (ci !== this.state.candyInventory) this.setState({ candyInventory: ci }); } catch (e) {}
-      // Nothing is cached on this device. The roster and every counter start
-      // empty; signing in and getting the first Firestore snapshot is the only
-      // way any of this ever gets filled in (see onAuthChange/applyRemote).
       this.setState({ roster: [], loaded: true, checklistDate: new Date().toISOString().slice(0, 10), checklistDone: {} });
     } catch (e) {
       this.setState({ roster: [], loaded: true });
@@ -4640,7 +4620,6 @@ class Component extends DCLogic {
     let startY = 0, pulling = false;
     this._onTouchStart = (e) => {
       if (this.state.ptrRefreshing) return;
-      // Only arm the gesture at the very top, so it never fights a normal scroll.
       const top = this.scrollTopNow();
       if (top > 2 || !e.touches || e.touches.length !== 1) { pulling = false; return; }
       startY = e.touches[0].clientY;
@@ -4649,10 +4628,7 @@ class Component extends DCLogic {
     this._onTouchMove = (e) => {
       if (!pulling || this.state.ptrRefreshing) return;
       const dy = e.touches[0].clientY - startY;
-      // Nothing happens at all for the first DEADZONE pixels, so ordinary
-      // scroll-up flicks at the top of the page never start a pull.
       if (dy <= DEADZONE) { if (this.state.ptrPull) this.setState({ ptrPull: 0, ptrArmed: false }); return; }
-      // Rubber-band: the pull slows as it stretches.
       const eased = Math.min(THRESHOLD * 1.2, (dy - DEADZONE) * 0.42);
       this.setState({ ptrPull: eased, ptrArmed: eased >= THRESHOLD });
     };
@@ -4986,7 +4962,6 @@ class Component extends DCLogic {
     return Promise.resolve(p).then(() => this.setState({ authBusy: false })).catch(err => this.handleAuthError(err, providerId));
   }
 
-  // A plain sentence and a next step for every failure, never a raw code. The app stays usable signed out.
   handleAuthError(err, providerId) {
     const code = (err && err.code) || '';
     const name = this.providerName(providerId);
@@ -5359,12 +5334,6 @@ class Component extends DCLogic {
     } catch (e) { /* the next save tries again */ }
   }
 
-  // Firestore is the only source of truth — nothing on this device is ever
-  // treated as authoritative over what the cloud doc says, so this just
-  // mirrors `remote` into state field-for-field (defaulting missing fields to
-  // empty). The one exception is geminiKeyDraft/geminiKey while the user is
-  // actively typing a new key: a stale echo of the snapshot landing mid-edit
-  // must not overwrite what's on screen before the debounced push completes.
   applyRemote(rawRemote, opts) {
     const remote = this.unpackCloudBlob(rawRemote);
     this._remoteSecrets = opts && opts.remoteSecrets ? opts.remoteSecrets : this.SECRET_CLOUD_FIELDS.filter(k => rawRemote && rawRemote[k] !== undefined);
@@ -5541,8 +5510,6 @@ class Component extends DCLogic {
     if (!ref || !this._hydrated || this._deleting) return false;
     const force = !!(opts && opts.force);
     const roster = [...(this.state.roster || []), ...(this.state.addedPokemon || [])];
-    // Never snapshot an empty roster over a good one — that is the exact
-    // failure mode these are meant to protect against.
     if (!force && roster.length === 0) return false;
     const now = Date.now();
     if (!force && this._lastSnapshotAt && (now - this._lastSnapshotAt) < this.SNAPSHOT_MIN_GAP_MS) return false;
@@ -5564,7 +5531,6 @@ class Component extends DCLogic {
       for (const d of drop) { if (this._deleting) return false; try { await ref.doc(d.id).delete(); } catch (e) {} }
       return true;
     } catch (e) {
-      // A failed snapshot must never block the operation it was protecting.
       return false;
     }
   }
@@ -5578,10 +5544,7 @@ class Component extends DCLogic {
       if (!doc.exists) throw new Error('That snapshot no longer exists.');
       const v = doc.data() || {};
       if (!v.data) throw new Error('That snapshot holds no data.');
-      // Snapshots are stored in the packed shape; confirmRestore expects arrays.
       const unpacked = this.unpackCloudBlob(v.data);
-      // Route through the same confirm gate a file restore uses, so restoring
-      // is never a single unguarded tap.
       this.setState({
         snapshotBusy: false,
         restorePending: {
@@ -5801,10 +5764,6 @@ class Component extends DCLogic {
     // A direct call (setState callback) may arrive while the debounce is pending: it supersedes that timer, so no second write follows.
     clearTimeout(this._pushTimer);
     const blob = this.buildCloudBlob();
-    // Drop literal `undefined`s (JSON.stringify silently omits them) before
-    // Firestore ever sees the blob \u2014 e.g. a video-imported Pokemon missing
-    // a field the SDK isn't tolerant of. The try/catch below is a backstop,
-    // not the primary fix.
     let safeBlob = blob;
     try { safeBlob = JSON.parse(JSON.stringify(blob)); } catch (e) { /* fall back to raw blob */ }
     // A Firestore document is hard-capped at 1 MiB. Past that the write is
@@ -5833,14 +5792,8 @@ class Component extends DCLogic {
     };
     let bytes = blobBytes(safeBlob);
     const LIMIT = 1000000;
-    // Shed recomputable data rather than refusing the write. Giving up here was
-    // silent data loss with a precise signature: importing appraisals ADDS
-    // fields to every matched record (three IVs, average, two levels, flags,
-    // three league objects), so a roster already near the cap crossed it, the
-    // write was skipped, and reloading restored the pre-appraisal document —
-    // every Pokemon back in "needs appraisal". Measured IVs are irreplaceable;
-    // rank numbers, stat products and dust/candy costs are all derived from them
-    // and are recomputed on load, so they go first.
+    // Shed recomputable data rather than refusing the write: measured IVs are irreplaceable; rank numbers, stat products
+    // and dust/candy costs are derived from them and recomputed on load, so they go first.
     // Heavy collections are stored packed (see PACKED_KEYS), so read and write
     // them through these helpers rather than touching the string directly.
     const getPacked = (key) => {
@@ -5957,9 +5910,6 @@ class Component extends DCLogic {
     this.pushCloud();
   }
 
-  // Tabs are separate pages that happen to share one scroll container. Without
-  // this, switching from a 300-row roster lands you deep inside a short tab —
-  // which reads as a huge empty gap above content that is actually there.
   // ---- Size classes -------------------------------------------------------------------------
   // XXS / XS / normal / XL / XXL from the Pokemon's height and the game master's per-species cut-offs
   // (see mechanics.sizeInfoFor). Null when the height is unknown or the species has no size data.
@@ -6225,7 +6175,6 @@ class Component extends DCLogic {
   // ---- Bulk update tab ---------------------------------------------------------------------
   // A home for "this fix needs a human look at many Pokemon" jobs. Each check lists the roster
   // rows it is unsure about, with the options to choose from; nothing is ever applied in bulk.
-  // Add a check by returning another entry from bulkChecks().
   bulkFormLabel(f) {
     const k = String(f || 'normal').toLowerCase();
     return k === 'normal' ? 'Default' : k === 'alola' ? 'Alolan' : k === 'galarian' ? 'Galarian' : k === 'hisuian' ? 'Hisuian' : k === 'paldea' ? 'Paldean' : k;
@@ -7663,8 +7612,6 @@ class Component extends DCLogic {
     return { rankPct, rankNum: null, statProd, evolvesTo: (p.great && p.great.evolvesTo) || p.name };
   }
 
-  // Base stats for a specific Pokemon, honouring its regional form. Same lookup
-  // masterRankFor does; pulled out so every new feature agrees with it.
   // ---- Move database -------------------------------------------------------
   // The app reads move NAMES off the detail screen but has no damage numbers,
   // which is why the attacker board could only rank on raw stats. This fills
@@ -7673,6 +7620,8 @@ class Component extends DCLogic {
   // Niantic rebalances one, so the button is manual on purpose.
   moveKey(name) { return String(name || '').trim().toLowerCase(); }
 
+  // Move data comes from an embedded, GAME_MASTER-sourced table first (AUTHORITATIVE_MOVES), falling back to the
+  // AI-fetched moveDB only for anything that table doesn't cover.
   lookupMove(name) {
     const k = this.moveKey(name);
     if (!k) return null;
@@ -8027,6 +7976,8 @@ class Component extends DCLogic {
       + 'Pokemon:\n' + names.join('\n');
   }
 
+  // Base stats for a specific Pokemon, honouring its regional form. Same lookup
+  // masterRankFor does; pulled out so every new feature agrees with it.
   baseStatsOf(p) {
     if (!this.mechanics || !p || p.dex == null) return null;
     let base = null;
@@ -8170,15 +8121,8 @@ class Component extends DCLogic {
     return this.typesOf(p).some(t => typeBest.s[t] != null && score >= typeBest.s[t] * RAID_ROLE_BAND);
   }
 
-  // How good one Pokemon is in one PvP league, combining three separate facts:
-  //  - rank: how good ITS IVs are for its species (stat product, real math)
-  //  - tier: whether the species is competitive at all (PvPoke, Great/Ultra only)
-  //  - moves: whether it knows PvPoke's recommended fast + charged moves
-  // tierRank: S 0, A 1, B 2, C 3; 4 = PvPoke does not rank it in this league;
-  // 2.5 = no tier data exists for the league. Little/Master carry only PvPoke's top 80.
-  // The species a league rank is FOR: a Meltan's Great League rank is Melmetal's, so its tier and moves are too.
   // A league's playable CP band. The cap is the game's; the floor is where a copy is strong enough to fight (a 400 CP
-  // Great League pick loses to a 1480 CP one). Copies within PVP_BAND_SLACK of the floor still count as ready: a few
+  // Great League pick loses to a 1480 CP one). Copies within `slack` of the floor still count as ready: a few
   // power-ups finish the job. Master has no band.
   leagueBand(leagueKey) {
     const FLOORS = { great: 1300, ultra: 2300, little: 400 };
@@ -8215,11 +8159,17 @@ class Component extends DCLogic {
     return opts.find(o => o.name === sel) || opts.find(o => o.cup || o.tableKey || o.mega) || opts[0];
   }
 
+  // The species a league rank is FOR: a Meltan's Great League rank is Melmetal's, so its tier and moves are too.
   pvpFormName(p, leagueKey) {
     const lg = p && p[leagueKey];
     return leagueKey !== 'little' && lg && lg.evolvesTo && String(lg.evolvesTo).toLowerCase() !== String(p.name).toLowerCase() ? lg.evolvesTo : p.name;
   }
 
+  // How good one Pokemon is in one PvP league, combining three separate facts:
+  //  - rank: how good ITS IVs are for its species (stat product, real math)
+  //  - tier: whether the species is competitive at all (PvPoke, Great/Ultra only)
+  //  - moves: whether it knows PvPoke's recommended fast + charged moves
+  // tierRank: S 0, A 1, B 2, C 3; 4 = PvPoke does not rank it in this league. Little/Master carry only PvPoke's top 80.
   pvpAssess(p, leagueKey, tableKey) { return this._rmemo('pa', p, leagueKey + '|' + (tableKey || ''), () => this._pvpAssessRaw(p, leagueKey, tableKey)); }
 
   _pvpAssessRaw(p, leagueKey, tableKey) {
@@ -8281,16 +8231,6 @@ class Component extends DCLogic {
     return list[0];
   }
 
-  // Best 3-Pokemon team for Great or Ultra League from YOUR box, from PvPoke's
-  // simulated matchups. For each candidate the data lists the 5 opponents that
-  // beat it (counters) and the 5 it beats best (matchups). A team is judged on
-  //  0. most members that already have their recommended moves (the rating assumes them),
-  //  1. fewest SHARED weaknesses (the same opponent beating 2+ members),
-  //  2. most of the threats that beat a member being answered by a teammate,
-  //  3. highest average species score.
-  // Candidates are measured IVs, tier S/A/B, 90%+ IV rank, one per species.
-  // It only sees the top-5 lists, so it is a strong filter, not a full
-  // simulation of every meta matchup.
   // This Pokemon's matchups against the league's 60 best species, from the battle simulator (1 shield each) using ITS OWN IVs at the best level
   // under the cap and its own moves (the recommended moves when it has none the PvP tables know). Same shape as pvpMatchupsFor, so the squad
   // picker can use either. Null for Little/Master or when the simulator cannot build the fighter. Cached per stat line and moveset.
@@ -8327,6 +8267,16 @@ class Component extends DCLogic {
     return res;
   }
 
+  // Best 3-Pokemon team for Great or Ultra League from YOUR box, from PvPoke's
+  // simulated matchups. For each candidate the data lists the 5 opponents that
+  // beat it (counters) and the 5 it beats best (matchups). A team is judged on
+  //  0. most members that already have their recommended moves (the rating assumes them),
+  //  1. fewest SHARED weaknesses (the same opponent beating 2+ members),
+  //  2. most of the threats that beat a member being answered by a teammate,
+  //  3. highest average species score.
+  // Candidates are measured IVs, tier S/A/B, 90%+ IV rank, one per species.
+  // It only sees the top-5 lists, so it is a strong filter, not a full
+  // simulation of every meta matchup.
   pvpTeamFor(leagueKey, eligible, tableKey) {
     const m = this.mechanics;
     if (!m || !m.pvpMatchupsFor || ['great', 'ultra', 'little', 'master'].indexOf(leagueKey) < 0) return null;
@@ -8421,9 +8371,6 @@ class Component extends DCLogic {
     return m.ivBreakpoints(base, ivs, best.league, this.isShadow(p), fast, this.typesOf(p));
   }
 
-  // "PvP ready": 90%+ IV rank on a species PvPoke rates S, A or B in that
-  // league, or 90%+ in Little Cup (no tier data exists there). IV rank alone
-  // is not enough: a perfect-IV Pikachu is 100% and still weak.
   // True when this species learns the move only from an Elite TM (it sits in the legacy pool and not in the regular one).
   needsEliteTM(speciesName, form, moveName) { return this._rmemo('et', speciesName, form + '|' + moveName, () => this._needsEliteTMRaw(speciesName, form, moveName)); }
 
@@ -8436,6 +8383,9 @@ class Component extends DCLogic {
     return (has(pool.fastLegacy) || has(pool.chargeLegacy)) && !has(pool.fast) && !has(pool.charge);
   }
 
+  // "PvP ready": 90%+ IV rank on a species PvPoke rates S, A or B in that
+  // league, or 90%+ in Little Cup (no tier data exists there). IV rank alone
+  // is not enough: a perfect-IV Pikachu is 100% and still weak.
   isPvpWorthy(p) {
     // Estimated IVs can look elite and be wrong, so only measured ones count.
     if (this.needsAppraisal(p)) return false;
@@ -8577,9 +8527,6 @@ class Component extends DCLogic {
     };
   }
 
-  // Best attackers by type. Move data now comes from an embedded, GAME_MASTER-
-  // sourced table first (AUTHORITATIVE_MOVES), falling back to the AI-fetched
-  // moveDB only for anything that table doesn't cover.
   // Best DPS this Pokemon can reach at level 50 across its known charge moves.
   // Returns null when the move database can't cover it, which is the signal to
   // fall back to the stat-only score rather than invent a number.
@@ -9288,12 +9235,6 @@ class Component extends DCLogic {
     this.setState({ chatMessages: [] }, () => this.queueCloudPush());
   }
 
-  // Great/ultra/little rank% are computed once and stored on each Pokemon at
-  // import/solve/evolve time, not recalculated live — so a fix to the
-  // ranking math (e.g. the shadow multiplier) only affects Pokemon touched
-  // AFTER the fix ships. This walks the whole roster and re-derives all
-  // three league ranks for everyone in one pass, using whatever the current
-  // mechanics logic is, without requiring a re-import.
   // Highest level PvP ranks may use (40 without XL Candy, 50 standard, 51 with a
   // best-buddy boost). Changing it re-derives every league rank.
   setPvpMaxLevel(v) {
@@ -9567,6 +9508,12 @@ class Component extends DCLogic {
     };
   }
 
+  // Great/ultra/little rank% are computed once and stored on each Pokemon at
+  // import/solve/evolve time, not recalculated live — so a fix to the
+  // ranking math (e.g. the shadow multiplier) only affects Pokemon touched
+  // AFTER the fix ships. This walks the whole roster and re-derives all
+  // three league ranks for everyone in one pass, using whatever the current
+  // mechanics logic is, without requiring a re-import.
   recalculateAllRanks(done) {
     if (!this.mechanics || this.state.recalcBusy) { if (typeof done === 'function') done(null); return; }
     this.setState({ recalcBusy: true, recalcSummary: '' });
@@ -10150,12 +10097,6 @@ class Component extends DCLogic {
     };
   }
 
-  // Debounced so a burst of mutations (a video import writing 200 Pokemon one
-  // merge at a time) performs one write instead of two hundred.
-  // Nothing is written to this device — the roster only lives in memory
-  // (state) and in Firestore. Kept as a no-op so old call sites don't need
-  // updating; state + cloud push (componentDidUpdate/SYNC_KEYS) do the work.
-
   // NaN sanitizer at the import boundary. A malformed CSV cell parses to NaN,
   // which is NOT null — so every downstream `!= null` check admits it and it
   // surfaces as "NaN%" / "#NaN". Normalizing once here makes every consumer
@@ -10317,7 +10258,7 @@ class Component extends DCLogic {
   }
 
   // Read-ahead for a queue of screenshots. The next few are sent to Gemini while you review the current one, so a long queue
-  // no longer waits on the model after every tap. At most OCR_AHEAD reads are in flight or finished-but-unused at any time (the
+  // no longer waits on the model after every tap. At most AHEAD reads are in flight or finished-but-unused at any time (the
   // free tier allows about 10 requests a minute per key, and a failed read is simply read again when its turn comes).
   prefetchOcrReads(files, from) {
     const AHEAD = 3;
@@ -10439,10 +10380,7 @@ class Component extends DCLogic {
       this.setState({ ocrTick: Math.round((Date.now() - this._ocrSince) / 1000) });
     }, 1000);
     try {
-      // Vision only. On-device OCR used to sit behind this as a fallback and was
-      // removed: it could not read the stylized CP badge or the type chips, and
-      // its numeric misreads landed stardust digits in CP. A wrong record is
-      // worse than no record, so a failed read now surfaces as an error.
+      // Vision only: a failed read surfaces as an error, because a wrong record is worse than no record.
       // A queued screenshot was usually read in the background already; a failed background read is read again here.
       const ahead = queueIndex != null && this._ocrReads ? this._ocrReads.get(queueIndex) : null;
       let rec0;
@@ -11149,10 +11087,6 @@ class Component extends DCLogic {
   }
 
   exportCsv() {
-    // Must be the merged/synced list (state.roster + addedPokemon, minus
-    // removed) — the same one the header count and cards render from.
-    // Reading state.roster alone exported empty whenever the roster came in
-    // via video import (lives in addedPokemon) even though 314 were "loaded".
     const roster = this.effectiveRosterForMatch();
     if (!roster.length) {
       this.setState({ csvError: 'Nothing to export \u2014 no Pokemon are loaded on this device yet.' });
@@ -11176,13 +11110,6 @@ class Component extends DCLogic {
     };
     const lg = (p, k, f) => (p[k] && p[k][f] != null ? p[k][f] : '');
     const rows = roster.map((p, i) => {
-      // Candy is species-level (candyInventory), not per-record — video
-      // import (the source for almost this whole roster) never writes
-      // p.candy/p.xlCandy directly, only candyInventory. Reading those raw
-      // fields here exported blank Candy/XL columns for nearly every row
-      // even when the card and Professor panel showed correct counts.
-      // candyStockFor() is the same lookup the card and evolve-readiness
-      // logic already use, so this now matches what's on screen.
       const candyStock = this.candyStockFor(p);
       return [
       i + 1, p.name, p.form || '', p.dex, p.gender || '', p.cp, p.hp,
@@ -11822,7 +11749,6 @@ class Component extends DCLogic {
     thumbCanvas.height = Math.max(1, Math.round(canvas.height * thumbScale));
     const thumbCtx = thumbCanvas.getContext('2d');
 
-    // Small grayscale fingerprint used to tell frames apart.
     const hashCanvas = document.createElement('canvas');
     hashCanvas.width = 16; hashCanvas.height = 32;
     const hashCtx = hashCanvas.getContext('2d');
@@ -11852,8 +11778,6 @@ class Component extends DCLogic {
     let seekFails = 0;
     let consecutiveSeekFails = 0;
     const extractStart = Date.now();
-    // Up to 600 sequential seek + rAF + getImageData cycles is minutes long;
-    // a bare percentage is the quietest stretch of the whole import.
     const extractNote = (i) => {
       const done = i + 1;
       if (done < 4 || done >= targetCount) return `Frame ${done} of ${targetCount}`;
@@ -12234,8 +12158,6 @@ class Component extends DCLogic {
       const { frames, stitched } = await this.stitchScrollPairs(raw.frames, topFps, raw.botFps, 0.5);
       if (stitched) console.info('[Scout] stitched ' + stitched + ' scroll pairs (' + raw.frames.length + ' -> ' + frames.length + ' images)');
       this._lastVideoFrames = frames;
-      // Extraction is the slow half — persist it so closing the tab mid-read
-      // doesn't mean decoding the whole clip again.
       this.idbPut('frames', { frames, thumbs: thumbs.slice(0, 24), savedAt: Date.now(), name: file.name || '' });
       // Cap the visible strip too — 600 thumbnails is a wall, not a check.
       this.setState(s => ({ videoImport: { ...s.videoImport, frameThumbs: thumbs.slice(0, 24), frameTotal: raw.frames.length, stitchedPairs: stitched } }));
@@ -12247,11 +12169,6 @@ class Component extends DCLogic {
   }
 
   async runVideoPipeline(frames) {
-    // Spread prior state and do NOT touch frameThumbs: the caller already set a
-    // capped thumbnail strip (thumbs.slice(0, 24)). Writing `frames` here put
-    // ~21 MB of API-resolution base64 into an <img> wall at the 600-frame cap,
-    // and replacing the object wiped frameTotal/stitchedPairs, which is why the
-    // "FIRST 24 SHOWN" and "N SCROLL PAIRS STITCHED" labels never appeared.
     this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'reading', progress: 10, error: null, summary: null } }));
     try {
       this._videoReadingTimer = setInterval(() => {
@@ -12386,9 +12303,6 @@ class Component extends DCLogic {
 
       clearInterval(this._videoReadingTimer);
       this.setVideoStage('reading', 100);
-      // The retry buffer can be tens of MB at the raised frame cap; hold it only
-      // while a retry is still plausible.
-      // Only release the retry buffer if there is nothing left to retry.
       if (!failedBatches) {
         this._failedFrames = null;
         this._releaseFramesSoon();
@@ -12409,10 +12323,6 @@ class Component extends DCLogic {
       });
       const parsed = [...seen.values()];
 
-      // Commit the diagnostics BEFORE the zero-result throw. Previously this ran
-      // after it, so a 0-Pokemon import — the case these counters exist to
-      // explain — lost emptyBatches, batchCount and the engine attribution
-      // entirely, and the user just saw "try a slower pan".
       this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, emptyBatches, lastError: lastBatchError, frameCount: frames.length, engines: [...enginesUsed], rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
 
       if (!parsed.length) {
@@ -13365,12 +13275,6 @@ class Component extends DCLogic {
         dupes.push({ name: item.name, cp: item.cp });
       }
       seenThisImport.set(dupeKey, true);
-      // Species-name-only fallback used to match here too, which silently
-      // merged distinct individuals of the same species (different CP) into
-      // one roster entry \u2014 losing whichever catch's data lost the race.
-      // CP is part of a Pokemon's identity for import purposes: same species
-      // + same CP is "the same catch seen again"; same species + different
-      // CP is a different individual and must become its own entry.
       const itemForm = item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : '';
       const formOk = p => !item.type || !item.matchedForm || String(p.form || '').toLowerCase() === itemForm;
       // HP is part of the identity too: two Pokemon of one species at the same CP but different HP are
@@ -13383,11 +13287,6 @@ class Component extends DCLogic {
       const ambiguousMatch = pool.length > 1;
       let ivPatch = {};
       let solvedFrom = null;
-      // The detail screen never prints IVs, but CP + HP + base stats pin them
-      // down mathematically: solveIVs brute-forces all 4096 combos across every
-      // level and keeps only those producing this exact CP and HP. This is the
-      // same solver the screenshot path uses behind SOLVE IV, so video imports
-      // no longer need the appraisal screen for a usable spread.
       if ((item.atkIV == null || item.defIV == null || item.staIV == null)
           && item.dex && item.cp && item.hp && mechanics && mechanics.solveIVs) {
         const solveBases = this.baseStatCandidates(item);
@@ -13445,12 +13344,8 @@ class Component extends DCLogic {
             }
             if (cands && cands.length) {
               item._solvedCount = cands.length;
-              // A CP/HP pair almost always fits many spreads. Committing the
-              // median one wrote a GUESS into the roster that was indistinguishable
-              // from a read value — which is why the pinned IVs disagreed with the
-              // appraisal bars. Only a UNIQUE solve is pinned now; anything else
-              // keeps the candidate range and stays visibly unsolved until the
-              // appraisal collapses it in mergeAppraisalImport.
+              // A CP/HP pair almost always fits many spreads: only a UNIQUE solve is pinned; anything else keeps the
+              // candidate range and stays visibly unsolved until the appraisal collapses it in mergeAppraisalImport.
               const rng = k => {
                 let lo = 15, hi = 0;
                 for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
@@ -14075,10 +13970,7 @@ class Component extends DCLogic {
       if (res.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...res.review }); }
       else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...res.review }); }
     });
-    // The push MUST happen after the state commit. setState is asynchronous, so
-    // calling pushCloud() on the next line uploads this.state as it was BEFORE
-    // the import - the stale spreads - and the listener then hands them straight
-    // back, which looks exactly like the import silently failing.
+    // setState is asynchronous: push from its callback, or the stale spreads go up and the listener hands them straight back.
     // Overrides alone are a side table keyed by POSITIONAL idx: CSV export reads
     // the records, so a pinned IV never reached the export, and a re-import
     // renumbered idx out from under every pin. Baking the spread onto the roster
@@ -14146,10 +14038,6 @@ class Component extends DCLogic {
     this.setState(s => ({ videoImport: { ...s.videoImport, review } }));
   }
 
-  // Stable identity for a removal. `idx` is POSITIONAL for imported records, so
-  // a re-import renumbers everything and every previous removal silently points
-  // at a different Pokemon — which is how transferred Pokemon "came back out of
-  // nowhere". Removals are recorded by identity as well as index.
   // An exact spread only when the solve was unique. Otherwise the honest answer
   // is the candidate range plus how many spreads still fit — never one of them
   // dressed up as the answer.
@@ -14325,15 +14213,6 @@ class Component extends DCLogic {
       .sort((a, b) => a.sort.localeCompare(b.sort));
   }
 
-  // Real single-hit damage against a generic reference defender \u2014 the same
-  // REFERENCE_DEFENCE baseline attackerScore/raid DPS use elsewhere, so this
-  // number is comparable to those, not a made-up scale. Uses THIS Pokemon's
-  // own current level (not the level-50 ceiling raid numbers use), because
-  // the question here is "how hard does my Pokemon hit right now", not
-  // "how hard could it hit at max investment".
-  // Raw move stats only \u2014 see moveDamageLine for why this deliberately
-  // doesn't compute a per-Pokemon damage figure. No base stats/IVs needed
-  // means an un-appraised Pokemon still shows move info here, unlike before.
   moveDamageFor(moveName) {
     const move = this.lookupMove(moveName);
     if (!move) return null;
@@ -14405,18 +14284,15 @@ class Component extends DCLogic {
     return name ? String(name).replace(/\+$/, ' (Legacy)') : name;
   }
 
+  // Stable identity for a removal. `idx` is POSITIONAL for imported records, so
+  // a re-import renumbers everything and every previous removal silently points
+  // at a different Pokemon — which is how transferred Pokemon "came back out of
+  // nowhere". Removals are recorded by identity as well as index.
   pokeSig(p) {
     if (!p) return '';
     return 'sig:' + String(p.name || '').toLowerCase() + '|' + p.cp + '|' + p.hp;
   }
 
-  // idx ONLY. A signature (name+CP+HP) check used to sit here too, meant to
-  // stop an old re-scan from resurrecting something genuinely transferred \u2014
-  // but ANY group of Pokemon sharing name+CP+HP (the norm for anything not
-  // yet appraised) shares one signature, so removing ONE of several identical
-  // Gyarados hid all of them, and re-adding one un-hid all of them. mergeVideoImport's
-  // match lookup already excludes removed idx's from its candidates, which
-  // covers the original scenario without this collision risk.
   isRemoved(p, removedSet) {
     return removedSet.has(p.idx);
   }
@@ -16768,10 +16644,6 @@ class Component extends DCLogic {
     return { opts, forced, random, pick };
   }
 
-  // The CSV and the video importers both write the Pokemon's OWN name into
-  // league.evolvesTo as a placeholder, which is why the PVP table read
-  // "Castform -> Castform". The looked-up table is the real answer; the
-  // placeholder is only trusted when it names something else.
   // True when this individual cannot evolve even though its species does (some event costumes). Set by hand on the detail
   // sheet (`noEvolve`, true or false) or read from the screen at import (`canEvolve: false` = the card showed no Evolve button).
   evolveBlocked(p) {
@@ -16781,6 +16653,10 @@ class Component extends DCLogic {
     return p.canEvolve === false;
   }
 
+  // The CSV and the video importers both write the Pokemon's OWN name into
+  // league.evolvesTo as a placeholder, which is why the PVP table read
+  // "Castform -> Castform". The looked-up table is the real answer; the
+  // placeholder is only trusted when it names something else.
   evolvesToName(p) {
     if (this.evolveBlocked(p)) return null;
     const rec = this.evoRecordFor(p);
@@ -16864,11 +16740,6 @@ class Component extends DCLogic {
     return Number.isFinite(pct) && pct >= 85 && (p.cp == null || p.cp <= 500);
   }
 
-  // Duplicates of one species all draw on the SAME candy pool, so listing five
-  // ready Pidgey when 62 candy only funds two is a lie of omission. Candidates
-  // are grouped by species, ranked within the group, and only the number the
-  // candy actually funds is surfaced — the rest are held back with a note
-  // saying how many more candy the next one needs.
   // What evolving this Pokemon is worth, from facts only. League value is the evolved form's rank weighted by that
   // form's PvPoke tier (S 1.0 down to unranked 0.52), so a 97% Melmetal outscores a 97% of a C-tier species. IVs that
   // are only estimated from CP/HP count for nothing: a guess must not decide where candy goes.
@@ -17080,6 +16951,11 @@ class Component extends DCLogic {
     return held;
   }
 
+  // Duplicates of one species all draw on the SAME candy pool, so listing five
+  // ready Pidgey when 62 candy only funds two is a lie of omission. Candidates
+  // are grouped by species, ranked within the group, and only the number the
+  // candy actually funds is surfaced — the rest are held back with a note
+  // saying how many more candy the next one needs.
   evolveQueue() {
     const done = new Set(this.state.completedIds || []);
     // Same precedence as evoRecordFor: real GAME_MASTER data wins per species,
@@ -17338,12 +17214,6 @@ class Component extends DCLogic {
     return candidates.map(p => p.idx + ':' + (p.quickMove || '') + ':' + (p.chargeMove || '') + ':' + (p.chargeMove2 || '') + ':' + Math.round(this.bestRank(p))).sort().join('|');
   }
 
-  // Pre-filters to Pokemon actually worth spending a TM's worth of attention
-  // on \u2014 lucky/shadow/favorited, or ranked well in some league \u2014 using this
-  // app's OWN real data (bestRank, moveDamageLine), not AI guesswork. Keeps
-  // the prompt small and relevant instead of dumping the whole roster on the
-  // model, and means the AI is only ever asked to prioritize AMONG real
-  // signal, not invent which Pokemon matter in the first place.
   // Great/Ultra rank only, deliberately excluding Little Cup. Little Cup is
   // a shallow, CP-capped league where plenty of ordinary, low-investment
   // species (an unevolved Ivysaur, Servine, Gible) rank 80%+ just because
@@ -17356,13 +17226,14 @@ class Component extends DCLogic {
     return Math.max(g, u);
   }
 
+  // Pre-filters to Pokemon actually worth spending a TM's worth of attention
+  // on \u2014 lucky/shadow/favorited, or ranked well in some league \u2014 using this
+  // app's OWN real data (bestRank, moveDamageLine), not AI guesswork. Keeps
+  // the prompt small and relevant instead of dumping the whole roster on the
+  // model, and means the AI is only ever asked to prioritize AMONG real
+  // signal, not invent which Pokemon matter in the first place.
   tmAiCandidates() {
     const roster = this.effectiveRosterForMatch();
-    // "Strong/invested" now means: flagged (Lucky/Shadow/Favorite), OR a
-    // real Great/Ultra rank (not Little Cup), OR meaningfully leveled up
-    // (level 35+ is real stardust committed, not just whatever it hatched
-    // or was caught at) \u2014 each of these is a genuine "this Pokemon matters"
-    // signal, unlike raw bestRank which let low-value Little Cup mons in.
     const strength = p => Math.max(this.bestGreatUltraRank(p), p.lucky || this.isShadow(p) || p.favorite || p.shiny ? 90 : 0, (p.lvlMin || 0) >= 35 ? 70 : 0);
     return roster
       .filter(p => p.lucky || this.isShadow(p) || p.favorite || p.shiny || this.bestGreatUltraRank(p) >= 90 || (p.lvlMin || 0) >= 35)
@@ -17422,17 +17293,9 @@ class Component extends DCLogic {
       arr.forEach(item => {
         const tmType = ['fastTM', 'chargedTM', 'eliteFastTM', 'eliteChargedTM'].indexOf(item.tmType) >= 0 ? item.tmType : null;
         if (!tmType) return;
-        // Trust but verify: if the AI recommended a TM type the player is
-        // actually out of (stale count, or it just got the inventory line
-        // wrong), drop it rather than showing a dead-end recommendation.
         if (!(Number.isFinite(res2[tmType]) && res2[tmType] > 0)) return;
         const p = candidates.find(c => String(c.name || '').toLowerCase() === String(item.species || '').toLowerCase());
         if (!p) return;
-        // Verify the suggested move against real movepool data when this
-        // species is covered \u2014 the model is told to only pick from the real
-        // list, but LLM output still needs checking rather than trusting.
-        // A species not in the local database gets no such check; nothing to
-        // verify against, so its suggestion passes through as-is.
         let suggestedMove = item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null;
         let moveVerified = null;
         const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
@@ -17577,8 +17440,6 @@ class Component extends DCLogic {
       () => { this.pushCloud(); });
   }
 
-  // Ticking a row off the evolve queue reuses the existing completed list, so
-  // it stays done across reloads and devices.
   // A branching species with no choice yet: ask what it became, so the right form, candy and item are recorded.
   askBranchPick(p) {
     const info = this.evoBranchOptions(p);
@@ -17602,6 +17463,8 @@ class Component extends DCLogic {
     });
   }
 
+  // Ticking a row off the evolve queue reuses the existing completed list, so
+  // it stays done across reloads and devices.
   markEvolveDone(p) {
     if (!this.evoPickOf(p) && this.evoBranchOptions(p) && this.askBranchPick(p)) return;
     this.haptic('medium');
@@ -17708,9 +17571,6 @@ class Component extends DCLogic {
     this.setState({ transferQueue: [] }, () => { this.pushCloud(); });
   }
 
-  // ---- Verdict ----
-  // Weighted in the order the trainer ranked them: Little Cup rank, raid DPS,
-  // last-of-species, legacy move, then shiny/lucky/shadow status.
   // Which Pokemon to walk as a buddy: among the ones that matter (PvP-ready,
   // raid role, Lucky/Shadow, or 85%+ IV rank), the ones short of candy for their
   // next evolution or for powering up to level 40, cheapest to finish first.
@@ -17802,8 +17662,6 @@ class Component extends DCLogic {
     return 'Official page could not be read (' + c.status + ', checked ' + when + ').';
   }
 
-  // Strongest species for a league CP cap, from the imported PvPoke rankings.
-  // Only the open Great/Ultra tables exist; cups and Mega editions return null.
   // A cup's rules (from the feed's `cup`: allowed types, banned types, species
   // allow/ban lists) against one species. `form` is e.g. 'galarian'; empty = normal.
   cupAllowsSpecies(cup, species, form, types) {
@@ -17847,9 +17705,6 @@ class Component extends DCLogic {
     return out;
   }
 
-  // Strongest species for a league CP cap from the imported PvPoke rankings,
-  // optionally filtered by a cup's rules. Only open Little/Great/Ultra/Master
-  // tables exist; `mega` selects PvPoke's Mega Master table instead.
   // PvPoke ids look like "mewtwo_mega_y" or "ninetales_alolan_shadow": the longest leading run of parts
   // that names a species gives the dex number (null when nothing resolves).
   dexFromPvpokeId(id) {
@@ -17865,6 +17720,9 @@ class Component extends DCLogic {
     return null;
   }
 
+  // Strongest species for a league CP cap from the imported PvPoke rankings,
+  // optionally filtered by a cup's rules. Only open Little/Great/Ultra/Master
+  // tables exist; `mega` selects PvPoke's Mega Master table instead.
   leagueTopSpecies(cp, n, cup, mega, tableKey) {
     const m = this.mechanics;
     const lk = tableKey || (mega && cp >= 10000 ? 'mega' : (cp === 1500 ? 'great' : cp === 2500 ? 'ultra' : cp === 500 ? 'little' : cp >= 10000 ? 'master' : null));
@@ -18067,7 +17925,7 @@ class Component extends DCLogic {
       });
   }
 
-  // ---- Events: manual planner (there is no event feed to read) -------------
+  // ---- Events: manual planner -------------
   setEventDraft(field, value) {
     this.setState({ eventDraft: { ...(this.state.eventDraft || {}), [field]: value } });
   }
@@ -18220,6 +18078,9 @@ class Component extends DCLogic {
     return out;
   }
 
+  // ---- Verdict ----
+  // Weighted in the order the trainer ranked them: Little Cup rank, raid DPS,
+  // last-of-species, legacy move, then shiny/lucky/shadow status.
   verdictFor(p) {
     const little = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
     const rank = this.bestRank(p);
@@ -18232,9 +18093,6 @@ class Component extends DCLogic {
     if (Number.isFinite(little) && little >= 85) {
       return { verdict: 'KEEP', reason: 'Strong Little Cup pick; do not evolve it', number: little.toFixed(1) + '% LC' };
     }
-    // IV rank alone is not enough: the species must also be competitive. The
-    // PvPoke tier (S/A/B) is checked first so a perfect-IV Pikachu is not
-    // called a league pick.
     const pvp = this.pvpBest(p);
     const pvpTierOk = !!(pvp && pvp.tierRank <= 2);
     const tierWord = pvp && pvp.tier ? pvp.tier + '-tier ' + (pvp.league === 'ultra' ? 'Ultra' : 'Great') + ' League species' : 'league species';
@@ -18339,10 +18197,6 @@ class Component extends DCLogic {
     return 'CANDY ON HAND per species (a family shares one pool, e.g. Axew, Fraxure and Haxorus spend Axew candy; "?" = no count scanned yet; XL = Candy XL): ' + parts.slice(0, 260).join('; ') + '.';
   }
 
-  // The chat only carried full detail for 240 of the roster (the 90 best-ranked and the 150 weakest), so a question about a mid-ranked species
-  // ("Axew or Fraxure, which do I invest in?") got "they lack detailed entries, scan them". Every owned Pokemon of a species the message names
-  // (and its evolution family) is now sent in full, with the app's own cross-stage answer per league: which copy of the line is best for the
-  // form it would be played as, and how many evolutions it still needs. Capped at 4 families and 40 Pokemon each.
   chatMentionLines(text, roster) {
     const t = String(text || '').toLowerCase();
     if (!t.trim()) return [];
@@ -18413,11 +18267,6 @@ class Component extends DCLogic {
         return `Living Dex: ${owned.size}/${total} species (${(owned.size / (total || 1) * 100).toFixed(1)}%). Kanto Dex: ${kantoOwned}/${kanto.length}. Hundo: ${hundo}. Nundo: ${nundo}. `
           + `Resources on hand: Rare Candy ${r.rareCandy ?? 'unknown'}, Rare Candy XL ${r.rareCandyXL ?? 'unknown'}, Fast TM ${r.fastTM ?? 'unknown'}, Charged TM ${r.chargedTM ?? 'unknown'}, Elite Fast TM ${r.eliteFastTM ?? 'unknown'}, Elite Charged TM ${r.eliteChargedTM ?? 'unknown'}, Stardust ${this.state.stardustBalance ?? 'unknown'}.`;
       })(),
-      // COMPLETE species census. The detailed list below is capped for token
-      // reasons, which meant "how many Eevee do I have?" was answered from a
-      // rank-filtered subset — 1 of 8, because the other seven ranked too low
-      // to make the cut. This census covers every Pokemon owned, so counting
-      // questions are always answerable even when detail is truncated.
       (() => {
         const bySpecies = {};
         roster.forEach(p => {
@@ -18443,15 +18292,6 @@ class Component extends DCLogic {
           + entries.join('; ');
       })(),
       (() => {
-        // Enough per-Pokemon detail to actually judge "which one hits
-        // harder" or "is this one safe to transfer" — not just IV/rank.
-        // Previously the model never saw moves, real DPS, raid-role status,
-        // or whether another owned copy already beats a Pokemon outright, so
-        // it could only guess at damage/transfer questions from CP+IV alone.
-        // Same pattern as the app's own screens: raidRole and dominated are
-        // entirely self-referential to this roster (Keep Best, Dominated
-        // Duplicates, Transfer Candidates all work the same way) — no
-        // external tier list, nothing invented.
         const raidTypeBest = this.raidRoleTypeBest(roster);
         const dominatedByIdx = {};
         this.dominatedDuplicates(roster).forEach(({ loser, winner }) => { dominatedByIdx[loser.idx] = winner; });
@@ -18478,14 +18318,6 @@ class Component extends DCLogic {
         const byRank = [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a));
         const top = byRank.slice(0, 90);
         const topIdx = new Set(top.map(p => p.idx));
-        // Second list fills the gap the top-90-only design left: the weak
-        // Pokemon that actually matter for "should I transfer this" were
-        // never sent at all. Deliberately NOT filtered by lucky/shadow/
-        // favorite \u2014 that exclusion used to mean any flagged Pokemon
-        // ranking outside the top 90 had NO detail in either list, so asking
-        // about it by name (e.g. a specific Gyarados) got no CP/HP/IV/moves
-        // at all. The L/S/F flags already visible on each row are enough to
-        // stop the model recommending a transfer of something protected.
         const cutCandidates = [...roster]
           .filter(p => !topIdx.has(p.idx))
           .sort((a, b) => (a.ivAvg ?? 999) - (b.ivAvg ?? 999) || this.bestRank(a) - this.bestRank(b))
@@ -18583,8 +18415,7 @@ class Component extends DCLogic {
 
   // Drag the detail sheet down to dismiss, the way a native bottom sheet
   // works — Past 110px (or a fast flick) it closes; otherwise it springs
-  // back. Sideways drags are ignored on purpose (the sheet must never slide left or right); the header arrows step to the next or
-  // previous Pokemon in the list the sheet was opened from (detailNavList/detailNavIndex, set by openDetail). The axis is locked on
+  // back. Sideways drags are ignored on purpose (the sheet must never slide left or right). The axis is locked on
   // the first meaningful move so a vertical scroll/dismiss never also drags sideways.
   sheetRef(el) {
     if (!el || el.dataset.swipeBound) return;
@@ -18627,8 +18458,6 @@ class Component extends DCLogic {
         el.style.opacity = String(Math.max(0.45, 1 - dy / 620));
         return;
       }
-      // axis === 'x': the sheet never moves sideways. A horizontal drag is ignored, so a thumb that wanders left or right while
-      // scrolling cannot push the sheet off-screen; the arrows in the header step to the next or previous Pokemon.
       el.style.transform = ''; el.style.opacity = '';
     };
     const onEnd = () => {
@@ -18696,7 +18525,6 @@ class Component extends DCLogic {
       const t = e.touches ? e.touches[0] : e;
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
-      // Don't hijack a vertical scroll through a long TODAY page.
       if (!axisLocked) {
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { dragging = false; reset(); return; }
         if (Math.abs(dx) < 8) return;
@@ -18735,7 +18563,7 @@ class Component extends DCLogic {
   // opening/closing never forces a full-list re-render).
   //
   // Bound to `window` from componentDidMount, exactly like
-  // bindPullToRefresh() above — NOT via a ref= callback on the list
+  // bindPullToRefresh() — NOT via a ref= callback on the list
   // container. Two different ref-based attempts (once per-row, once on the
   // container) both produced zero effect on-device despite looking correct
   // in review, while the window-level pattern is the one gesture technique
@@ -18814,7 +18642,6 @@ class Component extends DCLogic {
       }
       const tg = e.target;
       this._swipeTrace('touch ' + (tg && tg.tagName ? tg.tagName.toLowerCase() : '?') + ' row=' + (rowEl ? rowEl.getAttribute('data-swipe-row') : 'none'));
-      // iOS lists: touching anywhere else closes the open row, except its own action buttons.
       if (this._openSwipeEl && rowEl !== this._openSwipeEl && !(tg && tg.closest && tg.closest('[aria-label^="Transfer"],[aria-label^="Remove"]'))) this.closeAnyRosterSwipe();
       if (!rowEl) { dragEl = null; dragging = false; clearLongPress(); return; }
       dragEl = rowEl;
@@ -18848,14 +18675,12 @@ class Component extends DCLogic {
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
       if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) clearLongPress();
-      // Don't hijack a vertical scroll through the roster list.
       if (!axisLocked) {
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { dragging = false; return; }
         if (Math.abs(dx) < 8) return;
         axisLocked = true;
         this._swipeTrace('axis lock dx=' + Math.round(dx));
         clearLongPress();
-        // A new drag starting on a different row closes whatever was open.
         if (this._openSwipeEl && this._openSwipeEl !== dragEl) this.closeAnyRosterSwipe();
       }
       lastX = t.clientX;
@@ -18940,6 +18765,7 @@ class Component extends DCLogic {
     this.setState({ ivOverrides: ov, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, favorite: nf } } : {}) });
   }
 
+  // The header arrows step to the next or previous Pokemon in the list the sheet was opened from (detailNavList/detailNavIndex, set by openDetail).
   navigateDetail(dir) {
     const list = this.state.detailNavList || [];
     const next = this.state.detailNavIndex + dir;
@@ -19154,8 +18980,6 @@ class Component extends DCLogic {
 
     const rosterFilter = this.state.rosterFilter || 'all';
     let filtered = roster.filter(p => {
-      // Search now also covers type, so "fire" or "steel" finds a raid squad the
-      // same way a name does.
       if (search && search.trim()) {
         const s = search.toLowerCase().trim();
         const hit = (p.name || '').toLowerCase().includes(s)
@@ -19354,7 +19178,6 @@ class Component extends DCLogic {
     });
     const tierColor = t => t === 'S' ? 'var(--type-fairy)' : t === 'A' ? 'var(--grass-700)'
       : t === 'B' ? 'var(--type-electric)' : 'var(--ink-400)';
-    // Ready now: CP inside the band (or within the slack of its floor). Under it: too weak to fight as is.
     const readyPool = leaguePool.filter(p => this.inBand(p, leagueKey));
     const underPool = band ? leaguePool.filter(p => !this.inBand(p, leagueKey)) : [];
     const showAll = !!this.state.pvpShowAll;
@@ -19442,7 +19265,6 @@ class Component extends DCLogic {
         typeLabel: t || 'Unknown', rankDisplay: Number.isFinite(p[leagueKey].rankPct) ? p[leagueKey].rankPct.toFixed(0) + '%' : '—'
       });
     });
-    // The matchup-based team above replaces this type-only fallback whenever it exists.
     const suggestedTeamDisplay = (suggestedTeam.length && !pvpTeam) ? suggestedTeam : null;
     // Power up or evolve: good copies (tier S/A/B, IV rank 90%+) whose CP is under the band. For each, the level that
     // fills the cap for the form the rank is for, the CP that gives, and what it costs from the level it is at now.
@@ -19868,8 +19690,6 @@ class Component extends DCLogic {
           barWidth: (Number.isFinite(o.rankPct) ? o.rankPct : 0) + '%'
         };
       });
-      // One league leads: the one its CP fits right now (Little Cup only while it can still evolve). The higher leagues it can still
-      // grow into sit below; leagues it is already over are left out.
       const capOf = { LITTLE: 500, GREAT: 1500, ULTRA: 2500, MASTER: Infinity };
       const evolvesNow = !!(this.evoRecordFor(p) || {}).to && !this.evolveBlocked(p);
       const cpNow = Number.isFinite(p.cp) ? p.cp : null;
@@ -19883,7 +19703,6 @@ class Component extends DCLogic {
       const age = this.scanAgeDays(p);
       const vd = this.verdictFor(p);
       const vdColors = {
-        // Tinted fill + bright text of the same hue: readable at any size.
         'KEEP': ['var(--ios-green)', 'color-mix(in oklab, var(--ios-green) 16%, var(--surface-card))', 'color-mix(in oklab, var(--ios-green) 45%, var(--surface-card))'],
         'EVOLVE': ['var(--ios-green)', 'color-mix(in oklab, var(--ios-green) 16%, var(--surface-card))', 'color-mix(in oklab, var(--ios-green) 45%, var(--surface-card))'],
         'POWER UP': ['#64b5ff', 'color-mix(in oklab, var(--ios-blue) 20%, var(--surface-card))', 'color-mix(in oklab, var(--ios-blue) 50%, var(--surface-card))'],
@@ -19895,7 +19714,6 @@ class Component extends DCLogic {
       detail = {
         verdict: { verdict: vd.verdict, reason: vd.reason, number: vd.number, color: vdc[0], bg: vdc[1], border: vdc[2] },
         verdictWhy: this.verdictWhyFor(p),
-        // One quiet line instead of two pills; a scan older than a month keeps its warning colour.
         metaLine: (() => {
           const bits = [];
           if (age != null) bits.push(age === 0 ? 'Scanned today' : age === 1 ? 'Scanned yesterday' : 'Scanned ' + age + ' days ago');
@@ -20178,9 +19996,6 @@ class Component extends DCLogic {
         })(),
         markTransferred: () => this.askTransferConfirm(p, () => this.closeDetail())
       };
-      // Tabs + evolve action, added on top of the fields above rather than
-      // woven through them, so the sheet gains a section switcher without
-      // touching how every existing field is computed.
       const dTab = this.state.detailTab || 'appraisal';
       const evoInfo = this.evoInfoFor(p);
       const tabOn = k => dTab === k;
@@ -20296,9 +20111,6 @@ class Component extends DCLogic {
       duplicateGroups: duplicateGroups.length ? duplicateGroups : null
     };
 
-    // How much of the roster is measured versus guessed. This is the number that
-    // says whether the rest of the app can be trusted, so it is stated plainly
-    // instead of being implied by per-card badges.
     const measuredCount = roster.filter(p => p.ivMeasured).length;
     const needsAppraisalList = roster.filter(p => this.needsAppraisal(p));
     const confidence = {
@@ -20339,8 +20151,6 @@ class Component extends DCLogic {
     const isMobile = (this.state.viewportWidth || 1200) < 640;
 
     // ---- TODAY tab ----
-    // All four blocks read the same merged roster, so each list is built once
-    // here rather than per key.
     const evoQueueAll = this.evolveQueue();
     const eventOpps = this.eventEvolveOpps(roster);
     const eventWatch = this.eventWatchList();
@@ -20398,8 +20208,6 @@ class Component extends DCLogic {
         more: hits.length > 12 ? hits.length - 12 + ' more match \u2014 narrow the search.' : null,
         rows: shown.map(p => {
           const rank = this.bestRank(p);
-          // Queuing a good Pokemon is allowed, but never silently: the warning
-          // says what would be lost.
           const warn = p.lucky ? 'LUCKY'
             : this.isShadow(p) ? 'SHADOW'
             : p.favorite ? 'FAVORITE'
@@ -20424,7 +20232,6 @@ class Component extends DCLogic {
       };
     })();
 
-    // Five bar items like an iOS tab bar; the rest live under More.
     const ICON = {
       today: 'M12 3v2M12 19v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M3 12h2M19 12h2M4.6 19.4L6 18M18 6l1.4-1.4M12 8a4 4 0 100 8 4 4 0 000-8z',
       roster: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
@@ -20737,10 +20544,6 @@ class Component extends DCLogic {
         const free = capacity - used;
         const pct = Math.min(100, Math.max(0, (used / capacity) * 100));
 
-        // Prefer a buffer sized to actual catch rate over a flat guess. Each
-        // TODAY-tab visit logs a snapshot (date + roster count), so the delta
-        // between the newest and oldest snapshot gives a real days-to-count
-        // rate. Falls back to a flat 50 until there's enough history to trust.
         const hist = this.state.history || [];
         let REC_BUFFER = 50;
         let rateNote = '';
@@ -21125,8 +20928,6 @@ class Component extends DCLogic {
             : (r._solvedCount ? 'var(--grass-700)'
             : (haveIv ? 'var(--grass-700)' : 'var(--ink-300)')),
           candy: Number.isFinite(r.candy) ? (r.candy + (Number.isFinite(r.xlCandy) ? ' \u00b7 ' + r.xlCandy + 'XL' : '')) : '\u2014',
-          // Amber-tint rows with gaps so a follow-up scan can target just those
-          // Pokemon instead of redoing the whole clip.
           rowBg: r._dupe ? 'var(--brand-primary-strong)' : ((!Number.isFinite(r.cp) || !haveIv) ? 'var(--brand-primary-strong)' : 'transparent')
         };
       }),
@@ -21143,8 +20944,6 @@ class Component extends DCLogic {
         return rev.length + ' read \u00b7 ' + fresh + ' new'
           + (eng.length ? ' \u2022 read by ' + eng.join(' + ') : '')
           + (() => {
-            // A wall of empty answers is the signal that frames or prompt are at
-            // fault — silence here is what made "24 batches, 3 Pokemon" opaque.
             const vi = this.state.videoImport || {};
             const e = vi.emptyBatches || 0;
             const b = vi.batchCount || 0;
@@ -21199,8 +20998,6 @@ class Component extends DCLogic {
       evoFetchLabel: this.state.evoFetchBusy ? 'LOOKING UP\u2026' : 'RUN EVOLUTION DATA',
       evoFetchStatus: this.state.evoFetchError || this.state.evoFetchStatus,
 
-      // Counts as tappable chips, so the top of the page reads as a scoreboard
-      // rather than a paragraph.
       todayChips: [
         { label: 'To evolve', count: evoQueueAll.length, key: 'evolve' },
         { label: 'To review', count: triageAll.length, key: 'review' },
@@ -21271,8 +21068,6 @@ class Component extends DCLogic {
           : 'Choose what it will become ((best) marks the best for these IVs). Ranks are Great and Ultra League for this exact spread.') : '',
         candyLabel: candyLabelFor(row.evo),
         candyColor: candyColorFor(row.evo),
-        // A bar reads as progress toward the evolution at a glance; the raw
-        // "12/25 candy" needs parsing.
         candyPct: (row.evo.need && row.evo.have != null)
           ? Math.min(100, Math.round(row.evo.have / row.evo.need * 100)) + '%'
           : (row.evo.ready ? '100%' : '0%'),
@@ -21365,8 +21160,6 @@ class Component extends DCLogic {
       }),
       clearTransferQueue: () => this.clearTransferQueue(),
 
-      // Manual picker: any Pokemon can be queued, not only the ones triage
-      // suggested. Searching is required rather than listing 300 rows.
       transferSearch: this.state.transferSearch || '',
       onTransferSearch: (e) => this.setState({ transferSearch: e.target.value }),
       transferPickHint: transferPick.hint,
@@ -21697,10 +21490,6 @@ class Component extends DCLogic {
       carryDiscard: () => this.carryDiscard(),
       carryBackup: () => this.carryBackup(),
       syncStatusLabel: this.state.syncStatus || 'idle',
-      // One-glance check that measured spreads actually persisted: reload and
-      // compare this count. Reading it off the roster (not a flag) means it
-      // reflects what is really stored, not what an import claimed to do.
-      // Counted in one pass over the already-computed merged roster.
       measuredIvLine: (() => {
         let measured = 0, solved = 0;
         mergedForCounts.forEach(p => {
@@ -21719,9 +21508,6 @@ class Component extends DCLogic {
       ptrVisible: (this.state.ptrPull || 0) > 4,
       ptrLabel: this.state.ptrRefreshing ? 'Reloading…' : (this.state.ptrArmed ? 'Release to reload' : 'Pull to reload'),
       ptrColor: this.state.ptrArmed ? 'var(--grass-700)' : 'var(--ink-400)',
-      // A failed save used to be legible only in the Data tab's small sync line,
-      // which is why "it didn't stick" kept reading as a mystery instead of an
-      // error. Surface it on every page.
       syncAlert: /^(TOO BIG|error:)/.test(this.state.syncStatus || '') ? this.state.syncStatus : '',
       syncNow: () => this.syncNow(),
       signOutCloud: () => this.signOutCloud(),
