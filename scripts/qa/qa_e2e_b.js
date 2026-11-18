@@ -747,7 +747,7 @@ module.exports = async function suiteB() {
       if (/:generateContent/.test(u)) {
         const body = JSON.parse(r.request().postData() || '{}');
         const th = body.generationConfig && body.generationConfig.thinkingConfig;
-        seen.push({ model: (u.match(/models\/([^:]+):/) || [])[1], th: th ? JSON.stringify(th) : 'none' });
+        seen.push({ model: (u.match(/models\/([^:]+):/) || [])[1], th: th ? JSON.stringify(th) : 'none', img: /inline_?[dD]ata/.test(JSON.stringify(body)) });   // img: an image read; a background text call (the briefing starts when a key is set) can land at any moment and is not one
         if (th && th.thinkingLevel === 'minimal') return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: { message: 'thinking level not supported' } }) });
         return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"name":"Pikachu"}' }] } }] }) });
       }
@@ -761,11 +761,11 @@ module.exports = async function suiteB() {
     await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { f.stateNode.logic._aiLog = []; f.stateNode.logic._thinkRung = {}; return; } } });
     const call = b => s.page.evaluate(async body => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGemini) return await f.stateNode.logic.callGemini(body); } return null; }, b);
     expect((await call(img)) === '{"name":"Pikachu"}', 'the image read returns');
-    const gen = seen.filter(x => x.th !== undefined);
-    expect(seen.length >= 2 && seen[0].th === '{"thinkingLevel":"minimal"}' && seen[1].th === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + JSON.stringify(seen));
-    const before = seen.length;
+    const imgs = () => seen.filter(x => x.img);
+    expect(imgs().length >= 2 && imgs()[0].th === '{"thinkingLevel":"minimal"}' && imgs()[1].th === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + JSON.stringify(seen));
+    const before = imgs().length;
     await call(img);
-    expect(seen.length === before + 1 && seen[before].th === '{"thinkingLevel":"low"}', 'the working setting is remembered: ' + JSON.stringify(seen.slice(before)));
+    expect(imgs().length === before + 1 && imgs()[before].th === '{"thinkingLevel":"low"}', 'the working setting is remembered: ' + JSON.stringify(imgs().slice(before)));
     const tBefore = seen.length;
     await call({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 100 });
     expect(seen[tBefore].th === 'none', 'a text call is sent as before (no thinking setting): ' + JSON.stringify(seen[tBefore]));
