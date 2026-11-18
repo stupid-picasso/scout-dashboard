@@ -3306,7 +3306,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.344{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.345{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -12609,7 +12609,7 @@ class Component extends DCLogic {
         if (timeouts >= 2 || model === candidates[candidates.length - 1]) throw new Error('Gemini did not answer (' + timeouts + (timeouts === 1 ? ' try' : ' tries') + ', ' + Math.round(deadlineMs / 1000) + 's each). The request is dropped instead of waiting; skip or retry this one.');
         continue;
       }
-      if (res.ok) this._thinkRung[model] = rung;
+      if (res.ok && hasImage) this._thinkRung[model] = rung;   // only an image call knows the ladder; a text call (one rung) must not overwrite the remembered image setting
       if (res.ok && hasImage) { this._modelMs = this._modelMs || {}; const took = Date.now() - t0; this._modelMs[model] = this._modelMs[model] ? Math.round(this._modelMs[model] * 0.6 + took * 0.4) : took; }
       if (res.ok) {
         const data = await Promise.race([res.json(), new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini did not finish sending its answer within 30s')), 30000))]);
