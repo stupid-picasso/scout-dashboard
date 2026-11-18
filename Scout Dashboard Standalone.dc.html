@@ -1089,14 +1089,9 @@
   @keyframes evoFlash{0%{opacity:0;transform:scale(.2)}18%{opacity:1;transform:scale(1)}55%{opacity:1;transform:scale(1.06)}100%{opacity:0;transform:scale(1.9)}}
   @keyframes evoRing{0%{opacity:.9;transform:scale(.3)}100%{opacity:0;transform:scale(2.4)}}
   @keyframes evoName{0%{opacity:0;transform:translateY(10px) scale(.9)}30%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:1}100%{opacity:0}}
-  @keyframes flipIn{from{opacity:0;transform:rotateY(90deg) scale(.9)}to{opacity:1;transform:rotateY(0deg) scale(1)}}
-  @keyframes cardPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
   @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 oklch(70% 0.15 62 / 0.5)}50%{box-shadow:0 0 0 8px oklch(70% 0.15 62 / 0)}}
   @keyframes riseIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-  @keyframes sheenSweep{0%{transform:translateX(-120%) skewX(-18deg)}55%,100%{transform:translateX(320%) skewX(-18deg)}}
-  @keyframes auraBreathe{0%,100%{opacity:.42;transform:scale(1)}50%{opacity:.72;transform:scale(1.09)}}
   @keyframes shimmerSlide{0%{background-position:-460px 0}100%{background-position:460px 0}}
-  @keyframes ambientDrift{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(3%,-2.5%,0) scale(1.06)}66%{transform:translate3d(-2.5%,2%,0) scale(1.03)}}
   @keyframes sheetRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
   /* Phone-width sheets come up from the bottom edge the way an iOS sheet does. */
   @keyframes sheetUp{0%{opacity:.4;transform:translateY(100%)}68%{opacity:1;transform:translateY(-1.4%)}100%{opacity:1;transform:translateY(0)}}
@@ -1117,7 +1112,6 @@
   .om-bar{transform-origin:left center;animation:barGrow 0.52s cubic-bezier(.22,1,.36,1) backwards;animation-delay:calc(var(--i, 0) * 34ms + 120ms)}
   /* Detail sheet motion. Every fill-mode is `backwards`/`both` on properties
      that leave no lasting transform layer (see the earlier blur fix). */
-  @keyframes spritePop{0%{transform:translateX(-50%) scale(.55);opacity:0}55%{transform:translateX(-50%) scale(1.09);opacity:1}100%{transform:translateX(-50%) scale(1)}}
   @keyframes arcFill{from{stroke-dashoffset:400}}
   @keyframes countUp{from{--n:0}to{--n:var(--t)}}
   .om-rise:not(:has(*)){display:none}
@@ -1139,10 +1133,6 @@
   /* Chrome should not long-press-select or show the callout menu; body text
      stays selectable so numbers can still be copied. */
   button,label,summary,[role="button"],.om-press,.om-tap{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:manipulation}
-  /* iOS responds on touch-DOWN, not on release — that is most of why a web app
-     feels a beat slower than a native one even at the same frame rate. */
-  /* One press rule: controls scale to .97 and dim a little, cards and rows scale to .985 and do not dim. */
-
   .om-tap{transition:transform var(--dur-press) var(--ease-out),border-color var(--dur-fast) ease,background var(--dur-fast) ease}
   /* .om-tap/.om-press set touch-action:manipulation (see the button/.om-tap
      rule above) so double-tap-zoom is disabled on ordinary tappable rows.
@@ -1168,14 +1158,9 @@
     input,textarea,select{font-size:17px !important}
   }
 
-  /* Ambient background is decorative; never let it cost a scroll frame. */
-  @media (hover:none){
-
-  }
   @keyframes heroFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.018)}}
   @keyframes heroShadow{0%,100%{transform:translateX(-50%) scale(1);opacity:1}50%{transform:translateX(-50%) scale(.84);opacity:.7}}
   @keyframes heroPop{0%{transform:scale(.55);opacity:0}55%{transform:scale(1.09);opacity:1}100%{transform:scale(1)}}
-  @keyframes heroSpin{to{transform:rotate(360deg)}}
   @keyframes heroTwinkle{0%,100%{opacity:0;transform:scale(.3) rotate(0)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
   .hero-img{transform:translateX(var(--tx,0px)) rotate(var(--rot,0deg));transition:transform 0.52s cubic-bezier(.2,.9,.3,1.25)}
   .hero-drag .hero-img{transition:none}
@@ -1287,7 +1272,6 @@
   button, summary, [role=button], [role=tab], [role=checkbox]{position:relative}
   button::before, summary::before, [role=button]::before, [role=tab]::before, [role=checkbox]::before{content:"";position:absolute;left:-2px;right:-2px;top:50%;min-width:44px;height:44px;transform:translateY(-50%)}
   input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), textarea{min-height:44px}
-  /* Primary action: system blue capsule. */
   /* Filled buttons are 36 px high (the 44 px tap area is the invisible strip). */
   [style*="background: var(--ios-blue-fill)"],[style*="background: var(--accent-fill)"],[style*="background: var(--grass-500)"],[style*="background: var(--grass-600)"],[style*="background: var(--brand-primary-strong)"],.ui-btn-fill{min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;padding-top:8px !important;padding-bottom:8px !important;line-height:1.2}
   [style*="background: var(--brand-primary-strong)"]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important;color:#fff !important;font-weight:700 !important;letter-spacing:0 !important;min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}
@@ -1305,7 +1289,6 @@
 
   /* Sheets and scrims: real blur materials. */
   [style*="backdrop-filter: blur(6px)"]{-webkit-backdrop-filter:blur(24px) saturate(1.4) !important;backdrop-filter:blur(24px) saturate(1.4) !important;background:rgba(0,0,0,.45) !important}
-  /* Nav icons and the iOS toast */
   .ios-nav svg{display:block}
   /* Horizontal scrollers: snap, a leading inset and a trailing fade so a clipped edge reads as "more", not as overflow. */
   [data-scroller]{scroll-snap-type:x proximity;scroll-padding-left:16px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 12px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 12px),transparent)}
@@ -2917,9 +2900,6 @@
       <sc-if value="{{ hasOcrParsed }}" hint-placeholder-val="{{ false }}">
         <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px">
           <div style="font:12px var(--font-display);color:var(--type-electric)">{{ ocrParsedDisplay.matchLine }}</div>
-          <sc-if value="{{ ocrParsedDisplay.readerLine }}" hint-placeholder-val="{{ false }}">
-            <div style="font:12px var(--font-display);color:var(--type-electric)">{{ ocrParsedDisplay.readerLine }}</div>
-          </sc-if>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <sc-if value="{{ ocrParsedDisplay.cpNote }}" hint-placeholder-val="{{ false }}">
               <div style="grid-column:1 / -1;background:color-mix(in oklab, var(--type-electric) 12%, var(--surface-card));border:1px solid var(--type-electric);border-radius:10px;padding:8px 12px">
@@ -5328,11 +5308,7 @@
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{
-  &quot;personality&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;clinical&quot;, &quot;options&quot;: [&quot;clinical&quot;, &quot;hype&quot;, &quot;deadpan&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Professor voice&quot;},
-  &quot;accentColor&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#ffb454&quot;, &quot;options&quot;: [&quot;#ffb454&quot;, &quot;#54c8ff&quot;, &quot;#c589ff&quot;, &quot;#7cf29a&quot;, &quot;#ff7a9c&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look &amp; feel&quot;},
-  &quot;density&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;comfortable&quot;, &quot;options&quot;: [&quot;comfortable&quot;, &quot;compact&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look &amp; feel&quot;}
-}">
+<script type="text/x-dc" data-dc-script data-props="{}">
 class Component extends DCLogic {
   state = {
     roster: [],
@@ -5433,7 +5409,6 @@ class Component extends DCLogic {
     todayExpand: {},
     ocrBusy: false,
     ocrError: '',
-    ocrPreview: null,
     ocrParsed: null,
     // Multi-screenshot import: files queued from one multi-select, processed
     // one at a time through the SAME single-image pipeline below (nothing
@@ -5462,7 +5437,6 @@ class Component extends DCLogic {
     apprMaxedKnown: false,
     apprDust: '',
     apprDustMods: {},
-    ocrHp: '',
     geminiKey: '',
     geminiKeys: [],
     geminiKeyDraft: '',
@@ -5517,13 +5491,11 @@ class Component extends DCLogic {
     megaEvolvedHistory: {},
     megaNameDraft: '',
     megaAmountDraft: '',
-    firebaseConfigured: false,
-    firebaseConfigDraft: '',
     firebaseConfigError: '',
     authEmail: '',
     authPassword: '',
     authError: '',
-    authBusy: false, authEmailOpen: false, authNotice: '', authLink: null, authOfferBackup: false, carryPrompt: null,
+    authBusy: false, authEmailOpen: false, authNotice: '', authOfferBackup: false, carryPrompt: null,
     firstRunOpen: false, firstRunStep: 1, firstRunAge: false, firstRunNote: '',
     cloudUser: null,
     syncStatus: '',
@@ -6004,7 +5976,7 @@ class Component extends DCLogic {
       const app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(config);
       this.auth = firebase.auth(app);
       this.db = firebase.firestore(app);
-      this.setState({ firebaseConfigured: true, firebaseConfigError: '' });
+      this.setState({ firebaseConfigError: '' });
       // Cloud reads are auth-gated (rules require request.auth != null), so they
       // fire from onAuthChange once a user is present — not here.
       this.auth.onAuthStateChanged(
@@ -6014,34 +5986,6 @@ class Component extends DCLogic {
     } catch (e) {
       this.setState({ firebaseConfigError: 'Could not initialize Firebase with that config: ' + (e && e.message) });
       this.authSettled();
-    }
-  }
-
-  onFirebaseConfigChange(e) {
-    this.setState({ firebaseConfigDraft: e.target.value });
-  }
-
-  saveFirebaseConfig() {
-    const text = (this.state.firebaseConfigDraft || '').trim().replace(/;\s*$/, '');
-    if (!text) return;
-    try {
-      // JSON.parse rather than new Function(): the latter is blocked under any
-      // strict Content-Security-Policy. Tolerates unquoted keys and trailing
-      // commas, which is how the Firebase console presents the snippet.
-      const normalised = text
-        .replace(/^[\s\S]*?\{/, '{')
-        .replace(/\};?[\s\S]*$/, '}')
-        .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
-        .replace(/'/g, '"')
-        .replace(/,(\s*[}\]])/g, '$1');
-      const config = JSON.parse(normalised);
-      if (!config || !config.apiKey || !config.projectId) throw new Error('missing apiKey/projectId');
-      // Session-only override — not persisted. Reload goes back to FIREBASE_CONFIG().
-      this.setState({ firebaseConfigError: '' });
-      this.loadFirebaseSdk().then(() => this.setupFirebaseApp(config))
-        .catch(e => this.setState({ firebaseConfigError: e.message }));
-    } catch (e) {
-      this.setState({ firebaseConfigError: 'Could not read that config \u2014 paste the whole { apiKey: ..., ... } object from Firebase.' });
     }
   }
 
@@ -6078,7 +6022,7 @@ class Component extends DCLogic {
     if (code === 'auth/account-exists-with-different-credential') {
       const email = (err && (err.email || (err.customData && err.customData.email))) || '';
       this._pendingCred = (err && err.credential) || null; this._pendingEmail = email; this._pendingProvider = providerId;
-      this.setState({ ...off, authLink: { provider: name }, authEmail: email || this.state.authEmail, authEmailOpen: true,
+      this.setState({ ...off, authEmail: email || this.state.authEmail, authEmailOpen: true,
         authError: 'This email already has an account. Sign in the way you did before, then we will link ' + name + '.' });
       return;
     }
@@ -6145,7 +6089,6 @@ class Component extends DCLogic {
     const pend = this._pendingCred, pe = String(this._pendingEmail || '').toLowerCase(), pid = this._pendingProvider;
     if (!pend) return;
     this._pendingCred = null; this._pendingEmail = ''; this._pendingProvider = '';
-    this.setState({ authLink: null });
     if (!pe || String(user.email || '').toLowerCase() !== pe) return;   // a different account signed in: nothing is linked to it
     const name = this.providerName(pid);
     this.askLinkConfirm(name, () => {
@@ -6242,7 +6185,7 @@ class Component extends DCLogic {
       // Signed out means nothing is displayed: the account's data goes from the screen and from this device's copy.
       this._deleting = false;
       this.forgetAccount(this.state.cloudUser);
-      this.setState({ cloudUser: null, syncStatus: '', loaded: true, snapshots: [], carryPrompt: null, authNotice: '', authLink: null, ...this.EMPTY_USER_DATA() });
+      this.setState({ cloudUser: null, syncStatus: '', loaded: true, snapshots: [], carryPrompt: null, authNotice: '', ...this.EMPTY_USER_DATA() });
     }
   }
 
@@ -7806,9 +7749,6 @@ class Component extends DCLogic {
     });
   }
 
-  saveTriage() {
-  }
-
   // Chip -> section. scrollIntoView is off-limits here, so this offsets by the
   // sticky header height manually.
   jumpToSection(key) {
@@ -9138,7 +9078,6 @@ class Component extends DCLogic {
   needsAppraisal(p) {
     if (!p) return false;
     if (p.ivMeasured || p.ivManual) return false;
-    if (!Number.isFinite(p.atkIV)) return true;
     // Anything else is a guess from CP/HP (a unique solve, a candidate range) or a record of unknown origin: until the
     // appraisal screen has been read, it is treated as unmeasured and is never offered for transfer.
     return true;
@@ -9315,14 +9254,13 @@ class Component extends DCLogic {
     const lg = p[leagueKey];
     if (!m || !lg || !Number.isFinite(lg.rankPct) || !this.leagueUsable(p, leagueKey)) return null;
     const shadow = this.isShadow(p);
-    const hasTierData = leagueKey === 'great' || leagueKey === 'ultra' || leagueKey === 'little' || leagueKey === 'master';
     // The rank is for the form it names (a Jigglypuff's Great League rank is Wigglytuff's), so the tier and
     // the recommended moves come from that form too.
     const formName = this.pvpFormName(p, leagueKey);
-    const tier = hasTierData && m.pvpTierFor ? m.pvpTierFor(formName, shadow, tk, p.form) : null;
+    const tier = m.pvpTierFor ? m.pvpTierFor(formName, shadow, tk, p.form) : null;
     const order = { S: 0, A: 1, B: 2, C: 3 };
-    const tierRank = !hasTierData ? 2.5 : (tier ? order[tier.tier] : 4);
-    const ms = hasTierData && m.pvpMovesetFor ? m.pvpMovesetFor(formName, shadow, tk, p.form) : null;
+    const tierRank = tier ? order[tier.tier] : 4;
+    const ms = m.pvpMovesetFor ? m.pvpMovesetFor(formName, shadow, tk, p.form) : null;
     const have = new Set([p.quickMove, p.chargeMove, p.chargeMove2].filter(Boolean).map(n => this.moveKey(n).replace(/\+$/, '')));
     const wanted = ms ? [ms.fast, ...ms.charged] : [];
     const missing = wanted.filter(n => !have.has(n));
@@ -10168,9 +10106,6 @@ class Component extends DCLogic {
     return [overall, ...(payoff.members.length ? [payoff] : []), ...(tmBoard.members.length ? [tmBoard] : []), ...groups];
   }
 
-  // Self-contained spread label for the duplicates list. The maintained build
-  // has spreadText/rangeText and the Standalone build does not, and reaching
-  // for one that only exists in one file is what broke this list on the phone.
   dupSpread(p) {
     const ivs = this.ivsOf(p);
     if (!ivs) return 'IV unknown';
@@ -10264,11 +10199,6 @@ class Component extends DCLogic {
     this.setState({ closestMissRevealed: !this.state.closestMissRevealed });
   }
 
-  // iOS Safari (and installed web apps) can leave the layout viewport shorter than the visible one after the keyboard closes, the toolbar
-  // collapses or the phone turns, so position:fixed bars stop at the old bottom and seem to float with the page. Re-compositing the fixed
-  // bars and re-applying the scroll position makes the browser lay them out again. Cheap, and a no-op elsewhere.
-  fixFixedBars() { /* retired: re-compositing the fixed bars after viewport changes made no difference on iOS */ }
-
   // Tap the "N Pokemon loaded" line in the header to see the screen numbers behind a misplaced tab bar (send a screenshot of it).
   showLayoutInfo() {
     try {
@@ -10322,7 +10252,7 @@ class Component extends DCLogic {
     if (this._viewportWatched || typeof window === 'undefined') return;
     this._viewportWatched = true;
     let t = null;
-    const later = () => { this.sizeShell(); clearTimeout(t); t = setTimeout(() => { this.sizeShell(); this.fixFixedBars(); }, 180); };
+    const later = () => { this.sizeShell(); clearTimeout(t); t = setTimeout(() => { this.sizeShell(); }, 180); };
     this.sizeShell();
     window.addEventListener('resize', later);
     this._shellTimer = setInterval(() => this.sizeShell(), 500);
@@ -10340,7 +10270,7 @@ class Component extends DCLogic {
   // The same conversation as the one on Home (chatMessages), reachable from every other tab. The bubble sits above the tab bar, can be
   // dragged up and down (remembered), and fades to the edge while a page scrolls so it never covers what is being read.
   openChatBubble() { this.setState({ chatOpen: true }); }
-  closeChatBubble() { this.setState({ chatOpen: false }, () => setTimeout(() => this.fixFixedBars(), 250)); }
+  closeChatBubble() { this.setState({ chatOpen: false }); }
   toggleChatBubble() { if (Date.now() - (this._bubbleDragAt || 0) < 400) return; this.setState({ chatOpen: !this.state.chatOpen }); }
 
   bindChatBubble(el) {
@@ -11172,37 +11102,6 @@ class Component extends DCLogic {
     this.setState({ completedIds: arr });
   }
 
-  // Mild contrast only. Hard binarization (gray > 150 ? 255 : 0) destroys the
-  // anti-aliased text Pokemon GO renders, which is what garbled CP/HP/candy.
-  async preprocessImage(fileOrDataUrl) {
-    const dataUrl = typeof fileOrDataUrl === 'string' ? fileOrDataUrl : await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(fileOrDataUrl);
-    });
-    const img = await new Promise((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = reject;
-      im.src = dataUrl;
-    });
-    const scale = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width * scale;
-    canvas.height = img.height * scale;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const d = imgData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = Math.min(255, d[i] * 1.15);
-      d[i + 1] = Math.min(255, d[i + 1] * 1.15);
-      d[i + 2] = Math.min(255, d[i + 2] * 1.15);
-    }
-    ctx.putImageData(imgData, 0, 0);
-    return canvas;
-  }
-
   capitalizeName(str) {
     return String(str).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   }
@@ -11466,7 +11365,7 @@ class Component extends DCLogic {
     const queue = this.state.ocrQueue || [];
     const nextIndex = (this.state.ocrQueueIndex || 0) + 1;
     if (nextIndex < queue.length) {
-      this.setState({ ocrQueueIndex: nextIndex, ocrQueueDone: doneLog, ocrParsed: null, ocrPreview: null, ocrError: '' }, () => {
+      this.setState({ ocrQueueIndex: nextIndex, ocrQueueDone: doneLog, ocrParsed: null, ocrError: '' }, () => {
         this.prefetchOcrReads(queue, nextIndex);
         this.handleScreenshotUpload(queue[nextIndex], nextIndex);
       });
@@ -11480,7 +11379,7 @@ class Component extends DCLogic {
       : '';
     this._ocrReads = new Map();
     this.setState({ ocrQueue: [], ocrQueueIndex: 0, ocrQueueDone: [], ocrQueueSummary: summary,
-      ocrParsed: null, ocrPreview: null, ocrError: '' });
+      ocrParsed: null, ocrError: '' });
   }
 
   // ---- Screenshot read clean-up (same rules as the server pipeline's post-processing) -----------
@@ -11558,7 +11457,7 @@ class Component extends DCLogic {
     if (!file) return;
     this._lastAiError = '';
     this.resetAppraisalHint();
-    this.setState({ ocrBusy: true, ocrError: '', ocrPreview: null, ocrParsed: null, ocrTick: 0 });
+    this.setState({ ocrBusy: true, ocrError: '', ocrParsed: null, ocrTick: 0 });
     this._ocrSince = Date.now();
     clearInterval(this._ocrTimer);
     this._ocrTimer = setInterval(() => {
@@ -11566,11 +11465,6 @@ class Component extends DCLogic {
       this.setState({ ocrTick: Math.round((Date.now() - this._ocrSince) / 1000) });
     }, 1000);
     try {
-      const tPrep = Date.now();
-      const canvas = await this.preprocessImage(file);
-      this.noteAiStage('screenshot: prepare image', Date.now() - tPrep);
-      this.setState({ ocrPreview: canvas.toDataURL('image/jpeg', 0.7) });
-
       // Vision only. On-device OCR used to sit behind this as a fallback and was
       // removed: it could not read the stylized CP badge or the type chips, and
       // its numeric misreads landed stardust digits in CP. A wrong record is
@@ -12104,7 +11998,7 @@ class Component extends DCLogic {
           (Array.isArray(data.addedPokemon) ? data.addedPokemon.length : 0);
         const payload = {
           _backup: {
-            app: 'Professor', build: 'v52.9',
+            app: 'Professor',
             uid: this.state.cloudUser.uid, email: this.state.cloudUser.email,
             takenAt: new Date().toISOString()
           },
@@ -12757,7 +12651,6 @@ class Component extends DCLogic {
     let lastErr;
     for (let i = 0; i < attempts; i++) {
       try {
-        if (window.claude && window.claude.complete) return await window.claude.complete(body);
         // Vision calls (screenshot/video frame reading) always go to Gemini —
         // it's verified against real appraisal cards and is the one engine
         // guaranteed to accept image parts. The custom text gateway (Groq,
@@ -14037,8 +13930,7 @@ class Component extends DCLogic {
     return { atk: ivs[0], def: ivs[1], sta: ivs[2], drift: +drift.toFixed(3), raw: raw.map(v => +v.toFixed(3)) };
   }
 
-  // Full-resolution canvas. preprocessImage() downscales for the vision model,
-  // which is fine for reading printed digits and fatal for measuring a bar edge.
+  // Full-resolution canvas: the vision call downscales, which is fine for reading printed digits and fatal for measuring a bar edge.
   imageToCanvas(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -16055,8 +15947,6 @@ class Component extends DCLogic {
 
   // Species proven Max-capable by the person's own scans (the built-in list is partial).
   learnedMaxSpecies() {
-    const m = this.mechanics;
-    const base = m && m.gmaxFor ? null : null;
     const set = new Set();
     this.effectiveRosterForMatch().forEach(p => { if (p.dynamax || p.gigantamax) set.add(String(p.name || '').toLowerCase()); });
     return set;
@@ -17251,7 +17141,7 @@ class Component extends DCLogic {
         copyLabel: copied === 'keep' + i ? 'Copied' : 'Copy string', onCopy: () => this.copyText(b.text, 'keep' + i), onDone: () => this.keeperFavouritedDone(b)
       })),
       keeperManual: kb.manual.length ? kb.manual.length + ' keepers cannot be isolated in a search and need a star by hand: ' + kb.manual.slice(0, 6).map(m => m.p.name + ' ' + m.p.cp + ' CP').join(', ') + (kb.manual.length > 6 ? ', \u2026' : '') : '',
-      bulkCoverageColor: cov.missing > 0 ? 'var(--ink-700)' : 'var(--ink-700)',
+      bulkCoverageColor: 'var(--ink-700)',
       bulkSoftCount: softRows.length,
       bulkSoftText: softRows.length ? softRows.length + ' of these are normally kept. They are only here because you have more than your Keep best target of ' + target
         + '. Raise the target (More, Keep best) to keep them. Best of them: ' + softRows.slice(0, 6).map(c => c.p.name + ' ' + c.p.cp + ' CP (' + c.soft[0] + ')').join('; ') + (softRows.length > 6 ? '; and ' + (softRows.length - 6) + ' more' : '') + '.' : '',
@@ -17268,7 +17158,7 @@ class Component extends DCLogic {
       bulkTotal: r.total,
       bulkHasBatches: r.batches.length > 0,
       bulkBatches: r.batches.map((b, i) => ({
-        title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, kindText: b.softN ? 'Includes ' + b.softN + ' normally kept' : 'Junk only: no keep reasons', kindColor: b.softN ? 'var(--ink-700)' : 'var(--ink-700)', text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
+        title: 'Batch ' + (i + 1) + ' of ' + r.batches.length, kindText: b.softN ? 'Includes ' + b.softN + ' normally kept' : 'Junk only: no keep reasons', kindColor: 'var(--ink-700)', text: b.text, expect: 'The game should show exactly ' + b.n + ' Pokemon. If it shows a different number, do not transfer.',
         names: b.names.join(' \u00b7 '), whyRows: b.rows || [], copyLabel: copied === 'bulk' + i ? 'Copied' : 'Copy string',
         onCopy: () => this.copyText(b.text, 'bulk' + i), onDone: () => this.confirmBatchTransferred(b.pokemon)
       })),
@@ -18695,14 +18585,14 @@ class Component extends DCLogic {
     if (!list.length) return;
     const keep = { ...(this.state.triageKeep || {}) };
     keep[this.triageSignature(list[0].p)] = true;
-    this.setState({ triageKeep: keep }, () => { this.saveTriage(); this.pushCloud(); });
+    this.setState({ triageKeep: keep }, () => { this.pushCloud(); });
   }
 
   triageTransferCurrent() {
     const list = this.triageQueue();
     if (!list.length) return;
     const q = [...(this.state.transferQueue || []), list[0].p.idx];
-    this.setState({ transferQueue: q }, () => { this.saveTriage(); this.pushCloud(); });
+    this.setState({ transferQueue: q }, () => { this.pushCloud(); });
   }
 
   // Queue any Pokemon, not just one triage surfaced.
@@ -18710,7 +18600,7 @@ class Component extends DCLogic {
     if ((this.state.transferQueue || []).indexOf(idx) > -1) return;
     this.haptic('medium');
     this.setState({ transferQueue: [...(this.state.transferQueue || []), idx] },
-      () => { this.saveTriage(); this.pushCloud(); });
+      () => { this.pushCloud(); });
   }
 
   // Ticking a row off the evolve queue reuses the existing completed list, so
@@ -18830,18 +18720,18 @@ class Component extends DCLogic {
     }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
     });
-    try { clearTimeout(this._evoFlashTimer); } catch (e) {}
+    clearTimeout(this._evoFlashTimer);
     this._evoFlashTimer = setTimeout(() => this.setState({ evoFlashName: '', evoFlashStats: '' }), 1400);
     return true;
   }
 
   unqueueTransfer(idx) {
     const q = (this.state.transferQueue || []).filter(i => i !== idx);
-    this.setState({ transferQueue: q }, () => { this.saveTriage(); this.pushCloud(); });
+    this.setState({ transferQueue: q }, () => { this.pushCloud(); });
   }
 
   clearTransferQueue() {
-    this.setState({ transferQueue: [] }, () => { this.saveTriage(); this.pushCloud(); });
+    this.setState({ transferQueue: [] }, () => { this.pushCloud(); });
   }
 
   // ---- Verdict ----
@@ -19145,7 +19035,7 @@ class Component extends DCLogic {
         if (l.cup && l.cup.level && l.cup.level.maxLevel) notes.push('Level cap ' + l.cup.level.maxLevel + ' applies \u2014 checked against your levels.');
         const picks = l.mega ? this.megaReadyData(4, l.cp) : [];
         const buildRows = wi === 0 ? this.cupBuildRows(league, cup, tableKey, l.cp, l.mega).map(r => ({
-          name: r.name.replace(/ \(Shadow\)$/, ' (Shadow)'), tier: r.tier, status: r.status, color: r.color, detail: r.detail,
+          name: r.name, tier: r.tier, status: r.status, color: r.color, detail: r.detail,
           spriteRef: r.dex != null ? this.makeSpriteRefByDex(r.dex, null) : null, initial: r.dex != null ? '' : String(r.name).charAt(0),
           onClick: () => { if (r.p) this.openDetail(r.p); }
         })) : [];
@@ -19173,7 +19063,6 @@ class Component extends DCLogic {
           megaCards, hasMegaCards: megaCards.length > 0,
           buildRows, hasBuild: buildRows.length > 0,
           squadLine: squad ? 'Your squad: ' + squad.members.map(c => c.p.name).join(' \u00b7 ') + (cup && squad.members.some(c => this.cupUnknown(cup, c.p).length) ? ' (check ' + [...new Set(squad.members.flatMap(c => this.cupUnknown(cup, c.p)))].join(' and ') + ' for: ' + squad.members.filter(c => this.cupUnknown(cup, c.p).length).map(c => c.p.name).join(', ') + ')' : '') : (wi === 0 && canSquad ? 'Not enough measured, in-cap, legal A-tier Pokemon yet' : ''),
-          megaLine: picks.length ? 'Mega-ready from your roster: ' + picks.join('; ') : '',
           note: notes.join(' ')
         };
       })
@@ -20286,13 +20175,8 @@ class Component extends DCLogic {
     const league = this.state.league;
 
     const ivColor = iv => iv == null ? 'var(--ink-300)' : iv >= 90 ? 'var(--grass-700)' : iv >= 70 ? 'var(--type-electric)' : 'var(--ink-500)';
-    const TOKEN_BY_ACCENT = { '#ffb454':'--type-electric', '#54c8ff':'--type-water', '#c589ff':'--type-poison', '#7cf29a':'--grass-600', '#ff7a9c':'--type-fairy' };
-    const accentToken = TOKEN_BY_ACCENT[this.props.accentColor] || '--type-electric';
-    const accent = () => `var(${accentToken})`;
+    const accent = () => 'var(--type-electric)';
     const leagueColor = label => label === 'GREAT' ? 'var(--grass-700)' : label === 'ULTRA' ? accent() : label === 'LITTLE' ? 'var(--type-fighting)' : 'var(--ink-300)';
-    const personality = this.props.personality || 'clinical';
-    const density = this.props.density || 'comfortable';
-    const isCompact = density === 'compact';
 
     const rosterFilter = this.state.rosterFilter || 'all';
     let filtered = roster.filter(p => {
@@ -20462,15 +20346,6 @@ class Component extends DCLogic {
       pvpReady: Math.round(shown('pvpReady'))
     };
 
-    const callouts = [];
-    if (pvpReady > 0) callouts.push(`${pvpReady} Pokemon are sitting at 90%+ rank in at least one league — check PVP RANKINGS.`);
-    if (statTargets.lucky > 0) callouts.push(`You're holding ${statTargets.lucky} Lucky Pokemon — cheap power-ups, guaranteed 12+ IV floor.`);
-    if (this.state.syncedFrom) callouts.push(`Roster synced from ${this.state.syncedFrom}. Drop a new CSV anytime with the import button.`);
-    const rawCallout = callouts[0] || (this.state.cloudUser ? 'Standing by. Sync a roster export to get started.' : 'Standing by. Sign in to load your roster from the cloud.');
-    const calloutLine = personality === 'hype' ? rawCallout.replace(/\.$/, '!').toUpperCase()
-      : personality === 'deadpan' ? rawCallout.replace(/[!.]+$/, '.').replace(/^You're/, 'You are')
-      : rawCallout;
-
     // The Season tab ranks the live cup with the league its CP cap maps to; every other tab is its own league.
     const seasonDef = league === 'season' ? this.seasonLeague() : null;
     const leagueKey = league === 'season' ? (seasonDef ? seasonDef.league : 'great') : league;
@@ -20489,7 +20364,6 @@ class Component extends DCLogic {
     // scripts/import_pvp_tier_data.py. Only Great/Ultra have real tier data
     // (that's what PvPoke publishes) — Little Cup/Master fall back to the
     // old rankPct-only sort, same as before this change.
-    const tierOrder = { S: 0, A: 1, B: 2, C: 3 };
     const tierFor = (p) => (this.mechanics && this.mechanics.pvpTierFor)
       ? this.mechanics.pvpTierFor(this.pvpFormName(p, leagueKey), this.isShadow(p), tableKey || leagueKey, p.form)
       : null;
@@ -20751,12 +20625,8 @@ class Component extends DCLogic {
     const doneCount = completedSet.size;
 
     const plan = this.buildOptimizePlan(roster);
-    const hour = new Date().getHours();
     // The title names the day, not a greeting.
-    const baseGreeting = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-    const greeting = personality === 'hype' ? baseGreeting + '. Let\'s cook.'
-      : personality === 'deadpan' ? baseGreeting + '. Data follows.'
-      : baseGreeting;
+    const greeting = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
     const greatProjects = roster.filter(p => p.great && Number.isFinite(p.great.rankPct) && p.great.rankPct >= 80 && notDone(p)).length;
     const mapMini = (arr, kind) => arr.map(p => ({
       idx: p.idx,
@@ -20899,7 +20769,6 @@ class Component extends DCLogic {
         : (this.state.ocrParsed.dex != null
             ? `Identified as ${this.state.ocrParsed.name || 'this Pokemon'} (#${this.state.ocrParsed.dex}) \u2014 not in your roster yet. Use ADD AS NEW POKEMON.`
             : 'No roster match by CP \u2014 fine for a brand-new Pokemon, candy/type still save under the name below.'),
-      readerLine: '',
       rawText: this.state.ocrParsed.rawText || ''
     } : null;
     const solvedIvResult = this.state.solvedIvResult ? (this.state.solvedIvResult.error ? { error: this.state.solvedIvResult.error } : {
@@ -21052,10 +20921,6 @@ class Component extends DCLogic {
       detail = {
         verdict: { verdict: vd.verdict, reason: vd.reason, number: vd.number, color: vdc[0], bg: vdc[1], border: vdc[2] },
         verdictWhy: this.verdictWhyFor(p),
-        // Stale scans matter because powering a Pokemon up changes its CP, and
-        // nothing in the app can know that happened until it is re-scanned.
-        scanLine: age == null ? '' : (age === 0 ? 'SCANNED TODAY' : age === 1 ? 'SCANNED YESTERDAY' : 'SCANNED ' + age + ' DAYS AGO'),
-        scanColor: age != null && age > 30 ? 'var(--type-electric)' : 'var(--ink-400)',
         // One quiet line instead of two pills; a scan older than a month keeps its warning colour.
         metaLine: (() => {
           const bits = [];
@@ -21065,7 +20930,6 @@ class Component extends DCLogic {
         })(),
         metaColor: age != null && age > 30 ? 'var(--type-electric)' : 'var(--ink-400)',
         sizeChip: (() => { const t = this.sizeTagOf(p); if (!t) return null; const big = t === 'XXL' || t === 'XL'; const ex = t === 'XXL' || t === 'XXS'; return { label: t + (this.sizeProtected(p) ? ' \u00b7 kept' : ''), bg: ex ? 'var(--type-electric)' : 'var(--surface-muted)', fg: ex ? '#1c1c1e' : 'var(--ink-600)' }; })(),
-        scanBg: age != null && age > 30 ? 'var(--brand-primary-strong)' : 'var(--surface-muted)',
         initial: (p.name || '?').charAt(0),
         badgeColor: this.dsTypeColor(p),
         auraColor: this.typeLook(p).glow,
@@ -21672,15 +21536,11 @@ class Component extends DCLogic {
       rootPadTop: isMobile ? 'calc(env(safe-area-inset-top) + 10px)' : '28px',
       statGridCols: isMobile ? 'repeat(auto-fit,minmax(104px,1fr))' : 'repeat(5,minmax(0,1fr))',
       rosterGridCols: isMobile ? '1fr' : 'repeat(auto-fill,minmax(380px,1fr))',
-      cardPadding: isCompact ? '12px' : '16px',
-      cardGap: isCompact ? '9px' : '10px',
-      headerWrap: isMobile ? 'wrap' : 'nowrap',
-      headerActionsBasis: isMobile ? '100%' : 'auto',
-      syncLabelWidth: isMobile ? '100%' : 'auto',
+      cardPadding: '16px',
+      cardGap: '10px',
       syncLabel: this.state.loaded ? `${roster.length} Pokemon loaded` : 'Loading roster…',
       rosterLoading: !this.state.loaded,
       skeletonCards: Array.from({ length: 8 }, (_, i) => ({ nameWidth: [70, 58, 82, 64][i % 4] + '%' })),
-      calloutLine,
       stats,
       tab,
       isHome: tab === 'home',
@@ -22016,9 +21876,7 @@ class Component extends DCLogic {
       ocrBusy: this.state.ocrBusy,
       aiOutOfCredit: !!this.state.aiOutOfCredit && !this.state.geminiKey,
       ocrError: this.state.ocrError,
-      ocrPreview: this.state.ocrPreview,
       ocrParsedDisplay,
-      hasOcrPreview: !!this.state.ocrPreview,
       hasOcrParsed: !!ocrParsedDisplay,
       ocrAutoApply: !!this.state.ocrAutoApply,
       toggleOcrAutoApply: () => this.setState({ ocrAutoApply: !this.state.ocrAutoApply }),
@@ -22370,10 +22228,10 @@ class Component extends DCLogic {
       // Counts as tappable chips, so the top of the page reads as a scoreboard
       // rather than a paragraph.
       todayChips: [
-        { label: 'To evolve', count: evoQueueAll.length, token: '--grass-600', key: 'evolve' },
-        { label: 'To review', count: triageAll.length, token: '--type-fire', key: 'review' },
-        { label: 'Queued for transfer', count: (this.state.transferQueue || []).length, token: '--type-fighting', key: 'queued' },
-        { label: 'New dex entries', count: dexGapsAll.length, token: '--type-poison', key: 'dex' }
+        { label: 'To evolve', count: evoQueueAll.length, key: 'evolve' },
+        { label: 'To review', count: triageAll.length, key: 'review' },
+        { label: 'Queued for transfer', count: (this.state.transferQueue || []).length, key: 'queued' },
+        { label: 'New dex entries', count: dexGapsAll.length, key: 'dex' }
       ]
         // The dex section only renders when it has entries, and the review card
         // only when there is something to review, so a zero chip would point at
@@ -22810,14 +22668,8 @@ class Component extends DCLogic {
       openFileFallback: () => this.openFileFallback(),
       pendingConfirm: this.state.pendingConfirm ? { ...this.state.pendingConfirm, actions: (this.state.pendingConfirm.actions || []).map(a => ({ ...a, bg: a.style === 'danger' ? 'var(--bad-fill)' : (a.style === 'primary' ? 'var(--accent-fill)' : 'var(--surface-3)'), fg: (a.style === 'danger' || a.style === 'primary') ? '#fff' : 'var(--text)' })) } : null,
       closeConfirm: () => this.closeConfirm(),
-      needsFirebaseConfig: !this.state.firebaseConfigured,
-      firebaseConfigDraft: this.state.firebaseConfigDraft,
-      onFirebaseConfigChange: (e) => this.onFirebaseConfigChange(e),
-      saveFirebaseConfig: () => this.saveFirebaseConfig(),
-      firebaseConfigError: this.state.firebaseConfigError,
       firebaseNotice: !this.state.firebaseConfigError ? '' : /^Failed to load /.test(this.state.firebaseConfigError)
         ? 'Sign-in is unavailable: the sign-in service did not load. Check your connection and reload.' : 'Sign-in is unavailable: ' + this.state.firebaseConfigError,
-      hasFirebaseNoUser: this.state.firebaseConfigured && !this.state.cloudUser,
       showSignIn: !this.state.cloudUser,   // the unconfigured (fork) case and the signed-out case show the same card
       authEmail: this.state.authEmail,
       authPassword: this.state.authPassword,
