@@ -1,9 +1,9 @@
 # Professor PWA - QA report
 
-Generated 2026-11-16 against build v53.x. Two independent test layers:
+Generated 2026-11-18 against build v53.x. Two independent test layers:
 
-- **Accuracy audit** - 19 checks comparing the app's data and math to Niantic's game master and to PvPoke: **10,770 of 10,770 comparisons match (100.00%)**.
-- **Feature tests** - 381 end-to-end cases in a real Chromium at iPhone size: **381 pass, 0 fail, 0 skipped**.
+- **Accuracy audit** - 19 checks comparing the app's data and math to Niantic's game master and to PvPoke: **10,768 of 10,770 comparisons match (99.98%)**.
+- **Feature tests** - 488 end-to-end cases in a real Chromium at iPhone size: **488 pass, 0 fail, 0 skipped**.
 
 ## 0. Feature-area audit (2026-11-16)
 
@@ -62,7 +62,7 @@ Rating = how far this area can be trusted, 1-10. It blends the measured result w
 
 | Area | Rating | Tests | Pass | Notes |
 |---|---|---|---|---|
-| Boot | **9/10** `█████████░` | 11 | 11/11 | Loads clean at 320-1280 px with no page errors; every tab renders on an empty roster; first content in ~6.0 s on a 4x-CPU, 1.6 Mbps simulation. |
+| Boot | **9/10** `█████████░` | 12 | 12/12 | Loads clean at 320-1280 px with no page errors; every tab renders on an empty roster; first content in ~6.0 s on a 4x-CPU, 1.6 Mbps simulation. |
 | Import | **9/10** `█████████░` | 28 | 28/28 | Rows are range-checked with a notes card, a replace preview shows before/after counts, Replace can be undone, files read by column name (quoted names too), drag and drop works, and 200 corrupted files never crash it. |
 | Roster | **8/10** `████████░░` | 34 | 34/34 | Search, 9 sorts (incl. Mega ready), filters, saved views, select mode with bulk transfer/remove/favourite, undo, infinite scroll to 150 rows, correct counts. |
 | Gestures | **8/10** `████████░░` | 7 | 7/7 | Swipe, long-press and tap-elsewhere-to-close behave like an iOS list; Transfer/Remove show Undo; a one-time hint shows the swipe. |
@@ -73,10 +73,10 @@ Rating = how far this area can be trusted, 1-10. It blends the measured result w
 | Raid | **7/10** `███████░░░` | 8 | 8/8 | Type effectiveness and weather behave correctly; this week's boss from the feed opens the Raid tab with its types (Mega X/Y, forms and shadows handled). |
 | Recs | **9/10** `█████████░` | 9 | 9/9 | Every card states the rule behind it with the Pokemon's own numbers (tested to reproduce); MARK DONE and Transferred offer Undo; transfer lists never include Lucky, Shadow or Favourite. |
 | Intel | **9/10** `█████████░` | 8 | 8/8 | Living Dex, Kanto dex, hundo and flag counters all equal the data. |
-| Today | **8/10** `████████░░` | 44 | 44/44 | Live feed verified; cups cross-checked against the official page (later-season cups noted, not flagged); boss one-tap, calendar export, per-species verdicts, offline cache. |
+| Today | **8/10** `████████░░` | 50 | 50/50 | Live feed verified; cups cross-checked against the official page (later-season cups noted, not flagged); boss one-tap, calendar export, per-species verdicts, offline cache. |
 | Home | **8/10** `████████░░` | 18 | 18/18 | Device backup/restore without an account (no API keys inside, confirm step, bad files refused); trainer level, dust reserve and stardust validated; two-tap clear. |
 | Log | **9/10** `█████████░` | 7 | 7/7 | Daily automatic snapshot (once a day), four growth charts checked on 30 synthetic days, export/import round-trips exactly and rejects junk. |
-| Security | **9/10** `█████████░` | 6 | 6/6 | No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload or the device backup, no XSS from names. |
+| Security | **9/10** `█████████░` | 12 | 12/12 | No secrets in the shipped HTML (the Firebase web key is public by design), none in the sync payload or the device backup, no XSS from names. |
 | PWA | **8/10** `████████░░` | 14 | 14/14 | Manifest (Professor, black theme, any + maskable icons with verified sizes), 180 px opaque touch icon, 10 iPhone splash images, install steps on iPhone Safari, service worker and offline reload verified over HTTP. |
 | Accessibility | **9/10** `█████████░` | 34 | 34/34 | axe-core clean on every screen, the More menu, select mode and the detail sheet; Lighthouse accessibility 100; keyboard-only paths pass; real buttons and named controls. |
 | Performance | **6/10** `██████░░░░` | 6 | 6/6 | A state change takes ~14 ms at 500 Pokemon (was 45); minified app code and dropped fonts cut the download from 2.1 MB to ~0.6 MB gzip; ready time fell 6.5 s -> 6.0 s in a throttled A/B. |
@@ -107,8 +107,8 @@ Data accuracy areas:
 | A13 IV solver: true IVs always among candidates (3,000 random Pokémon) | 3,000/3,000 | **100.0%** `██████████` |
 | A13b IV solver uniqueness (share of CP/HP pairs resolving to one candidate) | 11/3,000 | **0.4%** `░░░░░░░░░░` |
 | A14 Mega Evolution energy: first-time and repeat cost vs game master level rules | 59/59 | **100.0%** `██████████` |
-| A15 Great League top-40 scores vs live PvPoke today (freshness) | 30/30 | **100.0%** `██████████` |
-| A16 Great League recommended movesets vs live PvPoke | 30/30 | **100.0%** `██████████` |
+| A15 Great League top-40 scores vs live PvPoke today (freshness) | 29/30 | **96.7%** `██████████` |
+| A16 Great League recommended movesets vs live PvPoke | 29/30 | **96.7%** `██████████` |
 | A17 Math invariants (7) | 7/7 | **100.0%** `██████████` |
 
 Notes on the audit:
@@ -150,11 +150,12 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | BOOT-01 | App loads and renders content without a page error | PASS |  |
-| BOOT-02 | Version string vNN.NN is shown in the header | PASS |  |
+| BOOT-01b | With a roster loaded, every screen renders more than 300 characters of visible text and no page error | PASS |  |
+| BOOT-02 | Version string vNN.NN is shown in Home > About | PASS |  |
 | BOOT-03 | Empty state: header says 0 Pokemon and invites a sync | PASS |  |
-| BOOT-04 | Five tab-bar items (Today, Home, Roster, PvP, Recs) plus a More menu holding the other six destinations | PASS |  |
+| BOOT-04 | Five tab-bar items (Today, Roster, PvP, Recs, More); the More menu holds Settings and the other destinations | PASS |  |
 | BOOT-05 | Every tab renders on an empty roster without throwing | PASS |  |
-| BOOT-06 | Initial load completes in under 4 seconds | PASS | 791 ms |
+| BOOT-06 | Initial load completes in under 4 seconds | PASS | 592 ms |
 | BOOT-07 | No horizontal overflow at 430 px width | PASS |  |
 | BOOT-W320 | No horizontal overflow and no error at 320px width | PASS |  |
 | BOOT-W390 | No horizontal overflow and no error at 390px width | PASS |  |
@@ -175,7 +176,7 @@ Notes on the audit:
 | IMP-08 | HTML in a Pokemon name is rendered as text (no script execution) | PASS |  |
 | IMP-09 | Names with accents and symbols (Flabébé, Nidoran♀, Farfetch'd) import | PASS |  |
 | IMP-10 | A file with missing trailing columns still imports the Pokemon | PASS |  |
-| IMP-11 | 800-row import renders in under 5 seconds | PASS | 2163 ms |
+| IMP-11 | 800-row import renders in under 5 seconds | PASS | 2164 ms |
 | IMP-13 | Importing over an existing roster asks first, showing the before/after counts | PASS |  |
 | IMP-14 | Replacing can be undone from the toast | PASS |  |
 | IMP-15 | Out-of-range values are cleared and listed; a row with no name is skipped | PASS |  |
@@ -372,6 +373,7 @@ Notes on the audit:
 | EVENTMOVE-03 | An event move is judged across the whole line: a Squirtle two stages early counts, and of two copies only the better Blastoise is worth the candy (the other is marked SKIP) | PASS |  |
 | EVENTMOVE-05 | When the event-move parser reports a page it could not read, Today says the data may be incomplete; a healthy file shows no warning | PASS |  |
 | EVENTMOVE-04 | Copies heading to the same event form share one candy pool: the best copy is funded first and the rest are flagged short, with rank and keep reason shown | PASS |  |
+| CUPBUILD-01 | What to build for a cup: each top species is matched to your copies with the next step (ready, power up, evolve, appraise, weak, or not owned with the IVs to hunt) | PASS |  |
 | BRIEF-01 | Morning briefing is one cached AI call, shows as suggestions, and search grounding is sent only when switched on | PASS |  |
 | TOD-01 | GBL card appears when the feed has a current week | PASS |  |
 | TOD-02 | Current week is labelled THIS WEEK and the next NEXT WEEK | PASS |  |
@@ -402,6 +404,11 @@ Notes on the audit:
 | TOD-44 | Turning reminders on asks for permission, and each reminder fires only once | PASS |  |
 | TOD-45 | The events card says reminders only appear while the app is open | PASS |  |
 | TOD-23 | No page errors after the whole Today session | PASS |  |
+| PROMO-01 | Today lists live promo codes with rewards, expiry and source; expired and past-date codes are hidden; Unconfirmed codes say so | PASS |  |
+| PROMO-02 | Copy puts exactly the code on the clipboard and Redeem opens the web store with that code | PASS |  |
+| PROMO-03 | Marking a code redeemed dims it, sorts it last, survives a reload, and Undo brings it back | PASS |  |
+| PROMO-04 | A code that appears after the first read is NEW and raises one notification; the codes already there do not | PASS |  |
+| PROMO-05 | With no promo file there is no card and no error | PASS |  |
 | TOD-30 | Feed unreachable: no GBL card, no error, rest of Today still works | PASS |  |
 | TOD-31 | Malformed feed JSON is ignored safely | PASS |  |
 | TOD-32 | A feed whose weeks have all ended shows no league card (never stale as current) | PASS |  |
@@ -447,12 +454,18 @@ Notes on the audit:
 
 | ID | Case | Result | Note |
 |---|---|---|---|
+| GEM-KEY-01 | The Gemini key travels in the x-goog-api-key header on the model list, the token count and the generate call, never in a URL | PASS |  |
 | SEC-01 | API keys are kept in on-device storage | PASS |  |
 | SEC-02 | Secrets are never part of the cloud-sync payload | PASS |  |
 | SEC-03 | Secrets are not rendered into the page text | PASS |  |
 | SEC-04 | No inline secrets in the shipped HTML (key-like strings) | PASS | only the Firebase web config key (public by design) is present; restrict it by referrer in the Google console |
 | SEC-05 | Firebase web config is public by design (no private keys) | PASS |  |
 | SEC-06 | Page sets no mixed-content http:// subresources | PASS |  |
+| URL-01 | ICS export: only https links, and no line break in any field can add a calendar property | PASS |  |
+| URL-02 | Promo codes open only for a 4-32 letter/digit code and a store.pokemongo.com link | PASS |  |
+| XSS-01 | A roster whose names, nicknames, moves and chat text are <img onerror> markup never runs script, in the roster, the detail sheet or the chat sheet | PASS |  |
+| SYNC-14 | A custom API endpoint stored by an older build is not loaded into the app and is scrubbed from this device's secrets | PASS |  |
+| SYNC-13 | The three Firebase SDK scripts are loaded with a SHA-384 integrity value and crossorigin=anonymous (the harness records what was asked, then drops it for the stand-in) | PASS |  |
 
 ### PWA
 
@@ -470,7 +483,7 @@ Notes on the audit:
 | PWA-09 | apple-touch-icon is 180x180 and opaque (iOS paints transparency black) | PASS |  |
 | PWA-10 | Every iPhone splash image exists at the size its media query promises | PASS |  |
 | PWA-11 | Head tags: one theme-color, one apple-touch-icon, title Professor | PASS |  |
-| PWA-12 | Offline bundle carries no unused-script fonts (Devanagari) and stays under 1.7 MB raw | PASS | 1.65 MB |
+| PWA-12 | Offline bundle carries no unused-script fonts (Devanagari) and stays under 1.7 MB raw | PASS | 1.67 MB |
 | PWA-13 | Install steps show on iPhone Safari, not in the installed app, and not after Not now | PASS |  |
 
 ### Accessibility
@@ -478,20 +491,20 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | A11Y-01 | Bottom-nav tap targets are at least 44x44 px | PASS |  |
-| A11Y-02 | Interactive elements expose a role or accessible name (VoiceOver) | PASS | 92/97 |
-| A11Y-03 | Interactive elements are reachable by keyboard (tabindex or native) | PASS | 97/97 |
-| A11Y-04 | Body text is at least 11 px (count of smaller text runs) | PASS | 0/321 |
-| A11Y-05 | Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs | PASS | 6/311 below 4.5:1 |
+| A11Y-02 | Interactive elements expose a role or accessible name (VoiceOver) | PASS | 102/126 |
+| A11Y-03 | Interactive elements are reachable by keyboard (tabindex or native) | PASS | 126/126 |
+| A11Y-04 | Body text is at least 11 px (count of smaller text runs) | PASS | 0/252 |
+| A11Y-05 | Text contrast meets WCAG AA (4.5:1) for at least 90% of text runs | PASS | 5/242 below 4.5:1 |
 | A11Y-06 | prefers-reduced-motion is honoured by animations | PASS |  |
 | A11Y-07 | html lang attribute is set | PASS |  |
 | A11Y-08 | Form inputs have labels or placeholders | PASS |  |
 | A11Y-09 | Images have alt text (decorative alt="" allowed) | PASS |  |
 | A11Y-10 | Page zoom is not disabled (user-scalable) | PASS |  |
-| AXE-TODAY | axe-core: no serious or critical violations on TODAY | PASS | 1 lower-impact issues: landmark-unique |
-| AXE-ROSTER | axe-core: no serious or critical violations on ROSTER | PASS | 1 lower-impact issues: landmark-unique |
-| AXE-PVP | axe-core: no serious or critical violations on PVP | PASS | 1 lower-impact issues: landmark-unique |
+| AXE-TODAY | axe-core: no serious or critical violations on TODAY | PASS | 0 lower-impact issues:  |
+| AXE-ROSTER | axe-core: no serious or critical violations on ROSTER | PASS | 0 lower-impact issues:  |
+| AXE-PVP | axe-core: no serious or critical violations on PVP | PASS | 0 lower-impact issues:  |
 | AXE-RAID | axe-core: no serious or critical violations on RAID | PASS | 0 lower-impact issues:  |
-| AXE-HOME | axe-core: no serious or critical violations on HOME | PASS | 1 lower-impact issues: region |
+| AXE-HOME | axe-core: no serious or critical violations on HOME | PASS | 0 lower-impact issues:  |
 | AXE-RECS | axe-core: no serious or critical violations on RECS | PASS | 0 lower-impact issues:  |
 | AXE-INTEL | axe-core: no serious or critical violations on INTEL | PASS | 0 lower-impact issues:  |
 | AXE-ATTACK | axe-core: no serious or critical violations on ATTACK | PASS | 0 lower-impact issues:  |
@@ -517,10 +530,10 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | PERF-04 | The merged roster and keep context are reused across tab switches and rebuilt as soon as anything they read changes | PASS |  |
-| PERF-01 | Average tab switch (click to new content) is under 400 ms with 64 Pokemon | PASS | 355 ms avg |
+| PERF-01 | Average tab switch (click to new content) is under 400 ms with 64 Pokemon | PASS | 218 ms avg |
 | PERF-02 | No long tasks over 200 ms during a full tab tour | PASS | 0 long tasks |
-| PERF-03 | JS heap does not grow by more than 50% over 40 tab switches (leak check) | PASS | 47.4 -> 47.4 MB |
-| PERF-04 | Page weight: index.html under 3 MB gzipped | PASS | 0.71 MB gz |
+| PERF-03 | JS heap does not grow by more than 50% over 40 tab switches (leak check) | PASS | 60.3 -> 60.3 MB |
+| PERF-04 | Page weight: index.html under 3 MB gzipped | PASS | 0.72 MB gz |
 | PERF-05 | Mechanics data (pokemon-mechanics.js) under 1.5 MB raw | PASS | 1.41 MB |
 
 ### Keep
@@ -637,6 +650,7 @@ Notes on the audit:
 | ID | Case | Result | Note |
 |---|---|---|---|
 | PWR-01 | A power-up raises level, CP and HP (not just the candy count), and the next quote starts from the new level | PASS |  |
+| DUST-01 | The dust allocator pays PvP builds first, to the highest level under the league cap, never promises candy twice, and gives the raid lane only what is left | PASS |  |
 
 ### Motion
 
@@ -651,8 +665,10 @@ Notes on the audit:
 | CLOUD-LZ-01 | Packed cloud data round-trips through the compressor, shrinks, and old plain JSON still reads | PASS |  |
 | SYNC-01 | Signed in: an import is written to the cloud document once, under the 1 MiB limit, and shows as saved or loaded, never an error | PASS |  |
 | SYNC-02 | A second device signing in to the same account gets the same Pokemon | PASS |  |
-| SYNC-03 | API keys and the GitHub token never reach the cloud document | PASS |  |
+| SYNC-03 | API keys and the GitHub token never reach the cloud document, its snapshots or the device copy, also in private mode | PASS |  |
 | SYNC-04 | A rejected write shows an error, keeps the data, and saves once the cloud accepts again | PASS |  |
+| SYNC-11 | Credentials an older build uploaded are deleted from the cloud on the next save, never adopted on this device, and cannot be written back | PASS |  |
+| STANDIN-01 | The stand-in enforces the rules: unlisted keys, written credentials, other users, shared collections, bad snapshot ids and unverified identities are refused | PASS |  |
 
 ### Tags
 
@@ -700,6 +716,122 @@ Notes on the audit:
 |---|---|---|---|
 | THEME-01 | The header sun button cycles Auto, Light, Dark; the phone setting drives Auto and the choice is remembered | PASS |  |
 | CASE-01 | Labels written in capitals are shown in sentence case, acronyms kept | PASS |  |
+
+### Quota
+
+| ID | Case | Result | Note |
+|---|---|---|---|
+| SYNC-05 | A signed-in launch with a roster costs exactly 1 read of scoutUsers/{uid}, no gameData, sprites or snapshot reads and no writes while the last snapshot is under 6 hours old (the clock survives a reload and a new browser) | PASS |  |
+| SYNC-06 | A snapshot older than 6 hours writes exactly one snapshot, reads no snapshot body, and keeps the five newest by deleting the oldest by id from the index | PASS |  |
+| SYNC-07 | Restoring from a cloud snapshot still works and reads exactly one snapshot body | PASS |  |
+| SYNC-08 | The user-document listener is attached only while the page is visible: detached when hidden, re-attached (one read) when visible again, and a launch in a hidden tab attaches nothing | PASS |  |
+| SYNC-09 | A resource-exhausted write shows a clear status on every page, keeps the data on screen (and a device copy), and saves once the quota is back | PASS |  |
+| SYNC-10 | An account from before the snapshot index builds it once (one listing), then launches read no snapshots | PASS |  |
+| SYNC-12 | One edit is exactly one write and at most one read: the debounced path, and a direct push from a setState callback while the debounce is pending (no second write 1.2 s later) | PASS |  |
+
+### Data
+
+| ID | Case | Result | Note |
+|---|---|---|---|
+| DATA-02 | Export my data downloads the whole roster as one file and contains no key, token or endpoint | PASS |  |
+| DATA-01b | Delete my account asks twice, and an old sign-in is sent to sign in again before anything is deleted | PASS |  |
+| DATA-01 | Delete my account and cloud data removes the snapshots, then the user document, then the sign-in, then the copies on this device | PASS |  |
+| DATA-01c | When the sign-in itself refuses to be deleted the data is already gone, the device signs out, and signing in again then deleting finishes the job | PASS |  |
+| DATA-04 | A snapshot still being written when the account is deleted does not survive it: nothing is left under the user, no user document is re-created, and the delete waits for it | PASS |  |
+| DATA-06 | The one-time snapshot-index write at launch is not overtaken by a delete: nothing is left, nothing is refused, no user document is re-created | PASS |  |
+| DATA-05 | A delete that fails half-way says some backups may already be gone (not "nothing was removed"), keeps the roster, and the stored list no longer names the deleted backups | PASS |  |
+| DATA-03 | User A signs out, user B signs in on the same device: B never sees A's roster, on screen or in storage, also when B signs in without A signing out | PASS |  |
+
+### Sign-in
+
+| ID | Case | Result | Note |
+|---|---|---|---|
+| AUTH-01 | Continue with Google signs in by popup (no redirect, no scopes) and loads that account's roster | PASS |  |
+| AUTH-02 | A GitHub account with no email shows its name, or its provider id, never "null" or "undefined" | PASS |  |
+| AUTH-03 | Email and password still works from the collapsed "Use email instead" disclosure, and a wrong password gives a plain message | PASS |  |
+| AUTH-04 | Account exists with another sign-in: sign in the old way, then GitHub links to the SAME uid and the roster stays | PASS |  |
+| AUTH-05 | A link that fails (credential already in use) offers the backup path, says nothing was changed, and loses nothing | PASS |  |
+| AUTH-05b | A different account signing in after "email already has an account" is NOT linked to the held credential | PASS |  |
+| AUTH-06 | Popup blocked: a plain message with the way out, email opens, and the app stays usable signed out | PASS |  |
+| AUTH-07 | Closing the popup shows no error; a network failure gives a retry message; neither shows a raw code | PASS |  |
+| AUTH-08 | Signed in with Google, "Link GitHub" adds the second provider to the same uid and roster; the row goes away | PASS |  |
+| AUTH-09 | Sign out, then sign in as another account: nothing from the first account is on screen, in storage or in the second document | PASS |  |
+| AUTH-10 | Empty account + a roster built while signed out: the person is asked, nothing is written or replaced before the answer, and Upload puts that roster in the account | PASS |  |
+| AUTH-10b | "Start with an empty account" shows the empty account and uploads nothing; the plain device copy is removed | PASS |  |
+| AUTH-10c | The question survives a reload while it is open, and an account that already has data is used without a question | PASS |  |
+
+### First run
+
+| ID | Case | Result | Note |
+|---|---|---|---|
+| FIRSTRUN-01 | Fresh storage shows step 1 with Skip, the sign-in choices and "without an account"; a signed-out user sees it | PASS |  |
+| FIRSTRUN-02 | Skip on step 1 closes it and it does not come back after a reload | PASS |  |
+| FIRSTRUN-03 | Each step's control changes the real setting: theme, text size, key (device secrets only), reminders only after a tap | PASS |  |
+| FIRSTRUN-04 | The key field is disabled until "I am 18 or older" is ticked, and the step names the terms in plain words | PASS |  |
+| FIRSTRUN-05 | Back works, Skip is on every step, progress is kept, and the Welcome tour row in Settings reopens it where it stopped | PASS |  |
+| FIRSTRUN-06 | The system back gesture leaves it and it never opens over an import in progress | PASS |  |
+| FIRSTRUN-07 | Signed-out completion: a CSV picked on step 2 imports and closes the page; step 6 is Done | PASS |  |
+| FIRSTRUN-08 | Sign-in from step 1 works, shows who is signed in and offers Continue | PASS |  |
+| FIRSTRUN-09-dark | All six steps and the email form: no overflow, type scale and radii conformance, contrast, no unnamed controls (dark, widths 320/390/402/768) | PASS |  |
+| FIRSTRUN-09-light | All six steps and the email form: no overflow, type scale and radii conformance, contrast, no unnamed controls (light, widths 320/390/402/768) | PASS |  |
+
+### Polish
+
+| ID | Case | Result | Note |
+|---|---|---|---|
+| UIQ-01 | Type scale: every visible text is 12/13/15/17/22/28/32 px at weight 400-700 | PASS |  |
+| UIQ-02 | Radii: every corner is 6/10/14/20 px, a pill or 50% | PASS |  |
+| UIQ-03 | Spacing: card padding and gap are multiples of 4; filled panels nest at most 2 deep | PASS |  |
+| UIQ-04-dark | Contrast dark: text clears 4.5:1 (3:1 large) on its composited background, toast included | PASS |  |
+| UIQ-04-light | Contrast light: text clears 4.5:1 (3:1 large) on its composited background, toast included | PASS |  |
+| UIQ-05 | One icon family: no emoji in chrome, one stroke width in nav and button icons | PASS |  |
+| UIQ-06 | Names are never truncated or broken mid-word (first 20 roster rows, all PvP rows) | PASS |  |
+| UIQ-08 | An open toast does not cover the header title, header buttons or the tab bar | PASS |  |
+| UIQ-09 | Copy: no all-caps runs, no version in the header, no banned labels, short captions under titles | PASS |  |
+| UIQ-10 | Motion tokens: durations are 100/160/240/360/520 ms (infinite only on [data-ambient]); reduced motion stops the detail sheet | PASS |  |
+| UIQ-12 | No visible button or chip is taller than 48 px (guards the 44 px blanket regression) | PASS |  |
+| UIQ-07-320 | Width 320: no sideways overflow on any screen, nothing past the right edge outside [data-scroller] | PASS |  |
+| UIQ-07-390 | Width 390: no sideways overflow on any screen, nothing past the right edge outside [data-scroller] | PASS |  |
+| UIQ-07-402 | Width 402: no sideways overflow on any screen, nothing past the right edge outside [data-scroller] | PASS |  |
+| UIQ-07-768 | Width 768: no sideways overflow on any screen, nothing past the right edge outside [data-scroller] | PASS |  |
+| UIQ-11-dark | Empty roster (dark): Today, Roster, PvP and Recs each show exactly one primary button and no table header | PASS |  |
+| UIQ-11-light | Empty roster (light): Today, Roster, PvP and Recs each show exactly one primary button and no table header | PASS |  |
+| UIQ-13-390x844 | More menu at 390x844: scrolls by wheel and touch, every row can be brought fully inside it, bubble out of the way | PASS |  |
+| UIQ-13-375x667 | More menu at 375x667: scrolls by wheel and touch, every row can be brought fully inside it, bubble out of the way | PASS |  |
+| UIQ-13-320x568 | More menu at 320x568: scrolls by wheel and touch, every row can be brought fully inside it, bubble out of the way | PASS |  |
+| UIQ-14-390 | Width 390: the chat bubble does not cover the More menu, detail sheet, long-press sheet or select bar | PASS |  |
+| UIQ-14-320 | Width 320: the chat bubble does not cover the More menu, detail sheet, long-press sheet or select bar | PASS |  |
+| UIQ-14-768 | Width 768: the chat bubble does not cover the More menu, detail sheet, long-press sheet or select bar | PASS |  |
+| UIQ-15-320 | Roster rows at 320: nothing clipped in the first 20 rows (normal and select mode), no lone check mark, no dangling dash or middot | PASS |  |
+| UIQ-15-390 | Roster rows at 390: nothing clipped in the first 20 rows (normal and select mode), no lone check mark, no dangling dash or middot | PASS |  |
+| UIQ-16 | Today at 390x844: at most 4 viewports tall with the tail collapsed, DOM order is visual order (no CSS order), one stat strip, events and this week's GBL before the tail | PASS |  |
+| UIQ-16b | Today: opening the tail shows the evolve, review and queue sections | PASS |  |
+| UIQ-17-320 | Width 320: no text block is crushed into fewer than 12 characters per line (level picker, squad text, ...) | PASS |  |
+| UIQ-17-390 | Width 390: no text block is crushed into fewer than 12 characters per line (level picker, squad text, ...) | PASS |  |
+| UIQ-18 | Show all is plain, Mark done is tinted, at most 3 filled buttons per screen, card headings share one style | PASS |  |
+| UIQ-19 | Chat sheet at 320: content at least 16 px from both edges, padding a multiple of 4 | PASS |  |
+| UIQ-20 | 768 px: header title and buttons line up with the 560 px column, More menu and select bar are at most 560 px and centred, no card is wider than 560 px | PASS |  |
+| UIQ-21-320 | Width 320: Attackers and Progress log show their data in full (wrapped, not ellipsised); log header cells do not collide | PASS |  |
+| UIQ-21-390 | Width 390: Attackers and Progress log show their data in full (wrapped, not ellipsised); log header cells do not collide | PASS |  |
+| UIQ-22 | Source strays: no off-scale durations, inline font sizes of 18/20 px or off-grid header margins | PASS |  |
+| UIQ-23-dark | Settings (dark): no empty "Don't spend dust on" card, dust cards use a 14 px radius | PASS |  |
+| UIQ-23b-dark | Settings (dark): with a transfer candidate the "Don't spend dust on" card is shown with a row | PASS |  |
+| UIQ-24-dark | Detail sheet (dark): copy that names the candy button uses its label ("Set"), never SET in capitals | PASS |  |
+| UIQ-25-dark | Detail sheet (dark): CP, size and #id chips keep a fill that differs from the sheet | PASS |  |
+| UIQ-27-dark | Today (dark): "What to build for this cup" is at least 24 px tall, 13 px or more, weight 600+, untracked, with the invisible 44 px tap strip | PASS |  |
+| UIQ-23-light | Settings (light): no empty "Don't spend dust on" card, dust cards use a 14 px radius | PASS |  |
+| UIQ-23b-light | Settings (light): with a transfer candidate the "Don't spend dust on" card is shown with a row | PASS |  |
+| UIQ-24-light | Detail sheet (light): copy that names the candy button uses its label ("Set"), never SET in capitals | PASS |  |
+| UIQ-25-light | Detail sheet (light): CP, size and #id chips keep a fill that differs from the sheet | PASS |  |
+| UIQ-27-light | Today (light): "What to build for this cup" is at least 24 px tall, 13 px or more, weight 600+, untracked, with the invisible 44 px tap strip | PASS |  |
+| UIQ-28-ROSTER-390 | ROSTER at 390 (light): scrolled top to bottom, no text is ever under the chat bubble, and the bubble is still on screen | PASS |  |
+| UIQ-28-PVP-320 | PVP at 320 (dark): scrolled top to bottom, no text is ever under the chat bubble, and the bubble is still on screen | PASS |  |
+| UIQ-28-ROSTER-320 | ROSTER at 320 (dark): scrolled top to bottom, no text is ever under the chat bubble, and the bubble is still on screen | PASS |  |
+| UIQ-28-PVP-390 | PVP at 390 (light): scrolled top to bottom, no text is ever under the chat bubble, and the bubble is still on screen | PASS |  |
+| UIQ-29-320-dark | Chat close glyph at 320 (dark): ink centre within 1 px of the button centre | PASS |  |
+| UIQ-29-320-light | Chat close glyph at 320 (light): ink centre within 1 px of the button centre | PASS |  |
+| UIQ-29-390-dark | Chat close glyph at 390 (dark): ink centre within 1 px of the button centre | PASS |  |
+| UIQ-29-390-light | Chat close glyph at 390 (light): ink centre within 1 px of the button centre | PASS |  |
 
 ## 4. Per-area strengths, gaps and suggestions
 

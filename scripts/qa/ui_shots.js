@@ -16,11 +16,27 @@ const feed = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'feed.json'), 'u
 const promo = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'promo_codes.json'), 'utf8'));
 const SCREENS = ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG'];
 const want = n => !ONLY || ONLY.includes(n);
+const FR_ONLY = !!ONLY && ONLY.every(n => /^(FIRSTRUN[1-6]|SIGNIN)$/.test(n));   // only the first-run page and the sign-in card: skip the roster screens
 
 (async () => {
   for (const theme of THEMES) for (const width of WIDTHS) {
     const tag = theme + '_' + width + '_';
     const shot = async (s, name, full = true) => { if (!want(name)) return; await s.page.waitForTimeout(500); await s.page.screenshot({ path: path.join(out, tag + name + '.png'), fullPage: full }); };
+    // ---- first-run page (six steps) and the sign-in card, signed out against the stand-in
+    if (want('SIGNIN') || [1, 2, 3, 4, 5, 6].some(n => want('FIRSTRUN' + n))) {
+      const f = await session({ width, height: width >= 768 ? 1024 : 844, colorScheme: theme, sentenceCase: true, feed, touch: true, firstRun: true, cloud: { store: {}, writes: [], user: null } });
+      await f.page.waitForTimeout(2200);
+      for (let n = 1; n <= 6; n++) {
+        if (n === 1) await f.page.getByRole('button', { name: /^Use email$/i }).click().catch(() => {});
+        await shot(f, 'FIRSTRUN' + n, false);
+        await f.page.locator('[data-firstrun] button').filter({ hasText: /^(Continue|Continue without an account|Done)$/i }).last().click().catch(() => {});
+        await f.page.waitForTimeout(300);
+      }
+      await f.page.keyboard.press('Escape'); await f.page.waitForTimeout(300);
+      try { await f.go('HOME'); await f.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/Setup, sync and backup/.test(d.textContent.slice(0, 120))) d.open = true; })); await f.page.locator('[data-signin-card]').scrollIntoViewIfNeeded(); await shot(f, 'SIGNIN', false); } catch (e) { console.error('signin', e.message); }
+      await f.close();
+    }
+    if (FR_ONLY) { console.log('done', theme, width); continue; }
     // ---- with the fixture roster
     let s = await session({ width, height: width >= 768 ? 1024 : 844, colorScheme: theme, sentenceCase: true, feed, touch: true, collapsedTail: true });
     await s.load(QA); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(1500);

@@ -109,6 +109,58 @@ async function installCloud(page, C) {
     if (C.user) { (C.log = C.log || []).push(['deleteUser', C.user.uid]); delete C.authUsers[C.user.uid]; (C.deletedUsers = C.deletedUsers || []).push(C.user.uid); C.user = null; }
     return { ok: true };
   });
+  // ---- Sign-in providers (popup), several accounts, linking. Tests script what the next popup does through C.popups:
+  //   { account: { uid, email, displayName, emailVerified } }                          the popup succeeds as that account
+  //   { error: { code, email?, account? } }                                            a named error; with account the error carries a credential for that identity
+  // An empty queue means the person closed the popup. C.popupLog records every popup that was opened; C.linkFail is a one-shot error code for the next link.
+  // C.identityOwner maps 'provider:identity uid' to the Auth uid that owns it, which is how credential-already-in-use is told.
+  C.popups = C.popups || []; C.popupLog = C.popupLog || []; C.identityOwner = C.identityOwner || {};
+  const own = (prov, a) => { C.identityOwner[prov + ':' + a.uid] = C.identityOwner[prov + ':' + a.uid] || a.uid; };
+  const merge = (prov, a) => {   // the Auth user for an identity: the existing one when the uid is known, else a new one
+    const cur = C.authUsers[a.uid] || {};
+    const providers = Array.from(new Set([...(cur.providers || (cur.provider ? [cur.provider] : [])), prov]));
+    return { emailVerified: true, ...cur, ...a, provider: cur.provider || prov, providers };
+  };
+  await page.exposeFunction('__fsPopup', (kind, prov) => {
+    C.popupLog.push({ kind, prov });
+    const nx = C.popups.shift();
+    if (!nx) return { error: { code: 'auth/popup-closed-by-user', message: 'The popup has been closed by the user before finalizing the operation.' } };
+    return JSON.parse(JSON.stringify(nx));
+  });
+  await page.exposeFunction('__fsSignInIdentity', (prov, a) => {   // popup or credential sign-in as an identity
+    const owner = C.identityOwner[prov + ':' + a.uid];
+    const uid = owner || a.uid;
+    const u = merge(prov, { ...a, uid });
+    own(prov, { uid });
+    C.authUsers[uid] = u; C.user = u; return { user: u };
+  });
+  await page.exposeFunction('__fsEmail', (mode, email, pw) => {
+    const em = String(email || '').trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return { error: 'The email address is badly formatted.', code: 'auth/invalid-email' };
+    const found = Object.values(C.authUsers).find(x => String(x.email || '').toLowerCase() === em && x.password !== undefined);
+    if (mode === 'signup') {
+      if (found) return { error: 'The email address is already in use.', code: 'auth/email-already-in-use' };
+      if (String(pw || '').length < 6) return { error: 'Password should be at least 6 characters.', code: 'auth/weak-password' };
+      const u = { uid: 'pw-' + (Object.keys(C.authUsers).length + 1), email: em, password: pw, provider: 'password', providers: ['password'], emailVerified: false };
+      C.authUsers[u.uid] = u; C.user = u; return { user: u };
+    }
+    if (!found || found.password !== pw) return { error: 'The supplied auth credential is incorrect.', code: 'auth/invalid-credential' };
+    C.user = found; return { user: found };
+  });
+  await page.exposeFunction('__fsLink', (prov, a) => {
+    if (!C.user) return { error: 'No signed-in user.', code: 'auth/no-current-user' };
+    if (C.linkFail) { const code = C.linkFail; C.linkFail = null; return { error: 'link refused (' + code + ')', code }; }
+    const cur = C.authUsers[C.user.uid] || C.user;
+    if ((cur.providers || [cur.provider]).indexOf(prov) >= 0) return { error: 'User can only be linked to one identity for the given provider.', code: 'auth/provider-already-linked' };
+    const owner = C.identityOwner[prov + ':' + a.uid];
+    if (owner && owner !== cur.uid) return { error: 'This credential is already associated with a different user account.', code: 'auth/credential-already-in-use' };
+    const taken = Object.values(C.authUsers).find(x => x.uid !== cur.uid && a.email && String(x.email || '').toLowerCase() === String(a.email).toLowerCase() && x.password !== undefined);
+    if (taken) return { error: 'The email address is already in use by another account.', code: 'auth/email-already-in-use' };
+    const next = { ...cur, providers: [...(cur.providers || [cur.provider]), prov], email: cur.email || a.email || cur.email, displayName: cur.displayName || a.displayName };
+    own(prov, { uid: a.uid }); C.identityOwner[prov + ':' + a.uid] = cur.uid;
+    C.authUsers[cur.uid] = next; C.user = next; (C.log = C.log || []).push(['link', cur.uid, prov]);
+    return { user: next };
+  });
   await page.exposeFunction('__fsAuthTime', () => (C.authTime !== undefined ? C.authTime : Date.now()));
   await page.exposeFunction('__fsGet', (p, kind) => {
     const why = cloudDecide(C, 'read', p, {}); if (why) return deny('read', p, why);
@@ -170,15 +222,31 @@ async function installCloud(page, C) {
     const fs = () => ({ collection: c => ref(c) });
     fs.FieldValue = { delete: () => del, serverTimestamp: () => stampMark };
     const authCbs = [];
-    const mk = u => u && ({ uid: u.uid, email: u.email, providerData: [{ providerId: u.provider }],
+    const provs = u => u.providers || [u.provider];
+    const mk = u => u && ({ uid: u.uid, email: u.email || null, displayName: u.displayName || null, emailVerified: u.emailVerified === true,
+      providerData: provs(u).map(p => ({ providerId: p, uid: (p === 'password' ? u.email : (u.identity || u.uid) + '-' + p), email: u.email || null, displayName: u.displayName || null })),
       getIdTokenResult: async () => ({ authTime: new Date(await window.__fsAuthTime()).toISOString() }),
-      delete: async () => { const r = await window.__fsAuthDelete(); if (r.error) throw fail(r); auth.currentUser = null; authCbs.forEach(cb => cb(null)); } });
+      delete: async () => { const r = await window.__fsAuthDelete(); if (r.error) throw fail(r); auth.currentUser = null; authCbs.forEach(cb => cb(null)); },
+      // Linking never changes the uid and does not fire the auth-state callbacks (as in the real SDK); the current user object is refreshed.
+      linkWithPopup: async provider => { rec(provider); const r = await window.__fsPopup('link', provider.providerId); if (r.error) throw popupErr(r.error, provider); const l = await window.__fsLink(provider.providerId, r.account); if (l.error) throw fail(l); auth.currentUser = mk(l.user); return { user: auth.currentUser }; },
+      linkWithCredential: async cred => { const l = await window.__fsLink(cred.providerId, cred.__acct); if (l.error) throw fail(l); auth.currentUser = mk(l.user); return { user: auth.currentUser }; } });
+    const rec = p => { (window.__qaProviders = window.__qaProviders || []).push({ providerId: p.providerId, scopes: p.scopes.slice(), params: { ...p.params } }); };
+    const popupErr = (e, provider) => { const x = new Error(e.message || e.code); x.code = e.code; if (e.email) x.email = e.email; if (e.account) x.credential = { providerId: provider.providerId, __acct: e.account }; return x; };
+    const setUser = u => { auth.currentUser = mk(u); authCbs.forEach(cb => cb(auth.currentUser)); return { user: auth.currentUser }; };
+    class Provider { constructor(id) { this.providerId = id; this.scopes = []; this.params = {}; } addScope(s) { this.scopes.push(s); return this; } setCustomParameters(o) { this.params = { ...this.params, ...o }; return this; } }
     const auth = { currentUser: null,
       onAuthStateChanged(cb) { authCbs.push(cb); setTimeout(async () => { const u = await window.__fsAuthInit(); auth.currentUser = mk(u); cb(auth.currentUser); }, 30); },
       async signOut() { auth.currentUser = null; await window.__fsAuthSet(null); authCbs.forEach(cb => cb(null)); },
-      signInWithEmailAndPassword: async () => {}, createUserWithEmailAndPassword: async () => {} };
+      async signInWithPopup(provider) { rec(provider); const r = await window.__fsPopup('signin', provider.providerId); if (r.error) throw popupErr(r.error, provider); const s = await window.__fsSignInIdentity(provider.providerId, r.account); return setUser(s.user); },
+      async signInWithCredential(cred) { const s = await window.__fsSignInIdentity(cred.providerId, cred.__acct); return setUser(s.user); },
+      signInWithRedirect: () => { window.__qaRedirectCalls = (window.__qaRedirectCalls || 0) + 1; return Promise.reject(new Error('redirect sign-in must not be used')); },
+      async signInWithEmailAndPassword(email, pw) { const r = await window.__fsEmail('signin', email, pw); if (r.error) throw fail(r); return setUser(r.user); },
+      async createUserWithEmailAndPassword(email, pw) { const r = await window.__fsEmail('signup', email, pw); if (r.error) throw fail(r); return setUser(r.user); } };
+    auth.GoogleAuthProvider = class extends Provider { constructor() { super('google.com'); } };
+    auth.GithubAuthProvider = class extends Provider { constructor() { super('github.com'); } };
     window.__qaAuth = { async signIn(u) { await window.__fsAuthSet(u); auth.currentUser = mk(u); authCbs.forEach(cb => cb(auth.currentUser)); }, signOut: () => auth.signOut() };
-    window.firebase = { apps: [], initializeApp() { const a = {}; window.firebase.apps.push(a); return a; }, auth: () => auth, firestore: fs };
+    const authFn = () => auth; authFn.GoogleAuthProvider = auth.GoogleAuthProvider; authFn.GithubAuthProvider = auth.GithubAuthProvider;
+    window.firebase = { apps: [], initializeApp() { const a = {}; window.firebase.apps.push(a); return a; }, auth: authFn, firestore: fs };
   })();` }));
   await page.route(/gstatic\.com\/firebasejs\/.*firebase-(auth|firestore)-compat/, r => r.fulfill({ contentType: 'application/javascript', body: '' }));
   await page.route(/(googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
@@ -190,6 +258,7 @@ async function session(opts = {}) {
   const b = await launch();
   const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark' });
   await ctx.addInitScript(() => { window.__noImportGate = true; });
+  if (!opts.firstRun) await ctx.addInitScript(() => { window.__noFirstRun = true; });   // the first-run page covers the app; Task 3's FIRSTRUN tests turn it on with session({ firstRun: true })
   if (opts.init) await ctx.addInitScript(opts.init);
   if (!opts.collapsedTail) await ctx.addInitScript(() => { window.__todayTailOpen = true; });   // the long tail of Today is collapsed for users; most tests read it, the UI suite turns this off to see the default   // tests feed synthetic reads; IMPCHK-01 turns the import gate on
   if (!opts.sentenceCase) await ctx.addInitScript(() => { window.__keepCaps = true; });   // tests read the source wording; CASE-01 turns the display layer on
