@@ -42,7 +42,22 @@ Payload: small encrypted JSON (`{t,b,tag,url}`, under 500 B). Fallback if encryp
 - B. **Cloudflare KV (recommended)**: anonymous, no uid, no sign-in, no Firebase contact. Key `sub:<sha256(endpoint)>` -> `{endpoint, keys{p256dh,auth}, prefs{promo,events,mega}, tz, schedules[], createdAt, lastOk}`.
 - C. No storage: impossible; the sender must know endpoints.
 
-KV free limits (https://developers.cloudflare.com/kv/platform/limits/): 100k reads/day, 1k writes/day, 1 GB, 25 MiB per value; list/delete daily limits not stated on that page, check before build. Design: one `index` key holding all subs (rewritten only on subscribe/unsubscribe/prune), one `sent` key for dedupe ids (one write per tick that sends something). Cap subs (e.g. 300).
+KV free limits (https://developers.cloudflare.com/kv/platform/limits/): 100k reads/day, 1k writes/day, 1k deletes/day, 1k lists/day, 1 GB, 25 MiB per value, 1024 bytes of metadata per key. These figures, one list page of up to 1,000 keys, and that list and read are eventually consistent (up to about a minute) are assumptions taken from memory, not verified until deployed.
+
+**Layout (built).** The first design, one `index` key holding every subscriber that each request read, changed and wrote back, lost writes when two requests overlapped (and a stale read made it worse). Now: one key per subscriber, `sub:<id>` (id = first 16 bytes of SHA-256 of the endpoint, hex), value = the full record `{endpoint, keys, prefs, tz, schedules, createdAt, seenAt}`; the same put carries a compact copy of the record as KV metadata (prefs as bit masks, timers as `[fireAt, label index]`, under 900 bytes for the worst record the Worker accepts; endpoints are capped at 512 bytes, not characters). The cron lists `sub:` once and reads every subscriber from the metadata, so a run costs 1 list instead of up to 300 reads against its 50 calls. `state` (dedupe, firstSeen, lastOk, cursor) stays one key written only by the cron. Code: `worker/src/store.js`, `worker/src/index.js`.
+
+| Call | KV operations |
+|---|---|
+| `/subscribe`, existing subscriber | 1 read, plus 1 write only when something changed or the record is over a week old |
+| `/subscribe`, new subscriber | 1 read, 1 list (cap count, stops at 300 keys), 1 write |
+| `/unsubscribe` | 1 delete, no read (nothing for a host that is not an allowed push host) |
+| `/schedule` | 1 read, 1 write |
+| `/test` | 1 read, plus 1 delete if the push service says 404/410 |
+| cron run | 4 data fetches + 1 list + 1 state read + up to 40 pushes + 1 state write when it changed, plus a delete per 404/410, per subscriber over retention and 2 calls (re-read, write) per finished Mega timer, as the 50 calls allow: 47 calls in the 300-due worst case |
+
+Per day: the cron makes 96 lists, which leaves about 900 new sign-up attempts a day before the 1,000 list limit; reads and writes are far below their limits at 300 subscribers. Cron budget: a push is allowed only while the calls left cover the push, its own possible delete, every delete already owed and the state write; retention deletes and Mega timer pruning use what is left and finish in later runs. A failed or incomplete list stops the run before anything is sent or written.
+
+Accepted races (KV has no compare-and-set): (1) two sign-ups for new ids at 299 subscribers can both pass the cap check, so the cap can be exceeded by the requests in flight; (2) a read-modify-write on one subscriber's own key (`/schedule`, a changed `/subscribe`, the cron pruning a finished Mega timer) can lose a change made at the same instant to that same key; the cron re-reads just before its write and skips a subscriber that left, so only a sub-millisecond window remains. Requests for different subscribers never interfere. Nothing was deployed with the old layout, so there is no migration.
 
 Never in repo: VAPID private key. The public key is public and goes in the client.
 
