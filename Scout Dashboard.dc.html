@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://raw.githubusercontent.com https://*.githubusercontent.com; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: https://*.googleapis.com https://raw.githubusercontent.com https://api.github.com; frame-src https://pokemon-professor.firebaseapp.com https://accounts.google.com https://apis.google.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script src="./support.js"></script>
 </head>
@@ -1299,32 +1300,27 @@
             <div style="font:12px var(--font-display);color:var(--type-fighting);text-wrap:pretty">{{ backupError }}</div>
           </sc-if>
         </div>
-        <sc-if value="{{ isAdminUser }}" hint-placeholder-val="{{ false }}">
-          <div style="border-top:1px solid var(--type-water);padding-top:12px;display:flex;flex-direction:column;gap:8px">
-            <sc-if value="{{ showMigrateButton }}" hint-placeholder-val="{{ false }}">
-              <div style="font:12px var(--font-body);color:var(--ink-500)">Move the base-stats table and all 1025 sprites into this Firebase project too &mdash; everything as Firestore documents (sprites stored as base64, one doc per dex), so no paid Storage/Blaze plan needed. Admin-only. One-time, ~1025 writes.</div>
-              <div onClick="{{ migrateStatsAndSprites }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display)">MIGRATE STATS + SPRITES TO CLOUD</div>
-            </sc-if>
-            <div style="font:12px var(--font-body);color:var(--ink-500)">Republish this build&rsquo;s base-stats tables over the cloud copy. Use this when the synced tables disagree with the shipped ones &mdash; the shipped table is regenerated weekly from the game&rsquo;s own data and is the authority.</div>
-            <div onClick="{{ refreshCloudGameData }}" style="cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display)">REPUBLISH BASE STATS TO CLOUD</div>
-            <sc-if value="{{ cloudDataRefreshLabel }}" hint-placeholder-val="{{ false }}">
-              <div style="font:12px var(--font-display);color:var(--ink-600)">{{ cloudDataRefreshLabel }}</div>
-            </sc-if>
-            <sc-if value="{{ migrationDisplay }}" hint-placeholder-val="{{ false }}">
-              <div style="font:12px var(--font-display);color:var(--ink-600)">{{ migrationDisplay.label }}</div>
-              <div style="height:7px;background:var(--surface-muted);border-radius:6px;overflow:hidden">
-                <div style="height:100%;width:{{ migrationDisplay.pct }}%;background:var(--brand-primary-strong);transition:width 0.24s ease"></div>
-              </div>
-            </sc-if>
-            <sc-if value="{{ syncKeyDriftWarning }}" hint-placeholder-val="{{ false }}">
-              <div style="border-top:1px solid var(--type-water);padding-top:12px;font:12px/1.5 var(--font-body);color:var(--type-fighting)">{{ syncKeyDriftWarning }}</div>
-            </sc-if>
-          </div>
+        <sc-if value="{{ syncKeyDriftWarning }}" hint-placeholder-val="{{ false }}">
+          <div style="border-top:1px solid var(--type-water);padding-top:12px;font:12px/1.5 var(--font-body);color:var(--type-fighting)">{{ syncKeyDriftWarning }}</div>
         </sc-if>
       </sc-if>
     </div>
       </div>
     </details>
+
+    <section aria-label="Your data" style="background:var(--surface-card);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em">Your data</div>
+      <div style="font:15px/1.45 var(--font-body);color:var(--ink-500);text-wrap:pretty">Take everything with you as one file, or erase it. Your API keys are never in the file.</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <button type="button" onClick="{{ exportMyData }}" style="font:600 17px var(--font-body);color:var(--accent-text);padding:8px 0">Export my data</button>
+        <sc-if value="{{ hasCloudUser }}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{ deleteAccountAsk }}" style="font:600 17px var(--font-body);color:var(--red-text);padding:8px 0">Delete my account and cloud data</button>
+        </sc-if>
+      </div>
+      <sc-if value="{{ dataMsg }}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="font:13px var(--font-body);color:var(--ink-600);text-wrap:pretty">{{ dataMsg }}</div>
+      </sc-if>
+    </section>
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:16px">
       <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em">PLANNING</div>
@@ -2106,7 +2102,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.328{{ aboutBuild }}. Not affiliated with Niantic or The Pokemon Company.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.341{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -4223,8 +4219,6 @@ class Component extends DCLogic {
     apprDust: '',
     apprDustMods: {},
     ocrHp: '',
-    apiEndpoint: '',
-    apiEndpointDraft: '',
     geminiKey: '',
     geminiKeys: [],
     geminiKeyDraft: '',
@@ -4279,8 +4273,6 @@ class Component extends DCLogic {
     megaEvolvedHistory: {},
     megaNameDraft: '',
     megaAmountDraft: '',
-    migration: null,
-    migrationAlreadyDone: false,
     firebaseConfigured: false,
     firebaseConfigDraft: '',
     firebaseConfigError: '',
@@ -4664,15 +4656,23 @@ class Component extends DCLogic {
   // to cloud sync. The same blob the cloud gets (minus API keys, which have their
   // own store) is kept in localStorage and restored on launch when no cloud
   // account has claimed the app. Cloud data still wins as soon as you sign in.
+  // One copy per account: signed in, the copy is kept under the account's own id; signed out, under the plain key.
+  // Signing out (or switching account) removes the account's copy, so the next person on this device never sees it.
+  localCopyKey(uid) { return uid ? 'scout.local.v1.' + uid : 'scout.local.v1'; }
+
   queueLocalSave() {
     if (!this._localRestoreDone) return;  // never overwrite the copy before it was read
     clearTimeout(this._localTimer);
     this._localTimer = setTimeout(() => {
       try {
+        const cu = this.state.cloudUser;
         const blob = this.buildCloudBlob();
+        const n = (this.state.roster || []).length + (this.state.addedPokemon || []).length;
+        // After "Delete my account" the device copy stays gone until there is something new to keep.
+        if (this._localSaveOff) { if (!n) return; this._localSaveOff = false; }
         ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
         const text = JSON.stringify(blob);
-        if (text.length < 4200000) localStorage.setItem('scout.local.v1', text);
+        if (text.length < 4200000) localStorage.setItem(this.localCopyKey(cu && cu.uid), text);
       } catch (e) { /* storage full or blocked: the app still works, it just will not remember */ }
     }, 1500);
   }
@@ -4683,7 +4683,7 @@ class Component extends DCLogic {
       // Changes made before this point were not saved (queueLocalSave waits for this flag),
       // so save what is on screen now instead of waiting for the next edit.
       if (this.state.cloudUser || (this.state.roster || []).length) { this.queueLocalSave(); return false; }
-      const raw = localStorage.getItem('scout.local.v1');
+      const raw = localStorage.getItem(this.localCopyKey(null));
       if (!raw) return false;
       const blob = JSON.parse(raw);
       if (!blob || typeof blob !== 'object') return false;
@@ -4697,14 +4697,18 @@ class Component extends DCLogic {
 
   loadFirebaseSdk() {
     if (window.__scoutFirebaseSdkPromise) return window.__scoutFirebaseSdkPromise;
+    // Pinned version, pinned content: each file carries its SHA-384 (Subresource Integrity). If Google ever serves different bytes
+    // at these URLs the browser refuses to run them. To recompute: see SECURITY.md. The QA harness serves stand-ins and drops the attribute.
     const urls = [
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'
+      ['https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js', 'sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9'],
+      ['https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js', 'sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1'],
+      ['https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js', 'sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC']
     ];
-    const loadOne = (url) => new Promise((resolve, reject) => {
+    const loadOne = ([url, sri]) => new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = url;
+      s.integrity = sri;
+      s.crossOrigin = 'anonymous';
       s.onload = resolve;
       s.onerror = () => reject(new Error('Failed to load ' + url));
       document.head.appendChild(s);
@@ -4804,7 +4808,8 @@ class Component extends DCLogic {
   }
 
   signOutCloud() {
-    if (this._unsubDoc) { this._unsubDoc(); this._unsubDoc = null; }
+    this._cloudUid = null;
+    this.detachCloudListener();
     if (this.auth) this.auth.signOut();
   }
 
@@ -4823,26 +4828,63 @@ class Component extends DCLogic {
     };
   }
 
+  // Forget everything that belongs to the account that was signed in: timers, flags, the device copy and what is on screen.
+  // Used on sign-out and when a different account takes over, so nothing of one account can be written into another's document.
+  forgetAccount(prev) {
+    this._cloudUid = null;
+    this.detachCloudListener();
+    clearTimeout(this._pushTimer); clearTimeout(this._localTimer); clearTimeout(this._retryTimer);
+    this._hydrated = false; this._dirtyUntilPush = false; this._writeInFlight = false; this._writeGen = (this._writeGen || 0) + 1;
+    this._lastBlobBytes = 0; this._lastSnapshotAt = 0; this._snapIndex = []; this._docExists = false;
+    this._lastSyncSig = undefined; this._lastSyncRefs = null;
+    try { if (prev && prev.uid) localStorage.removeItem(this.localCopyKey(prev.uid)); } catch (e) {}
+  }
+
   onAuthChange(user) {
     this.authSettled();
     if (user) {
-      this.setState({ cloudUser: { uid: user.uid, email: user.email }, authError: '', authPassword: '' });
+      const prev = this.state.cloudUser;
+      if (prev && prev.uid !== user.uid) { this.forgetAccount(prev); this.setState({ ...this.EMPTY_USER_DATA(), snapshots: [] }); }
+      this._deleting = false;
+      this.setState({ cloudUser: { uid: user.uid, email: user.email || '' }, authError: '', authPassword: '' });
+      // Older builds kept the signed-in copy under the plain key. Whose it is cannot be told, and the cloud holds the real one.
+      try { localStorage.removeItem(this.localCopyKey(null)); } catch (e) {}
+      this._cloudUid = user.uid;
       this.subscribeCloudDoc(user.uid);
-      this.checkMigrationStatus();
-      this.loadMechanicsFromCloud();
     } else {
-      // Signed out means nothing is displayed — this device holds no
-      // Pokémon data of its own, so there is nothing left to fall back to.
-      if (this._unsubDoc) { this._unsubDoc(); this._unsubDoc = null; }
-      this._hydrated = false;
-      this._lastBlobBytes = 0;
-      this.setState({ cloudUser: null, syncStatus: '', loaded: true, ...this.EMPTY_USER_DATA() });
+      // Signed out means nothing is displayed: the account's data goes from the screen and from this device's copy.
+      this._deleting = false;
+      this.forgetAccount(this.state.cloudUser);
+      this.setState({ cloudUser: null, syncStatus: '', loaded: true, snapshots: [], ...this.EMPTY_USER_DATA() });
     }
+  }
+
+  // The user-document listener is the expensive part of a session (every confirmed write comes back as a billed read), so it
+  // runs only while the page is visible: attached on launch if visible, detached when hidden, attached again (one read) when shown.
+  bindCloudVisibility() {
+    if (this._visBound) return;
+    this._visBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.detachCloudListener();
+      else this.attachCloudListener();
+    });
+  }
+
+  detachCloudListener() {
+    if (this._unsubDoc) { try { this._unsubDoc(); } catch (e) {} this._unsubDoc = null; }
   }
 
   subscribeCloudDoc(uid) {
     if (!this.db) return;
-    if (this._unsubDoc) this._unsubDoc();
+    this.detachCloudListener();
+    this._cloudUid = uid;
+    this.bindCloudVisibility();
+    this.attachCloudListener();
+  }
+
+  attachCloudListener() {
+    const uid = this._cloudUid;
+    if (!this.db || !uid || this._unsubDoc || document.hidden) return;
     this._unsubDoc = this.db.collection('scoutUsers').doc(uid).onSnapshot(snap => {
       // A doc that doesn't exist yet is a brand-new account: show empty state
       // and wait for the user to actually add something, rather than pushing
@@ -4855,16 +4897,19 @@ class Component extends DCLogic {
       // Skipping it is also what keeps the flush-pending logic below from
       // re-arming itself into a write loop.
       if (snap.metadata && snap.metadata.hasPendingWrites) return;
+      if (this._cloudUid !== uid) return;
+      this._docExists = !!snap.exists;
       this.applyRemote(snap.exists ? snap.data() : {});
-    }, err => this.setState({ syncStatus: 'error: ' + err.message, authError: 'Sync read failed: ' + err.message + ' \u2014 check your Firestore rules allow this user.' }));
+    }, err => this.setState({ syncStatus: 'error: ' + err.message, authError: 'Sync read failed: ' + err.message + ' — check your Firestore rules allow this user.' }));
   }
 
   // ---- Device-only secrets ------------------------------------------------
   // The Gemini keys, custom API endpoint and GitHub token are credentials, so
   // they are kept in this browser's localStorage and never written to the cloud
-  // document or its backup snapshots. A device that signs in fresh needs them
-  // entered once. Older cloud copies are adopted once (see applyRemote), then
-  // deleted from the cloud on the next write.
+  // document or its backup snapshots, in any browser mode (private mode included:
+  // there they live in memory only). A device that signs in fresh needs them
+  // entered once. Copies an older build uploaded are deleted from the cloud on the
+  // next write (secretScrubFields) and are not adopted.
   loadLocalSecrets() {
     try {
       localStorage.setItem('scout.probe', '1'); localStorage.removeItem('scout.probe');
@@ -4875,7 +4920,6 @@ class Component extends DCLogic {
       const keys = Array.isArray(sec.geminiKeys) ? sec.geminiKeys.filter(Boolean) : [];
       const patch = {};
       if (keys.length) { patch.geminiKeys = keys; patch.geminiKey = sec.geminiKey || keys[0]; patch.geminiKeyDraft = keys.join('\n'); }
-      if (sec.apiEndpoint) { patch.apiEndpoint = sec.apiEndpoint; patch.apiEndpointDraft = sec.apiEndpoint; }
       if (sec.githubToken) patch.githubToken = sec.githubToken;
       if (Object.keys(patch).length) this.setState(patch);
     } catch (e) { this._secretsLocalOk = false; }
@@ -4884,7 +4928,7 @@ class Component extends DCLogic {
   persistSecretsIfChanged() {
     if (this._secretsLocalOk === false) return;
     const st = this.state;
-    const sec = { geminiKey: st.geminiKey || '', geminiKeys: st.geminiKeys || [], apiEndpoint: st.apiEndpoint || '', githubToken: st.githubToken || '' };
+    const sec = { geminiKey: st.geminiKey || '', geminiKeys: st.geminiKeys || [], githubToken: st.githubToken || '' };
     const sig = JSON.stringify(sec);
     if (sig === this._secretsSig) return;
     try {
@@ -4894,14 +4938,29 @@ class Component extends DCLogic {
     } catch (e) { this._secretsLocalOk = false; }
   }
 
-  // Delete the old cloud copies once, and only after this device holds them.
+  // The one-time scrub: credential fields an older build uploaded are deleted from the document, whichever device sees them
+  // first. Only fields the document really has (as last read) are named, so nothing is written for a clean document.
+  get SECRET_CLOUD_FIELDS() { return ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint']; }
+
   secretScrubFields() {
     try {
-      if (this._secretsLocalOk !== true || !this._secretsPersisted) return {};
-      if (localStorage.getItem('scout.secretsScrubbed') === '1') return {};
+      const present = this._remoteSecrets || [];
+      if (!present.length) return {};
       const del = firebase.firestore.FieldValue.delete();
-      return { githubToken: del, geminiKey: del, geminiKeys: del, apiEndpoint: del };
+      const out = {};
+      present.forEach(k => { out[k] = del; });
+      return out;
     } catch (e) { return {}; }
+  }
+
+  async scrubCloudSecrets() {
+    const cu = this.state.cloudUser;
+    const fields = this.secretScrubFields();
+    if (!this.db || !cu || this._deleting || !Object.keys(fields).length) return;
+    try {
+      await this.db.collection('scoutUsers').doc(cu.uid).set(fields, { merge: true });
+      this._remoteSecrets = [];
+    } catch (e) { /* the next save tries again */ }
   }
 
   // Firestore is the only source of truth — nothing on this device is ever
@@ -4912,6 +4971,7 @@ class Component extends DCLogic {
   // must not overwrite what's on screen before the debounced push completes.
   applyRemote(rawRemote) {
     const remote = this.unpackCloudBlob(rawRemote);
+    this._remoteSecrets = this.SECRET_CLOUD_FIELDS.filter(k => rawRemote && rawRemote[k] !== undefined);
     if (remote._unpackFailed && remote._unpackFailed.length) {
       // A part of the cloud copy could not be read. Applying it would blank that part here and the next save would
       // push the blank back up, so the cloud copy is left alone and this device's data stays.
@@ -4958,20 +5018,16 @@ class Component extends DCLogic {
       events: Array.isArray(remote.events) ? remote.events : [],
       savedTeams: Array.isArray(remote.savedTeams) ? remote.savedTeams : [],
       maxBattles: Array.isArray(remote.maxBattles) ? remote.maxBattles : (this.state.maxBattles || []),
-      githubToken: this.state.githubToken || remote.githubToken || '',
       megaEnergyInventory: remote.megaEnergyInventory || {},
       megaEvolvedHistory: remote.megaEvolvedHistory || {},
       triageKeep: remote.triageKeep || {},
       transferQueue: remote.transferQueue || [],
       trainerLevel: remote.trainerLevel != null ? remote.trainerLevel : this.state.trainerLevel,
       dustReserve: remote.dustReserve != null ? remote.dustReserve : this.state.dustReserve,
-      apiEndpoint: this.state.apiEndpoint || remote.apiEndpoint || '',
-      geminiKeys: (this.state.geminiKeys && this.state.geminiKeys.length) ? this.state.geminiKeys : (remote.geminiKeys || (remote.geminiKey ? [remote.geminiKey] : [])),
-      geminiKey: this.state.geminiKey || (remote.geminiKeys && remote.geminiKeys[0]) || remote.geminiKey || '',
     };
+    // The snapshot list is the small index kept in the user document; no snapshot body is read to show it.
+    if (Array.isArray(remote.snapshotIndex)) { this._snapIndex = this.cleanSnapshotIndex(remote.snapshotIndex); patch.snapshots = this._snapIndex.map(x => ({ id: x.id, reason: x.reason, createdAt: x.createdAt, pokemonCount: x.count })); }
     patch.cutTargetDraft = String(patch.cutTarget);
-    patch.apiEndpointDraft = this.state.apiEndpointDraft || patch.apiEndpoint;
-    patch.geminiKeyDraft = this.state.geminiKeyDraft || (patch.geminiKeys.length ? patch.geminiKeys.join('\n') : '');
     this.setState(patch, () => {
       this._applyingRemote = false;
       const firstHydrate = !this._hydrated;
@@ -4980,11 +5036,18 @@ class Component extends DCLogic {
         clearTimeout(this._pushTimer);
         this._pushTimer = setTimeout(() => this.pushCloud(), 150);
       }
-      if (firstHydrate) {
-        this.loadSnapshots();
-        // Periodic protection: gated by SNAPSHOT_MIN_GAP_MS, so opening the app
-        // repeatedly does not spam writes.
-        this.autoSnapshot('periodic');
+      // What was applied is now the baseline for "did the user change something".
+      try { this._lastSyncRefs = this.SYNC_KEYS().map(k => this.state[k]); this._lastSyncSig = JSON.stringify(this._lastSyncRefs); } catch (e) {}
+      if (firstHydrate && this.state.cloudUser) {
+        // The snapshot clock survives a restart: this device's copy and the user document each hold it, the later one counts.
+        const uid = this.state.cloudUser.uid;
+        this._lastSnapshotAt = Math.max(this.readSnapClock(uid), this.tsMillis(remote.lastSnapshotAt));
+        this.scrubCloudSecrets();
+        this.ensureSnapshotIndex(remote).then(() => {
+          // Periodic protection: gated by SNAPSHOT_MIN_GAP_MS, so opening the app
+          // repeatedly does not spam writes.
+          this.autoSnapshot('periodic');
+        });
       }
     });
     const sizeNote = this._lastBlobBytes ? ' · ' + Math.round(this._lastBlobBytes / 1024) + 'kB' : '';
@@ -5017,9 +5080,69 @@ class Component extends DCLogic {
     return this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).collection('snapshots');
   }
 
-  async autoSnapshot(reason, opts) {
+  // A cloud Timestamp, a number of milliseconds or nothing, as milliseconds. Every reader of updatedAt, lastSnapshotAt and
+  // createdAt goes through this, because the server writes Timestamps and older documents hold numbers.
+  tsMillis(v) {
+    if (v == null) return 0;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+    if (typeof v.toMillis === 'function') { try { return v.toMillis(); } catch (e) { return 0; } }
+    if (typeof v.seconds === 'number') return v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+    const t = Date.parse(v);
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  snapClockKey(uid) { return 'scout.snapAt.' + uid; }
+  readSnapClock(uid) { try { return Number(localStorage.getItem(this.snapClockKey(uid))) || 0; } catch (e) { return 0; } }
+  writeSnapClock(uid, t) { try { localStorage.setItem(this.snapClockKey(uid), String(t)); } catch (e) {} }
+
+  // The newest MAX_SNAPSHOTS entries of the index, newest first, each {id, reason, count, createdAt}.
+  cleanSnapshotIndex(list) {
+    return (Array.isArray(list) ? list : []).filter(x => x && /^[0-9]{13}$/.test(String(x.id)))
+      .map(x => ({ id: String(x.id), reason: String(x.reason || 'periodic'), count: Number(x.count) || 0, createdAt: this.tsMillis(x.createdAt) }))
+      .sort((a, b) => b.createdAt - a.createdAt).slice(0, this.MAX_SNAPSHOTS + 1);
+  }
+
+  // Writes the small bookkeeping fields (never the roster): the index of snapshots and the clock of the last one.
+  async writeSnapshotMeta(index, clock) {
+    const cu = this.state.cloudUser;
+    if (!this.db || !cu || this._deleting) return;
+    const data = { snapshotIndex: index, lastSnapshotAt: clock };
+    // A document that does not exist yet can only be created with a server timestamp (the rules say so).
+    if (!this._docExists) { try { data.updatedAt = firebase.firestore.FieldValue.serverTimestamp(); } catch (e) {} }
+    await this.db.collection('scoutUsers').doc(cu.uid).set(data, { merge: true });
+    if (this._deleting) return;
+    this._docExists = true;
+    this._snapIndex = index;
+    this.writeSnapClock(cu.uid, clock);
+    this.setState({ snapshots: index.slice(0, this.MAX_SNAPSHOTS).map(x => ({ id: x.id, reason: x.reason, createdAt: x.createdAt, pokemonCount: x.count })) });
+  }
+
+  // Accounts that took snapshots before the index existed: list them once (the only time bodies are read), store the index,
+  // and from then on launches read no snapshot at all. A brand-new account has nothing to list.
+  async ensureSnapshotIndex(remote) {
+    try {
+      const ref = this.snapshotsRef();
+      if (!ref || !remote || !Object.keys(remote).length || Array.isArray(remote.snapshotIndex)) return;
+      const snap = await ref.orderBy('createdAt', 'desc').limit(this.MAX_SNAPSHOTS).get();
+      const index = this.cleanSnapshotIndex((snap.docs || []).map(d => { const v = d.data() || {}; return { id: d.id, reason: v.reason, count: v.pokemonCount, createdAt: v.createdAt }; }));
+      this._lastSnapshotAt = Math.max(this._lastSnapshotAt || 0, index.length ? index[0].createdAt : 0);
+      // On the snapshot chain, so a delete (which waits for the chain) cannot be overtaken by this write.
+      const write = () => (this._deleting ? undefined : this.writeSnapshotMeta(index, this._lastSnapshotAt));
+      this._snapChain = (this._snapChain || Promise.resolve()).then(write, write);
+      await this._snapChain;
+    } catch (e) { /* the list stays empty; the next snapshot builds the index */ }
+  }
+
+  // One at a time: two snapshots racing would each compute the index from the same starting point.
+  autoSnapshot(reason, opts) {
+    const run = () => this.takeSnapshot(reason, opts);
+    this._snapChain = (this._snapChain || Promise.resolve()).then(run, run);
+    return this._snapChain;
+  }
+
+  async takeSnapshot(reason, opts) {
     const ref = this.snapshotsRef();
-    if (!ref || !this._hydrated) return false;
+    if (!ref || !this._hydrated || this._deleting) return false;
     const force = !!(opts && opts.force);
     const roster = [...(this.state.roster || []), ...(this.state.addedPokemon || [])];
     // Never snapshot an empty roster over a good one — that is the exact
@@ -5036,41 +5159,17 @@ class Component extends DCLogic {
         pokemonCount: roster.length,
         data: blob
       });
+      if (this._deleting) return false;   // the account is being erased: the delete lists the snapshots after this chain, so this one goes with them
       this._lastSnapshotAt = now;
-      await this.pruneSnapshots();
-      this.loadSnapshots();
+      // Index first, then delete the entries that fell out of it by id: no snapshot is read to prune.
+      const all = this.cleanSnapshotIndex([{ id, reason: reason || 'periodic', count: roster.length, createdAt: now }, ...(this._snapIndex || []).filter(x => x.id !== id)]);
+      const keep = all.slice(0, this.MAX_SNAPSHOTS), drop = all.slice(this.MAX_SNAPSHOTS);
+      await this.writeSnapshotMeta(keep, now);
+      for (const d of drop) { if (this._deleting) return false; try { await ref.doc(d.id).delete(); } catch (e) {} }
       return true;
     } catch (e) {
       // A failed snapshot must never block the operation it was protecting.
       return false;
-    }
-  }
-
-  async pruneSnapshots() {
-    const ref = this.snapshotsRef();
-    if (!ref) return;
-    try {
-      const snap = await ref.orderBy('createdAt', 'desc').get();
-      const docs = snap.docs || [];
-      for (let i = this.MAX_SNAPSHOTS; i < docs.length; i++) {
-        try { await docs[i].ref.delete(); } catch (e) {}
-      }
-    } catch (e) {}
-  }
-
-  async loadSnapshots() {
-    const ref = this.snapshotsRef();
-    if (!ref) { this.setState({ snapshots: [] }); return; }
-    try {
-      // Metadata only for the list; the payload is fetched on restore.
-      const snap = await ref.orderBy('createdAt', 'desc').limit(this.MAX_SNAPSHOTS).get();
-      const rows = (snap.docs || []).map(d => {
-        const v = d.data() || {};
-        return { id: d.id, reason: v.reason || 'periodic', createdAt: v.createdAt || 0, pokemonCount: v.pokemonCount || 0 };
-      });
-      this.setState({ snapshots: rows });
-    } catch (e) {
-      this.setState({ snapshots: [] });
     }
   }
 
@@ -5129,6 +5228,11 @@ class Component extends DCLogic {
   // a future edit that adds it to SYNCED_STATE_KEYS doesn't reintroduce that risk.
   get RESTORE_EXCLUDED_KEYS() {
     return ['geminiKey', 'geminiKeys', 'apiEndpoint', 'githubToken'];
+  }
+
+  // Fields written to the user document outside buildCloudBlob (the snapshot bookkeeping). firestore.rules must list them too.
+  get CLOUD_META_KEYS() {
+    return ['lastSnapshotAt', 'snapshotIndex'];
   }
 
   get PACKED_KEYS() {
@@ -5237,9 +5341,8 @@ class Component extends DCLogic {
       // Trimmed on write: an unbounded transcript would eventually crowd out the
       // roster, which is the data that actually matters.
       chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
-      // API keys and the GitHub token stay on this device. They only go to the
-      // cloud when the browser refuses to store them locally (private mode).
-      ...(this._secretsLocalOk === false ? { githubToken: s.githubToken, geminiKey: s.geminiKey, geminiKeys: s.geminiKeys, apiEndpoint: s.apiEndpoint } : {}),
+      // API keys, the custom endpoint and the GitHub token are never part of this blob (cloud document, snapshots,
+      // device copy, backup file), whatever the browser mode.
       updatedAt: Date.now()
     };
     const out = {};
@@ -5282,7 +5385,7 @@ class Component extends DCLogic {
   }
 
   pushCloud() {
-    if (!this.db || !this.state.cloudUser) return;
+    if (!this.db || !this.state.cloudUser || this._deleting) return;
     if (!this._hydrated) {
       // Do not drop the write. An import done before the first snapshot landed
       // would otherwise be lost outright, since nothing persists on device.
@@ -5299,6 +5402,8 @@ class Component extends DCLogic {
     this._dirtyUntilPush = true;
     // A snapshot echo arriving mid-apply must not bounce straight back up.
     if (this._applyingRemote) return;
+    // A direct call (setState callback) may arrive while the debounce is pending: it supersedes that timer, so no second write follows.
+    clearTimeout(this._pushTimer);
     const blob = this.buildCloudBlob();
     // Drop literal `undefined`s (JSON.stringify silently omits them) before
     // Firestore ever sees the blob \u2014 e.g. a video-imported Pokemon missing
@@ -5399,6 +5504,8 @@ class Component extends DCLogic {
     try {
       const FV = firebase.firestore.FieldValue;
       this.PACKED_KEYS.forEach(k => { safeBlob[k] = FV.delete(); });
+      // The server's clock, not this device's: the rules require it, and a skewed phone clock cannot date a save.
+      safeBlob.updatedAt = FV.serverTimestamp();
     } catch (e) { /* older SDK without sentinels: packed keys still save */ }
     // Firestore's compat SDK validates the payload SYNCHRONOUSLY and THROWS
     // (rather than rejecting) on bad field shapes (e.g. a literal `undefined`
@@ -5420,7 +5527,7 @@ class Component extends DCLogic {
       const scrub = this.secretScrubFields();
       this.db.collection('scoutUsers').doc(this.state.cloudUser.uid).set({ ...safeBlob, ...scrub }, { merge: true })
         .then(() => {
-          if (Object.keys(scrub).length) { try { localStorage.setItem('scout.secretsScrubbed', '1'); } catch (e) {} }
+          if (Object.keys(scrub).length) this._remoteSecrets = [];
           this._writeInFlight = false;
           if (this._writeGen === gen) this._dirtyUntilPush = false;
           this.setState({ syncStatus: 'saved ' + new Date().toLocaleTimeString() + ' · ' + Math.round((this._lastBlobBytes || 0) / 1024) + 'kB' + (this._lastShed ? ' · trimmed ' + this._lastShed + ' to fit' : '') });
@@ -5428,6 +5535,15 @@ class Component extends DCLogic {
         .catch(err => {
           this._writeInFlight = false;
           this._dirtyUntilPush = true;
+          // Out of free quota for the day: say so plainly. Everything keeps working here (the device copy is saved as you
+          // edit), the cloud copy catches up on the next edit or Sync now, and one retry is scheduled.
+          if (err && (err.code === 'resource-exhausted' || /quota/i.test(String(err.message || '')))) {
+            this.setState({ syncStatus: 'error: cloud quota reached, your changes stay in this open app and will upload when the cloud accepts writes again (Sync now retries)' });
+            this.queueLocalSave();
+            clearTimeout(this._retryTimer);
+            this._retryTimer = setTimeout(() => { if (this._dirtyUntilPush) this.pushCloud(); }, 10 * 60 * 1000);
+            return;
+          }
           this.setState({ syncStatus: 'error: ' + ((err && err.message) || err) });
         });
     } catch (err) {
@@ -6237,66 +6353,6 @@ class Component extends DCLogic {
     const ex = { ...(this.state.todayExpand || {}) };
     ex[key] = !ex[key];
     this.setState({ todayExpand: ex });
-  }
-
-  ADMIN_EMAILS() {
-    return ['abhi.patel@gmail.com', 'admin@scout.app'];
-  }
-
-  async checkMigrationStatus() {
-    if (!this.db || !this.auth || !this.auth.currentUser) return; // rules require auth
-    try {
-      const snap = await this.db.collection('gameData').doc('meta').get();
-      this.setState({ migrationAlreadyDone: !!(snap.exists && snap.data().statsUploaded && snap.data().spritesUploaded) });
-    } catch (e) {}
-  }
-
-  async migrateStatsAndSprites() {
-    if (!this.db || !this.state.cloudUser) return;
-    if (!this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())) return;
-    this.setState({ migration: { stage: 'stats', done: 0, total: 0, error: null } });
-    try {
-      const metaSnap = await this.db.collection('gameData').doc('meta').get();
-      if (metaSnap.exists && metaSnap.data().statsUploaded && metaSnap.data().spritesUploaded) {
-        this.setState({ migration: { stage: 'done', done: 0, total: 0, error: null, alreadyDone: true } });
-        return;
-      }
-      const m = this.mechanics;
-      await this.db.collection('gameData').doc('baseStats').set({
-        BASE_STATS: m.BASE_STATS, BASE_STATS_BY_FORM: m.BASE_STATS_BY_FORM, DEX_NAMES: m.DEX_NAMES, updatedAt: Date.now()
-      });
-      const dexList = Object.keys(m.DEX_NAMES).map(Number);
-      this.setState({ migration: { stage: 'sprites', done: 0, total: dexList.length, error: null } });
-      let done = 0;
-      const CONCURRENCY = 6;
-      let i = 0;
-      const worker = async () => {
-        while (i < dexList.length) {
-          const dex = dexList[i++];
-          try {
-            const resp = await fetch('sprites/' + dex + '.png');
-            if (resp.ok) {
-              const blob = await resp.blob();
-              const dataUrl = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-              const base64 = dataUrl.split(',')[1];
-              await this.db.collection('sprites').doc(String(dex)).set({ data: base64, contentType: blob.type || 'image/png' });
-            }
-          } catch (e) {}
-          done++;
-          this.setState(s => ({ migration: { ...s.migration, done } }));
-        }
-      };
-      await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-      await this.db.collection('gameData').doc('meta').set({ spritesUploaded: true, statsUploaded: true, updatedAt: Date.now() }, { merge: true });
-      this.setState(s => ({ migration: { ...s.migration, stage: 'done' } }));
-    } catch (err) {
-      this.setState(s => ({ migration: { ...s.migration, stage: 'error', error: err.message } }));
-    }
   }
 
   // ---- CSV import: tolerant parsing, per-row validation, preview, undo ----------
@@ -9533,20 +9589,8 @@ class Component extends DCLogic {
       im.onerror = () => resolve(null);
       im.src = url;
     });
+    // Shipped files only: nothing is read from Firestore, so drawing a roster costs no reads.
     const p = (async () => {
-      if (this.db && this.auth && this.auth.currentUser) {
-        // Try the form-specific doc, then the plain dex doc — sprites uploaded
-        // before form support are keyed by dex alone and must still resolve.
-        for (const docId of (slug ? [key, String(dex)] : [String(dex)])) {
-          try {
-            const snap = await this.db.collection('sprites').doc(docId).get();
-            if (snap.exists) {
-              const d = snap.data();
-              return 'data:' + (d.contentType || 'image/png') + ';base64,' + d.data;
-            }
-          } catch (e) {}
-        }
-      }
       if (slug) {
         // Local form file only. A remote per-dex URL cannot disambiguate a form,
         // so probing one costs a cross-origin round-trip (which sw.js bypasses,
@@ -9622,82 +9666,6 @@ class Component extends DCLogic {
         hi.src = src;
       });
     };
-  }
-
-  // Overwrites gameData/baseStats with the tables this build actually ships.
-  // The original migration uploaded whatever BASE_STATS happened to hold at the
-  // time, and those values are now known to disagree with pokemon-mechanics.js
-  // (dex 83 went up as 167/115/141). Since the shipped table is regenerated
-  // weekly from Niantic's GAME_MASTER, republishing it is what makes every
-  // signed-in device agree again.
-  async refreshCloudGameData() {
-    if (!this.db || !this.mechanics || !this.state.cloudUser) return;
-    if (!this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())) return;
-    this.setState({ cloudDataRefresh: { stage: 'working', error: null, conflicts: 0 } });
-    try {
-      const m = this.mechanics;
-      // Count what the cloud currently disagrees on, so the result reports how
-      // much was actually wrong rather than just "done".
-      let conflicts = 0;
-      try {
-        const snap = await this.db.collection('gameData').doc('baseStats').get();
-        if (snap.exists) {
-          const d = snap.data() || {};
-          const cmp = (mine, theirs) => {
-            if (!theirs || !mine) return;
-            Object.keys(theirs).forEach(k => {
-              if (mine[k] !== undefined && JSON.stringify(mine[k]) !== JSON.stringify(theirs[k])) conflicts++;
-            });
-          };
-          cmp(m.BASE_STATS, d.BASE_STATS);
-          cmp(m.BASE_STATS_BY_FORM, d.BASE_STATS_BY_FORM);
-          cmp(m.DEX_NAMES, d.DEX_NAMES);
-        }
-      } catch (e) {}
-      await this.db.collection('gameData').doc('baseStats').set({
-        BASE_STATS: m.BASE_STATS,
-        BASE_STATS_BY_FORM: m.BASE_STATS_BY_FORM,
-        DEX_NAMES: m.DEX_NAMES,
-        updatedAt: Date.now()
-      });
-      this.setState({ cloudDataRefresh: { stage: 'done', error: null, conflicts } });
-    } catch (err) {
-      this.setState({ cloudDataRefresh: { stage: 'error', error: (err && err.message) || String(err), conflicts: 0 } });
-    }
-  }
-
-  async loadMechanicsFromCloud() {
-    if (!this.db || !this.mechanics) return;
-    if (!this.auth || !this.auth.currentUser) return; // rules require auth
-    try {
-      const snap = await this.db.collection('gameData').doc('baseStats').get();
-      if (snap.exists) {
-        const d = snap.data();
-        // ADD ONLY — never overwrite. This used to Object.assign straight over
-        // the shipped tables, and a stale cloud doc was clobbering real entries:
-        // dex 83 arrived as 167/115/141, which is neither Kantonian
-        // (124/115/141) nor Galarian (174/114/141), so every IV solve and PvP
-        // rank for that species was computed from a third set of numbers.
-        // pokemon-mechanics.js is regenerated weekly from Niantic's GAME_MASTER
-        // and is the authority; the cloud doc's job is to fill in species the
-        // shipped build doesn't know yet.
-        const conflicts = [];
-        const fillOnly = (target, incoming, label) => {
-          if (!incoming || !target) return;
-          Object.keys(incoming).forEach(k => {
-            if (target[k] === undefined) { target[k] = incoming[k]; return; }
-            if (JSON.stringify(target[k]) !== JSON.stringify(incoming[k])) conflicts.push(label + ' ' + k);
-          });
-        };
-        fillOnly(this.mechanics.BASE_STATS, d.BASE_STATS, 'BASE_STATS');
-        fillOnly(this.mechanics.BASE_STATS_BY_FORM, d.BASE_STATS_BY_FORM, 'BASE_STATS_BY_FORM');
-        fillOnly(this.mechanics.DEX_NAMES, d.DEX_NAMES, 'DEX_NAMES');
-        if (conflicts.length) {
-          console.warn('[scout] cloud game data disagrees with the shipped tables; shipped values kept:', conflicts.slice(0, 20), conflicts.length > 20 ? `(+${conflicts.length - 20} more)` : '');
-        }
-        this.forceUpdate();
-      }
-    } catch (e) {}
   }
 
   ringGeom(pct, r) {
@@ -10695,6 +10663,86 @@ class Component extends DCLogic {
     this.setState({ backupError: '' });
   }
 
+  // ---- Your data: export and erase ------------------------------------------------------------------
+  exportMyData() {
+    this.backupDevice();
+    this.setState({ dataMsg: 'Saved your data as a file (no keys inside).' });
+  }
+
+  deleteAccountAsk() {
+    if (!this.state.cloudUser) return;
+    this.askConfirm({
+      title: 'Delete your account?',
+      message: 'This erases your roster, your cloud copy and its snapshots, your sign-in, and what this device remembers about you. Export your data first if you want a file. You will be asked once more.',
+      actions: [{ label: 'Continue', style: 'danger', run: () => this.deleteAccountConfirm() }]
+    });
+  }
+
+  deleteAccountConfirm() {
+    this.askConfirm({
+      title: 'Last chance: this cannot be undone',
+      message: 'Everything stored for ' + ((this.state.cloudUser && this.state.cloudUser.email) || 'this account') + ' will be deleted for good.',
+      actions: [{ label: 'Delete everything', style: 'danger', run: () => this.deleteAccountNow() }]
+    });
+  }
+
+  // Order matters: snapshots, then the user document, then the sign-in, then this device. A sign-in that is too old is
+  // caught first, before anything is deleted; if the sign-in itself still refuses at the end, the data is already gone and the
+  // message says how to finish.
+  async deleteAccountNow() {
+    this.closeConfirm();
+    const user = this.state.cloudUser, cu = this.auth && this.auth.currentUser;
+    if (!user || !cu || !this.db) return;
+    const again = 'For your safety an account can only be deleted soon after signing in. Sign out, sign in again, then choose Delete my account again.';
+    try {
+      const tr = cu.getIdTokenResult ? await cu.getIdTokenResult() : null;
+      const t = tr && tr.authTime ? Date.parse(tr.authTime) : NaN;
+      if (Number.isFinite(t) && Date.now() - t > 5 * 60 * 1000) { this.setState({ dataMsg: again + ' Nothing was deleted.' }); return; }
+    } catch (e) {}
+    this._deleting = true;
+    clearTimeout(this._pushTimer); clearTimeout(this._retryTimer);
+    this.detachCloudListener();
+    this.setState({ dataMsg: 'Deleting your data…' });
+    const userRef = this.db.collection('scoutUsers').doc(user.uid);
+    let authLeft = false;
+    const gone = [];
+    try {
+      // A snapshot already on its way must land before the listing, or it would be left behind. Nothing new starts once _deleting is set.
+      try { await this._snapChain; } catch (e) {}
+      // Every snapshot document, found by listing the collection, not from the index, so none is left behind.
+      const list = await userRef.collection('snapshots').get();
+      for (const d of (list.docs || [])) { await d.ref.delete(); gone.push(d.id); }
+      await userRef.delete();
+    } catch (e) {
+      this._deleting = false;
+      this.attachCloudListener();
+      // Some backups may already be gone: take them out of the stored list so it does not name documents that no longer exist.
+      if (gone.length) {
+        const left = (this._snapIndex || []).filter(x => gone.indexOf(x.id) < 0);
+        try { await userRef.set({ snapshotIndex: left }, { merge: true }); this._snapIndex = left; this.setState({ snapshots: left.map(x => ({ id: x.id, reason: x.reason, createdAt: x.createdAt, pokemonCount: x.count })) }); } catch (e2) {}
+      }
+      this.setState({ dataMsg: 'Could not delete all of your cloud data (' + ((e && e.message) || e) + '). ' + (gone.length ? 'Some backups may already be deleted; your roster and sign-in are still there. ' : 'Your roster and sign-in are still there. ') + 'Try again.' });
+      return;
+    }
+    try { await cu.delete(); }
+    catch (e) { authLeft = true; if (!(e && e.code === 'auth/requires-recent-login')) authLeft = (e && e.message) || 'error'; }
+    // This device: the copies, the keys, the snapshot clock, and what is on screen.
+    try {
+      ['scout.local.v1', 'scout.local.v1.' + user.uid, 'scout.secrets.v1', this.snapClockKey(user.uid)].forEach(k => localStorage.removeItem(k));
+    } catch (e) {}
+    this._localSaveOff = true; clearTimeout(this._localTimer);
+    this._secretsSig = JSON.stringify({ geminiKey: '', geminiKeys: [], githubToken: '' });
+    this.setState({ geminiKey: '', geminiKeys: [], geminiKeyDraft: '', githubToken: '', snapshots: [], restorePending: null,
+      ...this.EMPTY_USER_DATA(),
+      dataMsg: authLeft
+        ? 'Your cloud data and this device’s copy are deleted. The sign-in itself is still there' + (authLeft === true ? ': ' + again : ' (' + authLeft + ').')
+        : 'Your account and cloud data are deleted, and this device’s copy is gone.' });
+    if (!authLeft) { this._cloudUid = null; this.forgetAccount(user); this.setState({ cloudUser: null, syncStatus: '' }); }
+    // The sign-in refused to go (too old, or another error). The data is gone, so this device signs out too: carrying on signed in
+    // would write nothing (saves are blocked) and look as if it worked. Signing in again and choosing Delete again finishes the job.
+    else { try { await this.auth.signOut(); } catch (e) {} }
+  }
+
   saveBackupFile() {
     const b = this.state.backupReady;
     if (!b) return;
@@ -10828,12 +10876,6 @@ class Component extends DCLogic {
     this._lastVideoFrames = null;
   }
 
-  saveApiEndpoint() {
-    const url = (this.state.apiEndpointDraft || '').trim();
-    this.setState({ apiEndpoint: url });
-    this.queueCloudPush();
-  }
-
   // Google AI Studio free tier. Key is stored locally on this device only.
   // Rotates across every stored key. Both Gemini limits (10 rpm and 1,500/day)
   // are PER KEY, so a 429 on one key is not a 429 on the next — rotating turns
@@ -10960,7 +11002,7 @@ class Component extends DCLogic {
       c = this._gemRot[key] = c || { at: 0, vision: [], text: [] };
       c.at = Date.now();    // set first: a failing lookup is not retried on every call
       try {
-        const res = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' + encodeURIComponent(key), undefined, 8000);
+        const res = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } }, 8000);
         if (res.ok) {
           const data = await res.json();
           let rows = (data.models || []).filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
@@ -10970,8 +11012,8 @@ class Component extends DCLogic {
           // Live check: a retired model answers 404/403 to countTokens (which needs no generation quota).
           const alive = await Promise.all(rows.map(async r => {
             try {
-              const t = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + r.name + ':countTokens?key=' + encodeURIComponent(key), {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
+              const t = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + r.name + ':countTokens', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
               }, 8000);
               return t.status !== 404 && t.status !== 403;
             } catch (e) { return true; }
@@ -11084,9 +11126,9 @@ class Component extends DCLogic {
       if (!this._geminiTimeoutMs && hasImage && this._modelMs && this._modelMs[model]) deadlineMs = Math.max(30000, Math.min(deadlineMs, Math.round(this._modelMs[model] * 4)));
       const post = async (extras, grounded) => {
         try {
-          return await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+          return await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
             body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras), ...(grounded ? { tools: [{ google_search: {} }] } : {}) })
           }, deadlineMs);
         } catch (e) {
@@ -11255,20 +11297,12 @@ class Component extends DCLogic {
             if (terminal) throw gErr;
           }
         }
-        if (!this.state.apiEndpoint) {
-          const why = this._lastAiError ? ' Last engine said: ' + this._lastAiError : '';
-          throw new Error(this.state.geminiKey
-            ? 'Every AI engine failed for this batch.' + why
-            : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
-        }
-        const res = await fetch(this.state.apiEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        if (!res.ok) throw new Error('Proxy error ' + res.status + ': ' + (await res.text().catch(() => '')));
-        const data = await res.json();
-        return data.text != null ? data.text : data;
+        // No custom proxy endpoint in the public build: a request to an arbitrary host would be blocked by the page's
+        // Content-Security-Policy (connect-src) and is how a stolen setting could send screenshots elsewhere.
+        const why = this._lastAiError ? ' Last engine said: ' + this._lastAiError : '';
+        throw new Error(this.state.geminiKey
+          ? 'Every AI engine failed for this batch.' + why
+          : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
       } catch (err) {
         lastErr = err;
         const msg = (err && (err.message || err.error && err.error.message)) || String(err);
@@ -14038,16 +14072,25 @@ class Component extends DCLogic {
 
   // Calendar file for one event. Feed times are the local wall-clock times the event
   // runs at, so they are written as floating times (no zone).
+  // The calendar text for one event. Every field loses line breaks (a CR/LF in a name or id could add an ICS property), and the
+  // link is kept only when it is an https URL without spaces or control characters.
+  icsLines(e) {
+    const one = v => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').trim();
+    const f = iso => one(iso).replace(/[-:]/g, '').replace(/\.\d+$/, '').slice(0, 15);
+    const esc = v => one(v).replace(/([,;\\])/g, '\\$1');
+    const link = one(e.link);
+    const okLink = /^https:\/\/[^\s<>"\\]+$/i.test(link) ? link : '';
+    return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Professor//Events//EN', 'BEGIN:VEVENT',
+      'UID:' + one(e.id).replace(/[^A-Za-z0-9._-]/g, '') + '@professor', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'),
+      'DTSTART:' + f(e.start), 'DTEND:' + f(e.end), 'SUMMARY:' + esc(e.name), okLink ? 'URL:' + okLink : '', 'END:VEVENT', 'END:VCALENDAR'].filter(Boolean);
+  }
+
   downloadIcs(e) {
-    const f = iso => String(iso).replace(/[-:]/g, '').replace(/\.\d+$/, '').slice(0, 15);
-    const esc = v => String(v || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Professor//Events//EN', 'BEGIN:VEVENT',
-      'UID:' + e.id + '@professor', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'),
-      'DTSTART:' + f(e.start), 'DTEND:' + f(e.end), 'SUMMARY:' + esc(e.name), e.link ? 'URL:' + e.link : '', 'END:VEVENT', 'END:VCALENDAR'].filter(Boolean);
+    const lines = this.icsLines(e);
     const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/calendar' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = String(e.id).slice(0, 40) + '.ics';
+    a.href = url; a.download = String(e.id).replace(/[^A-Za-z0-9._-]/g, '').slice(0, 40) + '.ics';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     this.haptic('light');
@@ -14159,9 +14202,27 @@ class Component extends DCLogic {
     done();
   }
 
+  // The redeem link for a promo code, or '' when it must not be opened: the code has to be 4-32 letters and digits, and the link
+  // (the feed's, or the one built from the code) has to be on https://store.pokemongo.com/.
+  safePromoUrl(c) {
+    const code = c && typeof c.code === 'string' ? c.code : '';
+    if (!/^[A-Za-z0-9]{4,32}$/.test(code)) return '';
+    const url = (c.link != null && c.link !== '') ? String(c.link) : ('https://store.pokemongo.com/offer-redemption?passcode=' + code);
+    if (url.indexOf('https://store.pokemongo.com/') !== 0) return '';
+    try { if (new URL(url).hostname !== 'store.pokemongo.com') return ''; } catch (e) { return ''; }
+    return url;
+  }
+
   promoRedeem(c) {
     this.promoMarkSeen(c.code);
-    try { window.open(c.link || ('https://store.pokemongo.com/offer-redemption?passcode=' + encodeURIComponent(c.code)), '_blank', 'noopener'); } catch (e) {}
+    const url = this.safePromoUrl(c);
+    if (!url) {
+      clearTimeout(this._themeToastTimer);
+      this.setState({ themeToast: 'Link not opened: it is not a store.pokemongo.com link. Copy the code instead.' });
+      this._themeToastTimer = setTimeout(() => this.setState({ themeToast: '' }), 3500);
+      return;
+    }
+    try { window.open(url, '_blank', 'noopener'); } catch (e) {}
   }
 
   promoToggleDone(code) {
@@ -20273,8 +20334,6 @@ class Component extends DCLogic {
       onOcrChargeMove2: (e) => this.updateOcrField('chargeMove2', e.target.value),
       onOcrHp: (e) => this.updateOcrField('hp', parseInt(e.target.value, 10) || null),
       onVideoUpload: (e) => this.onVideoUpload(e),
-      onApiEndpointDraftChange: (e) => this.setState({ apiEndpointDraft: e.target.value }),
-      saveApiEndpoint: () => this.saveApiEndpoint(),
       onGeminiKeyDraftChange: (e) => this.setState({ geminiKeyDraft: e.target.value }),
       saveGeminiKey: () => this.setGeminiKey(this.state.geminiKeyDraft),
       clearGeminiKey: () => { this.setState({ geminiKeyDraft: '' }); this.setGeminiKey(''); },
@@ -20354,8 +20413,6 @@ class Component extends DCLogic {
       ivServerSummary: this.state.ivServerSummary || '',
       ivServerLabel: this.state.ivServerBusy ? 'IMPORTING…' : 'IMPORT IV FROM SERVER',
       importIvFromServer: () => this.importIvFromServer(),
-      apiEndpoint: this.state.apiEndpoint,
-      apiEndpointDraft: this.state.apiEndpointDraft,
       hasVideoImport: !!this.state.videoImport,
       videoImportSteps: videoImportSteps,
       videoImportError: this.state.videoImport && this.state.videoImport.stage === 'error' ? this.state.videoImport.error : '',
@@ -21082,29 +21139,20 @@ class Component extends DCLogic {
       syncAlert: /^(TOO BIG|error:)/.test(this.state.syncStatus || '') ? this.state.syncStatus : '',
       syncNow: () => this.syncNow(),
       signOutCloud: () => this.signOutCloud(),
-      migrateStatsAndSprites: () => this.migrateStatsAndSprites(),
-      refreshCloudGameData: () => this.refreshCloudGameData(),
+      exportMyData: () => this.exportMyData(),
+      deleteAccountAsk: () => this.deleteAccountAsk(),
+      dataMsg: this.state.dataMsg || '',
       // Set by the bundle's helmet. Shown so "did the deploy actually land?" is
       // answerable on the phone instead of guessed at.
       aboutBuild: (typeof window !== 'undefined' && window.SCOUT_BUILD && window.SCOUT_BUILD !== 'dev') ? ' \u00b7 build ' + window.SCOUT_BUILD : '',
       buildTag: (typeof window !== 'undefined' && window.SCOUT_BUILD) || 'dev',
-      cloudDataRefreshLabel: (() => {
-        const r = this.state.cloudDataRefresh;
-        if (!r) return '';
-        if (r.stage === 'working') return 'Republishing base stats\u2026';
-        if (r.stage === 'error') return 'Failed: ' + r.error;
-        return r.conflicts
-          ? `Done \u2014 replaced ${r.conflicts} entr${r.conflicts === 1 ? 'y' : 'ies'} that disagreed with this build. Sign out and back in on each device to pick it up.`
-          : 'Done \u2014 the cloud copy already matched this build.';
-      })(),
-      isAdminUser: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())),
       // Fails loudly instead of the two silent-drift bugs already found in
       // this file's history: any field kept live-synced (SYNC_KEYS) that a
       // file/snapshot restore would silently skip because it never made it
       // into SYNCED_STATE_KEYS, and isn't deliberately excluded on purpose
       // (RESTORE_EXCLUDED_KEYS, for credentials that should never come back
-      // from an old backup). Admin-only \u2014 this is a maintenance signal
-      // about the codebase, not something a trainer using the app could act on.
+      // from an old backup). This is a maintenance signal
+      // about the codebase, shown only when the drift is real.
       syncKeyDriftWarning: (() => {
         const drift = this.SYNC_KEYS().filter(k =>
           this.SYNCED_STATE_KEYS.indexOf(k) < 0 && this.RESTORE_EXCLUDED_KEYS.indexOf(k) < 0);
@@ -21112,15 +21160,6 @@ class Component extends DCLogic {
           ? `SYNC/RESTORE KEY DRIFT: ${drift.join(', ')} \\u2014 synced live but a file restore or snapshot restore silently skips ${drift.length === 1 ? 'it' : 'them'}. Add to SYNCED_STATE_KEYS (or RESTORE_EXCLUDED_KEYS if that's deliberate).`
           : null;
       })(),
-      showMigrateButton: !!(this.state.cloudUser && this.ADMIN_EMAILS().includes((this.state.cloudUser.email || '').toLowerCase())) && !this.state.migrationAlreadyDone && !this.state.migration,
-      migrationDisplay: this.state.migration ? {
-        stage: this.state.migration.stage,
-        label: this.state.migration.stage === 'stats' ? 'Uploading base stats\u2026'
-          : this.state.migration.stage === 'sprites' ? `Uploading sprites\u2026 ${this.state.migration.done}/${this.state.migration.total}`
-          : this.state.migration.stage === 'done' ? (this.state.migration.alreadyDone ? 'Already migrated \u2014 nothing to do.' : 'Done \u2014 sprites and stats now live in Firebase.')
-          : 'Error: ' + this.state.migration.error,
-        pct: this.state.migration.stage === 'sprites' && this.state.migration.total ? Math.round(this.state.migration.done / this.state.migration.total * 100) : (this.state.migration.stage === 'done' ? 100 : 30)
-      } : null,
       onStardustChange: (e) => this.setStardust(e.target.value),
       stardustDraft,
       onStardustDraftChange: (e) => this.setState({ stardustDraft: e.target.value }),

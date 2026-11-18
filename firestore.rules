@@ -1,0 +1,99 @@
+rules_version = '2';
+
+// Professor: Cloud Firestore security rules. This file is the source of truth; the console copy must match it.
+// Deploy only as described in DEPLOY.md (client first, then rules).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()   { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    // Writes need an identity the provider has vouched for: a verified email, or a Google / GitHub sign-in.
+    // Trade-off: Google accounts always carry a verified email; a GitHub account may have none or an unverified
+    // one, but it still costs the attacker a real GitHub account, so github.com is accepted. A bare
+    // email/password sign-up is NOT enough (anyone can create one with an address they do not own) until
+    // the address is verified. Reads and deletes are not gated, so a user can always export and erase their data.
+    function verifiedIdentity() {
+      // .get() with a default: a token without the claim (GitHub with no public email) is false, never an evaluation error.
+      return request.auth.token.get('email_verified', false) == true
+          || request.auth.token.firebase.sign_in_provider in ['google.com', 'github.com'];
+    }
+
+    // Every field the client may write on scoutUsers/{uid}. tests: scripts/test_firestore_rules.js compares this
+    // list with what buildCloudBlob and the snapshot bookkeeping can write.
+    function allowedKeysList() {
+      return [
+        // packed collections (buildCloudBlob: PACKED_KEYS + 'Json')
+        'rosterJson','addedPokemonJson','ivOverridesJson','candyInventoryJson','typeTableJson',
+        'moveDBJson','evoTableJson','candyAiDecisionsJson','historyJson','completedIdsJson',
+        'removedIdsJson','checklistDoneJson','resourcesJson','evolutionItemsJson',
+        'megaEnergyInventoryJson','megaEvolvedHistoryJson','triageKeepJson','transferQueueJson',
+        'chatMessagesJson',
+        // plain fields
+        'stardustBalance','checklistDate','trainerLevel','dustReserve',
+        'bagCapacity','eliteTmDone','cutTarget','pvpMaxLevel','events','savedTeams','maxBattles',
+        'updatedAt','packedVersion',
+        // snapshot bookkeeping
+        'lastSnapshotAt','snapshotIndex',
+        // legacy plain keys that old documents still hold; the client deletes them on its next write
+        'roster','addedPokemon','ivOverrides','candyInventory','typeTable','moveDB','evoTable',
+        'candyAiDecisions','history','completedIds','removedIds','checklistDone','resources',
+        'evolutionItems','megaEnergyInventory','megaEvolvedHistory','triageKeep','transferQueue',
+        'chatMessages'
+      ];
+    }
+
+    // Credentials an older client may have uploaded. They may be DELETED (the one-time scrub) but never written or changed.
+    // Remove this list once every installed client has scrubbed (see DEPLOY.md, migration window).
+    function scrubKeysList() { return ['githubToken','geminiKey','geminiKeys','apiEndpoint']; }
+
+    // A scrub field must be gone from the result or exactly as it was: a document that still holds one must not lock its owner out.
+    function scrubOk() {
+      return (!('githubToken' in request.resource.data) || request.resource.data.githubToken == resource.data.githubToken)
+          && (!('geminiKey' in request.resource.data) || request.resource.data.geminiKey == resource.data.geminiKey)
+          && (!('geminiKeys' in request.resource.data) || request.resource.data.geminiKeys == resource.data.geminiKeys)
+          && (!('apiEndpoint' in request.resource.data) || request.resource.data.apiEndpoint == resource.data.apiEndpoint);
+    }
+
+    function createKeysOk() { return request.resource.data.keys().hasOnly(allowedKeysList()); }
+
+    // Only the keys being CHANGED are checked, so stale fields already in an old document never lock the owner out.
+    // A scrub key may only disappear or stay as it is (scrubOk).
+    function updateKeysOk() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeysList().concat(scrubKeysList()))
+          && scrubOk();
+    }
+
+    // updatedAt must be the server clock (FieldValue.serverTimestamp()), never a client number. Old documents
+    // hold a number, so only a changed updatedAt is checked.
+    function stampOk() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt'])
+          || request.resource.data.updatedAt == request.time;
+    }
+
+    // No per-write throttle: the client would have to queue writes for 30 s, which delays saves, and a throttle
+    // does not bound the daily quota anyway. See DEPLOY.md.
+
+    match /scoutUsers/{uid} {
+      allow get:    if isOwner(uid);
+      allow create: if isOwner(uid) && verifiedIdentity() && createKeysOk()
+                    && request.resource.data.updatedAt == request.time;
+      allow update: if isOwner(uid) && verifiedIdentity() && updateKeysOk() && stampOk();
+      allow delete: if isOwner(uid);
+      // no list: a wildcard query over scoutUsers is denied
+
+      match /snapshots/{id} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid) && verifiedIdentity() && id.matches('[0-9]{13}')
+                      && request.resource.data.keys().hasOnly(['reason','createdAt','pokemonCount','data']);
+        allow update: if false;
+      }
+    }
+
+    // Shared reference data: nobody writes from a client. Changes go through an Admin SDK script on the owner's machine.
+    match /gameData/{doc} { allow read: if signedIn(); allow write: if false; }
+    match /sprites/{doc}  { allow read: if signedIn(); allow write: if false; }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

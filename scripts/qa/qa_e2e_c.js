@@ -344,5 +344,67 @@ module.exports = async function suiteC() {
     expect((await s.state()).history.length === n0, 'log changed');
   }, 'high');
   await T('LOG-07', 'Log', 'Export and Import controls are present and named', async () => { await s.call('goToTab', 'progress'); await s.page.waitForTimeout(500); expect(await s.page.getByRole('button', { name: 'Export log' }).count() === 1 && await s.page.locator('input[aria-label="Import progress log"]').count() === 1); }, 'medium');
+  await T('URL-01', 'Security', 'ICS export: only https links, and no line break in any field can add a calendar property', async () => {
+    const lines = e => s.call('icsLines', e);
+    const base = { id: 'ev1', name: 'Event', start: '2026-11-20T10:00:00', end: '2026-11-20T20:00:00' };
+    let L = await lines({ ...base, link: 'https://leekduck.com/events/x/' });
+    expect(L.indexOf('URL:https://leekduck.com/events/x/') >= 0, 'a good https link was dropped');
+    for (const bad of ['javascript:alert(1)', 'http://example.com/', 'data:text/html,x', 'https://x.example/a b', 'ftp://x', '//x.example', 'https://x.example/\r\nATTENDEE:mailto:a@b']) {
+      L = await lines({ ...base, link: bad });
+      expect(!L.some(l => /^URL:/.test(l)), 'link accepted: ' + JSON.stringify(bad));
+      expect(!L.some(l => /^ATTENDEE/.test(l)), 'a property was injected through the link: ' + JSON.stringify(bad));
+    }
+    L = await lines({ ...base, name: 'Evil\r\nATTENDEE:mailto:x@example.test\nBEGIN:VALARM', id: 'e1\r\nX-EVIL:1', start: '2026-11-20T10:00:00\r\nX-S:1', end: 'x\nX-E:1' });
+    expect(L.every(l => !/\r|\n/.test(l)), 'a field kept a line break');
+    expect(!L.some(l => /^(ATTENDEE|BEGIN:VALARM|X-EVIL|X-S|X-E)/.test(l)), 'a property was injected: ' + L.join(' | '));
+    expect(L.filter(l => /^BEGIN:/.test(l)).length === 2, 'extra component: ' + L.join(' | '));
+  }, 'high');
+  await T('URL-02', 'Security', 'Promo codes open only for a 4-32 letter/digit code and a store.pokemongo.com link', async () => {
+    const url = c => s.call('safePromoUrl', c);
+    expect(await url({ code: 'ADIDASxPOKEMON', link: 'https://store.pokemongo.com/offer-redemption?passcode=ADIDASxPOKEMON' }) === 'https://store.pokemongo.com/offer-redemption?passcode=ADIDASxPOKEMON', 'good link refused');
+    expect(await url({ code: 'GOODCODE1' }) === 'https://store.pokemongo.com/offer-redemption?passcode=GOODCODE1', 'built link refused');
+    for (const c of [{ code: 'GOODCODE1', link: 'javascript:alert(1)' }, { code: 'GOODCODE1', link: 'https://evil.example/' }, { code: 'GOODCODE1', link: 'https://store.pokemongo.com.evil.example/x' },
+      { code: 'GOODCODE1', link: 'http://store.pokemongo.com/x' }, { code: 'GOODCODE1', link: 'https://store.pokemongo.com@evil.example/' }, { code: 'ab', link: 'https://store.pokemongo.com/x' },
+      { code: 'A'.repeat(33) }, { code: 'x"onclick="y' }, { code: 'GOOD\nCODE' }, { code: 'javascript:alert(1)' }, { code: 5 }, {}, null]) {
+      expect(await url(c) === '', 'accepted ' + JSON.stringify(c));
+    }
+    await s.page.evaluate(() => { window.__opened = []; window.open = (...a) => { window.__opened.push(a[0]); return null; }; });
+    await s.call('promoRedeem', { code: 'GOODCODE1', link: 'javascript:alert(1)' }); await s.call('promoRedeem', { code: 'GOODCODE1' });
+    const opened = await s.page.evaluate(() => window.__opened);
+    expect(opened.length === 1 && /^https:\/\/store\.pokemongo\.com\//.test(opened[0]), 'opened: ' + JSON.stringify(opened));
+    await s.set({ csvError: '', moreOpen: false, selectMode: false });
+    await s.call('promoRedeem', { code: 'GOODCODE1', link: 'javascript:alert(1)' }); await s.page.waitForTimeout(400);
+    expect(/link not opened/i.test(await s.text()), 'a rejected link gave no notice');
+    expect((await s.page.evaluate(() => window.__opened)).length === 1, 'a rejected link was opened');
+  }, 'high');
+  await T('XSS-01', 'Security', 'A roster whose names, nicknames, moves and chat text are <img onerror> markup never runs script, in the roster, the detail sheet or the chat sheet', async () => {
+    const fs2 = require('fs'), os = require('os'), pth = require('path');
+    const X = '<img src=x onerror=window.__xss=1>', X2 = '<svg onload=window.__xss=2>';
+    const rows = fs2.readFileSync(QA, 'utf8').split('\n').filter(Boolean);
+    const out = [rows[0]];
+    rows.slice(1, 9).forEach((r, i) => { const c = r.split(','); c[1] = i % 2 ? X : 'Dragonite'; c[2] = '"' + X2 + '"'; c[13] = X; c[14] = X2; c[15] = X; out.push(c.join(',')); });
+    const f = pth.join(os.tmpdir(), 'xss_roster.csv'); fs2.writeFileSync(f, out.join('\n') + '\n');
+    const x = await session({ feed: false });
+    await x.page.evaluate(() => { window.__xss = undefined; });
+    await x.load(f); await x.page.waitForTimeout(1500);
+    const st = await x.state();
+    const all = [...(st.roster || []), ...(st.addedPokemon || [])];
+    expect(all.some(p => JSON.stringify(p).indexOf('<img') >= 0 || JSON.stringify(p).indexOf('<svg') >= 0), 'setup: the markup did not reach the roster (' + all.length + ' rows)');
+    const vis = () => x.page.evaluate(() => document.body.innerText);
+    await x.go('ROSTER'); await x.page.waitForTimeout(800);
+    expect(/<img src=x onerror=window\.__xss=1>|<svg onload=window\.__xss=2>/.test(await vis()), 'setup: the hostile text is not shown on the roster as text');
+    const row = x.page.locator('[data-swipe-row]').first(); expect(await row.count() > 0, 'no roster row to open'); await row.click(); await x.page.waitForTimeout(900);
+    expect(!!(await x.state()).detailPoke, 'the detail sheet did not open');
+    expect(/<img src=x|<svg onload/.test(await vis()), 'setup: the hostile text is not shown in the detail sheet as text');
+    await x.call('closeDetail');
+    await x.set({ chatMessages: [{ role: 'user', content: X }, { role: 'assistant', content: X2 + X }] });
+    await x.call('openChatBubble'); await x.page.waitForTimeout(700);
+    expect(!!(await x.state()).chatOpen, 'the chat sheet did not open');
+    expect(/<img src=x onerror=window\.__xss=1>/.test(await vis()), 'setup: the hostile chat text is not shown as text');
+    const r = await x.page.evaluate(() => ({ xss: window.__xss, img: !!document.querySelector('img[src="x"]'), svg: !!document.querySelector('svg[onload]'), any: !![...document.querySelectorAll('[onerror],[onload]')].length }));
+    expect(r.xss === undefined, 'script ran: window.__xss = ' + r.xss);
+    expect(!r.img && !r.svg && !r.any, 'the markup became real elements');
+    await x.close();
+  }, 'critical');
   await s.close();
 };

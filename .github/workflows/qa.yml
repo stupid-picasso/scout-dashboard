@@ -10,6 +10,9 @@ on:
     - cron: '40 3 * * *'
   workflow_dispatch: {}
 
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
 jobs:
   qa:
     runs-on: ubuntu-latest
@@ -32,10 +35,26 @@ jobs:
         if: matrix.browser == 'chromium'
         run: node scripts/qa/qa_accuracy.js qa-accuracy.json
       - name: End-to-end suites
+        # Report-only (owner decision): these suites never gated CI before, because qa_run.js exited 0 on failure. Failures show in
+        # the log and the qa-*.json artifact. TODO: fix the 5 chromium suite-e layout failures and the ~30 WebKit failures, then remove this line.
+        continue-on-error: true
         run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c e
+      - name: Content-Security-Policy over http://localhost
+        # Chromium gates. WebKit is report-only until its allowed-hosts check is fixed (see the TODO above).
+        continue-on-error: ${{ matrix.browser == 'webkit' }}
+        run: CSP_REQUIRE_WEBKIT=1 node scripts/test_csp.js
+      - name: Cloud sync, data and security suite (gating)
+        # Suite d minus the accessibility checks: SYNC, STANDIN and DATA tests. A failure fails the job.
+        if: matrix.browser == 'chromium'
+        run: QA_SKIP='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-sync-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
+      - name: Cloud sync, data and security suite (WebKit, report-only)
+        # SYNC-02 loads data/feed.json over file:// and WebKit blocks it. TODO task #31: fix, then fold into the gating step.
+        if: matrix.browser == 'webkit'
+        continue-on-error: true
+        run: QA_SKIP='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-sync-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
       - name: Accessibility (axe) - reports only until the semantic-markup phase lands
         continue-on-error: true
-        run: QA_OUT=qa-axe-${{ matrix.browser }}.json QA_AXE_OUT=axe-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
+        run: QA_ONLY='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-axe-${{ matrix.browser }}.json QA_AXE_OUT=axe-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
       - name: Lighthouse (mobile)
         if: matrix.browser == 'chromium'
         run: |

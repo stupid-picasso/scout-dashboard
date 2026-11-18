@@ -109,18 +109,10 @@ The app ships with the `pokemon-professor` project config baked into
 `Scout Dashboard.dc.html` (`initFirebase()`). Sign in with email/password —
 the same credentials on every device sync the same roster.
 
-Firestore rules:
-
-```
-match /scoutUsers/{uid} {
-  allow read, write: if request.auth != null && request.auth.uid == uid;
-}
-match /gameData/{doc} {
-  allow read: if request.auth != null;
-  allow write: if request.auth != null &&
-    request.auth.token.email in ['abhi.patel@gmail.com','admin@scout.app'];
-}
-```
+Firestore rules live in `firestore.rules` (the single source of truth, tested by
+`scripts/test_firestore_rules.js`). The deploy order and checks are in `DEPLOY.md`:
+ship the client first, then the rules. API keys and the GitHub token stay in the browser
+and are never written to the cloud document, its snapshots or the backup file.
 
 ## Security Notes
 
@@ -131,3 +123,9 @@ match /gameData/{doc} {
 ## License
 
 MIT
+
+## Notice
+
+Professor is an unofficial fan-made tool. It is not affiliated with, endorsed by or sponsored by Niantic, Inc., Scopely, Nintendo,
+Creatures Inc., GAME FREAK inc. or The Pokemon Company. Pokemon, Pokemon GO and character names are trademarks of their owners.
+The code is MIT licensed (see `LICENSE`; game names, sprites and data are not covered). See `PRIVACY.md`, `SECURITY.md` and `CONTRIBUTING.md`.

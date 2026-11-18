@@ -19,6 +19,9 @@ concurrency:
   group: update-pvpoke-data
   cancel-in-progress: false
 
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -94,7 +97,7 @@ jobs:
           fi
           BRANCH="pvpoke-data-$(date +%Y%m%d)"
           TITLE="Refresh PvPoke data ($(date +%Y-%m-%d))"
-          if [ "${{ steps.tests.outputs.failed }}" = "1" ]; then TITLE="$TITLE - TESTS FAILING, do not merge as is"; fi
+          if [ "$IN_STEPS_TESTS_OUTPUTS_FAILED" = "1" ]; then TITLE="$TITLE - TESTS FAILING, do not merge as is"; fi
           git checkout -b "$BRANCH"
           git add -u   # tracked files only, so stray files never ride along
           git commit -m "Refresh PvPoke data ($(date +%Y-%m-%d))"
@@ -115,4 +118,5 @@ jobs:
           gh pr create --title "$TITLE" --body-file /tmp/pr_body.md --base main --head "$BRANCH" \
             || echo "::warning::Could not open the PR (is 'Allow GitHub Actions to create pull requests' off?). The branch $BRANCH is pushed; open the PR by hand."
         env:
+          IN_STEPS_TESTS_OUTPUTS_FAILED: ${{ steps.tests.outputs.failed }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

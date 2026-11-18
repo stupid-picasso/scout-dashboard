@@ -14,6 +14,12 @@ OUT = os.path.join(ROOT, 'data', 'promo_codes.json')
 LEEKDUCK = 'https://leekduck.com/promo-codes/'
 POCKETGAMER = 'https://www.pocketgamer.com/pokemon-go/promo-codes/'
 REDEEM = 'https://store.pokemongo.com/offer-redemption?passcode='
+CODE_RE = re.compile(r'[A-Za-z0-9]{4,32}')
+
+
+def redeem_link(code):
+    """The redeem URL for a code, or None when the code is not 4-32 letters and digits (never build a link from scraped text)."""
+    return REDEEM + code if isinstance(code, str) and CODE_RE.fullmatch(code) else None
 
 
 def fetch(url):
@@ -83,14 +89,18 @@ def build(leek, pg, now):
     today = now.strftime('%Y-%m-%d')
     codes, known = [], {c['code'].lower() for c in leek}
     for c in leek:
+        if not redeem_link(c['code']):
+            continue
         if c['expired'] or (c['expires'] and c['expires'] < today):
             continue
-        codes.append({**c, 'source': 'LeekDuck', 'verified': True, 'link': REDEEM + c['code']})
+        codes.append({**c, 'source': 'LeekDuck', 'verified': True, 'link': redeem_link(c['code'])})
     for c in pg:
+        if not redeem_link(c['code']):
+            continue
         if c['code'].lower() in known:
             continue   # LeekDuck lists it (live or expired): its answer wins
         codes.append({'code': c['code'], 'name': c['code'], 'description': '', 'rewards': [c['reward']] if c['reward'] else [], 'expires': None,
-                      'expired': False, 'source': 'Pocket Gamer', 'verified': False, 'link': REDEEM + c['code']})
+                      'expired': False, 'source': 'Pocket Gamer', 'verified': False, 'link': redeem_link(c['code'])})
     return codes
 
 

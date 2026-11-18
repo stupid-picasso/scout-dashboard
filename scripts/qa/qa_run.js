@@ -16,5 +16,6 @@ const { results, close } = require('./qa_lib');
   const f = results.filter(r => r.status === 'fail'), p = results.filter(r => r.status === 'pass'), sk = results.filter(r => r.status === 'skip');
   console.log(`\n\n${p.length} passed, ${f.length} failed, ${sk.length} skipped of ${results.length}`);
   f.forEach(r => console.log('FAIL', r.id, r.name, '\n     ', r.note));
+  if (f.length) process.exitCode = 1;   // a failed test fails the CI step
   sk.forEach(r => console.log('skip', r.id, r.name, '-', r.note));
 })().catch(e => { console.error(e); process.exit(1); });

@@ -26,6 +26,9 @@ on:
         required: false
         default: '3'
 
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -49,15 +52,20 @@ jobs:
       - name: Download video
         run: |
           mkdir -p /tmp/drive_video
-          gdown "${{ inputs.drive_link }}" -O /tmp/drive_video/clip.mp4
+          gdown "$IN_DRIVE_LINK" -O /tmp/drive_video/clip.mp4
 
+        env:
+          IN_DRIVE_LINK: ${{ inputs.drive_link }}
       - name: Run benchmark
         run: |
-          ARGS="--video /tmp/drive_video/clip.mp4 --batches ${{ inputs.batches || '6' }} --fps ${{ inputs.fps || '3' }}"
-          if [ -n "${{ inputs.truth_csv }}" ]; then ARGS="$ARGS --truth ${{ inputs.truth_csv }}"; fi
+          ARGS=(--video /tmp/drive_video/clip.mp4 --batches "$IN_BATCHES" --fps "$IN_FPS")
+          if [ -n "$IN_TRUTH_CSV" ]; then ARGS+=(--truth "$IN_TRUTH_CSV"); fi
           mkdir -p data
-          python scripts/benchmark_models.py $ARGS
+          python scripts/benchmark_models.py "${ARGS[@]}"
         env:
+          IN_BATCHES: ${{ inputs.batches || '6' }}
+          IN_FPS: ${{ inputs.fps || '3' }}
+          IN_TRUTH_CSV: ${{ inputs.truth_csv }}
           PYTHONUNBUFFERED: "1"
           GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}

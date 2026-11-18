@@ -775,6 +775,25 @@ module.exports = async function suiteB() {
     await s.page.unroute('**/generativelanguage.googleapis.com/**');
     await s.set({ geminiKey: '', geminiKeys: [] });
   });
+  await T('GEM-KEY-01', 'Security', 'The Gemini key travels in the x-goog-api-key header on the model list, the token count and the generate call, never in a URL', async () => {
+    const reqs = [];
+    await s.page.route('**/generativelanguage.googleapis.com/**', async r => {
+      const q = r.request(); reqs.push({ url: q.url(), key: q.headers()['x-goog-api-key'] });
+      if (/:generateContent/.test(q.url())) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'ok' }] } }] }) });
+      if (/:countTokens/.test(q.url())) return r.fulfill({ contentType: 'application/json', body: '{"totalTokens":1}' });
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [{ name: 'models/gemini-3.5-flash', supportedGenerationMethods: ['generateContent'] }] }) });
+    });
+    const key = 'AIzaHDR' + 'k'.repeat(28) + Date.now();
+    await s.set({ geminiKey: key, geminiKeys: [key] });
+    await s.call('clearDerivedCaches');
+    await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGemini) { f.stateNode.logic._gemRot = {}; return await f.stateNode.logic.callGemini({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 50 }); } } });
+    const kinds = ['/models?', ':countTokens', ':generateContent'].map(k => reqs.filter(r => r.url.indexOf(k) >= 0));
+    expect(kinds.every(a => a.length >= 1), 'expected a model list, a token count and a generate call: ' + JSON.stringify(reqs.map(r => r.url)));
+    expect(reqs.every(r => !/[?&]key=/.test(r.url) && r.url.indexOf(key) < 0), 'the key is in a URL: ' + reqs.map(r => r.url).join(' '));
+    expect(reqs.every(r => r.key === key), 'a request has no x-goog-api-key header');
+    await s.page.unroute('**/generativelanguage.googleapis.com/**');
+    await s.set({ geminiKey: '', geminiKeys: [] });
+  }, 'high');
   await T('WHY-01', 'Safety', 'Each transfer batch lists, per Pokemon, its spread, stars, league ranks and the reason the app lets it go', async () => {
     const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
     const st0 = await s.state();

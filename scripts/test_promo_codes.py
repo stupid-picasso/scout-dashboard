@@ -35,5 +35,12 @@ check('a code LeekDuck lists as expired is not resurrected by the other site', d
 check('redeem link carries the code', byc['NEWCODE2026']['link'], u.REDEEM + 'NEWCODE2026')
 late = u.build([{**a, 'expires': '2026-11-01'}], [], now)
 check('a code past its date is dropped', late, [])
+# Hostile input: a link is built only from a code of 4-32 letters and digits.
+check('redeem_link accepts a normal code', u.redeem_link('ADIDASxPOKEMON'), u.REDEEM + 'ADIDASxPOKEMON')
+for bad in ['javascript:alert(1)', 'AB', 'A' * 33, 'CODE&next=https://evil.example', 'CODE\nX', 'GOOD1\n', '\nGOOD1', 'code with space', '../x', '', None, 12345]:
+    check('redeem_link refuses %r' % (bad,), u.redeem_link(bad), None)
+hostile = u.build([{**a, 'code': 'javascript:alert(1)'}, {**a, 'code': 'GOODCODE1'}], [{'code': 'x" onclick="y', 'reward': ''}, {'code': 'ok1234', 'reward': ''}], now)
+check('hostile codes never reach the output; good ones carry a store.pokemongo.com link',
+      sorted((c['code'], c['link'].startswith('https://store.pokemongo.com/')) for c in hostile), [('GOODCODE1', True), ('ok1234', True)])
 print('%d failed' % fail)
 sys.exit(1 if fail else 0)

@@ -585,16 +585,21 @@ function buildLists(roster, bestRank) {
   check('persistence is confirmed by read-back', ctx._secretsPersisted, true);
 
   const fb = { firestore: { FieldValue: { delete: () => 'DELETE' } } };
+  // The scrub names only the credential fields the document really holds (as last read), on any device.
+  ctx._remoteSecrets = ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'];
   const scrub = call('secretScrubFields', ls, ctx, fb);
-  check('first write deletes the old cloud copies', scrub.githubToken === 'DELETE' && scrub.geminiKeys === 'DELETE' && scrub.apiEndpoint === 'DELETE', true);
-  ls.setItem('scout.secretsScrubbed', '1');
-  check('after the scrub is recorded nothing more is deleted', Object.keys(call('secretScrubFields', ls, ctx, fb)).length, 0);
-  const ctx2 = { state: {}, _secretsLocalOk: true, _secretsPersisted: false };
-  check('cloud copies are never deleted before the device holds them', Object.keys(call('secretScrubFields', mkStorage(), ctx2, fb)).length, 0);
+  check('the first write deletes the old cloud copies', scrub.githubToken === 'DELETE' && scrub.geminiKeys === 'DELETE' && scrub.apiEndpoint === 'DELETE' && scrub.geminiKey === 'DELETE', true);
+  ctx._remoteSecrets = ['githubToken'];
+  check('only the fields the document holds are named', Object.keys(call('secretScrubFields', ls, ctx, fb)).join(), 'githubToken');
+  ctx._remoteSecrets = [];
+  check('a clean document is never written for the scrub', Object.keys(call('secretScrubFields', ls, ctx, fb)).length, 0);
+  check('nothing is deleted when the document was never read', Object.keys(call('secretScrubFields', mkStorage(), { state: {} }, fb)).length, 0);
 
+  // A value an older build stored (including a custom endpoint) is read from the stored secrets, not written back.
+  ls.setItem('scout.secrets.v1', JSON.stringify({ geminiKey: 'AIza1', geminiKeys: ['AIza1', 'AIza2'], apiEndpoint: 'https://x', githubToken: 'ghp_x' }));
   const ctx3 = { _patch: null, setState(p) { this._patch = p; } };
   call('loadLocalSecrets', ls, ctx3);
-  check('a fresh load restores the keys and endpoint', !!ctx3._patch && ctx3._patch.geminiKeys.length === 2 && ctx3._patch.apiEndpoint === 'https://x' && ctx3._patch.githubToken === 'ghp_x', true);
+  check('a fresh load restores the keys and token, and ignores a stored endpoint', !!ctx3._patch && ctx3._patch.geminiKeys.length === 2 && ctx3._patch.githubToken === 'ghp_x' && !('apiEndpoint' in ctx3._patch) && !('apiEndpointDraft' in ctx3._patch), true);
 
   const syncKeys = extractMethodBody(SRC, 'SYNC_KEYS() {') + extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {') + extractMethodBody(SRC, 'get PACKED_KEYS() {');
   check('no credential is in the synced or packed key lists', /geminiKey|githubToken|apiEndpoint/.test(syncKeys), false);
