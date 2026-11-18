@@ -112,19 +112,19 @@ module.exports = async function pushTests() {
     expect(JSON.parse(await s.page.evaluate(() => localStorage.getItem('scout.push.v1'))).prefs.promo === false, 'not saved');
     await btn(s, 'Events').click(); await s.page.waitForTimeout(300);
     expect(await btn(s, 'Raid Day').count() === 0, 'event types still shown with Events off');
-    await btn(s, 'Events').click();
+    await btn(s, 'Events').click(); await s.page.waitForTimeout(1300);   // let the debounced sync of that last tap land
   }, 'high');
 
   await T('PUSH-05', 'Push', 'Send test posts to the Worker and reports the answer; a limit answer and a dead device say what to do', async () => {
-    await btn(s, 'Send test').click(); await s.page.waitForTimeout(500);
-    let p = await P(s), f = p.fetches[p.fetches.length - 1];
+    await btn(s, 'Send test').click(); await s.page.waitForTimeout(700);
+    let p = await P(s), f = p.fetches.filter(x => x.path === '/test').pop();
     expect(f.path === '/test' && /^https:\/\/fcm/.test(f.body.endpoint) && Object.keys(f.body).join() === 'endpoint', JSON.stringify(f));
     expect(/Test sent/.test(await card(s).innerText()), 'no success message');
-    await s.page.evaluate(() => { window.__push.reply['/test'] = { status: 429, body: { error: 'wait a minute' } }; }); await btn(s, 'Send test').click(); await s.page.waitForTimeout(500);
+    await s.page.evaluate(() => { window.__push.reply['/test'] = { status: 429, body: { error: 'wait a minute' } }; }); await btn(s, 'Send test').click(); await s.page.waitForTimeout(700);
     expect(/Wait a minute/.test(await card(s).innerText()), 'no limit message');
-    await s.page.evaluate(() => { window.__push.reply['/test'] = { status: 200, body: { ok: false, gone: true } }; }); await btn(s, 'Send test').click(); await s.page.waitForTimeout(500);
+    await s.page.evaluate(() => { window.__push.reply['/test'] = { status: 200, body: { ok: false, gone: true } }; }); await btn(s, 'Send test').click(); await s.page.waitForTimeout(700);
     expect(/no longer registered/.test(await card(s).innerText()), 'no dead-device message');
-    await s.page.evaluate(() => { delete window.__push.reply['/test']; window.__push.down = true; }); await btn(s, 'Send test').click(); await s.page.waitForTimeout(500);
+    await s.page.evaluate(() => { delete window.__push.reply['/test']; window.__push.down = true; }); await btn(s, 'Send test').click(); await s.page.waitForTimeout(700);
     expect(/did not answer/.test(await card(s).innerText()), 'no Worker-down message');
     await s.page.evaluate(() => { window.__push.down = false; });
   }, 'high');
