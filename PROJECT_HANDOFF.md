@@ -590,7 +590,7 @@ Design pass following the unslop skill (Damir Sokolovsky, https://github.com/hey
 - Tests: EVOLINE-01, HUNDO-01; EVOLVE-02/EXTRA-01 fixtures adjusted (roster isolation).
 
 ## Apply clean reads automatically (2026-11-12)
-- Import-page checkbox (`ocrAutoApply`, synced). `autoApplyOcr()` runs after each screenshot read: no clean-up notes, no AI error, a named species; a matched roster row is updated, a new record needs CP/HP/3 IVs and must pass `importCheck` and the duplicate check (`addOcrAsNew(false, true)` returns false instead of asking). Otherwise the panel waits as before. Test AUTOAPPLY-01.
+- Import-page checkbox (`ocrAutoApply`, per session: not synced, not saved). `autoApplyOcr()` runs after each screenshot read: no clean-up notes, no AI error, a named species; a matched roster row is updated, a new record needs CP/HP/3 IVs and must pass `importCheck` and the duplicate check (`addOcrAsNew(false, true)` returns false instead of asking). Otherwise the panel waits as before. Test AUTOAPPLY-01.
 - Tests workflow: single `npm install` (the old `--no-save terser` step replaced Playwright, so smoke_render could not find its browser).
 
 ## Evolution-line rule in squad picker and power-up list (2026-11-12)
@@ -855,3 +855,12 @@ All in `Scout Dashboard.dc.html` (one CSS block after the phase-1 rules, plus a 
 - `pogo_extract.py` unchanged: on frame conflict it still keeps the lowest-drift pick as atk/def/sta but flags `ivConflict`; the client now ignores that pick.
 - Data: `data/appraisal_import.json` Skarmory CP 1204 is 9/15/11, `ivSource: 'owner-confirmed'`, `ivConflict` removed, bar fields and candidate sets kept. `data/pokemon_import.json` carries no IVs for it. 22 other rows in the file are `ivConflict` and 26 are low confidence: a fresh import of them asks for a pick instead of auto-pinning (records already pinned on a device by an earlier import stay pinned until re-imported or retyped). Known gap: the extractor "clean frame wins" branch of `_resolve_duplicate_sightings` sets no `ivConflict`, so a mid-fill drift-0 frame beating a settled one is not gated.
 - Tests: scripts/test_roster_logic.js (Skarmory block).
+
+## Untangle stage 0: real bug fixes (2026-11-18)
+- Prompts and one warning had `\\n` / `\\u2014` (two characters) instead of a newline or dash: movePrompt, typePrompt, evoPrompt, the TM prompt's movepool line, the sync-key drift warning. Fixed; `test_roster_logic.js` fails on any doubled backslash escape in the source.
+- Coverage, the import-progress line and the clear-roster warning count `effectiveRosterForMatch()` (roster + added - removed), not `state.roster`.
+- One transfer rule: `isLowValueMon` (IV under 51, best rank under 70) and `transferSafePool` (plus no raid role, no keep reason, not done). The optimise plan (chat, Today) used to skip the raid-role test the Recs list had; the stricter one is intended (keep check is the single gate, raid role is a keep reason).
+- `installDerivedCache` keys arrays of plain values by content and arrays of records by identity (two Max bosses with two types each shared one result).
+- Account data lists: SYNC_KEYS, SYNCED_STATE_KEYS, buildCloudBlob, the applyRemote patch and EMPTY_USER_DATA must agree (test in `test_roster_logic.js`, DATA-03 checks eight account fields on screen; six of them used to stay). `chatMessages` is now watched; `ocrAutoApply` is NOT account data: it is a per-session switch (firestore.rules does not allow it, so syncing it would need a rules deploy first) and was removed from SYNC_KEYS / SYNCED_STATE_KEYS. It is not saved at all, as before.
+- A failed Firebase SDK load now shows "Sign-in is unavailable: ..." under the sign-in buttons (Settings and first run).
+- The confirmClearRoster comment now matches the code and the confirmation text: it clears the roster, added Pokemon, overrides, candy counts and type table; stardust, bag items, TMs and settings stay.

@@ -994,6 +994,85 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Stage 0 untangle fixes. Each block fails on the source before the fix.
+// ---------------------------------------------------------------------------
+
+// Bug 1: '\\n' and '\\u2014' in the source are the two characters backslash + n, not a newline or a dash. They reached the model
+// prompts (move, type and evolution lookups, the movepool line of the TM prompt) and a warning shown to the person.
+(() => {
+  const ctx = {};
+  ['movePrompt', 'typePrompt', 'evoPrompt'].forEach(n => { ctx[n] = new Function('names', extractMethodBody(SRC, n + '(names) {')).bind(ctx); });
+  ['movePrompt', 'typePrompt', 'evoPrompt'].forEach(n => {
+    const text = ctx[n](['Bulbasaur', 'Ivysaur']);
+    check(n + ' has no literal backslash', text.indexOf('\\') < 0, true);
+    check(n + ' ends with the names one per line', text.endsWith('Bulbasaur\nIvysaur'), true);
+  });
+  const doubled = SRC.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /\\\\[nut]/.test(l));
+  check('no source line writes a doubled backslash escape (\\\\n, \\\\u2014, \\\\t)', doubled.map(([n]) => n), []);
+})();
+
+// Bug 3: one definition of "safe to transfer". The optimise plan (chat, Today) used to skip the raid-role test that the Recs list had.
+(() => {
+  const roster = [{ idx: 1, name: 'A', dex: 1, ivAvg: 40 }, { idx: 2, name: 'B', dex: 2, ivAvg: 40 }, { idx: 3, name: 'C', dex: 3, ivAvg: 80 }];
+  const ctx = {
+    state: { completedIds: [] },
+    bestRank: p => (p.idx === 3 ? 90 : 50), evolvesToName: () => null,
+    keepContext: () => ({ typeBest: {} }), keepReasons: () => [],
+    hasRaidRole: p => p.idx === 1,
+  };
+  ['isLowValueMon(p)', 'transferSafePool(roster, keepCtx, typeBest, notDone)'].forEach(sig => {
+    const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
+    if (SRC.indexOf(n + '(' + a + ') {') >= 0) ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
+  });
+  const plan = new Function('roster', extractMethodBody(SRC, 'buildOptimizePlan(roster) {')).call(ctx, roster);
+  check('the optimise plan leaves out a Pokemon with a raid role, like the Recs list', plan.transferSafe.map(p => p.idx), [2]);
+  check('the IV 51 and rank 70 bar is written once', (SRC.match(/ivAvg < 51/g) || []).length, 1);
+})();
+
+// Bug 4: installDerivedCache keyed array arguments by length, so two bosses with the same number of types shared one result.
+(() => {
+  const ctx = { state: {}, mechanics: null, MEMO_UI_KEYS: () => new Set(), calls: 0,
+    maxAttackers(types) { this.calls++; return types.join('/'); }, buildOptimizePlan(roster) { this.calls++; return roster.map(p => p.id).join(','); } };
+  ['memoDeps()', 'sameDeps(a, b)', 'memoArrayId(a)', 'installDerivedCache()'].forEach(sig => {
+    const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
+    if (SRC.indexOf(sig + ' {') >= 0) ctx[n] = new Function(...(a ? a.split(', ') : []), extractMethodBody(SRC, sig + ' {')).bind(ctx);
+  });
+  ctx.installDerivedCache();
+  check('two Max bosses with two types each do not share a cached result', [ctx.maxAttackers(['Fire', 'Dragon']), ctx.maxAttackers(['Water', 'Ice'])], ['Fire/Dragon', 'Water/Ice']);
+  const calls = ctx.calls; ctx.maxAttackers(['Water', 'Ice']);
+  check('the same boss again is served from the cache', ctx.calls, calls);
+  const r1 = [{ id: 1 }, { id: 2 }], r2 = [{ id: 3 }, { id: 4 }];
+  check('two rosters of the same length do not share a cached result', [ctx.buildOptimizePlan(r1), ctx.buildOptimizePlan(r2), ctx.buildOptimizePlan(r1)], ['1,2', '3,4', '1,2']);
+})();
+
+// Bug 7: the lists that name an account's data must agree (they had drifted: ocrAutoApply watched but never saved; sign-out left eight fields on screen).
+(() => {
+  const arr = body => new Function(body)();
+  const synced = arr(extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {'));
+  const watched = new Function(extractMethodBody(SRC, 'SYNC_KEYS() {')).call({});
+  const packed = arr(extractMethodBody(SRC, 'get PACKED_KEYS() {'));
+  const state = { checklistDate: 'd' };
+  synced.forEach(k => { state[k] = packed.indexOf(k) >= 0 ? [] : 1; });
+  state.ocrAutoApply = true;
+  const ctx = { state, PACKED_KEYS: packed, chunkString: x => x, packText: x => x };
+  const blob = new Function(extractMethodBody(SRC, 'buildCloudBlob() {')).call(ctx);
+  const blobKeys = Object.keys(blob).filter(k => k !== 'updatedAt' && k !== 'packedVersion').map(k => k.replace(/Json$/, ''));
+  const empty = Object.keys(new Function(extractMethodBody(SRC, 'EMPTY_USER_DATA() {')).call({ state: { checklistDate: 'd' } }));
+  let patch = null;
+  const rctx = { state: { checklistDate: 'd', ivOverrides: {} }, _dirtyUntilPush: false, _hydrated: false, SECRET_CLOUD_FIELDS: [], unpackCloudBlob: r => r,
+    sanitizeRoster: r => r, mergeIvOverrides: (a, b) => b || a, normalizeCandyInventory: x => x, cleanSnapshotIndex: x => x,
+    setState(p) { if (!patch) patch = p; } };
+  new Function('rawRemote', 'opts', extractMethodBody(SRC, 'applyRemote(rawRemote, opts) {')).call(rctx, {}, null);
+  const sorted = a => [...a].sort();
+  const diff = (a, b) => sorted(a.filter(k => b.indexOf(k) < 0));
+  check('SYNC_KEYS and SYNCED_STATE_KEYS name the same fields', [diff(watched, synced), diff(synced, watched)], [[], []]);
+  check('buildCloudBlob writes the same fields as SYNCED_STATE_KEYS', [diff(blobKeys, synced), diff(synced, blobKeys)], [[], []]);
+  check('the applyRemote patch covers every synced field', diff(synced, Object.keys(patch)), []);
+  check('the applyRemote patch has nothing synced-looking outside the list', diff(Object.keys(patch), synced), ['cutTargetDraft', 'snapshots'].filter(k => k in patch));
+  check('EMPTY_USER_DATA resets every synced field', diff(synced, empty), []);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));
