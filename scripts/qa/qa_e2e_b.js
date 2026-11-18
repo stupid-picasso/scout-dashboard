@@ -740,6 +740,33 @@ module.exports = async function suiteB() {
     await s.call('saveProtectPrefs', { selfProtect: false, negationOk: false });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
   });
+  await T('IVENTRY-01', 'Roster', 'Entering IVs by hand: ATK / DEF / STA boxes are labelled, wide enough for two digits at 320 px and 390 px, and Save stores the typed spread as owner-typed', async () => {
+    const saved = (await s.state()).roster;
+    const top = saved.reduce((b, p, i) => (p.cp || 0) > (saved[b].cp || 0) ? i : b, 0);   // the highest-CP row is always on the first page
+    const logicDo = fn => s.page.evaluate(fnSrc => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) return new Function('l', fnSrc)(f.stateNode.logic); } return null; }, fn);
+    try {
+      await logicDo('l.setState({ roster: l.state.roster.map((p, i) => i === ' + top + ' ? { ...p, ivMeasured: false, ivManual: false, ivSolved: false, atkIV: undefined, defIV: undefined, staIV: undefined } : p) });');
+      const bad = [];
+      for (const w of [390, 320]) {
+        await s.page.setViewportSize({ width: w, height: 844 }); await s.go('ROSTER'); await s.page.waitForTimeout(700);
+        const btn = s.page.getByText('Enter IVs').first(); if (await btn.count()) { await btn.click(); await s.page.waitForTimeout(400); }   // the editor stays open once opened
+        expect(await s.page.locator('.rg-iv .iv-grid').count() > 0, 'the IV boxes did not open at ' + w);
+        const boxes = await s.page.evaluate(() => [...document.querySelectorAll('.rg-iv .iv-grid input')].map(i => { const r = i.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), label: i.getAttribute('aria-label'), vis: r.width > 0 }; }));
+        if (boxes.length !== 3) bad.push(w + ': ' + boxes.length + ' boxes');
+        boxes.forEach(b => { if (b.w < 40 || b.h < 44) bad.push(w + ': ' + b.label + ' is ' + b.w + 'x' + b.h); });
+        const labels = await s.page.evaluate(() => [...document.querySelectorAll('.rg-iv .iv-grid label > span')].map(x => x.textContent.trim()).join('/'));
+        if (labels !== 'ATK/DEF/STA') bad.push(w + ': labels ' + labels);
+        await s.go('TODAY'); await s.page.waitForTimeout(200);
+      }
+      expect(bad.length === 0, bad.join(' | '));
+      await s.page.setViewportSize({ width: 390, height: 844 }); await s.go('ROSTER'); await s.page.waitForTimeout(600);
+      if (await s.page.getByText('Enter IVs').count()) { await s.page.getByText('Enter IVs').first().click(); await s.page.waitForTimeout(300); }
+      await s.page.locator('[aria-label="Attack IV"]').first().fill(String(saved[top].atkIV)); await s.page.locator('[aria-label="Defense IV"]').first().fill(String(saved[top].defIV)); await s.page.locator('[aria-label="Stamina IV"]').first().fill(String(saved[top].staIV));
+      await s.page.locator('[aria-label="Stamina IV"]').first().blur(); await s.page.locator('.rg-iv .iv-save').first().click(); await s.page.waitForTimeout(600);
+      const p0 = (await s.state()).roster[top];
+      expect(p0.ivManual === true && p0.atkIV === saved[top].atkIV && p0.defIV === saved[top].defIV && p0.staIV === saved[top].staIV, 'the typed spread was not stored as owner-typed: ' + JSON.stringify([p0.atkIV, p0.defIV, p0.staIV, p0.ivManual]));
+    } finally { await logicDo('l.setState({ roster: ' + JSON.stringify(saved) + ' });'); await s.page.waitForTimeout(300); }
+  });
   await T('THINK-01', 'AI', 'Image reads ask for the least thinking a model accepts, step down when it refuses one, remember the working setting, leave text calls alone, and every call is timed in the diagnostics', async () => {
     const seen = [];
     await s.page.route('**/generativelanguage.googleapis.com/**', async r => {

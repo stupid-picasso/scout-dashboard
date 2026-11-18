@@ -900,6 +900,100 @@ function buildLists(roster, bestRank) {
 })();
 
 // ---------------------------------------------------------------------------
+// Unsure appraisal-bar reads (Skarmory CP 1204 / HP 106). 9/15/11 at L21 and
+// 15/15/15 at L20 give the same CP and HP, so CP/HP cannot arbitrate: a read the
+// extractor flagged (ivConflict / low confidence) must NOT be auto-applied.
+// ---------------------------------------------------------------------------
+(() => {
+  const roster = [{ idx: 7, name: 'Skarmory', dex: 227, cp: 1204, hp: 106 }];
+  const mkCtx = () => {
+    const ctx = { mechanics: m, state: { ivOverrides: {}, roster: [], addedPokemon: [] }, effectiveRosterForMatch: () => roster,
+      isShadow: () => false, littleCupEligible: () => false, knownSpread: () => null,
+      bakeOverridesIntoRecords: o => ({ overrides: o, roster: [], addedPokemon: [] }),
+      setState: function (u, cb) { Object.assign(this.state, typeof u === 'function' ? u(this.state) : u); if (cb) cb(); }, pushCloud: () => {}, recordDistinguisher: () => '' };
+    ['appraisalHintFromItem(item)', 'baseStatCandidates(item)', 'spreadFitsStars(spread, stars)', 'appraisalIvUnsure(item)',
+     'measuredSpreadOrder(item)', 'unsureSpreadChoices(rec, item)', 'applyMeasuredIv(rec, item, overrides)',
+     'mergeAppraisalImport(rawItems)', 'applyUnsurePick(rid, choiceIdx)', 'normalizeAppraisalItems(items)', 'needsAppraisal(p)'].forEach(sig => {
+      const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
+      ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
+    });
+    return ctx;
+  };
+  const row = { name: 'Skarmory', dex: 227, cp: 1204, hp: 106, atkIV: 15, defIV: 15, staIV: 15, ivSource: 'bar-measure',
+    barDrift: 0.0, barConfidence: 'low', ivConflict: true, ivCandidateSets: [[9, 15], [15], [11, 15]], maxed: [] };
+  const key = c => (c || []).map(x => x.spread.join('/') + '@' + x.level);
+  let ctx = mkCtx();
+
+  const fits = (a, d, s) => (m.solveIVs(m.BASE_STATS[227], 1204, 106) || []).some(c => c.atkIV === a && c.defIV === d && c.staIV === s);
+  check('both 9/15/11 and 15/15/15 reproduce CP 1204 / HP 106', [fits(9, 15, 11), fits(15, 15, 15)], [true, true]);
+  check('the candidate list keeps both CP/HP-consistent spreads', key(ctx.unsureSpreadChoices(roster[0], row)).sort(), ['15/15/15@20', '9/15/11@21']);
+
+  // Star bands: spread% = sum / 45.
+  check('0 stars accepts up to 48.9% (sum 22), rejects 23', [ctx.spreadFitsStars([10, 6, 6], 0), ctx.spreadFitsStars([10, 7, 6], 0)], [true, false]);
+  check('1 star is 51.1-64.4% (23-29)', [ctx.spreadFitsStars([10, 7, 6], 1), ctx.spreadFitsStars([10, 10, 9], 1), ctx.spreadFitsStars([10, 10, 10], 1)], [true, true, false]);
+  check('2 stars is 66.7-80.0% (30-36)', [ctx.spreadFitsStars([9, 15, 11], 2), ctx.spreadFitsStars([15, 15, 15], 2), ctx.spreadFitsStars([10, 10, 9], 2)], [true, false, false]);
+  check('3 stars is 82.2-100% (37-45)', [ctx.spreadFitsStars([15, 15, 7], 3), ctx.spreadFitsStars([15, 15, 15], 3), ctx.spreadFitsStars([9, 15, 11], 3)], [true, true, false]);
+  check('no star value accepts everything', ctx.spreadFitsStars([0, 0, 0], null), true);
+
+  // 2 stars: 15/15/15 rejected, 9/15/11 accepted.
+  check('2 stars leaves only 9/15/11 as a choice', key(ctx.unsureSpreadChoices(roster[0], { ...row, stars: 2 })), ['9/15/11@21']);
+  check('3 stars leaves only 15/15/15 as a choice', key(ctx.unsureSpreadChoices(roster[0], { ...row, stars: 3 })), ['15/15/15@20']);
+  const ov2 = {};
+  const r2 = ctx.applyMeasuredIv(roster[0], { ...row, ivConflict: false, barConfidence: 'high', atkIV: 15, ivCandidateSets: null, stars: 2 }, ov2);
+  check('a confident 15/15/15 read is rejected by a 2-star badge', !!r2.contradiction && !ov2[7], true);
+  const ov3 = {};
+  ctx.applyMeasuredIv(roster[0], { ...row, ivConflict: false, barConfidence: 'high', atkIV: 9, defIV: 15, staIV: 11, ivCandidateSets: null, stars: 2 }, ov3);
+  check('9/15/11 passes the 2-star badge and pins at L21', ov3[7] && [ov3[7].atkIV, ov3[7].defIV, ov3[7].staIV, ov3[7].lvlMin], [9, 15, 11, 21]);
+
+  // Conflict: not applied, stays protected, owner choices listed.
+  check('ivConflict marks the read unsure', ctx.appraisalIvUnsure(row), true);
+  check('low confidence alone marks the read unsure', ctx.appraisalIvUnsure({ ...row, ivConflict: false }), true);
+  check('a high-confidence read is not unsure', ctx.appraisalIvUnsure({ ...row, ivConflict: false, barConfidence: 'high' }), false);
+  const sum = ctx.mergeAppraisalImport([row]);
+  check('a conflicted read writes nothing and is counted unsure, not applied',
+    [sum.applied, sum.unsure, Object.keys(ctx.state.ivOverrides).length], [0, 1, 0]);
+  check('the review row is an unsure row offering both spreads',
+    [sum._review[0]._status, key(sum._review[0]._choices).sort()], ['unsure', ['15/15/15@20', '9/15/11@21']]);
+
+  check('the unsure Pokemon is still protected (needs an appraisal)', ctx.needsAppraisal({ ...roster[0], ...(ctx.state.ivOverrides[7] || {}) }), true);
+  // Owner taps 9/15/11: applied as a typed-in measurement at L21.
+  ctx.state.videoImport = { review: sum._review };
+  const pickIdx = sum._review[0]._choices.findIndex(c => c.spread.join('/') === '9/15/11');
+  ctx.applyUnsurePick(sum._review[0]._rid, pickIdx);
+  const po = ctx.state.ivOverrides[7] || {};
+  check('tapping 9/15/11 pins it at L21, measured and owner-confirmed', [po.atkIV, po.defIV, po.staIV, po.lvlMin, po.ivMeasured, po.ivManual], [9, 15, 11, 21, true, true]);
+  check('the review row flips to applied', ctx.state.videoImport.review[0]._status, 'applied');
+  check('the picked Pokemon no longer needs an appraisal', ctx.needsAppraisal({ ...roster[0], ...po }), false);
+
+  // Non-conflict high-confidence rows still auto-apply, as before.
+  ctx = mkCtx();
+  const hi = { ...row, atkIV: 9, defIV: 15, staIV: 11, barConfidence: 'high', ivConflict: false, barDrift: 0.05, ivCandidateSets: [[9], [15], [11]] };
+  const sum2 = ctx.mergeAppraisalImport([hi]);
+  check('a high-confidence row still auto-applies as a measurement', [sum2.applied, sum2.unsure], [1, 0]);
+  const hp2 = ctx.state.ivOverrides[7] || {};
+  check('...as ivMeasured, not owner-typed', [hp2.ivMeasured, hp2.ivManual], [true, undefined]);
+  // An owner-confirmed row (data file) applies and is flagged as typed-in, not "measured from bars".
+  ctx = mkCtx();
+  const oc = { ...hi, ivSource: 'owner-confirmed', barConfidence: 'low' };
+  const sum3 = ctx.mergeAppraisalImport([oc]);
+  check('an owner-confirmed row applies even though the bars were low confidence', [sum3.applied, sum3.unsure], [1, 0]);
+  // The real data-file row, through the real normaliser.
+  ctx = mkCtx();
+  const real = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'appraisal_import.json'), 'utf8')).find(r => r.name === 'Skarmory' && r.cp === 1204);
+  const sum4 = ctx.mergeAppraisalImport(ctx.normalizeAppraisalItems([real]));
+  const ro = ctx.state.ivOverrides[7] || {};
+  check('data/appraisal_import.json Skarmory 1204 applies as 9/15/11 at L21', [sum4.applied, sum4.unsure, ro.atkIV, ro.defIV, ro.staIV, ro.lvlMin], [1, 0, 9, 15, 11, 21]);
+  // The pre-fix row (bar-measure, conflict) normalises to a flagged item that is not applied.
+  ctx = mkCtx();
+  const old = { ...real, ivSource: 'bar-measure', atkIV: 15, staIV: 15, ivConflict: true };
+  const sum5 = ctx.mergeAppraisalImport(ctx.normalizeAppraisalItems([old]));
+  check('the pre-fix data row (normalised) is not applied', [sum5.applied, sum5.unsure], [0, 1]);
+
+  // The detail label must not call an owner pick "measured from appraisal bars".
+  check('ivManual rows are labelled confirmed by the owner', /if \(p\.ivManual\) return 'CONFIRMED BY YOU';\s*\n\s*if \(p\.ivMeasured\) return 'MEASURED FROM APPRAISAL BARS'/.test(SRC), true);
+})();
+
+// ---------------------------------------------------------------------------
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) {
   console.log('\nFailures:\n' + failures.join('\n\n'));
