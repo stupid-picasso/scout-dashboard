@@ -1241,11 +1241,13 @@ module.exports = async function suiteB() {
       for (const id of ['sx1', 'sx2']) {
         l.openDetail(l.effectiveRosterForMatch().find(x => x.idx === id)); await wait(700);
         const d = document.querySelector('[role=dialog][aria-label="Pokemon details"]'); if (!d) { out.push('no dialog'); continue; }
-        const t = (x, y) => new Touch({ identifier: 1, target: d, clientX: x, clientY: y });
-        d.dispatchEvent(new TouchEvent('touchstart', { touches: [t(300, 300)], bubbles: true, cancelable: true }));
-        d.dispatchEvent(new TouchEvent('touchmove', { touches: [t(120, 304)], bubbles: true, cancelable: true }));
+        // A real TouchEvent where the browser has the constructor; WebKit on desktop does not ("Illegal constructor"), so there the same event is a plain Event carrying the touch lists the sheet's handlers read.
+        const t = (x, y) => ({ identifier: 1, target: d, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y });
+        const te = (type, touches, changed) => { try { return new TouchEvent(type, { touches: touches.map(p => new Touch(p)), changedTouches: changed.map(p => new Touch(p)), bubbles: true, cancelable: true }); } catch (err) { const e = new Event(type, { bubbles: true, cancelable: true }); Object.defineProperty(e, 'touches', { value: touches }); Object.defineProperty(e, 'targetTouches', { value: touches }); Object.defineProperty(e, 'changedTouches', { value: changed }); return e; } };
+        d.dispatchEvent(te('touchstart', [t(300, 300)], [t(300, 300)]));
+        d.dispatchEvent(te('touchmove', [t(120, 304)], [t(120, 304)]));
         const during = d.style.transform;
-        d.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t(120, 304)], bubbles: true, cancelable: true })); await wait(300);
+        d.dispatchEvent(te('touchend', [], [t(120, 304)])); await wait(300);
         d.scrollLeft = 80;
         out.push({ client: d.clientWidth, scroll: d.scrollWidth, during, after: d.style.transform, left: d.scrollLeft, index: l.state.detailNavIndex });
         l.closeDetail(); await wait(300);
