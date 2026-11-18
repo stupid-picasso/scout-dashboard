@@ -29,17 +29,22 @@ const feed = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'feed.json'), 'u
     });
     // detail states that need a Pokemon with a power-up, a purify and an evolve button: scan the fixture roster for them
     await tryDo('DETAIL_STATES', async () => {
-      await s.go('ROSTER'); await s.page.waitForTimeout(600);
-      const want = { cost: '.go-cost:not(.go-cost-off)', off: '.go-cost-off', pink: '.go-pink', evo: '.go-evo' }; const got = {};
-      for (let i = 0; i < 40 && Object.keys(got).length < 4; i++) {
-        const row = s.page.locator('[data-swipe-row]').nth(i); if (!(await row.count())) break;
-        await row.click({ force: true }); await s.page.waitForTimeout(500);
-        for (const k of Object.keys(want)) if (!got[k] && await s.page.locator(want[k]).count()) {
-          got[k] = i; await s.page.locator(want[k]).first().scrollIntoViewIfNeeded(); await s.page.evaluate(() => { const d = document.querySelector('[aria-label="Pokemon details"]'); if (d) d.scrollTop += 120; }); await shot('DETAIL_' + k.toUpperCase());
+      const scan = async (want, tag2) => {
+        await s.go('ROSTER'); await s.page.waitForTimeout(600); const got = {};
+        for (let i = 0; i < 64 && Object.keys(got).length < Object.keys(want).length; i++) {
+          const row = s.page.locator('[data-swipe-row]').nth(i); if (!(await row.count())) break;
+          await row.click({ force: true }); await s.page.waitForTimeout(400);
+          for (const k of Object.keys(want)) if (!got[k] && await s.page.locator(want[k]).count()) {
+            got[k] = i; await s.page.locator(want[k]).first().scrollIntoViewIfNeeded(); await s.page.evaluate(() => { const d = document.querySelector('[aria-label="Pokemon details"]'); if (d) d.scrollTop += 120; }); await shot('DETAIL_' + k.toUpperCase());
+          }
+          await s.call('closeDetail'); await s.page.waitForTimeout(200);
         }
-        await s.call('closeDetail'); await s.page.waitForTimeout(250);
-      }
-      console.log(tag, 'detail states found', JSON.stringify(got));
+        console.log(tag, tag2, 'detail states found', JSON.stringify(got));
+      };
+      await scan({ cost: '.go-cost:not(.go-cost-off)', pink: '.go-pink' }, 'a');
+      await s.set({ stardustBalance: 0 });
+      await scan({ off: '.go-cost-off', evo: '.go-evo', mega: 'input[placeholder="energy"]' }, 'b');
+      await s.set({ stardustBalance: 100000 });
     });
     await tryDo('SELECT', async () => { await s.go('ROSTER'); await s.call('toggleSelectMode'); await s.page.waitForTimeout(300); await s.call('toggleSelect', 0); await s.call('toggleSelect', 1); await shot('SELECT'); await s.call('toggleSelectMode'); });
     await tryDo('SWIPE', async () => {
@@ -57,7 +62,22 @@ const feed = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'feed.json'), 'u
     });
     await tryDo('TODAY', async () => { await s.go('TODAY'); await s.page.waitForTimeout(900); await shot('TODAY'); });
     await tryDo('MORE', async () => { await s.page.getByText('More', { exact: true }).last().click(); await s.page.waitForTimeout(600); await shot('MORE'); });
+    await s.set({ moreOpen: false }); await s.page.waitForTimeout(300);
+    await tryDo('PVP', async () => { await s.go('PVP'); await s.page.waitForTimeout(900); await shot('PVP'); await s.page.evaluate(() => { const m = document.querySelector('[role=main]'); (document.querySelector('[data-app-scroll]') || document.scrollingElement).scrollTop = 700; }); await shot('PVP_SCROLLED'); });
+    await tryDo('RECS', async () => { await s.go('RECS'); await s.page.waitForTimeout(900); await shot('RECS'); });
+    await tryDo('SIGNIN', async () => {
+      await s.go('HOME'); await s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/Setup, sync and backup/.test(d.textContent.slice(0, 120))) d.open = true; }));
+      await s.page.locator('[data-signin-card]').scrollIntoViewIfNeeded(); await shot('SIGNIN');
+    });
     await s.close();
+    // fresh storage with no roster: the empty-account prompt and the first-run overlay
+    const e = await session({ width, height: width >= 768 ? 1024 : 844, colorScheme: theme, sentenceCase: true, feed, touch: true, collapsedTail: true });
+    await tryDo('EMPTY', async () => { await e.go('TODAY'); await e.page.waitForTimeout(900); await e.page.screenshot({ path: path.join(out, tag + 'EMPTY.png') }); });
+    await e.close();
+    const f = await session({ width, height: width >= 768 ? 1024 : 844, colorScheme: theme, sentenceCase: true, feed, touch: true, collapsedTail: true, firstRun: true });
+    await f.page.waitForTimeout(2200);
+    await tryDo('FIRSTRUN', async () => { await f.page.screenshot({ path: path.join(out, tag + 'FIRSTRUN.png') }); await f.page.locator('[data-firstrun] button').filter({ hasText: /^Continue without an account$/ }).click(); await f.page.waitForTimeout(500); await f.page.screenshot({ path: path.join(out, tag + 'FIRSTRUN2.png') }); });
+    await f.close();
     console.log('done', theme, width);
   }
   await close();
