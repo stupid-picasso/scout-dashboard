@@ -19,6 +19,8 @@ invite testers. The automated ones are in `scripts/test_firestore_rules.js` and 
 | 12 | CSP and SRI on the real site (after publishing) | Open the published page in a fresh browser profile with devtools Console open; sign in, edit one value, wait for "saved", import a CSV, import one screenshot with your Gemini key, tap Import from server | no console message mentioning "Content Security Policy", "Refused to" or "integrity"; the Network tab shows the three `firebase-*-compat.js` files loading (status 200) |
 | 13 | Sign-in popup under the CSP | Same profile, sign in with Google or GitHub once that exists | popup opens and closes, no CSP message (the frame-src and script-src entries for the popup come from community reports and are not verified) |
 | 14 | WebKit | Repeat row 12 in Safari (desktop or iOS) | same as row 12 |
+| 15 | Push alerts on a real iPhone (iOS 16.4 or later) | After the Worker is deployed and the app rebuilt with its address: Safari > Share > Add to Home Screen, open from the icon, Settings > Push alerts > Turn on > allow > Send test | a banner arrives with the app closed; tapping it opens the app; turning off then Send test fails quietly; no CSP message in the page |
+| 16 | Push: every push shows something | Same device: from a terminal `npx wrangler tail` while Send test runs; then block notifications for the app and turn alerts on again | no push is silent; after blocking, the row says Blocked in system settings and offers no prompt |
 
 Keys stay per device: `scout.secrets.v1` is not cleared by signing out (it is a device setting), only by "Delete my account",
 the existing remove-keys buttons, or clearing site data. On a shared device, remove the keys before handing it over.
