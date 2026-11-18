@@ -1,6 +1,6 @@
 // QA suite A: boot, import, roster, row gestures, detail sheet.
 const path = require('path');
-const { T, expect, skip, session, REPO } = require('./qa_lib');
+const { T, expect, skip, session, REPO, touch, IS_WEBKIT } = require('./qa_lib');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
 const SMOKE = path.join(REPO, 'scripts', 'fixtures', 'smoke.csv');
 const fs = require('fs');
@@ -74,7 +74,7 @@ module.exports = async function suiteA() {
   await s.go('ROSTER');
   const rows = () => s.page.locator('[data-swipe-row]').count();
   await T('ROS-01', 'Roster', 'First page shows 30 rows with a count line', async () => { const n = await rows(); expect(n === 30, 'rows=' + n); expect(/of 64 shown|30 of 64/.test(await s.text())); });
-  await T('ROS-02', 'Roster', 'LOAD MORE adds the next page', async () => { const b = s.page.getByText(/LOAD \d+ MORE/i).first(); expect(await b.count() > 0, 'no load more'); await b.click(); await s.page.waitForTimeout(500); expect(await rows() > 30); });
+  await T('ROS-02', 'Roster', 'LOAD MORE adds the next page', async () => { const b = s.page.getByText(/LOAD \d+ MORE/i).first(); expect(await b.count() > 0, 'no load more'); if (IS_WEBKIT) await b.evaluate(e => e.click()); else await b.click(); await s.page.waitForTimeout(500); expect(await rows() > 30); });   // WebKit: scrolling the button into view trips the infinite-scroll sentinel, which loads the page and moves the button before Playwright's click lands; the button's own click handler is what is under test, so it is clicked in place
   const search = s.page.getByPlaceholder(/Search roster/);
   await T('ROS-03', 'Roster', 'Search by name filters the list', async () => { await search.fill('garchomp'); await s.page.waitForTimeout(500); const n = await rows(); expect(n === 1, 'rows=' + n); });
   await T('ROS-04', 'Roster', 'Search by move name finds Pokemon that know the move', async () => { await search.fill('Hurricane'); await s.page.waitForTimeout(500); expect(await rows() >= 1); });
@@ -132,10 +132,10 @@ module.exports = async function suiteA() {
   // ------------------------------------------------------------------ ROW GESTURES
   s = await session({ feed: false });
   await s.load(SMOKE); await s.go('ROSTER');
-  await T('GES-01', 'Gestures', 'Swipe left reveals Transfer / Remove actions', async () => { const row = s.page.locator('[data-swipe-row]').first(); const b = await row.boundingBox(); const cdp = await s.ctx.newCDPSession(s.page); const y = b.y + b.height / 2; await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: b.x + b.width - 30, y }] }); for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: b.x + b.width - 30 - i * 25, y }] }); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await s.page.waitForTimeout(400); expect((await row.evaluate(e => e.dataset.swipeOpen)) === '1'); }, 'critical');
+  await T('GES-01', 'Gestures', 'Swipe left reveals Transfer / Remove actions', async () => { const row = s.page.locator('[data-swipe-row]').first(); const b = await row.boundingBox(); const tc = await touch(s); const y = b.y + b.height / 2; await tc.start(b.x + b.width - 30, y); for (let i = 1; i <= 8; i++) await tc.move(b.x + b.width - 30 - i * 25, y); await tc.end(); await s.page.waitForTimeout(400); expect((await row.evaluate(e => e.dataset.swipeOpen)) === '1'); }, 'critical');
   await T('GES-02', 'Gestures', 'Tapping elsewhere closes an open swipe row (iOS list behaviour)', async () => { await s.page.locator('[data-swipe-row]').nth(3).click(); await s.page.waitForTimeout(400); expect((await s.page.locator('[data-swipe-open="1"]').count()) === 0, 'row still open'); });
   await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(SMOKE); await s.go('ROSTER');
-  await T('GES-03', 'Gestures', 'Long press opens the action menu', async () => { const row = s.page.locator('[data-swipe-row]').nth(1); const b = await row.boundingBox(); const cdp = await s.ctx.newCDPSession(s.page); await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: b.x + 100, y: b.y + b.height / 2 }] }); await s.page.waitForTimeout(800); const open = await s.page.getByText('What would you like to do?').count(); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await s.page.waitForTimeout(400); expect(open === 1 && await s.page.getByText('What would you like to do?').count() === 1, 'open=' + open); }, 'critical');
+  await T('GES-03', 'Gestures', 'Long press opens the action menu', async () => { const row = s.page.locator('[data-swipe-row]').nth(1); const b = await row.boundingBox(); const tc = await touch(s); await tc.start(b.x + 100, b.y + b.height / 2); await s.page.waitForTimeout(800); const open = await s.page.getByText('What would you like to do?').count(); await tc.end(); await s.page.waitForTimeout(400); expect(open === 1 && await s.page.getByText('What would you like to do?').count() === 1, 'open=' + open); }, 'critical');
   await T('GES-04', 'Gestures', 'Vertical scrolling is not hijacked by the swipe handler', async () => { await s.page.keyboard.press('Escape'); const y0 = await s.page.evaluate(() => window.scrollY); await s.page.mouse.wheel(0, 400); await s.page.waitForTimeout(300); expect(true); });
   await T('GES-05', 'Gestures', 'Transfer removes the Pokemon and the count drops by one', async () => { await s.page.keyboard.press('Escape'); await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); const before = await s.page.locator('[data-swipe-row]').count(); await s.page.getByText(/Transfer/).first().click({ force: true }).catch(() => {}); await s.page.waitForTimeout(500); expect(await s.page.locator('[data-swipe-row]').count() <= before); });
   // ---- Roster: select mode, bulk actions, saved views, undo, sort, hint

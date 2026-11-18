@@ -34,23 +34,23 @@ jobs:
       - name: Data accuracy audit (game master + PvPoke)
         if: matrix.browser == 'chromium'
         run: node scripts/qa/qa_accuracy.js qa-accuracy.json
-      - name: End-to-end suites
-        # Report-only (owner decision): these suites never gated CI before, because qa_run.js exited 0 on failure. Failures show in
-        # the log and the qa-*.json artifact. TODO: fix the 5 chromium suite-e layout failures and the ~30 WebKit failures, then remove this line.
-        continue-on-error: true
+      - name: End-to-end suites (gating)
+        # Suites a, b, c and e on both browsers. A failed test fails the job. The one exception is PERF-01 on WebKit: it is a wall-clock
+        # limit (400 ms average tab switch) that the CI WebKit runner measures at about 400 ms on main, so it runs in its own report-only
+        # step below and is left out of this one. Everything else in these suites has to pass.
+        env:
+          QA_SKIP: ${{ matrix.browser == 'webkit' && '^PERF-01$' || '' }}
         run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c e
-      - name: Content-Security-Policy over http://localhost
-        # Chromium gates. WebKit is report-only until its allowed-hosts check is fixed (see the TODO above).
-        continue-on-error: ${{ matrix.browser == 'webkit' }}
-        run: CSP_REQUIRE_WEBKIT=1 node scripts/test_csp.js
-      - name: Cloud sync, data and security suite (gating)
-        # Suite d minus the accessibility checks: SYNC, STANDIN and DATA tests. A failure fails the job.
-        if: matrix.browser == 'chromium'
-        run: QA_SKIP='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-sync-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
-      - name: Cloud sync, data and security suite (WebKit, report-only)
-        # SYNC-02 loads data/feed.json over file:// and WebKit blocks it. TODO task #31: fix, then fold into the gating step.
+      - name: Tab-switch timing (WebKit, report-only)
+        # TODO task #31: WebKit's tab switch is at the 400 ms limit on the runner (403 ms on main), so a timing blip must not fail the job. Make the switch faster or
+        # move the limit with evidence, then drop this step and the QA_SKIP above.
         if: matrix.browser == 'webkit'
         continue-on-error: true
+        run: QA_ONLY='^PERF-01$' QA_OUT=qa-perf-webkit.json node scripts/qa/qa_run.js c
+      - name: Content-Security-Policy over http://localhost
+        run: CSP_REQUIRE_WEBKIT=1 node scripts/test_csp.js
+      - name: Cloud sync, data and security suite (gating)
+        # Suite d minus the accessibility checks: SYNC, STANDIN and DATA tests. A failure fails the job, on both browsers.
         run: QA_SKIP='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-sync-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
       - name: Accessibility (axe) - reports only until the semantic-markup phase lands
         continue-on-error: true

@@ -5,6 +5,7 @@ const pw = require(path.join(__dirname, '..', '..', 'node_modules', 'playwright'
 const chromium = pw[process.env.QA_BROWSER || 'chromium'];
 const REPO = path.join(__dirname, '..', '..');
 const PAGE = 'file://' + path.join(REPO, 'index.html');
+const IS_WEBKIT = (process.env.QA_BROWSER || 'chromium') === 'webkit';
 const results = [];
 let current = null;
 
@@ -33,7 +34,44 @@ async function launch() {
   browser = await chromium.launch(o);
   return browser;
 }
-async function close() { if (browser) await browser.close(); }
+async function close() { if (browser) await browser.close(); if (server) server.close(); }
+
+// WebKit refuses every fetch() from a file:// page ("access control checks") and reports each one as a page error, even when the app catches it.
+// Chromium lets the same fetch fail quietly, so the suites were written against that. For WebKit the app is served from the repo over
+// http://127.0.0.1, which is how it is really used, and the data/*.json feeds are aborted by default so a test sees the same "no feed
+// yet" start as under Chromium (a test that wants a feed passes opts.feed / opts.promo, which are routed after this default and win).
+let server, serverBase;
+async function webBase() {
+  if (serverBase) return serverBase;
+  const http = require('http');
+  const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
+  server = http.createServer((req, res) => {
+    const p = path.join(REPO, decodeURIComponent(req.url.split('?')[0]).replace(/\/$/, '/index.html'));
+    if (!p.startsWith(REPO) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
+    res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' }); fs.createReadStream(p).pipe(res);
+  });
+  await new Promise(r => server.listen(0, '127.0.0.1', r)); server.unref();
+  return (serverBase = 'http://127.0.0.1:' + server.address().port + '/');
+}
+
+// Touch input for the gesture tests. Chromium takes real touch events through the browser's input pipeline (CDP). WebKit has no CDP and no
+// way to create a touch from Playwright, so the same touchstart / touchmove / touchend are dispatched on the element under the first
+// point, with the touch lists the app's handlers read. Same assertion, same handlers; only the delivery differs.
+async function touch(s) {
+  if (!IS_WEBKIT) {
+    const cdp = await s.ctx.newCDPSession(s.page); const send = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y]) => ({ x, y })) });
+    return { native: true, start: (x, y) => send('touchStart', [[x, y]]), move: (x, y) => send('touchMove', [[x, y]]), end: () => send('touchEnd', []) };
+  }
+  const fire = (type, x, y) => s.page.evaluate(([t, px, py]) => {
+    const w = window; if (t === 'touchstart') w.__qaTouchTarget = document.elementFromPoint(px, py) || document.body;
+    const target = w.__qaTouchTarget; const pt = { identifier: 1, target, clientX: px, clientY: py, pageX: px + w.scrollX, pageY: py + w.scrollY, screenX: px, screenY: py, radiusX: 1, radiusY: 1, force: 1 };
+    const e = new Event(t, { bubbles: true, cancelable: true, composed: true });
+    const list = t === 'touchend' ? [] : [pt]; Object.defineProperty(e, 'touches', { value: list }); Object.defineProperty(e, 'targetTouches', { value: list }); Object.defineProperty(e, 'changedTouches', { value: [pt] });
+    target.dispatchEvent(e);
+  }, [type, x, y]);
+  let last = [0, 0];
+  return { native: false, start: (x, y) => { last = [x, y]; return fire('touchstart', x, y); }, move: (x, y) => { last = [x, y]; return fire('touchmove', x, y); }, end: () => fire('touchend', last[0], last[1]) };
+}
 
 // ---- In-memory stand-in for Firebase Auth + Cloud Firestore ---------------------------------------------------------------
 // Backed by C.store (path -> document), shared between sessions to model two devices. It enforces the same allow-list as
@@ -256,7 +294,8 @@ async function installCloud(page, C) {
 // types (inject typeTable), offline, init (fn run before load)
 async function session(opts = {}) {
   const b = await launch();
-  const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark' });
+  const base = IS_WEBKIT && !opts.url ? await webBase() : '';
+  const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark', ...(base || opts.blockServiceWorkers ? { serviceWorkers: 'block' } : {}) });
   await ctx.addInitScript(() => { window.__noImportGate = true; });
   if (!opts.firstRun) await ctx.addInitScript(() => { window.__noFirstRun = true; });   // the first-run page covers the app; Task 3's FIRSTRUN tests turn it on with session({ firstRun: true })
   if (opts.init) await ctx.addInitScript(opts.init);
@@ -266,6 +305,7 @@ async function session(opts = {}) {
   const errors = [], logs = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') logs.push(m.text()); });
+  if (base) await page.route(/\/data\/[^/?]+\.json/, r => r.abort());
   if (opts.feed !== undefined) {
     await page.route('**/data/feed.json*', r => opts.feed ? r.fulfill({ contentType: 'application/json', body: JSON.stringify(opts.feed) }) : r.abort());
   }
@@ -280,7 +320,7 @@ async function session(opts = {}) {
   await page.route(/(gstatic\.com|googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
   if (opts.offline) await ctx.setOffline(true);
   const t0 = Date.now();
-  await page.goto(opts.url || PAGE, { waitUntil: 'load' });
+  await page.goto(opts.url || (base ? base + 'index.html' : PAGE), { waitUntil: 'load' });
   await page.waitForFunction(() => document.body.innerText.length > 100, null, { timeout: 15000 }).catch(() => {});
   // PvPoke tiers change every week; pin them so a data refresh cannot move the expected results of these tests.
   if (opts.pinTiers !== false) {
@@ -310,4 +350,4 @@ async function session(opts = {}) {
   s.close = () => ctx.close();
   return s;
 }
-module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE };
+module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch };

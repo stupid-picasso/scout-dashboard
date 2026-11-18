@@ -1,6 +1,6 @@
 // QA suite E: UI quality bar on every screen at iPhone width: touch targets, horizontal overflow, tiny text, unnamed controls, empty states.
 const path = require('path');
-const { T, expect, session, REPO } = require('./qa_lib');
+const { T, expect, session, REPO, touch } = require('./qa_lib');
 const fs = require('fs');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
 const SCREENS = ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG'];
@@ -112,6 +112,8 @@ const CONFORM = ({ SIZES, WEIGHTS, RADII }) => {
 
 // Runs in the page: WCAG contrast of every visible text node against its composited background.
 const CONTRAST = () => {
+  // Contrast is measured on the settled screen. A fade-in that is still running (WebKit starts them later than Chromium) reports a partial opacity, which made every row read as ~1:1.
+  document.getAnimations().forEach(a => { try { a.finish(); } catch (e) { /* an infinite ambient animation cannot finish */ } });
   const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
   const cache = {};
   const rgba = c => { if (cache[c]) return cache[c]; cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return (cache[c] = [d[0], d[1], d[2], d[3] / 255]); };
@@ -197,7 +199,7 @@ const SECTION_CAPTIONS = () => {
   const card = e => { if (!e) return false; const cs = getComputedStyle(e); const a = (cs.backgroundColor.match(/[\d.]+/g) || []).map(Number); return a.length >= 3 && (a.length === 3 || a[3] > 0.5) && parseFloat(cs.borderTopLeftRadius) >= 10 && e.getBoundingClientRect().width > 200; };
   const titles = [...document.body.querySelectorAll('h1, h2, h3, div, span, summary')].filter(t => { if (t.closest('svg, script, style, template, x-dc, nav, button, [role=menuitem], [data-swipe-row]')) return false; if (t.children.length > 1 || !t.textContent.trim() || t.textContent.length > 60) return false; const cs = getComputedStyle(t); if (!vis(t)) return false; if (/^H[123]$/.test(t.tagName) || t.hasAttribute('data-section-title')) return true; if (parseFloat(cs.fontSize) >= 17 && parseInt(cs.fontWeight, 10) >= 600 && t.parentElement && t.parentElement.children.length > 1) return true;   // the original rule: any 17 px+ title with a sibling
     return parseFloat(cs.fontSize) >= 13 && parseInt(cs.fontWeight, 10) >= 600 && t.parentElement && t.parentElement.firstElementChild === t && card(t.parentElement); });   // plus any card heading, whatever its size
-  titles.forEach(t => { const n = t.nextElementSibling; if (!n || !vis(n) || n.children.length > 1 || !n.textContent.trim() || n.tagName === 'DETAILS') return; const cs = getComputedStyle(n); const r = n.getBoundingClientRect(); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3; const lines = Math.round(r.height / lh); if (lines > 2 && parseFloat(cs.fontSize) <= 15 ) bad.push(t.textContent.trim().slice(0, 20) + ' ' + lines + ' lines'); });
+  titles.forEach(t => { const n = t.nextElementSibling; if (!n || !vis(n) || n.children.length > 1 || !n.textContent.trim() || n.tagName === 'DETAILS') return; const cs = getComputedStyle(n); const r = n.getBoundingClientRect(); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3; const lines = Math.round(r.height / lh); if (lines > 2 && parseFloat(cs.fontSize) <= 15 ) bad.push(t.textContent.trim().slice(0, 20) + ' ' + lines + ' lines [' + n.textContent.trim().slice(0, 70) + ']'); });
   return [...new Set(bad)];
 };
 
@@ -268,7 +270,7 @@ const TODAY_SHAPE = () => {
   const m = document.querySelector('[role=main]'); const vis = e => { const r = e.getBoundingClientRect(); return r.height > 0 && r.width > 0; };
   const kids = [...m.children].filter(vis); const tops = kids.map(c => c.getBoundingClientRect().top);
   const orders = [...m.querySelectorAll('*')].filter(e => getComputedStyle(e).order !== '0' && e.parentElement && /flex|grid/.test(getComputedStyle(e.parentElement).display)).map(e => e.tagName + ' order ' + getComputedStyle(e).order);
-  const strips = [...document.querySelectorAll('.stat-strip, [role=main] [data-scroller]')].filter(vis).length;
+  const strips = [...document.querySelectorAll('.stat-strip, [role=main] [data-scroller]')].filter(e => vis(e) && (!e.checkVisibility || e.checkVisibility())).length;   // WebKit gives the content of a closed <details> a box; checkVisibility() says it is not shown
   const tail = document.querySelector('[data-today-tail-toggle]');
   return { h: document.documentElement.scrollHeight, vh: window.innerHeight, orders, mono: tops.every((t, i) => !i || t >= tops[i - 1] - 1), strips, tail: !!tail, tailOpen: tail && tail.getAttribute('aria-expanded') === 'true', first: kids.map(c => (c.innerText || '').trim().slice(0, 18)) };
 };
@@ -456,11 +458,13 @@ module.exports = async function suiteE() {
     const wheelTop = (await reach()).top;
     // touch: back to the top with the wheel, then one real touch swipe
     for (let i = 0; i < 14; i++) { await m.page.mouse.wheel(0, -200); await m.page.waitForTimeout(40); }
-    const cdp = await m.ctx.newCDPSession(m.page); const t0 = (await reach()).top;
-    // a real touch swipe (touchStart / touchMove / touchEnd through the browser's input pipeline)
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: info.x, y: info.y + 60 }] });
-    for (let i = 1; i <= 12; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: info.x, y: info.y + 60 - i * 12 }] }); await m.page.waitForTimeout(16); }
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await m.page.waitForTimeout(500);
+    const tc = await touch(m); const t0 = (await reach()).top;
+    // a real touch swipe (touchStart / touchMove / touchEnd through the browser's input pipeline). WebKit cannot do this: Playwright has no touch
+    // input there, and a script-made touch event never starts the browser's own scrolling. So the touch-scroll check below is Chromium-only
+    // (tc.native); WebKit still checks the wheel scroll above, the overflow style, every row reachable, and the bubble, with the same limits.
+    await tc.start(info.x, info.y + 60);
+    for (let i = 1; i <= 12; i++) { await tc.move(info.x, info.y + 60 - i * 12); await m.page.waitForTimeout(16); }
+    await tc.end(); await m.page.waitForTimeout(500);
     const t1 = (await reach()).top;
     const gl2 = await m.page.evaluate(OVERLAP);
     await T('UIQ-13-' + w + 'x' + h, 'Polish', 'More menu at ' + w + 'x' + h + ': scrolls by wheel and touch, every row can be brought fully inside it, bubble out of the way', async () => {
@@ -468,7 +472,7 @@ module.exports = async function suiteE() {
       if (!/auto|scroll/.test(info.oy)) bad.push('overflow-y is ' + info.oy);
       if (info.n < 10) bad.push('rows ' + info.n);
       if (seen.size !== info.n) bad.push('rows reached by wheel ' + seen.size + ' of ' + info.n);
-      if (info.sh > info.ch + 1) { if (!(wheelTop > 0)) bad.push('wheel did not move the menu'); if (!(t1 > t0)) bad.push('touch swipe did not move the menu (' + t0 + ' -> ' + t1 + ')'); }
+      if (info.sh > info.ch + 1) { if (!(wheelTop > 0)) bad.push('wheel did not move the menu'); if (tc.native && !(t1 > t0)) bad.push('touch swipe did not move the menu (' + t0 + ' -> ' + t1 + ')'); }
       if (gl2.length) bad.push('bubble: ' + gl2.join(', '));
       expect(bad.length === 0, bad.join('; '));
     }, 'high');

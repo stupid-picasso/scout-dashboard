@@ -38,6 +38,9 @@ async function child() {
   try {
     s = await session({
       feed: false, url: 'http://localhost:' + port + '/index.html',
+      // WebKit's request interception does not see a request the page's service worker makes, so the host checks below would count nothing. The worker is
+      // blocked there; Chromium keeps it registered, so the policy is still checked with the worker running.
+      blockServiceWorkers: process.env.QA_BROWSER === 'webkit',
       init: () => { window.__csp = []; window.addEventListener('securitypolicyviolation', e => window.__csp.push({ d: e.violatedDirective, u: e.blockedURI, s: (e.sample || '').slice(0, 60) }), true); }
     });
   } catch (e) { if (/Executable doesn't exist|browserType\.launch/.test(e.message)) { console.log('SKIP ' + (process.env.QA_BROWSER || 'chromium') + ': browser not installed'); process.exit(process.env.CSP_REQUIRE_WEBKIT === '1' && process.env.QA_BROWSER === 'webkit' ? 1 : 0); } throw e; }

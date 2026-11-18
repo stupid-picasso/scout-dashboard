@@ -747,7 +747,7 @@ module.exports = async function suiteB() {
       if (/:generateContent/.test(u)) {
         const body = JSON.parse(r.request().postData() || '{}');
         const th = body.generationConfig && body.generationConfig.thinkingConfig;
-        seen.push({ model: (u.match(/models\/([^:]+):/) || [])[1], th: th ? JSON.stringify(th) : 'none' });
+        seen.push({ model: (u.match(/models\/([^:]+):/) || [])[1], th: th ? JSON.stringify(th) : 'none', img: /inline_?[dD]ata/.test(JSON.stringify(body)) });   // img: an image read; a background text call (the briefing starts when a key is set) can land at any moment and is not one
         if (th && th.thinkingLevel === 'minimal') return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: { message: 'thinking level not supported' } }) });
         return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"name":"Pikachu"}' }] } }] }) });
       }
@@ -761,11 +761,11 @@ module.exports = async function suiteB() {
     await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { f.stateNode.logic._aiLog = []; f.stateNode.logic._thinkRung = {}; return; } } });
     const call = b => s.page.evaluate(async body => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGemini) return await f.stateNode.logic.callGemini(body); } return null; }, b);
     expect((await call(img)) === '{"name":"Pikachu"}', 'the image read returns');
-    const gen = seen.filter(x => x.th !== undefined);
-    expect(seen.length >= 2 && seen[0].th === '{"thinkingLevel":"minimal"}' && seen[1].th === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + JSON.stringify(seen));
-    const before = seen.length;
+    const imgs = () => seen.filter(x => x.img);
+    expect(imgs().length >= 2 && imgs()[0].th === '{"thinkingLevel":"minimal"}' && imgs()[1].th === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + JSON.stringify(seen));
+    const before = imgs().length;
     await call(img);
-    expect(seen.length === before + 1 && seen[before].th === '{"thinkingLevel":"low"}', 'the working setting is remembered: ' + JSON.stringify(seen.slice(before)));
+    expect(imgs().length === before + 1 && imgs()[before].th === '{"thinkingLevel":"low"}', 'the working setting is remembered: ' + JSON.stringify(imgs().slice(before)));
     const tBefore = seen.length;
     await call({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 100 });
     expect(seen[tBefore].th === 'none', 'a text call is sent as before (no thinking setting): ' + JSON.stringify(seen[tBefore]));
@@ -1241,11 +1241,13 @@ module.exports = async function suiteB() {
       for (const id of ['sx1', 'sx2']) {
         l.openDetail(l.effectiveRosterForMatch().find(x => x.idx === id)); await wait(700);
         const d = document.querySelector('[role=dialog][aria-label="Pokemon details"]'); if (!d) { out.push('no dialog'); continue; }
-        const t = (x, y) => new Touch({ identifier: 1, target: d, clientX: x, clientY: y });
-        d.dispatchEvent(new TouchEvent('touchstart', { touches: [t(300, 300)], bubbles: true, cancelable: true }));
-        d.dispatchEvent(new TouchEvent('touchmove', { touches: [t(120, 304)], bubbles: true, cancelable: true }));
+        // A real TouchEvent where the browser has the constructor; WebKit on desktop does not ("Illegal constructor"), so there the same event is a plain Event carrying the touch lists the sheet's handlers read.
+        const t = (x, y) => ({ identifier: 1, target: d, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y });
+        const te = (type, touches, changed) => { try { return new TouchEvent(type, { touches: touches.map(p => new Touch(p)), changedTouches: changed.map(p => new Touch(p)), bubbles: true, cancelable: true }); } catch (err) { const e = new Event(type, { bubbles: true, cancelable: true }); Object.defineProperty(e, 'touches', { value: touches }); Object.defineProperty(e, 'targetTouches', { value: touches }); Object.defineProperty(e, 'changedTouches', { value: changed }); return e; } };
+        d.dispatchEvent(te('touchstart', [t(300, 300)], [t(300, 300)]));
+        d.dispatchEvent(te('touchmove', [t(120, 304)], [t(120, 304)]));
         const during = d.style.transform;
-        d.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t(120, 304)], bubbles: true, cancelable: true })); await wait(300);
+        d.dispatchEvent(te('touchend', [], [t(120, 304)])); await wait(300);
         d.scrollLeft = 80;
         out.push({ client: d.clientWidth, scroll: d.scrollWidth, during, after: d.style.transform, left: d.scrollLeft, index: l.state.detailNavIndex });
         l.closeDetail(); await wait(300);

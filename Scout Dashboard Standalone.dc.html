@@ -2353,7 +2353,7 @@
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px;margin-bottom:12px">
       <div style="font:600 15px var(--font-body);margin-bottom:2px">Protect big and small Pokemon</div>
-      <div style="font:13px var(--font-body);color:var(--ink-400);margin-bottom:12px">Pokestop showcases reward size. Protected Pokemon never appear as transfer suggestions.</div>
+      <div style="font:13px var(--font-body);color:var(--ink-400);margin-bottom:12px">Showcases reward size. Protected Pokemon are never suggested for transfer.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <sc-for list="{{ protectChoices }}" as="z" hint-placeholder-count="3">
           <button type="button" onClick="{{ z.onClick }}" class="om-press" aria-pressed="{{ z.pressed }}" style="padding:8px 16px;border-radius:var(--r-pill);background:{{ z.bg }};color:{{ z.fg }};font:600 15px var(--font-body);min-height:40px">{{ z.label }}</button>
@@ -4163,7 +4163,7 @@
   <div role="main" style="animation:fadeSlideIn 0.36s ease">
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px 20px;margin-bottom:20px">
       <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em">RAID COUNTERS</div>
-      <div style="font:13px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types, and this ranks your own Pokemon against it by damage per second.</div><details class="ui-more"><summary>More</summary><div>STAB, type effectiveness and optional weather) weighted by how well each one survives the boss&rsquo;s own types. It assumes the boss uses moves of its own types, so it is an estimate, not a battle simulation. Pokemon whose moves aren&rsquo;t in the move database are left out rather than guessed.</div></details>
+      <div style="font:13px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types to rank your Pokemon by damage per second.</div><details class="ui-more"><summary>More</summary><div>STAB, type effectiveness and optional weather) weighted by how well each one survives the boss&rsquo;s own types. It assumes the boss uses moves of its own types, so it is an estimate, not a battle simulation. Pokemon whose moves aren&rsquo;t in the move database are left out rather than guessed.</div></details>
     </div>
 
     <sc-if value="{{ maxPlan }}" hint-placeholder-val="{{ false }}">
@@ -4816,11 +4816,11 @@
       <div style="font:700 28px var(--font-display);color:var(--type-electric)">{{ intelDisplay.hundoCount }} <span style="font-size:13px;color:var(--ink-300)">perfect</span> &middot; {{ intelDisplay.nundoCount }} <span style="font-size:13px;color:var(--ink-300)">zero</span></div>
       <div style="font:13px var(--font-body);color:var(--ink-500);margin-top:4px">Pokemon with 15/15/15 and 0/0/0 IVs</div>
     </div>
-    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;grid-column:1/-1">
       <div style="font:12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">PVP READY (90%+ IV rank on an S/A/B species)</div>
       <div style="font:700 28px var(--font-display);color:var(--grass-700)">{{ intelDisplay.pvpReadyCount }}</div>
     </div>
-    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;grid-column:1/-1">
       <div style="font:12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">&#10024; SHINIES</div>
       <div style="font:700 28px var(--font-display);color:var(--type-electric)">{{ intelDisplay.shinyCount }} <span style="font-size:12px;color:var(--ink-300)">{{ intelDisplay.shinyToConfirm }} to confirm</span></div>
       <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:4px">{{ intelDisplay.shinySpecies }}</div>
