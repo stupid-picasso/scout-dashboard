@@ -3333,7 +3333,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.347{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.348{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -14057,7 +14057,8 @@ class Component extends DCLogic {
     const clean = this.normalizeAppraisalItems([item]);
     if (!clean.length) throw new Error('Read ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP, but no Pokemon called "' + name + '" is in your roster and no single entry matches that CP/HP \u2014 import its detail screen first, or check the name was read correctly.');
     const summary = this.mergeAppraisalImport(clean);
-    const line = summary.applied ? 'Pinned ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' to ' + name
+    const line = summary.unsure ? 'Read ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' for ' + name + ' but the bars were unclear: pick one below'
+      : summary.applied ? 'Pinned ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' to ' + name
       : (summary.contradiction ? 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but it cannot produce CP ' + rec.cp + ' at ' + rec.hp + ' HP - check the screenshot is one Pokemon'
       : 'Measured ' + bars.atk + '/' + bars.def + '/' + bars.sta + ' but no imported Pokemon matches ' + name + ' CP ' + rec.cp + ' / ' + rec.hp + ' HP');
     return { ok: !!summary.applied, line, review: summary._review, summary };
@@ -14084,23 +14085,30 @@ class Component extends DCLogic {
   async handleAppraisalUploadBatch(files) {
     if (!files || !files.length) return;
     if (files.length === 1) return this.handleAppraisalUpload(files[0]);
-    let pinned = 0, failed = 0;
+    let pinned = 0, failed = 0, unsureN = 0;
     const failMessages = [];
+    const unsureRows = [];
     for (let i = 0; i < files.length; i++) {
       this.setState({ apprShotBusy: true, apprShotError: '', apprShotProgress: (i + 1) + '/' + files.length,
         apprShotSummary: 'Screenshot ' + (i + 1) + ' of ' + files.length + '\u2026' });
       await new Promise(r => setTimeout(r, 0));   // let the screen repaint: measuring one image blocks the page for a moment
       try {
         const r = await this.processOneAppraisalShot(files[i]);
-        if (r.ok) pinned++; else { failed++; failMessages.push(r.line); }
+        if (r.ok) pinned++;
+        else if (r.summary && r.summary.unsure) {
+          unsureN++;
+          (r.review || []).filter(x => x._status === 'unsure').forEach(x => unsureRows.push({ ...x, _rid: 'f' + i + x._rid }));
+        } else { failed++; failMessages.push(r.line); }
       } catch (e) {
         failed++;
         failMessages.push((e && e.message) || 'Could not read screenshot ' + (i + 1) + '.');
       }
     }
     const summary = pinned + ' of ' + files.length + ' pinned'
+      + (unsureN ? ', ' + unsureN + ' IV unsure (pick below)' : '')
       + (failed ? ', ' + failed + ' skipped' : '') + '.';
     this.setState({
+      ...(unsureRows.length ? { videoImport: { stage: 'done', mode: 'appraisal', review: unsureRows, summary: { unsure: unsureRows.length } } } : {}),
       apprShotBusy: false, apprShotProgress: '',
       apprShotSummary: summary,
       apprShotError: failMessages.length ? failMessages.slice(0, 3).join(' \u2014 ') + (failMessages.length > 3 ? ' \u2026' : '') : ''
@@ -14173,7 +14181,7 @@ class Component extends DCLogic {
         perfect: !!(it.perfect || it.hundo || it.is_perfect),
         maxed,
         ...(measured ? { atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivSource: it.ivSource || 'bar-measure',
-          barDrift: it.barDrift, barConfidence: it.barConfidence,
+          barDrift: it.barDrift, barConfidence: it.barConfidence, ivConflict: it.ivConflict === true,
           ivCandidateSets: Array.isArray(it.ivCandidateSets) ? it.ivCandidateSets : null } : {})
       };
     }).filter(Boolean);
@@ -14198,6 +14206,7 @@ class Component extends DCLogic {
         this.setState({
           ivServerBusy: false, ivServerError: '',
           ivServerSummary: summary.applied + ' pinned \u00b7 ' + summary.collided + ' need a pick \u00b7 ' + summary.unmatched + ' unmatched'
+            + (summary.unsure ? ' \u00b7 ' + summary.unsure + ' IV unsure (pick below)' : '')
             + (summary.contradiction ? ' \u00b7 ' + summary.contradiction + ' contradicted CP/HP' : ''),
           videoImport: { stage: 'done', mode: 'appraisal', review: summary._review, summary }
         });
@@ -14948,7 +14957,9 @@ class Component extends DCLogic {
     // the whole-bar and per-segment reads disagreed, or the fill sat near a
     // boundary). CP/HP is the arbiter: the alternate that reproduces both IS the
     // answer, and if none does, nothing is written.
-    const spreads = this.measuredSpreadOrder(item);
+    // A known star badge rejects any spread whose total is outside its band.
+    const stars = this.appraisalHintFromItem(item).stars;
+    const spreads = this.measuredSpreadOrder(item).filter(sp => this.spreadFitsStars(sp, stars));
     let usedBase = null, level = null, ivs = null, arbitrated = false;
     outer:
     for (let i = 0; i < spreads.length; i++) {
@@ -14973,6 +14984,7 @@ class Component extends DCLogic {
       atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
       lvlMin: level, lvlMax: level,
       ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
+      ...(item.ivSource === 'owner-confirmed' || item.ownerPicked ? { ivManual: true } : {}),
       ivArbitrated: arbitrated || undefined,
       great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: rec.name },
       ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: rec.name },
@@ -14980,6 +14992,47 @@ class Component extends DCLogic {
     };
     return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
       iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
+  }
+
+  // Appraisal star badge -> allowed sum of the three IVs (spread% = sum / 45).
+  // 0 stars: up to 48.9% (sum 0-22); 1: 51.1-64.4% (23-29); 2: 66.7-80.0% (30-36);
+  // 3: 82.2-100% (37-45). 4 is this app's code for "perfect" (45 only). The same
+  // bands as STAR_BANDS in pokemon-mechanics.js, except 3 stars here includes 45
+  // (STAR_BANDS keeps 45 apart as its own "perfect" tier). Source: the in-game
+  // ranges 0-49%, 51-64%, 67-80%, 82-100% (Bulbapedia, Appraisal; see handoff).
+  // No star value (the bar reader does not capture stars today) accepts everything.
+  spreadFitsStars(spread, stars) {
+    if (!Number.isInteger(stars)) return true;
+    const band = [[0, 22], [23, 29], [30, 36], [37, 45], [45, 45]][stars];
+    if (!band) return true;
+    const t = spread[0] + spread[1] + spread[2];
+    return t >= band[0] && t <= band[1];
+  }
+
+  // A bar read the extractor itself doubts: frames disagreed, or low confidence.
+  // CP/HP often fits two spreads at different levels, so these are never
+  // auto-applied; the owner picks. A spread the owner confirmed is trusted.
+  appraisalIvUnsure(item) {
+    if (!item || item.ivSource === 'owner-confirmed') return false;
+    return item.ivConflict === true || item.barConfidence === 'low';
+  }
+
+  // The candidate spreads for an unsure read that CP/HP (and the star badge, if
+  // known) allow: [{ spread, level, pct }], best-nearest first.
+  unsureSpreadChoices(rec, item) {
+    const mechanics = this.mechanics;
+    const bases = this.baseStatCandidates({ name: rec.name, dex: rec.dex, form: rec.form });
+    const stars = this.appraisalHintFromItem(item).stars;
+    const out = [];
+    for (const s of this.measuredSpreadOrder(item)) {
+      if (!this.spreadFitsStars(s, stars)) continue;
+      for (const cand of bases) {
+        const hit = (mechanics.solveIVs(cand.base, item.cp, item.hp) || [])
+          .find(c => c.atkIV === s[0] && c.defIV === s[1] && c.staIV === s[2]);
+        if (hit) { out.push({ spread: s, level: hit.level, pct: Math.round((s[0] + s[1] + s[2]) / 45 * 100) }); break; }
+      }
+    }
+    return out;
   }
 
   // Expand the measurer's per-stat alternates into whole spreads to try, best
@@ -15091,7 +15144,7 @@ class Component extends DCLogic {
     const items = (rawItems || []).filter(it => it && it.name && it.cp != null && it.hp != null);
     const overrides = { ...this.state.ivOverrides };
     const records = this.effectiveRosterForMatch();
-    let applied = 0, collided = 0, unmatched = 0, contradiction = 0;
+    let applied = 0, collided = 0, unmatched = 0, contradiction = 0, unsure = 0;
     const review = [];
     items.forEach((item, i) => {
       const nameLower = item.name.toLowerCase();
@@ -15115,8 +15168,21 @@ class Component extends DCLogic {
           _choices: matches.map(m => ({ idx: m.idx, label: this.recordDistinguisher(m) })) });
         return;
       }
+      // An unsure bar read is never applied on its own: leave the record
+      // unmeasured (still protected) and let the owner pick a spread.
+      if ((item.ivSource === 'bar-measure' || item.ivSource === 'owner-confirmed') && this.appraisalIvUnsure(item)) {
+        const choices = this.unsureSpreadChoices(matches[0], item);
+        if (!choices.length) {
+          contradiction++;
+          review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, matchName: matches[0].name, cp: item.cp, hp: item.hp, iv: null, ivCount: 0 });
+        } else {
+          unsure++;
+          review.push({ _rid: rid, _status: 'unsure', name: item.name, read: readLabel, _item: item, _idx: matches[0].idx, _choices: choices });
+        }
+        return;
+      }
       // A measured spread needs no solving at all — pin it and move on.
-      if (item.ivSource === 'bar-measure') {
+      if (item.ivSource === 'bar-measure' || item.ivSource === 'owner-confirmed') {
         const res = this.applyMeasuredIv(matches[0], item, overrides);
         if (res.contradiction) { contradiction++; review.push({ _rid: rid, _status: 'contradiction', name: item.name, read: readLabel, ...res.review }); }
         else { applied++; review.push({ _rid: rid, _status: 'applied', read: readLabel, ...res.review }); }
@@ -15142,7 +15208,7 @@ class Component extends DCLogic {
     const measuredCount = Object.keys(overrides).filter(k => overrides[k] && overrides[k].ivMeasured).length;
     console.log('[Scout] appraisal import: ' + applied + ' applied, ' + measuredCount + ' measured pins now held locally');
     // updated/inserted/total keys keep bumpImportProgress happy.
-    return { applied, collided, unmatched, contradiction, total: items.length, updated: applied, inserted: 0, solved: applied, _review: review };
+    return { applied, collided, unsure, unmatched, contradiction, total: items.length, updated: applied, inserted: 0, solved: applied, _review: review };
   }
 
   // Resolve a flagged collision: apply the held appraisal reading to the record
@@ -15157,6 +15223,30 @@ class Component extends DCLogic {
     const overrides = { ...this.state.ivOverrides };
     const hint = this.appraisalHintFromItem(row._item);
     const res = this.solveAndApplyAppraisal(rec, row._item, hint, overrides);
+    const baked = this.bakeOverridesIntoRecords(overrides);
+    this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon }, () => {
+      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+    });
+    const review = vi.review.map(r => r._rid === rid
+      ? { ...r, _status: res.contradiction ? 'contradiction' : 'applied', matchName: rec.name, iv: res.review.iv, ivCount: res.review.ivCount, _item: null, _choices: null }
+      : r);
+    this.setState(s => ({ videoImport: { ...s.videoImport, review } }));
+  }
+
+  // The owner tapped one candidate of an unsure bar read: apply exactly that
+  // spread (CP/HP re-checked), recorded as typed-in by the owner.
+  applyUnsurePick(rid, choiceIdx) {
+    const vi = this.state.videoImport;
+    if (!vi || !vi.review) return;
+    const row = vi.review.find(r => r._rid === rid);
+    if (!row || row._status !== 'unsure' || !row._item) return;
+    const ch = (row._choices || [])[choiceIdx];
+    const rec = this.effectiveRosterForMatch().find(p => p.idx === row._idx);
+    if (!ch || !rec) return;
+    const overrides = { ...this.state.ivOverrides };
+    const item = { ...row._item, atkIV: ch.spread[0], defIV: ch.spread[1], staIV: ch.spread[2],
+      ivCandidateSets: null, ivConflict: false, ownerPicked: true };
+    const res = this.applyMeasuredIv(rec, item, overrides);
     const baked = this.bakeOverridesIntoRecords(overrides);
     this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon }, () => {
       try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
@@ -21019,6 +21109,7 @@ class Component extends DCLogic {
         // fit this CP and HP, and saying which is which stops a guess from
         // being read as a measurement.
         ivSourceLine: (() => {
+          if (p.ivManual) return 'CONFIRMED BY YOU';
           if (p.ivMeasured) return 'MEASURED FROM APPRAISAL BARS';
           if (!Number.isFinite(p.atkIV)) return 'NO IV YET \u2014 APPRAISE AND RE-IMPORT';
           if (p.ivSolved && p.ivCandidates > 1) return 'SOLVED FROM CP + HP \u00b7 ' + p.ivCandidates + ' SPREADS FIT';
@@ -22113,10 +22204,11 @@ class Component extends DCLogic {
       hasAppraisalReview: !!(this.state.videoImport && this.state.videoImport.mode === 'appraisal' && this.state.videoImport.review && this.state.videoImport.review.length),
       appraisalCountLine: (() => {
         const rev = (this.state.videoImport && this.state.videoImport.review) || [];
-        const c = { applied: 0, collision: 0, unmatched: 0, contradiction: 0, skipped: 0 };
+        const c = { applied: 0, collision: 0, unsure: 0, unmatched: 0, contradiction: 0, skipped: 0 };
         rev.forEach(r => { if (c[r._status] != null) c[r._status]++; });
         const parts = [rev.length + ' read', c.applied + ' pinned'];
         if (c.collision) parts.push(c.collision + ' need a pick');
+        if (c.unsure) parts.push(c.unsure + ' IV unsure');
         if (c.unmatched) parts.push(c.unmatched + ' unmatched');
         if (c.contradiction) parts.push(c.contradiction + ' contradicted CP/HP');
         return parts.join(' \u00b7 ');
@@ -22126,6 +22218,7 @@ class Component extends DCLogic {
         const meta = ({
           applied: { label: 'PINNED', color: 'var(--grass-700)', border: 'var(--grass-500)', bg: 'color-mix(in oklab, var(--grass-500) 16%, var(--surface-card))' },
           collision: { label: 'PICK ONE', color: 'var(--type-electric)', border: 'var(--brand-primary-strong)', bg: 'color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card))' },
+          unsure: { label: 'IV UNSURE', color: 'var(--type-electric)', border: 'var(--brand-primary-strong)', bg: 'color-mix(in oklab, var(--brand-primary-strong) 16%, var(--surface-card))' },
           unmatched: { label: 'UNMATCHED', color: 'var(--ink-500)', border: 'var(--line-200)', bg: 'transparent' },
           contradiction: { label: 'CP/HP MISMATCH', color: 'var(--type-fighting)', border: 'var(--type-fighting)', bg: 'color-mix(in oklab, var(--type-fighting) 16%, var(--surface-card))' },
           skipped: { label: 'SKIPPED', color: 'var(--ink-400)', border: 'var(--line-200)', bg: 'transparent' }
@@ -22133,14 +22226,19 @@ class Component extends DCLogic {
         let detail = r.read || '';
         if (S === 'applied') detail = (r.iv ? 'IV ' + r.iv + (r.ivCount > 1 ? ' (' + r.ivCount + ' fit)' : '') + ' \u2192 ' + (r.matchName || '') : '') + ' \u00b7 ' + (r.read || '');
         else if (S === 'contradiction') detail = 'The star/bar reading can\u2019t coexist with CP ' + r.cp + ' / ' + r.hp + ' HP \u2014 a bar or star was misread. ' + (r.read || '');
+        else if (S === 'unsure') detail = 'Not applied. ' + (r.read || '');
         else if (S === 'unmatched') detail = 'No imported Pokemon at ' + (r.read || '') + '. Import its detail screen first.';
         return {
           name: r.name,
           statusLabel: meta.label, statusColor: meta.color, border: meta.border, rowBg: meta.bg,
           detail,
-          showChoices: S === 'collision',
-          choicePrompt: 'Two or more Pokemon match ' + (r.read || '') + '. Which one is this appraisal for?',
-          choices: (r._choices || []).map(ch => ({ label: ch.label, onClick: () => this.applyAppraisalPick(r._rid, ch.idx) })),
+          showChoices: S === 'collision' || S === 'unsure',
+          choicePrompt: S === 'unsure'
+            ? 'IV unsure: pick one for ' + (r.read || '') + '. Nothing is saved until you tap one.'
+            : 'Two or more Pokemon match ' + (r.read || '') + '. Which one is this appraisal for?',
+          choices: (r._choices || []).map((ch, ci) => S === 'unsure'
+            ? { label: ch.spread.join('/') + ' \u00b7 L' + ch.level + ' \u00b7 ' + ch.pct + '%', onClick: () => this.applyUnsurePick(r._rid, ci) }
+            : { label: ch.label, onClick: () => this.applyAppraisalPick(r._rid, ch.idx) }),
           onSkip: () => this.skipAppraisalCollision(r._rid)
         };
       }),
