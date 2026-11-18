@@ -1,0 +1,20 @@
+# Push-alert Worker. Every value below is a PLACEHOLDER: the owner fills them in (docs/OWNER_CHECKLIST.md, "Push alerts"). Nothing secret belongs in this file.
+name = "professor-push"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+[triggers]
+crons = ["*/15 * * * *"]        # every 15 minutes, UTC
+
+[[kv_namespaces]]
+binding = "PUSH"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"   # printed by: wrangler kv namespace create PUSH
+
+[vars]
+ALLOWED_ORIGIN = "https://REPLACE-USER.github.io"             # the page's origin: scheme and host, no path, no trailing slash
+DATA_BASE = "https://REPLACE-USER.github.io/REPLACE-REPO/data/"   # where feed.json, promo_codes.json, event_moves.json, feed_check.json are served
+VAPID_PUBLIC_KEY = "REPLACE_WITH_VAPID_PUBLIC_KEY"            # the public half is public; the same string goes into the app (PUSH_CONFIG)
+
+# Secrets, set with `wrangler secret put` and never written here:
+#   VAPID_PRIVATE_KEY   the private half of the key pair
+#   VAPID_SUBJECT       mailto:<owner address>

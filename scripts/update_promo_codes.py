@@ -22,6 +22,16 @@ def redeem_link(code):
     return REDEEM + code if isinstance(code, str) and CODE_RE.fullmatch(code) else None
 
 
+TIMED_RE = re.compile(r'timed\s+research', re.I)
+
+
+def kind_of(*texts):
+    """'timed_research' when the listing's own text (name, description, rewards) names Timed Research, else 'standard'. Only classifies a code that is
+    already listed; it never adds one. The push Worker uses it so the alert can have its own switch."""
+    flat = ' '.join(t if isinstance(t, str) else ' '.join(map(str, t or [])) for t in texts)
+    return 'timed_research' if TIMED_RE.search(flat) else 'standard'
+
+
 def fetch(url):
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; scout-dashboard)'})
     with urllib.request.urlopen(req, timeout=30) as r:
@@ -93,14 +103,14 @@ def build(leek, pg, now):
             continue
         if c['expired'] or (c['expires'] and c['expires'] < today):
             continue
-        codes.append({**c, 'source': 'LeekDuck', 'verified': True, 'link': redeem_link(c['code'])})
+        codes.append({**c, 'source': 'LeekDuck', 'verified': True, 'kind': kind_of(c.get('name'), c.get('description'), c.get('rewards')), 'link': redeem_link(c['code'])})
     for c in pg:
         if not redeem_link(c['code']):
             continue
         if c['code'].lower() in known:
             continue   # LeekDuck lists it (live or expired): its answer wins
         codes.append({'code': c['code'], 'name': c['code'], 'description': '', 'rewards': [c['reward']] if c['reward'] else [], 'expires': None,
-                      'expired': False, 'source': 'Pocket Gamer', 'verified': False, 'link': redeem_link(c['code'])})
+                      'expired': False, 'source': 'Pocket Gamer', 'verified': False, 'kind': kind_of(c['reward']), 'link': redeem_link(c['code'])})
     return codes
 
 
