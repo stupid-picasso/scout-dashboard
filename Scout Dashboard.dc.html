@@ -2307,7 +2307,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.346{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.347{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -3594,7 +3594,7 @@
       </sc-if>
 
       <div style="border-top:1px solid var(--surface-muted);margin-top:16px;padding-top:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font:12px var(--font-display);color:var(--ink-300)">AI RECOMMENDED PICKS</div>
           <div onClick="{{ getTmAiRecommendations }}" class="om-press go-mini" style="cursor:pointer;padding:4px 12px;border-radius:var(--r-pill);background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-700);font:700 12px var(--font-display);letter-spacing:.03em">{{ tmAiButtonLabel }}</div>
         </div>
