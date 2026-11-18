@@ -28,5 +28,7 @@ if (!BANNED.size || !BANNED.has('f1e51c3d39558b21cd691b4bb7768b78c76c3ddd61860a7
 const need = [['LICENSE', /MIT License/], ['LICENSE', /not cover/i], ['SECURITY.md', /unsafe-eval/], ['SECURITY.md', /sha384/], ['CONTRIBUTING.md', /real account data/i], ['PRIVACY.md', /EEA/], ['PRIVACY.md', /Delete my account/],
   ['README.md', /not affiliated with, endorsed by or sponsored by/i], ['PRIVACY.md', /not affiliated with, endorsed by or sponsored by/i], ['Scout Dashboard.dc.html', /not affiliated with, endorsed or sponsored by/i]];
 need.forEach(([f, re]) => { let t = ''; try { t = fs.readFileSync(path.join(REPO, f), 'utf8'); } catch (e) {} if (!re.test(t)) { bad++; console.log('FAIL ' + f + ' is missing or lacks ' + re); } });
+// Pages must serve the files as they are. Without .nojekyll, GitHub runs Jekyll, which stops on the Liquid-looking braces in the docs and fails the whole deploy (the live app stayed on an old build for four merges).
+if (!fs.existsSync(path.join(REPO, '.nojekyll'))) { bad++; console.log('FAIL .nojekyll is missing: GitHub Pages would run Jekyll over the docs and fail the deploy'); }
 console.log(bad ? bad + ' problem(s)' : 'tracked tree clean (' + scanned + ' text files scanned, ' + BANNED.size + ' banned address hashes)');
 process.exit(bad ? 1 : 0);
