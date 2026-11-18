@@ -780,3 +780,4 @@ Nothing here touched the real Firebase project. Source: `docs/research/manager-r
 `qa_run.js` used to exit 0 on failure, so the QA suites never gated CI. It now exits 1, which exposed failures, so the e2e step in `.github/workflows/qa.yml` is `continue-on-error: true` (both browsers) and the WebKit CSP step is report-only. Fix, then remove those lines:
 - Chromium suite e on CI: UIQ-09, UIQ-15-320, UIQ-17-320, UIQ-28-ROSTER-390/320 (pass locally; CI fonts wrap differently).
 - WebKit: about 14 in suite a, 7 in b, 6 in c, 3 in e (CDP-only gesture tests, file:// feed loads, ROS-02, ROS-S-name) and test_csp "allowed hosts were not reached".
+- WebKit suite d (SYNC-02, file:// feed load) is also report-only; it has its own step in qa.yml. Fold it back into the gating step when fixed.
