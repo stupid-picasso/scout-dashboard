@@ -332,6 +332,7 @@
   .log-row>div:first-child{min-width:0}
   @media (max-width:520px){.log-head{display:none !important}.log-row{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:4px 16px}.log-row>div:first-child{grid-column:1/-1;font-weight:600}.log-row>div[data-l]::before{content:attr(data-l) " ";color:var(--ink-500);font-weight:400}}
   .ui-chev{font:17px var(--font-body);color:var(--text-3)}
+  .fr-h{margin:0;font:600 22px/1.2 var(--font-display);color:var(--ink-900)}.fr-p{font:15px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty;overflow-wrap:anywhere}.fr-c{font:13px/1.4 var(--font-body);color:var(--ink-500);text-wrap:pretty;overflow-wrap:anywhere}.fr-ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}.fr-w{width:100%}.fr-s{align-self:flex-start}.fr-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.fr-n{font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty}
   @media (max-width:360px){[data-swipe-row]{gap:12px !important;padding-left:12px !important;padding-right:12px !important}[data-swipe-row] [data-sprite]{width:44px !important;height:44px !important}[data-swipe-row] [data-sprite] img{width:40px !important;height:40px !important}[data-swipe-row] [data-cp]{font-size:17px !important}}
   details.ui-more>summary{list-style:none;cursor:pointer;display:flex;align-items:center;min-height:28px;margin-top:4px;font:600 13px var(--font-body);color:var(--accent-text)}
   details.ui-more>summary::-webkit-details-marker{display:none}
@@ -511,6 +512,114 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ firstRunOpen }}" hint-placeholder-val="{{ false }}">
+  <div role="dialog" aria-modal="true" aria-label="Welcome to Professor" tabindex="-1" data-firstrun="1" style="position:fixed;inset:0;z-index:62;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)">
+    <div style="box-sizing:border-box;max-width:560px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <button type="button" onClick="{{ frBack }}" class="om-press ui-btn-plain" style="visibility:{{ frBackVis }}">Back</button>
+        <div class="fr-c">Step {{ frStepNo }} of 6</div>
+        <button type="button" onClick="{{ frSkip }}" class="om-press ui-btn-plain">Skip</button>
+      </div>
+
+      <sc-if value="{{ frStep1 }}" hint-placeholder-val="{{ true }}">
+        <h2 class="fr-h">Welcome to Professor</h2>
+        <div class="fr-p">Professor reads your Pokemon GO roster and tells you what to power up, evolve, trade or transfer. No account needed.</div>
+        <sc-if value="{{ frSignedOut }}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{ signInGoogle }}" class="om-press ui-btn-fill fr-w">Continue with Google</button>
+          <button type="button" onClick="{{ signInGithub }}" class="om-press ui-btn-tint fr-w">Continue with GitHub</button>
+          <button type="button" onClick="{{ toggleAuthEmail }}" aria-expanded="{{ authEmailOpen }}" class="om-press ui-btn-plain fr-s">Use email</button>
+          <sc-if value="{{ authEmailOpen }}" hint-placeholder-val="{{ false }}">
+            <div class="fr-row">
+              <input type="text" placeholder="email" aria-label="Email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="flex:1 1 140px;min-width:0" />
+              <input type="password" placeholder="password" aria-label="Password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="flex:1 1 120px;min-width:0" />
+              <div onClick="{{ signIn }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">SIGN IN</div>
+              <div onClick="{{ signUp }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">CREATE ACCOUNT</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}"><div role="alert" style="font:13px/1.4 var(--font-body);color:var(--red-text);text-wrap:pretty;overflow-wrap:anywhere">{{ authError }}</div></sc-if>
+          <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-plain fr-s">Continue without an account</button>
+        </sc-if>
+        <sc-if value="{{ frSignedIn }}" hint-placeholder-val="{{ false }}">
+          <div role="status" class="fr-p">Signed in as <strong>{{ cloudUserLabel }}</strong>.</div>
+          <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-fill fr-w">Continue</button>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ frStep2 }}" hint-placeholder-val="{{ false }}">
+        <h2 class="fr-h">Bring your Pokemon</h2>
+        <div class="fr-p">Add them now, or later from Today and Settings.</div>
+        <div class="ui-list">
+          <label class="om-press ui-row-link"><span>Import screenshots</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span><input type="file" accept="image/*" multiple="multiple" aria-label="Import screenshots" onChange="{{ frShots }}" style="display:none" /></label>
+          <label class="om-press ui-row-link"><span>Import a screen recording</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span><input type="file" accept="video/*" aria-label="Import a screen recording" onChange="{{ frVideo }}" style="display:none" /></label>
+          <label class="om-press ui-row-link"><span>Import a CSV</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span><input type="file" accept=".csv" aria-label="Import a CSV" onChange="{{ frCsv }}" style="display:none" /></label>
+          <label class="om-press ui-row-link"><span>Restore from a backup file</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span><input type="file" accept=".json,application/json" aria-label="Restore from a backup file" onChange="{{ frRestore }}" style="display:none" /></label>
+        </div>
+        <div class="fr-c">Screenshots and recordings are read with a free Gemini key (step 4). A CSV or a backup needs no key.</div>
+        <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-fill fr-w">Continue</button>
+      </sc-if>
+
+      <sc-if value="{{ frStep3 }}" hint-placeholder-val="{{ false }}">
+        <h2 class="fr-h">Look and feel</h2>
+        <div class="fr-c">Theme</div>
+        <div class="fr-row">
+          <sc-for list="{{ frThemes }}" as="t" hint-placeholder-count="3"><button type="button" onClick="{{ t.onClick }}" aria-pressed="{{ t.pressed }}" class="om-press ui-btn-tint" style="box-shadow:{{ t.ring }}">{{ t.label }}</button></sc-for>
+        </div>
+        <div class="fr-c">Text size</div>
+        <div class="fr-row">
+          <sc-for list="{{ frZooms }}" as="z" hint-placeholder-count="5"><button type="button" onClick="{{ z.onClick }}" aria-pressed="{{ z.pressed }}" aria-label="Text size {{ z.label }}" class="om-press ui-btn-tint" style="box-shadow:{{ z.ring }}">{{ z.label }}</button></sc-for>
+        </div>
+        <div data-preview="1" style="background:var(--surface-card);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:4px">
+          <div style="font:600 17px var(--font-body);color:var(--ink-900)">Azumarill</div>
+          <div class="fr-c">Great League rank 98%. Worth a power up.</div>
+        </div>
+        <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-fill fr-w">Continue</button>
+      </sc-if>
+
+      <sc-if value="{{ frStep4 }}" hint-placeholder-val="{{ false }}">
+        <h2 class="fr-h">AI reading (optional)</h2>
+        <div class="fr-p">A free Gemini key lets Professor read screenshots and recordings. Nothing breaks if you skip it: CSV and manual entry still work.</div>
+        <ul class="fr-c fr-ul">
+          <li>Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:var(--accent-text)">aistudio.google.com/apikey</a>.</li>
+          <li>The key stays on this device. The app never uploads it.</li>
+          <li>Screenshots you import are sent to Google Gemini with your key. On the free tier Google may use them to improve its products.</li>
+          <li>Adults only. The free tier is not offered to users in the EEA, UK or Switzerland.</li>
+        </ul>
+        <label style="display:flex;gap:12px;align-items:center;min-height:44px;font:15px var(--font-body);color:var(--ink-900)"><input type="checkbox" checked="{{ frAge }}" onChange="{{ frAgeToggle }}" style="width:20px;height:20px;flex-shrink:0" /><span>I am 18 or older</span></label>
+        <textarea placeholder="Paste your key" aria-label="Gemini API key" value="{{ geminiKeyDraft }}" onChange="{{ onGeminiKeyDraftChange }}" disabled="{{ frKeyDisabled }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;min-height:72px;font:13px var(--font-display);resize:vertical"></textarea>
+        <button type="button" onClick="{{ saveGeminiKey }}" disabled="{{ frKeyDisabled }}" class="om-press ui-btn-tint fr-s">Save key</button>
+        <sc-if value="{{ hasGeminiKey }}" hint-placeholder-val="{{ false }}"><div role="status" style="font:13px var(--font-body);color:var(--ink-600)">Key saved on this device only.</div></sc-if>
+        <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-fill fr-w">Continue</button>
+      </sc-if>
+
+      <sc-if value="{{ frStep5 }}" hint-placeholder-val="{{ false }}">
+        <h2 class="fr-h">Reminders</h2>
+        <div class="fr-p">Get a nudge before an event ends. Reminders stay off until you turn them on here.</div>
+        <button type="button" onClick="{{ frReminders }}" class="om-press ui-btn-tint fr-s">{{ frReminderLabel }}</button>
+        <div class="fr-c">On iPhone this needs the app added to the Home Screen first.</div>
+        <sc-if value="{{ firstRunNote }}" hint-placeholder-val="{{ false }}"><div role="status" class="fr-n">{{ firstRunNote }}</div></sc-if>
+        <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-fill fr-w">Continue</button>
+      </sc-if>
+
+      <sc-if value="{{ frStep6 }}" hint-placeholder-val="{{ false }}">
+        <h2 class="fr-h">Your data</h2>
+        <ul class="fr-c fr-ul">
+          <li>On this device: your roster, settings and any API key.</li>
+          <li>In your account, only if you sign in: your roster and settings, stored with Google Firebase. API keys are never uploaded.</li>
+          <li>Screenshots you import go to Google Gemini with your key. No ads, no analytics, nothing sold.</li>
+        </ul>
+        <div class="ui-list">
+          <div onClick="{{ exportMyData }}" role="button" class="om-press ui-row-link"><span>Export my data</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span></div>
+          <sc-if value="{{ hasCloudUser }}" hint-placeholder-val="{{ false }}"><div onClick="{{ deleteAccountAsk }}" role="button" class="om-press ui-row-link" style="color:var(--red-text)"><span>Delete my account and cloud data</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span></div></sc-if>
+        </div>
+        <sc-if value="{{ dataMsg }}" hint-placeholder-val="{{ false }}"><div role="status" class="fr-n">{{ dataMsg }}</div></sc-if>
+        <a href="https://github.com/stupid-picasso/scout-dashboard/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer" class="ui-btn-plain" style="align-self:flex-start">Privacy policy</a>
+        <div class="fr-c">Professor is an unofficial fan-made tool, not affiliated with or endorsed by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company.</div>
+        <button type="button" onClick="{{ frNext }}" class="om-press ui-btn-fill fr-w">Done</button>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ pendingConfirm }}" hint-placeholder-val="{{ false }}">
   <div style="position:fixed;inset:0;z-index:65;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:max(16px, env(safe-area-inset-bottom));animation:scrimIn 0.24s ease">
     <div role="alertdialog" aria-modal="true" aria-label="Confirm" tabindex="-1" style="width:100%;max-width:560px;background:var(--surface-card);border:1px solid var(--line-300);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)"><div aria-hidden="true" data-grabber="1" style="width:36px;height:5px;border-radius:6px;background:var(--line-strong);margin:0 auto 8px;flex-shrink:0"></div>
@@ -521,6 +630,20 @@
           <div onClick="{{ a.run }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);font:700 13px var(--font-display);background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</div>
         </sc-for>
         <div onClick="{{ closeConfirm }}" class="om-press" style="cursor:pointer;text-align:center;padding:12px;border-radius:var(--r-pill);background:transparent;color:var(--ink-400);font:700 12px var(--font-display)">CANCEL</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ carryPrompt }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:68;background:oklch(12% 0.01 50 / .82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:max(16px, env(safe-area-inset-bottom));animation:scrimIn 0.24s ease">
+    <div role="alertdialog" aria-modal="true" aria-label="Roster on this device" tabindex="-1" data-carry-prompt="1" style="box-sizing:border-box;width:100%;max-width:560px;max-height:100%;overflow-y:auto;background:var(--surface-card);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;animation:sheetUp 0.24s cubic-bezier(.22,1,.36,1)">
+      <div style="font:600 17px var(--font-display);color:var(--ink-900)">This account has no Pokemon yet</div>
+      <div style="font:15px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty">This device holds {{ carryPrompt.count }} Pokemon from before you signed in. Nothing changes until you choose.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" onClick="{{ carryUpload }}" class="om-press ui-btn-fill" style="width:100%">{{ carryPrompt.uploadLabel }}</button>
+        <button type="button" onClick="{{ carryBackup }}" class="om-press ui-btn-tint" style="width:100%">Save a backup file</button>
+        <button type="button" onClick="{{ carryDiscard }}" class="om-press ui-btn-plain" style="width:100%">Start with an empty account</button>
       </div>
     </div>
   </div>
@@ -1152,6 +1275,8 @@
       <sc-if value="{{ refreshUndone }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--grass-700)">Restored the ranks, evolution and move data from before this refresh.</div></sc-if>
     </section>
 
+    <div onClick="{{ openFirstRun }}" role="button" class="om-press ui-row-link" style="padding:0 16px;background:var(--surface-card);border-radius:var(--r-lg)"><span>Welcome tour</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span></div>
+
     <details style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:4px 16px;margin-bottom:16px">
       <summary style="cursor:pointer;list-style:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:48px;padding:8px 0;font:600 17px var(--font-body)">Setup, sync and backup<span style="font:400 13px var(--font-body);color:var(--ink-500)">Text size, size protection, cloud, backup</span></summary>
       <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0 16px">
@@ -1210,39 +1335,49 @@
 
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px">
       <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em">Cloud sync</div>
-      <sc-if value="{{ needsFirebaseConfig }}" hint-placeholder-val="{{ true }}">
-        <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:6px;padding:12px;margin:8px 0;font:13px var(--font-body);color:var(--ink-600);line-height:1.5">Sign in to sync.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input type="text" placeholder="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 12px;border-radius:6px;font:13px var(--font-body);width:180px" />
-          <input type="password" placeholder="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 12px;border-radius:6px;font:13px var(--font-body);width:150px" />
-          <div onClick="{{ signIn }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">SIGN IN</div>
-          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display)">CREATE ACCOUNT</div>
+      <sc-if value="{{ showSignIn }}" hint-placeholder-val="{{ true }}">
+        <div data-signin-card="1" style="display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div style="font:15px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty">Sign in to keep your roster on every device. The app works without an account.</div>
+          <button type="button" onClick="{{ signInGoogle }}" class="om-press ui-btn-tint" style="width:100%">Continue with Google</button>
+          <button type="button" onClick="{{ signInGithub }}" class="om-press ui-btn-tint" style="width:100%">Continue with GitHub</button>
+          <button type="button" onClick="{{ toggleAuthEmail }}" aria-expanded="{{ authEmailOpen }}" class="om-press ui-btn-plain" style="align-self:flex-start">Use email instead</button>
+          <sc-if value="{{ authEmailOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input type="text" placeholder="email" aria-label="Email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="flex:1 1 140px;min-width:0" />
+              <input type="password" placeholder="password" aria-label="Password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="flex:1 1 120px;min-width:0" />
+              <div onClick="{{ signIn }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">SIGN IN</div>
+              <div onClick="{{ signUp }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">CREATE ACCOUNT</div>
+            </div>
+            <div style="font:13px var(--font-body);color:var(--ink-500)">Use the same email and password on every device.</div>
+          </sc-if>
+          <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="font:13px/1.4 var(--font-body);color:var(--red-text);text-wrap:pretty">{{ authError }}</div>
+          </sc-if>
+          <sc-if value="{{ authNotice }}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty">{{ authNotice }}</div>
+          </sc-if>
         </div>
-        <div style="font:13px var(--font-body);color:var(--ink-500);margin-top:8px">Use the same email and password on every device.</div>
-        <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12px var(--font-display);color:var(--type-fighting);margin-top:6px">{{ authError }}</div>
-        </sc-if>
-      </sc-if>
-      <sc-if value="{{ hasFirebaseNoUser }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input type="text" placeholder="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 12px;border-radius:6px;font:13px var(--font-body);width:180px" />
-          <input type="password" placeholder="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" style="background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 12px;border-radius:6px;font:13px var(--font-body);width:150px" />
-          <div onClick="{{ signIn }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">SIGN IN</div>
-          <div onClick="{{ signUp }}" style="cursor:pointer;padding:8px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display)">CREATE ACCOUNT</div>
-        </div>
-        <div style="font:12px var(--font-body);color:var(--ink-300)">Use the same email/password on every device to sync the same data.</div>
-        <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
-          <div style="font:12px var(--font-display);color:var(--type-fighting)">{{ authError }}</div>
-        </sc-if>
       </sc-if>
       <sc-if value="{{ hasCloudUser }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div style="font:13px var(--font-body);color:var(--ink-700)">Synced as <strong>{{ cloudUserEmail }}</strong> &middot; {{ syncStatusLabel }}</div>
+          <div style="font:13px var(--font-body);color:var(--ink-700);min-width:0;overflow-wrap:anywhere">Synced as <strong>{{ cloudUserLabel }}</strong> &middot; {{ syncStatusLabel }}</div>
           <div style="flex:1 1 100%;font:12px var(--font-display);color:var(--ink-500)">{{ measuredIvLine }}</div>
           <div style="display:flex;gap:8px">
             <div onClick="{{ syncNow }}" class="om-press ui-btn-tint" role="button" style="cursor:pointer;">SYNC NOW</div>
             <div onClick="{{ signOutCloud }}" style="cursor:pointer;padding:8px 12px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-600);font:700 12px var(--font-display)">SIGN OUT</div>
           </div>
+        </div>
+        <div data-signed-in-methods="1" style="display:flex;flex-direction:column;gap:4px">
+          <div style="font:13px var(--font-body);color:var(--ink-500)">Signed in with {{ providersLabel }}.</div>
+          <sc-if value="{{ canLinkGoogle }}" hint-placeholder-val="{{ false }}"><div onClick="{{ linkGoogle }}" class="om-press ui-row-link" role="button" style="padding:0">Link Google<span aria-hidden="true" class="ui-chev">&rsaquo;</span></div></sc-if>
+          <sc-if value="{{ canLinkGithub }}" hint-placeholder-val="{{ false }}"><div onClick="{{ linkGithub }}" class="om-press ui-row-link" role="button" style="padding:0">Link GitHub<span aria-hidden="true" class="ui-chev">&rsaquo;</span></div></sc-if>
+          <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="font:13px/1.4 var(--font-body);color:var(--red-text);text-wrap:pretty">{{ authError }}</div>
+          </sc-if>
+          <sc-if value="{{ authOfferBackup }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ backupDevice }}" class="om-press ui-btn-tint" style="align-self:flex-start">Save a backup</button></sc-if>
+          <sc-if value="{{ authNotice }}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty">{{ authNotice }}</div>
+          </sc-if>
         </div>
         <div style="border-top:1px solid var(--type-water);padding-top:12px;display:flex;flex-direction:column;gap:8px">
           <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em">BACKUP &amp; RESTORE</div>
@@ -4279,6 +4414,8 @@ class Component extends DCLogic {
     authEmail: '',
     authPassword: '',
     authError: '',
+    authBusy: false, authEmailOpen: false, authNotice: '', authLink: null, authOfferBackup: false, carryPrompt: null,
+    firstRunOpen: false, firstRunStep: 1, firstRunAge: false, firstRunNote: '',
     cloudUser: null,
     syncStatus: '',
     raidBossName: '',
@@ -4360,6 +4497,7 @@ class Component extends DCLogic {
     setTimeout(() => this.dailyLogSnapshot(), 6000);
     try { const sv = JSON.parse(localStorage.getItem('scout.savedViews.v1') || '[]'); if (Array.isArray(sv)) this.setState({ savedViews: sv.filter(v => v && v.id && v.filter).slice(-8) }); } catch (e) {}
     setTimeout(() => this.maybeSwipeHint(), 3500);
+    setTimeout(() => { try { this.maybeOpenFirstRun(); } catch (e) {} }, 900);
     try { if (localStorage.getItem('scout.remind.v1') === '1' && typeof Notification !== 'undefined' && Notification.permission === 'granted') this.setState({ remindersOn: true }); } catch (e) {}
     this._remindTimer = setInterval(() => { this.checkReminders(); this.maybeBriefing(); }, 60000);
     setTimeout(() => this.maybeBriefing(), 9000);
@@ -4630,6 +4768,8 @@ class Component extends DCLogic {
       if (e.key === 'Escape') {
         e.preventDefault();
         if (this.state.detailPoke) { try { this.closeDetail(); return; } catch (x) {} }
+        if (this.state.pendingConfirm) { try { this.closeConfirm(); } catch (x) {} return; }
+        if (this.state.firstRunOpen && !this.state.carryPrompt) { this.leaveFirstRun('closed'); return; }
         try { this.closeConfirm && this.closeConfirm(); } catch (x) {}
         return;
       }
@@ -4795,16 +4935,140 @@ class Component extends DCLogic {
   onAuthEmailChange(e) { this.setState({ authEmail: e.target.value, authError: '' }); }
   onAuthPasswordChange(e) { this.setState({ authPassword: e.target.value, authError: '' }); }
 
+  // ---- Sign-in: Google and GitHub by popup, email and password kept ---------------------------------------------------
+  // Popup only (a redirect cannot hand the result back on a GitHub Pages origin with current browsers). Identity only: no scopes
+  // are requested. The credential of a refused sign-in is held in memory (this._pendingCred), never stored.
+  providerName(id) { return id === 'google.com' ? 'Google' : id === 'github.com' ? 'GitHub' : id === 'password' ? 'email and password' : 'that sign-in method'; }
+
+  makeProvider(id) { return id === 'github.com' ? new firebase.auth.GithubAuthProvider() : new firebase.auth.GoogleAuthProvider(); }
+
+  signInGoogle() { return this.startSocial('google.com'); }
+  signInGithub() { return this.startSocial('github.com'); }
+
+  startSocial(providerId) {
+    if (!this.auth || typeof firebase === 'undefined') { this.setState({ authError: 'Sign-in is not ready. Check your connection and try again, or use email instead.' }); return Promise.resolve(); }
+    if (this.state.authBusy) return Promise.resolve();
+    this.setState({ authBusy: true, authError: '', authNotice: '', authOfferBackup: false });
+    // The popup is opened in this same tap (browsers block one opened later).
+    let p;
+    try { p = this.auth.signInWithPopup(this.makeProvider(providerId)); } catch (e) { this.handleAuthError(e, providerId); return Promise.resolve(); }
+    return Promise.resolve(p).then(() => this.setState({ authBusy: false })).catch(err => this.handleAuthError(err, providerId));
+  }
+
+  // A plain sentence and a next step for every failure, never a raw code. The app stays usable signed out.
+  handleAuthError(err, providerId) {
+    const code = (err && err.code) || '';
+    const name = this.providerName(providerId);
+    const off = { authBusy: false };
+    // Closing the window is a choice, not an error.
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') { this.setState({ ...off, authError: '' }); return; }
+    if (code === 'auth/account-exists-with-different-credential') {
+      const email = (err && (err.email || (err.customData && err.customData.email))) || '';
+      this._pendingCred = (err && err.credential) || null; this._pendingEmail = email; this._pendingProvider = providerId;
+      this.setState({ ...off, authLink: { provider: name }, authEmail: email || this.state.authEmail, authEmailOpen: true,
+        authError: 'This email already has an account. Sign in the way you did before, then we will link ' + name + '.' });
+      return;
+    }
+    let msg;
+    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+      msg = 'Sign-in window did not open. Try again, open the app in your browser, or use email instead.';
+      this.setState({ ...off, authEmailOpen: true, authError: msg });
+      return;
+    }
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') msg = 'Email or password is not right.';
+    else if (code === 'auth/email-already-in-use') msg = 'That email already has an account. Choose sign in instead.';
+    else if (code === 'auth/weak-password') msg = 'Use a password of at least 6 characters.';
+    else if (code === 'auth/invalid-email') msg = 'That email address does not look right.';
+    else if (code === 'auth/too-many-requests') msg = 'Too many tries. Wait a few minutes and try again.';
+    else if (code === 'auth/user-disabled') msg = 'This account is turned off.';
+    else msg = 'Could not sign in. Check your connection and try again. The app keeps working without an account.';
+    this.setState({ ...off, authError: msg });
+  }
+
+  // Linking never changes the account: the uid, and with it the roster, stay. Before any link attempt the person is offered a backup file.
+  askLinkConfirm(name, go) {
+    const link = { label: 'Link ' + name, style: 'primary', run: () => { this.closeConfirm(); go(); } };
+    this.askConfirm({
+      title: 'Link ' + name + ' to this account?',
+      message: 'Your roster stays in this account and you can sign in with either. A backup file is a safe extra.',
+      actions: [link, { label: 'Save a backup first', style: 'neutral', run: () => {
+        this.backupDevice();
+        this.askConfirm({ title: 'Backup saved', message: 'Link ' + name + ' now?', actions: [link] });
+      } }]
+    });
+  }
+
+  linkProvider(providerId) {
+    const cu = this.auth && this.auth.currentUser;
+    if (!cu || typeof firebase === 'undefined') return;
+    const name = this.providerName(providerId);
+    this.askLinkConfirm(name, () => {
+      this.setState({ authError: '', authNotice: '', authOfferBackup: false });
+      let p;
+      try { p = cu.linkWithPopup(this.makeProvider(providerId)); } catch (e) { this.handleLinkError(e, providerId); return; }
+      Promise.resolve(p).then(() => this.linkDone(name)).catch(err => this.handleLinkError(err, providerId));
+    });
+  }
+
+  linkDone(name) {
+    this.refreshCloudUser();
+    this.setState({ authError: '', authOfferBackup: false, authNotice: name + ' is linked. You can sign in with either now.' });
+  }
+
+  handleLinkError(err, providerId) {
+    const code = (err && err.code) || '';
+    const name = this.providerName(providerId);
+    if (code === 'auth/credential-already-in-use' || code === 'auth/email-already-in-use') {
+      this.setState({ authOfferBackup: true, authNotice: '', authError: 'That ' + name + ' sign-in already belongs to another account, so it was not linked. Nothing was changed. To move your data: save a backup, sign in with ' + name + ', then restore the backup in Settings.' });
+      return;
+    }
+    if (code === 'auth/provider-already-linked') { this.refreshCloudUser(); this.setState({ authError: '', authNotice: name + ' is already linked.' }); return; }
+    if (code === 'auth/requires-recent-login') { this.setState({ authError: 'For your safety, sign out and sign in again, then link ' + name + '. Your data stays.' }); return; }
+    this.handleAuthError(err, providerId);
+  }
+
+  // After a sign-in that follows "this email already has an account": link the held credential, but only to the account with that email.
+  linkPendingCredential(user) {
+    const pend = this._pendingCred, pe = String(this._pendingEmail || '').toLowerCase(), pid = this._pendingProvider;
+    if (!pend) return;
+    this._pendingCred = null; this._pendingEmail = ''; this._pendingProvider = '';
+    this.setState({ authLink: null });
+    if (!pe || String(user.email || '').toLowerCase() !== pe) return;   // a different account signed in: nothing is linked to it
+    const name = this.providerName(pid);
+    this.askLinkConfirm(name, () => {
+      const cu = this.auth && this.auth.currentUser;
+      if (!cu) return;
+      Promise.resolve().then(() => cu.linkWithCredential(pend)).then(() => this.linkDone(name)).catch(err => this.handleLinkError(err, pid));
+    });
+  }
+
+  refreshCloudUser() {
+    const u = this.auth && this.auth.currentUser;
+    if (u && this.state.cloudUser && this.state.cloudUser.uid === u.uid) this.setState({ cloudUser: this.cloudUserFrom(u) });
+  }
+
+  cloudUserFrom(u) {
+    const pd = (u.providerData || []).filter(Boolean);
+    return { uid: u.uid, email: u.email || '', name: u.displayName || '', providers: pd.map(x => x.providerId), provUid: (pd[0] && pd[0].uid) || '' };
+  }
+
+  // What to call the signed-in person: the email, else the display name, else the provider's own id (GitHub may hide the email).
+  cloudUserLabel(cu) { return (cu && (cu.email || cu.name || cu.provUid)) || 'your account'; }
+
+  toggleAuthEmail() { this.setState({ authEmailOpen: !this.state.authEmailOpen }); }
+
   signIn() {
-    if (!this.auth) return;
+    if (!this.auth) { this.setState({ authError: 'Sign-in is not ready. Check your connection and try again.' }); return; }
+    this.setState({ authError: '' });
     this.auth.signInWithEmailAndPassword(this.state.authEmail.trim(), this.state.authPassword)
-      .catch(err => this.setState({ authError: err.message }));
+      .catch(err => this.handleAuthError(err, 'password'));
   }
 
   signUp() {
-    if (!this.auth) return;
+    if (!this.auth) { this.setState({ authError: 'Sign-in is not ready. Check your connection and try again.' }); return; }
+    this.setState({ authError: '' });
     this.auth.createUserWithEmailAndPassword(this.state.authEmail.trim(), this.state.authPassword)
-      .catch(err => this.setState({ authError: err.message }));
+      .catch(err => this.handleAuthError(err, 'password'));
   }
 
   signOutCloud() {
@@ -4844,20 +5108,60 @@ class Component extends DCLogic {
     this.authSettled();
     if (user) {
       const prev = this.state.cloudUser;
-      if (prev && prev.uid !== user.uid) { this.forgetAccount(prev); this.setState({ ...this.EMPTY_USER_DATA(), snapshots: [] }); }
+      // A roster built while signed out is held (in memory, and under the plain device key) until it is known whether this account is empty.
+      if (!prev) {
+        const n = (this.state.roster || []).length + (this.state.addedPokemon || []).length;
+        this._carry = n > 0 && this._localRestoreDone ? { uid: user.uid, count: n, blob: JSON.parse(JSON.stringify(this.buildCloudBlob())) } : null;
+        // The page was closed while the question below was open: the roster is still under the plain device key, and the flag says it is waiting.
+        if (!this._carry) { try { if (localStorage.getItem('scout.carryPending') === user.uid) { const b = JSON.parse(localStorage.getItem(this.localCopyKey(null)) || 'null'); const c = b ? this.rosterCountIn(b) : 0; if (c > 0) this._carry = { uid: user.uid, count: c, blob: b }; } } catch (e) {} }
+      }
+      if (prev && prev.uid !== user.uid) { this._carry = null; this.forgetAccount(prev); this.setState({ ...this.EMPTY_USER_DATA(), snapshots: [], carryPrompt: null }); }
       this._deleting = false;
-      this.setState({ cloudUser: { uid: user.uid, email: user.email || '' }, authError: '', authPassword: '' });
+      this.setState({ cloudUser: this.cloudUserFrom(user), authError: '', authPassword: '', authBusy: false, authOfferBackup: false });
       // Older builds kept the signed-in copy under the plain key. Whose it is cannot be told, and the cloud holds the real one.
-      try { localStorage.removeItem(this.localCopyKey(null)); } catch (e) {}
+      if (!this._carry) this.dropPlainCopy();
       this._cloudUid = user.uid;
       this.subscribeCloudDoc(user.uid);
+      if (this._pendingCred) this.linkPendingCredential(user);
     } else {
+      this._carry = null; this._carryRemote = null; this._pendingCred = null;
       // Signed out means nothing is displayed: the account's data goes from the screen and from this device's copy.
       this._deleting = false;
       this.forgetAccount(this.state.cloudUser);
-      this.setState({ cloudUser: null, syncStatus: '', loaded: true, snapshots: [], ...this.EMPTY_USER_DATA() });
+      this.setState({ cloudUser: null, syncStatus: '', loaded: true, snapshots: [], carryPrompt: null, authNotice: '', authLink: null, ...this.EMPTY_USER_DATA() });
     }
   }
+
+  dropPlainCopy() { try { localStorage.removeItem(this.localCopyKey(null)); localStorage.removeItem('scout.carryPending'); } catch (e) {} }
+
+  // What the carried roster does once the account's own document is known (see attachCloudListener).
+  rosterCountIn(raw) {
+    try { const d = this.unpackCloudBlob(raw || {}); return (Array.isArray(d.roster) ? d.roster.length : 0) + (Array.isArray(d.addedPokemon) ? d.addedPokemon.length : 0); } catch (e) { return 0; }
+  }
+
+  offerCarry(raw) {
+    this._carryRemote = raw;
+    try { localStorage.setItem('scout.carryPending', this._carry.uid); } catch (e) {}
+    if (!this.state.carryPrompt) this.setState({ carryPrompt: { count: this._carry.count } });
+  }
+
+  // Upload: the roster from this device becomes the account's. Nothing is written before this tap.
+  carryUpload() {
+    const c = this._carry; if (!c) return;
+    const secrets = this.SECRET_CLOUD_FIELDS.filter(k => this._carryRemote && this._carryRemote[k] !== undefined);
+    this._carry = null; this._carryRemote = null; this.dropPlainCopy();
+    this._dirtyUntilPush = true;
+    this.setState({ carryPrompt: null }, () => this.applyRemote(c.blob, { remoteSecrets: secrets }));
+  }
+
+  // Start empty: the account's (empty) document is shown; the roster from this device is not uploaded.
+  carryDiscard() {
+    const raw = this._carryRemote || {};
+    this._carry = null; this._carryRemote = null; this.dropPlainCopy();
+    this.setState({ carryPrompt: null }, () => this.applyRemote(raw));
+  }
+
+  carryBackup() { this.backupDevice(); }
 
   // The user-document listener is the expensive part of a session (every confirmed write comes back as a billed read), so it
   // runs only while the page is visible: attached on launch if visible, detached when hidden, attached again (one read) when shown.
@@ -4899,8 +5203,69 @@ class Component extends DCLogic {
       if (snap.metadata && snap.metadata.hasPendingWrites) return;
       if (this._cloudUid !== uid) return;
       this._docExists = !!snap.exists;
-      this.applyRemote(snap.exists ? snap.data() : {});
+      const raw = snap.exists ? snap.data() : {};
+      // Signed in to an account with no Pokemon while this device holds a roster built before signing in: ask, never overwrite either side.
+      if (this._carry && this._carry.uid === uid) {
+        if (this.rosterCountIn(raw) === 0) { this.offerCarry(raw); return; }
+        this._carry = null; this.dropPlainCopy();
+        this.setState({ authNotice: 'This account already had data, so it was used. The roster you built before signing in was not uploaded.' });
+      }
+      this.applyRemote(raw);
     }, err => this.setState({ syncStatus: 'error: ' + err.message, authError: 'Sync read failed: ' + err.message + ' — check your Firestore rules allow this user.' }));
+  }
+
+  // ---- First-run page -------------------------------------------------------------------------------------
+  // A skippable six-step overlay, opened once when localStorage['scout.firstRun.v1'] is absent (also when signed out). Leaving it any way
+  // (Skip, Done, Escape, the back gesture, starting an import) sets that key, so it never comes back by itself; 'done' means finished or
+  // skipped, 'closed' means left part-way. The step is kept in 'scout.firstRun.step', so the Welcome tour row in Settings carries on
+  // from where it stopped. The harness sets window.__noFirstRun so existing tests never see it.
+  maybeOpenFirstRun() {
+    try { if (window.__noFirstRun) return; } catch (e) {}
+    let v = null;
+    try { v = localStorage.getItem('scout.firstRun.v1'); } catch (e) { v = null; }
+    if (v !== null || this._firstRunSeen) return;
+    this.openFirstRun(true);
+  }
+
+  firstRunImporting() {
+    const s = this.state;
+    return !!(s.ocrBusy || (s.videoImport && !s.videoImport.error && !s.videoImport.summary) || s.videoEstimate || s.pendingConfirm || s.restorePending);
+  }
+
+  openFirstRun(auto) {
+    if (this.state.firstRunOpen || this.firstRunImporting()) return;   // never over an import in progress
+    let done = null, step = 1;
+    try { done = localStorage.getItem('scout.firstRun.v1'); const n = parseInt(localStorage.getItem('scout.firstRun.step'), 10); if (n >= 1 && n <= 6) step = n; } catch (e) {}
+    if (!auto && done === 'done') step = 1;
+    this.setState({ firstRunOpen: true, firstRunStep: step, firstRunNote: '', moreOpen: false });
+    // The system back gesture leaves the page instead of the app.
+    try { history.pushState({ scoutFirstRun: 1 }, ''); this._frHist = true; } catch (e) { this._frHist = false; }
+    if (!this._frPop) {
+      this._frPop = () => { if (this._frHist && this.state.firstRunOpen) { this._frHist = false; this.leaveFirstRun('closed'); } };
+      window.addEventListener('popstate', this._frPop);
+    }
+  }
+
+  leaveFirstRun(kind) {
+    try { localStorage.setItem('scout.firstRun.v1', kind === 'done' ? 'done' : 'closed'); } catch (e) {}
+    this._firstRunSeen = true;
+    if (this._frHist) { this._frHist = false; try { history.back(); } catch (e) {} }
+    this.setState({ firstRunOpen: false, firstRunNote: '' });
+  }
+
+  setFirstRunStep(n) {
+    try { localStorage.setItem('scout.firstRun.step', String(n)); } catch (e) {}
+    this.setState({ firstRunStep: n, firstRunNote: '' });
+  }
+
+  firstRunNext() { const n = this.state.firstRunStep; if (n >= 6) this.leaveFirstRun('done'); else this.setFirstRunStep(n + 1); }
+  firstRunBack() { const n = this.state.firstRunStep; if (n > 1) this.setFirstRunStep(n - 1); }
+
+  // Notification permission is asked only here, after the tap on "Turn on reminders".
+  firstRunReminders() {
+    if (this.state.remindersOn) return;
+    if (typeof Notification === 'undefined') { this.setState({ firstRunNote: 'This browser cannot show notifications. On iPhone, add the app to the Home Screen first.' }); return; }
+    this.toggleReminders();
   }
 
   // ---- Device-only secrets ------------------------------------------------
@@ -4969,9 +5334,9 @@ class Component extends DCLogic {
   // empty). The one exception is geminiKeyDraft/geminiKey while the user is
   // actively typing a new key: a stale echo of the snapshot landing mid-edit
   // must not overwrite what's on screen before the debounced push completes.
-  applyRemote(rawRemote) {
+  applyRemote(rawRemote, opts) {
     const remote = this.unpackCloudBlob(rawRemote);
-    this._remoteSecrets = this.SECRET_CLOUD_FIELDS.filter(k => rawRemote && rawRemote[k] !== undefined);
+    this._remoteSecrets = opts && opts.remoteSecrets ? opts.remoteSecrets : this.SECRET_CLOUD_FIELDS.filter(k => rawRemote && rawRemote[k] !== undefined);
     if (remote._unpackFailed && remote._unpackFailed.length) {
       // A part of the cloud copy could not be read. Applying it would blank that part here and the next save would
       // push the blank back up, so the cloud copy is left alone and this device's data stays.
@@ -10681,7 +11046,7 @@ class Component extends DCLogic {
   deleteAccountConfirm() {
     this.askConfirm({
       title: 'Last chance: this cannot be undone',
-      message: 'Everything stored for ' + ((this.state.cloudUser && this.state.cloudUser.email) || 'this account') + ' will be deleted for good.',
+      message: 'Everything stored for ' + this.cloudUserLabel(this.state.cloudUser) + ' will be deleted for good.',
       actions: [{ label: 'Delete everything', style: 'danger', run: () => this.deleteAccountNow() }]
     });
   }
@@ -21095,6 +21460,7 @@ class Component extends DCLogic {
       saveFirebaseConfig: () => this.saveFirebaseConfig(),
       firebaseConfigError: this.state.firebaseConfigError,
       hasFirebaseNoUser: this.state.firebaseConfigured && !this.state.cloudUser,
+      showSignIn: !this.state.cloudUser,   // the unconfigured (fork) case and the signed-out case show the same card
       authEmail: this.state.authEmail,
       authPassword: this.state.authPassword,
       onAuthEmailChange: (e) => this.onAuthEmailChange(e),
@@ -21109,7 +21475,43 @@ class Component extends DCLogic {
       onDustReserveChange: (e) => this.setDustReserve(e.target.value),
       deviceBackupShown: !this.state.cloudUser,
       backupDevice: () => this.backupDevice(),
-      cloudUserEmail: this.state.cloudUser && this.state.cloudUser.email,
+      cloudUserLabel: this.cloudUserLabel(this.state.cloudUser),
+      providersLabel: ((this.state.cloudUser && this.state.cloudUser.providers) || []).map(x => this.providerName(x)).join(' and ') || 'this account',
+      canLinkGoogle: !!this.state.cloudUser && ((this.state.cloudUser.providers || []).indexOf('google.com') < 0),
+      canLinkGithub: !!this.state.cloudUser && ((this.state.cloudUser.providers || []).indexOf('github.com') < 0),
+      linkGoogle: () => this.linkProvider('google.com'),
+      linkGithub: () => this.linkProvider('github.com'),
+      signInGoogle: () => this.signInGoogle(),
+      signInGithub: () => this.signInGithub(),
+      toggleAuthEmail: () => this.toggleAuthEmail(),
+      authEmailOpen: !!this.state.authEmailOpen,
+      authNotice: this.state.authNotice,
+      authOfferBackup: !!this.state.authOfferBackup,
+      firstRunOpen: !!this.state.firstRunOpen,
+      frStepNo: this.state.firstRunStep || 1,
+      frStep1: (this.state.firstRunStep || 1) === 1, frStep2: this.state.firstRunStep === 2, frStep3: this.state.firstRunStep === 3,
+      frStep4: this.state.firstRunStep === 4, frStep5: this.state.firstRunStep === 5, frStep6: this.state.firstRunStep === 6,
+      frBackVis: (this.state.firstRunStep || 1) > 1 ? 'visible' : 'hidden',
+      frBack: () => this.firstRunBack(),
+      frNext: () => this.firstRunNext(),
+      frSkip: () => this.leaveFirstRun('done'),
+      frSignedOut: !this.state.cloudUser, frSignedIn: !!this.state.cloudUser,
+      frThemes: ['auto', 'light', 'dark'].map(t => { const on = (this.state.themePref || 'auto') === t; return { label: t === 'auto' ? 'Auto' : t === 'light' ? 'Light' : 'Dark', pressed: on, ring: on ? 'inset 0 0 0 2px var(--accent)' : 'none', onClick: () => this.setThemePref(t) }; }),
+      frZooms: [1, 1.15, 1.3, 1.5, 2].map(z => { const on = Math.abs((this.state.uiZoom || 1) - z) < 0.01; return { label: Math.round(z * 100) + '%', pressed: on, ring: on ? 'inset 0 0 0 2px var(--accent)' : 'none', onClick: () => this.setUiZoom(z) }; }),
+      frAge: !!this.state.firstRunAge, frKeyDisabled: !this.state.firstRunAge,
+      frAgeToggle: () => this.setState({ firstRunAge: !this.state.firstRunAge }),
+      frShots: (e) => { const files = Array.from(e.target.files || []); if (files.length) { this.startOcrQueue(files); this.leaveFirstRun('closed'); } },
+      frVideo: (e) => { if (e.target.files && e.target.files[0]) { this.onVideoUpload(e); this.leaveFirstRun('closed'); } },
+      frCsv: (e) => { if (e.target.files && e.target.files[0]) { this.onFileChange(e); this.leaveFirstRun('closed'); } },
+      frRestore: (e) => { if (e.target.files && e.target.files[0]) { this.onRestoreFile(e); this.leaveFirstRun('closed'); this.goToTab('home'); } },
+      frReminders: () => this.firstRunReminders(),
+      frReminderLabel: this.state.remindersOn ? 'Reminders are on' : 'Turn on reminders',
+      firstRunNote: this.state.firstRunNote,
+      openFirstRun: () => this.openFirstRun(false),
+      carryPrompt: this.state.carryPrompt ? { ...this.state.carryPrompt, uploadLabel: 'Upload ' + this.state.carryPrompt.count + ' Pokemon' } : null,
+      carryUpload: () => this.carryUpload(),
+      carryDiscard: () => this.carryDiscard(),
+      carryBackup: () => this.carryBackup(),
       syncStatusLabel: this.state.syncStatus || 'idle',
       // One-glance check that measured spreads actually persisted: reload and
       // compare this count. Reading it off the roster (not a flag) means it

@@ -493,4 +493,381 @@ module.exports = async function suiteD() {
     expect(!st.cloudUser && (st.roster || []).length + (st.addedPokemon || []).length === 0 && await localCount(e1) === 0, 'a signed-out reload shows or keeps A\'s data');
     await e1.close();
   }, 'critical');
+  // ------------------------------------------------------------------ SIGN-IN: Google and GitHub by popup, linking, empty account (Task 3)
+  // Everything runs against the in-memory stand-in; its popups are scripted through cloud.popups. No real provider is contacted.
+  const rn = st => (st.roster || []).length + (st.addedPokemon || []).length;
+  const openAuth = async c => { await c.go('HOME'); await c.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/Setup, sync and backup/.test(d.textContent.slice(0, 120))) d.open = true; })); await c.page.waitForTimeout(300); };
+  const seedAccount = async (E, acct) => { E.user = acct; const c = await session({ feed: false, cloud: E }); await c.page.waitForTimeout(1500); await c.load(QA); await savedOk(c); await c.page.waitForTimeout(1500); const n = rn(await c.state()); await c.close(); E.user = null; return n; };
+  const authSession = async E => { if (E.user === undefined) E.user = null; const c = await session({ feed: false, cloud: E }); await c.page.waitForTimeout(1500); await openAuth(c); return c; };
+  const social = async (c, name) => { await c.page.getByRole('button', { name: 'Continue with ' + name }).click(); await c.page.waitForTimeout(1500); };
+  const linkRow = (c, n) => c.page.locator('[data-signed-in-methods] [role=button]').filter({ hasText: 'Link ' + n });
+  const bodyText = c => c.page.evaluate(() => document.body.innerText);
+  const GA = { uid: 'g-1', email: 'gee@example.test', displayName: 'Gee One', emailVerified: true };
+
+  await T('AUTH-01', 'Sign-in', 'Continue with Google signs in by popup (no redirect, no scopes) and loads that account\'s roster', async () => {
+    const E = { store: {}, writes: [] }; const n = await seedAccount(E, GA);
+    expect(n > 0, 'setup: no roster seeded');
+    E.popups = [{ account: GA }];
+    const c = await authSession(E);
+    expect(!(await c.state()).cloudUser, 'setup: should start signed out');
+    await social(c, 'Google'); await savedOk(c); await c.page.waitForTimeout(1200);
+    const st = await c.state();
+    expect(st.cloudUser && st.cloudUser.uid === 'g-1' && rn(st) === n, 'signed in as ' + (st.cloudUser && st.cloudUser.uid) + ' with ' + rn(st) + ' of ' + n + ' Pokemon');
+    expect(/Synced as\s+gee@example\.test/.test(await bodyText(c)), 'the card does not show the email');
+    const seen = await c.page.evaluate(() => ({ p: window.__qaProviders || [], r: window.__qaRedirectCalls || 0 }));
+    expect(seen.p.length === 1 && seen.p[0].providerId === 'google.com' && seen.p[0].scopes.length === 0, 'provider calls: ' + JSON.stringify(seen.p));
+    expect(seen.r === 0 && E.popupLog.length === 1 && E.popupLog[0].kind === 'signin', 'a redirect was used or the popup count is off');
+    expect(c.errors.length === 0, c.errors[0]); await c.close();
+  }, 'high');
+
+  await T('AUTH-02', 'Sign-in', 'A GitHub account with no email shows its name, or its provider id, never "null" or "undefined"', async () => {
+    const E = { store: {}, writes: [] };
+    E.popups = [{ account: { uid: 'gh-1', email: null, displayName: 'octo-cat' } }, { account: { uid: 'gh-2', email: null } }];
+    const c = await authSession(E);
+    await social(c, 'GitHub');
+    let t = await bodyText(c);
+    expect(/Synced as\s+octo-cat/.test(t) && !/\bnull\b|undefined/.test(t.slice(t.indexOf('Synced as') - 20, t.indexOf('Synced as') + 200)), 'name case: ' + (t.match(/Synced as[^\n]*/) || [''])[0]);
+    expect((await c.state()).cloudUser.providers.join() === 'github.com', 'provider list');
+    await c.call('signOutCloud'); await c.page.waitForTimeout(800);
+    await openAuth(c); await social(c, 'GitHub');
+    t = await bodyText(c);
+    const line = (t.match(/Synced as[^\n]*/) || [''])[0];
+    expect(/Synced as\s+gh-2-github\.com/.test(line) && !/null|undefined/.test(line), 'no-name case: ' + line);
+    expect(c.errors.length === 0, c.errors[0]); await c.close();
+  }, 'high');
+
+  await T('AUTH-03', 'Sign-in', 'Email and password still works from the collapsed "Use email instead" disclosure, and a wrong password gives a plain message', async () => {
+    const PW = { uid: 'pw-1', email: 'old@example.test', password: 'secret1', provider: 'password', providers: ['password'], emailVerified: true };
+    const E = { store: {}, writes: [], user: null, authUsers: { 'pw-1': PW } };
+    const c = await authSession(E);
+    expect(await c.page.getByPlaceholder('email').count() === 0, 'the email form is not collapsed');
+    await c.page.getByRole('button', { name: 'Use email instead' }).click(); await c.page.waitForTimeout(300);
+    expect(await c.page.getByPlaceholder('email').count() === 1, 'the disclosure did not open');
+    await c.page.getByPlaceholder('email').fill('old@example.test'); await c.page.getByPlaceholder('password').fill('wrong-one');
+    await c.page.getByText('SIGN IN', { exact: true }).first().click(); await c.page.waitForTimeout(800);
+    let t = await bodyText(c);
+    expect(/Email or password is not right\./.test(t) && !/auth\//.test(t) && !(await c.state()).cloudUser, 'wrong password: ' + (t.match(/Email or password[^\n]*/) || ['no message'])[0]);
+    await c.page.getByPlaceholder('password').fill('secret1');
+    await c.page.getByText('SIGN IN', { exact: true }).first().click(); await c.page.waitForTimeout(1500);
+    const st = await c.state();
+    expect(st.cloudUser && st.cloudUser.uid === 'pw-1' && /Synced as\s+old@example\.test/.test(await bodyText(c)), 'not signed in as the email account');
+    expect(c.errors.length === 0, c.errors[0]); await c.close();
+  }, 'high');
+
+  // The old account is an email and password account holding a roster; GitHub later reports the same email.
+  const DUAL = { uid: 'pw-9', email: 'dual@example.test', password: 'secret9', provider: 'password', providers: ['password'], emailVerified: true };
+  const GH_DUAL = { uid: 'gh-77', email: 'dual@example.test', displayName: 'Dual Hub' };
+  const dualSetup = async () => {
+    const E = { store: {}, writes: [], authUsers: {} }; const n = await seedAccount(E, DUAL);
+    E.popups = [{ error: { code: 'auth/account-exists-with-different-credential', email: 'dual@example.test', account: GH_DUAL } }];
+    const c = await authSession(E);
+    await social(c, 'GitHub');
+    return { E, n, c };
+  };
+  const signInDual = async c => { await c.page.getByPlaceholder('password').fill('secret9'); await c.page.getByText('SIGN IN', { exact: true }).first().click(); await c.page.waitForTimeout(1800); };
+
+  await T('AUTH-04', 'Sign-in', 'Account exists with another sign-in: sign in the old way, then GitHub links to the SAME uid and the roster stays', async () => {
+    const { E, n, c } = await dualSetup();
+    let t = await bodyText(c);
+    expect(/This email already has an account\. Sign in the way you did before, then we will link GitHub\./.test(t) && !/auth\//.test(t), 'no plain message: ' + (t.match(/This email[^\n]*/) || ['none'])[0]);
+    expect(await c.page.getByPlaceholder('email').inputValue() === 'dual@example.test', 'the email is not filled in');
+    await signInDual(c);
+    const dlg = c.page.locator('[role=alertdialog]');
+    expect(/Link GitHub to this account\?/.test(await dlg.innerText()) && await dlg.getByText('Save a backup first', { exact: true }).count() === 1, 'no link question with a backup offer');
+    await dlg.getByText('Link GitHub', { exact: true }).click(); await savedOk(c); await c.page.waitForTimeout(1500);
+    const st = await c.state();
+    expect(st.cloudUser.uid === 'pw-9', 'the uid changed to ' + st.cloudUser.uid);
+    expect(rn(st) === n && n > 0, 'the roster is ' + rn(st) + ' of ' + n);
+    expect(st.cloudUser.providers.indexOf('github.com') >= 0 && st.cloudUser.providers.indexOf('password') >= 0, 'providers: ' + st.cloudUser.providers);
+    expect(Object.keys(E.authUsers).join() === 'pw-9' && !E.store['scoutUsers/gh-77'] && E.log.some(x => x[0] === 'link' && x[1] === 'pw-9' && x[2] === 'github.com'), 'the link did not happen on pw-9, or a second account appeared: ' + Object.keys(E.authUsers));
+    expect(/GitHub is linked/.test(await bodyText(c)) && E.denied.length === 0, 'no confirmation shown or the stand-in refused a write');
+    expect(c.errors.length === 0, c.errors[0]); await c.close();
+  }, 'critical');
+
+  await T('AUTH-05', 'Sign-in', 'A link that fails (credential already in use) offers the backup path, says nothing was changed, and loses nothing', async () => {
+    const { E, n, c } = await dualSetup();
+    E.linkFail = 'auth/credential-already-in-use';
+    await signInDual(c);
+    await c.page.locator('[role=alertdialog]').getByText('Link GitHub', { exact: true }).click(); await c.page.waitForTimeout(1500);
+    const t = await bodyText(c);
+    expect(/already belongs to another account/.test(t) && /Nothing was changed/.test(t) && /save a backup, sign in with GitHub, then restore the backup/.test(t) && !/auth\//.test(t), 'message: ' + (t.match(/That GitHub[^\n]*/) || ['none'])[0]);
+    const [file] = await Promise.all([c.page.waitForEvent('download', { timeout: 8000 }), c.page.getByRole('button', { name: 'Save a backup', exact: true }).click()]);
+    const j = JSON.parse(fs.readFileSync(await file.path(), 'utf8'));
+    expect(((j.data.roster || []).length + (j.data.addedPokemon || []).length) === n, 'the backup holds ' + ((j.data.roster || []).length + (j.data.addedPokemon || []).length) + ' of ' + n);
+    const st = await c.state();
+    expect(st.cloudUser.uid === 'pw-9' && rn(st) === n && E.store['scoutUsers/pw-9'] && st.cloudUser.providers.join() === 'password', 'account or roster changed after the failed link');
+    expect(c.errors.length === 0, c.errors[0]); await c.close();
+  }, 'critical');
+
+  await T('AUTH-05b', 'Sign-in', 'A different account signing in after "email already has an account" is NOT linked to the held credential', async () => {
+    const { E, c } = await dualSetup();
+    E.authUsers['pw-3'] = { uid: 'pw-3', email: 'other@example.test', password: 'secret3', provider: 'password', providers: ['password'], emailVerified: true };
+    await c.page.getByPlaceholder('email').fill('other@example.test'); await c.page.getByPlaceholder('password').fill('secret3');
+    await c.page.getByText('SIGN IN', { exact: true }).first().click(); await c.page.waitForTimeout(1500);
+    expect(await c.page.locator('[role=alertdialog]').count() === 0 && !(E.log || []).some(x => x[0] === 'link') && (await c.state()).cloudUser.uid === 'pw-3', 'a link was offered or made for a different email');
+    await c.close();
+  });
+
+  await T('AUTH-06', 'Sign-in', 'Popup blocked: a plain message with the way out, email opens, and the app stays usable signed out', async () => {
+    const E = { store: {}, writes: [], popups: [{ error: { code: 'auth/popup-blocked' } }] };
+    const c = await authSession(E);
+    await social(c, 'Google');
+    const t = await bodyText(c);
+    expect(/Sign-in window did not open\. Try again, open the app in your browser, or use email instead\./.test(t) && !/auth\//.test(t), 'message: ' + (t.match(/Sign-in window[^\n]*/) || ['none'])[0]);
+    expect(await c.page.getByPlaceholder('email').count() === 1, 'the email form did not open as the fallback');
+    await c.load(QA); await c.page.waitForTimeout(1200);
+    const st = await c.state();
+    expect(!st.cloudUser && rn(st) > 10 && c.errors.length === 0, 'the app is not usable after the failure: ' + rn(st) + ' Pokemon, errors ' + c.errors[0]);
+    await c.close();
+  }, 'high');
+
+  await T('AUTH-07', 'Sign-in', 'Closing the popup shows no error; a network failure gives a retry message; neither shows a raw code', async () => {
+    const E = { store: {}, writes: [], popups: [{ error: { code: 'auth/popup-closed-by-user' } }, { error: { code: 'auth/cancelled-popup-request' } }, { error: { code: 'auth/network-request-failed' } }] };
+    const c = await authSession(E);
+    await social(c, 'Google');
+    expect(await c.page.locator('[role=alert]').count() === 0 && !(await c.state()).authError, 'closing the popup showed an error: ' + (await c.state()).authError);
+    await social(c, 'GitHub');
+    expect(await c.page.locator('[role=alert]').count() === 0, 'a cancelled request showed an error');
+    await social(c, 'Google');
+    const t = await bodyText(c);
+    expect(/Could not sign in\. Check your connection and try again\./.test(t) && !/auth\//.test(t), 'generic message: ' + (t.match(/Could not[^\n]*/) || ['none'])[0]);
+    expect(!(await c.state()).cloudUser && E.popupLog.length === 3 && c.errors.length === 0, 'state after failures');
+    await c.close();
+  }, 'high');
+
+  await T('AUTH-08', 'Sign-in', 'Signed in with Google, "Link GitHub" adds the second provider to the same uid and roster; the row goes away', async () => {
+    const E = { store: {}, writes: [] }; const n = await seedAccount(E, GA);
+    E.popups = [{ account: GA }];
+    const c = await authSession(E); await social(c, 'Google'); await savedOk(c); await c.page.waitForTimeout(1000);
+    expect(await linkRow(c, 'Google').count() === 0 && await linkRow(c, 'GitHub').count() === 1, 'link rows before: Google ' + await linkRow(c, 'Google').count());
+    E.popups.push({ account: { uid: 'gh-5', email: 'gee@example.test', displayName: 'Gee Hub' } });
+    await linkRow(c, 'GitHub').click(); await c.page.waitForTimeout(400);
+    await c.page.locator('[role=alertdialog]').getByText('Link GitHub', { exact: true }).click(); await c.page.waitForTimeout(1500);
+    const st = await c.state();
+    expect(st.cloudUser.uid === 'g-1' && rn(st) === n && st.cloudUser.providers.join() === 'google.com,github.com', 'uid ' + st.cloudUser.uid + ' roster ' + rn(st) + ' providers ' + st.cloudUser.providers);
+    expect(await linkRow(c, 'GitHub').count() === 0 && /Signed in with Google and GitHub/.test(await bodyText(c)), 'the card still offers GitHub or does not list both');
+    const seen = await c.page.evaluate(() => window.__qaProviders);
+    expect(seen.every(x => x.scopes.length === 0), 'a scope was requested');
+    expect(E.popupLog.map(x => x.kind).join() === 'signin,link' && c.errors.length === 0, 'popup log ' + JSON.stringify(E.popupLog));
+    await c.close();
+  }, 'high');
+
+  await T('AUTH-09', 'Sign-in', 'Sign out, then sign in as another account: nothing from the first account is on screen, in storage or in the second document', async () => {
+    const E = { store: {}, writes: [] }; const n = await seedAccount(E, GA);
+    const GB = { uid: 'g-2', email: 'bee@example.test', displayName: 'Bee Two', emailVerified: true };
+    E.popups = [{ account: GA }, { account: GB }];
+    const c = await authSession(E); await social(c, 'Google'); await savedOk(c); await c.page.waitForTimeout(1500);
+    expect(rn(await c.state()) === n, 'setup: ' + rn(await c.state()) + ' on screen of ' + n);
+    await c.page.getByText('SIGN OUT', { exact: true }).click(); await c.page.waitForTimeout(1200);
+    expect(!(await c.state()).cloudUser && rn(await c.state()) === 0 && await localCount(c) === 0, 'the first account is still on screen or in storage after sign-out');
+    await openAuth(c); await social(c, 'GitHub'); await c.page.waitForTimeout(1200);
+    const st = await c.state();
+    expect(st.cloudUser && st.cloudUser.uid === 'g-2' && rn(st) === 0 && await localCount(c) === 0, 'the second account sees ' + rn(st) + ' Pokemon, storage ' + await localCount(c));
+    expect(!E.store['scoutUsers/g-2'] || (await c.call('unpackCloudBlob', E.store['scoutUsers/g-2'])).roster.length === 0, 'the second document holds the first roster');
+    await c.close();
+  }, 'critical');
+
+  // Signing in to an account with no Pokemon while this device holds a roster built before signing in: ask, never overwrite either side.
+  const carrySetup = async (E, acct) => {
+    E.popups = [{ account: acct }];
+    const c = await authSession(E);
+    await c.load(QA); await c.page.waitForTimeout(1200);
+    const n = rn(await c.state());
+    await openAuth(c); await social(c, 'Google'); await c.page.waitForTimeout(1200);
+    return { c, n };
+  };
+  const GN = { uid: 'g-new', email: 'new@example.test', displayName: 'New One', emailVerified: true };
+
+  await T('AUTH-10', 'Sign-in', 'Empty account + a roster built while signed out: the person is asked, nothing is written or replaced before the answer, and Upload puts that roster in the account', async () => {
+    const E = { store: {}, writes: [] };
+    const { c, n } = await carrySetup(E, GN);
+    expect(n > 10, 'setup: ' + n);
+    const dlg = c.page.locator('[data-carry-prompt]');
+    expect(await dlg.count() === 1 && /This account has no Pokemon yet/.test(await dlg.innerText()) && new RegExp('Upload ' + n + ' Pokemon').test(await dlg.innerText()), 'no prompt, or it does not name the roster: ' + (await bodyText(c)).slice(0, 200));
+    let st = await c.state();
+    expect(rn(st) === n && E.writes.length === 0 && !E.store['scoutUsers/g-new'], 'before the answer: on screen ' + rn(st) + ', writes ' + E.writes.length);
+    await dlg.getByText('Upload ' + n + ' Pokemon').click(); await savedOk(c); await c.page.waitForTimeout(2500);
+    st = await c.state();
+    const doc = E.store['scoutUsers/g-new']; const bb = doc ? await c.call('unpackCloudBlob', doc) : {};
+    expect(rn(st) === n && ((bb.roster || []).length + (bb.addedPokemon || []).length) === n && E.denied.length === 0, 'after Upload: screen ' + rn(st) + ', cloud ' + ((bb.roster || []).length + (bb.addedPokemon || []).length) + ', refused ' + JSON.stringify(E.denied[0]));
+    expect(await c.page.locator('[data-carry-prompt]').count() === 0, 'the prompt is still open');
+    await c.close();
+  }, 'critical');
+
+  await T('AUTH-10b', 'Sign-in', '"Start with an empty account" shows the empty account and uploads nothing; the plain device copy is removed', async () => {
+    const E = { store: {}, writes: [] };
+    const { c } = await carrySetup(E, GN);
+    await c.page.locator('[data-carry-prompt]').getByText('Start with an empty account').click(); await c.page.waitForTimeout(2500);
+    const st = await c.state();
+    expect(rn(st) === 0 && st.cloudUser.uid === 'g-new' && await c.page.locator('[data-carry-prompt]').count() === 0, 'screen ' + rn(st));
+    const doc = E.store['scoutUsers/g-new']; const bb = doc ? await c.call('unpackCloudBlob', doc) : {};
+    expect(((bb.roster || []).length + (bb.addedPokemon || []).length) === 0, 'the roster was uploaded anyway');
+    expect(await c.page.evaluate(() => localStorage.getItem('scout.local.v1') === null && localStorage.getItem('scout.carryPending') === null), 'the plain device copy or the pending flag is still there');
+    await c.close();
+  }, 'high');
+
+  await T('AUTH-10c', 'Sign-in', 'The question survives a reload while it is open, and an account that already has data is used without a question', async () => {
+    const E = { store: {}, writes: [] };
+    const { c, n } = await carrySetup(E, GN);
+    await c.page.reload({ waitUntil: 'load' }); await c.page.waitForTimeout(3500);
+    const dlg = c.page.locator('[data-carry-prompt]');
+    expect(await dlg.count() === 1 && new RegExp('Upload ' + n + ' Pokemon').test(await dlg.innerText()) && E.writes.length === 0, 'after a reload the question is gone (' + await dlg.count() + ') or something was written (' + E.writes.length + ')');
+    await c.close();
+    const E2 = { store: {}, writes: [] }; const m = await seedAccount(E2, GA);
+    const { c: c2, n: n2 } = await carrySetup(E2, GA);
+    await savedOk(c2); const st = await c2.state();
+    expect(await c2.page.locator('[data-carry-prompt]').count() === 0 && rn(st) === m && m > 0 && n2 > 0, 'a populated account asked, or showed ' + rn(st) + ' of ' + m);
+    expect(/already had data, so it was used/.test(await bodyText(c2)), 'no notice that the account\'s data was used');
+    await c2.close();
+  }, 'high');
+  // ------------------------------------------------------------------ FIRST-RUN page (Task 3). The harness switches it off (window.__noFirstRun); these sessions turn it on.
+  const SC = require('./qa_e2e_e').__scans;
+  const frSession = async (o = {}) => { const c = await session({ feed: false, firstRun: true, ...o }); await c.page.waitForTimeout(2200); return c; };
+  const fr = c => c.page.locator('[data-firstrun]');
+  const frOpen = async c => (await fr(c).count()) === 1;
+  const frStepNo = async c => { const t = await fr(c).innerText(); const m = t.match(/Step (\d) of 6/); return m ? +m[1] : 0; };
+  const frNext = async c => { const b = fr(c).locator('button').filter({ hasText: /^(Continue|Continue without an account|Done)$/ }).last(); await b.click(); await c.page.waitForTimeout(350); };
+  const frKey = (c, k) => c.page.evaluate(x => localStorage.getItem(x), k);
+
+  await T('FIRSTRUN-01', 'First run', 'Fresh storage shows step 1 with Skip, the sign-in choices and "without an account"; a signed-out user sees it', async () => {
+    const c = await frSession();
+    expect(await frOpen(c), 'the first-run page did not open on fresh storage');
+    const t = await fr(c).innerText();
+    expect(await frStepNo(c) === 1 && /Welcome to Professor/.test(t) && /Skip/.test(t) && /Continue with Google/.test(t) && /Continue with GitHub/.test(t) && /Use email/.test(t) && /Continue without an account/.test(t), 'step 1 content: ' + t.slice(0, 200));
+    expect(!(await c.state()).cloudUser, 'setup: should be signed out');
+    expect(c.errors.length === 0, c.errors[0]); await c.close();
+  }, 'high');
+
+  await T('FIRSTRUN-02', 'First run', 'Skip on step 1 closes it and it does not come back after a reload', async () => {
+    const c = await frSession();
+    await fr(c).getByRole('button', { name: 'Skip', exact: true }).click(); await c.page.waitForTimeout(500);
+    expect(!(await frOpen(c)) && await frKey(c, 'scout.firstRun.v1') === 'done', 'still open, or the key is ' + await frKey(c, 'scout.firstRun.v1'));
+    await c.page.reload({ waitUntil: 'load' }); await c.page.waitForTimeout(2800);
+    expect(!(await frOpen(c)), 'the first-run page came back after a reload');
+    await c.close();
+  }, 'critical');
+
+  await T('FIRSTRUN-03', 'First run', 'Each step\'s control changes the real setting: theme, text size, key (device secrets only), reminders only after a tap', async () => {
+    const E = { store: {}, writes: [], user: GA };
+    const c = await frSession({ cloud: E, init: () => { window.__notifAsked = 0; try { Object.defineProperty(window, 'Notification', { configurable: true, value: Object.assign(function () {}, { permission: 'default', requestPermission: cb => { window.__notifAsked++; if (cb) cb('granted'); return Promise.resolve('granted'); } }) }); } catch (e) {} } });
+    await frNext(c); await frNext(c);                                 // 1 -> 2 (signed in) -> 3
+    expect(await frStepNo(c) === 3, 'on step ' + await frStepNo(c));
+    await fr(c).getByRole('button', { name: 'Light', exact: true }).click(); await c.page.waitForTimeout(300);
+    expect(await c.page.evaluate(() => document.documentElement.getAttribute('data-theme')) === 'light' && await frKey(c, 'scout.theme') === 'light', 'theme did not change');
+    await fr(c).getByRole('button', { name: 'Text size 130%' }).click(); await c.page.waitForTimeout(300);
+    expect(await frKey(c, 'scout.uiZoom') === '1.3' && (await c.state()).uiZoom === 1.3, 'text size did not change');
+    await frNext(c);                                                  // 4
+    const KEY = 'AIzaFirstRunQAKEY00000000000000000000';
+    expect(await fr(c).locator('textarea').isDisabled() && (await c.state()).geminiKey === '', 'the key field is usable before the age box is ticked');
+    await fr(c).getByText('I am 18 or older').click(); await c.page.waitForTimeout(200);
+    await fr(c).locator('textarea').fill(KEY); await fr(c).getByRole('button', { name: 'Save key' }).click(); await c.page.waitForTimeout(500);
+    expect((await c.state()).geminiKey === KEY && /AIzaFirstRunQAKEY/.test(await frKey(c, 'scout.secrets.v1') || ''), 'the key is not in the device secrets');
+    await frNext(c);                                                  // 5
+    expect(await c.page.evaluate(() => window.__notifAsked) === 0, 'notification permission was asked before a tap');
+    await fr(c).getByRole('button', { name: 'Turn on reminders' }).click(); await c.page.waitForTimeout(600);
+    expect(await c.page.evaluate(() => window.__notifAsked) === 1 && (await c.state()).remindersOn === true, 'the reminder tap did not ask once');
+    await c.call('pushCloud'); await c.page.waitForTimeout(1500);
+    const doc = JSON.stringify(E.store['scoutUsers/g-1'] || {});
+    expect(!/AIzaFirstRunQAKEY|geminiKey/.test(doc) && !(E.writes || []).some(w => w.keys.some(k => /gemini/i.test(k))), 'the key reached the cloud document');
+    expect(!/AIzaFirstRunQAKEY/.test(await c.page.evaluate(() => Object.keys(localStorage).filter(k => k !== 'scout.secrets.v1').map(k => localStorage.getItem(k)).join('\n'))), 'the key is stored outside scout.secrets.v1');
+    await c.close();
+  }, 'high');
+
+  await T('FIRSTRUN-04', 'First run', 'The key field is disabled until "I am 18 or older" is ticked, and the step names the terms in plain words', async () => {
+    const c = await frSession();
+    for (let i = 0; i < 3; i++) await frNext(c);
+    expect(await frStepNo(c) === 4, 'on step ' + await frStepNo(c));
+    const ta = fr(c).locator('textarea');
+    expect(await ta.isDisabled() && await fr(c).getByRole('button', { name: 'Save key' }).isDisabled(), 'the key field is enabled without the age confirmation');
+    const t = await fr(c).innerText();
+    expect(/aistudio\.google\.com\/apikey/.test(t) && /stays on this device/.test(t) && /sent to Google Gemini with your key/.test(t) && /improve its products/.test(t) && /Adults only/.test(t) && /EEA, UK or Switzerland/.test(t) && /Nothing breaks if you skip/.test(t), 'terms text missing: ' + t.slice(0, 300));
+    await fr(c).getByText('I am 18 or older').click(); await c.page.waitForTimeout(200);
+    expect(!(await ta.isDisabled()), 'still disabled after ticking');
+    await c.close();
+  }, 'high');
+
+  await T('FIRSTRUN-05', 'First run', 'Back works, Skip is on every step, progress is kept, and the Welcome tour row in Settings reopens it where it stopped', async () => {
+    const c = await frSession();
+    for (let i = 1; i <= 6; i++) {
+      expect(await frStepNo(c) === i && await fr(c).getByRole('button', { name: 'Skip', exact: true }).isVisible(), 'step ' + i + ' has no visible Skip');
+      if (i < 3) await frNext(c); else if (i === 3) break;
+    }
+    await fr(c).getByRole('button', { name: 'Back', exact: true }).click(); await c.page.waitForTimeout(300);
+    expect(await frStepNo(c) === 2, 'Back did not go to step 2');
+    await frNext(c); await frNext(c);                                  // 3 -> 4
+    expect(await frStepNo(c) === 4, 'did not reach step 4');
+    await c.page.keyboard.press('Escape'); await c.page.waitForTimeout(500);
+    expect(!(await frOpen(c)) && await frKey(c, 'scout.firstRun.v1') === 'closed' && await frKey(c, 'scout.firstRun.step') === '4', 'Escape: open ' + await frOpen(c) + ', key ' + await frKey(c, 'scout.firstRun.v1'));
+    await c.page.reload({ waitUntil: 'load' }); await c.page.waitForTimeout(2800);
+    expect(!(await frOpen(c)), 'it came back after leaving with Escape');
+    await c.go('HOME'); await c.page.getByText('Welcome tour', { exact: true }).click(); await c.page.waitForTimeout(500);
+    expect(await frOpen(c) && await frStepNo(c) === 4, 'the tour did not reopen at step 4 (step ' + (await frOpen(c) ? await frStepNo(c) : 'closed') + ')');
+    for (let i = 4; i < 6; i++) await frNext(c);
+    expect(await frStepNo(c) === 6 && /Delete my account/.test(await fr(c).innerText()) === false, 'step 6 (signed out shows no delete row)');
+    await frNext(c); await c.page.waitForTimeout(400);
+    expect(!(await frOpen(c)) && await frKey(c, 'scout.firstRun.v1') === 'done', 'Done did not finish');
+    await c.close();
+  }, 'high');
+
+  await T('FIRSTRUN-06', 'First run', 'The system back gesture leaves it and it never opens over an import in progress', async () => {
+    const c = await frSession();
+    await c.page.goBack().catch(() => {}); await c.page.waitForTimeout(600);
+    expect(!(await frOpen(c)) && await frKey(c, 'scout.firstRun.v1') === 'closed', 'back did not close it (open ' + await frOpen(c) + ')');
+    await c.set({ ocrBusy: true }); await c.page.waitForTimeout(200);
+    await c.go('HOME'); await c.page.getByText('Welcome tour', { exact: true }).click(); await c.page.waitForTimeout(500);
+    expect(!(await frOpen(c)), 'it opened over an import in progress');
+    await c.set({ ocrBusy: false }); await c.page.waitForTimeout(200);
+    await c.page.getByText('Welcome tour', { exact: true }).click(); await c.page.waitForTimeout(500);
+    expect(await frOpen(c), 'it did not open once the import was over');
+    await c.close();
+  }, 'high');
+
+  await T('FIRSTRUN-07', 'First run', 'Signed-out completion: a CSV picked on step 2 imports and closes the page; step 6 is Done', async () => {
+    const c = await frSession();
+    await frNext(c);
+    await fr(c).locator('input[type=file][accept=".csv"]').setInputFiles(QA); await c.page.waitForTimeout(1500);
+    const st = await c.state();
+    expect(!(await frOpen(c)) && rn(st) > 10 && !st.cloudUser && await frKey(c, 'scout.firstRun.v1') === 'closed', 'open ' + await frOpen(c) + ', roster ' + rn(st));
+    await c.close();
+  }, 'high');
+
+  await T('FIRSTRUN-08', 'First run', 'Sign-in from step 1 works, shows who is signed in and offers Continue', async () => {
+    const E = { store: {}, writes: [], user: null, popups: [{ account: GA }] };
+    const c = await frSession({ cloud: E });
+    await fr(c).getByRole('button', { name: 'Continue with Google' }).click(); await c.page.waitForTimeout(1500);
+    const t = await fr(c).innerText();
+    expect(/Signed in as\s+gee@example\.test/.test(t) && (await c.state()).cloudUser.uid === 'g-1', 'step 1 after sign-in: ' + t.slice(0, 200));
+    await c.close();
+  }, 'high');
+
+  // The overlay against the same conformance and contrast scans as every other screen, and axe, at four widths in both themes.
+  for (const th of ['dark', 'light']) {
+    await T('FIRSTRUN-09-' + th, 'First run', 'All six steps and the email form: no overflow, type scale and radii conformance, contrast, no unnamed controls (' + th + ', widths 320/390/402/768)', async () => {
+      const bad = [];
+      for (const w of [320, 390, 402, 768]) {
+        const c = await frSession({ width: w, height: w === 768 ? 1024 : 800, colorScheme: th, sentenceCase: true, cloud: { store: {}, writes: [], user: null } });
+        for (let step = 1; step <= 6; step++) {
+          if (step === 1) { await fr(c).getByRole('button', { name: 'Use email' }).click(); await c.page.waitForTimeout(250); }
+          await c.page.waitForTimeout(450);
+          if (!(await fr(c).getByRole('button', { name: 'Skip', exact: true }).isVisible())) bad.push(w + '/' + step + ' Skip not visible');
+          const o = await c.page.evaluate(() => { const d = document.querySelector('[data-firstrun]'); return { ox: d.scrollWidth - d.clientWidth, win: document.documentElement.scrollWidth - window.innerWidth }; });
+          if (o.ox > 0 || o.win > 0) bad.push(w + '/' + step + ' overflow ' + JSON.stringify(o));
+          const conf = await c.page.evaluate(SC.CONFORM, { SIZES: SC.SIZES, WEIGHTS: SC.WEIGHTS, RADII: SC.RADII });
+          ['type', 'radii', 'stroke', 'emoji', 'caps', 'spacing'].forEach(k => conf[k].forEach(x => bad.push(w + '/' + step + ' ' + k + ': ' + x)));
+          const con = await c.page.evaluate(SC.CONTRAST);
+          con.bad.forEach(x => bad.push(w + '/' + step + ' contrast: ' + x));
+          const names = await c.page.evaluate(() => [...document.querySelectorAll('[data-firstrun] button, [data-firstrun] input, [data-firstrun] textarea, [data-firstrun] a, [data-firstrun] [role=button]')].filter(e => e.getBoundingClientRect().width > 0 && !(e.getAttribute('aria-label') || e.textContent || e.getAttribute('placeholder') || (e.labels && e.labels[0] && e.labels[0].textContent) || '').trim()).length);
+          if (names) bad.push(w + '/' + step + ' ' + names + ' unnamed controls');
+          if (w === 390) {
+            await c.page.evaluate(src => { if (!window.axe) (0, eval)(src); }, AXE);
+            const ax = await c.page.evaluate(async () => (await window.axe.run(document.querySelector('[data-firstrun]'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice'] } })).violations.filter(v => v.impact === 'serious' || v.impact === 'critical').map(v => v.id + '(' + v.nodes.length + ')'));
+            ax.forEach(x => bad.push(w + '/' + step + ' axe ' + x));
+          }
+          if (step < 6) await frNext(c);
+        }
+        await c.close();
+      }
+      expect(bad.length === 0, [...new Set(bad)].slice(0, 12).join(' | '));
+    }, 'high');
+  }
 };

@@ -24,6 +24,16 @@ async function child() {
   const srv = await serve(), port = srv.address().port;
   const html = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8');
   if (!/<meta http-equiv="Content-Security-Policy"/.test(html)) throw new Error('index.html has no CSP meta tag (run python3 scripts/build_bundles.py)');
+  // Sign-in by popup (Google, GitHub) needs the Firebase auth domain and the Google sign-in hosts as frames and apis.google.com as a script host; the token calls
+  // go to *.googleapis.com (already in connect-src). Nothing for github.com is needed: the GitHub page loads inside the popup window, which this policy does not govern.
+  const csp = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1] || '';
+  const dir = n => ((csp.split(';').map(x => x.trim()).find(x => x.startsWith(n + ' ')) || '').split(/\s+/).slice(1));
+  const pre = [];
+  ['https://pokemon-professor.firebaseapp.com', 'https://accounts.google.com', 'https://apis.google.com'].forEach(h => { if (dir('frame-src').indexOf(h) < 0) pre.push('frame-src lacks ' + h); });
+  if (dir('script-src').indexOf('https://apis.google.com') < 0) pre.push('script-src lacks https://apis.google.com');
+  if (dir('connect-src').indexOf('https://*.googleapis.com') < 0) pre.push('connect-src lacks https://*.googleapis.com');
+  ['connect-src', 'frame-src', 'script-src'].forEach(d => { if (dir(d).some(x => x === '*' || x === 'https:' || x === 'http:')) pre.push(d + ' is a wildcard'); });
+  if (pre.length) throw new Error('CSP does not fit popup sign-in: ' + pre.join('; '));
   let s;
   try {
     s = await session({

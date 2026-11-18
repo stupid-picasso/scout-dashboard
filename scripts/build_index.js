@@ -62,7 +62,9 @@ async function build() {
     format: { comments: false }
   });
   if (!r.code || r.code.length < code.length * 0.2) throw new Error('minifier produced no output');
-  const newTpl = tpl.slice(0, s0) + r.code + tpl.slice(e0);
+  // Indentation at the start of a line is one collapsed space in HTML either way: drop it from the markup and the stylesheet (not from the script).
+  const flat = t => t.replace(/\n[ \t]+/g, '\n');
+  const newTpl = flat(tpl.slice(0, s0)) + r.code + flat(tpl.slice(e0));
   const esc = JSON.stringify(newTpl).replace(/<\/([sS][cC][rR][iI][pP][tT])/g, '<\\u002F$1');
   return withCsp(src.slice(0, a) + '\n' + esc + '\n' + src.slice(b));
 }
