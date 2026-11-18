@@ -1,9 +1,7 @@
 #!/usr/bin/env node
-// Builds the deployed index.html from the patched bundle `Scout Dashboard.html`.
+// Builds the deployed index.html from the generated bundle `Scout Dashboard.html`.
 //
-// `Scout Dashboard.html` is what propagate_edits.py patches (its class script must stay
-// byte-identical to the source so hunks keep applying). index.html is derived from it here:
-// the app's class script (~650 KB with comments) is minified, which cuts ~80 KB of gzip
+// index.html is derived from it here: the app's class script (~650 KB with comments) is minified, which cuts ~80 KB of gzip
 // transfer and a good share of parse time. Nothing else changes.
 //
 //   node scripts/build_index.js          write index.html
