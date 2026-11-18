@@ -6,10 +6,6 @@
 // linear at +0.0025 per half level (verified against the returned values), so the
 // generator extends that step to level 51 rather than leaving 45.5+ missing —
 // without those rows a maxed Pokemon has no multiplier and cannot be solved at all.
-//
-// The hand-written table this replaced was wrong: it read 0.828917 at level 40
-// where the real multiplier is 0.7903, drifting further the higher the level. Every
-// CP, HP and IV figure the app produced was computed from those numbers.
 const CPM = {
   1: 0.094, 1.5: 0.13513743, 2: 0.16639787, 2.5: 0.19265091, 3: 0.21573247, 3.5: 0.23657265,
   4: 0.25572005, 4.5: 0.27353038, 5: 0.29024988, 5.5: 0.30605738, 6: 0.3210876, 6.5: 0.33544503,
@@ -1046,31 +1042,13 @@ function statProductFor(base, ivs, level) {
   return atk * def * hp;
 }
 
-// Stardust cost to Power Up, keyed by the level a Pokemon is AT (i.e. the
-// cost to go from this level to the next half-level up). This is the public,
-// community-verified Power-Up cost table (the same one PokeGenie/CalcyIV use),
-// cross-validated against 66 real (dust, CP/HP-solved level) pairs pulled from
-// this app's own users' actual rosters \u2014 94% (62/66) landed the true level
-// inside the range this table predicts.
-//
-// Earlier version of this table was WRONG: it assumed each dust cost spans
-// only 2 half-levels (1 full level). In reality each dust cost spans 4
-// half-levels (2 full levels), which made every prior lookup come out at
-// roughly HALF the Pokemon's true level. Levels 41+ require Candy XL instead
-// of regular Candy but the dust progression continues the same pattern.
 // GENERATED BLOCK — do not hand-edit. `scripts/update_pokemon_data.py` rewrites
 // this list every week from pogoapi.net's powerup-requirements table, which is
 // republished from Niantic's GAME_MASTER (the same source PokeGenie and CalcyIV
 // read). It lists the first level of each Stardust tier; the tiers are derived
 // from the per-half-level costs rather than assumed to span four half-levels
 // each, so a cost-curve change is picked up automatically.
-//
-// This was hand-typed before, and the level 41+ entries
-// (12000/15000/19000/22000/25000) were wrong — the real cost at level 49 is
-// 15000. A wrong tier filters the IV solve to the wrong levels and discards the
-// true spread, which is why it is now generated. Until the first refresh runs,
-// only levels 1–40.5 (verified against Bulbapedia) are listed; a 41+ cost fails
-// the 5% tolerance below, returns [], and the caller solves unrestricted.
+// A cost outside the listed tiers fails the 5% tolerance below, returns [], and the caller solves unrestricted.
 const _DUST_TIER_START_LEVEL = [
   [1.0, 200], [3.0, 400], [5.0, 600], [7.0, 800], [9.0, 1000],
   [11.0, 1300], [13.0, 1600], [15.0, 1900], [17.0, 2200], [19.0, 2500],
@@ -1265,7 +1243,6 @@ function setPvpMaxLevel(n) {
   if (v === 40 || v === 50 || v === 51) _pvpMaxLevel = v;
 }
 function getPvpMaxLevel() { return _pvpMaxLevel; }
-// Read-only list of the levels PvP may use, rebuilt only when the level cap changes (it used to be re-sorted on every call).
 let _pvpLevelsCache = null, _pvpLevelsFor = null;
 function _pvpLevels() {
   if (_pvpLevelsCache && _pvpLevelsFor === _pvpMaxLevel) return _pvpLevelsCache;
@@ -1552,9 +1529,8 @@ const TYPE_CHART = {
 // AI-guessed moveDB as the primary source; that AI lookup now only runs as
 // a fallback for anything genuinely missing here. A handful of moves with
 // conflicting Gym & Raid stats under the same display name would be excluded
-// rather than guessed at (see import_move_data.py) — none exist as of this
-// snapshot; genuinely form-dependent moves (Morpeko's Aura Wheel) are kept
-// as separate per-form entries instead.
+// rather than guessed at (see import_move_data.py); genuinely form-dependent
+// moves (Morpeko's Aura Wheel) are kept as separate per-form entries instead.
 // Real per-species Mega Evolution energy costs, sourced from Niantic's raw
 // GAME_MASTER via scripts/import_mega_data.py (same source/authority tier as
 // AUTHORITATIVE_MOVES below). `first` is the one-time cost to Mega Evolve a
