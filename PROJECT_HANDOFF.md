@@ -793,3 +793,16 @@ Nothing here touched the real Firebase project. Source: `docs/research/manager-r
 - Chromium suite e on CI: UIQ-09, UIQ-15-320, UIQ-17-320, UIQ-28-ROSTER-390/320 (pass locally; CI fonts wrap differently).
 - WebKit: about 14 in suite a, 7 in b, 6 in c, 3 in e (CDP-only gesture tests, file:// feed loads, ROS-02, ROS-S-name) and test_csp "allowed hosts were not reached".
 - WebKit suite d (SYNC-02, file:// feed load) is also report-only; it has its own step in qa.yml. Fold it back into the gating step when fixed.
+
+## Pokemon GO restyle, phase 1 (tokens, shell, roster grid, detail, sheets)
+
+What changed (all in `Scout Dashboard.dc.html`; bundles regenerated):
+- One token block at the start of the design layer: dark is the `:root` default, `:root[data-theme="light"]` is Light, and Auto (no attribute) follows `prefers-color-scheme` through a duplicate of the light block. Only raw roles are themed (`--bg --surface-1..3 --text --text-2 --text-3 --line --accent-text --accent-fill --fill-a/-b --ring --cost-bar --hp --ribbon --page-grad ...`); every older name (`--surface-card`, `--ink-*`, `--brand-primary-strong` ...) is an alias declared once. `--brand-primary-strong` now points at the accent TEXT colour; fills use `--accent-fill` plus the `--fill-grad` gradient (a flat `background-color` stays under it because suite e finds primary buttons by computed colour).
+- IMPORTANT: `scripts/build_bundles.py` finds the style block by the phrase "iOS design layer". The token comment keeps that phrase ("it replaced the iOS design layer"); do not remove it.
+- Radii stay on the suite-e scale (6/10/14/20/pill/50%) and type on 12/13/15/17/22/28/32, so cards are 20 px, not larger. A bigger GO radius needs UIQ-01/02 changed first (owner decision).
+- Roster rows are now 3-column cells (CP above, sprite, name, spread/verdict/league lines, thin IV bar). The DOM order is unchanged (name before CP) because tests read `innerText`; CP is moved up with flex `order`. Columns: `repeat(auto-fill,minmax(clamp(86px,30%,170px),1fr))`, so text-size zoom (CSS `zoom` on html) falls back to 2 and 1 columns. Swipe actions stack inside the cell; the 136 px reveal is JS and unchanged. Cell text keeps 10 px side padding so nothing sits under the chat bubble strip (UIQ-28).
+- Detail: arena header, white card (`.go-body`, inner cards use the tint), cost-bar power-up pill (`.go-cost`), pink purify, ribbon on the Max card. The app has no detail tabs and no round steppers, so none were restyled; the HP bar stays inside the stats card.
+- Dialogs: 20 px radius, centred title, gradient primary pill, plain CANCEL text, dialog focus outline removed for the programmatic container focus.
+- Font stack leads with `ui-rounded` (Safari); not checked on a real iPhone.
+- Tests edited (intent kept): suite e now finds the primary fill by the resolved `--accent-fill` colour instead of the literal `rgb(10,100,214)` (3 places: UIQ-11 and two helper checks); suite d THEME-01 expects the new page backgrounds (238,245,234 light / 12,27,31 dark) instead of the old greys.
+- `scripts/qa/go_shots.js` captures the phase-1 screenshots into `docs/research/ui-audit/go-style-phase1/` (env `ZOOM`, `THEMEPREF` supported).

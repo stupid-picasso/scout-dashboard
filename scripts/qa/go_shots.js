@@ -12,10 +12,11 @@ const THEMES = (process.argv[4] || 'dark,light').split(',');
 const feed = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'feed.json'), 'utf8'));
 (async () => {
   for (const theme of THEMES) for (const width of WIDTHS) {
-    const tag = (process.env.ZOOM ? 'z' + process.env.ZOOM + '_' : '') + theme + '_' + width + '_';
+    const tag = (process.env.ZOOM ? 'z' + process.env.ZOOM + '_' : '') + (process.env.THEMEPREF ? 'pref' + process.env.THEMEPREF + '-' : '') + theme + '_' + width + '_';
     const s = await session({ width, height: width >= 768 ? 1024 : 844, colorScheme: theme, sentenceCase: true, feed, touch: true, collapsedTail: true });
     const shot = async name => { await s.page.waitForTimeout(500); await s.page.screenshot({ path: path.join(out, tag + name + '.png') }); };
     const tryDo = async (name, fn) => { try { await fn(); } catch (e) { console.error(tag + name, e.message); } };
+    if (process.env.THEMEPREF) await s.call('setThemePref', process.env.THEMEPREF);
     if (process.env.ZOOM) await s.call('setUiZoom', +process.env.ZOOM);
     await s.load(QA); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(1500);
     await s.page.evaluate(() => { try { localStorage.setItem('scout.hint.swipe', '1'); } catch (e) {} });
