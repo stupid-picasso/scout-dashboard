@@ -138,8 +138,8 @@ Decided:
 - Timed-research promo codes are included (new row in section 4; needs the pipeline to flag them).
 - Mega timer: derive from official Pokémon GO data, not only a user-logged expiry. Finding: no official machine-readable source exists (the game master has no timer data, and no official Niantic support page was found). Third-party sources agree the Mega form lasts 8 hours but disagree on cooldown by Mega Level (24-72 h vs days). TODO before building: read the official Niantic/Scopely Pokémon GO news or help page and take the numbers from there; until then the app keeps the user-logged time as the anchor (the app cannot see the game) and shows the official duration only once confirmed.
 - Timed-research code source: official Pokémon GO sources only (confirm which page publishes codes; current `promo_codes.json` sources are listed in its `sources` field).
-Still open:
-1. Accept Cloudflare as a new processor and the PRIVACY.md change? (Alternative: no push, keep local reminders.)
-2. Which event types notify by default?
-3. Enrolment cap (300?) if free limits bind.
-4. Any EU users to support? Needs a real-device test.
+- Cloudflare accepted as processor (PRIVACY.md update still to do). Owner runs no servers: a Worker is serverless (free account, one script, deployed with the Wrangler CLI or the dashboard; nothing to host or patch). Owner steps in section 11 stay the only manual work.
+- Default event types (manager pick): community-day, raid-hour, pokemon-spotlight-hour, go-tour, max-battles. Off by default: raid-day, max-mondays, season, event-ending-soon. All toggleable in More > Settings.
+- Enrolment cap: 300.
+- EU users: none, so no EU-specific testing or support.
+Still open: none for the plan. Remaining work is the TODOs above (official Mega and timed-research sources) and the owner setup steps.
