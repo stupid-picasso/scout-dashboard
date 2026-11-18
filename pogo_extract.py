@@ -1,196 +1,21 @@
 #!/usr/bin/env python3
 """
-pogo_extract.py v2 — Fixed regex, scene detection, full dex lookup.
-CRITICAL FIX: Word boundaries now use single backslash (was double = backspace char).
+pogo_extract.py: server-side import of Pokemon GO screen recordings and screenshots through Gemini vision.
 """
 
 from collections import Counter
 import threading
-import argparse, csv, json, os, re, shutil, subprocess, sys, tempfile, time
+import argparse, json, os, re, subprocess, sys, tempfile, time
 from pathlib import Path
 
 import gemini_pool
 
 try:
-    from PIL import Image, ImageEnhance, ImageFilter
+    from PIL import Image
     import requests
 except ImportError as e:
     print(f"Missing dependency: {e}")
     sys.exit(1)
-
-CSV_FIELDS = [
-    "pokemon_name", "dex_number", "cp", "hp", "level",
-    "attack_iv", "defense_iv", "stamina_iv", "iv_percent", "gender",
-    "height", "weight", "size_class", "type_1", "type_2", "weather_boosted",
-    "favorite", "shiny", "shadow", "purified", "lucky", "costume", "event",
-    "background", "dynamax", "gigantamax", "mega_capable", "buddy_level",
-    "current_buddy", "caught_date", "caught_location", "trainer_notes",
-    "tag_list", "appraisal_team", "appraisal_attack_bar",
-    "appraisal_defense_bar", "appraisal_hp_bar", "fast_move",
-    "charged_move_1", "charged_move_2", "fast_move_type",
-    "charged_move_type_1", "charged_move_type_2", "stardust_powerup_cost",
-    "candy_powerup_cost", "xl_candy_powerup_cost",
-    "stardust_evolution_cost", "evolution_candy_cost", "current_candy",
-    "current_xl_candy", "mega_energy", "mega_energy_x", "mega_energy_y",
-    "mega_cost_1", "mega_cost_2", "mega_rest", "is_tradeable", "is_legendary",
-    "is_mythical", "is_ultra_beast", "is_event", "is_costume",
-    "is_favorite", "has_second_move", "is_best_buddy", "pokeball_type",
-    "catch_method", "friendship_history", "notes"
-]
-
-# CRITICAL FIX: Single backslash for word boundaries
-REGEX_PATTERNS = {
-    "cp": re.compile(r"CP\s*([0-9,]+)", re.IGNORECASE),
-    "hp": re.compile(r"HP\s*([0-9,]+)", re.IGNORECASE),
-    "attack_iv": re.compile(r"Atk\s*([0-9]+)", re.IGNORECASE),
-    "defense_iv": re.compile(r"Def\s*([0-9]+)", re.IGNORECASE),
-    "stamina_iv": re.compile(r"Sta\s*([0-9]+)", re.IGNORECASE),
-    "iv_percent": re.compile(r"([0-9]+(?:\.[0-9]+)?)%", re.IGNORECASE),
-    "level": re.compile(r"Level\s*([0-9]+(?:\.[0-9]+)?)", re.IGNORECASE),
-    "weight": re.compile(r"([0-9]+\.?[0-9]*)\s*kg", re.IGNORECASE),
-    "height": re.compile(r"([0-9]+\.?[0-9]*)\s*m\b", re.IGNORECASE),
-    "stardust": re.compile(r"([0-9,]+)\s*Stardust", re.IGNORECASE),
-    "candy": re.compile(r"([0-9]+)\s+Candy(?!\s*XL)", re.IGNORECASE),
-    "xl_candy": re.compile(r"([0-9]+)\s*XL\s*Candy", re.IGNORECASE),
-    # The number is printed before "<SPECIES> MEGA ENERGY [X|Y]". Species with two
-    # Mega forms (Charizard, Mewtwo, Raichu) show separate X and Y pools.
-    "mega_energy_x": re.compile(r"([0-9]+)\s+(?:[A-Za-z'. -]{2,30}?\s+)?MEGA\s*ENERGY\s*X\b", re.IGNORECASE),
-    "mega_energy_y": re.compile(r"([0-9]+)\s+(?:[A-Za-z'. -]{2,30}?\s+)?MEGA\s*ENERGY\s*Y\b", re.IGNORECASE),
-    "mega_energy": re.compile(r"([0-9]+)\s+(?:[A-Za-z'. -]{2,30}?\s+)?MEGA\s*ENERGY(?!\s*[XY]\b)", re.IGNORECASE),
-    "gender_male": re.compile(r"♂|male|gender male", re.IGNORECASE),
-    "gender_female": re.compile(r"♀|female|gender female", re.IGNORECASE),
-    "favorite": re.compile(r"Favorite|★", re.IGNORECASE),
-    "shiny": re.compile(r"Shiny|✨", re.IGNORECASE),
-    "shadow": re.compile(r"Shadow", re.IGNORECASE),
-    "purified": re.compile(r"Purified", re.IGNORECASE),
-    "lucky": re.compile(r"Lucky", re.IGNORECASE),
-    "weather_boosted": re.compile(r"Weather Boost|Boosted", re.IGNORECASE),
-    "catch_date": re.compile(r"(\d{1,2}/\d{1,2}/\d{2,4}|\d{4}-\d{2}-\d{2})", re.IGNORECASE),
-}
-
-FAST_MOVES = {
-    "Counter", "Dragon Breath", "Shadow Claw", "Volt Switch", "Incinerate",
-    "Powder Snow", "Waterfall", "Mud Shot", "Thunder Shock", "Lick",
-    "Poison Jab", "Snarl", "Bullet Punch", "Air Slash", "Hex", "Charm",
-    "Frost Breath", "Bug Bite", "Tackle", "Scratch", "Ember", "Bubble",
-    "Rock Throw", "Confusion", "Psycho Cut", "Low Kick", "Karate Chop",
-    "Wing Attack", "Bite", "Fire Spin", "Razor Leaf", "Vine Whip",
-    "Mud Slap", "Metal Claw", "Bullet Seed", "Pound", "Splash", "Transform",
-    "Yawn", "Present", "Feint Attack", "Struggle Bug", "Fury Cutter",
-    "Ice Shard", "Water Gun", "Zen Headbutt", "Acid", "Peck", "Take Down",
-    "Smack Down", "Dragon Tail", "Infestation", "Astonish", "Poison Sting",
-    "Spark", "Fire Fang", "Ice Fang", "Thunder Fang", "Rock Smash",
-    "Sucker Punch", "Hidden Power", "Extrasensory", "Iron Tail", "Poison Tail",
-    "Magical Leaf", "Leafage", "Rollout", "Fairy Wind", "Charge Beam",
-    "Volt Tackle", "Quick Attack", "Gust",
-}
-
-CHARGED_MOVES = {
-    "Cross Chop", "Dynamic Punch", "Close Combat", "Focus Blast",
-    "Power-Up Punch", "Brick Break", "Low Sweep", "Submission",
-    "Superpower", "Aura Sphere", "Dragon Claw", "Outrage", "Draco Meteor",
-    "Dragon Pulse", "Twister", "Shadow Ball", "Shadow Punch", "Shadow Sneak",
-    "Ominous Wind", "Night Shade", "Thunderbolt", "Thunder", "Wild Charge",
-    "Discharge", "Thunder Punch", "Zap Cannon", "Parabolic Charge",
-    "Flamethrower", "Fire Blast", "Overheat", "Blast Burn", "Flame Charge",
-    "Heat Wave", "Fire Punch", "Blaze Kick", "Weather Ball Fire", "Ice Punch",
-    "Ice Beam", "Blizzard", "Avalanche", "Icy Wind", "Weather Ball Ice",
-    "Surf", "Aqua Tail", "Hydro Pump", "Hydro Cannon", "Water Pulse",
-    "Scald", "Crabhammer", "Muddy Water", "Brine", "Liquidation",
-    "Earthquake", "Earth Power", "Bulldoze", "Dig", "Sand Tomb",
-    "Drill Run", "Scorching Sands", "Rock Slide", "Stone Edge", "Rock Blast",
-    "Rock Tomb", "Power Gem", "Ancient Power", "Meteor Beam", "Sludge Bomb",
-    "Sludge Wave", "Gunk Shot", "Cross Poison", "Poison Fang", "Acid Spray",
-    "Crunch", "Dark Pulse", "Foul Play", "Night Slash", "Payback",
-    "Flash Cannon", "Iron Head", "Meteor Mash", "Mirror Shot", "Doom Desire",
-    "Steel Wing", "Aerial Ace", "Brave Bird", "Sky Attack", "Hurricane",
-    "Drill Peck", "Fly", "Air Cutter", "Weather Ball Flying", "Psychic",
-    "Psyshock", "Psystrike", "Future Sight", "Synchronoise", "Psychic Fangs",
-    "X-Scissor", "Bug Buzz", "Signal Beam", "Megahorn", "Leaf Blade",
-    "Seed Bomb", "Solar Beam", "Petal Blizzard", "Frenzy Plant", "Leaf Storm",
-    "Power Whip", "Energy Ball", "Grass Knot", "Weather Ball Grass",
-    "Dazzling Gleam", "Moonblast", "Play Rough", "Draining Kiss",
-    "Disarming Voice", "Hyper Beam", "Giga Impact", "Body Slam", "Return",
-    "Frustration", "Swift", "Tri Attack", "Stomp", "Weather Ball",
-    "Hyper Fang", "Last Resort", "Facade", "Hyper Voice", "Skull Bash",
-    "Headbutt", "Wrap", "Vice Grip", "Horn Attack", "Fury Attack",
-    "Sacred Sword", "Secret Sword", "Relic Song", "Techno Blast",
-    "Freeze Shock", "Ice Burn", "Bolt Strike", "Blue Flare", "Fusion Flare",
-    "Fusion Bolt", "Glaciate", "Seed Flare", "Shadow Force", "Roar of Time",
-    "Spacial Rend", "Origin Pulse", "Precipice Blades", "Dragon Ascent",
-    "Oblivion Wing", "Sacred Fire", "Aeroblast", "Luster Purge", "Mist Ball",
-    "Psycho Boost", "V-create", "Doom Desire",
-}
-
-MOVE_TYPES = {
-    "Counter": "Fighting", "Karate Chop": "Fighting", "Low Kick": "Fighting",
-    "Rock Smash": "Fighting", "Dynamic Punch": "Fighting", "Close Combat": "Fighting",
-    "Cross Chop": "Fighting", "Focus Blast": "Fighting", "Power-Up Punch": "Fighting",
-    "Brick Break": "Fighting", "Low Sweep": "Fighting", "Submission": "Fighting",
-    "Superpower": "Fighting", "Aura Sphere": "Fighting",
-    "Dragon Breath": "Dragon", "Dragon Tail": "Dragon", "Outrage": "Dragon",
-    "Dragon Claw": "Dragon", "Draco Meteor": "Dragon", "Dragon Pulse": "Dragon",
-    "Twister": "Dragon", "Dragon Ascent": "Dragon",
-    "Shadow Claw": "Ghost", "Hex": "Ghost", "Shadow Ball": "Ghost",
-    "Shadow Punch": "Ghost", "Shadow Sneak": "Ghost", "Ominous Wind": "Ghost",
-    "Night Shade": "Ghost", "Lick": "Ghost", "Astonish": "Ghost",
-    "Volt Switch": "Electric", "Thunder Shock": "Electric", "Spark": "Electric",
-    "Thunderbolt": "Electric", "Wild Charge": "Electric", "Discharge": "Electric",
-    "Thunder Punch": "Electric", "Zap Cannon": "Electric", "Parabolic Charge": "Electric",
-    "Thunder": "Electric", "Charge Beam": "Electric", "Volt Tackle": "Electric",
-    "Incinerate": "Fire", "Ember": "Fire", "Fire Spin": "Fire", "Fire Fang": "Fire",
-    "Flamethrower": "Fire", "Fire Blast": "Fire", "Overheat": "Fire",
-    "Blast Burn": "Fire", "Flame Charge": "Fire", "Heat Wave": "Fire",
-    "Fire Punch": "Fire", "Blaze Kick": "Fire", "Weather Ball Fire": "Fire",
-    "Powder Snow": "Ice", "Frost Breath": "Ice", "Ice Shard": "Ice",
-    "Avalanche": "Ice", "Ice Punch": "Ice", "Ice Beam": "Ice", "Blizzard": "Ice",
-    "Icy Wind": "Ice", "Weather Ball Ice": "Ice",
-    "Waterfall": "Water", "Water Gun": "Water", "Bubble": "Water",
-    "Aqua Tail": "Water", "Surf": "Water", "Hydro Pump": "Water",
-    "Hydro Cannon": "Water", "Water Pulse": "Water", "Scald": "Water",
-    "Crabhammer": "Water", "Muddy Water": "Water", "Brine": "Water",
-    "Liquidation": "Water",
-    "Mud Slap": "Ground", "Mud Shot": "Ground", "Bulldoze": "Ground",
-    "Dig": "Ground", "Sand Tomb": "Ground", "Drill Run": "Ground",
-    "Scorching Sands": "Ground", "Earthquake": "Ground", "Earth Power": "Ground",
-    "Rock Throw": "Rock", "Smack Down": "Rock", "Rock Slide": "Rock",
-    "Stone Edge": "Rock", "Rock Blast": "Rock", "Rock Tomb": "Rock",
-    "Power Gem": "Rock", "Ancient Power": "Rock", "Meteor Beam": "Rock",
-    "Poison Jab": "Poison", "Acid": "Poison", "Poison Sting": "Poison",
-    "Sludge Bomb": "Poison", "Sludge Wave": "Poison", "Gunk Shot": "Poison",
-    "Cross Poison": "Poison", "Poison Fang": "Poison", "Acid Spray": "Poison",
-    "Snarl": "Dark", "Bite": "Dark", "Feint Attack": "Dark",
-    "Sucker Punch": "Dark", "Dark Pulse": "Dark", "Crunch": "Dark",
-    "Foul Play": "Dark", "Night Slash": "Dark", "Payback": "Dark",
-    "Bullet Punch": "Steel", "Metal Claw": "Steel", "Steel Wing": "Steel",
-    "Flash Cannon": "Steel", "Iron Head": "Steel", "Meteor Mash": "Steel",
-    "Mirror Shot": "Steel", "Doom Desire": "Steel",
-    "Air Slash": "Flying", "Wing Attack": "Flying", "Peck": "Flying",
-    "Gust": "Flying", "Aerial Ace": "Flying", "Brave Bird": "Flying",
-    "Sky Attack": "Flying", "Hurricane": "Flying", "Drill Peck": "Flying",
-    "Fly": "Flying", "Air Cutter": "Flying", "Weather Ball Flying": "Flying",
-    "Confusion": "Psychic", "Psycho Cut": "Psychic", "Zen Headbutt": "Psychic",
-    "Psychic": "Psychic", "Psyshock": "Psychic", "Psystrike": "Psychic",
-    "Future Sight": "Psychic", "Synchronoise": "Psychic", "Psychic Fangs": "Psychic",
-    "Bug Bite": "Bug", "Struggle Bug": "Bug", "Fury Cutter": "Bug",
-    "X-Scissor": "Bug", "Bug Buzz": "Bug", "Signal Beam": "Bug", "Megahorn": "Bug",
-    "Leaf Blade": "Grass", "Razor Leaf": "Grass", "Vine Whip": "Grass",
-    "Bullet Seed": "Grass", "Seed Bomb": "Grass", "Solar Beam": "Grass",
-    "Petal Blizzard": "Grass", "Frenzy Plant": "Grass", "Leaf Storm": "Grass",
-    "Power Whip": "Grass", "Energy Ball": "Grass", "Grass Knot": "Grass",
-    "Magical Leaf": "Grass", "Leafage": "Grass", "Weather Ball Grass": "Grass",
-    "Charm": "Fairy", "Fairy Wind": "Fairy", "Draining Kiss": "Fairy",
-    "Dazzling Gleam": "Fairy", "Moonblast": "Fairy", "Play Rough": "Fairy",
-    "Disarming Voice": "Fairy",
-    "Tackle": "Normal", "Scratch": "Normal", "Pound": "Normal",
-    "Quick Attack": "Normal", "Hyper Beam": "Normal", "Giga Impact": "Normal",
-    "Body Slam": "Normal", "Return": "Normal", "Frustration": "Normal",
-    "Swift": "Normal", "Tri Attack": "Normal", "Stomp": "Normal",
-    "Weather Ball": "Normal", "Hyper Fang": "Normal", "Last Resort": "Normal",
-    "Take Down": "Normal", "Facade": "Normal", "Hyper Voice": "Normal",
-    "Skull Bash": "Normal", "Headbutt": "Normal", "Wrap": "Normal",
-    "Vice Grip": "Normal", "Horn Attack": "Normal", "Fury Attack": "Normal",
-}
 
 NAME_TO_DEX = {
     "Bulbasaur": 1, "Ivysaur": 2, "Venusaur": 3, "Charmander": 4,
@@ -354,17 +179,6 @@ NAME_TO_DEX = {
     "Landorus": 645, "Kyurem": 646, "Keldeo": 647, "Meloetta": 648,
     "Genesect": 649,
 }
-
-LEGENDARY_DEX = {144, 145, 146, 150, 243, 244, 245, 249, 250, 377, 378, 379,
-                 380, 381, 382, 383, 384, 480, 481, 482, 483, 484, 485, 486,
-                 487, 488, 638, 639, 640, 641, 642, 643, 644, 645, 646, 716,
-                 717, 718, 785, 786, 787, 788, 791, 792, 793, 794, 795, 796,
-                 797, 798, 799, 800, 805, 806, 888, 889, 890, 894, 895, 896,
-                 897, 898, 1007, 1008, 1009, 1010, 1020, 1021, 1022, 1023, 1024}
-
-MYTHICAL_DEX = {151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648,
-                649, 719, 720, 721, 801, 802, 807, 808, 809, 893, 1025}
-
 
 def _ffmpeg_reason(stderr, limit=600):
     """The cause is at the END of ffmpeg's stderr; the start is only the version banner and build flags."""
@@ -611,51 +425,6 @@ def _warn_if_crushed(frames):
               "decode looks like, and bar measurement cannot work on it.")
 
 
-def preprocess_image(image_path):
-    """Preprocess image for better OCR."""
-    img = Image.open(image_path).convert("L")
-    enhancer = ImageEnhance.Contrast(img)
-    img = enhancer.enhance(2.0)
-    img = img.filter(ImageFilter.SHARPEN)
-    img = img.point(lambda x: 0 if x < 100 else (255 if x > 180 else x))
-    return img
-
-
-def crop_card_region(img):
-    """Crop to the Pokemon card region (center of screen)."""
-    w, h = img.size
-    left = int(w * 0.05)
-    top = int(h * 0.15)
-    right = int(w * 0.95)
-    bottom = int(h * 0.85)
-    return img.crop((left, top, right, bottom))
-
-
-
-
-def extract_moves(text):
-    """Extract fast and charged moves from OCR text."""
-    lines = text.split("\n")
-    found_moves = {"fast": None, "charged1": None, "charged2": None}
-    for line in lines:
-        clean = line.strip()
-        if not clean:
-            continue
-        upper = clean.upper()
-        for move in FAST_MOVES:
-            if move.upper() in upper:
-                found_moves["fast"] = move
-                break
-        for move in CHARGED_MOVES:
-            if move.upper() in upper:
-                if not found_moves["charged1"]:
-                    found_moves["charged1"] = move
-                elif not found_moves["charged2"] and found_moves["charged1"] != move:
-                    found_moves["charged2"] = move
-                    break
-    return found_moves
-
-
 def detect_mega_dots(path):
     """Mega Level dots under each MEGA EVOLVE button, measured from pixels.
 
@@ -779,62 +548,6 @@ def detect_gender(path, why=None, info=None):
         return "F"
     if why is not None: why.append("unclear")
     return None
-
-
-def parse_pokemon_text(text):
-    """Parse OCR text into structured record."""
-    rec = {}
-    t = text.replace(",", "")
-    for field, pattern in REGEX_PATTERNS.items():
-        match = pattern.search(t)
-        if match:
-            val = match.group(1).replace(",", "")
-            if field in ["cp", "hp", "attack_iv", "defense_iv", "stamina_iv",
-                         "stardust", "candy", "xl_candy", "mega_energy", "mega_energy_x", "mega_energy_y"]:
-                rec[field] = int(float(val)) if "." in val else int(val)
-            elif field == "iv_percent":
-                rec[field] = float(val)
-            elif field == "level":
-                rec[field] = float(val)
-            elif field in ["weight", "height"]:
-                rec[field] = val
-            elif field in ["gender_male", "gender_female", "favorite", "shiny",
-                           "shadow", "purified", "lucky", "weather_boosted"]:
-                rec[field] = True
-            elif field == "catch_date":
-                rec[field] = match.group(1)
-    # Cost on each MEGA EVOLVE button (one per form) and the rest timer on the
-    # Mega badge ("4 DAYS"). The Mega Level dots are drawn, not text, so they
-    # cannot be read here; the app computes the cost from the level instead.
-    costs = re.findall(r"MEGA\s*EVOLVE\s*([0-9]{1,5})", t, re.IGNORECASE)
-    for i, c in enumerate(costs[:2], 1):
-        rec["mega_cost_%d" % i] = int(c)
-    rest = re.search(r"\b([0-9]+)\s*(DAYS?|HOURS?|HRS?|MINUTES?|MINS?)\b", t, re.IGNORECASE)
-    if rest and "Mega" in text:
-        rec["mega_rest"] = rest.group(1) + " " + rest.group(2).upper()
-    if rec.pop("gender_male", False):
-        rec["gender"] = "Male"
-    elif rec.pop("gender_female", False):
-        rec["gender"] = "Female"
-    name = find_pokemon_name(text)
-    if name:
-        rec["pokemon_name"] = name
-        dex = NAME_TO_DEX.get(name)
-        if dex:
-            rec["dex_number"] = dex
-            rec["is_legendary"] = dex in LEGENDARY_DEX
-            rec["is_mythical"] = dex in MYTHICAL_DEX
-    moves = extract_moves(text)
-    if moves["fast"]:
-        rec["fast_move"] = moves["fast"]
-        rec["fast_move_type"] = MOVE_TYPES.get(moves["fast"], "")
-    if moves["charged1"]:
-        rec["charged_move_1"] = moves["charged1"]
-        rec["charged_move_type_1"] = MOVE_TYPES.get(moves["charged1"], "")
-    if moves["charged2"]:
-        rec["charged_move_2"] = moves["charged2"]
-        rec["charged_move_type_2"] = MOVE_TYPES.get(moves["charged2"], "")
-    return rec
 
 
 def find_pokemon_name(text):
@@ -1067,68 +780,6 @@ def merge_frames(seq, max_gap=4):
     return out
 
 
-def deduplicate_records(records):
-    """Deduplicate by name + CP decade."""
-    seen = set()
-    unique = []
-    for rec in records:
-        name = rec.get("pokemon_name", "Unknown")
-        cp = rec.get("cp", 0)
-        key = f"{name}_{cp // 10}"
-        if key not in seen:
-            seen.add(key)
-            unique.append(rec)
-    return unique
-
-
-def record_to_csv_row(rec):
-    """Convert record to CSV row dict."""
-    row = {f: "" for f in CSV_FIELDS}
-    row.update({
-        "pokemon_name": rec.get("pokemon_name", ""),
-        "dex_number": rec.get("dex_number", ""),
-        "cp": rec.get("cp", ""),
-        "hp": rec.get("hp", ""),
-        "level": rec.get("level", ""),
-        "attack_iv": rec.get("attack_iv", ""),
-        "defense_iv": rec.get("defense_iv", ""),
-        "stamina_iv": rec.get("stamina_iv", ""),
-        "iv_percent": rec.get("iv_percent", ""),
-        "gender": rec.get("gender", ""),
-        "weight": rec.get("weight", ""),
-        "height": rec.get("height", ""),
-        "type_1": rec.get("type_1", ""),
-        "type_2": rec.get("type_2", ""),
-        "favorite": "1" if rec.get("favorite") else "",
-        "shiny": "1" if rec.get("shiny") else "",
-        "dynamax": "1" if rec.get("dynamax") else "",
-        "gigantamax": "1" if rec.get("gigantamax") else "",
-        "shadow": "1" if rec.get("shadow") else "",
-        "purified": "1" if rec.get("purified") else "",
-        "lucky": "1" if rec.get("lucky") else "",
-        "fast_move": rec.get("fast_move", ""),
-        "charged_move_1": rec.get("charged_move_1", ""),
-        "charged_move_2": rec.get("charged_move_2", ""),
-        "fast_move_type": rec.get("fast_move_type", ""),
-        "charged_move_type_1": rec.get("charged_move_type_1", ""),
-        "charged_move_type_2": rec.get("charged_move_type_2", ""),
-        "stardust_powerup_cost": rec.get("stardust", ""),
-        "current_candy": rec.get("candy", ""),
-        "current_xl_candy": rec.get("xl_candy", ""),
-        "mega_energy": rec.get("mega_energy", ""),
-        "mega_energy_x": rec.get("mega_energy_x", ""),
-        "mega_energy_y": rec.get("mega_energy_y", ""),
-        "mega_cost_1": rec.get("mega_cost_1", ""),
-        "mega_cost_2": rec.get("mega_cost_2", ""),
-        "mega_rest": rec.get("mega_rest", ""),
-        "is_legendary": "1" if rec.get("is_legendary") else "",
-        "is_mythical": "1" if rec.get("is_mythical") else "",
-        "is_favorite": "1" if rec.get("favorite") else "",
-        "caught_date": rec.get("catch_date", ""),
-    })
-    return row
-
-
 # ---------------------------------------------------------------------------
 # Gemini vision OCR for video frames (server-side; the only text reader. The
 # --video path only). Mirrors the exact prompt/JSON schema the phone app uses
@@ -1139,16 +790,7 @@ def record_to_csv_row(rec):
 # duplicating the 1500+ species BASE_STATS table here would be a maintenance
 # trap. This script only extracts what's printed on screen.
 
-# NOTE: gemini-2.5-flash / gemini-2.5-flash-lite are dropped here on purpose.
-# For newer API keys/projects Google now returns HTTP 404 "no longer
-# available to new users" on the whole 2.5 generation ahead of its official
-# Oct 2026 retirement, so keeping them in rotation just burns retries every
-# batch. Only the confirmed-working 3.x generation is listed. run_gemini_
-# video_ocr() also blacklists any model that 404s at runtime, so a future
-# deprecation degrades gracefully instead of stalling the whole import.
-# Bulk models read every batch; verify models re-read only the suspect ones (see gemini_pool.py).
-# GEMINI_MODELS is kept as the union for the appraisal paths and the benchmark.
-GEMINI_MODELS = gemini_pool.BULK_MODELS + gemini_pool.VERIFY_MODELS
+# Google answers HTTP 404 for model generations it has retired; run_gemini_video_ocr() blacklists any model that 404s at runtime.
 
 VIDEO_IMPORT_PROMPT = (
     "These are frames sampled from a Pokemon GO screen recording (collection list "
@@ -1280,13 +922,8 @@ APPRAISAL_PROMPT = (
     "- Report every Pokemon whose name you can read, even if other fields are null."
 )
 
-# A single 1080px-wide phone-screenshot frame, re-encoded as base64 JPEG,
-# measures ~140-180K chars on its own \u2014 the old 180000 budget let almost
-# NO more than 1 frame per batch, so MAX_FRAMES_PER_BATCH=5 never actually
-# bound and one Gemini call was spent per frame. A generateContent request
-# can carry many MB of inline image data, so raise the budget generously;
-# MAX_FRAMES_PER_BATCH is the real cap now (fewer, bigger requests = far
-# fewer calls against the free tier's per-model daily request cap).
+# One 1080px phone frame is ~140-180K base64 chars, so the char budget is sized for MAX_FRAMES_PER_BATCH frames
+# (fewer, bigger requests spend less of the free tier's per-model daily request cap).
 MAX_FRAMES_PER_BATCH = 10
 BATCH_CHAR_BUDGET = 1600000
 REQUEST_TIMEOUT_S = 180
@@ -2103,20 +1740,12 @@ def run_appraisal_pipeline(frames):
     print(f"[Bars] measured {len(frames)} frames in {(time.time() - t_bars) / 60:.1f} min")
     hits = [(i, p, m) for i, p, m in readings if m]
     print(f"[Bars] Measured appraisal bars on {len(hits)}/{len(frames)} frames")
-    # Dump evidence whenever the read is WEAK, not only when it fails outright.
-    # A run that measures 1 frame in 20 is just as broken as one that measures
-    # none, and needs the same evidence to fix.
-    # Calibration is done: the readers are verified against known frames, so a
-    # normal run has nothing to learn from a row dump. Dump only on TOTAL
-    # failure, where the geometry really is unknown again. The 0.25 threshold
-    # fired on healthy runs and wrote a hundred PNGs plus thousands of debug
-    # lines per import.
     if not hits:
+        # Row dumps only on total failure: on healthy runs they wrote a hundred PNGs per import.
         _dump_bar_diagnostics(frames, hits=hits)
-    if not hits:
         print("[Bars] No appraisal bars found \u2014 falling back to the model-read prompt.")
         items = run_gemini_video_ocr(frames, prompt=APPRAISAL_PROMPT,
-                                     merge_key=_appraisal_merge_key)
+                                     merge_key=_merge_key)
         # These spreads are MODEL GUESSES, not measurements. Tagging them is what
         # stops the client pinning them as exact IVs \u2014 which is exactly what
         # produced wrong spreads (Absol read 14/10/13 against a true 14/15/15).
@@ -2183,8 +1812,7 @@ def _identify_frames(paths):
 
     Frames go up in batches of APPRAISAL_ID_BATCH_SIZE and come back indexed; a batch that fails or returns
     the wrong length is re-read frame by frame for that batch alone. The batches run side by side on one
-    shared model pool (ID_WORKERS at a time, default 6), because the old one-after-another loop made the IV
-    import spend most of its 40+ minutes waiting on single requests."""
+    shared model pool (ID_WORKERS at a time, default 6)."""
     out = [None] * len(paths)
 
     def do_chunk(start):
@@ -2213,7 +1841,7 @@ def _identify_frames(paths):
             if n in placed_here:
                 continue
             try:
-                one = run_gemini_video_ocr([p], prompt=APPRAISAL_ID_PROMPT, merge_key=_appraisal_merge_key,
+                one = run_gemini_video_ocr([p], prompt=APPRAISAL_ID_PROMPT, merge_key=_merge_key,
                                            shared=True, strict=False)
                 placed_here[n] = one[0] if one else None
             except Exception as e:
@@ -2288,7 +1916,7 @@ def _resolve_duplicate_sightings(items, out_dir="data/debug_bars"):
     """
     by_key = {}
     for it in items:
-        by_key.setdefault(_appraisal_merge_key(it), []).append(it)
+        by_key.setdefault(_merge_key(it), []).append(it)
     out = []
     for key, group in by_key.items():
         # Lowest drift first: drift is the distance from the measured bar
@@ -2587,16 +2215,9 @@ def active_models(keys, announce=True, per_tier=6):
     return bulk, verify
 
 
-def _video_merge_key(item):
-    # Name + CP + HP: two Pokemon of one species can share a CP, and HP tells them apart (as in the appraisal merge).
-    return (str(item["name"]).lower() + "|" + ("?" if item.get("cp") is None else str(item.get("cp")))
-            + "|" + ("?" if item.get("hp") is None else str(item.get("hp"))))
-
-
-def _appraisal_merge_key(item):
+def _merge_key(item):
     # Two different individuals of one species can share a CP; the HP tells them
-    # apart, so the appraisal merge keys on name+CP+HP (the client matches the
-    # same way).
+    # apart (the client matches the same way).
     return (str(item["name"]).lower() + "|"
             + ("?" if item.get("cp") is None else str(item.get("cp")))
             + "|" + ("?" if item.get("hp") is None else str(item.get("hp"))))
@@ -2685,7 +2306,7 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     frame_mode = prompt is VIDEO_FRAME_PROMPT
     video_mode = frame_mode or prompt is VIDEO_IMPORT_PROMPT
     if merge_key is None:
-        merge_key = _video_merge_key if merge else (lambda it: id(it))
+        merge_key = _merge_key if merge else (lambda it: id(it))
     keys = get_gemini_keys()
     if not keys:
         raise RuntimeError(
@@ -2932,11 +2553,7 @@ def main():
 
         out_path = "data/appraisal_import.json"
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-        # Merges additional videos processed in the SAME run together (a big
-        # appraisal pass often needs several recordings). Starting a new,
-        # unrelated session clean is handled upstream — the workflow deletes
-        # this file before the first video of a fresh session runs — so this
-        # merge only ever sees same-session data by the time it gets here.
+        # The workflow deletes this file before the first video of a fresh session, so this merge only sees same-session data.
         merged, seen = [], {}
         existing = []
         if os.path.exists(out_path):
@@ -2978,11 +2595,7 @@ def main():
         return
 
     if args.video:
-        # --video now uses Gemini vision OCR (server-side, quota-pooled across
-        # up to 2 keys x 5 models). Output is the
-        # app's video-import JSON schema, dropped straight into
-        # data/pokemon_import.json for "IMPORT FROM SERVER" / paste-import to
-        # pick up client-side — no dex/IV/rank math happens here by design.
+        # The output is the app's video-import JSON schema; dex, IV and rank math happen client-side.
         print(f"[Main] Processing video: {args.video}")
         _keys = get_gemini_keys()
         if _keys:
@@ -2999,16 +2612,8 @@ def main():
         if out_path.endswith(".csv"):
             out_path = "data/pokemon_import.json"
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-        # MERGE within a session. A collection recorded in parts means one run
-        # per part within the same push/dispatch, and a plain write meant each
-        # part silently destroyed the one before it — four runs left only the
-        # last part's Pokemon. Starting a new, unrelated session clean is
-        # handled upstream — the workflow deletes this file before the first
-        # video of a fresh session runs — so this merge only ever sees
-        # same-session data by the time it gets here. Identity here is the
-        # same triple the client matches on (name + CP + HP); a repeat of that
-        # triple is the same Pokemon re-read, so the NEW record wins and the
-        # count stays flat. Anything else is additive.
+        # The workflow deletes this file before the first video of a fresh session, so this merge only sees same-session data.
+        # Identity is the triple the client matches on (name + CP + HP): a repeat is a re-read, so the new record wins.
         merged, seen = [], {}
         existing = []
         if os.path.exists(out_path):
@@ -3052,10 +2657,7 @@ def main():
         )
         return
 
-    # --image goes through the same Gemini reader as --video. It used to run
-    # Tesseract + regex locally; that path was removed because its misreads
-    # (stardust digits landing in CP, mangled CP badge) silently corrupted
-    # records, and a wrong record is worse than no record.
+    # --image goes through the same Gemini reader as --video; a wrong record is worse than no record.
     if not args.image:
         print("[Main] Error: Provide --video, --appraisal or --image")
         sys.exit(1)
@@ -3066,8 +2668,7 @@ def main():
         print(f"  -> Found: {rec.get('name', '?')} CP{rec.get('cp', '?')}")
     print(f"[Main] Total unique records: {len(records)}")
 
-    # Always JSON now: the reader emits the app's video-import schema, which the
-    # legacy 61-column CSV row mapper cannot represent.
+    # Always JSON: the reader emits the app's video-import schema, which a CSV row cannot represent.
     out_path = args.out.replace(".csv", ".json") if args.out.endswith(".csv") else args.out
     if not out_path.endswith(".json"):
         out_path += ".json"
