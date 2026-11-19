@@ -1110,6 +1110,9 @@ function buildLists(roster, bestRank) {
   check('every data key is in SYNC_KEYS and SYNCED_STATE_KEYS', data.filter(f => lists.SYNC_KEYS.indexOf(f.key) < 0 || lists.SYNCED_STATE_KEYS.indexOf(f.key) < 0).map(f => f.key), []);
   check('every packed key is a data key, and no credential is a data row', [lists.PACKED_KEYS.filter(k => !data.some(f => f.key === k)), data.filter(f => /geminiKey|githubToken|apiEndpoint/.test(f.key)).length], [[], 0]);
   check('every data row has a default', data.filter(f => f.def === undefined).map(f => f.key), []);
+  // Stored names are a contract with documents already in the cloud and on devices: a rename or a removal must be deliberate.
+  check('the stored data keys are exactly the known 30', data.map(f => f.key).sort(), ['addedPokemon', 'bagCapacity', 'candyAiDecisions', 'candyInventory', 'chatMessages', 'checklistDate', 'checklistDone', 'completedIds', 'cutTarget', 'dustReserve', 'eliteTmDone', 'events', 'evoTable', 'evolutionItems', 'history', 'ivOverrides', 'maxBattles', 'megaEnergyInventory', 'megaEvolvedHistory', 'moveDB', 'pvpMaxLevel', 'removedIds', 'resources', 'roster', 'savedTeams', 'stardustBalance', 'transferQueue', 'triageKeep', 'trainerLevel', 'typeTable'].sort());
+  check('the packed keys are exactly the known 19', [...L.PACKED_KEYS].sort(), ['addedPokemon', 'candyAiDecisions', 'candyInventory', 'chatMessages', 'checklistDone', 'completedIds', 'evoTable', 'evolutionItems', 'history', 'ivOverrides', 'megaEnergyInventory', 'megaEvolvedHistory', 'moveDB', 'removedIds', 'resources', 'roster', 'transferQueue', 'triageKeep', 'typeTable'].sort());
   check('the initial state is built from the schema defaults', /  state = \{\n    \.\.\.this\.schemaDefaults\(\),/.test(SRC), true);
   check('only the chat is capped, at 60', data.filter(f => f.cap).map(f => [f.key, f.cap]), [['chatMessages', 60]]);
 })();
