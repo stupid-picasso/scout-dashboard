@@ -1,0 +1,198 @@
+name: Extract recording (reusable)
+
+# The one place that downloads a screen recording, runs pogo_extract.py on it and commits the result. It is only ever called:
+# by extract.yml (mode "detail": Pokemon detail screens, data/pokemon_import.json) and by extract-iv.yml (mode "appraisal":
+# appraisal screens, data/appraisal_import.json). Those two keep their own names, triggers and inputs, because the app starts
+# them by file name (runGithubWorkflow in Scout Dashboard.dc.html) and the owner starts them from the Actions tab.
+#
+# The concurrency group (pogo-data-commit) is declared by the two callers, not here: two workflows writing generated files at
+# the same moment is what once produced an unresolvable rebase conflict. The job below can only write what its caller's job
+# grants it (contents: write).
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: 'detail (videos/, data/pokemon_import.json) or appraisal (appraisal_videos/, data/appraisal_import.json)'
+        required: true
+        type: string
+      drive_link:
+        description: 'Google Drive share link to a screen recording (must be set to "Anyone with the link"); empty to use the repo folder only'
+        required: false
+        type: string
+        default: ''
+      fresh_import:
+        description: 'Reset the import file first. Set to false only to add more videos to a session already in progress.'
+        required: false
+        type: string
+        default: 'true'
+      fps:
+        description: 'Frames per second for extraction'
+        required: false
+        type: string
+        default: '6'
+      scene_detect:
+        description: 'Use scene detection instead of fixed FPS'
+        required: false
+        type: string
+        default: 'true'
+      scene_threshold:
+        description: 'Scene change threshold (0.0-1.0)'
+        required: false
+        type: string
+        default: '0.3'
+    secrets:
+      GEMINI_API_KEY_ONE:
+        required: false
+      GEMINI_API_KEY_TWO:
+        required: false
+
+permissions:
+  contents: read   # default for every job; the job below that commits overrides it
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed so the commit step can push its own results
+    env:
+      IN_MODE: ${{ inputs.mode }}
+    steps:
+      - name: Select the mode
+        run: |
+          case "$IN_MODE" in
+            detail)
+              { echo "VIDEO_DIR=videos"; echo "EXTRACT_FLAG=--video"; echo "IMPORT_FILE=data/pokemon_import.json"; } >> "$GITHUB_ENV" ;;
+            appraisal)
+              { echo "VIDEO_DIR=appraisal_videos"; echo "EXTRACT_FLAG=--appraisal"; echo "IMPORT_FILE=data/appraisal_import.json"; } >> "$GITHUB_ENV" ;;
+            *)
+              echo "::error::unknown extract mode '$IN_MODE' (expected detail or appraisal)"
+              exit 1 ;;
+          esac
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Download video from Google Drive
+        if: inputs.drive_link != ''
+        run: |
+          mkdir -p /tmp/drive_video
+          gdown "$IN_DRIVE_LINK" -O /tmp/drive_video/clip.mp4
+          echo "DRIVE_VIDEO_PATH=/tmp/drive_video/clip.mp4" >> $GITHUB_ENV
+        env:
+          IN_DRIVE_LINK: ${{ inputs.drive_link }}
+
+      - name: Check for videos
+        id: check_videos
+        run: |
+          video_count=$(find "$VIDEO_DIR"/ -type f \( -name '*.mp4' -o -name '*.mov' \) 2>/dev/null | wc -l)
+          echo "count=$video_count" >> $GITHUB_OUTPUT
+          echo "Found $video_count video(s) in $VIDEO_DIR/"
+          if [ -n "$DRIVE_VIDEO_PATH" ]; then
+            echo "Plus one Drive-downloaded video: $DRIVE_VIDEO_PATH"
+          fi
+
+      # Wipes the import file before this session's videos are processed, so old sessions never linger. Runs once per job,
+      # before any video is processed, so every video in THIS session (repo folder and a Drive-link video alike, whether one or
+      # several) still merges together normally afterward; only past sessions get cleared. Skipped when fresh_import is
+      # explicitly 'false' (continuing a session already in progress across separate workflow runs). A push trigger passes
+      # the default 'true', so push-triggered runs start fresh too.
+      - name: Reset import file for a clean session
+        if: inputs.fresh_import != 'false'
+        run: |
+          mkdir -p data
+          rm -f "$IMPORT_FILE"
+          echo "Cleared $IMPORT_FILE - this session starts clean."
+
+      - name: Extract (repo folder)
+        if: steps.check_videos.outputs.count > 0
+        run: |
+          mkdir -p data
+          for video in "$VIDEO_DIR"/*.mp4 "$VIDEO_DIR"/*.mov; do
+            [ -f "$video" ] || continue
+            echo "Processing: $video"
+            if [ "$IN_SCENE_DETECT" = "true" ]; then
+              python pogo_extract.py "$EXTRACT_FLAG" "$video" --scene-detect --scene-threshold "$IN_SCENE_THRESHOLD" --fps "$IN_FPS"
+            else
+              python pogo_extract.py "$EXTRACT_FLAG" "$video" --fps "$IN_FPS"
+            fi
+          done
+        env:
+          IN_FPS: ${{ inputs.fps || '6' }}
+          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
+          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
+          PYTHONUNBUFFERED: "1"
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
+
+      - name: Extract (Google Drive link)
+        if: env.DRIVE_VIDEO_PATH != ''
+        run: |
+          mkdir -p data
+          if [ "$IN_SCENE_DETECT" = "true" ]; then
+            python pogo_extract.py "$EXTRACT_FLAG" "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$IN_SCENE_THRESHOLD" --fps "$IN_FPS"
+          else
+            python pogo_extract.py "$EXTRACT_FLAG" "$DRIVE_VIDEO_PATH" --fps "$IN_FPS"
+          fi
+        env:
+          IN_FPS: ${{ inputs.fps || '6' }}
+          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
+          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
+          PYTHONUNBUFFERED: "1"
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
+          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
+
+      - name: Keep the debug dump and the import as a build artifact (not in git)
+        if: always() && inputs.mode == 'detail'
+        uses: actions/upload-artifact@v4
+        with:
+          name: extract-output
+          path: |
+            data/debug
+            data/pokemon_import.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Keep the bar diagnostics as a build artifact (not in git)
+        if: always() && inputs.mode == 'appraisal'
+        uses: actions/upload-artifact@v4
+        with:
+          name: iv-bar-diagnostics
+          path: data/debug_bars
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # main can move while this job runs (a manual upload, the other extraction workflow), so scripts/ci_push.sh re-applies
+      # this run's output onto the latest remote instead of rebasing generated JSON, and fails after its last retry.
+      # The appraisal run commits only its import file: the bar-measurement frames (data/debug_bars) are the artifact above,
+      # about 10 MB of PNGs that would otherwise grow the public repo on every run.
+      - name: Commit extracted data
+        if: steps.check_videos.outputs.count > 0 || env.DRIVE_VIDEO_PATH != ''
+        run: |
+          if [ "$IN_MODE" = "appraisal" ]; then
+            if [ ! -f "$IMPORT_FILE" ]; then
+              echo "::error::$IMPORT_FILE was never written - the extraction step produced no output. Check the extraction step log above for the real error (no frames, Gemini quota, or no Pokemon read)."
+              exit 1
+            fi
+            scripts/ci_push.sh "Auto-extract IV ratings from appraisal video [skip ci]" "$IMPORT_FILE"
+          else
+            scripts/ci_push.sh "Auto-extract Pokemon data from video [skip ci]" data/
+          fi
+        env:
+          CI_PUSH_BRANCH: ${{ github.ref_name }}

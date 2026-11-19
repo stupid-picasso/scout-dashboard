@@ -32,7 +32,7 @@ def code(text):
 
 
 # ---- H24: one push helper -------------------------------------------------------------------------------------------
-PUSHERS = ['extract.yml', 'extract-iv.yml', 'extract-auto.yml', 'update-events-gbl.yml', 'update-pokemon-data.yml', 'benchmark-models.yml']
+PUSHERS = ['extract-run.yml', 'extract-auto.yml', 'update-events-gbl.yml', 'update-pokemon-data.yml', 'benchmark-models.yml']
 for name in PUSHERS:
     t = code(wf(name))
     check('H24 %s commits through scripts/ci_push.sh' % name, 'scripts/ci_push.sh' in t)
@@ -40,6 +40,28 @@ for name in PUSHERS:
     own = [l.strip() for l in t.split('\n') if re.search(r'\bgit (push\b(?! origin "\$BRANCH")|pull\b)', l)]
     check('H24 %s has no private push or pull loop' % name, not own, own)
     check('H24 %s does not mask a failure after the helper' % name, not re.search(r'ci_push\.sh[^\n]*(\|\||;\s*true)', t))
+
+# ---- H23: extract.yml and extract-iv.yml are thin callers of one reusable workflow, with the trigger surface the app and the owner use
+dc = open(os.path.join(ROOT, 'Scout Dashboard.dc.html'), encoding='utf-8').read()
+app_files = re.search(r"workflowFile = isAppraisal \? '([\w.-]+)' : '([\w.-]+)'", dc)
+app_inputs = re.search(r"inputs: \{([^}]*)\}", dc[dc.index('runGithubWorkflow'):])
+check('H23 the app dispatches the two caller files by name', app_files and sorted(app_files.groups()) == ['extract-iv.yml', 'extract.yml'], app_files and app_files.groups())
+sent = sorted(re.findall(r'(\w+):', app_inputs.group(1))) if app_inputs else []
+callee = wf('extract-run.yml')
+callee_inputs = re.search(r'workflow_call:\n    inputs:\n(.*?)\n    secrets:', callee, re.S).group(1)
+callee_names = set(re.findall(r'^      (\w+):\s*$', callee_inputs, re.M))
+for name, mode, folder in (('extract.yml', 'detail', 'videos'), ('extract-iv.yml', 'appraisal', 'appraisal_videos')):
+    t = wf(name)
+    dispatch = re.search(r'workflow_dispatch:\n    inputs:\n(.*?)\n\npermissions:', t, re.S)
+    declared = set(re.findall(r'^      (\w+):\s*$', dispatch.group(1), re.M)) if dispatch else set()
+    check('H23 %s calls the reusable workflow with mode %s' % (name, mode), re.search(r'uses: \./\.github/workflows/extract-run\.yml', t) and re.search(r'mode: %s\s*$' % mode, t, re.M))
+    check('H23 %s keeps every dispatch input the app sends (%s)' % (name, ', '.join(sent)), set(sent) <= declared and declared == {'drive_link', 'fresh_import', 'fps', 'scene_detect', 'scene_threshold'}, declared)
+    check('H23 %s still triggers on pushes to %s/' % (name, folder), "'%s/*.mp4'" % folder in t and "'%s/*.mov'" % folder in t)
+    check('H23 %s declares the shared concurrency group, the reusable one does not' % name, 'group: pogo-data-commit' in t and 'concurrency' not in code(callee))
+    check('H23 %s grants the job write access and no wider' % name, re.search(r'    permissions:\n      contents: write[^\n]*\n    uses:', t) and 'pull-requests' not in t)
+    passed = set(re.findall(r'^      (\w+): \$\{\{', t.split('with:')[1].split('secrets:')[0], re.M))
+    check('H23 %s passes only inputs the reusable workflow declares, and the two Gemini secrets' % name, passed <= callee_names and 'GEMINI_API_KEY_ONE: ${{ secrets.GEMINI_API_KEY_ONE }}' in t and 'GEMINI_API_KEY_TWO: ${{ secrets.GEMINI_API_KEY_TWO }}' in t, passed - callee_names)
+check('H23 the reusable workflow rejects an unknown mode', 'unknown extract mode' in callee)
 check('H24 extract-auto no longer ends a failed push with exit 0', 'for i in 1 2 3 4 5' not in wf('extract-auto.yml'))
 
 # ---- H17: bundles rebuilt with the mechanics file --------------------------------------------------------------------

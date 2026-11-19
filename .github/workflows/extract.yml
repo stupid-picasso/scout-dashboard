@@ -39,123 +39,16 @@ permissions:
 
 jobs:
   extract:
-    runs-on: ubuntu-latest
     permissions:
-      contents: write  # needed so the auto-commit step can push its own results
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-
-      - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Download video from Google Drive
-        if: github.event_name == 'workflow_dispatch' && inputs.drive_link != ''
-        run: |
-          mkdir -p /tmp/drive_video
-          gdown "$IN_DRIVE_LINK" -O /tmp/drive_video/clip.mp4
-          echo "DRIVE_VIDEO_PATH=/tmp/drive_video/clip.mp4" >> $GITHUB_ENV
-
-        env:
-          IN_DRIVE_LINK: ${{ inputs.drive_link }}
-      - name: Check for videos
-        id: check_videos
-        run: |
-          video_count=$(find videos/ -type f \( -name '*.mp4' -o -name '*.mov' \) | wc -l)
-          echo "count=$video_count" >> $GITHUB_OUTPUT
-          echo "Found $video_count video(s) in videos/"
-          if [ -n "$DRIVE_VIDEO_PATH" ]; then
-            echo "Plus one Drive-downloaded video: $DRIVE_VIDEO_PATH"
-          fi
-
-      # Wipes data/pokemon_import.json before this session's videos are
-      # processed, so old sessions never linger. Runs once per job, before
-      # any video is processed, so every video in THIS session (repo videos/
-      # and a Drive-link video alike, whether one or several) still merges
-      # together normally afterward — only past sessions get cleared.
-      # Skipped when fresh_import is explicitly 'false' (continuing a
-      # session already in progress across separate workflow runs). Missing
-      # on a push trigger (no `inputs` there) reads as unset, not 'false', so
-      # push-triggered runs default to fresh too.
-      - name: Reset import file for a clean session
-        if: github.event.inputs.fresh_import != 'false'
-        run: |
-          mkdir -p data
-          rm -f data/pokemon_import.json
-          echo "Cleared data/pokemon_import.json — this session starts clean."
-
-      - name: Extract video data (repo videos/*.mp4)
-        if: steps.check_videos.outputs.count > 0
-        run: |
-          FPS="$IN_FPS"
-          SCENE="$IN_SCENE_DETECT"
-          THRESH="$IN_SCENE_THRESHOLD"
-          mkdir -p data
-          for video in videos/*.mp4 videos/*.mov; do
-            [ -f "$video" ] || continue
-            echo "Processing: $video"
-            if [ "$SCENE" = "true" ]; then
-              python pogo_extract.py --video "$video" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
-            else
-              python pogo_extract.py --video "$video" --fps "$FPS"
-            fi
-          done
-        env:
-          IN_FPS: ${{ inputs.fps || '6' }}
-          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
-          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
-          PYTHONUNBUFFERED: "1"
-          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
-          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
-
-      - name: Extract video data (Google Drive link)
-        if: env.DRIVE_VIDEO_PATH != ''
-        run: |
-          FPS="$IN_FPS"
-          SCENE="$IN_SCENE_DETECT"
-          THRESH="$IN_SCENE_THRESHOLD"
-          mkdir -p data
-          if [ "$SCENE" = "true" ]; then
-            python pogo_extract.py --video "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
-          else
-            python pogo_extract.py --video "$DRIVE_VIDEO_PATH" --fps "$FPS"
-          fi
-        env:
-          IN_FPS: ${{ inputs.fps || '6' }}
-          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
-          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
-          PYTHONUNBUFFERED: "1"
-          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
-          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
-
-      - name: Keep the debug dump and the import as a build artifact (not in git)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: extract-output
-          path: |
-            data/debug
-            data/pokemon_import.json
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Commit extracted data
-        if: steps.check_videos.outputs.count > 0 || env.DRIVE_VIDEO_PATH != ''
-        # main can move while this job runs (a manual upload, the appraisal workflow), so the helper re-applies this
-        # run's output onto the latest remote instead of rebasing generated JSON, and fails after its last retry.
-        run: scripts/ci_push.sh "Auto-extract Pokemon data from video [skip ci]" data/
-        env:
-          CI_PUSH_BRANCH: ${{ github.ref_name }}
+      contents: write  # the called workflow commits the results; it can only use what this job grants
+    uses: ./.github/workflows/extract-run.yml
+    with:
+      mode: detail
+      drive_link: ${{ inputs.drive_link }}
+      fresh_import: ${{ inputs.fresh_import || 'true' }}
+      fps: ${{ inputs.fps || '6' }}
+      scene_detect: ${{ inputs.scene_detect || 'true' }}
+      scene_threshold: ${{ inputs.scene_threshold || '0.3' }}
+    secrets:
+      GEMINI_API_KEY_ONE: ${{ secrets.GEMINI_API_KEY_ONE }}
+      GEMINI_API_KEY_TWO: ${{ secrets.GEMINI_API_KEY_TWO }}
