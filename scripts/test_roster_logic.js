@@ -48,16 +48,7 @@ const SRC = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8');
 
 // Same loader test_ranking.js uses — real pokemon-mechanics.js in a sandbox,
 // not reimplemented, so movepoolFor()/AUTHORITATIVE_MOVES stay authoritative.
-function loadMechanics() {
-  const code = fs.readFileSync(path.join(REPO, 'pokemon-mechanics.js'), 'utf8');
-  const sandbox = { window: { dispatchEvent: () => {} }, Event: function () {}, console };
-  vm.createContext(sandbox);
-  vm.runInContext(code, sandbox);
-  if (!sandbox.window.PokemonMechanics) {
-    throw new Error('pokemon-mechanics.js did not export window.PokemonMechanics — cannot test');
-  }
-  return sandbox.window.PokemonMechanics;
-}
+const { loadMechanics } = require('./lib/testkit');
 const m = loadMechanics();
 
 let pass = 0;

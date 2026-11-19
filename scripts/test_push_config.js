@@ -6,8 +6,7 @@
 const fs = require('fs'), path = require('path');
 const pc = require('./push_config');
 const ROOT = path.join(__dirname, '..');
-let fail = 0, n = 0;
-const check = (name, got, want) => { n++; const a = JSON.stringify(got), b = JSON.stringify(want); if (a !== b) { fail++; console.log('FAIL', name, '\n  got ', a, '\n  want', b); } };
+const t = require('./lib/testkit').checker(), check = t.eq;
 const connect = html => { const m = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/); const d = m && m[1].split(';').map(x => x.trim()).find(x => x.startsWith('connect-src ')); return d || null; };
 
 const src = fs.readFileSync(pc.DC, 'utf8');
@@ -51,5 +50,4 @@ check('wrangler.toml: every value is a placeholder', [/id = "REPLACE_/.test(w), 
 check('wrangler.toml: no secret is named with a value, no real workers.dev address, no 32-hex KV id', [/VAPID_PRIVATE_KEY\s*=/.test(w), /workers\.dev/.test(w), /[0-9a-f]{32}/.test(w)], [false, false, false]);
 check('wrangler.toml: cron every 15 minutes', /crons = \["\*\/15 \* \* \* \*"\]/.test(w), true);
 
-console.log(fail ? fail + ' of ' + n + ' checks failed' : 'ok: ' + n + ' push config checks passed');
-process.exit(fail ? 1 : 0);
+t.exit(t.fail ? t.fail + ' of ' + t.n + ' checks failed' : 'ok: ' + t.n + ' push config checks passed');

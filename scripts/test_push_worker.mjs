@@ -11,12 +11,12 @@ import { b64uEncode, b64uDecode, encryptPayload, vapidHeader, sendPush, allowedP
 import worker, { handleRequest, runTick, subId, SUBREQUEST_LIMIT } from '../worker/src/index.js';
 import { HOUR, MIN, MAX_SUBS, defaultPrefs, EVENT_TYPES } from '../worker/src/logic.js';
 import { putSub, toMeta, fromMeta, META_MAX, byteLen } from '../worker/src/store.js';
+import kit from './lib/testkit.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fx = n => JSON.parse(fs.readFileSync(path.join(here, 'fixtures', n), 'utf8'));
 const FEED = fx('push_feed.json'), PROMO = fx('push_promo.json'), MOVES = fx('push_moves.json');
-let fail = 0, n = 0;
-const check = (name, got, want) => { n++; const a = JSON.stringify(got), b = JSON.stringify(want); if (a !== b) { fail++; console.log('FAIL', name, '\n  got ', a, '\n  want', b); } };
+const t = kit.checker(), check = t.eq;
 const subtle = globalThis.crypto.subtle;
 const enc = new TextEncoder(), dec = new TextDecoder();
 
@@ -430,5 +430,4 @@ const sbody = (r, extra = {}) => ({ subscription: { endpoint: r.endpoint, keys: 
   check('scheduled() hands the tick to waitUntil', typeof waited?.then, 'function');
 }
 
-console.log(fail ? fail + ' of ' + n + ' checks failed' : 'ok: ' + n + ' worker checks passed');
-process.exit(fail ? 1 : 0);
+t.exit(t.fail ? t.fail + ' of ' + t.n + ' checks failed' : 'ok: ' + t.n + ' worker checks passed');

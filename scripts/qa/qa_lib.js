@@ -1,6 +1,7 @@
 // Shared helpers for the QA suites: test registry, fresh app sessions, navigation.
 const fs = require('fs');
 const path = require('path');
+const { serveRepo } = require('../lib/testkit');
 const pw = require(path.join(__dirname, '..', '..', 'node_modules', 'playwright'));
 const chromium = pw[process.env.QA_BROWSER || 'chromium'];
 const REPO = path.join(__dirname, '..', '..');
@@ -43,14 +44,7 @@ async function close() { if (browser) await browser.close(); if (server) server.
 let server, serverBase;
 async function webBase() {
   if (serverBase) return serverBase;
-  const http = require('http');
-  const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
-  server = http.createServer((req, res) => {
-    const p = path.join(REPO, decodeURIComponent(req.url.split('?')[0]).replace(/\/$/, '/index.html'));
-    if (!p.startsWith(REPO) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
-    res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' }); fs.createReadStream(p).pipe(res);
-  });
-  await new Promise(r => server.listen(0, '127.0.0.1', r)); server.unref();
+  server = await serveRepo({ noStore: true }); server.unref();
   return (serverBase = 'http://127.0.0.1:' + server.address().port + '/');
 }
 

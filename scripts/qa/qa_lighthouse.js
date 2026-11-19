@@ -1,24 +1,15 @@
 #!/usr/bin/env node
 // Lighthouse (mobile, simulated throttling) against the app served over http.
 // Usage: node scripts/qa/qa_lighthouse.js [out.json]   Env: PW_CHROMIUM (chrome binary)
-const http = require('http'), fs = require('fs'), path = require('path');
-const REPO = path.join(__dirname, '..', '..');
-const mime = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.css': 'text/css' };
-const srv = http.createServer((req, res) => {
-  const p = path.join(REPO, decodeURIComponent(req.url.split('?')[0]).replace(/^\/$/, '/index.html'));
-  if (!p.startsWith(REPO) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
-  // GitHub Pages (where the app is served) gzips text responses; do the same here so the
-  // transfer size, and therefore the load metrics, match what a phone actually downloads.
-  const type = mime[path.extname(p)] || 'application/octet-stream';
-  const text = /^(text\/|application\/(javascript|json))/.test(type);
-  const gz = text && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
-  res.writeHead(200, { 'content-type': type, ...(gz ? { 'content-encoding': 'gzip', vary: 'accept-encoding' } : {}) });
-  if (gz) fs.createReadStream(p).pipe(require('zlib').createGzip({ level: 6 })).pipe(res); else fs.createReadStream(p).pipe(res);
-});
+const fs = require('fs');
+const { serveRepo } = require('../lib/testkit');
+let srv;
 (async () => {
   const lighthouse = (await import('lighthouse')).default;
   const chromeLauncher = await import('chrome-launcher');
-  await new Promise(r => srv.listen(0, r));
+  // GitHub Pages (where the app is served) gzips text responses; serveRepo does the same so the transfer size, and therefore the
+  // load metrics, match what a phone actually downloads.
+  srv = await serveRepo({ host: 'localhost', gzip: true });
   const url = 'http://localhost:' + srv.address().port + '/index.html';
   const chrome = await chromeLauncher.launch({ chromePath: process.env.PW_CHROMIUM, chromeFlags: ['--headless=new', '--no-sandbox'] });
   const r = await lighthouse(url, { port: chrome.port, output: 'json', logLevel: 'error', onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'], pauseAfterLoadMs: 6000, networkQuietThresholdMs: 3000 });

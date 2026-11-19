@@ -1,6 +1,7 @@
 // QA suite C: Today (events + GBL + Mega), Home/settings, Log, security, PWA/offline, accessibility, performance.
-const path = require('path'), http = require('http'), fs = require('fs');
+const path = require('path'), fs = require('fs');
 const { T, expect, skip, session, REPO } = require('./qa_lib');
+const { serveRepo } = require('../lib/testkit');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
 const SMOKE = path.join(REPO, 'scripts', 'fixtures', 'smoke.csv');
 
@@ -25,15 +26,7 @@ function feed(now = Date.now()) {
   };
 }
 
-function serve() {
-  const mime = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.css': 'text/css', '.csv': 'text/csv' };
-  const srv = http.createServer((req, res) => {
-    const p = path.join(REPO, decodeURIComponent(req.url.split('?')[0]).replace(/^\/$/, '/index.html'));
-    if (!p.startsWith(REPO) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
-    res.writeHead(200, { 'content-type': mime[path.extname(p)] || 'application/octet-stream' }); fs.createReadStream(p).pipe(res);
-  });
-  return new Promise(r => srv.listen(0, () => r(srv)));
-}
+const serve = () => serveRepo({ host: 'localhost' });
 
 module.exports = async function suiteC() {
   // ------------------------------------------------------------------ TODAY: feed, GBL, events

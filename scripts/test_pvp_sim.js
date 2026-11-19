@@ -10,11 +10,8 @@
  *
  *   node scripts/test_pvp_sim.js [--verbose]
  */
-const vm = require('vm'), fs = require('fs'), path = require('path');
-const code = fs.readFileSync(path.join(__dirname, '..', 'pokemon-mechanics.js'), 'utf8');
-const ctx = { window: { dispatchEvent: () => {} }, Event: function () {}, console };
-vm.createContext(ctx); vm.runInContext(code, ctx);
-const m = ctx.window.PokemonMechanics;
+const { loadMechanics } = require('./lib/testkit');
+const m = loadMechanics();
 const MIN_AGREE = Number(process.env.MIN_AGREE || 0.88);   // regression floor for the combined 1v1 figure; the figure at the time of writing is about 90%
 const verbose = process.argv.indexOf('--verbose') >= 0;
 
