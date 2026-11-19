@@ -239,6 +239,36 @@ module.exports = async function suiteD() {
     await k8.close();
   }, 'high');
 
+  // The device copy must never stop updating silently: a full or blocked store and an oversized blob both raise one notice, and a later good save clears it.
+  await T('LSAVE-01', 'Storage', 'A device save that throws (storage full or blocked) shows "Not saved on this device" with an export button, and a later good save clears it', async () => {
+    const c = await session({ feed: false }); await c.page.waitForTimeout(2500);
+    expect(!(await c.state()).localSaveFailed && !/Not saved on this device/.test(await c.text()), 'notice shown before any failure');
+    await c.page.evaluate(() => { const real = Storage.prototype.setItem; window.__realSetItem = real; Storage.prototype.setItem = function (k, v) { if (/^scout\.local\.v1/.test(k)) throw new DOMException('full', 'QuotaExceededError'); return real.call(this, k, v); }; });
+    await c.set({ cutTarget: 457 }); await c.page.waitForTimeout(2300);
+    expect((await c.state()).localSaveFailed === true, 'flag not set after a throwing setItem');
+    expect(/Not saved on this device/.test(await c.text()) && /Export a backup/.test(await c.text()), 'notice text is missing');
+    const dl = c.page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
+    await c.page.locator('[data-local-save-failed]').getByText('Export a backup').click();
+    const d = await dl; expect(!d || /professor-backup/.test(d.suggestedFilename()), 'the button did not start the backup export');
+    await c.page.evaluate(() => { Storage.prototype.setItem = window.__realSetItem; });
+    await c.set({ cutTarget: 458 }); await c.page.waitForTimeout(2300);
+    expect(!(await c.state()).localSaveFailed && !/Not saved on this device/.test(await c.text()), 'notice not cleared after a good save');
+    await c.close();
+  }, 'high');
+  await T('LSAVE-02', 'Storage', 'A blob of 4.2 MB or more is skipped, which raises the same notice; shrinking it clears it', async () => {
+    const c = await session({ feed: false }); await c.page.waitForTimeout(2500);
+    await c.set({ cutTarget: 457 }); await c.page.waitForTimeout(2300);
+    expect(!(await c.state()).localSaveFailed, 'flag set for a normal blob');
+    await c.page.evaluate(() => { let t = ''; const r = () => { let x = ''; for (let i = 0; i < 100000; i++) x += String.fromCharCode(33 + Math.floor(Math.random() * 90)); return x; }; for (let i = 0; i < 50; i++) t += r(); window.__big = t; });   // random text does not compress, so the saved blob really passes 4.2 MB
+    await c.set({ chatMessages: [{ role: 'user', text: await c.page.evaluate(() => window.__big) }] }); await c.page.waitForTimeout(2300);
+    expect(await c.page.evaluate(() => localStorage.getItem('scout.local.v1') === null || localStorage.getItem('scout.local.v1').length < 4200000), 'the oversized blob was written anyway');
+    expect((await c.call('buildCloudBlob')) && JSON.stringify(await c.call('buildCloudBlob')).length >= 4200000, 'setup: the blob is under 4.2 MB');
+    expect((await c.state()).localSaveFailed === true && /Not saved on this device/.test(await c.text()), 'no notice for an oversized blob');
+    await c.set({ chatMessages: [] }); await c.page.waitForTimeout(2300);
+    expect(!(await c.state()).localSaveFailed && !/Not saved on this device/.test(await c.text()), 'notice not cleared');
+    await c.close();
+  }, 'high');
+
   await T('SYNC-10', 'Quota', 'An account from before the snapshot index builds it once (one listing), then launches read no snapshots', async () => {
     const C = { store: {}, writes: [] };
     const s1 = await session({ feed: false, cloud: C }); await s1.page.waitForTimeout(1500);

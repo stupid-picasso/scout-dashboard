@@ -431,6 +431,13 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{ localSaveFailed }}" hint-placeholder-val="{{ false }}">
+    <div role="status" data-local-save-failed style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px">
+      <div style="font:12px/1.5 var(--font-body);color:var(--ink-700);text-wrap:pretty">{{ localSaveMsg }}</div>
+      <button type="button" onClick="{{ backupDevice }}" class="om-press" style="font:700 12px var(--font-display);color:var(--accent-text);padding:8px 0">Export a backup</button>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ hasVoiceExchange }}" hint-placeholder-val="{{ false }}">
   <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px 24px;margin-bottom:24px;animation:fadeSlideIn 0.36s ease">
     <div style="font:12px var(--font-display);color:var(--type-electric);margin-bottom:4px">YOU ASKED: {{ lastQuestion }}</div>
@@ -4455,7 +4462,7 @@ class Component extends DCLogic {
     authBusy: false, authEmailOpen: false, authNotice: '', authOfferBackup: false, carryPrompt: null,
     firstRunOpen: false, firstRunStep: 1, firstRunAge: false, firstRunNote: '',
     cloudUser: null,
-    syncStatus: '',
+    syncStatus: '', localSaveFailed: false,
     raidBossName: '',
     raidBossTypes: [],
     raidWeather: '',
@@ -4847,10 +4854,14 @@ class Component extends DCLogic {
         if (this._localSaveOff) { if (!n) return; this._localSaveOff = false; }
         ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
         const text = JSON.stringify(blob);
-        if (text.length < 4200000) localStorage.setItem(this.localCopyKey(cu && cu.uid), text);
-      } catch (e) { /* storage full or blocked: the app still works, it just will not remember */ }
+        if (text.length < 4200000) { localStorage.setItem(this.localCopyKey(cu && cu.uid), text); this.noteLocalSave(false); }
+        else this.noteLocalSave(true);
+      } catch (e) { this.noteLocalSave(true); /* storage full or blocked: the app still works, it just will not remember */ }
     }, 1500);
   }
+
+  // The notice "Not saved on this device" shows while the last attempt to keep the device copy was skipped or refused.
+  noteLocalSave(failed) { if (!!this.state.localSaveFailed !== failed) this.setState({ localSaveFailed: failed }); }
 
   restoreLocalSnapshot() {
     this._localRestoreDone = true;
@@ -21508,6 +21519,8 @@ class Component extends DCLogic {
       ptrVisible: (this.state.ptrPull || 0) > 4,
       ptrLabel: this.state.ptrRefreshing ? 'Reloading…' : (this.state.ptrArmed ? 'Release to reload' : 'Pull to reload'),
       ptrColor: this.state.ptrArmed ? 'var(--grass-700)' : 'var(--ink-400)',
+      localSaveFailed: !!this.state.localSaveFailed,
+      localSaveMsg: 'Not saved on this device.' + (this.state.cloudUser && /^(saved|loaded|syncing)/.test(this.state.syncStatus || '') ? ' The cloud copy is the one that counts.' : ''),
       syncAlert: /^(TOO BIG|error:)/.test(this.state.syncStatus || '') ? this.state.syncStatus : '',
       syncNow: () => this.syncNow(),
       signOutCloud: () => this.signOutCloud(),
