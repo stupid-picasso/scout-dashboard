@@ -7026,7 +7026,7 @@ class Component extends DCLogic {
       const cup = l.cup && (l.cup.types || l.cup.banTypes || l.cup.allow || l.cup.ban) ? l.cup : null;
       const tableKey = l.pvpoke && m.pvpTableFor && m.pvpTableFor('cup:' + l.pvpoke) ? 'cup:' + l.pvpoke : null;
       const top = this.leagueTopSpecies(l.cp, 15, cup, false, tableKey) || [];
-      top.filter(x => m.TIER_RANK[x.tier] <= m.KEEP_RULES.maxGoodTierRank && x.dex != null).forEach(x => {
+      top.filter(x => m.TIER_RANK[x.tier] <= this.keepRules().maxGoodTierRank && x.dex != null).forEach(x => {
         let best = null;
         c.roster.forEach(p => {
           if (this.needsAppraisal(p) || !this.leagueUsable(p, lk)) return;
@@ -7059,7 +7059,7 @@ class Component extends DCLogic {
     for (const lk of ['great', 'ultra', 'little']) {
       if (!this.leagueUsable(p, lk)) continue;
       for (const name of this.evoChainNames(p)) {
-        const up = m.tierTrendsFor(name, lk).filter(c => TR[c.t] != null && TR[c.t] <= m.KEEP_RULES.maxGoodTierRank && (c.f === '-' || TR[c.t] < TR[c.f]));
+        const up = m.tierTrendsFor(name, lk).filter(c => TR[c.t] != null && TR[c.t] <= this.keepRules().maxGoodTierRank && (c.f === '-' || TR[c.t] < TR[c.f]));
         if (!up.length) continue;
         const dex = name === p.name ? p.dex : (m.resolveDexByName ? m.resolveDexByName(name) : null);
         const base = dex == null ? null : ((p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex]);
@@ -7070,11 +7070,45 @@ class Component extends DCLogic {
     return null;
   }
 
+  // ---- The bars the keep, transfer and recommendation logic share --------------------------------------------------------------
+  // One copy of each bar. The code that applies it and the sentence that explains it to the trainer both read it from here, so the two
+  // cannot drift apart. Only bars that mean the same thing at every site that used to spell them are here; display colour cut-offs and
+  // score weights stay where they are.
+  keepRules() {
+    return this._keepRules || (this._keepRules = Object.freeze({
+      // Safe to transfer: a low IV average and no league value. Borderline is the next band up, shown as "close to the bar".
+      transfer: Object.freeze({ ivBelow: 51, rankBelow: 70 }),
+      borderline: Object.freeze({ ivBelow: 58, rankBelow: 78 }),
+      // The optimise plan's picks.
+      powerUpRank: 90, evolveIv: 60, luckyTradeIvBelow: 90, secondMoveRank: 80,
+      // "PvP ready": this IV rank or better on a species whose tier rank is at most maxGoodTierRank (S, A or B). Dust candidates use the same bar.
+      pvpReady: Object.freeze({ rank: 90 }),
+      maxGoodTierRank: 2,
+      // IV averages the keep check reasons on.
+      keepIv: 90, goodIv: 80, nearHundoIv: 93, hundoIv: 97,
+      // A copy this far under its league cap (as a share of it) is told to power up.
+      capSlack: 0.92,
+      // "Has a raid role": within this share of the best attacker you own, for at least one of its types.
+      raidRoleBand: 0.9,
+      // Keep grade: the league rank a league's best copy must reach ("top", "excellent", "good"); S-tier species are one notch more lenient.
+      grade: Object.freeze({
+        standard: Object.freeze({ top: 98, excellent: 95, good: 92 }),
+        sTier: Object.freeze({ top: 97, excellent: 93, good: 90 })
+      })
+    }));
+  }
+
+  // How much of the roster the Professor chat is sent: the best-ranked rows with full detail, the next group of low-value rows, the
+  // families a message can name, the rows per family, the candy entries and the copies per verdict. The prompt text quotes these numbers.
+  chatLimits() {
+    return { topRanked: 90, otherPool: 150, mentionedFamilies: 4, familyRows: 40, candyEntries: 260, verdictCopies: 4, unevolvedRankPenalty: 1 };
+  }
+
   // ---- Spread grades --------------------------------------------------------------------------------------------
   // A copy is graded on its league rank (stat product vs the best spread, the number Dittobase/PvPoke show). TOP / EXCELLENT / GOOD
-  // need the ranks in KEEP_RULES.grade (S-tier species get the one-notch-more-lenient row). The keep check keeps a league's best copy only
+  // need the ranks in keepRules().grade (S-tier species get the one-notch-more-lenient row). The keep check keeps a league's best copy only
   // when it reaches the grade the trainer picked (Home, Keep best). "(top X%)" on Best IV is the share of the 4096 spreads, for info.
-  gradeLimits(tier) { const g = this.mechanics.KEEP_RULES.grade; return tier === 'S' ? g.sTier : g.standard; }
+  gradeLimits(tier) { const g = this.keepRules().grade; return tier === 'S' ? g.sTier : g.standard; }
 
   gradeBaseFor(p, lk) {
     const m = this.mechanics;
@@ -7240,7 +7274,7 @@ class Component extends DCLogic {
     // `to` is the form the rank is for: a Poliwag that suits Politoed and one that suits Poliwrath do not compete.
     const toOf = lk => String((lk !== 'little' && p[lk] && p[lk].evolvesTo) || p.name || '').toLowerCase();
     // "Good" = reaches the grade the trainer picked (by spread percentile, see gradeLimits) in a league where the species is S/A/B.
-    ['great', 'ultra'].forEach(lk => { const a = this.pvpAssess(p, lk); if (a && a.tierRank <= this.mechanics.KEEP_RULES.maxGoodTierRank && this.gradeMeets(p, lk, a.tier, grade)) out.push({ lk, rank: a.rank, to: toOf(lk) }); });
+    ['great', 'ultra'].forEach(lk => { const a = this.pvpAssess(p, lk); if (a && a.tierRank <= this.keepRules().maxGoodTierRank && this.gradeMeets(p, lk, a.tier, grade)) out.push({ lk, rank: a.rank, to: toOf(lk) }); });
     const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
     if (Number.isFinite(lc) && this.gradeMeets(p, 'little', null, grade)) out.push({ lk: 'little', rank: lc, to: toOf('little') });
     return out;
@@ -7320,7 +7354,7 @@ class Component extends DCLogic {
       const { w, built } = hit;
       const mineIs = w && String(w.q.idx) === String(p.idx), builtIs = built && String(built.q.idx) === String(p.idx);
       if (!mineIs && !builtIs) return;
-      const up = Number.isFinite(p.cp) && p.cp < m.leagueOf(lk).cap * m.KEEP_RULES.capSlack ? ', power it up toward CP ' + m.leagueOf(lk).cap : '';
+      const up = Number.isFinite(p.cp) && p.cp < m.leagueOf(lk).cap * this.keepRules().capSlack ? ', power it up toward CP ' + m.leagueOf(lk).cap : '';
       const evo = mineIs && w.steps > 0 ? ', evolve it into ' + w.toName + ' first' : '';
       out.push('Best ' + m.leagueOf(lk).name + ' copy' + (builtIs && !mineIs ? ' you can use now' : '') + ' (rank ' + Math.round(rank) + '%' + evo + up + ')');
     });
@@ -7377,9 +7411,9 @@ class Component extends DCLogic {
       const dex = name === p.name ? p.dex : (m.resolveDexByName ? m.resolveDexByName(name) : null);
       const base = dex == null ? null : ((p.form && m.BASE_STATS_BY_FORM[dex + '_' + String(p.form).toLowerCase()]) || m.BASE_STATS[dex]);
       const t = base ? m.pvpTierFor(name, this.isShadow(p), 'master', p.form) : null;
-      if (!t || !(m.TIER_RANK[t.tier] <= m.KEEP_RULES.maxGoodTierRank)) return;
+      if (!t || !(m.TIER_RANK[t.tier] <= this.keepRules().maxGoodTierRank)) return;
       const r = m.rankPctForLeague(base, [p.atkIV, p.defIV, p.staIV], 'master', this.isShadow(p));
-      if (Number.isFinite(r) && r >= m.KEEP_RULES.pvpReady.rank && (!top || t.score > top.score)) top = { tier: t.tier, score: t.score, name };
+      if (Number.isFinite(r) && r >= this.keepRules().pvpReady.rank && (!top || t.score > top.score)) top = { tier: t.tier, score: t.score, name };
     });
     return top;
   }
@@ -7439,7 +7473,7 @@ class Component extends DCLogic {
           // The highest-IV copy stays when it is near-hundo (14/15/14 or better): it is the one for raids and Master League, where a low
           // Attack league spread is no substitute. Without that, the best IV copy stays only when nothing else does.
           { let top = null; part.forEach(q => { if (better(q, top, x => x.ivAvg * 1000 + (x.cp || 0) / 100)) top = q; });
-            if (top && (!kept.size || top.ivAvg >= this.mechanics.KEEP_RULES.nearHundoIv)) add(top, 'best IV copy'); }
+            if (top && (!kept.size || top.ivAvg >= this.keepRules().nearHundoIv)) add(top, 'best IV copy'); }
           const jobs = [...new Set(kept.values())];
           part.forEach(q => { if (!kept.has(q)) res.set(q.idx, { n: part.length, kept: kept.size, jobs }); });
         });
@@ -7450,7 +7484,7 @@ class Component extends DCLogic {
 
   keepFull(p, c) {
     const m = this.mechanics;
-    const R = m ? m.KEEP_RULES : null;
+    const R = this.keepRules();
     c.cacheFull = c.cacheFull || new Map();
     const cached = c.cacheFull.get(p);
     if (cached) return cached;
@@ -7545,7 +7579,7 @@ class Component extends DCLogic {
   // best copies. Each row carries a one-line reason so the list can be read, not just trusted.
   cutScoreRows(roster, ctxIn) {
     const m = this.mechanics;
-    const R = m ? m.KEEP_RULES : null;
+    const R = this.keepRules();
     const ctx = ctxIn || this.keepContext(roster);
     const groups = ctx.groups, typeBest = ctx.typeBest;
     const CLASS = { L: 'Legendary', M: 'Mythical', U: 'Ultra Beast' };
@@ -8120,12 +8154,12 @@ class Component extends DCLogic {
     return best;
   }
 
-  // "Has a raid role" = within KEEP_RULES.raidRoleBand of the best attacker you own for at least one
+  // "Has a raid role" = within keepRules().raidRoleBand of the best attacker you own for at least one
   // of its types, measured on move ratings when move data exists (so a species
   // with poor moves no longer counts just because it has good stats). Still
   // relative to your own box: it never uses an outside tier list.
   hasRaidRole(p, typeBest) {
-    const RAID_ROLE_BAND = this.mechanics.KEEP_RULES.raidRoleBand;
+    const RAID_ROLE_BAND = this.keepRules().raidRoleBand;
     const prof = this.raidProfile(p);
     if (prof && prof.ceil) {
       return this.typesOf(p).some(t => typeBest.r[t] != null && prof.ceil.rating >= typeBest.r[t] * RAID_ROLE_BAND);
@@ -8294,7 +8328,7 @@ class Component extends DCLogic {
   pvpTeamFor(leagueKey, eligible, tableKey) {
     const m = this.mechanics;
     if (!m || !m.pvpMatchupsFor || !m.leagueOf(leagueKey)) return null;
-    const R = m.KEEP_RULES;
+    const R = this.keepRules();
     const pool = [];
     this.effectiveRosterForMatch().forEach(p => {
       if (this.needsAppraisal(p)) return;
@@ -8350,8 +8384,8 @@ class Component extends DCLogic {
       const a = this.pvpAssess(p, leagueKey, tableKey);
       if (!a) return { n: 2, t: 'No league rank: it is over the CP cap or its stats are missing.' };
       if (!this.inBand(p, leagueKey)) return { n: 2.5, t: 'CP ' + p.cp + ' is under the ' + this.leagueBand(leagueKey).floor + ' CP floor for this league. Power it up (or evolve it) first.' };
-      if (a.tierRank > this.mechanics.KEEP_RULES.maxGoodTierRank) return { n: 3, t: 'Tier ' + (a.tier || '?') + ' here; the squad uses S, A or B.' };
-      if (a.rank < this.mechanics.KEEP_RULES.pvpReady.rank) return { n: 4, t: 'IV rank ' + a.rank.toFixed(1) + '%; the squad needs ' + this.mechanics.KEEP_RULES.pvpReady.rank + '% or better.' };
+      if (a.tierRank > this.keepRules().maxGoodTierRank) return { n: 3, t: 'Tier ' + (a.tier || '?') + ' here; the squad uses S, A or B.' };
+      if (a.rank < this.keepRules().pvpReady.rank) return { n: 4, t: 'IV rank ' + a.rank.toFixed(1) + '%; the squad needs ' + this.keepRules().pvpReady.rank + '% or better.' };
       const mu = m && m.pvpMatchupsFor ? m.pvpMatchupsFor(p.name, this.isShadow(p), tableKey || leagueKey, p.form) : null;
       if (!mu) return { n: 5, t: 'No matchup data for it yet.' };
       return { n: 9, p, a, mu };
@@ -8406,7 +8440,7 @@ class Component extends DCLogic {
     if (this.needsAppraisal(p)) return false;
     // Any league counts, not just the one pvpBest happens to prefer.
     const list = ['great', 'ultra'].map(k => this.pvpAssess(p, k)).filter(Boolean);
-    const R = this.mechanics.KEEP_RULES;
+    const R = this.keepRules();
     if (list.some(a => a.rank >= R.pvpReady.rank && a.tierRank <= R.maxGoodTierRank)) return true;
     const lc = this.leagueUsable(p, 'little') && p.little ? p.little.rankPct : null;
     return Number.isFinite(lc) && lc >= R.pvpReady.rank && this.gradeMeets(p, 'little', null, 'good');
@@ -8744,7 +8778,7 @@ class Component extends DCLogic {
 
   dataQualityIssues() {
     const roster = this.effectiveRosterForMatch();
-    const pvpRank = this.mechanics ? this.mechanics.KEEP_RULES.pvpReady.rank : '';
+    const pvpRank = this.keepRules().pvpReady.rank;
     const mk = (key, label, why, fix, test) => {
       const hits = roster.filter(test);
       return hits.length ? { key, label, why, fix, count: hits.length, names: hits.slice(0, 8).map(p => p.name || '?').join(', ') } : null;
@@ -8782,7 +8816,7 @@ class Component extends DCLogic {
         p => !this.evoRecordFor(p)),
       mk('pvpmoves', 'PvP-ready but missing recommended moves', 'These rank ' + pvpRank + '%+ for an S/A/B species, but do not know the moves its PvP rating assumes (the detail sheet marks the ones that need an Elite TM, which is a one-off cost worth weighing).',
         'Open it, check PvP moves, then use a TM (or an Elite TM where marked).',
-        p => !this.needsAppraisal(p) && ['great', 'ultra'].some(k => { const a = this.pvpAssess(p, k); return !!(a && a.rank >= this.mechanics.KEEP_RULES.pvpReady.rank && a.tierRank <= this.mechanics.KEEP_RULES.maxGoodTierRank && a.confirmed && a.movesOk === false); })),
+        p => !this.needsAppraisal(p) && ['great', 'ultra'].some(k => { const a = this.pvpAssess(p, k); return !!(a && a.rank >= this.keepRules().pvpReady.rank && a.tierRank <= this.keepRules().maxGoodTierRank && a.confirmed && a.movesOk === false); })),
       mk('cpfit', 'CP and IVs do not agree', 'The CP, HP and IVs on file cannot all be true at any level of this species, so one of them was misread. Ranks, power-up costs and keep/transfer advice rest on them.',
         'Open it and correct the CP, HP or IVs, or re-import the detail screen and the appraisal.',
         p => !!(p.ivMeasured && p.cp != null && this.importCheck(p).some(x => /do not fit any level|more than .* can have|IVs must be whole|outside what a Pokemon/.test(x)))),
@@ -13641,7 +13675,7 @@ class Component extends DCLogic {
           const r = m.rankPctForLeague(base, [p.atkIV, p.defIV, p.staIV], lg, shadow);
           if (!Number.isFinite(r)) return;
           const t = m.pvpTierFor ? m.pvpTierFor(name, shadow, lg, p.form) : null;
-          const ranked = !!(t && m.TIER_RANK[t.tier] <= m.KEEP_RULES.maxGoodTierRank);
+          const ranked = !!(t && m.TIER_RANK[t.tier] <= this.keepRules().maxGoodTierRank);
           if (!top || (ranked && !top.ranked) || (ranked === top.ranked && r > top.rankPct)) top = { rankPct: r, evolvesTo: name, ranked };
         });
         if (top) best[lg] = top;
@@ -14731,7 +14765,7 @@ class Component extends DCLogic {
     const iv = Number.isFinite(p.ivAvg) ? p.ivAvg.toFixed(0) + '%' : 'unknown';
     const rank = this.bestRank(p);
     const r = Number.isFinite(rank) ? rank.toFixed(0) + '%' : 'unranked';
-    const R = this.mechanics.KEEP_RULES;
+    const R = this.keepRules();
     if (kind === 'powerUp') return 'Best league rank ' + r + ' (rule: ' + R.powerUpRank + '% or higher, not a favourite).';
     if (kind === 'pvpPowerUp') return 'PvP-worthy IV spread, best rank ' + r + ' (rule: not a favourite).';
     if (kind === 'evolve') return 'IV ' + iv + ' (rule: ' + R.evolveIv + '% or higher) and it can evolve to ' + (this.evolvesToName(p) || '?') + '.';
@@ -15734,9 +15768,9 @@ class Component extends DCLogic {
           return;
         }
         const a = this.pvpAssess(p, d.lk, d.tableKey);
-        if (!a || a.rank < m.KEEP_RULES.pvpReady.rank) return;
+        if (!a || a.rank < this.keepRules().pvpReady.rank) return;
         const inBand = this.inBand(p, d.lk);
-        if (d.kind === 'build') { if (!inBand && a.tierRank <= m.KEEP_RULES.maxGoodTierRank) rows.push({ p, tr: a.tierRank, rank: a.rank, ok: a.movesOk === true }); return; }
+        if (d.kind === 'build') { if (!inBand && a.tierRank <= this.keepRules().maxGoodTierRank) rows.push({ p, tr: a.tierRank, rank: a.rank, ok: a.movesOk === true }); return; }
         if (!inBand) return;
         if (d.kind === 'season' ? a.tierRank <= 1 : a.tier === d.tier) rows.push({ p, tr: a.tierRank, rank: a.rank, ok: a.movesOk === true });
       });
@@ -16336,12 +16370,12 @@ class Component extends DCLogic {
     const notFullyEvolved = !!this.evolvesToName(p);
     const isShadow = p.shadowPurified === '1' || p.shadowPurified === 1;
     const pvp = this.pvpBest(p);
-    const tierOk = !!(pvp && pvp.tierRank <= this.mechanics.KEEP_RULES.maxGoodTierRank);
+    const tierOk = !!(pvp && pvp.tierRank <= this.keepRules().maxGoodTierRank);
     const needs = pvp && pvp.movesOk === false ? ' Needs ' + pvp.missing.map(n => n.replace(/\b\w/g, c => c.toUpperCase())).join(' + ') + ' for its best PvP set.' : '';
     if (p.lucky && tierOk && pvp.rank >= 90) return 'Lucky, elite IVs and a ' + pvp.tier + '-tier ' + this.mechanics.leagueOf(pvp.league).name + ' species \u2014 power up now, cheap dust cost.' + needs;
     if (tierOk && pvp.rank >= 95) return pvp.tier + '-tier ' + this.mechanics.leagueOf(pvp.league).name + ' species with near-perfect IVs. Power up.' + needs;
     if (tierOk && pvp.rank >= 85) return 'Strong ' + pvp.tier + '-tier league contender. Worth the investment.' + needs;
-    if (pvp && pvp.tierRank > this.mechanics.KEEP_RULES.maxGoodTierRank && pvp.rank >= 85) return 'Great IVs, but PvPoke rates this species ' + (pvp.tier ? pvp.tier + ' tier' : 'unranked') + ' in the leagues \u2014 not worth the dust for PvP.';
+    if (pvp && pvp.tierRank > this.keepRules().maxGoodTierRank && pvp.rank >= 85) return 'Great IVs, but PvPoke rates this species ' + (pvp.tier ? pvp.tier + ' tier' : 'unranked') + ' in the leagues \u2014 not worth the dust for PvP.';
     if (!pvp && bestRank >= 85) return 'Strong IVs for Little Cup. Worth keeping for that league only.';
     if (isShadow && bestRank >= 70) return 'Shadow attacker with real PvP value — consider purifying only if you need it for PvP; keep shadow for raids otherwise.';
     if (notFullyEvolved && (p.ivAvg || 0) >= 60) return 'Decent IV and not fully evolved yet — worth evolving to see final stats.';
@@ -17183,7 +17217,7 @@ class Component extends DCLogic {
       let best = null;
       ['great', 'ultra'].forEach(lk => {
         const a = this.pvpAssess(p, lk);
-        if (!a || !a.confirmed || a.rank < m.KEEP_RULES.pvpReady.rank || a.tierRank > m.KEEP_RULES.maxGoodTierRank) return;
+        if (!a || !a.confirmed || a.rank < this.keepRules().pvpReady.rank || a.tierRank > this.keepRules().maxGoodTierRank) return;
         const base = this.gradeBaseFor(p, lk);
         if (!base || !ivs) return;
         const target = m.maxLevelUnderCap(base, ivs, m.leagueOf(lk).cap);
@@ -18042,12 +18076,12 @@ class Component extends DCLogic {
       const cp = Number.isFinite(p.cp) ? p.cp : 0;
       const shadow = this.isShadow(p);
       const reasons = [];
-      if (tierRank <= m.KEEP_RULES.maxGoodTierRank) reasons.push(tier + '-tier ' + m.leagueOf(league).name + ' species');
+      if (tierRank <= this.keepRules().maxGoodTierRank) reasons.push(tier + '-tier ' + m.leagueOf(league).name + ' species');
       if (p.lucky) reasons.push('Lucky');
       if (shadow) reasons.push('Shadow');
       if (cp >= 1500) reasons.push(cp + ' CP');
       reasons.push(drift && !needs ? 'powered up since its scan' : (Number.isFinite(p.atkIV) ? 'IVs only estimated' : 'no IVs yet'));
-      const score = (tierRank <= m.KEEP_RULES.maxGoodTierRank ? (3 - tierRank) * 1000 : 0) + (p.lucky ? 300 : 0) + (shadow ? 200 : 0) + Math.min(cp, 4000) / 10 + (drift ? 150 : 0);
+      const score = (tierRank <= this.keepRules().maxGoodTierRank ? (3 - tierRank) * 1000 : 0) + (p.lucky ? 300 : 0) + (shadow ? 200 : 0) + Math.min(cp, 4000) / 10 + (drift ? 150 : 0);
       if (score < 150) return;
       rows.push({ p, reasons, score });
     });
@@ -18068,8 +18102,8 @@ class Component extends DCLogic {
     if (pvp) {
       out.push({ label: 'PVP SPECIES', text: (pvp.tier ? pvp.tier + ' tier' : 'not ranked by PvPoke') + ' in ' + pvp.league + ' league' + (pvp.tierScore != null ? ' (score ' + pvp.tierScore + ')' : '')
         + (pvp.movesOk === true ? ' \u00b7 has the recommended moves' : (pvp.movesOk === false ? ' \u00b7 missing ' + pvp.missing.map(tidy).join(', ') : '')) + '.' });
-      out.push({ label: 'PVP READY', text: this.isPvpWorthy(p) ? 'Yes \u2014 measured IVs and ' + this.mechanics.KEEP_RULES.pvpReady.rank + '%+ IV rank on an S/A/B species.'
-        : 'No \u2014 ' + (this.needsAppraisal(p) ? 'IVs are not measured yet.' : (pvp.tierRank > this.mechanics.KEEP_RULES.maxGoodTierRank ? 'the species is not S/A/B in the leagues.' : 'IV rank is under ' + this.mechanics.KEEP_RULES.pvpReady.rank + '%.')) });
+      out.push({ label: 'PVP READY', text: this.isPvpWorthy(p) ? 'Yes \u2014 measured IVs and ' + this.keepRules().pvpReady.rank + '%+ IV rank on an S/A/B species.'
+        : 'No \u2014 ' + (this.needsAppraisal(p) ? 'IVs are not measured yet.' : (pvp.tierRank > this.keepRules().maxGoodTierRank ? 'the species is not S/A/B in the leagues.' : 'IV rank is under ' + this.keepRules().pvpReady.rank + '%.')) });
     } else {
       out.push({ label: 'PVP SPECIES', text: 'No league data for this species.' });
     }
@@ -18079,7 +18113,7 @@ class Component extends DCLogic {
       const bits = [];
       if (prof.now) bits.push('now ' + prof.now.dps.toFixed(1) + ' DPS');
       if (prof.ceil) bits.push('best possible ' + prof.ceil.dps.toFixed(1) + ' DPS' + (prof.ceil.legacy ? ' (needs an Elite TM' + this.eventFreeNote(p) + ')' : ''));
-      out.push({ label: 'RAID', text: (role ? 'Has a raid role \u2014 within ' + Math.round(this.mechanics.KEEP_RULES.raidRoleBand * 100) + '% of your best attacker of its type' : 'No raid role \u2014 another of your attackers of its type rates clearly higher') + ' (' + bits.join(', ') + ').' });
+      out.push({ label: 'RAID', text: (role ? 'Has a raid role \u2014 within ' + Math.round(this.keepRules().raidRoleBand * 100) + '% of your best attacker of its type' : 'No raid role \u2014 another of your attackers of its type rates clearly higher') + ' (' + bits.join(', ') + ').' });
     } else {
       out.push({ label: 'RAID', text: 'No damage data for its moves, so no raid rating.' });
     }
@@ -18111,7 +18145,7 @@ class Component extends DCLogic {
       return { verdict: 'KEEP', reason: 'Strong Little Cup pick; do not evolve it', number: little.toFixed(1) + '% LC' };
     }
     const pvp = this.pvpBest(p);
-    const pvpTierOk = !!(pvp && pvp.tierRank <= this.mechanics.KEEP_RULES.maxGoodTierRank);
+    const pvpTierOk = !!(pvp && pvp.tierRank <= this.keepRules().maxGoodTierRank);
     const tierWord = pvp && pvp.tier ? pvp.tier + '-tier ' + this.mechanics.leagueOf(pvp.league).name + ' species' : 'league species';
     if (p.lucky && pvpTierOk && pvp.rank >= 85) {
       return { verdict: 'POWER UP', reason: 'Lucky (half the dust) and a ' + tierWord, number: pvp.rank.toFixed(0) + '% IV rank' };
@@ -18165,11 +18199,11 @@ class Component extends DCLogic {
   }
 
   // The one definition of "safe to transfer", shared by the optimise plan (chat and Today) and the Recs transfer list.
-  // Low value: IV and best league rank both under the KEEP_RULES.transfer bars. Then nothing may protect it: no raid role, no keep reason
+  // Low value: IV and best league rank both under the keepRules().transfer bars. Then nothing may protect it: no raid role, no keep reason
   // (keepReasons is the single gate), not marked done. The Recs list used to add the raid-role test on its own and the
   // plan did not, so the chat could name a raid attacker as a transfer that Recs held back; the stricter rule is the intended
   // one (PROJECT_HANDOFF: a raid role is a keep reason, and the keep check is the single gate for every transfer suggestion).
-  isLowValueMon(p) { const t = this.mechanics.KEEP_RULES.transfer; return Number.isFinite(p.ivAvg) && p.ivAvg < t.ivBelow && this.bestRank(p) < t.rankBelow; }
+  isLowValueMon(p) { const t = this.keepRules().transfer; return Number.isFinite(p.ivAvg) && p.ivAvg < t.ivBelow && this.bestRank(p) < t.rankBelow; }
   transferSafePool(roster, keepCtx, typeBest, notDone) {
     return roster.filter(p => this.isLowValueMon(p) && !this.hasRaidRole(p, typeBest) && notDone(p) && !this.keepReasons(p, keepCtx).length);
   }
@@ -18177,7 +18211,7 @@ class Component extends DCLogic {
   buildOptimizePlan(roster) {
     const completedSet = new Set(this.state.completedIds || []);
     const notDone = (p) => !completedSet.has(p.idx);
-    const R = this.mechanics ? this.mechanics.KEEP_RULES : null;
+    const R = this.keepRules();
     const withRank = roster.map(p => ({ p, rank: this.bestRank(p) }));
     const powerUp = withRank.filter(x => x.rank >= R.powerUpRank && !x.p.favorite && notDone(x.p)).sort((a, b) => b.rank - a.rank).slice(0, 5).map(x => x.p);
     const evolveSoon = roster.filter(p => this.evolvesToName(p) && (p.ivAvg || 0) >= R.evolveIv && notDone(p))
@@ -18212,7 +18246,7 @@ class Component extends DCLogic {
       parts.push(this.promptSafe(p.name, 24) + ' ' + (st.candy != null ? st.candy : '?') + (st.xlCandy != null ? ' +' + st.xlCandy + 'XL' : ''));
     });
     parts.sort();
-    return 'CANDY ON HAND per species (a family shares one pool, e.g. Axew, Fraxure and Haxorus spend Axew candy; "?" = no count scanned yet; XL = Candy XL): ' + parts.slice(0, this.mechanics.CHAT_LIMITS.candyEntries).join('; ') + '.';
+    return 'CANDY ON HAND per species (a family shares one pool, e.g. Axew, Fraxure and Haxorus spend Axew candy; "?" = no count scanned yet; XL = Candy XL): ' + parts.slice(0, this.chatLimits().candyEntries).join('; ') + '.';
   }
 
   chatMentionLines(text, roster) {
@@ -18226,8 +18260,8 @@ class Component extends DCLogic {
     const ctx = this.keepContext(roster);
     const idx = this.leagueIndexOf(ctx);
     const lines = [];
-    [...fams.keys()].slice(0, this.mechanics.CHAT_LIMITS.mentionedFamilies).forEach(key => {
-      const fam = roster.filter(p => this.candyKey(p.name) === key).sort((a, b) => (b.cp || 0) - (a.cp || 0)).slice(0, this.mechanics.CHAT_LIMITS.familyRows);
+    [...fams.keys()].slice(0, this.chatLimits().mentionedFamilies).forEach(key => {
+      const fam = roster.filter(p => this.candyKey(p.name) === key).sort((a, b) => (b.cp || 0) - (a.cp || 0)).slice(0, this.chatLimits().familyRows);
       if (!fam.length) return;
       const ids = new Set(fam.map(p => String(p.idx)));
       const st = this.candyStockFor(fam[0]) || {};
@@ -18245,11 +18279,11 @@ class Component extends DCLogic {
         const mine = list.filter(e => ids.has(String(e.q.idx)));
         if (!mine.length) return;
         const [lk, to, shadow] = k.split('|');
-        const CL = this.mechanics.CHAT_LIMITS;
+        const CL = this.chatLimits();
         const ranked = mine.slice().sort((a, b) => (b.rank - (b.steps > 0 ? CL.unevolvedRankPenalty : 0)) - (a.rank - (a.steps > 0 ? CL.unevolvedRankPenalty : 0))).slice(0, CL.verdictCopies);
         verdicts.push((this.mechanics.leagueOf(lk) || { name: lk }).name + ' as ' + (shadow === 'true' ? 'shadow ' : '') + (ranked[0].toName || to) + ': ' + ranked.map((e, i) => '#' + (i + 1) + ' ' + this.promptSafe(e.q.name) + ' ' + (e.q.cp != null ? e.q.cp + 'CP' : '') + ' rank ' + Math.round(e.rank * 10) / 10 + '%' + (e.steps > 0 ? ' (needs ' + e.steps + ' evolution' + (e.steps > 1 ? 's' : '') + (e.aff ? ', candy covers it' : ', candy not confirmed') + ')' : ' (already this form)')).join(', '));
       });
-      lines.push(verdicts.length ? 'APP VERDICT for that family (computed from the same cross-stage comparison the keep/transfer check uses; a copy that still has to evolve needs ' + this.mechanics.CHAT_LIMITS.unevolvedRankPenalty + ' more rank point to win; only leagues where a copy is good enough are listed): ' + verdicts.join(' || ')
+      lines.push(verdicts.length ? 'APP VERDICT for that family (computed from the same cross-stage comparison the keep/transfer check uses; a copy that still has to evolve needs ' + this.chatLimits().unevolvedRankPenalty + ' more rank point to win; only leagues where a copy is good enough are listed): ' + verdicts.join(' || ')
         : 'APP VERDICT for that family: none of these copies reaches a good rank (90%+ in a league where the evolved form is S/A/B tier), so the app does not recommend investing candy in any of them for PvP.');
     });
     return lines;
@@ -18334,7 +18368,7 @@ class Component extends DCLogic {
           return `${this.promptSafe(p.name)}${p.form ? '/' + this.promptSafe(p.form, 20) : ''}#${p.dex} cp${p.cp} hp${p.hp} iv${p.ivAvg ?? '?'} ${p.atkIV ?? '?'}/${p.defIV ?? '?'}/${p.staIV ?? '?'} ${p.lucky ? 'L' : ''}${this.isShadow(p) ? 'S' : ''}${p.favorite ? 'F' : ''}${p.shiny ? 'H' : ''} G${rkChat(p, 'great')} U${rkChat(p, 'ultra')} LC${rkChat(p, 'little')} | ${this.typeOf(p) || 'type unknown'} | moves: ${moves} | ${dpsText} | raidRole:${this.hasRaidRole(p, raidTypeBest) ? 'Y' : 'N'} | dominated:${dominated} | candy:${candy ?? '?'} | keep:${keepIdx[p.idx] && keepIdx[p.idx].length ? keepIdx[p.idx].join('+') : 'none'}`;
         };
         const byRank = [...roster].sort((a, b) => this.bestRank(b) - this.bestRank(a));
-        const CL = this.mechanics.CHAT_LIMITS;
+        const CL = this.chatLimits();
         const top = byRank.slice(0, CL.topRanked);
         const topIdx = new Set(top.map(p => p.idx));
         const cutCandidates = [...roster]
@@ -18344,7 +18378,7 @@ class Component extends DCLogic {
         const leaders = this.leagueLeaders(roster);
         return [
           leaders.length ? 'LEAGUE LEADERS per species (computed by the app from the same ranks as the PvP tab; the percentages are league rank, NOT IV%). For "which one should I evolve / power up / use for Great or Ultra League" answer from THESE lines and quote the CP and percentage exactly as written, never your own comparison: ' + leaders.join('; ') : '',
-          `BEST BY LEAGUE RANK — top ${CL.topRanked} of ${roster.length} owned (${roster.length} total — absence here does NOT mean not owned; consult the census above for counts). Flags: L=lucky S=shadow F=favorite. moves is quick/charge1/charge2, "not on file" = never read off a detail-screen scan. dps is real level-50 damage/sec (STAB + type included) when the move database covers it — "dps unknown" means don't claim a damage number for that Pokemon, only that it's unverified. raidRole:Y = clears ${Math.round(this.mechanics.KEEP_RULES.raidRoleBand * 100)}% of this roster's own best attacker ceiling for at least one of its types. dominated:X = another owned copy beats it on every single IV — a safe transfer; "no" only means not strictly outclassed, not that it's good.\n` +
+          `BEST BY LEAGUE RANK — top ${CL.topRanked} of ${roster.length} owned (${roster.length} total — absence here does NOT mean not owned; consult the census above for counts). Flags: L=lucky S=shadow F=favorite. moves is quick/charge1/charge2, "not on file" = never read off a detail-screen scan. dps is real level-50 damage/sec (STAB + type included) when the move database covers it — "dps unknown" means don't claim a damage number for that Pokemon, only that it's unverified. raidRole:Y = clears ${Math.round(this.keepRules().raidRoleBand * 100)}% of this roster's own best attacker ceiling for at least one of its types. dominated:X = another owned copy beats it on every single IV — a safe transfer; "no" only means not strictly outclassed, not that it's good.\n` +
             top.map(chatLine).join('; '),
           `EVERYTHING ELSE — up to ${CL.otherPool} more of ${roster.length} owned, not already listed above, sorted lowest IV then lowest rank first (still includes lucky/shadow/favorite \u2014 check the L/S/F flags on each row before ever suggesting a transfer). Check THIS pool before recommending any transfer, and check it for any named Pokemon not found in the list above. Same fields as above: ` +
             cutCandidates.map(chatLine).join('; ')
@@ -18355,7 +18389,7 @@ class Component extends DCLogic {
     this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
     try {
       const reply = await this.completeWithRetry({
-        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nCandy counts are NOT in the RESOURCES form: they come from scanning each Pokemon's detail screen and are in the CANDY ON HAND line below ("?" means that species has not been scanned yet: say to scan one of its Pokemon's detail screens, never to enter it in RESOURCES). A resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to ${this.mechanics.CHAT_LIMITS.topRanked}, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top ${this.mechanics.CHAT_LIMITS.topRanked} by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. A Pokemon that has no line of its own (it appears only in the census) cannot be verified: never recommend transferring it, say you cannot check it. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, best copy for a league, nondo, good-IV shadow, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
+        system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nCandy counts are NOT in the RESOURCES form: they come from scanning each Pokemon's detail screen and are in the CANDY ON HAND line below ("?" means that species has not been scanned yet: say to scan one of its Pokemon's detail screens, never to enter it in RESOURCES). A resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to ${this.chatLimits().topRanked}, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top ${this.chatLimits().topRanked} by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. A Pokemon that has no line of its own (it appears only in the census) cannot be verified: never recommend transferring it, say you cannot check it. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, best copy for a league, nondo, good-IV shadow, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
       });
       this.setState({ chatMessages: [...messages, { role: 'assistant', content: this.guardChatReply(reply) }], chatBusy: false }, () => this.queueCloudPush());
@@ -19292,7 +19326,7 @@ class Component extends DCLogic {
       const mm = this.mechanics;
       underPool.forEach(p => {
         const a = assessFor(p);
-        if (!a || a.tierRank > this.mechanics.KEEP_RULES.maxGoodTierRank || a.rank < this.mechanics.KEEP_RULES.pvpReady.rank || !mm || !mm.maxLevelUnderCap || !mm.cpFor) return;
+        if (!a || a.tierRank > this.keepRules().maxGoodTierRank || a.rank < this.keepRules().pvpReady.rank || !mm || !mm.maxLevelUnderCap || !mm.cpFor) return;
         const form = this.pvpFormName(p, leagueKey), sameForm = String(form).toLowerCase() === String(p.name).toLowerCase();
         const dex = sameForm ? p.dex : (mm.resolveDexByName ? mm.resolveDexByName(form) : null);
         const base = sameForm ? this.baseStatsOf(p) : (dex != null ? mm.BASE_STATS[dex] : null);
@@ -19401,7 +19435,7 @@ class Component extends DCLogic {
     // glance rather than an auto-flag, so this opens the detail sheet instead
     // of offering a one-tap remove.
     const transferIdxSet = new Set(transferPool.map(p => p.idx));
-    const keepRules = this.mechanics ? this.mechanics.KEEP_RULES : null;
+    const keepRules = this.keepRules();
     const borderlinePool = roster.filter(p => !transferIdxSet.has(p.idx) && Number.isFinite(p.ivAvg) && p.ivAvg < keepRules.borderline.ivBelow && this.bestRank(p) < keepRules.borderline.rankBelow && notDone(p) && !this.keepReasons(p, recKeepCtx).length);
     borderlinePool.sort((a, b) => (a.ivAvg || 0) - (b.ivAvg || 0));
     const borderlineList = borderlinePool.slice(0, 10).map(p => ({
@@ -20504,7 +20538,7 @@ class Component extends DCLogic {
       megaNone: megaMode && !megaPicks.length ? 'None of your Mega-capable Pokemon is ranked for this cup yet.' : '',
       pvpReadyTitle: band ? 'READY NOW \u00b7 ' + bandLine : 'RANKED',
       pvpUpTitle: band ? 'POWER UP OR EVOLVE \u00b7 gets you to ' + band.cap + ' CP' : '',
-      pvpUpNone: band && !pvpUp.length ? 'Nothing under ' + band.floor + ' CP is worth building here: no S, A or B tier copy with a ' + this.mechanics.KEEP_RULES.pvpReady.rank + '%+ IV rank.' : '',
+      pvpUpNone: band && !pvpUp.length ? 'Nothing under ' + band.floor + ' CP is worth building here: no S, A or B tier copy with a ' + this.keepRules().pvpReady.rank + '%+ IV rank.' : '',
       pvpReadyNone: !pvpList.length ? (underPool.length ? 'No copy is inside ' + bandLine + ' yet. See the power up list below.' : 'Nothing of yours is ranked for this league yet.') : '',
       pvpShowAllLabel: showAll ? 'Show top 20' : 'Show all ' + readyPool.length, hasShowAll: readyPool.length > 20, onShowAll: () => this.setState({ pvpShowAll: !showAll }),
       seasonLine, hasSeasonLine: !!seasonLine, seasonPills, hasSeasonPills: seasonPills.length > 0,
@@ -20605,8 +20639,7 @@ class Component extends DCLogic {
       gradeChips: [['good', 'GOOD'], ['excellent', 'EXCELLENT'], ['top', 'TOP']].map(([k, l]) => ({ label: l, pressed: String((this.state.keepGrade || 'excellent') === k), bg: (this.state.keepGrade || 'excellent') === k ? '#0060c8' : 'var(--surface-muted)', fg: (this.state.keepGrade || 'excellent') === k ? '#fff' : 'var(--ink-900)', onClick: () => this.setKeepGrade(k) })),
       gradeEffect: tab === 'home' ? (() => {
         const fx = this.gradeEffects(), cur = this.state.keepGrade || 'excellent';
-        if (!this.mechanics) return '';
-        const gl = this.mechanics.KEEP_RULES.grade, pctOf = g => 'TOP ' + g.top + '%, EXCELLENT ' + g.excellent + '%, GOOD ' + g.good + '%';
+        const gl = this.keepRules().grade, pctOf = g => 'TOP ' + g.top + '%, EXCELLENT ' + g.excellent + '%, GOOD ' + g.good + '%';
         return 'A league\u2019s best copy is kept only if its league rank reaches the grade: ' + pctOf(gl.standard) + ' (S-tier species: ' + gl.sTier.top + '%, ' + gl.sTier.excellent + '%, ' + gl.sTier.good + '%). Copies kept as a league\u2019s best: GOOD ' + fx.good + ', EXCELLENT ' + fx.excellent + ', TOP ' + fx.top + '. You are on ' + cur.toUpperCase() + '.';
       })() : '',
       cutTargetDraft: this.state.cutTargetDraft,

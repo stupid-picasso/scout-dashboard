@@ -5275,38 +5275,6 @@ function tierWeight(tierRank) {
   return 1 - 0.12 * Math.min(tierRank, UNRANKED_TIER_RANK);
 }
 
-// ---- Thresholds the keep, transfer and recommendation logic share --------------------------------------------------------------
-// One copy of each bar. The code that applies it and the sentence that explains it to the trainer both read it from here, so the
-// two cannot drift apart. Only bars that mean the same thing at every site that used to spell them are here; the display colour
-// cut-offs and score weights stay where they are.
-const KEEP_RULES = Object.freeze({
-  // Safe to transfer: a low IV average and no league value. Borderline is the next band up, shown as "close to the bar".
-  transfer: Object.freeze({ ivBelow: 51, rankBelow: 70 }),
-  borderline: Object.freeze({ ivBelow: 58, rankBelow: 78 }),
-  // The optimise plan's picks.
-  powerUpRank: 90,
-  evolveIv: 60,
-  luckyTradeIvBelow: 90,
-  secondMoveRank: 80,
-  // "PvP ready": this IV rank or better on a species whose tier rank is at most maxGoodTierRank (S, A or B). Dust candidates use the same bar.
-  pvpReady: Object.freeze({ rank: 90 }),
-  maxGoodTierRank: 2,
-  // IV averages the keep check reasons on.
-  keepIv: 90, goodIv: 80, nearHundoIv: 93, hundoIv: 97,
-  // A copy this far under its league cap (as a share of it) is told to power up.
-  capSlack: 0.92,
-  // "Has a raid role": within this share of the best attacker you own, for at least one of its types.
-  raidRoleBand: 0.9,
-  // Keep grade: the rank percentile a league's best copy must reach ("top", "excellent", "good"); S-tier species are one notch more lenient.
-  grade: Object.freeze({
-    standard: Object.freeze({ top: 98, excellent: 95, good: 92 }),
-    sTier: Object.freeze({ top: 97, excellent: 93, good: 90 })
-  })
-});
-// How much of the roster the Professor chat is sent: the best-ranked rows with full detail, the next group of low-value rows,
-// the families a message can name, the rows per family and the candy entries. The prompt text quotes these numbers from here.
-const CHAT_LIMITS = Object.freeze({ topRanked: 90, otherPool: 150, mentionedFamilies: 4, familyRows: 40, candyEntries: 260, verdictCopies: 4, unevolvedRankPenalty: 1 });
-
 // leagueKey -> imported PvPoke table, null for a key that names none. 'cup:<id>@<cp>' selects one of PVP_CUP_TABLES (a PvPoke cup or
 // Mega ranking); 'mega' is the Mega Master ranking, a table with no league (no cap, no IV rank) behind it.
 function pvpTableFor(leagueKey) {
@@ -6090,7 +6058,7 @@ function pvpMovesetFor(name, isShadow, leagueKey, form) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEVELS, LEAGUES, LEAGUE_CAPS, leagueOf, leagueKeyForCp, TIER_RANK, UNRANKED_TIER_RANK, tierWeight, KEEP_RULES, CHAT_LIMITS, MAX_LEVEL_SEARCH, cpAt, hpAt, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
+  window.PokemonMechanics = { CPM, LEVELS, LEAGUES, LEAGUE_CAPS, leagueOf, leagueKeyForCp, TIER_RANK, UNRANKED_TIER_RANK, tierWeight, MAX_LEVEL_SEARCH, cpAt, hpAt, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
     MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxEntryCost, maxDaysToEarn, maxRating,
