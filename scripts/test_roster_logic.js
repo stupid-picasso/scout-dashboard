@@ -912,7 +912,7 @@ function buildLists(roster, bestRank) {
       setState: function (u, cb) { Object.assign(this.state, typeof u === 'function' ? u(this.state) : u); if (cb) cb(); }, pushCloud: () => {}, recordDistinguisher: () => '' };
     ['appraisalHintFromItem(item)', 'baseStatCandidates(item)', 'spreadFitsStars(spread, stars)', 'appraisalIvUnsure(item)',
      'measuredSpreadOrder(item)', 'unsureSpreadChoices(rec, item)', 'applyMeasuredIv(rec, item, overrides)',
-     'mergeAppraisalImport(rawItems)', 'applyUnsurePick(rid, choiceIdx)', 'commitBaked(overrides, extra)', 'pushNow()', 'normalizeAppraisalItems(items)', 'needsAppraisal(p)'].forEach(sig => {
+     'mergeAppraisalImport(rawItems)', 'applyUnsurePick(rid, choiceIdx)', 'commitBaked(overrides, extra)', 'pushNow()', 'reviewRow(rec, item, iv, count)', 'normalizeAppraisalItems(items)', 'needsAppraisal(p)'].forEach(sig => {
       const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
       ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
     });
@@ -1145,6 +1145,26 @@ function buildLists(roster, bestRank) {
   bind(dpFlow, ['toggleFavoriteOf(p)']);
   dpFlow.toggleFavoriteOf(dpFlow.liveDetail());
   check('an edit made from the open sheet shows in the sheet at once', dpFlow.liveDetail().favorite, true);
+})();
+
+// spreadFields / rankFields / candidateRange: the one place that turns a known spread (or the spreads that still fit) into record
+// fields. The expectations are the formulas the eight copies used to spell out.
+(() => {
+  const base = m.BASE_STATS[227], ivs = [15, 14, 13];
+  const rank = (k, sh) => m.rankPctForLeague(base, ivs, k, sh);
+  const old = (name, sh, little, level) => ({
+    atkIV: 15, defIV: 14, staIV: 13, ivAvg: (15 + 14 + 13) / 45 * 100,
+    ...(level != null ? { lvlMin: level, lvlMax: level } : {}),
+    great: { rankPct: rank('great', sh), evolvesTo: name }, ultra: { rankPct: rank('ultra', sh), evolvesTo: name },
+    little: { rankPct: little ? rank('little', sh) : null, evolvesTo: name }
+  });
+  check('spreadFields equals the hand-written fields (no level, little eligible)', m.spreadFields({ name: 'Skarmory' }, base, ivs, { shadow: false, littleEligible: true }), old('Skarmory', false, true));
+  check('spreadFields with a level and a shadow, little not eligible', m.spreadFields({ name: 'Skarmory' }, base, ivs, { level: 31.5, shadow: true, littleEligible: false }), old('Skarmory', true, false, 31.5));
+  check('spreadFields tags the ranks with evolvesTo when given', m.spreadFields({ name: 'A' }, base, ivs, { evolvesTo: 'B', littleEligible: true }).great.evolvesTo, 'B');
+  check('rankFields is the rank part of spreadFields', m.rankFields(base, ivs, 'X', true, true), (({ great, ultra, little }) => ({ great, ultra, little }))(old('X', true, true)));
+  const cands = m.solveIVs(m.BASE_STATS[227], 1204, 106);
+  const rg = k => [Math.min(...cands.map(c => c[k])), Math.max(...cands.map(c => c[k]))];
+  check('candidateRange is the min and max of each IV over the candidates', [cands.length > 1, m.candidateRange(cands)], [true, { atk: rg('atkIV'), def: rg('defIV'), sta: rg('staIV') }]);
 })();
 
 // ---------------------------------------------------------------------------

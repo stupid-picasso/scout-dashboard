@@ -3313,7 +3313,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.359{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.360{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -7497,18 +7497,11 @@ class Component extends DCLogic {
           Object.assign(patch, { atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg: (ivs[0] + ivs[1] + ivs[2]) / 45 * 100, lvlMin: c.level, lvlMax: c.level, ivSolved: true, ivCandidates: 1, ivRange: null });
         } else if (cands.length > 1) {
           ivs = null;
-          const rng = k => { let lo = 15, hi = 0; cands.forEach(c => { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }); return [lo, hi]; };
           const lv = cands.map(c => c.level);
-          Object.assign(patch, { atkIV: null, defIV: null, staIV: null, ivAvg: null, ivRange: { atk: rng('atkIV'), def: rng('defIV'), sta: rng('staIV') }, ivCandidates: cands.length, ivSolved: false, lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv), great: null, ultra: null, little: null });
+          Object.assign(patch, { atkIV: null, defIV: null, staIV: null, ivAvg: null, ivRange: m.candidateRange(cands), ivCandidates: cands.length, ivSolved: false, lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv), great: null, ultra: null, little: null });
         }
       }
-      if (ivs) {
-        const shadow = this.isShadow(p);
-        const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
-        patch.great = { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name };
-        patch.ultra = { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name };
-        patch.little = { rankPct: littlePct, evolvesTo: p.name };
-      }
+      if (ivs) Object.assign(patch, m.rankFields(base, ivs, p.name, this.isShadow(p), this.littleCupEligible(p)));
     }
     this.patchMon(p.idx, patch, { push: 'soon' });
   }
@@ -10638,14 +10631,7 @@ class Component extends DCLogic {
         if (!base) base = m.BASE_STATS[p.dex];
         if (!base) { skipped++; return; }
         const ivs = [p.atkIV, p.defIV, p.staIV];
-        const shadow = this.isShadow(p);
-        const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
-        overrides[p.idx] = {
-          ...overrides[p.idx],
-          great: { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name },
-          ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name },
-          little: { rankPct: littlePct, evolvesTo: p.name }
-        };
+        overrides[p.idx] = { ...overrides[p.idx], ...m.rankFields(base, ivs, p.name, this.isShadow(p), this.littleCupEligible(p)) };
         updated++;
       });
       const summary = updated + ' recalculated' + (skipped ? ' \u00b7 ' + skipped + ' skipped (no IVs on file)' : '');
@@ -11710,15 +11696,10 @@ class Component extends DCLogic {
     // exactly one fits. Otherwise report the range and how many still fit, and
     // leave APPLY disabled — the appraisal is what narrows it.
     if (candidates.length > 1) {
-      const rangeOf = k => {
-        let lo = 15, hi = 0;
-        for (const cc of candidates) { if (cc[k] < lo) lo = cc[k]; if (cc[k] > hi) hi = cc[k]; }
-        return [lo, hi];
-      };
       const lv = candidates.map(cc => cc.level);
       this.setState({
         solvedIvResult: {
-          ambiguousRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+          ambiguousRange: this.mechanics.candidateRange(candidates),
           lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
           candidateCount: candidates.length, hintMismatch,
           dustUsed: !!levelFilter && !dustIgnored, dustIgnored,
@@ -11729,20 +11710,17 @@ class Component extends DCLogic {
     }
     const c = candidates[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
-    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
     // ocrParsed itself has no shadow field — if this screenshot was matched to
     // an existing roster entry, that entry is the only place shadow status
     // could come from; otherwise assume normal (a shadow OCR'd fresh has no
     // way to signal it here yet).
     const matchedForShadow = p.matchedIdx != null ? this.effectiveRosterForMatch().find(r => r.idx === p.matchedIdx) : null;
     const shadow = this.isShadow(matchedForShadow || p);
-    const great = this.mechanics.rankPctForLeague(base, ivs, 'great', shadow);
-    const ultra = this.mechanics.rankPctForLeague(base, ivs, 'ultra', shadow);
-    const little = this.littleCupEligible(p) ? this.mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
+    const sp = this.mechanics.spreadFields(p, base, ivs, { shadow, littleEligible: this.littleCupEligible(p) });
     this.setState({
       solvedIvResult: {
         level: c.level, atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV,
-        ivAvg, great, ultra, little, candidateCount: candidates.length, hintMismatch,
+        ivAvg: sp.ivAvg, great: sp.great.rankPct, ultra: sp.ultra.rankPct, little: sp.little.rankPct, candidateCount: candidates.length, hintMismatch,
         dustUsed: !!levelFilter && !dustIgnored, dustIgnored,
         // Named so a Galarian/Alolan/Hisuian solve is visibly attributed rather
         // than looking like an ordinary one.
@@ -14452,18 +14430,13 @@ class Component extends DCLogic {
               item._solvedCount = cands.length;
               // A CP/HP pair almost always fits many spreads: only a UNIQUE solve is pinned; anything else keeps the
               // candidate range and stays visibly unsolved until the appraisal collapses it in mergeAppraisalImport.
-              const rng = k => {
-                let lo = 15, hi = 0;
-                for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
-                return [lo, hi];
-              };
               if (cands.length === 1) {
                 const c = cands[0];
                 item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
                 item.level = c.level;
                 solvedFrom = 1;
               } else {
-                item._ivRange = { atk: rng('atkIV'), def: rng('defIV'), sta: rng('staIV') };
+                item._ivRange = mechanics.candidateRange(cands);
                 const lv = cands.map(c => c.level);
                 item._lvlRange = [Math.min.apply(null, lv), Math.max.apply(null, lv)];
               }
@@ -14479,19 +14452,13 @@ class Component extends DCLogic {
         const base = (bases[0] && bases[0].base) || mechanics.BASE_STATS[item.dex];
         if (base) {
           const ivs = [item.atkIV, item.defIV, item.staIV];
-          const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-          const shadow = this.isShadow(item);
-          const littlePct = this.littleCupEligible(item) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
           ivPatch = {
-            atkIV: item.atkIV, defIV: item.defIV, staIV: item.staIV, ivAvg,
+            ...mechanics.spreadFields(item, base, ivs, { level: item.level, shadow: this.isShadow(item), littleEligible: this.littleCupEligible(item) }),
             // A fresh solved level is real evidence from CP/HP — it supersedes
             // any POWER UP taps logged in-app since the last scan, so the
             // pending counter clears rather than compounding on top of it.
-            ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level, pendingPowerUps: 0, powerUpsSinceScan: 0 } : {}),
-            ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {}),
-            great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: item.name },
-            ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: item.name },
-            little: { rankPct: littlePct, evolvesTo: item.name }
+            ...(item.level != null ? { pendingPowerUps: 0, powerUpsSinceScan: 0 } : {}),
+            ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {})
           };
         }
       }
@@ -14855,26 +14822,17 @@ class Component extends DCLogic {
     }
     if (!usedBase) {
       const first = spreads[0] || [item.atkIV, item.defIV, item.staIV];
-      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-        iv: first.join('/') + ' \u2014 does not fit this CP/HP', ivCount: 0 } };
+      return { contradiction: true, review: this.reviewRow(rec, item, first.join('/') + ' \u2014 does not fit this CP/HP', 0) };
     }
     const base = usedBase.base;
-    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-    const shadow = this.isShadow(rec);
-    const littlePct = this.littleCupEligible(rec) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
-      atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
-      lvlMin: level, lvlMax: level,
+      ...mechanics.spreadFields(rec, base, ivs, { level, shadow: this.isShadow(rec), littleEligible: this.littleCupEligible(rec) }),
       ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
       ...(item.ivSource === 'owner-confirmed' || item.ownerPicked ? { ivManual: true } : {}),
-      ivArbitrated: arbitrated || undefined,
-      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: rec.name },
-      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: rec.name },
-      little: { rankPct: littlePct, evolvesTo: rec.name }
+      ivArbitrated: arbitrated || undefined
     };
-    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-      iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
+    return { review: this.reviewRow(rec, item, ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), 1) };
   }
 
   // Appraisal star badge -> allowed sum of the three IVs (spread% = sum / 45).
@@ -14937,6 +14895,9 @@ class Component extends DCLogic {
     return out;
   }
 
+  // One row of the appraisal review: the record, the reading it was matched to, and the spread (or why there is none).
+  reviewRow(rec, item, iv, count) { return { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv, ivCount: count }; }
+
   // Solve one appraisal item against a specific record and write the narrowed
   // spread + PvP ranks into overrides. Returns {review, contradiction}.
   solveAndApplyAppraisal(rec, item, hint, overrides) {
@@ -14955,18 +14916,14 @@ class Component extends DCLogic {
         const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
         if (hit && hit.length) { raw = hit; break; }
       }
-      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: null, ivCount: raw ? raw.length : 0 } };
+      return { contradiction: true, review: this.reviewRow(rec, item, null, raw ? raw.length : 0) };
     }
     const base = usedBase.base;
     // The appraisal narrows the candidates; it does not always collapse them to
     // one. Pinning a guess HERE is the worst version of the bug — this is the
     // code path whose whole job is to make the roster agree with the bars.
     if (cands.length > 1) {
-      const rangeOf = k => {
-        let lo = 15, hi = 0;
-        for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
-        return [lo, hi];
-      };
+      const range = mechanics.candidateRange(cands);
       const lv = cands.map(c => c.level);
       // A record can already carry a spread from a trusted earlier source (a
       // Poke Genie/CSV export, a previous exact solve). An ambiguous solve is
@@ -14977,47 +14934,37 @@ class Component extends DCLogic {
       if (known) {
         if (cands.some(c => c.atkIV === known[0] && c.defIV === known[1] && c.staIV === known[2])) {
           overrides[rec.idx] = { ...overrides[rec.idx], apprStars: hint.stars, apprMaxed: hint.maxed, ivConfirmed: true };
-          return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-            iv: known.join('/') + ' (kept \u00b7 consistent)', ivCount: cands.length } };
+          return { review: this.reviewRow(rec, item, known.join('/') + ' (kept \u00b7 consistent)', cands.length) };
         }
         // Genuinely contradicted: the stored spread is not among the spreads
         // that fit this CP/HP + appraisal. Report it, never silently replace.
-        return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-          iv: known.join('/') + ' \u2260 ' + this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+        return { contradiction: true, review: this.reviewRow(rec, item, known.join('/') + ' \u2260 ' + this.rangeText(range), cands.length) };
       }
       overrides[rec.idx] = {
         ...overrides[rec.idx],
         atkIV: null, defIV: null, staIV: null, ivAvg: null,
-        ivRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+        ivRange: range,
         ivCandidates: cands.length, ivSolved: false,
         lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
         apprStars: hint.stars, apprMaxed: hint.maxed,
         great: null, ultra: null, little: null
       };
-      return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-        iv: this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+      return { review: this.reviewRow(rec, item, this.rangeText(range), cands.length) };
     }
     const c = cands[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     // A spread already on file (a trusted export, a measurement) is never silently replaced by a single solve.
     const knownNow = this.knownSpread(rec, overrides);
     if (knownNow && (knownNow[0] !== ivs[0] || knownNow[1] !== ivs[1] || knownNow[2] !== ivs[2])) {
-      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: knownNow.join('/') + ' \u2260 ' + ivs.join('/'), ivCount: 1 } };
+      return { contradiction: true, review: this.reviewRow(rec, item, knownNow.join('/') + ' \u2260 ' + ivs.join('/'), 1) };
     }
-    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-    const shadow = this.isShadow(rec);
-    const littlePct = this.littleCupEligible(rec) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
-      atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV, ivAvg,
-      lvlMin: c.level, lvlMax: c.level,
+      ...mechanics.spreadFields(rec, base, ivs, { level: c.level, shadow: this.isShadow(rec), littleEligible: this.littleCupEligible(rec) }),
       ivRange: null, ivSolved: true, ivCandidates: 1,
-      apprStars: hint.stars, apprMaxed: hint.maxed,
-      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: rec.name },
-      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: rec.name },
-      little: { rankPct: littlePct, evolvesTo: rec.name }
+      apprStars: hint.stars, apprMaxed: hint.maxed
     };
-    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: 1 } };
+    return { review: this.reviewRow(rec, item, ivs.join('/'), 1) };
   }
 
   // Match each appraisal reading to an existing record by name(+dex) + exact
@@ -17335,18 +17282,11 @@ class Component extends DCLogic {
         return;
       }
     }
-    const ivAvg = (atk + def + sta) / 45 * 100;
     const overrides = { ...this.state.ivOverrides };
-    const shadow = this.isShadow(p);
-    const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[p.idx] = {
       ...overrides[p.idx],
-      atkIV: atk, defIV: def, staIV: sta, ivAvg,
-      lvlMin: level, lvlMax: level,
-      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true, ivManual: true,
-      great: { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name },
-      ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name },
-      little: { rankPct: littlePct, evolvesTo: p.name }
+      ...m.spreadFields(p, base, ivs, { level, shadow: this.isShadow(p), littleEligible: this.littleCupEligible(p) }),
+      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true, ivManual: true
     };
     const draftAll = { ...this.state.ivManualDraft };
     delete draftAll[p.idx];
@@ -18552,13 +18492,9 @@ class Component extends DCLogic {
     if (ivs && Number.isFinite(level)) {
       const cp = m.cpFor(newBase, ivs, level);
       const hp = m.hpFor(newBase, ivs[2], level);
-      const shadow = this.isShadow(p);
-      const littlePct = this.littleCupEligible({ name: toName }) ? m.rankPctForLeague(newBase, ivs, 'little', shadow) : null;
       if (cp != null) patch.cp = cp;
       if (hp != null) patch.hp = hp;
-      patch.great = { rankPct: m.rankPctForLeague(newBase, ivs, 'great', shadow), evolvesTo: toName };
-      patch.ultra = { rankPct: m.rankPctForLeague(newBase, ivs, 'ultra', shadow), evolvesTo: toName };
-      patch.little = { rankPct: littlePct, evolvesTo: toName };
+      Object.assign(patch, m.rankFields(newBase, ivs, toName, this.isShadow(p), this.littleCupEligible({ name: toName })));
     }
 
     // Spend the candy this evolution actually cost.
