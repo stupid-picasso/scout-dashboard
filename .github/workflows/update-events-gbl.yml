@@ -40,11 +40,6 @@ jobs:
         continue-on-error: true
         run: python scripts/verify_feed_official.py
       - name: Commit if changed
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/feed.json data/feed_check.json data/event_moves.json data/promo_codes.json
-          git diff --cached --quiet && { echo "feed unchanged"; exit 0; }
-          git commit -m "Refresh events and GBL feed ($(date -u +%Y-%m-%d))"
-          git pull --rebase origin main
-          git push origin HEAD:main
+        run: scripts/ci_push.sh "Refresh events and GBL feed ($(date -u +%Y-%m-%d))" data/feed.json data/feed_check.json data/event_moves.json data/promo_codes.json
+        env:
+          CI_PUSH_BRANCH: main

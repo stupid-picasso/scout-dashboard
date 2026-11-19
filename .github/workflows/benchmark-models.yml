@@ -71,13 +71,6 @@ jobs:
           GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
 
       - name: Commit results
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/benchmark_models.md data/benchmark_models.json
-          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
-          git commit -m "Model benchmark results [skip ci]"
-          for attempt in 1 2 3 4 5; do
-            git push && break
-            git pull --rebase origin main || true
-          done
+        run: scripts/ci_push.sh "Model benchmark results [skip ci]" data/benchmark_models.md data/benchmark_models.json
+        env:
+          CI_PUSH_BRANCH: ${{ github.ref_name }}

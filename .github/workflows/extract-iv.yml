@@ -38,153 +38,17 @@ permissions:
   contents: read   # default for every job; a job that commits overrides it below
 
 jobs:
-  extract-iv:
-    runs-on: ubuntu-latest
+  extract:
     permissions:
-      contents: write  # needed so the auto-commit step can push its own results
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-
-      - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Download appraisal video from Google Drive
-        if: github.event_name == 'workflow_dispatch' && inputs.drive_link != ''
-        run: |
-          mkdir -p /tmp/drive_video
-          gdown "$IN_DRIVE_LINK" -O /tmp/drive_video/appraisal.mp4
-          echo "DRIVE_VIDEO_PATH=/tmp/drive_video/appraisal.mp4" >> $GITHUB_ENV
-
-        env:
-          IN_DRIVE_LINK: ${{ inputs.drive_link }}
-      - name: Check for appraisal videos
-        id: check_videos
-        run: |
-          video_count=$(find appraisal_videos/ -type f \( -name '*.mp4' -o -name '*.mov' \) 2>/dev/null | wc -l)
-          echo "count=$video_count" >> $GITHUB_OUTPUT
-          echo "Found $video_count appraisal video(s) in appraisal_videos/"
-          if [ -n "$DRIVE_VIDEO_PATH" ]; then
-            echo "Plus one Drive-downloaded video: $DRIVE_VIDEO_PATH"
-          fi
-
-      # See extract.yml's matching step for the full rationale: wipe once,
-      # before any video in this session is processed, so old sessions never
-      # linger while videos within this one session still merge together.
-      - name: Reset import file for a clean session
-        if: github.event.inputs.fresh_import != 'false'
-        run: |
-          mkdir -p data
-          rm -f data/appraisal_import.json
-          echo "Cleared data/appraisal_import.json — this session starts clean."
-
-      - name: Extract IV ratings (repo appraisal_videos/*)
-        if: steps.check_videos.outputs.count > 0
-        run: |
-          FPS="$IN_FPS"
-          SCENE="$IN_SCENE_DETECT"
-          THRESH="$IN_SCENE_THRESHOLD"
-          mkdir -p data
-          for video in appraisal_videos/*.mp4 appraisal_videos/*.mov; do
-            [ -f "$video" ] || continue
-            echo "Processing: $video"
-            if [ "$SCENE" = "true" ]; then
-              python pogo_extract.py --appraisal "$video" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
-            else
-              python pogo_extract.py --appraisal "$video" --fps "$FPS"
-            fi
-          done
-        env:
-          IN_FPS: ${{ inputs.fps || '6' }}
-          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
-          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
-          PYTHONUNBUFFERED: "1"
-          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
-          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
-
-      - name: Extract IV ratings (Google Drive link)
-        if: env.DRIVE_VIDEO_PATH != ''
-        run: |
-          FPS="$IN_FPS"
-          SCENE="$IN_SCENE_DETECT"
-          THRESH="$IN_SCENE_THRESHOLD"
-          mkdir -p data
-          if [ "$SCENE" = "true" ]; then
-            python pogo_extract.py --appraisal "$DRIVE_VIDEO_PATH" --scene-detect --scene-threshold "$THRESH" --fps "$FPS"
-          else
-            python pogo_extract.py --appraisal "$DRIVE_VIDEO_PATH" --fps "$FPS"
-          fi
-        env:
-          IN_FPS: ${{ inputs.fps || '6' }}
-          IN_SCENE_DETECT: ${{ inputs.scene_detect || 'true' }}
-          IN_SCENE_THRESHOLD: ${{ inputs.scene_threshold || '0.3' }}
-          PYTHONUNBUFFERED: "1"
-          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_ONE }}
-          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_TWO }}
-
-      - name: Keep the bar diagnostics as a build artifact (not in git)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: iv-bar-diagnostics
-          path: data/debug_bars
-          retention-days: 14
-          if-no-files-found: ignore
-
-      - name: Commit extracted IV ratings
-        if: steps.check_videos.outputs.count > 0 || env.DRIVE_VIDEO_PATH != ''
-        run: |
-          if [ ! -f data/appraisal_import.json ]; then
-            echo "::error::data/appraisal_import.json was never written — the extraction step produced no output. Check the 'Extract IV ratings' step log above for the real error (no frames, Gemini quota, or no Pokemon read)."
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/appraisal_import.json
-          # The bar-measurement frames (data/debug_bars) are uploaded as a build artifact above, not committed:
-          # about 10 MB of PNGs in a public repo that grew on every run.
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Auto-extract IV ratings from appraisal video [skip ci]"
-            for attempt in 1 2 3 4 5; do
-              if git push; then
-                break
-              fi
-              if [ "$attempt" = "5" ]; then
-                echo "::error::Failed to push extracted IV ratings after $attempt attempts"
-                exit 1
-              fi
-              # These are generated artefacts, so a textual rebase of them can
-              # only conflict. Park this run's output, hard-reset onto the
-              # latest remote (keeping whatever else landed there), lay our
-              # files back down and recommit.
-              echo "Push rejected (attempt $attempt), re-applying output onto latest main..."
-              STAGE=$(mktemp -d)
-              mkdir -p "$STAGE/data"
-              cp data/appraisal_import.json "$STAGE/data/"
-              git fetch origin main
-              git reset --hard origin/main
-              cp -r "$STAGE/data/." data/
-              rm -rf "$STAGE"
-              git add -f data/appraisal_import.json
-              if git diff --cached --quiet; then
-                echo "Remote already has this output"
-                break
-              fi
-              git commit -m "Auto-extract IV ratings from appraisal video [skip ci]"
-            done
-          fi
+      contents: write  # the called workflow commits the results; it can only use what this job grants
+    uses: ./.github/workflows/extract-run.yml
+    with:
+      mode: appraisal
+      drive_link: ${{ inputs.drive_link }}
+      fresh_import: ${{ inputs.fresh_import || 'true' }}
+      fps: ${{ inputs.fps || '6' }}
+      scene_detect: ${{ inputs.scene_detect || 'true' }}
+      scene_threshold: ${{ inputs.scene_threshold || '0.3' }}
+    secrets:
+      GEMINI_API_KEY_ONE: ${{ secrets.GEMINI_API_KEY_ONE }}
+      GEMINI_API_KEY_TWO: ${{ secrets.GEMINI_API_KEY_TWO }}

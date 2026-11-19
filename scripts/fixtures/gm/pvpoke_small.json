@@ -1,0 +1,229 @@
+{
+ "rankings": [
+  {
+   "speciesId": "azumarill",
+   "score": 96.2,
+   "moveset": [
+    "BUBBLE",
+    "ICE_BEAM",
+    "PLAY_ROUGH"
+   ],
+   "counters": [
+    {
+     "opponent": "medicham",
+     "rating": 311
+    },
+    {
+     "opponent": "altaria",
+     "rating": 402
+    }
+   ],
+   "matchups": [
+    {
+     "opponent": "bulbasaur",
+     "rating": 700
+    },
+    {
+     "opponent": "charizard",
+     "rating": 640
+    }
+   ],
+   "stats": {
+    "atk": 112.345,
+    "def": 150.678,
+    "hp": 143.9
+   }
+  },
+  {
+   "speciesId": "azumarill_shadow",
+   "score": 70.04,
+   "moveset": [
+    "BUBBLE",
+    "ICE_BEAM"
+   ],
+   "counters": [
+    {
+     "opponent": "x",
+     "rating": 100
+    }
+   ],
+   "matchups": [
+    {
+     "opponent": "y",
+     "rating": 900
+    }
+   ],
+   "stats": {
+    "atk": 120.1,
+    "def": 140.2,
+    "hp": 130.4
+   }
+  },
+  {
+   "speciesId": "bulbasaur",
+   "score": 80.55,
+   "moveset": [
+    "VINE_WHIP",
+    "SLUDGE_BOMB",
+    "POWER_WHIP"
+   ],
+   "counters": [
+    {
+     "opponent": "a",
+     "rating": 450
+    }
+   ],
+   "matchups": [
+    {
+     "opponent": "b",
+     "rating": 550.7
+    }
+   ],
+   "stats": {
+    "atk": 90.12,
+    "def": 99.99,
+    "hp": 110.5
+   }
+  },
+  {
+   "speciesId": "pikachu",
+   "score": 56,
+   "moveset": [
+    "THUNDER_SHOCK",
+    "THUNDERBOLT"
+   ],
+   "counters": [],
+   "matchups": [],
+   "stats": {
+    "atk": 80.0,
+    "def": 70.0,
+    "hp": 90.0
+   }
+  },
+  {
+   "speciesId": "magikarp",
+   "score": 12.3,
+   "moveset": [],
+   "counters": [],
+   "matchups": [],
+   "stats": {
+    "atk": 20.0,
+    "def": 30.0,
+    "hp": 40.0
+   }
+  },
+  {
+   "speciesId": "noscore",
+   "score": null,
+   "moveset": [
+    "A",
+    "B"
+   ],
+   "counters": [],
+   "matchups": [],
+   "stats": {
+    "atk": 1.0,
+    "def": 1.0,
+    "hp": 1.0
+   }
+  }
+ ],
+ "moves": [
+  {
+   "moveId": "BUBBLE",
+   "type": "water",
+   "power": 8,
+   "energy": 0,
+   "energyGain": 11,
+   "cooldown": 1000,
+   "turns": 2
+  },
+  {
+   "moveId": "VINE_WHIP",
+   "type": "grass",
+   "power": 5,
+   "energy": 0,
+   "energyGain": 8,
+   "cooldown": 500
+  },
+  {
+   "moveId": "ICE_BEAM",
+   "type": "ice",
+   "power": 90,
+   "energy": 55,
+   "energyGain": 0,
+   "cooldown": 500,
+   "buffs": [
+    0,
+    0
+   ]
+  },
+  {
+   "moveId": "POWER_UP_PUNCH",
+   "type": "fighting",
+   "power": 40,
+   "energy": 35,
+   "energyGain": 0,
+   "buffs": [
+    1,
+    0
+   ],
+   "buffApplyChance": "0.2",
+   "buffTarget": "self"
+  },
+  {
+   "moveId": "ACID_SPRAY",
+   "type": "poison",
+   "power": 20,
+   "energy": 45,
+   "energyGain": 0,
+   "buffs": [
+    0,
+    -2
+   ],
+   "buffApplyChance": "1",
+   "buffTarget": "opponent"
+  }
+ ],
+ "pokemon": [
+  {
+   "speciesId": "bulbasaur",
+   "types": [
+    "grass",
+    "poison"
+   ],
+   "buddyDistance": 3,
+   "thirdMoveCost": 10000
+  },
+  {
+   "speciesId": "azumarill",
+   "types": [
+    "water",
+    "fairy"
+   ],
+   "buddyDistance": 3,
+   "thirdMoveCost": 50000
+  },
+  {
+   "speciesId": "mewtwo_shadow",
+   "types": [
+    "psychic",
+    "none"
+   ],
+   "released": true
+  },
+  {
+   "speciesId": "unreleased",
+   "types": [
+    "normal"
+   ],
+   "released": false
+  },
+  {
+   "speciesId": "notypes",
+   "types": [
+    "none"
+   ]
+  }
+ ]
+}

@@ -37,8 +37,8 @@ Rewrites the PVPOKE_GM GENERATED BLOCK in pokemon-mechanics.js (same convention
 as the other import_*.py scripts).
 """
 import json
-import re
-import urllib.request
+
+import gm_lib
 
 BASE = "https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/"
 MOVES_URL = BASE + "gamemaster/moves.json"
@@ -50,8 +50,7 @@ META_SIZE = 25
 
 
 def fetch(url):
-    with urllib.request.urlopen(url, timeout=60) as r:
-        return json.load(r)
+    return gm_lib.fetch_json(url, timeout=60)
 
 
 def fast_moves(moves):
@@ -139,15 +138,9 @@ def main():
     )
     with open(MECH_PATH, "r", encoding="utf-8") as f:
         src = f.read()
-    pattern = re.compile(r"// GENERATED BLOCK: PVPOKE_GM.*?// END GENERATED BLOCK: PVPOKE_GM", re.DOTALL)
-    if pattern.search(src):
-        src = pattern.sub(lambda _m: block, src)
-        print("Updated existing PVPOKE_GM block.")
-    else:
-        anchor = "function pvpTierFor(name, isShadow, leagueKey) {"
-        idx = src.index(anchor)
-        src = src[:idx] + block + "\n\n" + src[idx:]
-        print("Inserted new PVPOKE_GM block before pvpTierFor().")
+    existed = bool(gm_lib.block_pattern("PVPOKE_GM").search(src))
+    src = gm_lib.replace_block(src, "PVPOKE_GM", block, before="function pvpTierFor(name, isShadow, leagueKey) {")
+    print("Updated existing PVPOKE_GM block." if existed else "Inserted new PVPOKE_GM block before pvpTierFor().")
     with open(MECH_PATH, "w", encoding="utf-8") as f:
         f.write(src)
 

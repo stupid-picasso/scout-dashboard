@@ -21,6 +21,9 @@ BUNDLE_HTML = os.path.join(REPO, 'Scout Dashboard.html')
 MECHANICS_JS = os.path.join(REPO, 'pokemon-mechanics.js')
 SW_JS = os.path.join(REPO, 'sw.js')
 BUNDLE_FILES = [BUNDLE_HTML]
+INDEX_HTML = os.path.join(REPO, 'index.html')   # written by build_index.js
+# Every tracked file a --bump run can change (the data-refresh workflows commit exactly these; scripts/test_workflow_data.py checks them).
+BUMP_OUTPUTS = [DC_HTML, STANDALONE_HTML, BUNDLE_HTML, INDEX_HTML, SW_JS]
 
 MARK = 'iOS design layer'
 ENTITY = re.compile(r'&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);')

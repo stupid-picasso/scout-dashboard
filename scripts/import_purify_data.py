@@ -24,9 +24,9 @@ as import_evolution_data.py and import_movepool_data.py, since the app keys
 everything by lowercase OCR-derived display name.
 """
 import json
-import urllib.request
 
-SOURCE_URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
+import gm_lib
+
 
 NAME_OVERRIDES = {
     "MR_MIME": "Mr. Mime",
@@ -51,11 +51,7 @@ NAME_OVERRIDES = {
 
 
 def fetch_gamemaster(path=None):
-    if path:
-        with open(path) as f:
-            return json.load(f)
-    with urllib.request.urlopen(SOURCE_URL) as r:
-        return json.load(r)
+    return gm_lib.game_master(path)
 
 
 def pretty_name(pokemon_id):

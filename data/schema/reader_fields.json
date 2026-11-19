@@ -1,0 +1,597 @@
+{
+ "_comment": "Reader contract, first step. Lists what pogo_extract.py asks a recording reader for and what the app accepts. Nothing reads this file at run time: scripts/test_reader_contract.py keeps it equal to the two source files and RECORDS where they disagree. Regenerate with python3 scripts/test_reader_contract.py --write.",
+ "version": 1,
+ "output_files": {
+  "detail": "data/pokemon_import.json",
+  "appraisal": "data/appraisal_import.json"
+ },
+ "detail_fields": [
+  {
+   "name": "name",
+   "type": "string",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "gender",
+   "type": "\"M\"|\"F\"|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "cp",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "cpCovered",
+   "type": "true|false|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "cpVisible",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "hp",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "candy",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "xlCandy",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "xl_candy"
+   ]
+  },
+  {
+   "name": "stardust",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "current_stardust"
+   ]
+  },
+  {
+   "name": "powerUpDust",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "powerUpStardust"
+   ]
+  },
+  {
+   "name": "powerUpCandy",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "powerUpIsXl",
+   "type": "true|false|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "type",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "type1+type2",
+    "type_1+type_2"
+   ]
+  },
+  {
+   "name": "weight",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "height",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "fastMove",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "fast_move"
+   ]
+  },
+  {
+   "name": "chargeMove1",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "charged_move_1"
+   ]
+  },
+  {
+   "name": "chargeMove2",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "charged_move_2"
+   ]
+  },
+  {
+   "name": "evolveCandy",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "evolution_candy_cost"
+   ]
+  },
+  {
+   "name": "evolveButton",
+   "type": "true|false|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "evolve_button"
+   ]
+  },
+  {
+   "name": "atkIV",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "attack_iv"
+   ]
+  },
+  {
+   "name": "defIV",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "defense_iv"
+   ]
+  },
+  {
+   "name": "megaEnergy",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "megaEnergyX",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "megaEnergyY",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "megaForms",
+   "type": "[{\"form\":\"X\"|\"Y\"|null,\"cost\":number|null,\"dotsFilled\":number|null,\"dotsTotal\":number|null,\"rest\":string|null}]",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "staIV",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": [
+    "stamina_iv"
+   ]
+  },
+  {
+   "name": "lucky",
+   "type": "boolean",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "shadow",
+   "type": "boolean",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "dynamax",
+   "type": "true|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "gigantamax",
+   "type": "true|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "maxMoveName",
+   "type": "string|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "maxAttackLevel",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "maxGuardLevel",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "maxSpiritLevel",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "maxParticles",
+   "type": "number|null",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "favorite",
+   "type": "boolean",
+   "prompts": [
+    "detail",
+    "frame"
+   ],
+   "app_aliases": []
+  }
+ ],
+ "detail_nested": {
+  "megaForms": [
+   "form",
+   "cost",
+   "dotsFilled",
+   "dotsTotal",
+   "rest"
+  ]
+ },
+ "frame_extra_fields": [
+  "frame"
+ ],
+ "appraisal_fields": [
+  {
+   "name": "name",
+   "type": "string",
+   "prompts": [
+    "appraisal"
+   ],
+   "app_aliases": [
+    "pokemon_name"
+   ]
+  },
+  {
+   "name": "cp",
+   "type": "number|null",
+   "prompts": [
+    "appraisal"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "hp",
+   "type": "number|null",
+   "prompts": [
+    "appraisal"
+   ],
+   "app_aliases": []
+  },
+  {
+   "name": "stars",
+   "type": "0|1|2|3|null",
+   "prompts": [
+    "appraisal"
+   ],
+   "app_aliases": [
+    "appraisal_stars"
+   ]
+  },
+  {
+   "name": "perfect",
+   "type": "boolean",
+   "prompts": [
+    "appraisal"
+   ],
+   "app_aliases": [
+    "hundo",
+    "is_perfect"
+   ]
+  },
+  {
+   "name": "maxed",
+   "type": "string[]",
+   "prompts": [
+    "appraisal"
+   ],
+   "app_aliases": [
+    "atkFull",
+    "defFull",
+    "hpFull",
+    "staFull",
+    "attack_bar",
+    "defense_bar",
+    "hp_bar",
+    "appraisal_attack_bar",
+    "appraisal_defense_bar",
+    "appraisal_hp_bar"
+   ]
+  }
+ ],
+ "appraisal_pipeline_added_fields": {
+  "emitted": [
+   "atkIV",
+   "barConfidence",
+   "barDrift",
+   "barMethod",
+   "barRaw",
+   "barSegmentRaw",
+   "defIV",
+   "ivCandidateSets",
+   "ivConflict",
+   "ivSource",
+   "staIV"
+  ],
+  "note": "added by the bar measurement, not asked of the model; ivSource is \"bar-measure\" or \"model-guess\""
+ },
+ "known_divergences": {
+  "H1_detail_prompt_fields": {
+   "python VIDEO_IMPORT_PROMPT vs app runVideoPipeline": {
+    "python_only": [
+     "powerUpDust"
+    ],
+    "app_only": [
+     "powerUpStardust",
+     "shiny",
+     "shinyIcon"
+    ]
+   },
+   "python VIDEO_IMPORT_PROMPT vs app importPromptText": {
+    "python_only": [
+     "powerUpDust",
+     "type"
+    ],
+    "app_only": [
+     "powerUpStardust",
+     "shiny",
+     "shinyIcon",
+     "type1",
+     "type2"
+    ]
+   },
+   "python VIDEO_IMPORT_PROMPT vs app readScreenshotWithVision": {
+    "python_only": [
+     "powerUpDust",
+     "type"
+    ],
+    "app_only": [
+     "powerUpStardust",
+     "purified",
+     "shiny",
+     "shinyIcon",
+     "sizeClass",
+     "type1",
+     "type2"
+    ]
+   }
+  },
+  "H1_frame_prompt_vs_detail_prompt": {
+   "frame_only": [
+    "frame"
+   ],
+   "detail_only": []
+  },
+  "H1_appraisal_prompt": {
+   "same_fields": true,
+   "same_text_ignoring_punctuation": true
+  },
+  "H1_flag_keys_the_prompt_never_asks_for": [
+   "shiny"
+  ],
+  "H2_power_up_stardust_name": {
+   "python_prompt": [
+    "powerUpDust"
+   ],
+   "app_prompts": [
+    "powerUpStardust"
+   ],
+   "app_code_reads_both": true,
+   "tests_naming_powerUpDust": [
+    "scripts/test_postprocess.py"
+   ],
+   "tests_naming_powerUpStardust": [
+    "scripts/qa/qa_e2e_b.js"
+   ]
+  },
+  "H3_app_only_aliases": [
+   "appraisal_attack_bar",
+   "appraisal_defense_bar",
+   "appraisal_hp_bar",
+   "appraisal_stars",
+   "atkFull",
+   "attack_bar",
+   "attack_iv",
+   "charged_move_1",
+   "charged_move_2",
+   "current_stardust",
+   "defFull",
+   "defense_bar",
+   "defense_iv",
+   "evolution_candy_cost",
+   "evolve_button",
+   "fast_move",
+   "hpFull",
+   "hp_bar",
+   "hundo",
+   "is_perfect",
+   "pokemon_name",
+   "staFull",
+   "stamina_iv",
+   "type_1",
+   "type_2",
+   "xl_candy"
+  ],
+  "H7_appraisal_fields_emitted_with_app_references": {
+   "atkIV": 142,
+   "barConfidence": 4,
+   "barDrift": 3,
+   "barMethod": 0,
+   "barRaw": 0,
+   "barSegmentRaw": 0,
+   "defIV": 128,
+   "ivCandidateSets": 5,
+   "ivConflict": 4,
+   "ivSource": 11,
+   "staIV": 126
+  },
+  "H7_conflict_flag": {
+   "python_log_says_not_pinned": true,
+   "app_pins_every_bar_measure_item": true
+  },
+  "H8_scaffolding_field_i": {
+   "asked_for_in_APPRAISAL_ID_BATCH_PROMPT": true,
+   "removed_before_writing": false
+  },
+  "H10_output_files": {
+   "pokemon_import.json": [
+    ".github/workflows/extract-run.yml",
+    ".gitignore",
+    "Scout Dashboard.dc.html",
+    "pogo_extract.py"
+   ],
+   "appraisal_import.json": [
+    ".github/workflows/extract-run.yml",
+    ".gitignore",
+    "Scout Dashboard.dc.html",
+    "pogo_extract.py"
+   ]
+  }
+ }
+}

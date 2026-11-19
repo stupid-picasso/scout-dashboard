@@ -76,20 +76,16 @@ USAGE
 import sys
 import os
 import json
-import urllib.request
 
-GAMEMASTER_URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
+import gm_lib
+
 OUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_authoritative_moves.js.snippet")
 
 TYPE_PREFIX = "POKEMON_TYPE_"
 
 
 def load_gamemaster(path_arg):
-    if path_arg:
-        with open(path_arg) as f:
-            return json.load(f)
-    with urllib.request.urlopen(GAMEMASTER_URL, timeout=60) as resp:
-        return json.loads(resp.read())
+    return gm_lib.game_master(path_arg)
 
 
 def title_case_type(raw_type):

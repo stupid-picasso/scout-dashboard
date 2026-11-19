@@ -18,6 +18,11 @@ data/*.json
 # Event-day moves (evolve during an event), written by the Update Events & GBL workflow and fetched by the app.
 !data/event_moves.json
 !data/promo_codes.json
+# Committed on purpose by workflows: the model benchmark's raw results (benchmark-models.yml) and the new-Pokemon list
+# the weekly refresh puts in its review PR (update-pokemon-data.yml). Allow-listed like the files above so a plain
+# `git add` of them works; with data/*.json ignored, that add fails.
+!data/benchmark_models.json
+!data/new_pokemon.json
 # Debug dumps from the extractor are build artifacts, not source
 data/debug/
 
