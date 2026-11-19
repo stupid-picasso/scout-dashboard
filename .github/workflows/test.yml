@@ -33,6 +33,8 @@ jobs:
           node scripts/test_rank_reference.js
           node scripts/test_pvp_sim.js
           node scripts/test_max.js
+          node scripts/test_leagues.js
+          node scripts/test_powerup_table.js
           node scripts/test_cp_recovery.js
           node scripts/test_firestore_rules.js
           node scripts/test_no_dangerous_sinks.js
@@ -51,6 +53,7 @@ jobs:
           python3 scripts/test_extract_pipeline.py
           python3 scripts/test_postprocess.py
           python3 scripts/test_evolution_branches.py
+          python3 scripts/test_powerup_runs.py
           python3 scripts/test_tier_trends.py
           python3 scripts/test_event_moves.py
           python3 scripts/test_promo_codes.py

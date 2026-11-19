@@ -122,9 +122,10 @@ ctx.isRemoved = new Function('p', 'removedSet', isRemovedBody).bind(ctx);
 // ---------------------------------------------------------------------------
 const listSplitSrc = (() => {
   const i = SRC.indexOf('const byRank = [...roster]');
-  const j = SRC.indexOf('.slice(0, 150);', i);
+  const end = '.slice(0, CL.otherPool);';
+  const j = SRC.indexOf(end, i);
   if (i < 0 || j < 0) throw new Error('Could not find the BEST/EVERYTHING ELSE list-building block — has it moved?');
-  return SRC.slice(i, j + '.slice(0, 150);'.length);
+  return SRC.slice(i, j + end.length);
 })();
 
 // bestRank is normally IV/level dependent PvP math (pokemon-mechanics.js) —
@@ -136,7 +137,7 @@ const buildListsFn = new Function('roster', `
 `);
 function buildLists(roster, bestRank) {
   const isShadow = p => p.shadowPurified === '1' || p.shadowPurified === 1;
-  return buildListsFn.call({ bestRank, isShadow }, roster);
+  return buildListsFn.call({ bestRank, isShadow, mechanics: m }, roster);
 }
 
 (function testFlaggedLowRankPokemonIsNotInvisible() {
@@ -156,7 +157,7 @@ function buildLists(roster, bestRank) {
   // covered by neither list (within the 90 + 150 = 240 combined cap).
   const uncovered = roster.filter(p => !allCovered.has(p.idx));
   check('no roster member (within combined cap) is covered by neither list',
-    uncovered.length, Math.max(0, roster.length - 240));
+    uncovered.length, Math.max(0, roster.length - (m.CHAT_LIMITS.topRanked + m.CHAT_LIMITS.otherPool)));
 })();
 
 (function testShadowAndFavoriteAlsoNotExcluded() {
@@ -1006,7 +1007,7 @@ function buildLists(roster, bestRank) {
 (() => {
   const roster = [{ idx: 1, name: 'A', dex: 1, ivAvg: 40 }, { idx: 2, name: 'B', dex: 2, ivAvg: 40 }, { idx: 3, name: 'C', dex: 3, ivAvg: 80 }];
   const ctx = {
-    state: { completedIds: [] },
+    mechanics: m, state: { completedIds: [] },
     bestRank: p => (p.idx === 3 ? 90 : 50), evolvesToName: () => null,
     keepContext: () => ({ typeBest: {} }), keepReasons: () => [],
     hasRaidRole: p => p.idx === 1,
@@ -1017,7 +1018,8 @@ function buildLists(roster, bestRank) {
   });
   const plan = new Function('roster', extractMethodBody(SRC, 'buildOptimizePlan(roster) {')).call(ctx, roster);
   check('the optimise plan leaves out a Pokemon with a raid role, like the Recs list', plan.transferSafe.map(p => p.idx), [2]);
-  check('the IV 51 and rank 70 bar is written once', (SRC.match(/ivAvg < 51/g) || []).length, 1);
+  // The bar lives in KEEP_RULES.transfer (mechanics); the component reads it and its sentences quote it, so no literal copy is left.
+  check('the transfer bar is KEEP_RULES.transfer and the component holds no literal copy of it', [m.KEEP_RULES.transfer, (SRC.match(/ivAvg < 51|ivBelow: 51|rank < 70\b/g) || []).length], [{ ivBelow: 51, rankBelow: 70 }, 0]);
 })();
 
 // Bug 4: installDerivedCache keyed array arguments by length, so two bosses with the same number of types shared one result.

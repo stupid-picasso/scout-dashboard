@@ -26,7 +26,10 @@ const CPM = {
   49: 0.83529999, 49.5: 0.83779999, 50: 0.84029999, 50.5: 0.84279999, 51: 0.84529999
 };
 
-const LEAGUE_CAPS = { great: 1500, ultra: 2500, little: 500, master: Infinity };
+// Every CPM level, ascending: the one list the level searches walk (solveIVs, the PvP levels, the cap search, cpCandidatesFor).
+const LEVELS = Object.freeze(Object.keys(CPM).map(Number).sort((a, b) => a - b));
+// The highest level the CPM table is generated to. scripts/update_pokemon_data.py reads this literal to extend the table, so it stays a plain number;
+// the last entry of LEVELS must equal it (test_leagues.js checks).
 const MAX_LEVEL_SEARCH = 51;
 
 // Shadow Pokemon get a flat Attack/Defense adjustment applied at battle-damage
@@ -1021,49 +1024,63 @@ function _resolveDexByNameRaw(name) {
 }
 
 
+// The CP and HP formulas, from stat totals (base + IV, shadow-adjusted when it applies) and a CP multiplier. Every caller that is not a
+// 4096-spread hot loop goes through these two. The hot loops (_spreadProducts, dittoRanking) keep the same arithmetic inlined, because they
+// run it for every spread of every species and league; test_rank_reference.js checks them against a brute force built on cpFor.
+function cpAt(atk, def, sta, cpm) {
+  return Math.max(10, Math.floor((atk * Math.sqrt(def) * Math.sqrt(sta) * cpm * cpm) / 10));
+}
+function hpAt(sta, cpm) {
+  return Math.max(10, Math.floor(sta * cpm));
+}
+
 function cpFor(base, ivs, level) {
   const cpm = CPM[level];
   if (!cpm) return null;
-  const atk = base[0] + ivs[0], def = base[1] + ivs[1], sta = base[2] + ivs[2];
-  return Math.max(10, Math.floor((atk * Math.sqrt(def) * Math.sqrt(sta) * cpm * cpm) / 10));
+  return cpAt(base[0] + ivs[0], base[1] + ivs[1], base[2] + ivs[2], cpm);
 }
 
 function hpFor(base, staIV, level) {
   const cpm = CPM[level];
   if (!cpm) return null;
-  return Math.max(10, Math.floor((base[2] + staIV) * cpm));
+  return hpAt(base[2] + staIV, cpm);
 }
 
 function statProductFor(base, ivs, level) {
   const cpm = CPM[level];
   const atk = (base[0] + ivs[0]) * cpm;
   const def = (base[1] + ivs[1]) * cpm;
-  const hp = Math.max(10, Math.floor((base[2] + ivs[2]) * cpm));
+  const hp = hpAt(base[2] + ivs[2], cpm);
   return atk * def * hp;
 }
 
-// GENERATED BLOCK — do not hand-edit. `scripts/update_pokemon_data.py` rewrites
-// this list every week from pogoapi.net's powerup-requirements table, which is
-// republished from Niantic's GAME_MASTER (the same source PokeGenie and CalcyIV
-// read). It lists the first level of each Stardust tier; the tiers are derived
-// from the per-half-level costs rather than assumed to span four half-levels
-// each, so a cost-curve change is picked up automatically.
-// A cost outside the listed tiers fails the 5% tolerance below, returns [], and the caller solves unrestricted.
-const _DUST_TIER_START_LEVEL = [
-  [1.0, 200], [3.0, 400], [5.0, 600], [7.0, 800], [9.0, 1000],
-  [11.0, 1300], [13.0, 1600], [15.0, 1900], [17.0, 2200], [19.0, 2500],
-  [21.0, 3000], [23.0, 3500], [25.0, 4000], [27.0, 4500], [29.0, 5000],
-  [31.0, 6000], [33.0, 7000], [35.0, 8000], [37.0, 9000], [39.0, 10000],
-  [41.0, 11000], [43.0, 12000], [45.0, 13000], [47.0, 14000], [49.0, 15000],
+// GENERATED BLOCK: POWERUP_RUNS (update_pokemon_data.py) — do not hand-edit
+// The one Power-Up cost table: the Power Up cost curve run-length encoded as [firstLevelOfRun, stardust, candy, xlCandy], each run covering
+// consecutive half-levels until the next run starts. The cost listed at level L is the cost to go from L to L+0.5. Pulled from pogoapi.net's
+// pokemon_powerup_requirements endpoint (republished from Niantic's GAME_MASTER) by scripts/update_pokemon_data.py, which rewrites this block.
+// Level 40+ costs XL Candy instead of regular Candy, which is why xlCandy is a separate column rather than a conversion.
+// MAX_POKEMON_LEVEL is the level the last run ends at (the highest level reachable by Power Up); there is no run starting there.
+const _POWERUP_RUNS = [
+  [1, 200, 1, 0], [3, 400, 1, 0], [5, 600, 1, 0], [7, 800, 1, 0], [9, 1000, 1, 0],
+  [11, 1300, 2, 0], [13, 1600, 2, 0], [15, 1900, 2, 0], [17, 2200, 2, 0], [19, 2500, 2, 0],
+  [21, 3000, 3, 0], [23, 3500, 3, 0], [25, 4000, 3, 0], [26, 4000, 4, 0], [27, 4500, 4, 0],
+  [29, 5000, 4, 0], [31, 6000, 6, 0], [33, 7000, 8, 0], [35, 8000, 10, 0], [37, 9000, 12, 0],
+  [39, 10000, 15, 0], [40, 10000, 0, 10], [41, 11000, 0, 10], [42, 11000, 0, 12], [43, 12000, 0, 12],
+  [44, 12000, 0, 15], [45, 13000, 0, 15], [46, 13000, 0, 17], [47, 14000, 0, 17], [48, 14000, 0, 20],
+  [49, 15000, 0, 20]
 ];
+const MAX_POKEMON_LEVEL = 50;
+// END GENERATED BLOCK: POWERUP_RUNS
 
-// dust value -> [levels...] that cost exactly that much to power up from.
-// Each tier spans 4 consecutive half-levels starting at its listed level.
+// dust value -> [levels...] that cost exactly that much to power up from, read off _POWERUP_RUNS (adjacent runs with one cost are one tier:
+// the candy column changes inside a tier at 26 and 40). A tier is a Stardust price an OCR'd cost can be matched to, so a cost-curve change
+// is picked up automatically. The last run reaches up to the highest CPM level rather than MAX_POKEMON_LEVEL: the 15000 tier keeps the two
+// levels above 50 (50 and 50.5), which a Power Up screen can never show but a Pokemon can have.
 const _STARDUST_TO_LEVELS = (() => {
   const map = {};
-  _DUST_TIER_START_LEVEL.forEach(([start, dust]) => {
-    const levels = [0, 1, 2, 3].map(k => start + 0.5 * k);
-    (map[dust] = map[dust] || []).push(...levels);
+  _POWERUP_RUNS.forEach((run, i) => {
+    const end = i + 1 < _POWERUP_RUNS.length ? _POWERUP_RUNS[i + 1][0] : MAX_LEVEL_SEARCH;
+    for (let lv = run[0]; lv < end; lv += 0.5) (map[run[1]] = map[run[1]] || []).push(lv);
   });
   return map;
 })();
@@ -1107,7 +1124,7 @@ function levelsForPowerUpDust(observedDust, opts) {
 // detail screen instead of a separate appraisal screen.
 function solveIVs(base, cp, hp, hint, levelFilter) {
   const candidates = [];
-  let levels = Object.keys(CPM).map(Number).sort((a, b) => a - b);
+  let levels = LEVELS;
   if (Array.isArray(levelFilter) && levelFilter.length) {
     const allowed = new Set(levelFilter);
     levels = levels.filter(l => allowed.has(l));
@@ -1139,7 +1156,7 @@ function cpCandidatesFor(bases, obs) {
   const out = { cps: [], levels: [], dustMatched: null, combos: 0, fits: null };
   const list = (bases || []).filter(b => Array.isArray(b) && b.length === 3);
   if (!list.length) return out;
-  let levels = Object.keys(CPM).map(Number).filter(l => l <= MAX_POKEMON_LEVEL).sort((a, b) => a - b);
+  let levels = LEVELS.filter(l => l <= MAX_POKEMON_LEVEL);
   if (Number.isFinite(obs.dust)) {
     const byDust = levelsForPowerUpDust(obs.dust, { lucky: !!obs.lucky, shadow: !!obs.shadow, purified: !!obs.purified });
     out.dustMatched = byDust.length > 0;
@@ -1247,7 +1264,7 @@ let _pvpLevelsCache = null, _pvpLevelsFor = null;
 function _pvpLevels() {
   if (_pvpLevelsCache && _pvpLevelsFor === _pvpMaxLevel) return _pvpLevelsCache;
   _pvpLevelsFor = _pvpMaxLevel;
-  return (_pvpLevelsCache = Object.keys(CPM).map(Number).filter(l => l <= _pvpMaxLevel).sort((a, b) => a - b));
+  return (_pvpLevelsCache = LEVELS.filter(l => l <= _pvpMaxLevel));
 }
 // The stat product of all 4096 spreads at the highest level each can reach under the cap (0 when even level 1 is over it).
 // Levels only raise CP, so the highest legal level is found by bisection; the arithmetic is cpFor's and statProductFor's,
@@ -1404,26 +1421,6 @@ function rankPctForLeague(base, ivs, leagueKey, isShadow) {
   return Math.min(100, (own / max) * 100);
 }
 
-// GENERATED BLOCK — do not hand-edit. Full Power-Up cost curve, run-length
-// encoded as [firstLevelOfRun, stardust, candy, xlCandy] where each run covers
-// consecutive half-levels until the next run starts. Pulled from pogoapi.net's
-// pokemon_powerup_requirements endpoint (republished from Niantic's
-// GAME_MASTER) — the same source _DUST_TIER_START_LEVEL above comes from, and
-// consistent with it. Level 40+ costs XL Candy instead of regular Candy, which
-// is why xlCandy is a separate column rather than a conversion.
-// The cost listed at level L is the cost to go from L to L+0.5. Level 50 is the
-// cap, so there is no run starting at 50.
-const _POWERUP_RUNS = [
-  [1, 200, 1, 0], [3, 400, 1, 0], [5, 600, 1, 0], [7, 800, 1, 0], [9, 1000, 1, 0],
-  [11, 1300, 2, 0], [13, 1600, 2, 0], [15, 1900, 2, 0], [17, 2200, 2, 0], [19, 2500, 2, 0],
-  [21, 3000, 3, 0], [23, 3500, 3, 0], [25, 4000, 3, 0], [26, 4000, 4, 0], [27, 4500, 4, 0],
-  [29, 5000, 4, 0], [31, 6000, 6, 0], [33, 7000, 8, 0], [35, 8000, 10, 0], [37, 9000, 12, 0],
-  [39, 10000, 15, 0], [40, 10000, 0, 10], [41, 11000, 0, 10], [42, 11000, 0, 12],
-  [43, 12000, 0, 12], [44, 12000, 0, 15], [45, 13000, 0, 15], [46, 13000, 0, 17],
-  [47, 14000, 0, 17], [48, 14000, 0, 20], [49, 15000, 0, 20]
-];
-const MAX_POKEMON_LEVEL = 50;
-
 // Cost of the single Power Up that takes a Pokemon from `level` to level+0.5.
 function powerUpStepCost(level) {
   if (!(level >= 1) || level >= MAX_POKEMON_LEVEL) return null;
@@ -1466,7 +1463,7 @@ function powerUpCostBetween(fromLevel, toLevel, opts) {
 // evolved Pokemon in Little Cup).
 function maxLevelUnderCap(base, ivs, capCP) {
   if (!(capCP > 0) || !Number.isFinite(capCP)) return MAX_POKEMON_LEVEL;
-  const levels = Object.keys(CPM).map(Number).filter(l => l <= MAX_POKEMON_LEVEL).sort((a, b) => a - b);
+  const levels = LEVELS.filter(l => l <= MAX_POKEMON_LEVEL);
   for (let i = levels.length - 1; i >= 0; i--) {
     if (cpFor(base, ivs, levels[i]) <= capCP) return levels[i];
   }
@@ -5215,7 +5212,7 @@ function raidRating(base, ivs, level, fastMove, chargedMove, opts) {
   const cpm = CPM[level != null ? level : 40];
   const sBase = shadowAdjustedBase(base, opts.isShadow), sIv = shadowIVs(ivs, opts.isShadow);
   const def = (sBase[1] + sIv[1]) * cpm;
-  const hp = Math.max(10, Math.floor((sBase[2] + ivs[2]) * cpm));
+  const hp = hpAt(sBase[2] + ivs[2], cpm);
   return { dps, hp, def, rating: dps * Math.pow(hp * def, 0.4) };
 }
 
@@ -5245,12 +5242,78 @@ const PVP_META_GREAT = [["melmetal",120.9,105.1,146,"thunder_shock"],["altaria",
 const PVP_META_ULTRA = [["tinkaton",140.3,177.3,178,"fairy_wind"],["corviknight",137.8,170,193,"sand_attack"],["snorlax_shadow",139,131.2,245,"psywave"],["corviknight_shadow",137.8,170,193,"sand_attack"],["zygarde_complete",128.9,142,264,"dragon_tail"],["virizion",146,180,162,"double_kick"],["mimikyu",159.6,179.8,135,"shadow_claw"],["florges",154,183.2,143,"fairy_wind"],["empoleon",161.9,150.7,158,"metal_sound"],["moltres_galarian",149.4,175.5,158,"sucker_punch"],["empoleon_shadow",161.9,150.7,158,"metal_sound"],["melmetal",155.1,138.2,187,"thunder_shock"],["snorlax",139,131.2,245,"psywave"],["feraligatr_shadow",159.1,154.5,159,"shadow_claw"],["feraligatr",159.1,154.5,159,"shadow_claw"],["giratina_altered",134.5,168.1,204,"dragon_breath"],["jellicent",141.5,158.9,196,"hex"],["guzzlord",145,86.1,343,"dragon_tail"],["cramorant",157.9,149.5,157,"peck"],["skeledirge",156.4,141.8,180,"incinerate"],["lapras",133.9,149.8,231,"psywave"],["lapras_shadow",133.9,149.8,231,"psywave"],["ninetales_alolan",151.4,172.1,158,"powder_snow"],["rillaboom",170.2,127.4,168,"scratch"],["dusknoir",153.2,222.3,119,"astonish"]];
 // END GENERATED BLOCK: PVPOKE_GM
 
-// leagueKey -> imported PvPoke table. Great is the default for unknown keys.
+// ---- Leagues: the one table of league facts ---------------------------------------------------------------------------------
+// Everything the app knows about a league is a field here, and nothing else spells it out: the CP cap, the CP a copy needs to be worth
+// playing (`floor`), the CP key PvPoke's game master and the GBL feed use (`gmCp`: 10000 for Master), the display names, and the PvPoke
+// tier table, meta list and simulator pool for the league. The app reads them through LEAGUES, leagueOf and leagueKeyForCp; an
+// unknown key gets null (or an empty list), never another league's data. test_leagues.js pins the table.
+// (Defined below the generated PvPoke blocks because the tables it points at are generated constants.)
+// capText is the cap as the screens write it; _league derives it, so it cannot disagree with `cap`.
+const _league = o => Object.freeze({ ...o, capText: Number.isFinite(o.cap) ? '\u2264 ' + o.cap + ' CP' : 'No cap' });
+const LEAGUES = Object.freeze({
+  great: _league({ key: 'great', cap: 1500, floor: 1300, gmCp: 1500, label: 'Great', name: 'Great League', abbr: 'GL', tierTable: PVP_TIER_GREAT, meta: PVP_META_GREAT, sim: PVP_SIM_GREAT }),
+  ultra: _league({ key: 'ultra', cap: 2500, floor: 2300, gmCp: 2500, label: 'Ultra', name: 'Ultra League', abbr: 'UL', tierTable: PVP_TIER_ULTRA, meta: PVP_META_ULTRA, sim: PVP_SIM_ULTRA }),
+  little: _league({ key: 'little', cap: 500, floor: 400, gmCp: 500, label: 'Little', name: 'Little Cup', abbr: 'LC', tierTable: PVP_TIER_LITTLE, meta: [], sim: [] }),
+  master: _league({ key: 'master', cap: Infinity, floor: null, gmCp: 10000, label: 'Master', name: 'Master League', abbr: 'ML', tierTable: PVP_TIER_MASTER, meta: [], sim: [] })
+});
+// key -> CP cap, a read-only view of LEAGUES (the shape the rank functions index by league key).
+const LEAGUE_CAPS = Object.freeze(Object.fromEntries(Object.values(LEAGUES).map(l => [l.key, l.cap])));
+function leagueOf(key) {
+  return typeof key === 'string' && Object.prototype.hasOwnProperty.call(LEAGUES, key) ? LEAGUES[key] : null;
+}
+// The league key for a CP cap as the GBL feed and PvPoke write it (500, 1500, 2500; 10000 or more is Master), or null.
+function leagueKeyForCp(cp) {
+  if (cp >= LEAGUES.master.gmCp) return 'master';
+  const lg = Object.values(LEAGUES).find(l => l.gmCp === cp);
+  return lg ? lg.key : null;
+}
+// The ranked order of PvPoke's species tiers (0 = best) and the rank a species PvPoke does not list in the league has.
+const TIER_RANK = Object.freeze({ S: 0, A: 1, B: 2, C: 3 });
+const UNRANKED_TIER_RANK = 4;
+// How much a species' tier discounts an IV rank when different leagues or species are compared: 12 points per tier step, unranked counts as 4 steps.
+function tierWeight(tierRank) {
+  return 1 - 0.12 * Math.min(tierRank, UNRANKED_TIER_RANK);
+}
+
+// ---- Thresholds the keep, transfer and recommendation logic share --------------------------------------------------------------
+// One copy of each bar. The code that applies it and the sentence that explains it to the trainer both read it from here, so the
+// two cannot drift apart. Only bars that mean the same thing at every site that used to spell them are here; the display colour
+// cut-offs and score weights stay where they are.
+const KEEP_RULES = Object.freeze({
+  // Safe to transfer: a low IV average and no league value. Borderline is the next band up, shown as "close to the bar".
+  transfer: Object.freeze({ ivBelow: 51, rankBelow: 70 }),
+  borderline: Object.freeze({ ivBelow: 58, rankBelow: 78 }),
+  // The optimise plan's picks.
+  powerUpRank: 90,
+  evolveIv: 60,
+  luckyTradeIvBelow: 90,
+  secondMoveRank: 80,
+  // "PvP ready": this IV rank or better on a species whose tier rank is at most maxGoodTierRank (S, A or B). Dust candidates use the same bar.
+  pvpReady: Object.freeze({ rank: 90 }),
+  maxGoodTierRank: 2,
+  // IV averages the keep check reasons on.
+  keepIv: 90, goodIv: 80, nearHundoIv: 93, hundoIv: 97,
+  // A copy this far under its league cap (as a share of it) is told to power up.
+  capSlack: 0.92,
+  // "Has a raid role": within this share of the best attacker you own, for at least one of its types.
+  raidRoleBand: 0.9,
+  // Keep grade: the rank percentile a league's best copy must reach ("top", "excellent", "good"); S-tier species are one notch more lenient.
+  grade: Object.freeze({
+    standard: Object.freeze({ top: 98, excellent: 95, good: 92 }),
+    sTier: Object.freeze({ top: 97, excellent: 93, good: 90 })
+  })
+});
+// How much of the roster the Professor chat is sent: the best-ranked rows with full detail, the next group of low-value rows,
+// the families a message can name, the rows per family and the candy entries. The prompt text quotes these numbers from here.
+const CHAT_LIMITS = Object.freeze({ topRanked: 90, otherPool: 150, mentionedFamilies: 4, familyRows: 40, candyEntries: 260, verdictCopies: 4, unevolvedRankPenalty: 1 });
+
+// leagueKey -> imported PvPoke table, null for a key that names none. 'cup:<id>@<cp>' selects one of PVP_CUP_TABLES (a PvPoke cup or
+// Mega ranking); 'mega' is the Mega Master ranking, a table with no league (no cap, no IV rank) behind it.
 function pvpTableFor(leagueKey) {
-  // 'cup:<id>@<cp>' selects one of PVP_CUP_TABLES (a PvPoke cup or Mega ranking).
   if (typeof leagueKey === 'string' && leagueKey.indexOf('cup:') === 0) return PVP_CUP_TABLES[leagueKey.slice(4)] || null;
-  return leagueKey === 'ultra' ? PVP_TIER_ULTRA : leagueKey === 'little' ? PVP_TIER_LITTLE
-    : leagueKey === 'master' ? PVP_TIER_MASTER : leagueKey === 'mega' ? PVP_TIER_MEGA : PVP_TIER_GREAT;
+  if (leagueKey === 'mega') return PVP_TIER_MEGA;
+  const lg = leagueOf(leagueKey);
+  return lg ? lg.tierTable : null;
 }
 
 // A PvPoke table row for a species. PvPoke ids are lowercase with underscores and spell regional forms out
@@ -5418,7 +5481,7 @@ function maxRating(base, ivs, level, opts) {
   const sBase = shadowAdjustedBase(base, opts.isShadow), sIv = shadowIVs(ivs, opts.isShadow);
   const atk = (sBase[0] + sIv[0]) * cpm;
   const def = (sBase[1] + sIv[1]) * cpm;
-  const hp = Math.max(10, Math.floor((sBase[2] + ivs[2]) * cpm));
+  const hp = hpAt(sBase[2] + ivs[2], cpm);
   const power = maxAttackPower(opts.attackLevel || 1, !!opts.gmax);
   const damage = moveDamage({ type: opts.moveType, power }, atk, opts.ownTypes, opts.defenderTypes, opts.defenceStat, opts.weatherTypes);
   const incoming = opts.incoming > 0 ? opts.incoming : 1;
@@ -5580,8 +5643,8 @@ function pvpFastMoveFor(id) {
 // The opponents PvP breakpoints are measured against: the league's top-ranked
 // species with their default spread's stats, typing and fast move.
 function pvpMetaFor(leagueKey) {
-  const list = leagueKey === 'ultra' ? PVP_META_ULTRA : leagueKey === 'great' ? PVP_META_GREAT : [];
-  return list.map(([id, atk, def, hp, fast]) => {
+  const lg = leagueOf(leagueKey);
+  return (lg ? lg.meta : []).map(([id, atk, def, hp, fast]) => {
     const base = id.replace(/_shadow$/, '');
     const info = SPECIES_META[base] ? speciesInfo(base, '') : null;
     return { id, atk, def, hp, fast, types: info ? info.types : [] };
@@ -5903,7 +5966,7 @@ function pvpSimFighterFor(base, ivs, leagueKey, isShadow, types, fastName, charg
   if (lvl == null) return null;
   const cpm = CPM[lvl];
   const atk = (base[0] + ivs[0]) * cpm, def = (base[1] + ivs[1]) * cpm;
-  return { id: 'own', cmp: atk, atk: isShadow ? atk * 1.2 : atk, def: isShadow ? def * 0.83333331 : def, hp: Math.max(10, Math.floor((base[2] + ivs[2]) * cpm)),
+  return { id: 'own', cmp: atk, atk: isShadow ? atk * 1.2 : atk, def: isShadow ? def * 0.83333331 : def, hp: hpAt(base[2] + ivs[2], cpm),
     types: (types || []).map(t => String(t).charAt(0).toUpperCase() + String(t).slice(1).toLowerCase()), fast, charged, level: lvl };
 }
 // Name -> [fast, charged...] helper for the app: a species' recommended PvP moves as fighter inputs is pvpMovesetFor.
@@ -5922,8 +5985,8 @@ function pvpSimFighter(row) {
   return { id, cmp: atk, atk: sh ? atk * 1.2 : atk, def: sh ? def * 0.83333331 : def, hp, types, fast: f, charged };
 }
 function pvpSimPool(leagueKey) {
-  const list = leagueKey === 'ultra' ? PVP_SIM_ULTRA : leagueKey === 'great' ? PVP_SIM_GREAT : [];
-  return list.map(pvpSimFighter).filter(Boolean);
+  const lg = leagueOf(leagueKey);
+  return (lg ? lg.sim : []).map(pvpSimFighter).filter(Boolean);
 }
 
 // Where attack and defence IVs actually change PvP damage. For a Pokemon's
@@ -6027,7 +6090,7 @@ function pvpMovesetFor(name, isShadow, leagueKey, form) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEAGUE_CAPS, MAX_LEVEL_SEARCH, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
+  window.PokemonMechanics = { CPM, LEVELS, LEAGUES, LEAGUE_CAPS, leagueOf, leagueKeyForCp, TIER_RANK, UNRANKED_TIER_RANK, tierWeight, KEEP_RULES, CHAT_LIMITS, MAX_LEVEL_SEARCH, cpAt, hpAt, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
     MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxEntryCost, maxDaysToEarn, maxRating,

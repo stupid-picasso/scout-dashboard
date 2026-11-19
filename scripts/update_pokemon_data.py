@@ -34,7 +34,8 @@ POGOAPI_STATS_URL = "https://pogoapi.net/api/v1/pokemon_stats.json"
 # GAME_MASTER (PokeMiners mirrors the raw file; pogoapi.net republishes the
 # relevant slices as clean JSON), which is the same source PokeGenie/CalcyIV
 # ultimately read. Hand-typing either one is how the level 41+ Stardust tiers
-# ended up wrong, so both are now regenerated from the API on every run.
+# ended up wrong, so both are now regenerated from the API on every run
+# (CPM, and _POWERUP_RUNS, the one Power-Up cost table the dust tiers derive from).
 POGOAPI_CPM_URL = "https://pogoapi.net/api/v1/cp_multiplier.json"
 POGOAPI_POWERUP_URL = "https://pogoapi.net/api/v1/pokemon_powerup_requirements.json"
 # Public sprite source used only for brand-new dex numbers we don't have a
@@ -163,32 +164,63 @@ def build_cpm_block():
     return "const CPM = {\n" + "\n".join(lines) + "\n};", len(rows)
 
 
-def build_dust_tier_block():
-    """Rebuilds _DUST_TIER_START_LEVEL: the first level of each Stardust tier.
+POWERUP_START_MARKER = "// GENERATED BLOCK: POWERUP_RUNS"
+POWERUP_END_MARKER = "// END GENERATED BLOCK: POWERUP_RUNS"
+POWERUP_HEADER = (
+    "// GENERATED BLOCK: POWERUP_RUNS (update_pokemon_data.py) \u2014 do not hand-edit\n"
+    "// The one Power-Up cost table: the Power Up cost curve run-length encoded as [firstLevelOfRun, stardust, candy, xlCandy], each run covering\n"
+    "// consecutive half-levels until the next run starts. The cost listed at level L is the cost to go from L to L+0.5. Pulled from pogoapi.net's\n"
+    "// pokemon_powerup_requirements endpoint (republished from Niantic's GAME_MASTER) by scripts/update_pokemon_data.py, which rewrites this block.\n"
+    "// Level 40+ costs XL Candy instead of regular Candy, which is why xlCandy is a separate column rather than a conversion.\n"
+    "// MAX_POKEMON_LEVEL is the level the last run ends at (the highest level reachable by Power Up); there is no run starting there.\n"
+)
 
-    The API gives a cost per half-level. A tier is a RUN of consecutive
-    half-levels sharing one cost, so the runs are derived here rather than
-    assuming every tier spans exactly four half-levels -- that assumption is
-    what let the hand-typed level 41+ values drift out of sync with the game.
+
+def powerup_block_from(raw):
+    """Builds the whole POWERUP_RUNS generated block (markers included) from the pogoapi.net table.
+
+    The API gives a cost per half-level. A run is a stretch of consecutive half-levels with the same
+    (stardust, candy, XL candy) cost, so a change in any one column starts a new run. The table must
+    be gap-free: a missing half-level would make every later cost wrong, so it raises instead.
     """
-    raw = fetch_json(POGOAPI_POWERUP_URL)
     rows = sorted(
-        ((float(v["current_level"]), int(v["stardust_to_upgrade"])) for v in raw.values()),
-        key=lambda r: r[0],
+        (
+            float(v["current_level"]),
+            float(v["level_after_powering"]),
+            (int(v["stardust_to_upgrade"]), int(v["candy_to_upgrade"]), int(v["xl_candy_to_upgrade"])),
+        )
+        for v in raw.values()
     )
     if not rows:
         raise ValueError("pokemon_powerup_requirements.json returned no rows")
+    runs = []
+    prev_cost = None
+    for i, (level, after, cost) in enumerate(rows):
+        if i and level != rows[i - 1][0] + 0.5:
+            raise ValueError(f"power-up table has a gap before level {level}")
+        if after != level + 0.5:
+            raise ValueError(f"power-up table level {level} does not end half a level higher ({after})")
+        if cost != prev_cost:
+            runs.append((level, cost))
+            prev_cost = cost
 
-    tiers = []
-    prev_dust = None
-    for level, dust in rows:
-        if dust != prev_dust:
-            tiers.append((level, dust))
-            prev_dust = dust
+    def fmt_level(level):
+        return str(int(level)) if level == int(level) else str(level)
 
-    cells = [f"[{level:.1f}, {dust}]" for level, dust in tiers]
+    cells = [f"[{fmt_level(level)}, {c[0]}, {c[1]}, {c[2]}]" for level, c in runs]
     lines = ["  " + ", ".join(cells[i:i + 5]) + "," for i in range(0, len(cells), 5)]
-    return "const _DUST_TIER_START_LEVEL = [\n" + "\n".join(lines) + "\n];", len(tiers)
+    lines[-1] = lines[-1].rstrip(",")
+    top = rows[-1][1]
+    return (
+        POWERUP_HEADER
+        + "const _POWERUP_RUNS = [\n" + "\n".join(lines) + "\n];\n"
+        + f"const MAX_POKEMON_LEVEL = {fmt_level(top)};\n"
+        + POWERUP_END_MARKER
+    ), len(runs)
+
+
+def build_powerup_block():
+    return powerup_block_from(fetch_json(POGOAPI_POWERUP_URL))
 
 
 def replace_block(content, start_marker, end_marker, new_block):
@@ -244,16 +276,14 @@ def main():
         print(f"WARNING: CPM refresh failed, keeping existing table: {e}", file=sys.stderr)
 
     try:
-        dust_block, dust_tiers = build_dust_tier_block()
-        content, did = replace_block(
-            content, "const _DUST_TIER_START_LEVEL = [", "\n];", dust_block
-        )
+        powerup_block, powerup_runs = build_powerup_block()
+        content, did = replace_block(content, POWERUP_START_MARKER, POWERUP_END_MARKER, powerup_block)
         if did:
             changed_mech = True
             mech_table_fixes += 1
-            print(f"Regenerated Stardust power-up tiers from pogoapi.net ({dust_tiers} tiers)")
+            print(f"Regenerated the Power-Up cost table from pogoapi.net ({powerup_runs} runs)")
     except Exception as e:
-        print(f"WARNING: Stardust tier refresh failed, keeping existing table: {e}", file=sys.stderr)
+        print(f"WARNING: Power-Up table refresh failed, keeping existing table: {e}", file=sys.stderr)
 
     if stat_fixes:
         for dex, stats in stat_fixes.items():
