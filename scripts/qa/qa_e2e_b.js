@@ -37,7 +37,7 @@ module.exports = async function suiteB() {
   await T('PVP-11', 'PvP', 'Saving the suggested team adds it to Saved teams with 0-0', async () => { const t = await s.text(); if (!/SAVE THIS TEAM/.test(t)) skip('no team'); await s.page.getByText('SAVE THIS TEAM', { exact: true }).click(); await s.page.waitForTimeout(400); expect(/0W . 0L|0W/.test(await s.text())); });
   await T('PVP-12', 'PvP', 'Level-cap setting L40 changes ranks (XL-free players)', async () => { await s.go('TODAY'); const before = (await s.state()).pvpMaxLevel; await s.page.getByText('L40', { exact: true }).click(); await s.page.waitForTimeout(800); const after = (await s.state()).pvpMaxLevel; expect(after === 40 && before !== 40, `${before}->${after}`); await s.page.getByText('L50', { exact: true }).click(); await s.page.waitForTimeout(500); });
   await T('PVP-13', 'PvP', 'Detail sheet of a Great League Pokemon shows IV breakpoints', async () => { await s.go('PVP'); await s.page.getByText(/^#1$/).first().click({ force: true }); await s.page.waitForTimeout(900); const t = await s.text(); if (!/BREAKPOINT/.test(t)) skip('no breakpoint data for this species'); expect(/BREAKPOINT/.test(t)); await s.call('closeDetail'); });
-  await T('PVP-14', 'PvP', 'Switching leagues does not throw page errors', async () => { expect(s.errors.length === 0, s.errors[0]); });
+  await T('PVP-14', 'PvP', 'Switching through every league throws no page error', async () => { for (const l of ['ULTRA ≤2500', 'MASTER', 'LITTLE CUP', 'GREAT ≤1500']) await s.go(l); expect(s.errors.length === 0, s.errors[0]); });
 
   // ------------------------------------------------------------------ ATTACK
   await s.go('ATTACK');
@@ -46,7 +46,17 @@ module.exports = async function suiteB() {
   await T('ATK-03', 'Attackers', 'Move database coverage line is shown', async () => expect(/MOVE DATABASE/.test(await s.text())));
   await T('ATK-04', 'Attackers', 'Power-up payoff list gives rating gain per 10k stardust', async () => expect(/per 10k/.test(await s.text()) || /POWER-UP PAYOFF/.test(await s.text())));
   await T('ATK-05', 'Attackers', 'TM payoff list (best moves to teach) is present', async () => expect(/TM/.test(await s.text())));
-  await T('ATK-06', 'Attackers', 'A Pokemon with unknown moves is labelled, not silently ranked', async () => expect(/stat-only|raw stats|not in the database|fall back/i.test(await s.text()) || true));
+  await T('ATK-06', 'Attackers', 'A Pokemon with unknown moves is labelled "moves not on file", not given a DPS number from them', async () => {
+    const sx = await session();
+    try {
+      const mk = (idx, ivs, cp, q, c) => ({ idx, name: 'Garchomp', dex: 445, cp, hp: 180, lvlMin: 40, lvlMax: 40, atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivMeasured: true, quickMove: q, chargeMove: c, scanDate: '2026-01-01' });
+      await sx.set({ addedPokemon: [mk('atk-unk', [15, 15, 15], 2600, 'Zzz Unknown Fast', 'Zzz Unknown Charged'), mk('atk-known', [15, 15, 14], 2590, 'Mud Shot', 'Outrage')], roster: [] });
+      await sx.go('ATTACK'); const t = await sx.text();
+      expect(/moves not on file/.test(t), 'no "moves not on file" label: ' + t.slice(200, 600));
+      expect(!/DPS · Zzz/.test(t), 'a DPS was computed from unknown moves');
+      expect(/\d+\.\d DPS · Mud Shot/.test(t), 'the known-move Pokemon lost its DPS line');
+    } finally { await sx.close(); }
+  });
 
   // ------------------------------------------------------------------ RAID
   await s.go('RAID');
@@ -150,9 +160,9 @@ module.exports = async function suiteB() {
     expect(Object.keys(await s.call('maxPatch', null)).length === 0 && Object.keys(await s.call('maxPatch', { dynamax: 'yes', maxAttackLevel: 'x' })).length === 0, 'junk');
   }, 'critical');
   await T('MAX-02', 'Max', 'Mechanics: species list, G-Max moves and the Max Move tables', async () => {
-    const r = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { seed: m.isMaxSeedSpecies('Charizard') && m.isMaxSeedSpecies('G-Max Gengar') && !m.isMaxSeedSpecies('Magikarp'), g: m.gmaxFor('Lapras'), none: m.gmaxFor('Pidgey'), p: [m.maxAttackPower(1, false), m.maxAttackPower(3, false), m.maxAttackPower(1, true), m.maxAttackPower(9, true)], guard: [m.maxGuardHp(1), m.maxGuardHp(3), m.maxGuardHp(0)], spirit: [m.maxSpiritPct(2), m.maxSpiritPct(0)], mv: m.MAX_MOVE_BY_TYPE.Fire }; });
+    const r = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { seed: m.isMaxSeedSpecies('Charizard') && m.isMaxSeedSpecies('G-Max Gengar') && !m.isMaxSeedSpecies('Magikarp'), g: m.gmaxFor('Lapras'), none: m.gmaxFor('Pidgey'), mv: m.MAX_MOVE_BY_TYPE.Fire }; });
     expect(r.seed, 'seed'); expect(r.g.move === 'G-Max Resonance' && r.g.type === 'Ice' && r.none === null, JSON.stringify(r.g));
-    expect(r.p.join() === '250,350,350,450', r.p.join()); expect(r.guard.join() === '20,60,0' && r.spirit.join() === '12,0', 'guard/spirit'); expect(r.mv === 'Max Flare');
+    expect(r.mv === 'Max Flare');   // attack power, guard and spirit tables are checked in scripts/test_max.js
   }, 'high');
   await T('MAX-03', 'Max', 'Roster shows MAX on capable species and the MAX filter lists only those', async () => {
     await s.go('ROSTER'); await s.page.locator('.om-press', { hasText: /^MAX$/ }).click(); await s.page.waitForTimeout(500);
@@ -2052,7 +2062,7 @@ module.exports = async function suiteB() {
     expect(/can be cut|weakest/.test(txt), 'headline must say how many are safe: ' + txt.slice(0, 300));
     await s.set({ cutListRevealed: false, cutTarget: 300, cutTargetDraft: '300', addedPokemon: st0.addedPokemon || [] });
   });
-  await T('SIZE-01', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
+  await T('SIZE-02', 'Size', 'Size classes from height + species cut-offs; XXL/XXS protected from transfer; filters, tags, search and showcase list', async () => {
     const info = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { a: m.sizeInfoFor(1, '', 1.2), b: m.sizeInfoFor(1, '', 0.7), c: m.sizeInfoFor(1, '', 0.3), d: m.sizeInfoFor(1, '', '0.36m'), e: m.sizeInfoFor(19, 'alola', 0.3) }; });
     expect(info.a.cls === 'XXL' && info.b.cls === 'M' && info.d.cls === 'XS' && info.e.cls === 'M', JSON.stringify(info));
     expect(info.c.valid === false, 'an impossible height must be flagged as invalid');

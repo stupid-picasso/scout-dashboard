@@ -3,7 +3,7 @@ const path = require('path');
 const { T, expect, session, REPO, touch } = require('./qa_lib');
 const fs = require('fs');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
-const SCREENS = ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG'];
+const { SCREENS } = require('../lib/nav');
 
 // Runs in the page: every visible control with its size and name.
 const SCAN = () => {

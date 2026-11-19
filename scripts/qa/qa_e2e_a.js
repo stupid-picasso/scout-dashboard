@@ -105,7 +105,15 @@ module.exports = async function suiteA() {
       expect(n <= 30, 'rows ' + n); expect((await rows()) === 30, 'ALL did not restore'); return n + ' rows';
     });
   }
-  await T('ROS-09', 'Roster', 'Lucky filter count matches the Lucky stat tile', async () => { const st = await s.state(); const lucky = st.roster.filter(p => p.lucky).length; await s.page.getByText(/^LUCKY/).nth(1).click().catch(() => {}); await s.page.waitForTimeout(400); await s.page.getByText('ALL', { exact: true }).first().click(); return 'lucky in data: ' + lucky; });
+  await T('ROS-09', 'Roster', 'LUCKY filter lists exactly the lucky Pokemon in the data', async () => {
+    const lucky = (await s.state()).roster.filter(p => p.lucky).length;
+    expect(lucky > 0 && lucky < 30, 'the fixture has ' + lucky + ' lucky Pokemon (needs 1 to 29 to fit one page)');
+    await s.page.getByText(/^LUCKY/).first().click();
+    await s.page.waitForFunction(n => document.querySelectorAll('[data-swipe-row]').length === n, lucky, { timeout: 5000 }).catch(() => {});
+    const n = await rows();
+    await s.page.getByText('ALL', { exact: true }).first().click();
+    expect(n === lucky, n + ' rows with the LUCKY filter, ' + lucky + ' lucky in the data');
+  });
   await T('ROS-10', 'Roster', 'Every row shows name, CP, IV triple and a type label', async () => { const t = await s.page.locator('[data-swipe-row]').first().innerText(); expect(/CP\s*\d+/.test(t) && /\d+\s*\/\s*\d+\s*\/\s*\d+/.test(t), t.replace(/\n/g, '|')); });
   await T('ROS-11', 'Roster', 'Row opens the detail sheet on tap', async () => { await s.page.locator('[data-swipe-row]').first().click(); await s.page.waitForTimeout(900); expect(/POWER UP|APPRAISAL|EVOLUTION/i.test(await s.text())); });
   // ------------------------------------------------------------------ DETAIL
@@ -136,7 +144,16 @@ module.exports = async function suiteA() {
   await T('GES-02', 'Gestures', 'Tapping elsewhere closes an open swipe row (iOS list behaviour)', async () => { await s.page.locator('[data-swipe-row]').nth(3).click(); await s.page.waitForTimeout(400); expect((await s.page.locator('[data-swipe-open="1"]').count()) === 0, 'row still open'); });
   await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(SMOKE); await s.go('ROSTER');
   await T('GES-03', 'Gestures', 'Long press opens the action menu', async () => { const row = s.page.locator('[data-swipe-row]').nth(1); const b = await row.boundingBox(); const tc = await touch(s); await tc.start(b.x + 100, b.y + b.height / 2); await s.page.waitForTimeout(800); const open = await s.page.getByText('What would you like to do?').count(); await tc.end(); await s.page.waitForTimeout(400); expect(open === 1 && await s.page.getByText('What would you like to do?').count() === 1, 'open=' + open); }, 'critical');
-  await T('GES-04', 'Gestures', 'Vertical scrolling is not hijacked by the swipe handler', async () => { await s.page.keyboard.press('Escape'); const y0 = await s.page.evaluate(() => window.scrollY); await s.page.mouse.wheel(0, 400); await s.page.waitForTimeout(300); expect(true); });
+  await T('GES-04', 'Gestures', 'A vertical drag on a row neither moves it nor opens its swipe actions', async () => {
+    await s.page.keyboard.press('Escape');
+    const row = s.page.locator('[data-swipe-row]').first(); const b = await row.boundingBox(); const tc = await touch(s);
+    const x = b.x + b.width - 60, y = b.y + b.height / 2;
+    await tc.start(x, y); for (let i = 1; i <= 8; i++) await tc.move(x - i * 3, y + i * 25);
+    const mid = await row.evaluate(e => ({ open: e.dataset.swipeOpen, tf: e.style.transform }));
+    await tc.end();
+    expect(mid.open !== '1' && !/translateX\(-/.test(mid.tf), 'the row moved during a vertical drag: ' + JSON.stringify(mid));
+    expect((await s.page.locator('[data-swipe-open="1"]').count()) === 0, 'a row opened after a vertical drag');
+  });
   await T('GES-05', 'Gestures', 'Transfer removes the Pokemon and the count drops by one', async () => { await s.page.keyboard.press('Escape'); await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); const before = await s.page.locator('[data-swipe-row]').count(); await s.page.getByText(/Transfer/).first().click({ force: true }).catch(() => {}); await s.page.waitForTimeout(500); expect(await s.page.locator('[data-swipe-row]').count() <= before); });
   // ---- Roster: select mode, bulk actions, saved views, undo, sort, hint
   const rowCount = () => s.page.locator('[data-swipe-row]').count();

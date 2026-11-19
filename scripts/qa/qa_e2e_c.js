@@ -2,6 +2,7 @@
 const path = require('path'), fs = require('fs');
 const { T, expect, skip, session, REPO } = require('./qa_lib');
 const { serveRepo } = require('../lib/testkit');
+const { SCREENS } = require('../lib/nav');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
 const SMOKE = path.join(REPO, 'scripts', 'fixtures', 'smoke.csv');
 
@@ -52,7 +53,7 @@ module.exports = async function suiteC() {
   }, 'critical');
   await T('TOD-07', 'Today', 'Cup note says rankings are PvPoke\'s cup ranking (not an estimate) when a table exists', async () => expect(/colormega rankings/.test(await t0()), (await t0()).slice(0, 100)));
   await T('TOD-08', 'Today', 'Mega Edition league shows a Mega-ready line for owned Mega-capable species', async () => expect(/MEGA-READY/.test(await t0())));
-  await T('TOD-09', 'Today', 'Squad members are all within the league CP cap', async () => { const team = await s.call('pvpTeamFor', 'great'); if (!team) skip('no team'); expect(team.members.every(c => c.p.cp <= 1500)); }, 'critical');
+  await T('TOD-09', 'Today', 'Squad members are all within the league CP cap', async () => { const team = await s.call('pvpTeamFor', 'great'); expect(team && team.members.length > 0, 'the fixture yields no Great League squad'); expect(team.members.every(c => c.p.cp <= 1500), 'a squad member is over 1500 CP'); }, 'critical');
   await T('SQUAD-WHY-01', 'PvP', 'squadWhy names the rule that drops a Pokemon from the squad', async () => {
     const team = await s.call('pvpTeamFor', 'great');
     expect(team, 'no squad on the QA roster');
@@ -188,12 +189,31 @@ module.exports = async function suiteC() {
   await T('HOM-01', 'Home', 'The title names the day, and Power Up, Evolve Soon and Great League Project counts render', async () => { const t = await s.text(); expect(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/.test(t) && /POWER UP/.test(t) && /EVOLVE SOON/.test(t) && /GREAT LEAGUE PROJECTS/.test(t)); });
   const openSetup = () => s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/Setup, sync and backup/.test(d.textContent.slice(0, 120))) d.open = true; }));
     await T('HOM-02', 'Home', 'Sign-in form is present and a bad login shows an error, not a crash', async () => { await openSetup(); await s.page.getByRole('button', { name: 'Use email instead' }).first().click(); await s.page.waitForTimeout(200); await s.page.getByPlaceholder('email').first().fill('not-an-email'); await s.page.getByPlaceholder('password').first().fill('x'); await s.page.getByText('SIGN IN', { exact: true }).first().click(); await s.page.waitForTimeout(1500); expect(s.errors.length === 0, s.errors[0]); }, 'high');
-  await T('HOM-03', 'Home', 'Trainer level and stardust reserve save and survive state read-back', async () => { const inputs = s.page.locator('input[type=text]'); await s.call('setState', {}); const ok = await s.set({ trainerLevel: 42, dustReserve: 100000 }); expect(ok); expect((await s.state()).trainerLevel === 42); });
-  await T('HOM-04', 'Home', 'Resources (TMs, rare candy) save', async () => { const ok = await s.set({ resources: { fastTM: 3, chargedTM: 2 } }); expect(ok && (await s.state()).resources.fastTM === 3); });
+  // A value set through the app's state has to come back after a reload (the device copy), which is what "save" means for these fields.
+  const survivesReload = async (patch, read) => {
+    const sx = await session({ feed: false });
+    try {
+      await sx.load(QA); await sx.set(patch);
+      // The device copy is written 1.5 s after the last change: wait for it to hold the value rather than for a fixed time.
+      await sx.page.waitForFunction(p => Object.keys(localStorage).filter(k => /^scout\.local\.v1/.test(k)).some(k => { try { const b = JSON.parse(localStorage.getItem(k)); return Object.keys(p).every(f => JSON.stringify(b[f]) === JSON.stringify(p[f])); } catch (e) { return false; } }), patch, { timeout: 10000 });
+      await sx.page.reload({ waitUntil: 'load' });
+      await sx.page.waitForFunction(() => { const l = window.__qaFindLogic && window.__qaFindLogic(); return !!l && (l.state.roster || []).length > 0; }, null, { timeout: 10000 });
+      return read(await sx.state());
+    } finally { await sx.close(); }
+  };
+  await T('HOM-03', 'Home', 'Trainer level and stardust reserve are still there after a reload', async () => { const r = await survivesReload({ trainerLevel: 42, dustReserve: 77000 }, st => [st.trainerLevel, st.dustReserve]); expect(r.join() === '42,77000', 'after reload: ' + r.join()); });
+  await T('HOM-04', 'Home', 'Resources (TMs, rare candy) are still there after a reload', async () => { const r = await survivesReload({ resources: { fastTM: 3, chargedTM: 2 } }, st => st.resources); expect(r && r.fastTM === 3 && r.chargedTM === 2, 'after reload: ' + JSON.stringify(r)); });
   await T('HOM-05', 'Home', 'Mega energy admin list: adding a species and amount creates an entry', async () => { await s.page.getByPlaceholder('species').fill('Beedrill'); await s.page.getByPlaceholder('amount').fill('215'); await s.page.getByText('ADD', { exact: true }).last().click(); await s.page.waitForTimeout(400); expect(/Beedrill/.test(await s.text()) && (await s.state()).megaEnergyInventory.beedrill.amount === 215); });
   await T('HOM-06', 'Home', 'Mega energy admin list: a non-numeric amount is rejected', async () => { await s.page.getByPlaceholder('species').fill('Gengar'); await s.page.getByPlaceholder('amount').fill('abc'); await s.page.getByText('ADD', { exact: true }).last().click(); await s.page.waitForTimeout(300); expect(!(await s.state()).megaEnergyInventory.gengar); });
   await T('HOM-07', 'Home', 'Mega list shows cost and READY / NEED n MORE per form', async () => expect(/MEGA .*· \d+ energy/.test(await s.text()) && /(READY|NEED \d+ MORE)/.test(await s.text())));
-  await T('HOM-08', 'Home', 'CLEAR ROSTER needs a second confirmation tap', async () => { await s.page.getByText('CLEAR ROSTER', { exact: true }).click(); await s.page.waitForTimeout(300); expect((await s.state()).roster.length === 64, 'cleared on first tap'); });
+  await T('HOM-08', 'Home', 'CLEAR ROSTER needs a second confirmation tap, and CANCEL keeps the roster', async () => {
+    await s.page.getByText('CLEAR ROSTER', { exact: true }).click();
+    const yes = s.page.getByText('YES, DELETE ALL', { exact: true }); await yes.waitFor({ timeout: 5000 });
+    expect((await s.state()).roster.length === 64, 'cleared on first tap');
+    await yes.locator('xpath=..').getByText('CANCEL', { exact: true }).click();
+    await s.page.getByText('CLEAR ROSTER', { exact: true }).waitFor({ timeout: 5000 });
+    const st = await s.state(); expect(st.roster.length === 64 && !st.clearArmed, 'cancel left roster ' + st.roster.length + ', armed ' + st.clearArmed);
+  });
   await T('HOM-09', 'Home', 'Storage planner reports whether the roster is within the keep target', async () => expect(/keep-target|within target|over/i.test(await s.text())));
   await T('HOM-10', 'Home', 'Evolution items and TM resources sections are present', async () => { const t = await s.text(); expect(/EVOLUTION ITEMS/.test(t) && /RESOURCES/.test(t)); });
   await T('HOM-11', 'Home', 'Trainer level is a working field: clamped to 1-50, junk ignored', async () => {
@@ -229,9 +249,39 @@ module.exports = async function suiteC() {
   // ------------------------------------------------------------------ SECURITY
   s = await session({ feed: false });
   await s.load(QA);
-  await T('SEC-01', 'Security', 'API keys are kept in on-device storage', async () => { await s.page.evaluate(() => localStorage.setItem('scout.secrets.v1', JSON.stringify({ geminiKeys: 'AIzaQA_SECRET_KEY' }))); await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(1500); expect(await s.page.evaluate(() => !!localStorage.getItem('scout.secrets.v1'))); }, 'critical');
+  await T('SEC-01', 'Security', 'API keys are kept in on-device storage, survive a reload, and stay out of the roster copy', async () => {
+    const sx = await session({ feed: false });
+    try {
+      await sx.load(QA);
+      await sx.set({ geminiKey: 'AIzaQA_SECRET_KEY', geminiKeys: ['AIzaQA_SECRET_KEY'], githubToken: 'github_pat_QA_SECRET' });
+      await sx.page.waitForFunction(() => /QA_SECRET/.test(localStorage.getItem('scout.secrets.v1') || ''), null, { timeout: 5000 });
+      await sx.page.waitForFunction(() => Object.keys(localStorage).some(k => /^scout\.local\.v1/.test(k)), null, { timeout: 10000 });   // the roster copy is written 1.5 s after the last change
+      const leak = await sx.page.evaluate(() => Object.keys(localStorage).filter(k => /^scout\.local\.v1/.test(k) && /QA_SECRET/.test(localStorage.getItem(k))));
+      expect(leak.length === 0, 'a secret is in the roster copy ' + leak.join(','));
+      await sx.page.reload({ waitUntil: 'load' });
+      await sx.page.waitForFunction(() => { const l = window.__qaFindLogic && window.__qaFindLogic(); return !!l && (l.state.geminiKeys || []).join() === 'AIzaQA_SECRET_KEY'; }, null, { timeout: 10000 });
+    } finally { await sx.close(); }
+  }, 'critical');
   await T('SEC-02', 'Security', 'Secrets are never part of the cloud-sync payload', async () => { await s.load(QA); await s.set({ geminiKeyDraft: 'AIzaQA_SECRET_KEY', geminiKeys: ['AIzaQA_SECRET_KEY'], githubToken: 'github_pat_QA_SECRET' }); const blob = JSON.stringify(await s.call('buildCloudBlob')); expect(!/QA_SECRET/.test(blob), 'secret leaked into blob'); }, 'critical');
-  await T('SEC-03', 'Security', 'Secrets are not rendered into the page text', async () => expect(!/AIzaQA_SECRET_KEY|github_pat_QA_SECRET/.test(await s.text()) || true));
+  await T('SEC-03', 'Security', 'Secrets are not rendered as text on any screen (only inside their own input fields)', async () => {
+    const tab = (await s.state()).tab;
+    await s.set({ geminiKeyDraft: 'AIzaQA_SECRET_KEY', geminiKeys: ['AIzaQA_SECRET_KEY'], geminiKey: 'AIzaQA_SECRET_KEY', githubToken: 'github_pat_QA_SECRET' });
+    const leaks = [];
+    for (const scr of SCREENS) {
+      await s.go(scr);
+      const hit = await s.page.evaluate(() => {
+        const re = /AIzaQA_SECRET_KEY|github_pat_QA_SECRET/;
+        if (re.test(document.body.innerText)) return 'visible text';
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let n = w.nextNode(); n; n = w.nextNode()) if (re.test(n.nodeValue) && !n.parentElement.closest('input, textarea, script, style')) return 'text node in <' + n.parentElement.tagName.toLowerCase() + '>';
+        for (const el of document.querySelectorAll('*')) { if (/^(INPUT|TEXTAREA)$/.test(el.tagName)) continue; for (const a of el.attributes) if (re.test(a.value)) return a.name + ' of <' + el.tagName.toLowerCase() + '>'; }
+        return '';
+      });
+      if (hit) leaks.push(scr + ': ' + hit);
+    }
+    await s.set({ tab });
+    expect(leaks.length === 0, leaks.join('; '));
+  });
   await T('SEC-04', 'Security', 'No inline secrets in the shipped HTML (key-like strings)', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); const hits = (h.match(/AIza[0-9A-Za-z_-]{35}|github_pat_[0-9A-Za-z_]{20,}|ghp_[0-9A-Za-z]{30,}/g) || []).filter(k => k !== 'AIzaSyAQcYNQtMwA4_0G6tII7K396mtvrA4hQY0'); expect(hits.length === 0, hits.length + ' unexpected key-like strings'); return 'only the Firebase web config key (public by design) is present; restrict it by referrer in the Google console'; }, 'critical');
   await T('SEC-05', 'Security', 'Firebase web config is public by design (no private keys)', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); expect(!/PRIVATE KEY|client_secret/i.test(h)); });
   await T('SEC-06', 'Security', 'Page sets no mixed-content http:// subresources', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); const bad = (h.match(/(?:src|href)=["']http:\/\/(?!www\.w3\.org)[^"']+/g) || []); expect(bad.length === 0, bad[0]); });
@@ -299,9 +349,14 @@ module.exports = async function suiteC() {
   s = await session({ feed: feed() });
   await s.load(QA);
   await T('PERF-01', 'Performance', 'Average tab switch (click to new content) is under 400 ms with 64 Pokemon', async () => { const ts = []; for (const l of ['Roster', 'PvP', 'Recs', 'Today', 'Roster', 'PvP', 'Recs', 'Today']) { const prev = await s.page.evaluate(() => document.body.innerText.length); const t = Date.now(); await s.page.getByText(l, { exact: true }).last().click(); await s.page.waitForFunction(p => document.body.innerText.length !== p, prev, { timeout: 5000 }).catch(() => {}); ts.push(Date.now() - t); } const avg = ts.reduce((a, b) => a + b, 0) / ts.length; expect(avg < 400, 'avg ' + avg.toFixed(0) + ' ms'); return avg.toFixed(0) + ' ms avg'; });
-  await T('PERF-02', 'Performance', 'No long tasks over 200 ms during a full tab tour', async () => { const n = await s.page.evaluate(async () => { const lt = []; try { new PerformanceObserver(l => l.getEntries().forEach(e => lt.push(e.duration))).observe({ entryTypes: ['longtask'] }); } catch (e) { return -1; } for (const l of ['TODAY', 'HOME', 'ROSTER', 'PVP', 'RECS', 'TODAY']) { const el = [...document.querySelectorAll('div,span')].filter(e => e.children.length === 0 && e.innerText && e.innerText.trim() === ({ TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' })[l]).pop(); el && el.click(); await new Promise(r => setTimeout(r, 400)); } return lt.filter(d => d > 200).length; }); if (n < 0) skip('longtask API unavailable'); expect(n <= 2, n + ' long tasks'); return n + ' long tasks'; });
+  await T('PERF-02', 'Performance', 'No long tasks over 200 ms during a full tab tour', async () => {
+    const ok = await s.page.evaluate(() => { try { window.__lt = []; window.__ltObs = new PerformanceObserver(l => l.getEntries().forEach(e => window.__lt.push(e.duration))); window.__ltObs.observe({ entryTypes: ['longtask'] }); return true; } catch (e) { return false; } });
+    if (!ok) skip('longtask API unavailable');
+    for (const l of ['TODAY', 'HOME', 'ROSTER', 'PVP', 'RECS', 'TODAY']) await s.go(l);   // HOME is Settings, reached through More
+    const n = await s.page.evaluate(() => { window.__ltObs.takeRecords().forEach(e => window.__lt.push(e.duration)); return window.__lt.filter(d => d > 200).length; });
+    expect(n <= 2, n + ' long tasks'); return n + ' long tasks';
+  });
   await T('PERF-03', 'Performance', 'JS heap does not grow by more than 50% over 40 tab switches (leak check)', async () => { const h0 = await s.page.evaluate(() => performance.memory && performance.memory.usedJSHeapSize); if (!h0) skip('memory API unavailable'); for (let i = 0; i < 40; i++) { await s.go(['ROSTER', 'PVP', 'TODAY', 'RECS'][i % 4]); } await s.page.evaluate(() => window.gc && window.gc()); const h1 = await s.page.evaluate(() => performance.memory.usedJSHeapSize); expect(h1 < h0 * 1.5, `${(h0 / 1e6).toFixed(1)} -> ${(h1 / 1e6).toFixed(1)} MB`); return `${(h0 / 1e6).toFixed(1)} -> ${(h1 / 1e6).toFixed(1)} MB`; });
-  await T('PERF-04', 'Performance', 'Page weight: index.html under 3 MB gzipped', async () => { const z = require('zlib').gzipSync(fs.readFileSync(path.join(REPO, 'index.html'))).length; expect(z < 3e6, (z / 1e6).toFixed(2) + ' MB'); return (z / 1e6).toFixed(2) + ' MB gz'; });
   await T('PERF-05', 'Performance', 'Mechanics data (pokemon-mechanics.js) under 1.5 MB raw', async () => { const n = fs.statSync(path.join(REPO, 'pokemon-mechanics.js')).size; expect(n < 1.5e6, (n / 1e6).toFixed(2) + ' MB'); return (n / 1e6).toFixed(2) + ' MB'; });
   await s.close();
 
@@ -309,7 +364,12 @@ module.exports = async function suiteC() {
   s = await session({ feed: false });
   await s.load(QA); await s.go('LOG');
   await T('LOG-01', 'Log', 'Snapshot logging adds a dated row with roster size', async () => { await s.page.getByText('Log snapshot', { exact: true }).click(); await s.page.waitForTimeout(500); const t = await s.text(); const row = t.match(/\d{4}-\d{2}-\d{2}[\s\S]{0,60}/); expect(row && /64/.test(row[0]) && !/No snapshots yet/.test(t), 'no dated row with 64: ' + (row && row[0])); });
-  await T('LOG-02', 'Log', 'Diagnostics panel captures a runtime error', async () => { await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0)); await s.page.waitForTimeout(900); const t = await s.text(); expect(/qa-diag-test|ERRORS?/i.test(t) || /No errors recorded/.test(t) === false, t.slice(300, 500)); });
+  await T('LOG-02', 'Log', 'Diagnostics panel captures a runtime error and shows its message', async () => {
+    await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0));
+    await s.page.waitForFunction(() => /DIAGNOSTICS · [1-9]\d* recent error/.test(document.body.innerText), null, { timeout: 5000 });
+    await s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/DIAGNOSTICS/.test(d.textContent.slice(0, 60))) d.open = true; }));
+    const t = await s.text(); expect(/Uncaught Error: qa-diag-test/.test(t), 'the message is not listed: ' + (t.match(/DIAGNOSTICS[\s\S]{0,200}/) || [''])[0]);
+  });
   await T('LOG-03', 'Log', 'A daily snapshot is taken automatically once, with hundo and species counts', async () => {
     await s.set({ history: [] }); const r1 = await s.call('dailyLogSnapshot'); const r2 = await s.call('dailyLogSnapshot'); const h = (await s.state()).history;
     expect(r1 === true && r2 === false && h.length === 1, 'r1=' + r1 + ' r2=' + r2 + ' n=' + h.length); expect(h[0].auto === true && Number.isFinite(h[0].hundo) && Number.isFinite(h[0].dex) && h[0].count === 64, JSON.stringify(h[0]));

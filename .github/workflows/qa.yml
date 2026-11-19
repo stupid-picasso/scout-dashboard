@@ -22,6 +22,9 @@ jobs:
         browser: [chromium, webkit]
     env:
       QA_BROWSER: ${{ matrix.browser }}
+      # The tests that do not gate, each named once. A gating step leaves them out with QA_SKIP; the report-only step beside it runs only them with QA_ONLY.
+      WEBKIT_TIMING_TESTS: '^PERF-01$'
+      WEBKIT_A11Y_TESTS: '^(AXE|KEY|THEME|CASE)'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,22 +42,27 @@ jobs:
         # limit (400 ms average tab switch) that the CI WebKit runner measures at about 400 ms on main, so it runs in its own report-only
         # step below and is left out of this one. Everything else in these suites has to pass.
         env:
-          QA_SKIP: ${{ matrix.browser == 'webkit' && '^PERF-01$' || '' }}
+          QA_SKIP: ${{ matrix.browser == 'webkit' && env.WEBKIT_TIMING_TESTS || '' }}
         run: QA_OUT=qa-e2e-${{ matrix.browser }}.json node scripts/qa/qa_run.js a b c e
       - name: Tab-switch timing (WebKit, report-only)
         # TODO task #31: WebKit's tab switch is at the 400 ms limit on the runner (403 ms on main), so a timing blip must not fail the job. Make the switch faster or
         # move the limit with evidence, then drop this step and the QA_SKIP above.
         if: matrix.browser == 'webkit'
         continue-on-error: true
-        run: QA_ONLY='^PERF-01$' QA_OUT=qa-perf-webkit.json node scripts/qa/qa_run.js c
+        run: QA_ONLY="$WEBKIT_TIMING_TESTS" QA_OUT=qa-perf-webkit.json node scripts/qa/qa_run.js c
       - name: Content-Security-Policy over http://localhost
         run: CSP_REQUIRE_WEBKIT=1 node scripts/test_csp.js
-      - name: Cloud sync, data and security suite (gating)
-        # Suite d minus the accessibility checks: SYNC, STANDIN and DATA tests. A failure fails the job, on both browsers.
-        run: QA_SKIP='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-sync-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
-      - name: Accessibility (axe) - reports only until the semantic-markup phase lands
+      - name: Cloud sync, data, security and accessibility suite (gating)
+        # Suite d: SYNC, STANDIN and DATA tests, and the axe-core / keyboard / theme / case checks (AXE, KEY, THEME, CASE). A failure fails the job.
+        # On WebKit the accessibility checks are left out and run report-only in the next step: KEY-01 fails there (keyboard focus order differs).
+        env:
+          QA_SKIP: ${{ matrix.browser == 'webkit' && env.WEBKIT_A11Y_TESTS || '' }}
+          QA_AXE_OUT: axe-${{ matrix.browser }}.json
+        run: QA_OUT=qa-sync-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
+      - name: Accessibility on WebKit (report-only)
+        if: matrix.browser == 'webkit'
         continue-on-error: true
-        run: QA_ONLY='^(AXE|KEY|THEME|CASE)' QA_OUT=qa-axe-${{ matrix.browser }}.json QA_AXE_OUT=axe-${{ matrix.browser }}.json node scripts/qa/qa_run.js d
+        run: QA_ONLY="$WEBKIT_A11Y_TESTS" QA_OUT=qa-axe-webkit.json QA_AXE_OUT=axe-webkit.json node scripts/qa/qa_run.js d
       - name: Lighthouse (mobile)
         if: matrix.browser == 'chromium'
         run: |

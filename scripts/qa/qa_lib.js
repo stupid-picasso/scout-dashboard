@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { serveRepo } = require('../lib/testkit');
+const { BAR, MORE, MORE_BUTTON } = require('../lib/nav');
 const pw = require(path.join(__dirname, '..', '..', 'node_modules', 'playwright'));
 const chromium = pw[process.env.QA_BROWSER || 'chromium'];
 const REPO = path.join(__dirname, '..', '..');
@@ -304,6 +305,7 @@ async function session(opts = {}) {
   const b = await launch();
   const base = IS_WEBKIT && !opts.url ? await webBase() : '';
   const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark', ...(base || opts.blockServiceWorkers ? { serviceWorkers: 'block' } : {}) });
+  await ctx.addInitScript('window.__qaFindLogic = ' + findLogic + ';');
   await ctx.addInitScript(() => { window.__noImportGate = true; });
   if (!opts.firstRun) await ctx.addInitScript(() => { window.__noFirstRun = true; });   // the first-run page covers the app; Task 3's FIRSTRUN tests turn it on with session({ firstRun: true })
   if (opts.init) await ctx.addInitScript(opts.init);
@@ -338,19 +340,27 @@ async function session(opts = {}) {
     } catch (e) { console.error("pinTiers failed:", e.message); }
   }
   const s = { ctx, page, errors, logs, loadMs: Date.now() - t0 };
-  // Tab bar: Today / Roster / PvP / Recs, then More (Settings = HOME, Raid, Intel, Attack, Log...).
-  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
-  const MORE = { HOME: 'Settings', RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search', BESTIV: 'Best IV', DITTO: 'Ditto ranking', KEEP: 'Keeper review' };
+  // Navigation waits for its destination instead of sleeping: the app's state.tab is the target, the More menu is closed and no finite
+  // CSS animation or transition is still running. A wrong label fails at the click, a tab that never opens fails at the wait.
+  const settled = s.settled = () => page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || a.effect.getTiming().iterations === Infinity));
   s.go = async label => {
-    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(350); await page.locator('[role=menuitem][aria-label="' + MORE[label] + '"]').last().click(); await page.waitForTimeout(600); return; }
-    const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(500);
+    const dest = MORE[label] || BAR[label];
+    if (MORE[label]) { await page.getByText(MORE_BUTTON, { exact: true }).last().click(); await page.locator('[role=menuitem][aria-label="' + dest.label + '"]').last().click(); }
+    else await page.getByText(dest ? dest.label : label, { exact: true }).last().click();
+    if (dest) await page.waitForFunction(tab => { const l = window.__qaFindLogic(); return !!l && l.state.tab === tab && !l.state.moreOpen; }, dest.tab);
+    await settled();
   };
   s.text = () => page.evaluate(() => document.body.innerText);
-  // Importing over an existing roster asks first; tests that just want the data in confirm it.
+  // Importing over an existing roster asks first; tests that just want the data in confirm it. load() returns once the file was read:
+  // the import notice or error is up, or the "Replace your roster?" question is (the notice is cleared first so an old one cannot match).
   s.load = async (csv, opts = {}) => {
-    await page.setInputFiles('input[type=file][accept=".csv"]', csv); await page.waitForTimeout(700);
+    await s.set({ csvNotice: '', csvError: '' });
+    await page.setInputFiles('input[type=file][accept=".csv"]', csv);
+    await page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !!(l.state.csvNotice || l.state.csvError || l.state.pendingConfirm); });
     if (opts.noConfirm) return;
-    const b = page.getByText('REPLACE', { exact: true }); if (await b.count()) { await b.first().click(); await page.waitForTimeout(500); }
+    const b = page.getByText('REPLACE', { exact: true });
+    if (await b.count()) { await b.first().click(); await page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.pendingConfirm; }); }
+    await settled();
   };
   s.logic = (fn, arg) => withLogic(page, fn, arg);
   s.state = () => s.logic(l => JSON.parse(JSON.stringify(l.state, (kk, v) => (typeof v === 'function' ? undefined : v))));
@@ -359,4 +369,4 @@ async function session(opts = {}) {
   s.close = () => ctx.close();
   return s;
 }
-module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch, withLogic };
+module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch, withLogic, BAR, MORE };

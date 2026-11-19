@@ -2,9 +2,10 @@ name: Tests
 
 # Runs the logic tests and a real-browser smoke render on every push and PR.
 # The smoke test loads the actual index.html in headless Chromium, imports a
-# small CSV, and checks the screens that have broken before (roster rows, swipe,
-# long-press, detail sheet, PvP / Attackers / Raid tabs), failing on any
-# uncaught page error.
+# small CSV, and walks the screens and planners that have broken before (roster
+# rows, detail sheet, every tab, events, GBL, saved teams), failing on any
+# uncaught page error. Gestures and the Content-Security-Policy test run in
+# the QA workflow, on Chromium and WebKit.
 
 on:
   push:
@@ -63,9 +64,6 @@ jobs:
       - name: Bundles match the source
         run: |
           python3 scripts/test_bundles_current.py
-
-      - name: Content-Security-Policy over http://localhost (Chromium; WebKit runs in the QA workflow)
-        run: QA_BROWSER=chromium node scripts/test_csp.js
 
       - name: Smoke render
         run: node scripts/smoke_render.js

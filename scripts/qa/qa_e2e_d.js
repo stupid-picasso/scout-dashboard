@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path');
 const { T, expect, session, REPO } = require('./qa_lib');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
 const AXE = fs.readFileSync(path.join(REPO, 'node_modules', 'axe-core', 'axe.min.js'), 'utf8');
-const SCREENS = ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG'];
+const { SCREENS } = require('../lib/nav');
 
 module.exports = async function suiteD() {
   const s = await session({ feed: false });

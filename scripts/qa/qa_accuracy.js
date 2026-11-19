@@ -228,4 +228,18 @@ const T = s => String(s || '').replace('POKEMON_TYPE_', '').toLowerCase();
 
   fs.writeFileSync(process.argv[2] || 'qa-accuracy.json', JSON.stringify(results, null, 1));
   results.forEach(r => console.log((r.accuracy == null ? ' n/a ' : (100 * r.accuracy).toFixed(1).padStart(5) + '%'), r.id, r.name, `(${r.matched}/${r.compared})`, r.samples.length ? '\n        e.g. ' + r.samples.slice(0, 2).join('\n             ') : ''));
+  // Gate: an area below its floor fails the run. Floors were set from the run of 2026-11-19, when every area was at 100% except the two live-PvPoke
+  // rows (96.7%), with a margin: the areas that compare against the live game master (species, typing, buddy km, evolution candy, movepools,
+  // spreads) may lose 1% to a new release the app has not caught up with, the fixed tables and formulas (CPM, power-up cost, type chart, STAB,
+  // moves, Mega costs, solver, invariants) may not lose anything, and the live PvPoke freshness rows (A15, A16) get 80% because PvPoke re-rates
+  // weekly. A13b is informational. A15 / A16 are skipped, with a warning, when the live fetch failed (no network); every other area must have compared something.
+  const FLOORS = { A01: 0.99, A02: 0.99, A03: 0.99, A04: 0.99, A04b: 0.99, A05: 1, A06: 1, A07: 1, A08: 1, A09: 1, A10: 1, A11: 0.99, A12: 0.99, A13: 1, A14: 1, A15: 0.8, A16: 0.8, A17: 1, A18: 0.99 };
+  const below = [];
+  Object.keys(FLOORS).forEach(id => {
+    const r = results.find(x => x.id === id);
+    if (!r) { below.push(id + ': no result'); return; }
+    if (r.accuracy == null) { if (/^A1[56]$/.test(id)) console.log('warning: ' + id + ' not compared (' + r.detail + ')'); else below.push(id + ': nothing compared'); return; }
+    if (r.accuracy < FLOORS[id]) below.push(id + ': ' + (100 * r.accuracy).toFixed(1) + '% is below the ' + (100 * FLOORS[id]) + '% floor');
+  });
+  if (below.length) { console.error('ACCURACY BELOW FLOOR:\n  ' + below.join('\n  ')); process.exit(1); }
 })().catch(e => { console.error(e); process.exit(1); });
