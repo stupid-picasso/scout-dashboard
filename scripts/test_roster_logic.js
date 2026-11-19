@@ -76,6 +76,13 @@ function extractMethodBody(src, signature) {
   return src.slice(braceStart + 1, j);
 }
 
+// The component's shared rules (keepRules) and chat limits (chatLimits) are methods of the real source; a test context gets the real ones.
+function withRules(ctx) {
+  ctx.keepRules = new Function(extractMethodBody(SRC, 'keepRules() {')).bind(ctx);
+  ctx.chatLimits = new Function(extractMethodBody(SRC, 'chatLimits() {')).bind(ctx);
+  return ctx;
+}
+
 // ---------------------------------------------------------------------------
 // isRemoved() / pokeSig() — bug #1 shape: duplicate signatures must not
 // cross-hide each other.
@@ -122,9 +129,10 @@ ctx.isRemoved = new Function('p', 'removedSet', isRemovedBody).bind(ctx);
 // ---------------------------------------------------------------------------
 const listSplitSrc = (() => {
   const i = SRC.indexOf('const byRank = [...roster]');
-  const j = SRC.indexOf('.slice(0, 150);', i);
+  const end = '.slice(0, CL.otherPool);';
+  const j = SRC.indexOf(end, i);
   if (i < 0 || j < 0) throw new Error('Could not find the BEST/EVERYTHING ELSE list-building block — has it moved?');
-  return SRC.slice(i, j + '.slice(0, 150);'.length);
+  return SRC.slice(i, j + end.length);
 })();
 
 // bestRank is normally IV/level dependent PvP math (pokemon-mechanics.js) —
@@ -136,7 +144,7 @@ const buildListsFn = new Function('roster', `
 `);
 function buildLists(roster, bestRank) {
   const isShadow = p => p.shadowPurified === '1' || p.shadowPurified === 1;
-  return buildListsFn.call({ bestRank, isShadow }, roster);
+  return buildListsFn.call(withRules({ bestRank, isShadow, mechanics: m }), roster);
 }
 
 (function testFlaggedLowRankPokemonIsNotInvisible() {
@@ -156,7 +164,7 @@ function buildLists(roster, bestRank) {
   // covered by neither list (within the 90 + 150 = 240 combined cap).
   const uncovered = roster.filter(p => !allCovered.has(p.idx));
   check('no roster member (within combined cap) is covered by neither list',
-    uncovered.length, Math.max(0, roster.length - 240));
+    uncovered.length, Math.max(0, roster.length - (withRules({}).chatLimits().topRanked + withRules({}).chatLimits().otherPool)));
 })();
 
 (function testShadowAndFavoriteAlsoNotExcluded() {
@@ -482,7 +490,7 @@ function buildLists(roster, bestRank) {
   check('more bulk gives a higher raid rating', bulky.rating > glass.rating, true);
   check('missing move data returns null', m.raidRating([200, 100, 100], [15, 15, 15], 50, null, charged, {}), null);
 
-  const ctx = { mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } };
+  const ctx = withRules({ mechanics: m, state: { moveDB: {}, roster: [], addedPokemon: [], ivOverrides: {} } });
   ctx._rmemo = (tag, obj, key, fn) => fn();
   ['moveKey', 'lookupMove', 'raidProfile', 'pvpFormName', '_pvpAssessRaw', '_needsEliteTMRaw', 'pvpAssess', 'needsEliteTM', 'pvpBest', 'isPvpWorthy', 'needsAppraisal', 'leagueUsable', 'bestRank', 'bestLeagueInfo'].forEach(n => {
     const sig = { moveKey: 'name', lookupMove: 'name', raidProfile: 'p', pvpFormName: 'p, leagueKey', pvpAssess: 'p, leagueKey, tableKey', _pvpAssessRaw: 'p, leagueKey, tableKey', _needsEliteTMRaw: 'speciesName, form, moveName', needsEliteTM: 'speciesName, form, moveName', pvpBest: 'p', isPvpWorthy: 'p', needsAppraisal: 'p', leagueUsable: 'p, leagueKey', bestRank: 'p', bestLeagueInfo: 'p' }[n];
@@ -654,7 +662,7 @@ function buildLists(roster, bestRank) {
 // ---------------------------------------------------------------------------
 (function testScanQueue() {
   const roster = [];
-  const ctx = { mechanics: m, state: {}, effectiveRosterForMatch: () => roster, isShadow: p => !!p.shadow };
+  const ctx = withRules({ mechanics: m, state: {}, effectiveRosterForMatch: () => roster, isShadow: p => !!p.shadow });
   ctx.needsAppraisal = new Function('p', extractMethodBody(SRC, 'needsAppraisal(p) {')).bind(ctx);
   ctx.scanQueue = new Function(extractMethodBody(SRC, 'scanQueue() {')).bind(ctx);
   const mon = (over) => ({ idx: Math.random(), name: 'Pikachu', dex: 25, cp: 300, ivMeasured: false, atkIV: null, ...over });
@@ -1005,19 +1013,20 @@ function buildLists(roster, bestRank) {
 // Bug 3: one definition of "safe to transfer". The optimise plan (chat, Today) used to skip the raid-role test that the Recs list had.
 (() => {
   const roster = [{ idx: 1, name: 'A', dex: 1, ivAvg: 40 }, { idx: 2, name: 'B', dex: 2, ivAvg: 40 }, { idx: 3, name: 'C', dex: 3, ivAvg: 80 }];
-  const ctx = {
-    state: { completedIds: [] },
+  const ctx = withRules({
+    mechanics: m, state: { completedIds: [] },
     bestRank: p => (p.idx === 3 ? 90 : 50), evolvesToName: () => null,
     keepContext: () => ({ typeBest: {} }), keepReasons: () => [],
     hasRaidRole: p => p.idx === 1,
-  };
+  });
   ['isLowValueMon(p)', 'transferSafePool(roster, keepCtx, typeBest, notDone)'].forEach(sig => {
     const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
     if (SRC.indexOf(n + '(' + a + ') {') >= 0) ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
   });
   const plan = new Function('roster', extractMethodBody(SRC, 'buildOptimizePlan(roster) {')).call(ctx, roster);
   check('the optimise plan leaves out a Pokemon with a raid role, like the Recs list', plan.transferSafe.map(p => p.idx), [2]);
-  check('the IV 51 and rank 70 bar is written once', (SRC.match(/ivAvg < 51/g) || []).length, 1);
+  // The bar lives in keepRules().transfer; the component reads it and its sentences quote it, so no other literal copy is left (the one match is the definition).
+  check('the transfer bar is keepRules().transfer and the component holds no other literal copy of it', [withRules({}).keepRules().transfer, (SRC.match(/ivAvg < 51|ivBelow: 51|rank < 70\b/g) || []).length], [{ ivBelow: 51, rankBelow: 70 }, 1]);
 })();
 
 // Bug 4: installDerivedCache keyed array arguments by length, so two bosses with the same number of types shared one result.
