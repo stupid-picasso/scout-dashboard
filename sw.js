@@ -1,20 +1,17 @@
-const CACHE_NAME = 'scout-v412';
+const CACHE_NAME = 'scout-v413';
 
 // App shell — code that changes on every deploy. NETWORK-FIRST.
-// Cache-first here is what caused the "I pushed the fix but still see the old
-// error" loop: the stale copy was served, then silently re-cached behind it.
 const SHELL_ASSETS = [
   './',
   './index.html',
   './support.js',
   './pokemon-mechanics.js',
-  './src/sample-data.js',
   './Scout%20Dashboard.dc.html',
   './IV%20CP%20HP%20Guide.dc.html',
   './manifest.json'
 ];
 
-// Immutable content-addressed assets — safe to serve cache-first.
+// Icons, served cache-first.
 const IMMUTABLE_ASSETS = [
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
@@ -62,13 +59,8 @@ self.addEventListener('fetch', function (event) {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.hostname.includes('firebase') || url.hostname.includes('gstatic') ||
-      url.hostname.includes('googleapis') || url.hostname.includes('jsdelivr')) {
-    return;
-  }
 
   if (isImmutable(url.pathname)) {
-    // Cache-first: these never change without a filename change.
     event.respondWith(
       caches.match(request).then(function (cached) {
         return cached || fetch(request).then(function (response) {
