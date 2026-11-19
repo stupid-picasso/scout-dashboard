@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scout-v413';
+const CACHE_NAME = 'scout-v415';
 
 // App shell — code that changes on every deploy. NETWORK-FIRST.
 const SHELL_ASSETS = [
@@ -53,6 +53,54 @@ function isImmutable(pathname) {
   return /\/sprites\//.test(pathname) || /\/icons\//.test(pathname);
 }
 
+// Fetch app code from the network and keep a copy for offline use.
+// keep(p), when given, receives the promise of the cache write so the caller can hold the worker open until it is done.
+function fetchShell(request, keep) {
+  return fetch(request).then(function (response) {
+    if (response && response.ok && response.type === 'basic') {
+      const clone = response.clone();
+      const stored = caches.open(CACHE_NAME).then(function (c) { return c.put(request, clone); });
+      if (keep) keep(stored);
+    }
+    return response;
+  });
+}
+
+function offlineShell(request) {
+  return caches.match(request).then(function (cached) {
+    if (cached) return cached;
+    if (request.mode === 'navigate') return caches.match('./index.html');
+    return new Response('', { status: 504, statusText: 'Offline' });
+  });
+}
+
+function networkFirst(request) {
+  return fetchShell(request).catch(function () { return offlineShell(request); });
+}
+
+// Network-first with a time limit: if the network has not answered in SHELL_TIMEOUT_MS and a cached copy exists, serve
+// that copy. Without a cached copy keep waiting for the network. The fetch is never cancelled, so it still refreshes the cache.
+const SHELL_TIMEOUT_MS = 3000;
+function raceShell(event, request) {
+  const quiet = function () {};
+  let stored = Promise.resolve();
+  const net = fetchShell(request, function (p) { stored = p.then(quiet, quiet); });
+  // Hold the worker open until the fetch and the cache write are done, even after the cached copy was served.
+  event.waitUntil(net.then(function () { return stored; }, quiet));
+  let timer;
+  const slow = {};
+  const timeout = new Promise(function (resolve) { timer = setTimeout(resolve, SHELL_TIMEOUT_MS, slow); });
+  return Promise.race([net, timeout]).then(function (first) {
+    clearTimeout(timer);
+    if (first !== slow) return first;
+    return caches.match(request).then(function (cached) {
+      // Only the app's own entry points may fall back to the cached index.html; any other page keeps waiting for the network.
+      if (!cached && request.mode === 'navigate' && /(^|\/)(index\.html)?$/.test(new URL(request.url).pathname)) return caches.match('./index.html');
+      return cached;
+    }).then(function (cached) { return cached || net; });
+  }).catch(function () { clearTimeout(timer); return offlineShell(request); });
+}
+
 self.addEventListener('fetch', function (event) {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -75,23 +123,15 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // Network-first for all app code: always get the freshest deploy, fall back
-  // to cache only when genuinely offline.
-  event.respondWith(
-    fetch(request).then(function (response) {
-      if (response && response.ok && response.type === 'basic') {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(function (c) { c.put(request, clone); });
-      }
-      return response;
-    }).catch(function () {
-      return caches.match(request).then(function (cached) {
-        if (cached) return cached;
-        if (request.mode === 'navigate') return caches.match('./index.html');
-        return new Response('', { status: 504, statusText: 'Offline' });
-      });
-    })
-  );
+  // The update check reads sw.js itself and must see the server copy, never a cached one.
+  if (request.cache === 'no-store' || /\/sw\.js$/.test(url.pathname)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Network-first for all app code: always get the freshest deploy. On a stalled connection the cached copy is
+  // served after SHELL_TIMEOUT_MS while the network fetch carries on and refreshes the cache.
+  event.respondWith(raceShell(event, request));
 });
 
 // ---- Web Push (task 28). The Worker sends { t: title, b: body, tag, url } encrypted; every push MUST show a notification (iOS revokes the

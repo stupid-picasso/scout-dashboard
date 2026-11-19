@@ -28,6 +28,16 @@ if (!BANNED.size || !BANNED.has('f1e51c3d39558b21cd691b4bb7768b78c76c3ddd61860a7
 const need = [['LICENSE', /MIT License/], ['LICENSE', /not cover/i], ['SECURITY.md', /unsafe-eval/], ['SECURITY.md', /sha384/], ['CONTRIBUTING.md', /real account data/i], ['PRIVACY.md', /EEA/], ['PRIVACY.md', /Delete my account/],
   ['README.md', /not affiliated with, endorsed by or sponsored by/i], ['PRIVACY.md', /not affiliated with, endorsed by or sponsored by/i], ['Scout Dashboard.dc.html', /not affiliated with, endorsed or sponsored by/i]];
 need.forEach(([f, re]) => { let t = ''; try { t = fs.readFileSync(path.join(REPO, f), 'utf8'); } catch (e) {} if (!re.test(t)) { bad++; console.log('FAIL ' + f + ' is missing or lacks ' + re); } });
+// Housekeeping: the one-time bootstrap script and the agents' working notes are gone, nothing still points at them, and the README says what push alerts are and where the Worker lives.
+for (const gone of ['setup.sh', 'docs/research/worker1-status.md', 'docs/research/worker2-status.md']) if (fs.existsSync(path.join(REPO, gone))) { bad++; console.log('FAIL ' + gone + ' should have been deleted'); }
+for (const f of execSync('git ls-files -z', { cwd: REPO }).toString().split('\0').filter(x => /\.(md|js|mjs|py|ya?ml)$/.test(x) && x !== 'scripts/test_tracked_tree.js' && fs.existsSync(path.join(REPO, x)))) {
+  if (/worker[12]-status\.md/.test(fs.readFileSync(path.join(REPO, f), 'utf8'))) { bad++; console.log('FAIL ' + f + ' still names a deleted worker status note'); }
+}
+{
+  let r = ''; try { r = fs.readFileSync(path.join(REPO, 'README.md'), 'utf8'); } catch (e) {}
+  if (!(/push alerts/i.test(r) && /worker\//.test(r) && /OWNER_CHECKLIST\.md/.test(r) && /section 5/i.test(r))) { bad++; console.log('FAIL README.md must describe push alerts, the worker/ directory and docs/OWNER_CHECKLIST.md section 5'); }
+  if (/raid lobby/i.test(r)) { bad++; console.log('FAIL README.md mentions the raid lobby, which is not built'); }
+}
 // Pages must serve the files as they are. Without .nojekyll, GitHub runs Jekyll, which stops on the Liquid-looking braces in the docs and fails the whole deploy (the live app stayed on an old build for four merges).
 if (!fs.existsSync(path.join(REPO, '.nojekyll'))) { bad++; console.log('FAIL .nojekyll is missing: GitHub Pages would run Jekyll over the docs and fail the deploy'); }
 console.log(bad ? bad + ' problem(s)' : 'tracked tree clean (' + scanned + ' text files scanned, ' + BANNED.size + ' banned address hashes)');

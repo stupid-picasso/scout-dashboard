@@ -105,7 +105,7 @@ Also add `index.html`, `Scout Dashboard.html`, `Scout Dashboard Standalone.dc.ht
 ### 2.7 Docs to update
 - `PROJECT_HANDOFF.md:556-559` ("One source, generated bundles"): new workflow, skeletons, deploy, retired baseline; add a dated section.
 - `DEPLOY.md` is the Firestore-rules checklist; its step 5 (line 226, "Merge and publish this version of the app (GitHub Pages)") stays true; add one line that "publish" is now the Pages workflow run, and where to see it. A separate short section "Publishing the app" (owner steps of section 3) belongs in `DEPLOY.md`.
-- `README.md`, `CONTRIBUTING.md`, `setup.sh:28`, `SECURITY.md:11,27`, `docs/research/manager-plan.md` Standing rules.
+- `README.md`, `CONTRIBUTING.md`, `SECURITY.md:11,27`, `docs/research/manager-plan.md` Standing rules.
 
 ## 3. Owner steps
 

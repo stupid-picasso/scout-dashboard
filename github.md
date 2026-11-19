@@ -114,7 +114,7 @@ date: 2026-08-06T03:05:37Z
 - Pulled the full current `main` (tree `448339469ed1`): dashboard, mechanics, PWA shell, sample data and diagnostic-log module all refreshed from the repo.
 - New weekly data pipeline imported: `scripts/update_pokemon_data.py` + `.github/workflows/update-pokemon-data.yml` refresh base stats from pogoapi.net every Monday 09:00 UTC — plain stat corrections auto-commit to `main`, brand-new dex numbers (name + stats + fetched sprite) go out as a review PR instead.
 - New `data/pokemon_import.json` (77 KB roster import payload) and `logs/import-log-2026-08-04T18-10-11-253Z.json`.
-- New repo-bootstrap helpers: `setup.sh`.
+- New repo-bootstrap helpers: `setup.sh` (since deleted, it only described copying files from an old repo).
 
 ## Previous sync
 date: 2026-08-03T23:46:53.709Z
