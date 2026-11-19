@@ -15,14 +15,13 @@ check('allowedKeysList is present and has entries', allowed && allowed.length > 
 check('scrubKeysList is present', scrub && scrub.length === 4);
 
 // What the app can write -------------------------------------------------------------------------------------------------------
-const method = (src, head) => { const i = src.indexOf(head); if (i < 0) return ''; const j = src.indexOf('\n  }\n', i); return src.slice(i, j); };
-const getter = (name) => { const t = method(app, '  get ' + name + '() {'); return (t.match(/'([^']+)'/g) || []).map(x => x.slice(1, -1)); };
-const blobSrc = method(app, '  buildCloudBlob() {');
-const rawObj = blobSrc.slice(blobSrc.indexOf('const raw = {'), blobSrc.indexOf('const out = {}')).replace(/\/\/.*$/gm, '');
-const rawKeys = [...new Set([...rawObj.matchAll(/(?:^|[\s,{])([A-Za-z_]\w*)\s*:/gm)].map(m => m[1]).filter(k => k !== 'raw'))];
-const packed = getter('PACKED_KEYS'), meta = getter('CLOUD_META_KEYS'), excluded = getter('RESTORE_EXCLUDED_KEYS');
+const L = require('./lib/testkit').appSchema(app);   // the persistence schema and the lists derived from it, evaluated from the app source
+const blobSrc = (() => { const i = app.indexOf('  buildCloudBlob() {'); return app.slice(i, app.indexOf('\n  }\n', i)); })();
+const rawKeys = [...L.dataFields().map(f => f.key), 'updatedAt'];
+const packed = L.PACKED_KEYS, meta = L.CLOUD_META_KEYS, excluded = L.RESTORE_EXCLUDED_KEYS;
 check('found the blob keys in the app source', rawKeys.length >= 30 && rawKeys.indexOf('roster') >= 0 && rawKeys.indexOf('updatedAt') >= 0, rawKeys.length + ' keys');
 check('found PACKED_KEYS, CLOUD_META_KEYS, RESTORE_EXCLUDED_KEYS', packed.length >= 15 && meta.length >= 2 && excluded.length === 4, [packed.length, meta.length, excluded.length].join('/'));
+check('every key of the sync schema is allowed or a credential (packed ones as key + Json)', L.SYNC_SCHEMA.filter(f => { const k = f.role === 'secret' ? null : (f.packed ? f.key + 'Json' : f.key); return k && allowed.indexOf(k) < 0; }).map(f => f.key).length === 0, 'a schema key is missing from allowedKeysList');
 
 const writes = new Set();
 rawKeys.forEach(k => writes.add(packed.indexOf(k) >= 0 ? k + 'Json' : k));

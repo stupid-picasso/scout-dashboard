@@ -48,7 +48,7 @@ const SRC = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8');
 
 // Same loader test_ranking.js uses — real pokemon-mechanics.js in a sandbox,
 // not reimplemented, so movepoolFor()/AUTHORITATIVE_MOVES stay authoritative.
-const { loadMechanics } = require('./lib/testkit');
+const { loadMechanics, appSchema } = require('./lib/testkit');
 const m = loadMechanics();
 
 let pass = 0;
@@ -600,7 +600,8 @@ function buildLists(roster, bestRank) {
   call('loadLocalSecrets', ls, ctx3);
   check('a fresh load restores the keys and token, and ignores a stored endpoint', !!ctx3._patch && ctx3._patch.geminiKeys.length === 2 && ctx3._patch.githubToken === 'ghp_x' && !('apiEndpoint' in ctx3._patch) && !('apiEndpointDraft' in ctx3._patch), true);
 
-  const syncKeys = extractMethodBody(SRC, 'SYNC_KEYS() {') + extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {') + extractMethodBody(SRC, 'get PACKED_KEYS() {');
+  const lists = appSchema(SRC);
+  const syncKeys = [...lists.SYNC_KEYS(), ...lists.SYNCED_STATE_KEYS, ...lists.PACKED_KEYS].join(' ');
   check('no credential is in the synced or packed key lists', /geminiKey|githubToken|apiEndpoint/.test(syncKeys), false);
 })();
 
@@ -1046,22 +1047,23 @@ function buildLists(roster, bestRank) {
 })();
 
 // Bug 7: the lists that name an account's data must agree (they had drifted: ocrAutoApply watched but never saved; sign-out left eight fields on screen).
+// They are all views over SYNC_SCHEMA now, so this runs the real blob, patch and reset code against the schema.
 (() => {
-  const arr = body => new Function(body)();
-  const synced = arr(extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {'));
-  const watched = new Function(extractMethodBody(SRC, 'SYNC_KEYS() {')).call({});
-  const packed = arr(extractMethodBody(SRC, 'get PACKED_KEYS() {'));
+  const L = appSchema(SRC);
+  const synced = L.SYNCED_STATE_KEYS, watched = L.SYNC_KEYS(), packed = L.PACKED_KEYS;
   const state = { checklistDate: 'd' };
   synced.forEach(k => { state[k] = packed.indexOf(k) >= 0 ? [] : 1; });
   state.ocrAutoApply = true;
-  const ctx = { state, PACKED_KEYS: packed, chunkString: x => x, packText: x => x };
-  const blob = new Function(extractMethodBody(SRC, 'buildCloudBlob() {')).call(ctx);
+  L.state = state; L.chunkString = x => x; L.packText = x => x;
+  const blob = new Function(extractMethodBody(SRC, 'buildCloudBlob() {')).call(L);
   const blobKeys = Object.keys(blob).filter(k => k !== 'updatedAt' && k !== 'packedVersion').map(k => k.replace(/Json$/, ''));
-  const empty = Object.keys(new Function(extractMethodBody(SRC, 'EMPTY_USER_DATA() {')).call({ state: { checklistDate: 'd' } }));
+  L.state = { checklistDate: 'd' };
+  const emptyFn = () => new Function(extractMethodBody(SRC, 'EMPTY_USER_DATA() {')).call(L);
+  const empty = Object.keys(emptyFn());
   let patch = null;
-  const rctx = { state: { checklistDate: 'd', ivOverrides: {} }, _dirtyUntilPush: false, _hydrated: false, SECRET_CLOUD_FIELDS: [], unpackCloudBlob: r => r,
+  const rctx = Object.assign(appSchema(SRC), { state: { checklistDate: 'd', ivOverrides: {} }, _dirtyUntilPush: false, _hydrated: false, unpackCloudBlob: r => r,
     sanitizeRoster: r => r, mergeIvOverrides: (a, b) => b || a, normalizeCandyInventory: x => x, cleanSnapshotIndex: x => x,
-    setState(p) { if (!patch) patch = p; } };
+    setState(p) { if (!patch) patch = p; } });
   new Function('rawRemote', 'opts', extractMethodBody(SRC, 'applyRemote(rawRemote, opts) {')).call(rctx, {}, null);
   const sorted = a => [...a].sort();
   const diff = (a, b) => sorted(a.filter(k => b.indexOf(k) < 0));
@@ -1070,6 +1072,46 @@ function buildLists(roster, bestRank) {
   check('the applyRemote patch covers every synced field', diff(synced, Object.keys(patch)), []);
   check('the applyRemote patch has nothing synced-looking outside the list', diff(Object.keys(patch), synced), ['cutTargetDraft', 'snapshots'].filter(k => k in patch));
   check('EMPTY_USER_DATA resets every synced field', diff(synced, empty), []);
+
+  // Sign-out and an account switch reset every synced field to the schema default (moveDB, evoTable, chat, queues, trainer level
+  // and dust reserve used to stay on screen), but leave the checklist day and the per-session OCR switch alone.
+  const was = {};
+  synced.forEach(k => { was[k] = packed.indexOf(k) >= 0 ? [{ A: 1 }] : 7; });
+  was.checklistDate = '2026-01-01'; was.trainerLevel = 44; was.dustReserve = 5; was.chatMessages = [{ r: 'u', t: 'hi' }]; was.ocrAutoApply = true;
+  L.state = was;
+  const reset = emptyFn();
+  const defOf = k => L.dataFields().find(f => f.key === k).def;
+  check('a reset takes every field back to its default', synced.filter(k => k !== 'checklistDate').filter(k => JSON.stringify(reset[k]) !== JSON.stringify(defOf(k))), []);
+  check('a reset restores trainer level 36 and dust reserve 100000, empties chat, moves, evolutions and queues', [reset.trainerLevel, reset.dustReserve, reset.chatMessages, reset.moveDB, reset.evoTable, reset.transferQueue, reset.triageKeep, reset.candyAiDecisions], [36, 100000, [], {}, {}, [], {}, {}]);
+  check('a reset keeps the checklist day (not account data) and does not touch ocrAutoApply', [reset.checklistDate, 'ocrAutoApply' in reset], ['2026-01-01', false]);
+  const r1 = emptyFn(), r2 = emptyFn(); r1.resources.fastTM = 9;
+  check('a reset gives fresh objects, never a shared default', r2.resources.fastTM, null);
+  L.state = { ...was, chatMessages: Array.from({ length: 80 }, (_, i) => ({ i })) };
+  const saved = new Function(extractMethodBody(SRC, 'buildCloudBlob() {')).call(L);
+  const sc = JSON.parse(saved.chatMessagesJson);
+  check('only the newest 60 chat messages are saved', [sc.length, sc[0].i], [60, 20]);
+})();
+
+// The schema itself, and every list derived from it (the getter names stay: the rules test and the sync tests read them).
+(() => {
+  const L = appSchema(SRC);
+  const rows = L.SYNC_SCHEMA, keys = rows.map(f => f.key);
+  const data = rows.filter(f => !f.role), secret = rows.filter(f => f.role === 'secret'), meta = rows.filter(f => f.role === 'meta');
+  const same = (name, got, want) => check(name, [[...got].sort(), got.length], [[...want].sort(), want.length]);
+  check('schema keys are unique', keys.length, new Set(keys).size);
+  same('SYNC_KEYS is the data rows', L.SYNC_KEYS(), data.map(f => f.key));
+  same('SYNCED_STATE_KEYS is the data rows that a restore applies', L.SYNCED_STATE_KEYS, data.filter(f => f.restore !== false).map(f => f.key));
+  same('PACKED_KEYS is the packed data rows', L.PACKED_KEYS, data.filter(f => f.packed).map(f => f.key));
+  same('RESTORE_EXCLUDED_KEYS is the secrets and the rows a restore skips', L.RESTORE_EXCLUDED_KEYS, [...secret.map(f => f.key), ...data.filter(f => f.restore === false).map(f => f.key)]);
+  same('SECRET_CLOUD_FIELDS is the secrets', L.SECRET_CLOUD_FIELDS, secret.map(f => f.key));
+  same('CLOUD_META_KEYS is the meta rows', L.CLOUD_META_KEYS, meta.map(f => f.key));
+  const lists = { SYNC_KEYS: L.SYNC_KEYS(), SYNCED_STATE_KEYS: L.SYNCED_STATE_KEYS, PACKED_KEYS: L.PACKED_KEYS, RESTORE_EXCLUDED_KEYS: L.RESTORE_EXCLUDED_KEYS, SECRET_CLOUD_FIELDS: L.SECRET_CLOUD_FIELDS, CLOUD_META_KEYS: L.CLOUD_META_KEYS };
+  check('no list holds a key the schema does not have', Object.keys(lists).filter(n => lists[n].some(k => keys.indexOf(k) < 0)), []);
+  check('every data key is in SYNC_KEYS and SYNCED_STATE_KEYS', data.filter(f => lists.SYNC_KEYS.indexOf(f.key) < 0 || lists.SYNCED_STATE_KEYS.indexOf(f.key) < 0).map(f => f.key), []);
+  check('every packed key is a data key, and no credential is a data row', [lists.PACKED_KEYS.filter(k => !data.some(f => f.key === k)), data.filter(f => /geminiKey|githubToken|apiEndpoint/.test(f.key)).length], [[], 0]);
+  check('every data row has a default', data.filter(f => f.def === undefined).map(f => f.key), []);
+  check('the initial state is built from the schema defaults', /  state = \{\n    \.\.\.this\.schemaDefaults\(\),/.test(SRC), true);
+  check('only the chat is capped, at 60', data.filter(f => f.cap).map(f => [f.key, f.cap]), [['chatMessages', 60]]);
 })();
 
 // One write path for editing a Pokemon (patchMon). Every action that used to push to the cloud still does, the open detail sheet

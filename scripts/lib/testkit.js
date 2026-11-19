@@ -64,4 +64,24 @@ function serveRepo({ host = '127.0.0.1', noStore = false, gzip = false } = {}) {
   });
 }
 
-module.exports = { REPO, checker, loadMechanics, loadMechanicsContext, serveRepo, MIME };
+// The persistence schema of the app and every list derived from it, evaluated from the source of Scout Dashboard.dc.html (the lists
+// are views over SYNC_SCHEMA, so their text no longer holds the keys). Returns an object with the schema, the lists, dataFields()
+// and schemaDefaults(); set .state on it before calling anything that reads state.
+function appSchema(src) {
+  const body = head => {
+    const i = src.indexOf(head);
+    if (i < 0) throw new Error('not found in the app source: ' + head.trim());
+    let d = 0, j = src.indexOf('{', i); const start = j;
+    for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; }
+    return src.slice(start + 1, j);
+  };
+  const ctx = { state: {} };
+  ['SYNC_SCHEMA', 'SYNCED_STATE_KEYS', 'RESTORE_EXCLUDED_KEYS', 'CLOUD_META_KEYS', 'PACKED_KEYS', 'SECRET_CLOUD_FIELDS'].forEach(n => {
+    const f = new Function(body('  get ' + n + '() {'));
+    Object.defineProperty(ctx, n, { get() { return f.call(ctx); } });
+  });
+  [['dataFields', ''], ['SYNC_KEYS', ''], ['schemaDefaults', 'keepStay']].forEach(([n, a]) => { ctx[n] = new Function(a, body('  ' + n + '(' + a + ') {')).bind(ctx); });
+  return ctx;
+}
+
+module.exports = { REPO, checker, loadMechanics, loadMechanicsContext, serveRepo, appSchema, MIME };

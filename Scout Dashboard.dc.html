@@ -2287,7 +2287,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.360{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.361{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -4275,7 +4275,7 @@
 <script type="text/x-dc" data-dc-script data-props="{}">
 class Component extends DCLogic {
   state = {
-    roster: [],
+    ...this.schemaDefaults(),
     loaded: false,
     tab: 'today',
     search: '',
@@ -4283,13 +4283,11 @@ class Component extends DCLogic {
     typeFetchBusy: false,
     typeFetchStatus: '',
     typeFetchError: '',
-    moveDB: {},
     moveFetchBusy: false,
     moveFetchStatus: '',
     moveFetchError: '',
     sortField: 'cp',
     league: 'great',
-    history: [],
     syncedFrom: '',
     detailPoke: null,
     visibleCount: 30,
@@ -4334,11 +4332,6 @@ class Component extends DCLogic {
     remindersOn: false,
     pushOn: false, pushBusy: false, pushMsg: '', pushPrefs: null,
     installHintHidden: false,
-    completedIds: [],
-    removedIds: [],
-    stardustBalance: null,
-    candyInventory: {},
-    typeTable: {},
     online: true,
     csvNotice: '',
     csvError: '',
@@ -4352,8 +4345,6 @@ class Component extends DCLogic {
     detailNavList: [],
     detailNavIndex: -1,
     fileFallbackCopied: false,
-    evoTable: {},
-    candyAiDecisions: {},
     tmAiRecommendations: [],
     tmAiBusy: false,
     tmAiError: '',
@@ -4362,13 +4353,9 @@ class Component extends DCLogic {
     evoFetchBusy: false,
     evoFetchStatus: '',
     evoFetchError: '',
-    trainerLevel: 36,
-    dustReserve: 100000,
-    triageKeep: {},
     appFavourited: [],
     selfProtect: false,
     negationOk: false,
-    transferQueue: [],
     transferSearch: '',
     todayExpand: {},
     ocrBusy: false,
@@ -4386,12 +4373,10 @@ class Component extends DCLogic {
     aiUsage: { day: '' },
     importProgress: { day: '', clips: 0, added: 0, updated: 0 },
     clearArmed: false,
-    ivOverrides: {},
     ivManualDraft: {},
     apprShotBusy: false,
     apprShotError: '',
     apprShotSummary: '',
-    addedPokemon: [],
     solvedIvResult: null,
     videoEstimate: null,
     csvExported: false,
@@ -4411,9 +4396,6 @@ class Component extends DCLogic {
     promptCopied: false,
     viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1200,
     showOptimizePlan: false,
-    checklistDate: '',
-    checklistDone: {},
-    chatMessages: [],
     chatInput: '',
     chatBusy: false,
     listening: false,
@@ -4421,18 +4403,12 @@ class Component extends DCLogic {
     lastAnswer: '',
     videoImport: null,
     importScreenMode: 'detail',
-    resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
     resourcesDraft: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
-    evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null },
     evolutionItemsDraft: {},
-    bagCapacity: null,
     bagCapacityDraft: null,
     closestMissRevealed: false,
-    cutTarget: 300,
     evolveSort: 'value',
-    pvpMaxLevel: 50,
     ocrAutoApply: false,
-    maxBattles: [],
     maxStar: 3,
     chatOpen: false,
     chatBubbleOff: false,
@@ -4450,9 +4426,6 @@ class Component extends DCLogic {
     driveWorkflowAppraisalSummary: '',
     recalcBusy: false,
     recalcSummary: '',
-    eliteTmDone: [],
-    megaEnergyInventory: {},
-    megaEvolvedHistory: {},
     megaNameDraft: '',
     megaAmountDraft: '',
     firebaseConfigError: '',
@@ -4468,8 +4441,6 @@ class Component extends DCLogic {
     raidWeather: '',
     updateReady: false,
     diagCount: 0,
-    events: [],
-    savedTeams: [],
     eventDraft: { title: '', date: '', species: '' },
     feed: null,
     eventMoves: null,
@@ -4706,14 +4677,55 @@ class Component extends DCLogic {
     return out;
   }
 
-  // The fields that make up one account's data. SYNC_KEYS (what is watched for a save), SYNCED_STATE_KEYS, buildCloudBlob,
-  // the applyRemote patch and EMPTY_USER_DATA must name the same set (test DATA-04). ocrAutoApply is deliberately not in it: it is
-  // a per-session switch, firestore.rules does not allow it in the user document, and sign-out leaves it alone.
-  SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
-      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'candyAiDecisions',
-      'chatMessages', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'maxBattles'];
+  // What an account's data is made of: ONE row per field, and every list of those fields below is derived from it.
+  //   key, def     the field and its value for an empty account (also its first value; a fresh object on every read)
+  //   packed       stored in the cloud document as one compressed JSON string (key + 'Json'), not as a nested value
+  //   kind         how a cloud copy is read: 'or' (default) a missing or falsy value gives def, 'array' anything but an array does,
+  //                'num' only null or undefined does
+  //   keep         a missing value in the cloud copy leaves the current one on screen   stay   sign-out leaves it alone
+  //   cap          the most items saved (the newest)   norm  clean-up on read   restore:false  a backup restore skips it
+  //   role         'secret' kept on this device only, never saved; 'meta' written to the document beside the data
+  // firestore.rules must allow every data key (a packed one as key + 'Json') and every meta key; test_firestore_rules.js and the
+  // schema test check that. ocrAutoApply is deliberately not here: it is a per-session switch the rules do not allow and sign-out
+  // leaves alone.
+  get SYNC_SCHEMA() {
+    const R = (key, def, o) => ({ key, def, ...o });
+    const P = { packed: true };
+    return [
+      R('roster', [], { ...P, norm: (v, c) => c.sanitizeRoster(v) }),
+      R('ivOverrides', {}, { ...P, norm: (v, c) => c.mergeIvOverrides(c.state.ivOverrides, v) }),
+      R('addedPokemon', [], { ...P, norm: (v, c) => c.sanitizeRoster(v) }),
+      R('candyInventory', {}, { ...P, norm: (v, c) => c.normalizeCandyInventory(v) }),
+      R('typeTable', {}, P), R('moveDB', {}, P), R('evoTable', {}, P), R('candyAiDecisions', {}, P),
+      R('stardustBalance', null, { kind: 'num' }),
+      R('history', [], P), R('completedIds', [], P), R('removedIds', [], P),
+      R('checklistDate', '', { keep: true, stay: true }),
+      R('checklistDone', {}, P),
+      R('resources', { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null }, P),
+      R('evolutionItems', { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, P),
+      R('megaEnergyInventory', {}, P), R('megaEvolvedHistory', {}, P), R('triageKeep', {}, P), R('transferQueue', [], P),
+      R('trainerLevel', 36, { kind: 'num', keep: true }), R('dustReserve', 100000, { kind: 'num', keep: true }),
+      R('chatMessages', [], { ...P, kind: 'array', cap: 60 }),
+      R('bagCapacity', null, { kind: 'num' }), R('eliteTmDone', []), R('cutTarget', 300, { kind: 'num' }),
+      R('pvpMaxLevel', 50, { norm: v => [40, 50, 51].includes(v) ? v : 50 }),
+      R('events', [], { kind: 'array' }), R('savedTeams', [], { kind: 'array' }), R('maxBattles', [], { kind: 'array', keep: true }),
+      R('geminiKey', '', { role: 'secret' }), R('geminiKeys', [], { role: 'secret' }), R('apiEndpoint', '', { role: 'secret' }), R('githubToken', '', { role: 'secret' }),
+      R('lastSnapshotAt', null, { role: 'meta' }), R('snapshotIndex', [], { role: 'meta' })
+    ];
   }
+
+  // The data rows only (no secret, no meta).
+  dataFields() { return this.SYNC_SCHEMA.filter(f => !f.role); }
+
+  // The fields of a new or emptied account. With keepStay, a field that sign-out leaves alone keeps its current value.
+  schemaDefaults(keepStay) {
+    const o = {};
+    this.dataFields().forEach(f => { o[f.key] = keepStay && f.stay ? this.state[f.key] : f.def; });
+    return o;
+  }
+
+  // The fields watched for a change to save.
+  SYNC_KEYS() { return this.dataFields().map(f => f.key); }
 
   componentDidUpdate(prevProps, prevState) {
     // The just-changed highlight plays once when the roster shows it, then is forgotten.
@@ -4852,7 +4864,7 @@ class Component extends DCLogic {
         const n = (this.state.roster || []).length + (this.state.addedPokemon || []).length;
         // After "Delete my account" the device copy stays gone until there is something new to keep.
         if (this._localSaveOff) { if (!n) return; this._localSaveOff = false; }
-        ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
+        this.SECRET_CLOUD_FIELDS.forEach(k => { delete blob[k]; });
         const text = JSON.stringify(blob);
         if (text.length < 4200000) { localStorage.setItem(this.localCopyKey(cu && cu.uid), text); this.noteLocalSave(false); }
         else this.noteLocalSave(true);
@@ -5094,19 +5106,7 @@ class Component extends DCLogic {
   }
 
   EMPTY_USER_DATA() {
-    return {
-      roster: [], ivOverrides: {}, addedPokemon: [], candyInventory: {}, typeTable: {},
-      moveDB: {}, evoTable: {}, candyAiDecisions: {}, chatMessages: [], trainerLevel: 36, dustReserve: 100000,
-      stardustBalance: null, history: [], completedIds: [], removedIds: [],
-      checklistDate: this.state.checklistDate, checklistDone: {},
-      resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
-      bagCapacity: null,
-      eliteTmDone: [],
-      cutTarget: 300, pvpMaxLevel: 50, cutTargetDraft: '300',
-      megaEnergyInventory: {}, megaEvolvedHistory: {}, evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, triageKeep: {}, transferQueue: [],
-      syncedFrom: '',
-      events: [], savedTeams: [], maxBattles: []
-    };
+    return { ...this.schemaDefaults(true), cutTargetDraft: '300', syncedFrom: '' };
   }
 
   // Forget everything that belongs to the account that was signed in: timers, flags, the device copy and what is on screen.
@@ -5322,7 +5322,7 @@ class Component extends DCLogic {
 
   // The one-time scrub: credential fields an older build uploaded are deleted from the document, whichever device sees them
   // first. Only fields the document really has (as last read) are named, so nothing is written for a clean document.
-  get SECRET_CLOUD_FIELDS() { return ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint']; }
+  get SECRET_CLOUD_FIELDS() { return this.SYNC_SCHEMA.filter(f => f.role === 'secret').map(f => f.key); }
 
   secretScrubFields() {
     try {
@@ -5369,38 +5369,13 @@ class Component extends DCLogic {
       return;
     }
     this._applyingRemote = true;
-    const patch = {
-      roster: this.sanitizeRoster(remote.roster || []),
-      ivOverrides: this.mergeIvOverrides(this.state.ivOverrides, remote.ivOverrides),
-      addedPokemon: this.sanitizeRoster(remote.addedPokemon || []),
-      candyInventory: this.normalizeCandyInventory(remote.candyInventory || {}),
-      typeTable: remote.typeTable || {},
-      moveDB: remote.moveDB || {},
-      evoTable: remote.evoTable || {},
-      candyAiDecisions: remote.candyAiDecisions || {},
-      chatMessages: Array.isArray(remote.chatMessages) ? remote.chatMessages : [],
-      stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
-      history: remote.history || [],
-      completedIds: remote.completedIds || [],
-      removedIds: remote.removedIds || [],
-      checklistDate: remote.checklistDate || this.state.checklistDate,
-      checklistDone: remote.checklistDone || {},
-      resources: remote.resources || { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
-      evolutionItems: remote.evolutionItems || { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null },
-      bagCapacity: remote.bagCapacity != null ? remote.bagCapacity : null,
-      eliteTmDone: remote.eliteTmDone || [],
-      cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
-      pvpMaxLevel: [40, 50, 51].includes(remote.pvpMaxLevel) ? remote.pvpMaxLevel : 50,
-      events: Array.isArray(remote.events) ? remote.events : [],
-      savedTeams: Array.isArray(remote.savedTeams) ? remote.savedTeams : [],
-      maxBattles: Array.isArray(remote.maxBattles) ? remote.maxBattles : (this.state.maxBattles || []),
-      megaEnergyInventory: remote.megaEnergyInventory || {},
-      megaEvolvedHistory: remote.megaEvolvedHistory || {},
-      triageKeep: remote.triageKeep || {},
-      transferQueue: remote.transferQueue || [],
-      trainerLevel: remote.trainerLevel != null ? remote.trainerLevel : this.state.trainerLevel,
-      dustReserve: remote.dustReserve != null ? remote.dustReserve : this.state.dustReserve,
-    };
+    const patch = {};
+    this.dataFields().forEach(f => {
+      const v = remote[f.key];
+      let x = f.kind === 'array' ? (Array.isArray(v) ? v : undefined) : f.kind === 'num' ? (v != null ? v : undefined) : (v || undefined);
+      if (x === undefined) x = f.keep && this.state[f.key] != null ? this.state[f.key] : f.def;
+      patch[f.key] = f.norm ? f.norm(x, this) : x;
+    });
     // The snapshot list is the small index kept in the user document; no snapshot body is read to show it.
     if (Array.isArray(remote.snapshotIndex)) { this._snapIndex = this.cleanSnapshotIndex(remote.snapshotIndex); patch.snapshots = this._snapIndex.map(x => ({ id: x.id, reason: x.reason, createdAt: x.createdAt, pokemonCount: x.count })); }
     patch.cutTargetDraft = String(patch.cutTarget);
@@ -5577,39 +5552,24 @@ class Component extends DCLogic {
   // entry instead of tens of thousands. Nothing here is ever queried
   // server-side — the document is only ever read back whole — so indexing it
   // buys nothing and was the only thing standing between the roster and a save.
-  // Every key buildCloudBlob writes. confirmRestore derives its list from THIS
-  // rather than repeating it: the two lists had already drifted, so a restore
-  // silently dropped evoTable (hundreds of AI-resolved species), candyAiDecisions,
-  // triageKeep, transferQueue, trainerLevel and dustReserve — then immediately
-  // pushed the gaps over the good cloud copy.
+  // The lists below are views over SYNC_SCHEMA. Every key buildCloudBlob writes; confirmRestore applies exactly these.
   get SYNCED_STATE_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable',
-      'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
-      'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
-      'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
-      'chatMessages',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'maxBattles'];
+    return this.dataFields().filter(f => f.restore !== false).map(f => f.key);
   }
 
-  // Credentials are excluded from a restore by NAME, not by being forgotten, so
-  // adding a key to the list above can never silently start overwriting keys.
-  // githubToken is deliberately absent from SYNCED_STATE_KEYS entirely (an old
-  // backup should never resurrect a possibly-revoked PAT) — listed here too so
-  // a future edit that adds it to SYNCED_STATE_KEYS doesn't reintroduce that risk.
+  // Credentials are excluded from a restore by NAME, so a field added to the schema can never start overwriting them. They are
+  // not data rows at all: an old backup must never resurrect a possibly revoked token.
   get RESTORE_EXCLUDED_KEYS() {
-    return ['geminiKey', 'geminiKeys', 'apiEndpoint', 'githubToken'];
+    return this.SYNC_SCHEMA.filter(f => f.role === 'secret' || f.restore === false).map(f => f.key);
   }
 
   // Fields written to the user document outside buildCloudBlob (the snapshot bookkeeping). firestore.rules must list them too.
   get CLOUD_META_KEYS() {
-    return ['lastSnapshotAt', 'snapshotIndex'];
+    return this.SYNC_SCHEMA.filter(f => f.role === 'meta').map(f => f.key);
   }
 
   get PACKED_KEYS() {
-    return ['roster', 'addedPokemon', 'ivOverrides', 'candyInventory', 'typeTable',
-      'moveDB', 'evoTable', 'candyAiDecisions', 'history', 'completedIds', 'removedIds',
-      'checklistDone', 'resources', 'evolutionItems', 'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue',
-      'chatMessages'];
+    return this.dataFields().filter(f => f.packed).map(f => f.key);
   }
 
   // Split on ENCODED BYTES, not string length. slice() counts UTF-16 code units,
@@ -5699,22 +5659,15 @@ class Component extends DCLogic {
 
   buildCloudBlob() {
     const s = this.state;
-    const raw = {
-      roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
-      typeTable: s.typeTable, moveDB: s.moveDB, evoTable: s.evoTable, candyAiDecisions: s.candyAiDecisions,
-      stardustBalance: s.stardustBalance, history: s.history,
-      completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
-      checklistDone: s.checklistDone, resources: s.resources, evolutionItems: s.evolutionItems, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
-      triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
-      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, pvpMaxLevel: s.pvpMaxLevel,
-      events: s.events || [], savedTeams: s.savedTeams || [], maxBattles: s.maxBattles || [],
-      // Trimmed on write: an unbounded transcript would eventually crowd out the
-      // roster, which is the data that actually matters.
-      chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
-      // API keys, the custom endpoint and the GitHub token are never part of this blob (cloud document, snapshots,
-      // device copy, backup file), whatever the browser mode.
-      updatedAt: Date.now()
-    };
+    const raw = {};
+    this.dataFields().forEach(f => {
+      const v = s[f.key];
+      // A chat transcript is trimmed on write: an unbounded one would eventually crowd out the roster, which is the data that
+      // actually matters. API keys, the custom endpoint and the GitHub token are never part of this blob (cloud document,
+      // snapshots, device copy, backup file), whatever the browser mode.
+      raw[f.key] = f.kind === 'array' ? (Array.isArray(v) ? (f.cap ? v.slice(-f.cap) : v) : []) : v;
+    });
+    raw.updatedAt = Date.now();
     const out = {};
     Object.keys(raw).forEach(k => {
       if (this.PACKED_KEYS.indexOf(k) >= 0) {
@@ -10997,7 +10950,7 @@ class Component extends DCLogic {
   deviceBackupText() {
     // Unpacked like the cloud backup: plain readable arrays, not the chunked storage form.
     const blob = this.unpackCloudBlob(this.buildCloudBlob());
-    ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
+    this.SECRET_CLOUD_FIELDS.forEach(k => { delete blob[k]; });
     const count = (this.effectiveRosterForMatch() || []).length;
     return JSON.stringify({ _backup: { app: 'Professor', kind: 'device', takenAt: new Date().toISOString(), count }, data: blob }, null, 2);
   }
@@ -21475,19 +21428,11 @@ class Component extends DCLogic {
       // answerable on the phone instead of guessed at.
       aboutBuild: (typeof window !== 'undefined' && window.SCOUT_BUILD && window.SCOUT_BUILD !== 'dev') ? ' \u00b7 build ' + window.SCOUT_BUILD : '',
       buildTag: (typeof window !== 'undefined' && window.SCOUT_BUILD) || 'dev',
-      // Fails loudly instead of the two silent-drift bugs already found in
-      // this file's history: any field kept live-synced (SYNC_KEYS) that a
-      // file/snapshot restore would silently skip because it never made it
-      // into SYNCED_STATE_KEYS, and isn't deliberately excluded on purpose
-      // (RESTORE_EXCLUDED_KEYS, for credentials that should never come back
-      // from an old backup). This is a maintenance signal
-      // about the codebase, shown only when the drift is real.
+      // A schema field with no matching state field would be saved as undefined and never shown. A maintenance signal about the
+      // codebase, shown only when it is real.
       syncKeyDriftWarning: (() => {
-        const drift = this.SYNC_KEYS().filter(k =>
-          this.SYNCED_STATE_KEYS.indexOf(k) < 0 && this.RESTORE_EXCLUDED_KEYS.indexOf(k) < 0);
-        return drift.length
-          ? `SYNC/RESTORE KEY DRIFT: ${drift.join(', ')} \u2014 synced live but a file restore or snapshot restore silently skips ${drift.length === 1 ? 'it' : 'them'}. Add to SYNCED_STATE_KEYS (or RESTORE_EXCLUDED_KEYS if that's deliberate).`
-          : null;
+        const gap = this.dataFields().map(f => f.key).filter(k => !(k in this.state));
+        return gap.length ? `SYNC SCHEMA GAP: ${gap.join(', ')} \u2014 in SYNC_SCHEMA but not in state, so ${gap.length === 1 ? 'it is' : 'they are'} saved empty.` : null;
       })(),
       onStardustChange: (e) => this.setStardust(e.target.value),
       stardustDraft,
