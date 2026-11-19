@@ -54,11 +54,13 @@ function isImmutable(pathname) {
 }
 
 // Fetch app code from the network and keep a copy for offline use.
-function fetchShell(request) {
+// keep(p), when given, receives the promise of the cache write so the caller can hold the worker open until it is done.
+function fetchShell(request, keep) {
   return fetch(request).then(function (response) {
     if (response && response.ok && response.type === 'basic') {
       const clone = response.clone();
-      caches.open(CACHE_NAME).then(function (c) { c.put(request, clone); });
+      const stored = caches.open(CACHE_NAME).then(function (c) { return c.put(request, clone); });
+      if (keep) keep(stored);
     }
     return response;
   });
@@ -80,9 +82,11 @@ function networkFirst(request) {
 // that copy. Without a cached copy keep waiting for the network. The fetch is never cancelled, so it still refreshes the cache.
 const SHELL_TIMEOUT_MS = 3000;
 function raceShell(event, request) {
-  const net = fetchShell(request);
   const quiet = function () {};
-  event.waitUntil(net.then(quiet, quiet));
+  let stored = Promise.resolve();
+  const net = fetchShell(request, function (p) { stored = p.then(quiet, quiet); });
+  // Hold the worker open until the fetch and the cache write are done, even after the cached copy was served.
+  event.waitUntil(net.then(function () { return stored; }, quiet));
   let timer;
   const slow = {};
   const timeout = new Promise(function (resolve) { timer = setTimeout(resolve, SHELL_TIMEOUT_MS, slow); });
@@ -90,7 +94,8 @@ function raceShell(event, request) {
     clearTimeout(timer);
     if (first !== slow) return first;
     return caches.match(request).then(function (cached) {
-      if (!cached && request.mode === 'navigate') return caches.match('./index.html');
+      // Only the app's own entry points may fall back to the cached index.html; any other page keeps waiting for the network.
+      if (!cached && request.mode === 'navigate' && /(^|\/)(index\.html)?$/.test(new URL(request.url).pathname)) return caches.match('./index.html');
       return cached;
     }).then(function (cached) { return cached || net; });
   }).catch(function () { clearTimeout(timer); return offlineShell(request); });

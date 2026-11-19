@@ -15,10 +15,10 @@ const settle = async () => { for (let i = 0; i < 5; i++) await tick(); };
 const K = 'https://app.example.test/scout/';
 
 // cached: map of url -> body. A fetch call returns a promise the test settles by hand (net(i).resolve / net(i).reject).
-function scope(cached = {}) {
-  const L = {}, timers = [], puts = [], fetches = [];
+function scope(cached = {}, opts = {}) {
+  const L = {}, timers = [], puts = [], fetches = [], putGates = [];
   const self = { location: new URL(K + 'sw.js'), registration: { scope: K }, clients: { claim: async () => {} }, skipWaiting: async () => {}, addEventListener: (t, f) => { L[t] = f; } };
-  const cache = { add: async () => {}, put: async (r, resp) => { puts.push([r.url, resp.body]); } };
+  const cache = { add: async () => {}, put: (r, resp) => { puts.push([r.url, resp.body]); return opts.slowPut ? new Promise(res => putGates.push(res)) : Promise.resolve(); } };
   const ctx = vm.createContext({
     self, URL, console,
     Response: class { constructor(b, o) { this.body = b; this.status = (o && o.status) || 200; } },
@@ -38,7 +38,7 @@ function scope(cached = {}) {
   const live = () => timers.filter(t => t.live);
   const fireTimers = async () => { live().forEach(t => { t.live = false; t.f(...t.a); }); await settle(); };
   const net = i => ({ resolve: body => fetches[i].resolve({ ok: true, type: 'basic', body, clone() { return this; } }), reject: () => fetches[i].reject(new Error('offline')) });
-  return { fire, live, fireTimers, net, fetches, puts };
+  return { fire, live, fireTimers, net, fetches, puts, putGates };
 }
 
 { // stalled network, cached copy exists: the cache is served after the timer, the network fetch still finishes and refreshes the cache
@@ -52,6 +52,15 @@ function scope(cached = {}) {
   s.net(0).resolve('NEW'); await settle();
   check('stalled: the late network response refreshes the cache', s.puts, [[K + 'support.js', 'NEW']]);
   check('stalled: the event is kept alive for the background refresh', e.waits.length >= 1, true);
+}
+{ // the worker must stay open until the late response is also written to the cache (a large file can take longer than the fetch itself)
+  const s = scope({ [K + 'index.html']: 'OLD' }, { slowPut: true });
+  const e = s.fire('index.html'); await settle(); await s.fireTimers();
+  s.net(0).resolve('NEW'); await settle();
+  let held = true; Promise.all(e.waits).then(() => { held = false; }); await settle();
+  check('late refresh: waitUntil is still pending while the cache write is unfinished', [s.puts.length, held], [1, true]);
+  s.putGates.forEach(g => g()); await settle();
+  check('late refresh: waitUntil settles once the cache write is done', held, false);
 }
 { // stalled network, nothing cached: keep waiting for the network
   const s = scope();
@@ -80,6 +89,15 @@ function scope(cached = {}) {
   check('offline: cached copy', a.state().value, 'OLD (cache)');
   check('offline: navigation gets index.html', b.state().value, 'SHELL (cache)');
   check('offline: unknown file is a 504', c.state().status, 504);
+}
+{ // a stalled navigation to some other page keeps waiting even though index.html is cached
+  const s = scope({ [K + 'index.html']: 'SHELL' });
+  const e = s.fire('Scout%20PWA%20Simulator.dc.html', { mode: 'navigate' }); await settle(); await s.fireTimers();
+  check('stalled navigation to another page: no index.html substitution', e.state().done, false);
+  s.net(0).resolve('SIM'); await settle();
+  check('stalled navigation to another page: the network page is served', e.state().value, 'SIM');
+  const q = s.fire('?utm=1', { mode: 'navigate' }); await settle(); await s.fireTimers();
+  check('stalled navigation to the root with a query string: cached index.html', q.state().value, 'SHELL (cache)');
 }
 { // a stalled navigation with only index.html cached shows the cached app shell
   const s = scope({ [K + 'index.html']: 'SHELL' });
