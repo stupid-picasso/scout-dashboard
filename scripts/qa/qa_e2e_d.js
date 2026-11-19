@@ -249,10 +249,18 @@ module.exports = async function suiteD() {
     expect(/Not saved on this device/.test(await c.text()) && /Export a backup/.test(await c.text()), 'notice text is missing');
     const dl = c.page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
     await c.page.locator('[data-local-save-failed]').getByText('Export a backup').click();
-    const d = await dl; expect(!d || /professor-backup/.test(d.suggestedFilename()), 'the button did not start the backup export');
+    const d = await dl; expect(d && /professor-backup/.test(d.suggestedFilename()), 'the button did not start the backup export');
     await c.page.evaluate(() => { Storage.prototype.setItem = window.__realSetItem; });
     await c.set({ cutTarget: 458 }); await c.page.waitForTimeout(2300);
     expect(!(await c.state()).localSaveFailed && !/Not saved on this device/.test(await c.text()), 'notice not cleared after a good save');
+    await c.close();
+  }, 'high');
+  await T('LSAVE-03', 'Storage', 'Signed in with sync healthy, the notice also says the cloud copy is the one that counts', async () => {
+    const c = await session({ feed: false, cloud: { store: {}, writes: [] } }); await c.page.waitForTimeout(3500);
+    expect(/^(saved|loaded|syncing)/.test((await c.state()).syncStatus || ''), 'setup: sync is not healthy: ' + (await c.state()).syncStatus);
+    await c.page.evaluate(() => { const real = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (/^scout\.local\.v1/.test(k)) throw new DOMException('full', 'QuotaExceededError'); return real.call(this, k, v); }; });
+    await c.set({ cutTarget: 459 }); await c.page.waitForTimeout(2300);
+    expect(/Not saved on this device\.\s*The cloud copy is the one that counts\./.test(await c.text()), 'signed-in notice text: ' + (await c.text()).slice(0, 120));
     await c.close();
   }, 'high');
   await T('LSAVE-02', 'Storage', 'A blob of 4.2 MB or more is skipped, which raises the same notice; shrinking it clears it', async () => {
