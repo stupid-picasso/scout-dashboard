@@ -37,8 +37,7 @@ const STANDALONE = () => { Object.defineProperty(navigator, 'standalone', { conf
 
 // addInitScript serialises a function, so several are joined into one script.
 const inits = (...fns) => ({ content: fns.map(f => '(' + f.toString() + ')();').join('\n') });
-const withLogic = (s, fn, arg) => s.page.evaluate(([src, a]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.PUSH_CONFIG) return (0, eval)('(' + src + ')')(f.stateNode.logic, a); } return null; }, [fn.toString(), arg]);
-const fill = (s, on = true) => withLogic(s, (l, on) => { l.PUSH_CONFIG = () => on ? { workerUrl: 'https://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) } : { workerUrl: '', vapidPublicKey: '' }; l.setState({ pushMsg: l.state.pushMsg || '' }); return true; }, on);
+const fill = (s, on = true) => s.logic((l, on) => { l.PUSH_CONFIG = () => on ? { workerUrl: 'https://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) } : { workerUrl: '', vapidPublicKey: '' }; l.setState({ pushMsg: l.state.pushMsg || '' }); return true; }, on);
 const P = s => s.page.evaluate(() => JSON.parse(JSON.stringify(window.__push, (k, v) => typeof v === 'function' ? undefined : v)));
 const card = s => s.page.locator('[data-push-alerts]');
 const btn = (s, name) => card(s).getByRole('button', { name, exact: true });
@@ -56,9 +55,9 @@ module.exports = async function pushTests() {
     expect(await s.call('pushPost', '/test', {}) === null && (await P(s)).fetches.length === 0, 'pushPost reached the network with an empty config');
     expect((await s.call('pushEnv')) === 'setup', 'env is not "setup"');
     // a half-filled config (address but no key) is still not set up
-    await withLogic(s, l => { l.PUSH_CONFIG = () => ({ workerUrl: 'https://push.example.test', vapidPublicKey: '' }); return 1; });
+    await s.logic(l => { l.PUSH_CONFIG = () => ({ workerUrl: 'https://push.example.test', vapidPublicKey: '' }); return 1; });
     expect(await s.call('pushEnv') === 'setup', 'an address without a key counted as set up');
-    await withLogic(s, l => { l.PUSH_CONFIG = () => ({ workerUrl: 'http://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) }); return 1; });
+    await s.logic(l => { l.PUSH_CONFIG = () => ({ workerUrl: 'http://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) }); return 1; });
     expect(await s.call('pushEnv') === 'setup', 'an http address counted as set up');
     expect(s.errors.length === 0, s.errors[0]);
   }, 'high');

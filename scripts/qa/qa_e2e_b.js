@@ -82,14 +82,13 @@ module.exports = async function suiteB() {
   }, 'medium');
 
   await T('REC-10', 'Recs', 'One transfer rule: a low-value Pokemon with a raid role is on neither the Recs transfer list nor the optimise plan (chat, Today)', async () => {
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const l = f.stateNode.logic;
-      const ros = l.effectiveRosterForMatch(), low = ros.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && l.bestRank(p) < 70);
+    const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(), low = ros.filter(p => Number.isFinite(p.ivAvg) && p.ivAvg < 51 && l.bestRank(p) < 70);
       if (low.length < 2) return { low: low.length };
       const target = low[0].idx, had = { h: l.hasRaidRole, k: l.keepReasons };
       // The keep check lets everything go (as it does for a spare copy, whose raid-role reason is dropped); only the raid role differs.
       l.keepReasons = () => []; l.hasRaidRole = p => p.idx === target; l._memoStore = {};
       try { return { low: low.length, plan: l.buildOptimizePlan(ros).transferSafe.map(p => p.idx), recs: (l.renderVals().transferList || []).map(p => p.idx), target }; }
-      finally { l.keepReasons = had.k; l.hasRaidRole = had.h; delete l.keepReasons; delete l.hasRaidRole; l._memoStore = {}; } } } return null; });
+      finally { l.keepReasons = had.k; l.hasRaidRole = had.h; delete l.keepReasons; delete l.hasRaidRole; l._memoStore = {}; } return null; });
     expect(r && r.low >= 2, 'setup: the fixture has ' + (r && r.low) + ' low-value Pokemon');
     expect(r.plan.length > 0 && r.recs.length > 0, 'setup: both lists are empty ' + JSON.stringify(r));
     expect(r.plan.indexOf(r.target) < 0 && r.recs.indexOf(r.target) < 0, 'the Pokemon with a raid role is offered for transfer: plan ' + r.plan.indexOf(r.target) + ', recs ' + r.recs.indexOf(r.target));
@@ -220,7 +219,7 @@ module.exports = async function suiteB() {
     expect(/ninetales,vulpix&ice/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
   }, 'high');
   await T('GEM-01', 'AI', 'In-app Gemini cycle is live: retired models dropped, a 503 moves to the next model', async () => {
-    const r = await s.page.evaluate(async () => {
+    const r = await s.logic(async logic => {
       const gen = []; const orig = window.fetch;
       const J = (status, obj) => ({ status, ok: status < 400, json: async () => obj, text: async () => JSON.stringify(obj) });
       window.fetch = async (url, opt) => {
@@ -234,8 +233,6 @@ module.exports = async function suiteB() {
         return J(200, { candidates: [{ content: { parts: [{ text: 'OK' }] }, finishReason: 'STOP' }] });
       };
       try {
-        let logic = null;
-        for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGeminiWithKey) { logic = f.stateNode.logic; break; } if (logic) break; }
         const out = await logic.callGeminiWithKey({ messages: [{ content: 'hi' }] }, 'QAKEY-' + Date.now());
         return { out, gen, rot: await logic.geminiRotation('QAKEY-x', false).catch(() => null) };
       } finally { window.fetch = orig; }
@@ -258,7 +255,7 @@ module.exports = async function suiteB() {
     expect(r.rec.pokemon_name === 'Zzzzzzzz', 'unknown names are left alone');
   }, 'high');
   await T('GEM-02', 'AI', 'A model out of daily quota is parked alone: the key keeps working on the other models', async () => {
-    const r = await s.page.evaluate(async () => {
+    const r = await s.logic(async logic => {
       const gen = []; const orig = window.fetch;
       const J = (status, obj) => ({ status, ok: status < 400, json: async () => obj, text: async () => JSON.stringify(obj) });
       window.fetch = async (url) => {
@@ -272,8 +269,6 @@ module.exports = async function suiteB() {
         return J(200, { candidates: [{ content: { parts: [{ text: 'OK' }] }, finishReason: 'STOP' }] });
       };
       try {
-        let logic = null;
-        for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGeminiWithKey) { logic = f.stateNode.logic; break; } if (logic) break; }
         const key = 'QAQUOTA-' + Date.now();
         const img = { messages: [{ content: [{ type: 'text', text: 'x' }, { type: 'image', source: { data: 'AAAA', media_type: 'image/jpeg' } }] }] };
         const a = await logic.callGeminiWithKey(img, key); const b = await logic.callGeminiWithKey(img, key);
@@ -352,9 +347,8 @@ module.exports = async function suiteB() {
     const p = { idx: 'qa-mo1', name: 'Pidgey', dex: 16, cp: 300, hp: 40, lvlMin: 10, lvlMax: 10, atkIV: 8, defIV: 8, staIV: 8, ivMeasured: true, scanDate: new Date().toISOString().slice(0, 10) };
     await s.set({ addedPokemon: [p], ivOverrides: {}, candyInventory: { pidgey: { name: 'Pidgey', candy: 100, xlCandy: 0, at: Date.now(), source: 'manual' } }, stardustBalance: 5000, tab: 'roster' }); await s.page.waitForTimeout(400);
     await s.call('openDetail', p); await s.page.waitForTimeout(900);
-    const seen = await s.page.evaluate(async () => {
+    const seen = await s.logic(async logic => {
       const el = [...document.querySelectorAll('[data-countup]')].find(e => /^\s*100\s*$/.test(e.textContent)); if (!el) return { err: 'no candy tile' };
-      let logic = null; for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) { logic = f.stateNode.logic; break; } if (logic) break; }
       logic.setState({ candyInventory: { pidgey: { name: 'Pidgey', candy: 40, xlCandy: 0, at: Date.now(), source: 'manual' } } });
       const vals = []; for (let i = 0; i < 14; i++) { await new Promise(r => setTimeout(r, 40)); vals.push(el.textContent.trim()); }
       return { vals, cls: el.className };
@@ -399,8 +393,7 @@ module.exports = async function suiteB() {
     expect((await hit([winner, plain, other])).indexOf('qa-d3') >= 0, 'a 0/11/12 that also ranks lower is still listed')
   });
   await T('CLOUD-LZ-01', 'Cloud', 'Packed cloud data round-trips through the compressor, shrinks, and old plain JSON still reads', async () => {
-    const r = await s.page.evaluate(() => {
-      const logic = (() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.lzPack) return f.stateNode.logic; } })();
+    const r = await s.logic(logic => {
       const list = []; for (let i = 0; i < 3000; i++) list.push({ idx: 'p' + i, name: ['Flabébé', 'Nidoran♀', 'Pikachu', 'Mew'][i % 4], cp: 100 + (i * 7) % 900, atkIV: i % 16, defIV: (i * 3) % 16, staIV: (i * 5) % 16, great: { rankPct: (i % 100) + 0.5 }, note: '★ · — ' + i });
       const json = JSON.stringify(list), packed = logic.lzPack(json), back = logic.lzUnpack(packed);
       const blob = logic.buildCloudBlob();
@@ -477,7 +470,7 @@ module.exports = async function suiteB() {
     // stronger peers of every type, so the weak ones have no raid role of their own
     const peers = [mk('S1', 143, 'Snorlax', [15, 15, 15], 3000), mk('S2', 130, 'Gyarados', [15, 15, 15], 3000), mk('S3', 123, 'Scyther', [15, 15, 15], 3000), mk('S4', 3, 'Venusaur', [15, 15, 15], 3000), mk('S5', 169, 'Crobat', [15, 15, 15], 3000)];
     const roster = [...locked, ...good, ...peers, ...weak];
-    const withLogic = (body, arg) => s.page.evaluate(([b, a]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepContext) return new Function('L', 'a', b)(f.stateNode.logic, a); } return null; }, [body, arg]);
+    const withLogic = (body, arg) => s.logic((l, [b, a]) => { return new Function('L', 'a', b)(l, a); return null; }, [body, arg]);
     const run = async target => { await s.set({ cutTarget: target }); return await withLogic('const c = L.keepContext(a.roster); const fl = L.floatCut(c); const sum = L.cutSafeSummary(a.roster, Math.max(0, a.roster.length - a.target)); return { floated: fl.set.size, show: sum.show.map(x => x.p.idx), keep: Object.fromEntries(a.roster.map(p => [p.idx, L.keepReasons(p, c)])) };', { roster, target }); };
     let r = await run(roster.length);
     expect(r.floated === 0 && r.show.length === 0, 'nothing floats at target: ' + r.floated);
@@ -572,7 +565,7 @@ module.exports = async function suiteB() {
     expect(e3 && e3.measured === false && /not appraised/.test(e3.why), 'an unappraised Marill is listed but explained: ' + JSON.stringify(e3 && e3.why));
     const e1 = q.find(r => r.p.idx === 'e1');
     expect(/Azumarill tier/.test(e1.why), 'the reason names the evolved form: ' + e1.why);
-    const skipped = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.evolveQueue) return f.stateNode.logic._evolveSkipped; } return null; });
+    const skipped = await s.logic((l) => { return l._evolveSkipped; return null; });
     expect(skipped >= 1, 'the skipped count is kept for the Today header: ' + skipped);
     await s.set({ addedPokemon: st0.addedPokemon || [], candyInventory: st0.candyInventory || {}, cutTarget: 300 });
   });
@@ -692,7 +685,7 @@ module.exports = async function suiteB() {
     const feed = (end, types) => ({ source: 'qa', fetchedAt: day(0), events: [], gbl: [{ start: day(-1), end: day(end), season: 'QA', leagues: [{ name: 'Fantasy Cup', cp: 1500, mega: false, rules: [], cup: { types, src: 'qa' } }] }] });
     const az1 = mk('cu1', 'Azumarill', 184, [2, 15, 15], 1400, 96), az2 = mk('cu2', 'Azumarill', 184, [3, 14, 14], 1390, 92), gy = mk('cu3', 'Gyarados', 130, [15, 15, 15], 1450, 96);
     await s.set({ addedPokemon: [...(st0.addedPokemon || []), az1, az2, gy], feed: feed(6, ['steel', 'fairy', 'dragon']) }); await s.page.waitForTimeout(400);
-    const reasons = async id => { const ctxRoster = await s.call('effectiveRosterForMatch'); return await s.page.evaluate(([i]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const L = f.stateNode.logic, r = L.effectiveRosterForMatch(), c = L.keepContext(r), p = r.find(q => String(q.idx) === i); return p ? L.keepFull(p, c).all : null; } } return null; }, [id]); };
+    const reasons = async id => { const ctxRoster = await s.call('effectiveRosterForMatch'); return await s.logic((l, [i]) => { const L = l, r = L.effectiveRosterForMatch(), c = L.keepContext(r), p = r.find(q => String(q.idx) === i); return p ? L.keepFull(p, c).all : null; return null; }, [id]); };
     const r1 = await reasons('cu1'), r2 = await reasons('cu2'), r3 = await reasons('cu3');
     expect(r1 && r1.some(x => /^Upcoming cup: best copy for Fantasy Cup/.test(x)), 'the best Azumarill is kept for the cup: ' + JSON.stringify(r1));
     expect(!(r2 || []).some(x => /^Upcoming cup/.test(x)), 'the second copy is not: ' + JSON.stringify(r2));
@@ -719,7 +712,7 @@ module.exports = async function suiteB() {
     await s.call('keeperFavouritedDone', kb.batches.find(b => b.ids.indexOf('kf1') >= 0)); await s.page.waitForTimeout(300);
     expect(((await s.state()).appFavourited || []).indexOf('kf1') >= 0, 'the app remembers it asked');
     await s.set({ addedPokemon: [{ ...az, favorite: true }, junk, ...peers] }); await s.page.waitForTimeout(300);
-    const reasons = async () => await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const L = f.stateNode.logic, r = L.effectiveRosterForMatch(), c = L.keepContext(r), p = r.find(q => String(q.idx) === 'kf1'); return p ? L.keepFull(p, c) : null; } } return null; });
+    const reasons = async () => await s.logic((l) => { const L = l, r = L.effectiveRosterForMatch(), c = L.keepContext(r), p = r.find(q => String(q.idx) === 'kf1'); return p ? L.keepFull(p, c) : null; return null; });
     let r = await reasons();
     expect(r && r.all.indexOf('Favourited from the keeper list') >= 0 && r.hard.indexOf('Favourite') < 0, 'an app-asked favourite is soft: ' + JSON.stringify(r && r.all));
     await s.call('saveProtectPrefs', { selfProtect: true }); await s.page.waitForTimeout(300);
@@ -757,7 +750,7 @@ module.exports = async function suiteB() {
   await T('IVENTRY-01', 'Roster', 'Entering IVs by hand: ATK / DEF / STA boxes are labelled, wide enough for two digits at 320 px and 390 px, and Save stores the typed spread as owner-typed', async () => {
     const saved = (await s.state()).roster;
     const top = saved.reduce((b, p, i) => (p.cp || 0) > (saved[b].cp || 0) ? i : b, 0);   // the highest-CP row is always on the first page
-    const logicDo = fn => s.page.evaluate(fnSrc => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) return new Function('l', fnSrc)(f.stateNode.logic); } return null; }, fn);
+    const logicDo = fn => s.logic((l, fnSrc) => { return new Function('l', fnSrc)(l); return null; }, fn);
     try {
       await logicDo('l.setState({ roster: l.state.roster.map((p, i) => i === ' + top + ' ? { ...p, ivMeasured: false, ivManual: false, ivSolved: false, atkIV: undefined, defIV: undefined, staIV: undefined } : p) });');
       const bad = [];
@@ -799,8 +792,8 @@ module.exports = async function suiteB() {
     await s.set({ geminiKey: key, geminiKeys: [key] });
     await s.call('clearDerivedCaches');
     const img = { messages: [{ role: 'user', content: [{ type: 'text', text: 'read' }, { type: 'image', source: { media_type: 'image/jpeg', data: 'AAAA' } }] }], max_tokens: 200 };
-    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { f.stateNode.logic._aiLog = []; f.stateNode.logic._thinkRung = {}; return; } } });
-    const call = b => s.page.evaluate(async body => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGemini) return await f.stateNode.logic.callGemini(body); } return null; }, b);
+    await s.logic((l) => { l._aiLog = []; l._thinkRung = {}; return; });
+    const call = b => s.logic(async (l, body) => { return await l.callGemini(body); return null; }, b);
     expect((await call(img)) === '{"name":"Pikachu"}', 'the image read returns');
     const imgs = () => seen.filter(x => x.img);
     expect(imgs().length >= 2 && imgs()[0].th === '{"thinkingLevel":"minimal"}' && imgs()[1].th === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + JSON.stringify(seen));
@@ -814,7 +807,7 @@ module.exports = async function suiteB() {
     const b2 = imgs().length;
     await call(img);
     expect(imgs().length === b2 + 1 && imgs()[b2].th === '{"thinkingLevel":"low"}', 'the remembered setting survives a text call: ' + JSON.stringify(imgs().slice(b2)));
-    const log = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) return f.stateNode.logic._aiLog; } return null; });
+    const log = await s.logic((l) => { return l._aiLog; return null; });
     expect(log && log.length >= 3 && log.every(a => typeof a.ms === 'number' && a.model && a.status === 200), 'every call is timed: ' + JSON.stringify(log && log.map(a => [a.model, a.ms, a.status, a.thinking])));
     expect(/thinking low/.test(await s.call('diagnosticsText')), 'the log is in the copyable diagnostics');
     await s.page.unroute('**/generativelanguage.googleapis.com/**');
@@ -831,7 +824,7 @@ module.exports = async function suiteB() {
     const key = 'AIzaHDR' + 'k'.repeat(28) + Date.now();
     await s.set({ geminiKey: key, geminiKeys: [key] });
     await s.call('clearDerivedCaches');
-    await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.callGemini) { f.stateNode.logic._gemRot = {}; return await f.stateNode.logic.callGemini({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 50 }); } } });
+    await s.logic(async (l) => { l._gemRot = {}; return await l.callGemini({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 50 }); });
     const kinds = ['/models?', ':countTokens', ':generateContent'].map(k => reqs.filter(r => r.url.indexOf(k) >= 0));
     expect(kinds.every(a => a.length >= 1), 'expected a model list, a token count and a generate call: ' + JSON.stringify(reqs.map(r => r.url)));
     expect(reqs.every(r => !/[?&]key=/.test(r.url) && r.url.indexOf(key) < 0), 'the key is in a URL: ' + reqs.map(r => r.url).join(' '));
@@ -950,7 +943,7 @@ module.exports = async function suiteB() {
     const txt = await s.page.evaluate(() => document.body.innerText);
     expect(/did not go through \(.*(quota|rate)/i.test(txt) && !/\(AI limit\)/.test(txt), 'the real reason is shown: ' + (txt.match(/did not go through[^\n]*/) || ['none'])[0]);
     await s.page.unroute('**/generativelanguage.googleapis.com/**');
-    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l._modelCool = {}; l._keyCooldown = {}; l._searchOffUntil = 0; return; } } });
+    await s.logic((l) => { l._modelCool = {}; l._keyCooldown = {}; l._searchOffUntil = 0; return; });
     await s.set({ geminiKey: '', geminiKeys: [], briefing: null, briefingError: '', briefingSearch: false });
   });
   await T('FORM-01', 'Safety', 'A regional form the measured stats prove wrong is flagged, locked from transfer, and set after one confirmation; a Pokemon whose stats fit its own form is left alone', async () => {
@@ -961,7 +954,7 @@ module.exports = async function suiteB() {
     const a = await s.call('formMismatchOf', alolaNt), k = await s.call('formMismatchOf', kantoNt), r = await s.call('formMismatchOf', alolaRai);
     expect(a && a.form === 'alola' && r && r.form === 'alola', 'both Alolan ones are found: ' + JSON.stringify([a, r]));
     expect(k === null, 'a Ninetales whose stats fit Kanto is left alone: ' + JSON.stringify(k));
-    const reasons = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const key = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!key) continue; for (let f = e[key]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; return l.keepReasons(l.effectiveRosterForMatch().find(p => p.idx === 'fm1')); } } return null; });
+    const reasons = await s.logic((l) => { return l.keepReasons(l.effectiveRosterForMatch().find(p => p.idx === 'fm1')); return null; });
     expect((reasons || []).some(x => /^Data inconsistent: the form may really be Alolan/.test(x)), 'locked from transfer meanwhile: ' + JSON.stringify(reasons));
     await s.call('fixFormMismatches'); await s.page.waitForTimeout(300);
     await s.page.getByText(/^SET 2$/).first().click(); await s.page.waitForTimeout(500);
@@ -972,7 +965,7 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300', ivOverrides: st0.ivOverrides || {} });
   });
   await T('PERF-04', 'Performance', 'The merged roster and keep context are reused across tab switches and rebuilt as soon as anything they read changes', async () => {
-    const logic = () => s.page.evaluateHandle(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { window.__qaL = f.stateNode.logic; return true; } } return false; });
+    const logic = () => s.logic(l => { window.__qaL = l; return true; });
     await logic();
     const st0 = await s.state();
     await s.set({ tab: 'home' }); await s.page.waitForTimeout(600); await s.set({ tab: 'roster' }); await s.page.waitForTimeout(600); await s.set({ tab: 'home' }); await s.page.waitForTimeout(600);   // the first visit logs a history snapshot
@@ -1018,7 +1011,7 @@ module.exports = async function suiteB() {
   await T('TAGS-01', 'Tags', 'Tag groups list the best Pokemon per league and tier, give strings that select only them, remember what was tagged and flag a group that drifts', async () => {
     const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const st0 = await s.state();
-    const L = () => s.page.evaluateHandle(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { window.__qaL = f.stateNode.logic; return true; } } return false; });
+    const L = () => s.logic(l => { window.__qaL = l; return true; });
     await s.set({ addedPokemon: [mk('tg1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('tg2', 'Altaria', 334, [3, 14, 15], 1450, 97), mk('tg3', 'Registeel', 379, [4, 15, 14], 1400, 96), mk('tg4', 'Pidgey', 16, [15, 15, 15], 300, 99)], roster: [], tagSnap: {}, appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500); await L();
     const info = await s.page.evaluate(() => { const l = window.__qaL; const g = l.tagGroups(); const by = k => g.find(x => x.key === k).members.map(p => p.name).sort().join(','); return { s: by('GL-S'), a: by('GL-A'), keys: g.map(x => x.key) }; });
     expect(info.s === 'Altaria,Azumarill' && info.a === 'Registeel', 'S and A groups: ' + JSON.stringify(info));
@@ -1044,7 +1037,7 @@ module.exports = async function suiteB() {
     const mk = (idx, extra) => ({ idx, name: 'Marill', dex: 183, cp: 400, hp: 70, atkIV: 14, defIV: 15, staIV: 14, ivAvg: 43 / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('ev1', { canEvolve: false }), mk('ev2', {})], roster: [], ivOverrides: {} }); await s.page.waitForTimeout(500);   // no rank recalculation: it would store the own-form rank first
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; window.__qaL = l; const ros = l.effectiveRosterForMatch(); const a = ros.find(p => p.idx === 'ev1'), b = ros.find(p => p.idx === 'ev2'); return { aTo: l.evolvesToName(a), bTo: l.evolvesToName(b), aRank: a.great.evolvesTo, bRank: b.great.evolvesTo, aChain: l.evoChainNames(a), q: l.evolveQueue().map(x => x.p.idx) }; } } return null; });
+    const r = await s.logic((l) => { window.__qaL = l; const ros = l.effectiveRosterForMatch(); const a = ros.find(p => p.idx === 'ev1'), b = ros.find(p => p.idx === 'ev2'); return { aTo: l.evolvesToName(a), bTo: l.evolvesToName(b), aRank: a.great.evolvesTo, bRank: b.great.evolvesTo, aChain: l.evoChainNames(a), q: l.evolveQueue().map(x => x.p.idx) }; return null; });
     expect(r.aTo === null && r.bTo, 'evolvesToName: ' + JSON.stringify(r));
     expect(r.aRank === 'Marill' && r.bRank === 'Azumarill', 'ranked as itself vs as its evolution: ' + JSON.stringify(r));
     expect(r.aChain.length === 1 && r.q.indexOf('ev1') < 0, 'not in the evolve queue: ' + JSON.stringify(r));
@@ -1098,7 +1091,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('sc1', 'Gardevoir', 282, [14, 15, 15], 2729), mk('sc2', 'Foongus', 590, [14, 12, 11], 676, { quickMove: 'Astonish', chargeMove: 'Sludge Bomb' }), mk('sc3', 'Azumarill', 184, [3, 14, 14], 1400), mk('sc4', 'Pidgey', 16, [10, 10, 10], 300)], roster: [], ivOverrides: {}, appFavourited: [], cutTarget: 2, cutTargetDraft: '2', selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const rows = l.cutScoreRows(ros); const sc = id => rows.find(x => x.p.idx === id).score; const why = l.transferCandidates().map(c => [c.p.idx, c.why]); return { g: Math.round(sc('sc1')), f: Math.round(sc('sc2')), a: Math.round(sc('sc3')), why }; } } return null; });
+    const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(); const rows = l.cutScoreRows(ros); const sc = id => rows.find(x => x.p.idx === id).score; const why = l.transferCandidates().map(c => [c.p.idx, c.why]); return { g: Math.round(sc('sc1')), f: Math.round(sc('sc2')), a: Math.round(sc('sc3')), why }; return null; });
     expect(r.g > r.f, 'Gardevoir 14/15/15 outscores a 82% Foongus: ' + JSON.stringify({ g: r.g, f: r.f }));
     expect(!r.why.some(x => x[0] === 'sc1'), 'Gardevoir is not offered for release while weaker ones are: ' + JSON.stringify(r.why.map(x => x[0])));
     expect(r.why.some(x => /\d+ places? below the line/.test(x[1])), 'a released soft keep shows how far below the line it is: ' + JSON.stringify(r.why));
@@ -1109,7 +1102,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('sz1', 'Pikachu', 25, [8, 8, 8], 500, 'XXL'), mk('sz2', 'Pikachu', 25, [15, 14, 14], 480, 'XXL'), mk('sz3', 'Pikachu', 25, [3, 3, 3], 400, 'XXL'), mk('sz4', 'Pikachu', 25, [2, 2, 2], 300, 'XXS'), mk('sz5', 'Pikachu', 25, [9, 9, 9], 320, 'XXS'), mk('sz6', 'Eevee', 133, [1, 1, 1], 200, 'XXL'), { ...mk('sz7', 'Beautifly', 267, [5, 0, 6], 1609, ''), height: '1.69m' }, { ...mk('sz8', 'Beautifly', 267, [9, 5, 4], 1492, ''), height: '1.48m' }], roster: [], ivOverrides: {}, protectSizes: 'extreme', appFavourited: [] });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const out = {}; ros.forEach(p => { out[p.idx] = l.sizeProtected(p); }); const reasons = l.keepReasons(ros.find(p => p.idx === 'sz3')); const protect = l.bulkStringVals().bulkProtectText; return { out, reasons, protect, keepers: l.keeperCandidates().map(p => p.idx) }; } } return null; });
+    const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(); const out = {}; ros.forEach(p => { out[p.idx] = l.sizeProtected(p); }); const reasons = l.keepReasons(ros.find(p => p.idx === 'sz3')); const protect = l.bulkStringVals().bulkProtectText; return { out, reasons, protect, keepers: l.keeperCandidates().map(p => p.idx) }; return null; });
     expect(r.out.sz2 === true && r.out.sz1 === false && r.out.sz3 === false, 'XXL: only the best IV copy is locked: ' + JSON.stringify(r.out));
     expect(r.out.sz5 === true && r.out.sz4 === false, 'XXS: only the best IV copy is locked');
     expect(r.out.sz6 === true, 'a lone XXL of another species is locked');
@@ -1126,14 +1119,14 @@ module.exports = async function suiteB() {
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
     const ids = async () => (await s.call('transferCandidates')).map(c => c.p.idx).sort().join();
     expect(await ids() === 'hd1,hd2', 'both weak ones are candidates: ' + await ids());
-    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l.holdTransfer(l.effectiveRosterForMatch().find(p => p.idx === 'hd1')); return; } } });
+    await s.logic((l) => { l.holdTransfer(l.effectiveRosterForMatch().find(p => p.idx === 'hd1')); return; });
     await s.page.waitForTimeout(300);
     expect(await ids() === 'hd2', 'the held Pokemon leaves the candidates: ' + await ids());
     const v = await s.call('bulkStringVals');
     expect(!/fearow/i.test(v.bulkBatches.map(b => b.text).join(' ')) && /1 Pokemon left out for now/.test(v.bulkHoldLine), 'and out of every string: ' + v.bulkBatches.map(b => b.text).join(' | ') + ' / ' + v.bulkHoldLine);
     await s.call('releaseHolds'); await s.page.waitForTimeout(200);
     expect(await ids() === 'hd1,hd2', 'bring back restores it');
-    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l.holdTransfer(l.effectiveRosterForMatch().find(p => p.idx === 'hd2')); return; } } });
+    await s.logic((l) => { l.holdTransfer(l.effectiveRosterForMatch().find(p => p.idx === 'hd2')); return; });
     await s.page.waitForTimeout(200);
     await s.set({ transferHold: [] });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300' });
@@ -1142,7 +1135,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-30' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('tk1', 'Azumarill', 184, [2, 15, 15], 400, 98), mk('tk2', 'Azumarill', 184, [3, 14, 14], 410, 96), mk('tk3', 'Pidgey', 16, [1, 1, 1], 100, 10)], roster: [], ivOverrides: {}, tagSnap: {}, appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const rows = l.cutScoreRows(ros, ctx); const sc = id => rows.find(x => x.p.idx === id).score; const rs = id => l.keepFull(ros.find(p => p.idx === id), ctx); return { a1: rs('tk1').all, a1soft: rs('tk1').soft, a2: rs('tk2').all, s1: sc('tk1'), s2: sc('tk2') }; } } return null; });
+    const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const rows = l.cutScoreRows(ros, ctx); const sc = id => rows.find(x => x.p.idx === id).score; const rs = id => l.keepFull(ros.find(p => p.idx === id), ctx); return { a1: rs('tk1').all, a1soft: rs('tk1').soft, a2: rs('tk2').all, s1: sc('tk1'), s2: sc('tk2') }; return null; });
     expect(r.a1.some(x => /^Worth building: in the PvP-Great-Build group/.test(x)), 'the build copy names its group: ' + JSON.stringify(r.a1));
     expect(r.a1soft.some(x => /Worth building/.test(x)), 'and it is a soft keep, not a hard lock');
     expect(!r.a2.some(x => /group/.test(x)) && r.s1 > r.s2, 'the second copy is not in the group and scores lower: ' + JSON.stringify({ a2: r.a2, s1: r.s1, s2: r.s2 }));
@@ -1190,7 +1183,7 @@ module.exports = async function suiteB() {
     const mk = (idx, iv, cp, extra) => ({ idx, name: 'Machamp', dex: 68, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...extra });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('kr1', [15, 15, 15], 2100, { favorite: true }), mk('kr2', [15, 15, 14], 2200, { favorite: true }), mk('kr3', [15, 14, 14], 2300), mk('kr4', [14, 14, 14], 2400), mk('kr5', [14, 14, 13], 2500, { shiny: true })], roster: [], ivOverrides: {}, keeperOverrides: {}, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
-    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.noteAiCall) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const get = id => ros.find(p => p.idx === id); return (new Function('l', 'ros', 'ctx', 'get', 'return (' + f + ')'))(l, ros, ctx, get); } } return null; }, fn);
+    const L = fn => s.logic((l, f) => { const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const get = id => ros.find(p => p.idx === id); return (new Function('l', 'ros', 'ctx', 'get', 'return (' + f + ')'))(l, ros, ctx, get); return null; }, fn);
     await s.page.getByText('More', { exact: true }).last().click(); await s.page.waitForTimeout(350);
     await s.page.getByText('Keeper review', { exact: true }).last().click(); await s.page.waitForTimeout(700);
     let t = await s.page.evaluate(() => document.body.innerText);
@@ -1206,8 +1199,7 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, keeperOverrides: {}, tab: 'home' });
   });
   await T('PARSE-01', 'AI', 'A garbled screenshot reply is repaired, and a hopeless one is asked again once', async () => {
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic;
-      const ok = x => { try { return l.parseLooseObject(x); } catch (e) { return { err: e.message }; } };
+    const r = await s.logic(async (l) => { const ok = x => { try { return l.parseLooseObject(x); } catch (e) { return { err: e.message }; } };
       const out = { missingComma: ok('{"cp":1200,"purified":false "shiny":true,"favorite":false}'), missingQuote: ok('{"cp":1200,"purified":false,\n shiny":true}'), cutOff: ok('{"cp":1200,"hp":80,"candy":3,"shi'), fenced: ok('Here you go:\n```json\n{"cp":900,"shiny":false,}\n```'), undef: ok('{"cp":undefined,"hp":70}'), junk: ok('no object here') };
       let calls = 0; const keep = [l.completeWithRetry, l.fileToVisionJpeg];
       l.fileToVisionJpeg = async () => 'AAAA';
@@ -1215,7 +1207,7 @@ module.exports = async function suiteB() {
       let rec = null; try { rec = await l.readScreenshotWithVision({}); } catch (e) { rec = { err: e.message }; }
       l.completeWithRetry = keep[0]; l.fileToVisionJpeg = keep[1];
       out.reask = { calls, cp: rec && rec.cp, shiny: rec && rec.shiny };
-      return out; } } return null; });
+      return out; return null; });
     expect(r && r.missingComma.shiny === true && r.missingComma.cp === 1200, 'missing comma repaired: ' + JSON.stringify(r && r.missingComma));
     expect(r.missingQuote.shiny === true, 'missing opening quote repaired: ' + JSON.stringify(r.missingQuote));
     expect(r.cutOff.cp === 1200 && r.cutOff.candy === 3, 'cut-off reply keeps the complete fields: ' + JSON.stringify(r.cutOff));
@@ -1227,14 +1219,14 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex) => ({ idx, name, dex, cp: 1490, hp: 100, atkIV: 1, defIV: 15, staIV: 15, ivAvg: 69, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 97 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('sq1', 'Melmetal', 809), mk('sq2', 'Mimikyu', 778), mk('sq3', 'Sableye', 302), mk('sq4', 'Altaria', 334), mk('sq5', 'Tinkaton', 959)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic, m = l.mechanics;
+    const r = await s.logic((L) => { const l = L, m = l.mechanics;
       const score = { Melmetal: 100, Mimikyu: 90, Sableye: 80, Altaria: 70, Tinkaton: 60 }, ok = { Melmetal: false, Mimikyu: true, Sableye: true, Altaria: true, Tinkaton: false };
       const keep = [l.pvpAssess, l.inBand, m.pvpMatchupsFor, l.needsAppraisal];
       l.pvpAssess = p => ({ tierRank: 0, tier: 'S', rank: 96, tierScore: score[p.name], movesOk: ok[p.name], missing: ok[p.name] ? [] : ['double iron bash'] });
       l.inBand = () => true; l.needsAppraisal = () => false; m.pvpMatchupsFor = () => ({ counters: [], matchups: [] });
       let team = null; try { team = l.pvpTeamFor('great'); } catch (e) { team = { err: e.message }; }
       l.pvpAssess = keep[0]; l.inBand = keep[1]; m.pvpMatchupsFor = keep[2]; l.needsAppraisal = keep[3];
-      return team && team.members ? { names: team.members.map(c => c.p.name).sort(), ready: team.ready } : team; } } return null; });
+      return team && team.members ? { names: team.members.map(c => c.p.name).sort(), ready: team.ready } : team; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
     expect(r && r.names && r.names.join() === 'Altaria,Mimikyu,Sableye' && r.ready === 3, 'a 100-score Melmetal without its moves loses its place to three that have them: ' + JSON.stringify(r));
   });
@@ -1242,9 +1234,8 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, extra) => Object.assign({ idx, name, dex, cp: 1490, hp: 100, atkIV: 1, defIV: 15, staIV: 15, ivAvg: 69, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 97 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) }, extra || {});
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('ss1', 'Melmetal', 809), mk('ss2', 'Mimikyu', 778), mk('ss3', 'Sableye', 302), mk('ss4', 'Altaria', 334), mk('ss5', 'Tinkaton', 959)], roster: [], ivOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(600);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const l = f.stateNode.logic;
-      let team = null; try { team = l.pvpTeamFor('great'); } catch (e) { return { err: e.message }; }
-      return team ? { n: team.members.length, simulated: team.simulated, sims: team.members.map(c => !!(c.mu && c.mu.simulated)), sizes: team.members.map(c => c.mu.counters.length + c.mu.matchups.length) } : null; } } return null; });
+    const r = await s.logic((l) => { let team = null; try { team = l.pvpTeamFor('great'); } catch (e) { return { err: e.message }; }
+      return team ? { n: team.members.length, simulated: team.simulated, sims: team.members.map(c => !!(c.mu && c.mu.simulated)), sizes: team.members.map(c => c.mu.counters.length + c.mu.matchups.length) } : null; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
     expect(r && !r.err && r.n === 3, 'a squad of three is formed: ' + JSON.stringify(r));
     expect(r.simulated === 3 && r.sims.every(Boolean), 'all three matchup sets come from the simulator: ' + JSON.stringify(r));
@@ -1253,7 +1244,7 @@ module.exports = async function suiteB() {
   await T('EVOLINE-01', 'Keep', 'Copies compete across the evolution line: a Froakie that would be a better Greninja replaces a worse Greninja (when the candy is there), and a hundo Froakie is judged as Greninja', async () => {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
-    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const L = fn => s.logic((l, f) => { return new Function('l', 'return (' + f + ')')(l); return null; }, fn);
     const list = [mk('ev1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('ev2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('ev3', 'Froakie', 656, [15, 15, 15], 1122, 50)];
     const probe = "(() => { const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros); const by = id => ros.find(p => p.idx === id); const cand = l.transferCandidates().map(c => c.p.idx + ':' + c.why.slice(0, 70));"
       + " return { fr: l.keepFull(by('ev1'), ctx).all.filter(x => /^Best/.test(x)), gr: l.keepFull(by('ev2'), ctx).all.filter(x => /^Best/.test(x)), cand, rb: (r => r && { q: r.q.idx, to: r.evolveTo, lk: r.lk })(l.replacedBy(by('ev2'), ctx)), hundoForm: l.pvpFormName(by('ev3'), 'great'), hundoRank: Math.round(l.pvpAssess(by('ev3'), 'great').rank * 10) / 10 }; })()";
@@ -1272,7 +1263,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     const list = [mk('hu1', 'Charizard', 6, [15, 15, 15], 3266, 50), mk('hu2', 'Charizard', 6, [0, 15, 13], 1500, 19.5), mk('hu3', 'Charizard', 6, [0, 13, 15], 2500, 35), mk('hu4', 'Greninja', 658, [15, 15, 15], 3001, 50), mk('hu5', 'Greninja', 658, [3, 15, 12], 1500, 21), mk('hu6', 'Greninja', 658, [0, 13, 14], 2497, 41)];
     await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; return l.transferCandidates().map(c => c.p.idx); } } return null; });
+    const r = await s.logic((l) => { return l.transferCandidates().map(c => c.p.idx); return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
     expect(r && r.indexOf('hu1') < 0 && r.indexOf('hu4') < 0, 'neither hundo is offered for transfer: ' + JSON.stringify(r));
     expect(r.indexOf('hu2') < 0 && r.indexOf('hu3') < 0 && r.indexOf('hu5') < 0 && r.indexOf('hu6') < 0, 'the league copies stay too: ' + JSON.stringify(r));
@@ -1281,8 +1272,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 92, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 23, lvlMax: 23, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('sx1', 'Meltan', 808, [6, 11, 15], 642), mk('sx2', 'Gengar', 94, [14, 14, 14], 2428)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.openDetail) { const l = g.stateNode.logic;
-      const wait = ms => new Promise(r => setTimeout(r, ms)), out = [];
+    const r = await s.logic(async (l) => { const wait = ms => new Promise(r => setTimeout(r, ms)), out = [];
       for (const id of ['sx1', 'sx2']) {
         l.openDetail(l.effectiveRosterForMatch().find(x => x.idx === id)); await wait(700);
         const d = document.querySelector('[role=dialog][aria-label="Pokemon details"]'); if (!d) { out.push('no dialog'); continue; }
@@ -1297,14 +1287,13 @@ module.exports = async function suiteB() {
         out.push({ client: d.clientWidth, scroll: d.scrollWidth, during, after: d.style.transform, left: d.scrollLeft, index: l.state.detailNavIndex });
         l.closeDetail(); await wait(300);
       }
-      return out; } } return null; });
+      return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
     expect(r && r.length === 2 && r.every(x => x && x.scroll <= x.client), 'nothing is wider than the sheet: ' + JSON.stringify(r));
     expect(r.every(x => x.during === '' && x.after === '' && x.left === 0), 'a sideways drag does not move or scroll the sheet: ' + JSON.stringify(r));
   });
   await T('SCRNQ-01', 'Import', 'A queue of screenshots is read ahead in the background (3 at a time), so the next one is ready when you confirm the current one', async () => {
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const wait = ms => new Promise(r => setTimeout(r, ms)), starts = [];
+    const r = await s.logic(async (l) => { const wait = ms => new Promise(r => setTimeout(r, ms)), starts = [];
       l.preprocessImage = async () => document.createElement('canvas');
       l.readScreenshotWithVision = async f => { starts.push(f.name); await wait(300); return { pokemon_name: 'Machamp', cp: 1000 + Number(f.name.slice(1)), hp: 100, candy: 10 }; };
       const files = [0, 1, 2, 3, 4].map(i => ({ name: 'f' + i }));
@@ -1318,15 +1307,14 @@ module.exports = async function suiteB() {
         for (let i = 0; i < 6 && (l.state.ocrQueue || []).length; i++) { await wait(400); l.cancelOcr(); }
         out.total = starts.length;
       } finally { delete l.readScreenshotWithVision; delete l.preprocessImage; l.setState({ ocrQueue: [], ocrParsed: null, ocrBusy: false }); }
-      return out; } } return null; });
+      return out; return null; });
     expect(r && r.startedEarly && r.startedEarly.join() === 'f0,f1,f2', 'three reads start at once: ' + JSON.stringify(r));
     expect(r.first === 1000 && r.second === 1001, 'the first and second reads show the right screenshots: ' + JSON.stringify(r));
     expect(r.startedAfterOne.length === 4 && r.second === 1001, 'after one is done the next is already read and one more starts: ' + JSON.stringify(r));
     expect(r.total === 5, 'every screenshot is read exactly once: ' + JSON.stringify(r));
   });
   await T('AUTOAPPLY-01', 'Import', 'With "apply clean reads automatically" on, a clean read is saved by itself; a doubtful read, or the switch off, leaves it waiting for you', async () => {
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const wait = ms => new Promise(r => setTimeout(r, ms)), m = window.PokemonMechanics, out = {};
+    const r = await s.logic(async (l) => { const wait = ms => new Promise(r => setTimeout(r, ms)), m = window.PokemonMechanics, out = {};
       const cp = m.cpFor(m.BASE_STATS[68], [10, 10, 10], 20), hp = m.hpFor(m.BASE_STATS[68], 10, 20);
       const before = { roster: l.state.roster, added: l.state.addedPokemon, auto: l.state.ocrAutoApply, removed: l.state.removedIds };
       l.preprocessImage = async () => document.createElement('canvas'); window.__noPrefetch = true;
@@ -1343,7 +1331,7 @@ module.exports = async function suiteB() {
         l.setState({ ocrParsed: null });
         out.dup = await run(clean);   // the same Pokemon again is a possible duplicate: ask first
       } finally { delete l.readScreenshotWithVision; delete l.preprocessImage; delete window.__noPrefetch; l.setState({ roster: before.roster, addedPokemon: before.added, ocrAutoApply: before.auto, removedIds: before.removed, ocrParsed: null, ocrQueue: [], ocrBusy: false }); }
-      return out; } } return null; });
+      return out; return null; });
     expect(r && r.off.grew === 0 && r.off.waiting, 'switch off: the read waits for you: ' + JSON.stringify(r));
     expect(r.noIv.grew === 0 && r.noIv.waiting, 'a new record without IVs waits: ' + JSON.stringify(r));
     expect(r.clean.grew === 1 && !r.clean.waiting, 'a clean read is added by itself: ' + JSON.stringify(r));
@@ -1354,9 +1342,8 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     const list = [mk('lu1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('lu2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('lu3', 'Azumarill', 184, [2, 14, 15], 1480, 30), mk('lu4', 'Medicham', 308, [4, 14, 14], 1490, 33), mk('lu5', 'Registeel', 379, [1, 15, 15], 1495, 33)];
     await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: { froakie: { name: 'Froakie', candy: 200 } }, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const t = l.pvpTeamFor('great'); const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
-      return { team: t ? t.members.map(c => c.p.name + ':' + c.id) : null, ids: t ? new Set(t.members.map(c => c.id)).size : 0, kept: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).length), payoff: (l.powerUpPayoff(ros) || []).map(x => x.p ? x.p.idx : x.idx) }; } } return null; });
+    const r = await s.logic((l) => { const t = l.pvpTeamFor('great'); const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
+      return { team: t ? t.members.map(c => c.p.name + ':' + c.id) : null, ids: t ? new Set(t.members.map(c => c.id)).size : 0, kept: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).length), payoff: (l.powerUpPayoff(ros) || []).map(x => x.p ? x.p.idx : x.idx) }; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, tab: 'home' });
     expect(r && (!r.team || r.ids === r.team.length), 'no species twice in a squad (Froakie-as-Greninja and Greninja are one): ' + JSON.stringify(r));
     const gone = (r.kept.filter(x => /:0$/.test(x)).map(x => x.split(':')[0]));
@@ -1367,10 +1354,9 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('em1', 'Wartortle', 8, [15, 15, 15], 1200, 25)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 300 } }, tab: 'home' });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
-    const run = async (entry, candy) => s.page.evaluate(async ({ entry, candy }) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      l.setState({ eventMoves: { moves: entry ? [entry] : [] }, candyInventory: { ...l.state.candyInventory, squirtle: { name: 'Squirtle', candy } } }); await new Promise(r => setTimeout(r, 150));
+    const run = async (entry, candy) => s.logic(async (l, { entry, candy }) => { l.setState({ eventMoves: { moves: entry ? [entry] : [] }, candyInventory: { ...l.state.candyInventory, squirtle: { name: 'Squirtle', candy } } }); await new Promise(r => setTimeout(r, 150));
       const opps = l.eventEvolveOpps(); const q = l.evolveQueue();
-      return { n: opps.length, held: opps.length ? opps[0].held : null, active: opps.length ? opps[0].active : null, worth: opps.length ? opps[0].worth.worth : null, short: opps.length ? opps[0].short : null, days: opps.length ? opps[0].days : null, inQueue: q.some(r => r.p.idx === 'em1') }; } } return null; }, { entry, candy });
+      return { n: opps.length, held: opps.length ? opps[0].held : null, active: opps.length ? opps[0].active : null, worth: opps.length ? opps[0].worth.worth : null, short: opps.length ? opps[0].short : null, days: opps.length ? opps[0].days : null, inQueue: q.some(r => r.p.idx === 'em1') }; return null; }, { entry, candy });
     const HOUR = 3600000, iso = t => new Date(t).toISOString().slice(0, 23);
     const mkE = (startOff, endOff, move) => ({ eventId: 't', eventName: 'Test Community Day', type: 'community-day', start: iso(Date.now() + startOff).replace('Z', ''), end: iso(Date.now() + endOff).replace('Z', ''), species: 'Wartortle', to: 'Blastoise', move, kind: 'charged', graceHours: 0, link: 'x' });
     const fut = await run(mkE(3 * 24 * HOUR, 3 * 24 * HOUR + 3 * HOUR, 'Hydro Cannon'), 300);
@@ -1381,7 +1367,7 @@ module.exports = async function suiteB() {
     const none = await run(null, 300);
     const anyMon = await run({ ...mkE(-1 * HOUR, 20 * HOUR, 'Hydro Cannon'), species: null, scope: 'caught-or-evolved' }, 300);   // a "caught or evolved during the event" list names no starting Pokemon
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
-    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { g.stateNode.logic.setState({ eventMoves: null }); return; } } });
+    await s.logic((l) => { l.setState({ eventMoves: null }); return; });
     expect(fut && fut.n === 1 && fut.worth === true && fut.held === true && fut.days === 3 && fut.inQueue === false, 'an upcoming Hydro Cannon window holds the Wartortle out of Evolve now: ' + JSON.stringify(fut));
     expect(open && open.active === true && open.held === false && open.inQueue === true, 'inside the window it is no longer held: ' + JSON.stringify(open));
     expect(short && short.n === 1 && short.short === true && short.held === false, 'without the candy it is flagged short and not held: ' + JSON.stringify(short));
@@ -1395,8 +1381,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('em2', 'Wartortle', 8, [15, 15, 15], 1200, 25), mk('em3', 'Squirtle', 7, [15, 15, 15], 300, 10)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 300 } }, tab: 'today' });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
+    const r = await s.logic(async (l) => { const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
       const D = 86400000;
       const keep = { feed: l.state.feed, eventMoves: l.state.eventMoves };
       l.setState({ eventMoves: { moves: [] }, feed: { events: [
@@ -1405,7 +1390,7 @@ module.exports = async function suiteB() {
       await new Promise(r => setTimeout(r, 150));
       const opps = l.eventEvolveOpps(); const q = l.evolveQueue();
       const out = { likely: opps.map(o => [o.p.idx, o.likely, o.held]), inQueue: q.map(x => x.p.idx), watch: l.eventWatchList().map(x => x.name), note: l.eventFreeNote(l.effectiveRosterForMatch().find(p => p.idx === 'em2')), none: l.eventFreeNote(l.effectiveRosterForMatch().find(p => p.idx === 'em3')) };
-      l.setState(keep); return out; } } return null; });
+      l.setState(keep); return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
     expect(r && r.likely.some(x => x[0] === 'em2' && x[1] === true && x[2] === true) && r.inQueue.indexOf('em2') < 0, 'the final evolution of the featured line is held with a reminder: ' + JSON.stringify(r));
     expect(r.likely.every(x => x[0] !== 'em3'), 'a Squirtle (not the last step) is not held: ' + JSON.stringify(r));
@@ -1417,15 +1402,14 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('ln1', 'Squirtle', 7, [0, 15, 15], 300, 10), mk('ln2', 'Wartortle', 8, [1, 14, 15], 1200, 25), mk('ln3', 'Wartortle', 8, [12, 5, 6], 1100, 25)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 400 } }, tab: 'today' });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
+    const r = await s.logic(async (l) => { const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
       const keep = l.state.eventMoves;
       l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Blastoise', move: 'Hydro Cannon', kind: 'charged', graceHours: 0, scope: 'caught-or-evolved' }] } });
       await new Promise(r => setTimeout(r, 150));
       const opps = l.eventEvolveOpps();
       const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
       const out = { rows: opps.map(o => [o.p.idx, o.steps, o.skip, o.held, o.short]), kept: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).length), rep: ros.map(p => { const r = l.replacedBy(p, ctx); return p.idx + '>' + (r ? r.q.idx + '/' + r.lk : '-'); }) };
-      l.setState({ eventMoves: keep }); return out; } } return null; });
+      l.setState({ eventMoves: keep }); return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
     const sq = r && r.rows.find(x => x[0] === 'ln1'), w2 = r && r.rows.find(x => x[0] === 'ln2');
     expect(sq && sq[1] === 2, 'the Squirtle two stages early is listed with two steps to go: ' + JSON.stringify(r));
@@ -1444,13 +1428,12 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('mc1', 'Machop', 66, [1, 15, 15], 300, 10), mk('mc2', 'Machop', 66, [2, 14, 14], 300, 10), mk('mc3', 'Machop', 66, [3, 13, 14], 300, 10)].map(x => ({ ...x, favorite: true })), roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { machop: { name: 'Machop', candy: 130 } }, tab: 'today' });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
+    const r = await s.logic(async (l) => { const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
       const keep = l.state.eventMoves;
       l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Machamp', move: 'Karate Chop', kind: 'fast', graceHours: 0, scope: 'caught-or-evolved' }] } });
       await new Promise(r => setTimeout(r, 150));
       const out = l.eventEvolveOpps().filter(o => /^mc/.test(o.p.idx)).map(o => ({ id: o.p.idx, steps: o.steps, skip: !!o.skip, fundable: o.fundable, short: o.short, shortBy: o.shortBy, group: o.groupSize, rank: Math.round(o.rank * 10) / 10, why: !!o.why }));
-      l.setState({ eventMoves: keep }); return out; } } return null; });
+      l.setState({ eventMoves: keep }); return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, completedIds: st0.completedIds || [], tab: 'home' });
     const live = r.filter(x => !x.skip);
     expect(live.length >= 2 && live.every(x => x.steps === 2 && x.group === live.length), 'the Machop copies are grouped into one pool: ' + JSON.stringify(r));
@@ -1463,8 +1446,8 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl, extra) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...extra });
     await s.set({ addedPokemon: [mk('mx1', 'Machamp', 68, [15, 15, 15], 3000, 40, { quickMove: 'karate chop', chargeMove: 'cross chop', gigantamax: true, dynamax: true, maxAttackLevel: 1, favorite: true }), mk('mx2', 'Snorlax', 143, [12, 14, 14], 3200, 40, { quickMove: 'lick', chargeMove: 'body slam', dynamax: true, maxAttackLevel: 2, favorite: true })], roster: [], ivOverrides: {}, completedIds: [], candyInventory: { machop: { name: 'Machop', candy: 120, xlCandy: 10 }, snorlax: { name: 'Snorlax', candy: 40, xlCandy: 60 } }, resources: { ...(st0.resources || {}), maxParticles: 700 }, tab: 'raid' });
     await s.page.waitForTimeout(900);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const pl = l.maxPlanner(); const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
-      return { rows: pl.rows.map(x => [x.c.p.name, x.c.info.level, x.gain, x.cost, x.short.length, x.ready]), tank: pl.tank && pl.tank.c.p.name, healer: pl.healer && pl.healer.c.p.name, tiers: pl.tiers.map(t => t.battles), shown: document.body.innerText.includes('MAX PLANNER'), ev: (() => { const keepF = l.state.feed; l.setState({ feed: { events: [{ id: 'mm1', name: 'Dynamax Espurr during Max Monday', type: 'max-mondays', start: new Date(Date.now() + 864e5).toISOString().slice(0, 23), end: new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 23) }], gbl: [] } }); const out = l.maxPlanner().events.map(x => [x.bosses.length, x.best.length]); l.setState({ feed: keepF }); return out; })(), keep: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).filter(x => /^Max attacker/.test(x)).length) }; } } return null; });
+    const r = await s.logic((l) => { const pl = l.maxPlanner(); const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
+      return { rows: pl.rows.map(x => [x.c.p.name, x.c.info.level, x.gain, x.cost, x.short.length, x.ready]), tank: pl.tank && pl.tank.c.p.name, healer: pl.healer && pl.healer.c.p.name, tiers: pl.tiers.map(t => t.battles), shown: document.body.innerText.includes('MAX PLANNER'), ev: (() => { const keepF = l.state.feed; l.setState({ feed: { events: [{ id: 'mm1', name: 'Dynamax Espurr during Max Monday', type: 'max-mondays', start: new Date(Date.now() + 864e5).toISOString().slice(0, 23), end: new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 23) }], gbl: [] } }); const out = l.maxPlanner().events.map(x => [x.bosses.length, x.best.length]); l.setState({ feed: keepF }); return out; })(), keep: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).filter(x => /^Max attacker/.test(x)).length) }; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, resources: st0.resources || {}, tab: 'home' });
     const mach = r && r.rows.find(x => x[0] === 'Machamp'), snor = r && r.rows.find(x => x[0] === 'Snorlax');
     expect(mach && mach[3].mp === 600 && mach[3].candy === 100 && mach[2] === 14 && mach[5] === true, 'G-Max Machamp level 1 -> 2: 600 Particles + 100 Candy, +14%, affordable with 700 / 120: ' + JSON.stringify(r));
@@ -1478,8 +1461,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl, extra) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), dynamax: true, favorite: true, ...extra });
     await s.set({ addedPokemon: [mk('pt1', 'Pikachu', 25, [15, 15, 15], 1500, 40, { quickMove: 'thunder shock', gigantamax: true, maxAttackLevel: 3 }), mk('pt2', 'Rillaboom', 812, [15, 14, 15], 3000, 40, { quickMove: 'vine whip', gigantamax: true, maxAttackLevel: 3 }), mk('pt3', 'Snorlax', 143, [12, 14, 14], 3200, 40, { quickMove: 'lick', maxAttackLevel: 2, maxGuardLevel: 1 }), mk('pt4', 'Machamp', 68, [14, 14, 14], 3000, 40, { quickMove: 'karate chop', maxAttackLevel: 1 })], roster: [], ivOverrides: {}, completedIds: [], maxBattles: [], raidBossName: 'Kingler', raidBossTypes: ['Water'], tab: 'raid' });
     await s.page.waitForTimeout(900);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const pt = l.maxParty();
+    const r = await s.logic(async (l) => { const pt = l.maxParty();
       const out = { members: pt.members.map(x => [x.role, x.r.p.name, Math.round(x.r.r.damage)]), verdict: pt.verdict, damage: pt.damage, shown: document.body.innerText.includes('PARTY OF 3 vs Kingler') };
       l.setState({ maxStar: 3 });
       const mkB = (res, dmg) => ({ id: 'x' + Math.random(), at: Date.now(), boss: 'Kingler', types: ['Water'], star: 3, party: [], verdict: 'Strong', damage: dmg, result: res });
@@ -1487,7 +1469,7 @@ module.exports = async function suiteB() {
       await new Promise(r => setTimeout(r, 100));
       out.calib = l.maxCalibration();
       const before = (l.state.maxBattles || []).length; l.logMaxBattle('win'); await new Promise(r => setTimeout(r, 100)); out.logged = (l.state.maxBattles || []).length - before; l.undoMaxBattle(); await new Promise(r => setTimeout(r, 100)); out.undone = (l.state.maxBattles || []).length === before;
-      return out; } } return null; });
+      return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, maxBattles: st0.maxBattles || [], raidBossName: st0.raidBossName, raidBossTypes: st0.raidBossTypes || [], tab: 'home' });
     const names = r.members.map(x => x[1]);
     expect(r.members.length === 3 && r.members.filter(x => x[0] === 'Attacker').map(x => x[1]).sort().join() === 'Pikachu,Rillaboom', 'the two super-effective attackers (Electric, Grass) lead a Water boss: ' + JSON.stringify(r.members));
@@ -1500,7 +1482,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('cc1', 'Axew', 610, [10, 10, 10], 300, 10), mk('cc2', 'Axew', 610, [11, 10, 10], 310, 10), mk('cc3', 'Fraxure', 611, [12, 12, 12], 900, 20), mk('cc4', 'Ralts', 280, [10, 10, 10], 200, 10)], roster: [], ivOverrides: {}, candyInventory: { axew: { name: 'Axew', candy: 150, xlCandy: 7 } } });
     await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; return { line: l.chatCandyLine(l.effectiveRosterForMatch()), src: l.sendChat.toString().includes('chatCandyLine') && l.sendChat.toString().includes('NOT in the RESOURCES form') }; } } return null; });
+    const r = await s.logic((l) => { return { line: l.chatCandyLine(l.effectiveRosterForMatch()), src: l.sendChat.toString().includes('chatCandyLine') && l.sendChat.toString().includes('NOT in the RESOURCES form') }; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {} });
     expect(/(Axew|Fraxure) 150 \+7XL/.test(r.line) && (r.line.match(/(Axew|Fraxure) 150/g) || []).length === 1, 'the Axew family shows one pool of 150 candy and 7 XL: ' + r.line);
     expect(/Ralts \?/.test(r.line) && r.src, 'an unscanned species is marked ? and the prompt carries the candy rule: ' + r.line);
@@ -1510,13 +1492,13 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl, g) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('du1', 'Azumarill', 184, [2, 15, 15], 900, 18, 98)], roster: [], ivOverrides: {}, completedIds: [], stardustBalance: 400000, dustReserve: 0, trainerLevel: 40, candyInventory: { azurill: { name: 'Azurill', candy: 500, xlCandy: 0 } }, cutTarget: 900 });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const m = l.mechanics;
+    const r = await s.logic(async (l) => { const m = l.mechanics;
       const a = l.dustAllocator(); const row = a.pvp.rows[0];
       const base = row ? l.gradeBaseFor(row.p, row.lk) : null; const ivs = row ? l.ivsOf(row.p) : null;
       const wantTarget = row ? m.maxLevelUnderCap(base, ivs, m.LEAGUE_CAPS[row.lk]) : null; const wantCost = row ? m.powerUpCostBetween(row.level, wantTarget, {}).dust : null;
       l.setState({ stardustBalance: 1000 }); await new Promise(r => setTimeout(r, 150));
       const b = l.dustAllocator();
-      return { n: a.pvp.rows.length, name: row && row.p.name, target: row && row.target, wantTarget, cost: row && row.cost.dust, wantCost, spent: a.pvp.spend, budget: a.budget, raidHasIt: a.raid.rows.some(x => x.p.idx === 'du1'), poorRows: b.pvp.rows.length, poorBlocked: b.pvp.blocked.length, poorWhy: b.pvp.blocked[0] && b.pvp.blocked[0].why }; } } return null; });
+      return { n: a.pvp.rows.length, name: row && row.p.name, target: row && row.target, wantTarget, cost: row && row.cost.dust, wantCost, spent: a.pvp.spend, budget: a.budget, raidHasIt: a.raid.rows.some(x => x.p.idx === 'du1'), poorRows: b.pvp.rows.length, poorBlocked: b.pvp.blocked.length, poorWhy: b.pvp.blocked[0] && b.pvp.blocked[0].why }; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, stardustBalance: st0.stardustBalance, dustReserve: st0.dustReserve, trainerLevel: st0.trainerLevel, candyInventory: st0.candyInventory || {} });
     expect(r && r.n === 1 && r.name === 'Azumarill', 'one PvP build: ' + JSON.stringify(r));
     expect(r.target === r.wantTarget && r.cost === r.wantCost && r.cost > 0, 'target level and cost match the mechanics: ' + JSON.stringify(r));
@@ -1528,8 +1510,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, lvl, g, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...(extra || {}) });
     await s.set({ addedPokemon: [mk('cb1', 'Azumarill', 184, [2, 15, 15], 900, 18, 98), mk('cb2', 'Altaria', 334, [3, 14, 15], 1480, 25, 70)], roster: [], ivOverrides: {}, completedIds: [], stardustBalance: 400000, trainerLevel: 40, cutTarget: 900 });
     await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const rows = l.cupBuildRows('great', null, null, 1500, false); return rows.map(x => ({ n: x.name, s: x.status, d: x.detail })); } } return null; });
+    const r = await s.logic(async (l) => { const rows = l.cupBuildRows('great', null, null, 1500, false); return rows.map(x => ({ n: x.name, s: x.status, d: x.detail })); return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, stardustBalance: st0.stardustBalance, trainerLevel: st0.trainerLevel });
     expect(r && r.length >= 8, 'ten top species listed: ' + JSON.stringify(r && r.length));
     const az = r.find(x => /^Azumarill$/.test(x.n)), al = r.find(x => /^Altaria$/.test(x.n)), un = r.find(x => x.s === 'GET');
@@ -1551,10 +1532,9 @@ module.exports = async function suiteB() {
       ['How many hundos do I have?', /Hundo: 1\b/], ['How is my Kanto dex?', /Kanto Dex: \d+\/151/], ['Do I have Rare Candy XL?', /Rare Candy XL 9/],
       ['What is my strongest Pokemon?', /Gengar[^;]*2400/], ['How is my living dex doing?', /Living Dex: \d+\//], ['Which need a second move?', /second charge move/i],
       ['How many lucky Pokemon?', /Lucky: 1\b/], ['What should I evolve soon?', /Evolve-soon candidates/], ['What can I safely transfer?', /Transfer-safe candidates/]];
-    const out = await s.page.evaluate(async Q => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const keep = l.completeWithRetry; const res = [];
+    const out = await s.logic(async (l, Q) => { const keep = l.completeWithRetry; const res = [];
       for (const q of Q) { let sent = ''; l.completeWithRetry = async o => { sent = JSON.stringify(o); return 'ok'; }; l.setState({ chatInput: q[0], chatMessages: [] }); await new Promise(r => setTimeout(r, 80)); await l.sendChat(); await new Promise(r => setTimeout(r, 80)); res.push(sent); }
-      l.completeWithRetry = keep; l.setState({ chatMessages: [] }); return res; } } return null; }, Q.map(q => [q[0]]));
+      l.completeWithRetry = keep; l.setState({ chatMessages: [] }); return res; return null; }, Q.map(q => [q[0]]));
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, resources: st0.resources, chatMessages: [] });
     const hits = Q.filter((q, i) => out && q[1].test(out[i] || ''));
     const score = hits.length / Q.length;
@@ -1569,10 +1549,9 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: ros, roster: [], ivOverrides: {}, chatMessages: [], geminiKey: KEY, geminiKeys: [KEY] });
     await s.page.waitForTimeout(600);
     const Q = ['Is my Gengar worth keeping?', 'Should I transfer my Machop?', 'Do I have a Mewtwo?'];
-    const out = await s.page.evaluate(async Q => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const keep = l.completeWithRetry; const res = [];
+    const out = await s.logic(async (l, Q) => { const keep = l.completeWithRetry; const res = [];
       for (const q of Q) { let sent = ''; l.completeWithRetry = async o => { sent = o.system; return 'ok'; }; l.setState({ chatInput: q, chatMessages: [] }); await new Promise(r => setTimeout(r, 80)); await l.sendChat(); await new Promise(r => setTimeout(r, 80)); res.push(sent); }
-      l.completeWithRetry = keep; l.setState({ chatMessages: [] }); return res; } } return null; }, Q);
+      l.completeWithRetry = keep; l.setState({ chatMessages: [] }); return res; return null; }, Q);
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, chatMessages: [], geminiKey: st0.geminiKey || '', geminiKeys: st0.geminiKeys || [] });
     expect(out && out.length === 3 && out.every(x => typeof x === 'string' && x.length > 500), 'three prompts were captured');
     // The rubric: returns the names of the rules a set of prompts breaks.
@@ -1618,15 +1597,14 @@ module.exports = async function suiteB() {
     await s.set({ tab: 'roster' }); await s.page.waitForTimeout(500);
     await s.page.locator('button[aria-label="Ask the Professor"]').click(); await s.page.waitForTimeout(400);
     const opened = await s.page.locator('[role=dialog][aria-label="Ask the Professor"]').count();
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const a = l.chatScreenLine();
+    const r = await s.logic(async (l) => { const a = l.chatScreenLine();
       l.setState({ detailPoke: l.effectiveRosterForMatch().find(p => p.idx === 'cb1') }); await new Promise(r => setTimeout(r, 150));
       const b = l.chatScreenLine();
       let sent = null; const keep = l.completeWithRetry; l.completeWithRetry = async o => { sent = o.system; return 'ok'; };
       l.setState({ chatInput: 'should I keep this one?' }); await new Promise(r => setTimeout(r, 100)); await l.sendChat(); await new Promise(r => setTimeout(r, 200));
       l.completeWithRetry = keep;
       const out = { a, b, reply: (l.state.chatMessages || []).map(m => m.content).join('|'), hasScreen: !!sent && /Screen: Roster; the details sheet is open on Gengar/.test(sent), faded: (() => { const el = document.querySelector('button[aria-label="Ask the Professor"]'); document.dispatchEvent(new Event('scroll')); return !!el; })() };
-      l.setState({ detailPoke: null, chatOpen: false, chatMessages: [] }); return out; } } return null; });
+      l.setState({ detailPoke: null, chatOpen: false, chatMessages: [] }); return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, chatMessages: st0.chatMessages || [], chatOpen: false, detailPoke: null, tab: 'home' });
     // the Home checkbox brings a hidden bubble back
     await s.set({ tab: 'home', chatBubbleOff: true }); await s.page.waitForTimeout(400);
@@ -1643,8 +1621,7 @@ module.exports = async function suiteB() {
   });
   await T('SHELL-01', 'Layout', 'App shell (an opt-in experiment; classic scrolling is the default): the page does not scroll, the app root does, and the tab bar stays on the bottom edge at any scroll depth; tab changes and jump chips scroll the root; Classic scrolling puts the old layout back', async () => {
     await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
-    const r = await s.page.evaluate(async () => { let out0 = null; for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.appScroller) { const l = g.stateNode.logic;
-      const wait = ms => new Promise(r => setTimeout(r, ms));
+    const r = await s.logic(async (l) => { let out0 = null; const wait = ms => new Promise(r => setTimeout(r, ms));
       const wasClassic = !document.documentElement.classList.contains('shell'); out0 = wasClassic;
       document.documentElement.classList.add('shell'); l.sizeShell(); await wait(200);
       const sc = document.querySelector('[data-app-scroll]'), nav = document.querySelector('[data-navbar]');
@@ -1665,7 +1642,7 @@ module.exports = async function suiteB() {
       document.documentElement.classList.add('shell'); await wait(100);
       l.showLayoutInfo(); await wait(100); const pc = l.state.pendingConfirm; out.info = !!pc && pc.title === 'Screen numbers' && /scroller app shell/.test(pc.message) && pc.actions.length === 2 && /CLASSIC/.test(pc.actions[0].label) && /CHAT BUBBLE/.test(pc.actions[1].label); l.closeConfirm();
       out.defaultClassic = out0; if (out0) { document.documentElement.classList.remove('shell'); l.sizeShell(); await wait(100); }
-      return out; } } return null; });
+      return out; return null; });
     expect(r && r.defaultClassic === true && r.shell && r.rootPos === 'fixed' && r.rootOy === 'auto' && r.bodyOv === 'hidden' && r.navPos === 'sticky' && r.tall, 'the app root is a fixed, scrolling box inside a body that does not scroll: ' + JSON.stringify(r));
     expect(r.scrolled > 100 && r.docY === 0 && r.gap0 === 0 && r.gapScrolled === 0 && r.gapEnd === 0 && r.navFull, 'scrolling moves the root, never the page, and the tab bar stays on the bottom edge and full width: ' + JSON.stringify(r));
     expect(r.headerTop === 0 && r.rootBottom === r.inner && r.appH === r.inner + 'px', 'the sticky header sticks to the very top, and the root fills the screen height exactly: ' + JSON.stringify(r));
@@ -1677,14 +1654,14 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: [], roster: [], ivOverrides: {}, removedIds: [], candyInventory: {}, tab: 'roster' });
     const kingdra = { name: 'Kingdra', dex: 230, cp: null, cpCovered: true, cpVisible: '2??6', hp: 155, powerUpStardust: 11000, powerUpCandy: 10, powerUpIsXl: true, candy: 116, xlCandy: 25 };
     await s.call('mergeVideoImport', [kingdra]); await s.page.waitForTimeout(400);
-    const r1 = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const p = l.effectiveRosterForMatch().find(x => x.name === 'Kingdra'); return p && { cp: p.cp, check: p.cpCheck, cands: p.cpCandidates, note: p.cpNote, tag: l.cpTagFor(p) }; } } return null; });
+    const r1 = await s.logic((l) => { const p = l.effectiveRosterForMatch().find(x => x.name === 'Kingdra'); return p && { cp: p.cp, check: p.cpCheck, cands: p.cpCandidates, note: p.cpNote, tag: l.cpTagFor(p) }; return null; });
     // a one-digit misread that cannot fit its own HP and level is kept but tagged
     await s.call('mergeVideoImport', [{ name: 'Kingdra', dex: 230, cp: 1111, hp: 155, powerUpStardust: 11000, powerUpCandy: 10, powerUpIsXl: true }]); await s.page.waitForTimeout(400);
-    const rk = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return g.stateNode.logic.effectiveRosterForMatch().filter(x => x.name === 'Kingdra').map(x => [x.cp, !!x.cpCheck]); } return null; });
+    const rk = await s.logic((l) => { return l.effectiveRosterForMatch().filter(x => x.name === 'Kingdra').map(x => [x.cp, !!x.cpCheck]); return null; });
     // the same Pokemon already in the roster (CP known): the hidden scan is matched by name and HP, no new row, no tag
     await s.set({ addedPokemon: [{ idx: 'ch9', name: 'Gyarados', dex: 130, cp: 2301, hp: 160, atkIV: null, defIV: null, staIV: null, great: { rankPct: null }, ultra: { rankPct: null }, little: { rankPct: null }, scanDate: '2026-11-01' }], ivOverrides: {} });
     await s.call('mergeVideoImport', [{ name: 'Gyarados', dex: 130, cp: null, cpCovered: true, cpVisible: '2??1', hp: 160 }]); await s.page.waitForTimeout(400);
-    const r2 = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const gy = l.effectiveRosterForMatch().filter(x => x.name === 'Gyarados'); const kd = l.effectiveRosterForMatch().filter(x => x.name === 'Kingdra'); return { gy: gy.length, gyCheck: gy.map(x => !!x.cpCheck), gyCp: gy.map(x => x.cp) }; } } return null; });
+    const r2 = await s.logic((l) => { const gy = l.effectiveRosterForMatch().filter(x => x.name === 'Gyarados'); const kd = l.effectiveRosterForMatch().filter(x => x.name === 'Kingdra'); return { gy: gy.length, gyCheck: gy.map(x => !!x.cpCheck), gyCp: gy.map(x => x.cp) }; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, removedIds: st0.removedIds || [], candyInventory: st0.candyInventory || {}, tab: 'home' });
     expect(r1 && r1.cp === null && r1.check === true && Array.isArray(r1.cands) && r1.cands.indexOf(2656) >= 0 && r1.cands.length <= 24 && r1.tag === 'CHECK CP' && /hidden behind the Pokemon/.test(r1.note), 'a covered CP is left unset, tagged, and lists the CPs that fit (2656 among them): ' + JSON.stringify(r1));
     expect(r2.gy === 1 && r2.gyCheck[0] === false && r2.gyCp[0] === 2301, 'a covered CP is matched to the roster Pokemon of the same name and HP, with no duplicate and no tag: ' + JSON.stringify(r2));
@@ -1693,8 +1670,7 @@ module.exports = async function suiteB() {
   await T('CPHIDDEN-02', 'Import', 'Screenshot path: the review panel shows the candidates, a typed or tapped CP confirms it, an unconfirmed add is tagged, and a covered read is never applied automatically', async () => {
     const st0 = await s.state();
     await s.set({ addedPokemon: [], roster: [], ivOverrides: {}, removedIds: [], ocrAutoApply: true, tab: 'home' });
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const wait = ms => new Promise(r => setTimeout(r, ms)); window.__noPrefetch = true; window.__noImportGate = true;
+    const r = await s.logic(async (l) => { const wait = ms => new Promise(r => setTimeout(r, ms)); window.__noPrefetch = true; window.__noImportGate = true;
       l.preprocessImage = async () => document.createElement('canvas');
       l.readScreenshotWithVision = async () => ({ pokemon_name: 'Kingdra', cp: null, cp_covered: true, cp_visible: '2??6', hp: 155, power_up_stardust: 11000, power_up_candy: 10, power_up_is_xl: true, candy: 116, xl_candy: 25 });
       const out = {};
@@ -1713,7 +1689,7 @@ module.exports = async function suiteB() {
         const mons = [...(l.state.roster || []), ...(l.state.addedPokemon || [])].filter(x => x.name === 'Kingdra');
         out.second = mons.map(x => [x.cp, !!x.cpCheck]);
       } finally { delete l.readScreenshotWithVision; delete l.preprocessImage; delete window.__noPrefetch; delete window.__noImportGate; l.setState({ ocrParsed: null, ocrAutoApply: false, ocrQueue: [], ocrBusy: false }); }
-      return out; } } return null; });
+      return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, removedIds: st0.removedIds || [], tab: 'home' });
     expect(r.parsed && r.check === true && r.cp === null && r.cands && r.cands.indexOf(2656) >= 0 && r.auto === 0, 'the panel is held (never auto-applied) with the candidates: ' + JSON.stringify(r));
     expect(r.added && r.added.cpCheck === true && r.added.cp === null && r.added.n >= 2, 'an unconfirmed add is tagged CHECK CP and keeps the candidates: ' + JSON.stringify(r));
@@ -1725,7 +1701,7 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: [base, { ...base, idx: 'cz2', cp: 2400, cpCandidates: null }], roster: [], ivOverrides: {}, tab: 'roster' }); await s.page.waitForTimeout(700);
     const tagRows = await s.page.locator('[data-swipe-row]').evaluateAll(els => els.filter(e => /CHECK CP/.test(e.innerText)).length);
     const chip = await s.page.locator('.om-press', { hasText: /^CHECK CP$/ }).count();
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic; const wait = ms => new Promise(r => setTimeout(r, ms));
+    const r = await s.logic(async (l) => { const wait = ms => new Promise(r => setTimeout(r, ms));
       const get = id => l.effectiveRosterForMatch().find(x => x.idx === id);
       l.openDetail(get('cz1')); await wait(600);
       const shown = document.body.innerText.includes('CP NEEDS A CHECK') && /2646/.test(document.body.innerText);
@@ -1735,14 +1711,13 @@ module.exports = async function suiteB() {
       l.confirmCp(get('cz2'), 2400); await wait(250);
       out.b = [get('cz2').cp, !!get('cz2').cpCheck];
       l.closeDetail && l.closeDetail();
-      return out; } } return null; });
+      return out; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
     expect(tagRows === 2 && chip >= 1, 'both tagged rows show CHECK CP and the filter chip exists: ' + tagRows + '/' + chip);
     expect(r.shown && r.cp === 2646 && r.check === false && r.b[0] === 2400 && r.b[1] === false, 'the detail sheet offers the candidates; confirming a CP sets it and clears the tag: ' + JSON.stringify(r));
   });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const calls = [];
+    const r = await s.logic(async (l) => { const calls = [];
       const keepF = l.fetchWithDeadline, keepR = l.geminiRotation, keepC = l._modelCool, keepGT = l._geminiTimeoutMs, keepLog = l._aiLog ? l._aiLog.slice() : undefined;
       l._geminiTimeoutMs = 0; l._modelCool = {};
       l.geminiRotation = async () => ['gemini-hang', 'gemini-good'];
@@ -1757,7 +1732,7 @@ module.exports = async function suiteB() {
         l._geminiModelIdxVision = 0;
         out.b = await l.callGeminiWithKey(body, 'KEY-PARK'); out.callsB = calls.slice(out.callsA.length);
       } catch (e) { out.err = e.message; } finally { l.fetchWithDeadline = keepF; l.geminiRotation = keepR; l._modelCool = keepC; l._geminiTimeoutMs = keepGT; delete l._modelMs; l._aiLog = keepLog; }
-      return out; } } return null; });
+      return out; return null; });
     expect(r && !r.err && /Machamp/.test(r.a) && r.callsA.join() === 'gemini-hang,gemini-good', 'the first read tries the hanging model, then the good one: ' + JSON.stringify(r));
     expect(r.callsB.join() === 'gemini-good', 'the next read skips the hanging model: ' + JSON.stringify(r));
   });
@@ -1765,7 +1740,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     await s.page.route(/generativelanguage\.googleapis\.com/, () => { /* never answers */ });
     await s.set({ geminiKeys: ['AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1', 'AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA2'].slice(0, 1), geminiKey: 'AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1' });
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; l._geminiTimeoutMs = 700; l._gemRot = { AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1: { at: Date.now(), vision: ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite'], text: ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'] } }; const t0 = Date.now(); let msg = ''; try { await l.callGemini({ messages: [{ role: 'user', content: 'hi' }] }); } catch (err) { msg = err.message; } const calls = (l._aiLog || []).filter(x => x.status === 599).length; l._geminiTimeoutMs = 0; return { ms: Date.now() - t0, msg, calls }; } } return null; });
+    const r = await s.logic(async (l) => { l._geminiTimeoutMs = 700; l._gemRot = { AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1: { at: Date.now(), vision: ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite'], text: ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'] } }; const t0 = Date.now(); let msg = ''; try { await l.callGemini({ messages: [{ role: 'user', content: 'hi' }] }); } catch (err) { msg = err.message; } const calls = (l._aiLog || []).filter(x => x.status === 599).length; l._geminiTimeoutMs = 0; return { ms: Date.now() - t0, msg, calls }; return null; });
     await s.page.unroute(/generativelanguage\.googleapis\.com/);
     await s.set({ geminiKeys: st0.geminiKeys || [], geminiKey: st0.geminiKey || '' });
     expect(r && /did not answer/.test(r.msg) && r.ms < 6000 && r.calls === 2, 'times out after two tries, not forever: ' + JSON.stringify(r));
@@ -1773,7 +1748,7 @@ module.exports = async function suiteB() {
   await T('IMPCHK-01', 'Import', 'The import gate holds reads that cannot be right, merges the good ones, and Accept / Discard work from Bulk update', async () => {
     const st0 = await s.state();
     await s.set({ addedPokemon: [], roster: [], ivOverrides: {}, importHold: [], tab: 'home' }); await s.page.waitForTimeout(400);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic, m = l.mechanics;
+    const r = await s.logic((L) => { const l = L, m = l.mechanics;
       const base = m.BASE_STATS[68], iv = [12, 13, 14], good = { name: 'Machamp', dex: 68, cp: m.cpFor(base, iv, 20), hp: m.hpFor(base, 14, 20), atkIV: 12, defIV: 13, staIV: 14 };
       const lowHp = { ...good, hp: good.hp - 20 };
       const badIv = { name: 'Alakazam', dex: 65, cp: 1200, hp: 90, atkIV: 20, defIV: 3, staIV: 4 };
@@ -1783,7 +1758,7 @@ module.exports = async function suiteB() {
       window.__noImportGate = false;
       const res = l.mergeVideoImport([good, badIv, badFit]);
       window.__noImportGate = true;
-      return { checks, res: { inserted: res.inserted, held: res.held }, hold: (l.state.importHold || []).length, added: (l.state.addedPokemon || []).length }; } } return null; });
+      return { checks, res: { inserted: res.inserted, held: res.held }, hold: (l.state.importHold || []).length, added: (l.state.addedPokemon || []).length }; return null; });
     expect(r && r.checks.good === 0 && r.checks.lowHp === 0, 'a consistent read, even with HP below its maximum, passes: ' + JSON.stringify(r && r.checks));
     expect(r.checks.badIv > 0 && r.checks.badFit > 0 && r.checks.badName > 0 && r.checks.stardust > 0, 'bad reads are flagged: ' + JSON.stringify(r.checks));
     expect(r.res.inserted === 1 && r.res.held === 2 && r.hold === 2 && r.added === 1, 'one merged, two held: ' + JSON.stringify(r));
@@ -1800,7 +1775,7 @@ module.exports = async function suiteB() {
     const mk = (idx, iv, cp, stored) => ({ idx, name: 'Floette', dex: 670, cp, hp: 80, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: stored, evolvesTo: 'Florges' }, ultra: { rankPct: stored, evolvesTo: 'Florges' }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('pf1', [6, 11, 8], 574, 97.9), mk('pf2', [4, 11, 14], 1109, 95.7)], roster: [], ivOverrides: {}, tab: 'today' }); await s.page.waitForTimeout(700);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.noteAiCall) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch(); const a = ros.find(p => p.idx === 'pf1'), b = ros.find(p => p.idx === 'pf2'); const x = l.pvpAssess(a, 'ultra'), y = l.pvpAssess(b, 'ultra'); return { a: x && { rank: Math.round(x.rank * 10) / 10, stale: x.stale, stored: x.stored }, b: y && { rank: Math.round(y.rank * 10) / 10, stale: y.stale }, best: Math.round(l.bestRank(a) * 10) / 10, stale: l.staleRankCount() }; } } return null; });
+    const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(); const a = ros.find(p => p.idx === 'pf1'), b = ros.find(p => p.idx === 'pf2'); const x = l.pvpAssess(a, 'ultra'), y = l.pvpAssess(b, 'ultra'); return { a: x && { rank: Math.round(x.rank * 10) / 10, stale: x.stale, stored: x.stored }, b: y && { rank: Math.round(y.rank * 10) / 10, stale: y.stale }, best: Math.round(l.bestRank(a) * 10) / 10, stale: l.staleRankCount() }; return null; });
     expect(r && r.a && Math.abs(r.a.rank - 95.7) < 0.2 && r.a.stale === true && r.a.stored === 97.9, 'the 6/11/8 copy shows the rank its IVs give (95.7), not the stored 97.9: ' + JSON.stringify(r));
     expect(Math.abs(r.b.rank - 97.6) < 0.2, 'the 4/11/14 copy is 97.6 whatever is stored: ' + JSON.stringify(r));
     expect(Math.abs(r.best - 95.7) < 0.2 && r.stale >= 1, 'best rank follows the IVs and the stale one is counted: ' + JSON.stringify(r));
@@ -1813,12 +1788,11 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const gs = [mk('xa', [1, 14, 15], 1480), mk('xb', [12, 12, 12], 1450), mk('xc', [14, 15, 14], 2450), mk('xd', [14, 14, 14], 2440), mk('xe', [13, 13, 14], 2300), mk('xf', [10, 10, 10], 1900), mk('xg', [15, 14, 15], 2480), mk('xh', [8, 9, 10], 900), mk('xi', [5, 5, 5], 1200, { shiny: true })];
     await s.set({ addedPokemon: gs, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], keeperOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
-    const r = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.keepFull) { const l = f.stateNode.logic;
-      const cand = l.transferCandidates().filter(c => c.p.name === 'Gengar');
+    const r = await s.logic((l) => { const cand = l.transferCandidates().filter(c => c.p.name === 'Gengar');
       const ctx = l.keepContext(l.effectiveRosterForMatch());
       const ros = l.effectiveRosterForMatch().filter(p => p.name === 'Gengar');
       const extras = ros.filter(p => l.keepFull(p, ctx).extra).map(p => p.idx);
-      return { cand: cand.map(c => c.p.idx), extras, kept: ros.filter(p => !l.keepReasons(p, ctx).length === false).map(p => p.idx), whys: cand.map(c => c.why) }; } } return null; });
+      return { cand: cand.map(c => c.p.idx), extras, kept: ros.filter(p => !l.keepReasons(p, ctx).length === false).map(p => p.idx), whys: cand.map(c => c.why) }; return null; });
     expect(r && r.extras.length >= 6, 'at least 6 spare copies are flagged: ' + JSON.stringify(r));
     expect(r.extras.every(i => r.cand.indexOf(i) >= 0), 'every spare is offered for transfer: ' + JSON.stringify(r));
     expect(r.kept.length <= 3 && r.kept.indexOf('xi') >= 0 && r.cand.indexOf('xi') < 0, 'only the shiny, the league copy and the near-hundo are kept: ' + JSON.stringify(r));
@@ -1827,7 +1801,7 @@ module.exports = async function suiteB() {
   });
   await T('DQ-CPFIT-01', 'Intel', 'What is incomplete lists a Pokemon whose CP and IVs cannot both be true, and one scanned over 30 days ago', async () => {
     const st0 = await s.state();
-    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const L = fn => s.logic((l, f) => { return new Function('l', 'return (' + f + ')')(l); return null; }, fn);
     const cp = await s.page.evaluate(() => { const m = window.PokemonMechanics; return { cp: m.cpFor(m.BASE_STATS[68], [10, 10, 10], 20), hp: m.hpFor(m.BASE_STATS[68], 10, 20) }; });
     const mk = (idx, c, extra) => Object.assign({ idx, name: 'Machamp', dex: 68, cp: c, hp: cp.hp, atkIV: 10, defIV: 10, staIV: 10, ivAvg: 66.7, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) }, extra || {});
     await s.set({ addedPokemon: [mk('dq1', cp.cp), mk('dq2', 1234), mk('dq3', cp.cp, { scanDate: '2026-08-01' })], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(700);
@@ -1838,7 +1812,7 @@ module.exports = async function suiteB() {
   });
   await T('PVPMOVES-01', 'PvP', 'A PvP-ready Gengar missing its recommended moves is flagged, with the Elite-TM ones marked', async () => {
     const st0 = await s.state();
-    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const L = fn => s.logic((l, f) => { return new Function('l', 'return (' + f + ')')(l); return null; }, fn);
     const g = { idx: 'pm1', name: 'Gengar', dex: 94, cp: 2450, hp: 120, atkIV: 14, defIV: 15, staIV: 14, ivAvg: 95.6, lvlMin: 30, lvlMax: 30, ivMeasured: true, quickMove: 'Hex', chargeMove: 'Sludge Bomb', great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) };
     await s.set({ addedPokemon: [g], roster: [], ivOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(800);
     const r = await L("(() => { const p = l.effectiveRosterForMatch().find(x => x.idx === 'pm1'); const a = l.pvpAssess(p, 'ultra'); return { miss: a && a.missing, elite: a && a.missingElite, issue: l.dataQualityIssues().filter(i => i.key === 'pvpmoves').map(i => i.count) }; })()");
@@ -1849,7 +1823,7 @@ module.exports = async function suiteB() {
   });
   await T('LITTLE-01', 'Keep', 'Little Cup grade also needs a top-few-percent spread: a 1/3/5 Sandshrew no longer passes, the best spread does', async () => {
     const st0 = await s.state();
-    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) return new Function('l', 'return (' + f + ')')(g.stateNode.logic); } return null; }, fn);
+    const L = fn => s.logic((l, f) => { return new Function('l', 'return (' + f + ')')(l); return null; }, fn);
     const mk = (idx, iv) => ({ idx, name: 'Sandshrew', dex: 27, cp: 450, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     const best = await s.page.evaluate(() => { const m = window.PokemonMechanics; return m.dittoRanking(m.BASE_STATS[27], 'little', false).rows[0].ivs; });
     await s.set({ addedPokemon: [mk('lt1', [1, 3, 5]), mk('lt2', best)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(600);
@@ -1869,7 +1843,7 @@ module.exports = async function suiteB() {
   await T('KEEPKEY-01', 'Safety', 'A KEEP/RELEASE choice follows the Pokemon through a re-import that renumbers the roster; identical copies are released one at a time', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();
-    const L = fn => s.page.evaluate(f => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.noteAiCall) { const l = g.stateNode.logic; const ros = l.effectiveRosterForMatch(); return (new Function('l', 'ros', 'return (' + f + ')'))(l, ros); } } return null; }, fn);
+    const L = fn => s.logic((l, f) => { const ros = l.effectiveRosterForMatch(); return (new Function('l', 'ros', 'return (' + f + ')'))(l, ros); return null; }, fn);
     const rel = "ros.map(p => [p.idx, l.keeperOverrideOf(p) || '']).filter(x => x[1]).map(x => x[0] + ':' + x[1])";
     await s.set({ addedPokemon: [mk('k1', 'Machamp', 68, [15, 15, 15], 2100), mk('k2', 'Machamp', 68, [15, 15, 15], 2100), mk('k3', 'Machamp', 68, [10, 11, 12], 1800)], roster: [], ivOverrides: {}, keeperOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
     await L("l.setKeeperOverride(ros.find(p => p.idx === 'k2'), 'release')"); await L("l.setKeeperOverride(ros.find(p => p.idx === 'k3'), 'keep')"); await s.page.waitForTimeout(300);
@@ -1890,7 +1864,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 96.9, evolvesTo: name }, ultra: { rankPct: 96.9 }, little: { rankPct: 93.6 }, scanDate: '2026-10-30' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('dl1', 'Bulbasaur', 1, [14, 13, 14], 625), mk('dl2', 'Machamp', 68, [10, 10, 10], 2000), mk('dl3', 'Machamp', 68, [10, 10, 11], 2800)], roster: [], ivOverrides: {}, tab: 'home' }); await s.page.waitForTimeout(500);
-    const open = async idx => { await s.page.evaluate(i => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.openDetail) { const l = f.stateNode.logic; l.openDetail(l.effectiveRosterForMatch().find(p => p.idx === i)); return; } } }, idx); await s.page.waitForTimeout(900); return s.page.evaluate(() => document.body.innerText); };
+    const open = async idx => { await s.logic((l, i) => { l.openDetail(l.effectiveRosterForMatch().find(p => p.idx === i)); return; }, idx); await s.page.waitForTimeout(900); return s.page.evaluate(() => document.body.innerText); };
     let t = await open('dl1');
     expect(/GREAT \u00b7 its league now/.test(t) && /Could also grow into: Ultra, Master/.test(t) && !/LITTLE/.test(t), 'a 625 CP Bulbasaur leads with Great, lists Ultra and Master: ' + t.slice(t.indexOf('LEAGUE RANKINGS'), t.indexOf('LEAGUE RANKINGS') + 300));
     expect(/#\d+ of 4096/.test(t), 'rank is out of 4096, not a dash');
@@ -1922,8 +1896,8 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: 0, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('gr1', 'Azumarill', 184, [0, 15, 15], 400), mk('gr2', 'Azumarill', 184, [8, 8, 8], 410), mk('gr3', 'Azumarill', 184, [0, 15, 15], 400), mk('gr4', 'Azumarill', 184, [14, 6, 12], 420)], roster: [], ivOverrides: {}, keepGrade: 'good', appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
-    const info = async () => s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const best = ros.filter(p => l.keepFull(p, ctx).all.some(x => /^Best Great League copy/.test(x))).map(p => p.idx).sort(); const stand = id => { const p = ros.find(q => q.idx === id); const st = l.gradeStanding(p, 'great'); return st && Math.round(st.topPct * 10) / 10; }; return { best, top: { gr1: stand('gr1'), gr2: stand('gr2'), gr4: stand('gr4') }, fx: l.gradeEffects() }; } } return null; });
-    const lab = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.noteAiCall) { const l = f.stateNode.logic; return [l.gradeLabel(95.27, 'S'), l.gradeLabel(97.21, 'S'), l.gradeLabel(94.0, 'S'), l.gradeLabel(95, 'A'), l.gradeLabel(94.9, 'A'), l.gradeLabel(89, 'S'), l.gradeLabel(98, 'B')]; } } return null; });
+    const info = async () => s.logic((l) => { const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const best = ros.filter(p => l.keepFull(p, ctx).all.some(x => /^Best Great League copy/.test(x))).map(p => p.idx).sort(); const stand = id => { const p = ros.find(q => q.idx === id); const st = l.gradeStanding(p, 'great'); return st && Math.round(st.topPct * 10) / 10; }; return { best, top: { gr1: stand('gr1'), gr2: stand('gr2'), gr4: stand('gr4') }, fx: l.gradeEffects() }; return null; });
+    const lab = await s.logic((l) => { return [l.gradeLabel(95.27, 'S'), l.gradeLabel(97.21, 'S'), l.gradeLabel(94.0, 'S'), l.gradeLabel(95, 'A'), l.gradeLabel(94.9, 'A'), l.gradeLabel(89, 'S'), l.gradeLabel(98, 'B')]; return null; });
     expect(JSON.stringify(lab) === JSON.stringify(['EXCELLENT', 'TOP', 'EXCELLENT', 'EXCELLENT', 'GOOD', 'AVERAGE', 'TOP']), 'S-tier Mimikyu 95.3 and Cramorant 94.0 are EXCELLENT, Clodsire 97.2 is TOP, A/B needs 95: ' + JSON.stringify(lab));
     let r = await info();
     expect(r.best.length === 1 && (r.best[0] === 'gr1' || r.best[0] === 'gr3'), 'two identical 0/15/15 copies: only one stays as the best Great copy: ' + JSON.stringify(r.best));

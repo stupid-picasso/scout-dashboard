@@ -26,6 +26,20 @@ async function T(id, area, name, fn, sev = 'normal') {
   return rec;
 }
 
+// The app's component logic object (state, setState and every method), found by climbing the React fibers of any element. withLogic runs
+// fn(logic, arg) in the page and returns its result; null when the app has not mounted. fn and arg must be serialisable like page.evaluate's.
+const findLogic = () => {
+  for (const e of document.querySelectorAll('*')) {
+    const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue;
+    for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) return f.stateNode.logic;
+  }
+  return null;
+};
+async function withLogic(page, fn, arg) {
+  const h = await page.evaluateHandle(findLogic);
+  try { return (await h.evaluate(l => !!l)) ? await h.evaluate(fn, arg) : null; } finally { await h.dispose(); }
+}
+
 let browser;
 async function launch() {
   if (browser) return browser;
@@ -338,10 +352,11 @@ async function session(opts = {}) {
     if (opts.noConfirm) return;
     const b = page.getByText('REPLACE', { exact: true }); if (await b.count()) { await b.first().click(); await page.waitForTimeout(500); }
   };
-  s.state = () => page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.state) return JSON.parse(JSON.stringify(f.stateNode.logic.state, (kk, v) => (typeof v === 'function' ? undefined : v))); } return null; });
-  s.set = patch => page.evaluate(p => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) { f.stateNode.logic.setState(p); return true; } } return false; }, patch);
-  s.call = (method, ...args) => page.evaluate(([mth, a]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic[mth]) return f.stateNode.logic[mth](...a); } return undefined; }, [method, args]);
+  s.logic = (fn, arg) => withLogic(page, fn, arg);
+  s.state = () => s.logic(l => JSON.parse(JSON.stringify(l.state, (kk, v) => (typeof v === 'function' ? undefined : v))));
+  s.set = async patch => (await s.logic((l, p) => { l.setState(p); return true; }, patch)) === true;
+  s.call = (method, ...args) => s.logic((l, [mth, a]) => (l[mth] ? l[mth](...a) : undefined), [method, args]);
   s.close = () => ctx.close();
   return s;
 }
-module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch };
+module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch, withLogic };

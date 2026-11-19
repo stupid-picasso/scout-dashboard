@@ -1,13 +1,12 @@
 // Adversarial property test: no valuable Pokemon may appear in any transfer-suggesting output.
-// Run: PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome node fuzz_keep.js [seeds=1,2,3] [rostersPerSeed=4] [maxMinutes=8]
-const vm = require('vm'), fs = require('fs');
-const REPO = '/home/user/scout-dashboard';
-const { session, close } = require(REPO + '/scripts/qa/qa_lib.js');
+// Run: node scripts/qa/fuzz_keep.js (PW_CHROMIUM=<chrome binary> to use an existing Chromium) [seeds=1,2,3] [rostersPerSeed=4] [maxMinutes=8]
+const fs = require('fs'), path = require('path');
+const REPO = path.join(__dirname, '..', '..');
+const { session, close } = require('./qa_lib.js');
+const { loadMechanics } = require('../lib/testkit');
 
 // ---- mechanics data in node (for generation + ground truth), loaded from the repo file, read-only
-const W = { dispatchEvent() {} }; W.window = W; W.Event = function () {};
-vm.runInContext(fs.readFileSync(REPO + '/pokemon-mechanics.js', 'utf8'), vm.createContext(W));
-const M = W.PokemonMechanics;
+const M = loadMechanics();
 
 const ARGS = process.argv.slice(2);
 const SEEDS = (ARGS[0] || '1,2,3').split(',').map(Number);
@@ -161,9 +160,7 @@ function classify(v) {
 }
 
 // ---- in-page collection of every transfer-suggesting output
-function collectInPage(sampleStep) {
-  let L = null;
-  for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.buildOptimizePlan) { L = f.stateNode.logic; break; } if (L) break; }
+function collectInPage(L, sampleStep) {
   const t0 = performance.now(); const timing = {};
   const roster = L.effectiveRosterForMatch();
   const o = { rosterIdx: roster.map(p => p.idx), errors: [] };
@@ -210,8 +207,8 @@ function collectInPage(sampleStep) {
       const roster = genRoster(r, n); const recalc = r() < 0.7;
       await s.set({ addedPokemon: roster, roster: [], removedIds: [], ivOverrides: {}, completedIds: [], transferQueue: [], triageKeep: {}, cutTarget: MODE === 'strict' ? 1000000 : 300 });
       if (recalc) { await s.call('recalculateAllRanks'); await s.page.waitForFunction(() => true); await s.page.waitForTimeout(600); for (let i = 0; i < 40 && (await s.state()).recalcBusy; i++) await s.page.waitForTimeout(200); }
-      const eff = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.effectiveRosterForMatch) return f.stateNode.logic.effectiveRosterForMatch().length; } return -1; });
-      const o = await s.page.evaluate(collectInPage, Math.max(1, Math.floor(roster.length / 25)));
+      const eff = await s.logic(l => l.effectiveRosterForMatch().length);
+      const o = await s.logic(collectInPage, Math.max(1, Math.floor(roster.length / 25)));
       stats.rosters++; stats.pokemon += roster.length;
       o.errors.forEach(e => stats.errors.push(`seed ${seed} roster ${k}: ${e}`));
       if (eff !== roster.length) stats.errors.push(`effective roster ${eff} != generated ${roster.length}`);

@@ -42,7 +42,7 @@ module.exports = async function suiteC() {
   await T('TOD-04', 'Today', 'Each league shows its CP cap and rules text', async () => { const t = await t0(); expect(/≤ 1500 CP/.test(t) && /No cap/.test(t) && /at or below 1,500 CP/.test(t)); });
   await T('TOD-05', 'Today', 'Open Great League lists top species with tier and moves', async () => { const btn = s.page.getByRole('button', { name: /, tier [SAB]/ }).first(); expect(await btn.count() > 0, 'no top-species buttons'); await btn.click(); await s.page.waitForTimeout(300); expect(/ · /.test(await t0()) && await s.page.getByRole('button', { name: /, tier [SAB]/ }).first().getAttribute('aria-pressed') === 'true', 'moves line missing after tap'); await btn.click(); });
   await T('TOD-06', 'Today', 'Cup squad only contains Pokemon of the cup\'s allowed types (Color Cup)', async () => {
-    const team = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.gblWeeks) { const w = f.stateNode.logic.gblWeeks(); return w[0].leagues.map(l => ({ name: l.name, squad: l.squadLine, note: l.note })); } } return null; });
+    const team = await s.logic((L) => { const w = L.gblWeeks(); return w[0].leagues.map(l => ({ name: l.name, squad: l.squadLine, note: l.note })); return null; });
     expect(team, 'no weeks'); const cup = team.find(l => /Color Cup/.test(l.name)); expect(cup, 'cup missing');
     const names = (cup.squad.match(/Your squad: ([^(]*)/) || [, ''])[1].split('·').map(x => x.trim()).filter(Boolean);
     if (!names.length) return 'no squad (not enough eligible): ' + cup.squad;
@@ -145,13 +145,12 @@ module.exports = async function suiteC() {
     expect(!/QACODEONE/.test(await s.page.evaluate(() => localStorage.getItem('scout.promo.redeemed.v1') || '')), 'undo did not clear it');
   });
   await T('PROMO-04', 'Today', 'A code that appears after the first read is NEW and raises one notification; the codes already there do not', async () => {
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const before = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
+    const r = await s.logic(async (l) => { const before = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
       const c = l.state.promoCodes; l.setState({ promoCodes: { ...c, codes: c.codes.concat([{ code: 'QABRANDNEW', name: 'QA Brand New', rewards: ['Gift'], expires: null, expired: false, source: 'LeekDuck', verified: true }]) } }); await new Promise(r => setTimeout(r, 200));
       const items = l.reminderItems().filter(i => /^pc:/.test(i.id)); const text = document.body.innerText;
       l.promoCopy('QABRANDNEW'); await new Promise(r => setTimeout(r, 200));
       const after = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
-      return { before, items: items.map(i => i.id + ' | ' + i.title), hasNew: /NEW/.test(text), after }; } } return null; });
+      return { before, items: items.map(i => i.id + ' | ' + i.title), hasNew: /NEW/.test(text), after }; return null; });
     expect(r && r.before === 0, 'codes present at first read raise no notification: ' + JSON.stringify(r));
     expect(r.items.length === 1 && /QABRANDNEW/.test(r.items[0]) && /New promo code/.test(r.items[0]) && r.hasNew, 'new code: ' + JSON.stringify(r));
     expect(r.after === 0, 'copying a new code clears its notification');
@@ -319,7 +318,7 @@ module.exports = async function suiteC() {
   await T('LOG-04', 'Log', 'Thirty synthetic days draw four correct growth charts', async () => {
     const hist = []; for (let i = 0; i < 30; i++) { const d = new Date(Date.UTC(2026, 8, 30 - i)).toISOString().slice(0, 10) + ' 12:00'; hist.push({ date: d, stardust: 100000 + (29 - i) * 1000, count: 60 + (29 - i), avgIV: (70 + (29 - i) * 0.5).toFixed(1), lucky: 3, hundo: 1 + Math.floor((29 - i) / 5), dex: 40 + (29 - i) }); }
     // The app also logs today on a 6 s timer after start; stop it so the chart holds exactly the 30 synthetic days.
-    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.dailyLogSnapshot) { f.stateNode.logic.dailyLogSnapshot = () => {}; return; } } });
+    await s.logic((l) => { l.dailyLogSnapshot = () => {}; return; });
     await s.set({ history: hist }); await s.call('goToTab', 'progress'); await s.page.waitForTimeout(700);
     const charts = await s.page.locator('svg[role=img]').evaluateAll(els => els.map(e => ({ label: e.getAttribute('aria-label'), d: e.querySelectorAll('path')[1].getAttribute('d') })));
     expect(charts.length === 4, 'charts=' + charts.length); const nums = d => d.match(/[ML]/g).length; expect(charts.every(c => nums(c.d) === 30), 'points ' + charts.map(c => nums(c.d)));
