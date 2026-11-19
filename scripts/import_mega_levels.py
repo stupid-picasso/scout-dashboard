@@ -18,15 +18,15 @@ and MEGA_EVO_SETTINGS in the game master):
 
 Writes the MEGA_LEVEL_DATA GENERATED BLOCK in pokemon-mechanics.js.
 """
-import json, re, sys, urllib.request
+import json, re, sys
 
-URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
+import gm_lib
+
 MECH_PATH = "pokemon-mechanics.js"
 
 
 def main():
-    with urllib.request.urlopen(URL, timeout=120) as r:
-        gm = json.load(r)
+    gm = gm_lib.game_master(sys.argv[1] if len(sys.argv) > 1 else None)
     levels = {}  # species ('*' = generic) -> {level: settings}
     evo = None
     for x in gm:
@@ -106,35 +106,16 @@ def main():
         ps = x.get("data", {}).get("pokemonSettings")
         if mm and ps and ps.get("familyId"):
             fam.setdefault(str(int(mm.group(1))), re.sub(r"^FAMILY_", "", ps["familyId"]).lower())
-    fam_block = ("// GENERATED BLOCK: SPECIES_FAMILY (import_mega_levels.py) — do not hand-edit\n"
-                 "const SPECIES_FAMILY = " + json.dumps(fam, separators=(",", ":")) + ";\n"
-                 "// END GENERATED BLOCK: SPECIES_FAMILY")
-    gen_block = ("// GENERATED BLOCK: SPECIES_GM (import_mega_levels.py) — do not hand-edit\n"
-                 "const SPECIES_GM = " + json.dumps(sp_rows, separators=(",", ":")) + ";\n"
-                 "for (const _d in SPECIES_GM) { const _p = SPECIES_GM[_d].split('|')[0].split(',').map(Number); BASE_STATS[_d] = _p; }\n"
-                 "// END GENERATED BLOCK: SPECIES_GM")
-    fpat0 = None
-    block = ("// GENERATED BLOCK: MEGA_LEVEL_DATA (import_mega_levels.py) — do not hand-edit\n"
-             "const MEGA_LEVEL_DATA = " + json.dumps(out, separators=(",", ":")) + ";\n"
-             "// END GENERATED BLOCK: MEGA_LEVEL_DATA")
+    fam_block = gm_lib.block_text("SPECIES_FAMILY", "import_mega_levels.py", "const SPECIES_FAMILY = " + json.dumps(fam, separators=(",", ":")) + ";")
+    gen_block = gm_lib.block_text("SPECIES_GM", "import_mega_levels.py",
+                                  "const SPECIES_GM = " + json.dumps(sp_rows, separators=(",", ":")) + ";\n"
+                                  "for (const _d in SPECIES_GM) { const _p = SPECIES_GM[_d].split('|')[0].split(',').map(Number); BASE_STATS[_d] = _p; }")
+    block = gm_lib.block_text("MEGA_LEVEL_DATA", "import_mega_levels.py", "const MEGA_LEVEL_DATA = " + json.dumps(out, separators=(",", ":")) + ";")
     src = open(MECH_PATH, encoding="utf-8").read()
-    gpat = re.compile(r"// GENERATED BLOCK: SPECIES_GM.*?// END GENERATED BLOCK: SPECIES_GM", re.S)
-    if gpat.search(src):
-        src = gpat.sub(lambda _: gen_block, src)
-    else:
-        a0 = "// GENERATED BLOCK: MEGA_LEVEL_DATA"
-        src = src.replace(a0, gen_block + "\n\n" + a0, 1)
-    fpat = re.compile(r"// GENERATED BLOCK: SPECIES_FAMILY.*?// END GENERATED BLOCK: SPECIES_FAMILY", re.S)
-    if fpat.search(src):
-        src = fpat.sub(lambda _: fam_block, src)
-    else:
-        src = src.replace("// END GENERATED BLOCK: SPECIES_GM", "// END GENERATED BLOCK: SPECIES_GM\n\n" + fam_block, 1)
-    pat = re.compile(r"// GENERATED BLOCK: MEGA_LEVEL_DATA.*?// END GENERATED BLOCK: MEGA_LEVEL_DATA", re.S)
-    if pat.search(src):
-        src = pat.sub(lambda _: block, src)
-    else:
-        a = "function megaEvolveCostFor(name, everMegaEvolved) {"
-        src = src.replace(a, block + "\n\n" + a, 1)
+    # Order in the file: SPECIES_GM, SPECIES_FAMILY, MEGA_LEVEL_DATA. A missing block goes next to its neighbour, in that order.
+    src = gm_lib.replace_block(src, "SPECIES_GM", gen_block, before="// GENERATED BLOCK: MEGA_LEVEL_DATA")
+    src = gm_lib.replace_block(src, "SPECIES_FAMILY", fam_block, after="SPECIES_GM")
+    src = gm_lib.replace_block(src, "MEGA_LEVEL_DATA", block, before="function megaEvolveCostFor(name, everMegaEvolved) {")
     open(MECH_PATH, "w", encoding="utf-8").write(src)
     print("species with own levels:", len(out["species"]), "superMaxUnlock:", unlock, "evolveHours:", out["evolveHours"])
     print(json.dumps(out["generic"]), json.dumps(out["species"].get("beedrill")), json.dumps(out["species"].get("mewtwo")))

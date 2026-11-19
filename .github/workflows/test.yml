@@ -60,6 +60,7 @@ jobs:
           python3 scripts/test_workflows.py
           python3 scripts/test_workflow_data.py
           python3 scripts/test_ci_push.py
+          python3 scripts/test_gm_lib.py
 
       - name: Install Playwright
         run: |

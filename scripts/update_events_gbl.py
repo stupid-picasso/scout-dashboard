@@ -12,10 +12,11 @@ form and the app must not depend on it):
 
 Never overwrites a good file with a bad parse: exits non-zero instead.
 """
-import json, os, re, sys, urllib.request, datetime
+import json, os, re, sys, datetime
+
+import gm_lib
 
 EVENTS_URL = 'https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/events.json'
-GM_URL = 'https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json'
 FORMATS_URL = 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/gamemaster/formats.json'
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'feed.json')
 KEEP_TYPES = {'event', 'community-day', 'raid-battles', 'raid-hour', 'raid-day', 'pokemon-spotlight-hour',
@@ -23,8 +24,7 @@ KEEP_TYPES = {'event', 'community-day', 'raid-battles', 'raid-hour', 'raid-day',
 
 
 def get(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'scout-dashboard'}), timeout=30) as r:
-        return json.load(r)
+    return gm_lib.fetch_json(url, timeout=30)
 
 
 def league_cp(name):
@@ -229,7 +229,7 @@ def main():
         print('formats unavailable:', ex)
     cups, classes = {}, {}
     try:
-        gm = get(GM_URL)
+        gm = gm_lib.game_master()
         cups, classes = load_cups(gm), species_by_class(gm)
     except Exception as ex:
         print('game master unavailable:', ex)

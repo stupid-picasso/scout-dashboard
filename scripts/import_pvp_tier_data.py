@@ -47,8 +47,8 @@ pokemon-mechanics.js (same GENERATED BLOCK convention as the other
 import_*.py scripts in this repo).
 """
 import json
-import re
-import urllib.request
+
+import gm_lib
 
 GREAT_URL = "https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/all/overall/rankings-1500.json"
 ULTRA_URL = "https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/all/overall/rankings-2500.json"
@@ -73,8 +73,7 @@ CUP_TOP = 40
 
 
 def fetch(url):
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return json.load(r)
+    return gm_lib.fetch_json(url, timeout=30)
 
 
 def tier_for(score):
@@ -169,23 +168,12 @@ def main():
         "// END GENERATED BLOCK: PVP_TIER"
     )
 
-    pattern = re.compile(
-        r"// GENERATED BLOCK: PVP_TIER.*?// END GENERATED BLOCK: PVP_TIER",
-        re.DOTALL,
-    )
-    if pattern.search(src):
-        src = pattern.sub(block, src)
-        print("Updated existing PVP_TIER block.")
-    else:
-        # Must land BEFORE pvpTierFor()/the window.PokemonMechanics export —
-        # both reference PVP_TIER_GREAT/PVP_TIER_ULTRA by value at parse
-        # time (not just inside a function body), so appending at end of
-        # file would leave them referenced before their `const` is
-        # initialized (TDZ ReferenceError on load).
-        anchor = "function pvpTierFor(name, isShadow, leagueKey) {"
-        idx = src.index(anchor)
-        src = src[:idx] + block + "\n\n" + src[idx:]
-        print("Inserted new PVP_TIER block before pvpTierFor().")
+    existed = bool(gm_lib.block_pattern("PVP_TIER").search(src))
+    # A new block must land BEFORE pvpTierFor()/the window.PokemonMechanics export: both reference PVP_TIER_GREAT/PVP_TIER_ULTRA
+    # by value at parse time (not just inside a function body), so appending at the end of the file would leave them referenced
+    # before their `const` is initialized (TDZ ReferenceError on load).
+    src = gm_lib.replace_block(src, "PVP_TIER", block, before="function pvpTierFor(name, isShadow, leagueKey) {")
+    print("Updated existing PVP_TIER block." if existed else "Inserted new PVP_TIER block before pvpTierFor().")
 
     with open(MECH_PATH, "w", encoding="utf-8") as f:
         f.write(src)

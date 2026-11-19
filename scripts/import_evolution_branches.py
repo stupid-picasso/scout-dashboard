@@ -12,13 +12,14 @@ branch and is left out.
 
 Usage: python scripts/import_evolution_branches.py [path-to-latest.json]   (downloads it when no path is given)
 """
-import json, re, sys, urllib.request
+import json, sys
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0] if "/" in __file__ else ".")
+import gm_lib
 from import_evolution_data import ITEM_LABELS, pretty_name  # same item and name conventions as REAL_EVOLUTION_TABLE
 
-URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
 MECH_PATH = "pokemon-mechanics.js"
+MIN_BRANCHING = 10   # fewer branching species than this (or no Eevee) means the game master changed shape
 
 
 def branches_of(gm):
@@ -54,27 +55,15 @@ def branches_of(gm):
 
 
 def main():
-    if len(sys.argv) > 1:
-        gm = json.load(open(sys.argv[1]))
-    else:
-        with urllib.request.urlopen(URL, timeout=180) as r:
-            gm = json.load(r)
+    gm = gm_lib.game_master(sys.argv[1] if len(sys.argv) > 1 else None)
     table = branches_of(gm)
-    if len(table) < 10 or "eevee" not in table:
+    if len(table) < MIN_BRANCHING or "eevee" not in table:
         sys.exit("game master shape changed (%d branching species); keeping old data" % len(table))
     # keep the block small: drop empty keys
     slim = {k: [{f: v for f, v in r.items() if v not in (None, False)} for r in rows] for k, rows in sorted(table.items())}
-    block = ("// GENERATED BLOCK: EVOLUTION_BRANCHES (import_evolution_branches.py) — do not hand-edit\n"
-             "const EVOLUTION_BRANCHES = " + json.dumps(slim, separators=(",", ":"), ensure_ascii=False) + ";\n"
-             "// END GENERATED BLOCK: EVOLUTION_BRANCHES")
-    src = open(MECH_PATH, encoding="utf-8").read()
-    pat = re.compile(r"// GENERATED BLOCK: EVOLUTION_BRANCHES.*?// END GENERATED BLOCK: EVOLUTION_BRANCHES", re.S)
-    if pat.search(src):
-        src = pat.sub(lambda _: block, src)
-    else:
-        anchor = "// END GENERATED BLOCK: SPECIES_CLASS"
-        assert anchor in src
-        src = src.replace(anchor, anchor + "\n\n" + block, 1)
+    block = gm_lib.block_text("EVOLUTION_BRANCHES", "import_evolution_branches.py",
+                              "const EVOLUTION_BRANCHES = " + json.dumps(slim, separators=(",", ":"), ensure_ascii=False) + ";")
+    src = gm_lib.replace_block(open(MECH_PATH, encoding="utf-8").read(), "EVOLUTION_BRANCHES", block, after="SPECIES_CLASS")
     open(MECH_PATH, "w", encoding="utf-8").write(src)
     print("branching species:", len(slim), ", ".join(slim))
 

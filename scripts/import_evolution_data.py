@@ -55,9 +55,9 @@ SCHEMA NOTES
 """
 import json
 import re
-import urllib.request
 
-SOURCE_URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
+import gm_lib
+
 
 ITEM_LABELS = {
     "ITEM_SUN_STONE": ("sunStone", "Sun Stone"),
@@ -99,11 +99,7 @@ NAME_OVERRIDES = {
 
 
 def fetch_gamemaster(path=None):
-    if path:
-        with open(path) as f:
-            return json.load(f)
-    with urllib.request.urlopen(SOURCE_URL) as r:
-        return json.load(r)
+    return gm_lib.game_master(path)
 
 
 def pretty_name(pokemon_id):

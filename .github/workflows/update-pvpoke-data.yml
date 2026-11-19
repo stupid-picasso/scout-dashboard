@@ -48,6 +48,9 @@ jobs:
         run: npm install --no-save terser
 
       - name: Refresh data (each import retried up to 3 times)
+        env:
+          # The game-master scripts share one download: the first one saves it here, the next ones read it.
+          GAME_MASTER_FILE: ${{ runner.temp }}/game_master.json
         run: |
           retry() {
             for attempt in 1 2 3; do

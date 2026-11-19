@@ -18,10 +18,12 @@ Forms kept: alola, galarian, hisuian, paldea (the ones BASE_STATS_BY_FORM also k
 
 Usage: python scripts/import_size_data.py [path-to-latest.json]   (downloads it when no path is given)
 """
-import json, re, sys, urllib.request
+import json, re, sys
 
-URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
+import gm_lib
+
 MECH_PATH = "pokemon-mechanics.js"
+MIN_SPECIES = 800   # fewer species with size data than this means the game master changed shape
 FORMS = {"alola", "galarian", "hisuian", "paldea"}
 
 
@@ -35,11 +37,7 @@ def key_for(dex, species, form):
 
 
 def main():
-    if len(sys.argv) > 1:
-        gm = json.load(open(sys.argv[1]))
-    else:
-        with urllib.request.urlopen(URL, timeout=180) as r:
-            gm = json.load(r)
+    gm = gm_lib.game_master(sys.argv[1] if len(sys.argv) > 1 else None)
     body, bounds = {}, {}
     for x in gm:
         d = x.get("data", {})
@@ -61,20 +59,11 @@ def main():
     for k, (h, w) in body.items():
         if k in bounds:
             out[k] = [h, w] + [round(v, 4) for v in bounds[k]]
-    if len(out) < 800:
+    if len(out) < MIN_SPECIES:
         sys.exit("game master shape changed (only %d species with size data); keeping old data" % len(out))
     out = dict(sorted(out.items(), key=lambda kv: (int(kv[0].split("_")[0]), kv[0])))
-    block = ("// GENERATED BLOCK: SIZE_DATA (import_size_data.py) — do not hand-edit\n"
-             "const SIZE_DATA = " + json.dumps(out, separators=(",", ":")) + ";\n"
-             "// END GENERATED BLOCK: SIZE_DATA")
-    src = open(MECH_PATH, encoding="utf-8").read()
-    pat = re.compile(r"// GENERATED BLOCK: SIZE_DATA.*?// END GENERATED BLOCK: SIZE_DATA", re.S)
-    if pat.search(src):
-        src = pat.sub(lambda _: block, src)
-    else:
-        anchor = "// END GENERATED BLOCK: MEGA_LEVEL_DATA"
-        assert anchor in src
-        src = src.replace(anchor, anchor + "\n\n" + block, 1)
+    block = gm_lib.block_text("SIZE_DATA", "import_size_data.py", "const SIZE_DATA = " + json.dumps(out, separators=(",", ":")) + ";")
+    src = gm_lib.replace_block(open(MECH_PATH, encoding="utf-8").read(), "SIZE_DATA", block, after="MEGA_LEVEL_DATA")
     open(MECH_PATH, "w", encoding="utf-8").write(src)
     print("species/forms with size data:", len(out), "| forms:", sum(1 for k in out if "_" in k))
     print(json.dumps({k: out[k] for k in ("1", "38", "38_alola") if k in out}))

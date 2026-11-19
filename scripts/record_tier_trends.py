@@ -14,9 +14,12 @@ Usage: python scripts/record_tier_trends.py [old-mechanics.js] [today YYYY-MM-DD
 """
 import datetime, json, re, subprocess, sys
 
+import gm_lib
+
 MECH_PATH = "pokemon-mechanics.js"
 LEAGUES = ("great", "ultra", "little", "master")
 KEEP_DAYS = 56
+MIN_RANKED = 100   # a tier table with fewer species than this was not parsed properly
 
 
 def tiers_of(src):
@@ -56,15 +59,8 @@ def merge(src_new, rows, today):
 
 
 def write_block(src, trends):
-    block = ("// GENERATED BLOCK: TIER_TRENDS (record_tier_trends.py) — do not hand-edit\n"
-             "const TIER_TRENDS = " + json.dumps(trends, separators=(",", ":")) + ";\n"
-             "// END GENERATED BLOCK: TIER_TRENDS")
-    pat = re.compile(r"// GENERATED BLOCK: TIER_TRENDS.*?// END GENERATED BLOCK: TIER_TRENDS", re.S)
-    if pat.search(src):
-        return pat.sub(lambda _: block, src)
-    anchor = "// END GENERATED BLOCK: EVOLUTION_BRANCHES"
-    assert anchor in src, "run import_evolution_branches.py first"
-    return src.replace(anchor, anchor + "\n\n" + block, 1)
+    block = gm_lib.block_text("TIER_TRENDS", "record_tier_trends.py", "const TIER_TRENDS = " + json.dumps(trends, separators=(",", ":")) + ";")
+    return gm_lib.replace_block(src, "TIER_TRENDS", block, after="EVOLUTION_BRANCHES")
 
 
 def main():
@@ -72,7 +68,7 @@ def main():
     today = sys.argv[2] if len(sys.argv) > 2 else datetime.date.today().isoformat()
     new_src = open(MECH_PATH, encoding="utf-8").read()
     old, new = tiers_of(old_src), tiers_of(new_src)
-    if len(new.get("great", {})) < 100 or len(old.get("great", {})) < 100:
+    if len(new.get("great", {})) < MIN_RANKED or len(old.get("great", {})) < MIN_RANKED:
         sys.exit("tier tables not found; keeping old trends")
     rows = diff(old, new, today)
     trends = merge(new_src, rows, today)

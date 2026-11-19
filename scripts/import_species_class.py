@@ -8,39 +8,28 @@ the SPECIES_CLASS GENERATED BLOCK in pokemon-mechanics.js:
 
 Usage: python scripts/import_species_class.py [path-to-latest.json]   (downloads it when no path is given)
 """
-import json, re, sys, urllib.request
+import json, re, sys
 
-URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
+import gm_lib
+
 MECH_PATH = "pokemon-mechanics.js"
+MIN_SPECIES = 100   # fewer classed species than this means the game master changed shape
 CODE = {"POKEMON_CLASS_LEGENDARY": "L", "POKEMON_CLASS_MYTHIC": "M", "POKEMON_CLASS_ULTRA_BEAST": "U"}
 
 
 def main():
-    if len(sys.argv) > 1:
-        gm = json.load(open(sys.argv[1]))
-    else:
-        with urllib.request.urlopen(URL, timeout=180) as r:
-            gm = json.load(r)
+    gm = gm_lib.game_master(sys.argv[1] if len(sys.argv) > 1 else None)
     out = {}
     for x in gm:
         m = re.match(r"V(\d{4})_POKEMON_", x["templateId"])
         ps = (x.get("data") or {}).get("pokemonSettings")
         if m and ps and ps.get("pokemonClass") in CODE:
             out[int(m.group(1))] = CODE[ps["pokemonClass"]]
-    if len(out) < 100:
+    if len(out) < MIN_SPECIES:
         sys.exit("game master shape changed (only %d classed species); keeping old data" % len(out))
     body = {str(k): v for k, v in sorted(out.items())}
-    block = ("// GENERATED BLOCK: SPECIES_CLASS (import_species_class.py) — do not hand-edit\n"
-             "const SPECIES_CLASS = " + json.dumps(body, separators=(",", ":")) + ";\n"
-             "// END GENERATED BLOCK: SPECIES_CLASS")
-    src = open(MECH_PATH, encoding="utf-8").read()
-    pat = re.compile(r"// GENERATED BLOCK: SPECIES_CLASS.*?// END GENERATED BLOCK: SPECIES_CLASS", re.S)
-    if pat.search(src):
-        src = pat.sub(lambda _: block, src)
-    else:
-        anchor = "// END GENERATED BLOCK: SIZE_DATA"
-        assert anchor in src
-        src = src.replace(anchor, anchor + "\n\n" + block, 1)
+    block = gm_lib.block_text("SPECIES_CLASS", "import_species_class.py", "const SPECIES_CLASS = " + json.dumps(body, separators=(",", ":")) + ";")
+    src = gm_lib.replace_block(open(MECH_PATH, encoding="utf-8").read(), "SPECIES_CLASS", block, after="SIZE_DATA")
     open(MECH_PATH, "w", encoding="utf-8").write(src)
     c = {k: sum(1 for v in out.values() if v == k) for k in "LMU"}
     print("classed species:", len(out), c)

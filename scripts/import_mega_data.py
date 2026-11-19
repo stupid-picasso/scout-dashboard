@@ -39,17 +39,12 @@ SCHEMA NOTES
   from the live game, cross-checked against community values before shipping.
 """
 import json
-import urllib.request
 
-SOURCE_URL = "https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json"
+import gm_lib
 
 
 def fetch_gamemaster(path=None):
-    if path:
-        with open(path) as f:
-            return json.load(f)
-    with urllib.request.urlopen(SOURCE_URL) as r:
-        return json.load(r)
+    return gm_lib.game_master(path)
 
 
 def extract_mega_costs(gamemaster):

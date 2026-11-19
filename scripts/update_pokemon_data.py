@@ -24,6 +24,8 @@ import re
 import sys
 import urllib.request
 
+import gm_lib
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MECH_PATH = os.path.join(REPO_ROOT, "pokemon-mechanics.js")
 NEW_POKEMON_PATH = os.path.join(REPO_ROOT, "data", "new_pokemon.json")
@@ -43,16 +45,12 @@ POGOAPI_POWERUP_URL = "https://pogoapi.net/api/v1/pokemon_powerup_requirements.j
 SPRITE_URL_TEMPLATE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{dex}.png"
 
 
-USER_AGENT = "scout-dashboard-pokemon-data-updater/1.0 (+https://github.com/stupid-picasso/scout-dashboard)"
-
-
 def _request(url):
-    return urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    return urllib.request.Request(url, headers={"User-Agent": gm_lib.USER_AGENT})
 
 
 def fetch_json(url):
-    with urllib.request.urlopen(_request(url), timeout=60) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    return gm_lib.fetch_json(url, timeout=60)
 
 
 def fetch_bytes(url):
