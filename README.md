@@ -100,6 +100,7 @@ scout-dashboard/
 ├── manifest.json                 # PWA manifest
 ├── sw.js                         # Service worker (cache scout-v3)
 ├── pogo_extract.py               # Video → CSV extractor
+├── worker/                       # Push-alert Worker (Cloudflare; owner deploys it)
 └── requirements.txt              # pytesseract, Pillow
 ```
 
@@ -113,6 +114,13 @@ Firestore rules live in `firestore.rules` (the single source of truth, tested by
 `scripts/test_firestore_rules.js`). The deploy order and checks are in `DEPLOY.md`:
 ship the client first, then the rules. API keys and the GitHub token stay in the browser
 and are never written to the cloud document, its snapshots or the backup file.
+
+## Push alerts
+
+Optional alerts while the app is closed (event starts, new promo codes). The app has a Push alerts
+switch in Settings, but it stays off until the owner deploys the Worker in `worker/` (a small
+Cloudflare Worker that stores subscriptions and sends the alerts on a 15-minute timer). The steps are
+in section 5 of `docs/OWNER_CHECKLIST.md`. Without the Worker the app works exactly the same.
 
 ## Security Notes
 

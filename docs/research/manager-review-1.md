@@ -1,6 +1,6 @@
 # Manager review 1: Task 1 (UI polish), HEAD 522b420
 
-Reviewed independently against `docs/research/manager-plan.md` (Task 1), `docs/research/ui-polish-audit.md` and `docs/research/worker1-status.md`. No product or test file was edited. Mutations ran in a clone under `/tmp/mut`; the baseline was checked in a clone at `c10fa0c` under `/tmp/base`.
+Reviewed independently against `docs/research/manager-plan.md` (Task 1), `docs/research/ui-polish-audit.md` and the worker's status note (since deleted). No product or test file was edited. Mutations ran in a clone under `/tmp/mut`; the baseline was checked in a clone at `c10fa0c` under `/tmp/base`.
 
 ## Verdict: FIX FIRST
 
@@ -173,7 +173,7 @@ Regression or pre-existing (checked against the committed `before/` dark 390 set
 
 ## Were any worker claims false?
 
-- No claim in `worker1-status.md` is false; its not-done list is honest but **incomplete** (#26 spacing, and the unreachable More rows, are missing).
+- No claim in the worker's status note is false; its not-done list is honest but **incomplete** (#26 spacing, and the unreachable More rows, are missing).
 - "No test was loosened" does not hold literally: BOOT-01's text threshold went from 300 to 80. It is compensated by new assertions.
 - The handoff says the copy lint bans "Build dev" and "free": the check exists but cannot fire, and both are on screen.
 - The handoff's "More rows have icons and group headers" is true, but the menu it describes is partly unreachable on a phone.
