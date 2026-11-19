@@ -66,7 +66,7 @@ module.exports = async function pushTests() {
   // 2. iPhone in Safari (not installed) vs from the Home Screen.
   s = await session({ init: inits(STUBS, IOS) });
   await T('PUSH-02', 'Push', 'On iPhone in a browser tab the row says to add the app to the Home Screen first and offers no button; no permission is asked', async () => {
-    await fill(s); await s.go('HOME'); await s.page.waitForTimeout(400);
+    await fill(s); await s.go('HOME');
     const t = await card(s).innerText();
     expect(/Add to Home Screen first/.test(t) && /Home Screen icon/.test(t), t);
     expect(await card(s).getByRole('button').count() === 0, 'a button is shown outside the Home Screen app');
@@ -79,7 +79,7 @@ module.exports = async function pushTests() {
   // 3. The tap flow.
   s = await session({ init: inits(STUBS, STANDALONE) });
   await T('PUSH-03', 'Push', 'Standalone: no permission prompt until the tap; the tap asks first, then subscribes (userVisibleOnly, 65-byte key), then registers with the Worker', async () => {
-    await fill(s); await s.go('HOME'); await s.page.waitForTimeout(500);
+    await fill(s); await s.go('HOME');
     expect(/Off/.test(await card(s).locator('[data-push-status]').innerText()), 'status is not Off');
     expect(/small server/.test(await card(s).innerText()) && /device address/.test(await card(s).innerText()), 'the one-sentence explanation is missing');
     let p = await P(s); expect(p.perm === 0 && p.order.length === 0, 'something ran before the tap: ' + JSON.stringify(p.order));

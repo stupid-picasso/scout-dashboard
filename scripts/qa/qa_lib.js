@@ -347,21 +347,23 @@ async function session(opts = {}) {
     const dest = MORE[label] || BAR[label];
     if (MORE[label]) { await page.getByText(MORE_BUTTON, { exact: true }).last().click(); await page.locator('[role=menuitem][aria-label="' + dest.label + '"]').last().click(); }
     else await page.getByText(dest ? dest.label : label, { exact: true }).last().click();
-    if (dest) await page.waitForFunction(tab => { const l = window.__qaFindLogic(); return !!l && l.state.tab === tab && !l.state.moreOpen; }, dest.tab);
+    if (dest) await page.waitForFunction(([tab, bar]) => { const l = window.__qaFindLogic(); return !!l && l.state.tab === tab && !l.state.moreOpen && (!bar || document.querySelectorAll('nav[aria-label=Main] button[aria-current=page]').length === 1); }, [dest.tab, !!BAR[label]]);
     await settled();
   };
   s.text = () => page.evaluate(() => document.body.innerText);
-  // Importing over an existing roster asks first; tests that just want the data in confirm it. load() returns once the file was read:
-  // the import notice or error is up, or the "Replace your roster?" question is (the notice is cleared first so an old one cannot match).
+  // Importing over an existing roster asks first; tests that just want the data in confirm it. load() returns once the app has read the file
+  // (importCsvText ran: the roster is applied, an error is shown, or the "Replace your roster?" question is up). App state is not touched.
   s.load = async (csv, opts = {}) => {
-    await s.set({ csvNotice: '', csvError: '' });
+    await s.logic(l => { window.__qaImported = false; const orig = l.importCsvText; l.importCsvText = function (...a) { l.importCsvText = orig; try { return orig.apply(this, a); } finally { window.__qaImported = true; } }; });
     await page.setInputFiles('input[type=file][accept=".csv"]', csv);
-    await page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !!(l.state.csvNotice || l.state.csvError || l.state.pendingConfirm); });
+    await page.waitForFunction(() => window.__qaImported === true);
     if (opts.noConfirm) return;
     const b = page.getByText('REPLACE', { exact: true });
     if (await b.count()) { await b.first().click(); await page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.pendingConfirm; }); }
     await settled();
   };
+  // Recalculate every rank and return when it has finished (the app calls back when done).
+  s.recalc = async () => { await s.logic(l => new Promise(res => l.recalculateAllRanks(res))); await page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.recalcBusy; }); };
   s.logic = (fn, arg) => withLogic(page, fn, arg);
   s.state = () => s.logic(l => JSON.parse(JSON.stringify(l.state, (kk, v) => (typeof v === 'function' ? undefined : v))));
   s.set = async patch => (await s.logic((l, p) => { l.setState(p); return true; }, patch)) === true;

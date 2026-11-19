@@ -19,6 +19,7 @@ const check = (name, ok, extra) => { if (ok) console.log('ok   ' + name); t.ok(n
 (async () => {
   const s = await session({ url: 'file://' + path.join(REPO, process.argv[2] || 'index.html'), pinTiers: false });
   const page = s.page;
+  await page.waitForFunction(() => window.PokemonMechanics, null, { timeout: 10000 }).catch(() => {});
   check('the bundle ships current mechanics (Mega rules, cup tables)', await page.evaluate(() => { const m = window.PokemonMechanics; return !!(m && m.megaFormsFor && m.PVP_CUP_TABLES && m.pvpTableFor('cup:mega@1500')); }));
 
   // A fresh page with the CSV loaded: the app's state is rebuilt, so one screen's checks cannot leak into the next.

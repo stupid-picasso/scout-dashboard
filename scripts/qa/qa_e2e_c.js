@@ -32,9 +32,9 @@ const serve = () => serveRepo({ host: 'localhost' });
 module.exports = async function suiteC() {
   // ------------------------------------------------------------------ TODAY: feed, GBL, events
   let s = await session({ feed: feed() });
-  await s.load(QA); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(1500);
+  await s.load(QA); await s.recalc();
   await s.set({ typeTable: {} });
-  await s.go('TODAY'); await s.page.waitForTimeout(800);
+  await s.go('TODAY');
   const roster = (await s.state()).roster;
   const t0 = async () => { await s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; })); return s.text(); };
   await T('TOD-01', 'Today', 'GBL card appears when the feed has a current week', async () => expect(/GO Battle League/.test(await t0())));
@@ -120,7 +120,7 @@ module.exports = async function suiteC() {
   await s.load(QA);
   // a file:// page cannot fetch data/promo_codes.json, so the file's content is handed to the app as the first read would
   await s.page.evaluate(f => { localStorage.setItem('scout.promo.seen.v1', JSON.stringify(f.codes.map(c => c.code))); }, promoFile());
-  await s.set({ promoCodes: promoFile() }); await s.go('TODAY'); await s.page.waitForTimeout(900);
+  await s.set({ promoCodes: promoFile() }); await s.go('TODAY');
   await T('PROMO-01', 'Today', 'Today lists live promo codes with rewards, expiry and source; expired and past-date codes are hidden; Unconfirmed codes say so', async () => {
     const t = await s.text();
     expect(/Promo codes/.test(t) && /QA Berries/.test(t) && /x5 Razz Berry/.test(t) && /QACODETWO/.test(t) && /QAUNCONF/.test(t), 'live codes missing');
@@ -158,7 +158,7 @@ module.exports = async function suiteC() {
   }, 'high');
   await s.close();
   s = await session({ feed: false });
-  await s.load(QA); await s.go('TODAY'); await s.page.waitForTimeout(600);
+  await s.load(QA); await s.go('TODAY');
   await T('PROMO-05', 'Today', 'With no promo file there is no card and no error', async () => { expect(!/Promo codes/.test(await s.text()) && s.errors.length === 0, s.errors[0] || 'card shown'); });
   await s.close();
   s = await session({ feed: false });
@@ -193,9 +193,11 @@ module.exports = async function suiteC() {
   const survivesReload = async (patch, read) => {
     const sx = await session({ feed: false });
     try {
-      await sx.load(QA); await sx.set(patch);
-      // The device copy is written 1.5 s after the last change: wait for it to hold the value rather than for a fixed time.
-      await sx.page.waitForFunction(p => Object.keys(localStorage).filter(k => /^scout\.local\.v1/.test(k)).some(k => { try { const b = JSON.parse(localStorage.getItem(k)); return Object.keys(p).every(f => JSON.stringify(b[f]) === JSON.stringify(p[f])); } catch (e) { return false; } }), patch, { timeout: 10000 });
+      await sx.load(QA);
+      // The device copy is written 1.5 s after the last change: count the app's own "saved" notes and wait for the one that follows this change.
+      await sx.logic(l => { window.__qaSaves = 0; const orig = l.noteLocalSave; l.noteLocalSave = function (...a) { window.__qaSaves++; return orig.apply(this, a); }; });
+      await sx.set(patch);
+      await sx.page.waitForFunction(() => window.__qaSaves > 0, null, { timeout: 10000 });
       await sx.page.reload({ waitUntil: 'load' });
       await sx.page.waitForFunction(() => { const l = window.__qaFindLogic && window.__qaFindLogic(); return !!l && (l.state.roster || []).length > 0; }, null, { timeout: 10000 });
       return read(await sx.state());
@@ -330,7 +332,7 @@ module.exports = async function suiteC() {
 
   // ------------------------------------------------------------------ ACCESSIBILITY
   s = await session({ feed: feed() });
-  await s.load(QA); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(2500);
+  await s.load(QA); await s.recalc();
   await T('A11Y-01', 'Accessibility', 'Bottom-nav tap targets are at least 44x44 px', async () => { const small = await s.page.evaluate(() => [...document.querySelectorAll('[data-navbar] button')].map(e => { const r = e.getBoundingClientRect(); return [e.getAttribute('aria-label'), Math.round(r.width), Math.round(r.height)]; }).filter(x => x[1] < 44 || x[2] < 44)); expect(small.length === 5 || small.length === 0, JSON.stringify(small)); expect(small.length === 0, JSON.stringify(small)); const _unused = await s.page.evaluate(() => [].map(l => { const el = [...document.querySelectorAll('div,span,button')].filter(e => e.children.length === 0 && e.innerText && e.innerText.trim() === l).pop(); let n = el; while (n && n.parentElement && getComputedStyle(n).cursor !== 'pointer') n = n.parentElement; while (n && n.parentElement && getComputedStyle(n.parentElement).cursor === 'pointer') n = n.parentElement; const r = (n || el).getBoundingClientRect(); return [l, Math.round(r.width), Math.round(r.height)]; }).filter(x => x[1] < 44 || x[2] < 44)); expect(small.length === 0, JSON.stringify(small)); }, 'high');
   await T('A11Y-02', 'Accessibility', 'Interactive elements expose a role or accessible name (VoiceOver)', async () => { const r = await s.page.evaluate(() => { const els = [...document.querySelectorAll('*')].filter(e => e.style && e.style.cursor === 'pointer' && e.offsetWidth > 0); const ok = els.filter(e => e.getAttribute('role') || e.getAttribute('aria-label') || ['A', 'BUTTON', 'INPUT', 'SELECT', 'LABEL'].includes(e.tagName)); return [els.length, ok.length]; }); expect(r[1] / r[0] > 0.8, `${r[1]} of ${r[0]} clickable elements are accessible`); return `${r[1]}/${r[0]}`; }, 'high');
   await T('A11Y-03', 'Accessibility', 'Interactive elements are reachable by keyboard (tabindex or native)', async () => { const r = await s.page.evaluate(() => { const els = [...document.querySelectorAll('*')].filter(e => e.style && e.style.cursor === 'pointer' && e.offsetWidth > 0); const ok = els.filter(e => e.tabIndex >= 0); return [els.length, ok.length]; }); expect(r[1] / r[0] > 0.8, `${r[1]} of ${r[0]} focusable`); return `${r[1]}/${r[0]}`; }, 'medium');
@@ -443,7 +445,7 @@ module.exports = async function suiteC() {
     const all = [...(st.roster || []), ...(st.addedPokemon || [])];
     expect(all.some(p => JSON.stringify(p).indexOf('<img') >= 0 || JSON.stringify(p).indexOf('<svg') >= 0), 'setup: the markup did not reach the roster (' + all.length + ' rows)');
     const vis = () => x.page.evaluate(() => document.body.innerText);
-    await x.go('ROSTER'); await x.page.waitForTimeout(800);
+    await x.go('ROSTER');
     expect(/<img src=x onerror=window\.__xss=1>|<svg onload=window\.__xss=2>/.test(await vis()), 'setup: the hostile text is not shown on the roster as text');
     const row = x.page.locator('[data-swipe-row]').first(); expect(await row.count() > 0, 'no roster row to open'); await row.click(); await x.page.waitForTimeout(900);
     expect(!!(await x.state()).detailPoke, 'the detail sheet did not open');

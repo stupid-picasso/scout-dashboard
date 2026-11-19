@@ -338,10 +338,10 @@ module.exports = async function suiteE() {
   const want = x => !only || only.test(x);
   if (want('UI-')) {
   const s = await session({ feed: false });
-  await s.load(QA); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(2000);
+  await s.load(QA); await s.recalc();
   const res = {};
   for (const scr of SCREENS) {
-    await s.go(scr); await s.page.waitForTimeout(700);
+    await s.go(scr);
     res[scr] = await s.page.evaluate(SCAN);
     if (process.env.UI_VERBOSE) console.log('\n' + scr, JSON.stringify({ small: res[scr].small.slice(0, 40), unnamed: res[scr].unnamed.slice(0, 10), tiny: res[scr].tiny, tinySample: res[scr].tinySample, overflowX: res[scr].overflowX }));
   }
@@ -366,7 +366,7 @@ module.exports = async function suiteE() {
   if (['UIQ-01', 'UIQ-02', 'UIQ-03', 'UIQ-04', 'UIQ-05', 'UIQ-06', 'UIQ-08', 'UIQ-09', 'UIQ-10', 'UIQ-12', 'UIQ-18'].some(want)) {
   for (const theme of ['dark', 'light']) {
     const q = await session({ collapsedTail: true, feed, colorScheme: theme, sentenceCase: true, width: 390, height: 844 });
-    await q.load(QA); await q.call('recalculateAllRanks'); await q.page.waitForTimeout(1500); await q.set({ promoCodes: promo });
+    await q.load(QA); await q.recalc(); await q.set({ promoCodes: promo });
     const per = {};
     for (const scr of SCANNED) {
       try { await openState(q, scr); } catch (e) { throw new Error('openState ' + scr + ': ' + String(e.message).split('\n')[0]); }
@@ -420,7 +420,7 @@ module.exports = async function suiteE() {
     const w = await session({ feed: false, width, height: width >= 768 ? 1024 : 844 });
     await w.load(QA); await w.page.waitForTimeout(1200);
     const bad = [];
-    for (const scr of SCREENS) { await w.go(scr); await w.page.waitForTimeout(500); const o = await w.page.evaluate(() => { const root = document.documentElement; return Math.max(0, root.scrollWidth - window.innerWidth); }); if (o > 1) bad.push(scr + ' overflowX ' + o); const e = await w.page.evaluate(EDGE); e.slice(0, 3).forEach(x => bad.push(scr + ' ' + x)); }
+    for (const scr of SCREENS) { await w.go(scr); const o = await w.page.evaluate(() => { const root = document.documentElement; return Math.max(0, root.scrollWidth - window.innerWidth); }); if (o > 1) bad.push(scr + ' overflowX ' + o); const e = await w.page.evaluate(EDGE); e.slice(0, 3).forEach(x => bad.push(scr + ' ' + x)); }
     await T('UIQ-07-' + width, 'Polish', 'Width ' + width + ': no sideways overflow on any screen, nothing past the right edge outside [data-scroller]', async () => expect(bad.length === 0, lim(bad)), 'high');
     await w.close();
   }
@@ -430,7 +430,7 @@ module.exports = async function suiteE() {
     await q.page.waitForTimeout(1500);
     const bad = [];
     for (const scr of ['TODAY', 'ROSTER', 'PVP', 'RECS']) {
-      await q.go(scr); await q.page.waitForTimeout(700);
+      await q.go(scr);
       const o = await q.page.evaluate(() => {
         const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
         const fixedUp = el => { for (let e = el; e; e = e.parentElement) if (getComputedStyle(e).position === 'fixed') return true; return false; };
@@ -481,7 +481,7 @@ module.exports = async function suiteE() {
   // UIQ-14: the chat bubble never sits on an open menu, sheet or bar (it is hidden while they are open).
   if (want('UIQ-14')) for (const [w, h] of [[390, 844], [320, 568], [768, 1024]]) {
     const o = await session({ collapsedTail: true, feed, sentenceCase: true, width: w, height: h, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000);
+    await o.load(QA); await o.recalc();
     const bad = [];
     for (const st of ['MORE', 'DETAIL', 'DETAIL_END', 'SELECT', 'LONG', 'CHAT']) { await openState(o, st); (await o.page.evaluate(OVERLAP)).forEach(x => bad.push(st + ': ' + x)); (await o.page.evaluate(EDGE)).forEach(x => bad.push(st + ' past the right edge: ' + x)); await closeState(o, st); }
     await T('UIQ-14-' + w, 'Polish', 'Width ' + w + ': the chat bubble does not cover the More menu, detail sheet, long-press sheet or select bar', async () => expect(bad.length === 0, gl(bad)), 'high');
@@ -490,7 +490,7 @@ module.exports = async function suiteE() {
   // UIQ-15: a roster row's text is never clipped, no lone check mark, no dangling dash (320 and 390, normal and select mode)
   if (want('UIQ-15')) for (const w of [320, 390]) {
     const o = await session({ collapsedTail: true, feed, sentenceCase: true, width: w, height: 844, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000); await o.go('ROSTER'); await o.page.waitForTimeout(600);
+    await o.load(QA); await o.recalc(); await o.go('ROSTER');
     const bad = [];
     for (const mode of ['normal', 'select']) {
       if (mode === 'select') { await o.call('toggleSelectMode'); await o.page.waitForTimeout(400); }
@@ -504,7 +504,7 @@ module.exports = async function suiteE() {
   // UIQ-16: Today is short, in render order, one stat strip, the tail collapsed behind one disclosure
   if (want('UIQ-16')) {
     const o = await session({ collapsedTail: true, feed, sentenceCase: true, width: 390, height: 844, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1200); await o.set({ promoCodes: promo }); await o.go('TODAY'); await o.page.waitForTimeout(900);
+    await o.load(QA); await o.recalc(); await o.set({ promoCodes: promo }); await o.go('TODAY');
     const sh = await o.page.evaluate(TODAY_SHAPE);
     await T('UIQ-16', 'Polish', 'Today at 390x844: at most 4 viewports tall with the tail collapsed, DOM order is visual order (no CSS order), one stat strip, events and this week\'s GBL before the tail', async () => {
       expect(sh.h <= 4 * sh.vh, 'Today is ' + (sh.h / sh.vh).toFixed(1) + ' viewports');
@@ -524,10 +524,10 @@ module.exports = async function suiteE() {
   // UIQ-17: no crushed prose (fewer than 12 characters per line over 3+ lines) at 320 and 390 on any screen, tails opened
   if (want('UIQ-17')) for (const w of [320, 390]) {
     const o = await session({ collapsedTail: true, feed, sentenceCase: true, width: w, height: 844, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1200); await o.set({ promoCodes: promo });
+    await o.load(QA); await o.recalc(); await o.set({ promoCodes: promo });
     const bad = [];
     for (const scr of SCREENS.concat(EXTRA)) {
-      await o.go(scr); await o.page.waitForTimeout(700);
+      await o.go(scr);
       if (scr === 'TODAY') { await o.page.locator('[data-today-tail-toggle]').click(); await o.page.waitForTimeout(500); await o.page.evaluate(() => document.querySelectorAll('details[data-league]').forEach(d => d.open = true)); await o.page.waitForTimeout(200); }
       (await o.page.evaluate(NARROW)).forEach(x => bad.push(scr + ' ' + x));
     }
@@ -555,9 +555,9 @@ module.exports = async function suiteE() {
   // UIQ-20: 768 px: header, More menu, select bar and every card inside the 560 px column
   if (want('UIQ-20')) {
     const o = await session({ collapsedTail: true, feed, sentenceCase: true, width: 768, height: 1024, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000); await o.set({ promoCodes: promo });
+    await o.load(QA); await o.recalc(); await o.set({ promoCodes: promo });
     const bad = [];
-    for (const scr of SCREENS.concat(EXTRA)) { await o.go(scr); await o.page.waitForTimeout(600); (await o.page.evaluate(GEOM768)).forEach(x => bad.push(scr + ': ' + x)); }
+    for (const scr of SCREENS.concat(EXTRA)) { await o.go(scr); (await o.page.evaluate(GEOM768)).forEach(x => bad.push(scr + ': ' + x)); }
     for (const st of ['MORE', 'SELECT']) { await openState(o, st); (await o.page.evaluate(GEOM768)).forEach(x => bad.push(st + ': ' + x)); await closeState(o, st); }
     await T('UIQ-20', 'Polish', '768 px: header title and buttons line up with the 560 px column, More menu and select bar are at most 560 px and centred, no card is wider than 560 px', async () => expect(bad.length === 0, gl([...new Set(bad)])), 'high');
     await o.close();
@@ -565,10 +565,10 @@ module.exports = async function suiteE() {
   // UIQ-21: Attackers and Progress log at 320 and 390: no clipped text in rows, log header cells do not touch each other
   if (want('UIQ-21')) for (const w of [320, 390]) {
     const o = await session({ collapsedTail: true, feed, sentenceCase: true, width: w, height: 844, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000);
+    await o.load(QA); await o.recalc();
     const bad = [];
-    await o.go('ATTACK'); await o.page.waitForTimeout(800); (await o.page.evaluate(CLIPPED, { sel: '[role=main]', strict: false })).forEach(x => bad.push('attackers ' + x));
-    await o.go('LOG'); await o.page.waitForTimeout(800); (await o.page.evaluate(HEADERCELLS)).forEach(x => bad.push('log ' + x)); (await o.page.evaluate(CLIPPED, { sel: '[role=main]', strict: false })).forEach(x => bad.push('log ' + x));
+    await o.go('ATTACK'); (await o.page.evaluate(CLIPPED, { sel: '[role=main]', strict: false })).forEach(x => bad.push('attackers ' + x));
+    await o.go('LOG'); (await o.page.evaluate(HEADERCELLS)).forEach(x => bad.push('log ' + x)); (await o.page.evaluate(CLIPPED, { sel: '[role=main]', strict: false })).forEach(x => bad.push('log ' + x));
     await T('UIQ-21-' + w, 'Polish', 'Width ' + w + ': Attackers and Progress log show their data in full (wrapped, not ellipsised); log header cells do not collide', async () => expect(bad.length === 0, gl(bad)), 'high');
     await o.close();
   }
@@ -603,9 +603,9 @@ module.exports = async function suiteE() {
   };
   if (['UIQ-23', 'UIQ-24', 'UIQ-25', 'UIQ-27'].some(want)) for (const theme of ['dark', 'light']) {
     const o = await session({ collapsedTail: true, feed, promo, colorScheme: theme, sentenceCase: true, width: 390, height: 844, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000);
+    await o.load(QA); await o.recalc();
     // UIQ-23: Settings: the "Don't spend dust on" card is hidden when it is empty; the dust cards use the 14 px card radius
-    await o.go('HOME'); await o.page.waitForTimeout(700);
+    await o.go('HOME');
     const dust = await o.page.evaluate(() => [...document.querySelectorAll('[role=main] div')].filter(d => d.firstElementChild && /^(stardust priority|don.t spend dust on)$/i.test((d.firstElementChild.textContent || '').trim()) && d.firstElementChild.children.length === 0).map(d => ({ h: d.firstElementChild.textContent.trim(), radius: getComputedStyle(d).borderTopLeftRadius, extra: d.innerText.replace(d.firstElementChild.innerText, '').trim().length })));
     await T('UIQ-23-' + theme, 'Polish', 'Settings (' + theme + '): no empty "Don\'t spend dust on" card, dust cards use a 14 px radius', async () => {
       expect(dust.length > 0, 'no dust card found');
@@ -639,7 +639,7 @@ module.exports = async function suiteE() {
     await closeState(o, 'DETAIL_END');
     // UIQ-27: the "What to build for this cup" summary reads as a heading and is a real tap target
     if (want('UIQ-27')) {
-      await o.go('TODAY'); await o.page.waitForTimeout(800);
+      await o.go('TODAY');
       const sm = await o.page.evaluate(() => { document.querySelectorAll('[role=main] details').forEach(d => { d.open = true; }); const m = [...document.querySelectorAll('details[data-cup-build] > summary')].filter(e => e.getBoundingClientRect().width > 0);
         return m.map(e => { const cs = getComputedStyle(e), b = getComputedStyle(e, '::before'); return { h: Math.round(e.getBoundingClientRect().height), size: parseFloat(cs.fontSize), weight: parseInt(cs.fontWeight, 10), ls: cs.letterSpacing, strip: b.position === 'absolute' && parseFloat(b.height) >= 44 }; }); });
       await T('UIQ-27-' + theme, 'Polish', 'Today (' + theme + '): "What to build for this cup" is at least 24 px tall, 13 px or more, weight 600+, untracked, with the invisible 44 px tap strip', async () => {
@@ -653,7 +653,7 @@ module.exports = async function suiteE() {
   // UIQ-28: the chat bubble never sits on list content: scrolling the whole screen, no painted text (CP, rank %, names) is under the bubble
   if (want('UIQ-28')) for (const [scr, w, h, theme] of [['ROSTER', 390, 844, 'light'], ['PVP', 320, 568, 'dark'], ['ROSTER', 320, 568, 'dark'], ['PVP', 390, 844, 'light']]) {
     const o = await session({ collapsedTail: true, feed, colorScheme: theme, sentenceCase: true, width: w, height: h, touch: true });
-    await o.load(QA); await o.call('recalculateAllRanks'); await o.page.waitForTimeout(1000); await o.go(scr); await o.page.waitForTimeout(900);
+    await o.load(QA); await o.recalc(); await o.go(scr);
     const g = await o.page.evaluate(async () => {
       const b = document.querySelector('button[aria-label="Ask the Professor"]'); if (!b) return { none: true }; b.style.pointerEvents = 'none';
       const sc = document.querySelector('[data-app-scroll]'); const hits = new Set(); let steps = 0; const max = () => Math.max(document.documentElement.scrollHeight - innerHeight, sc ? sc.scrollHeight - sc.clientHeight : 0);

@@ -8,7 +8,7 @@ const CAPS = { 'GREAT ≤1500': 1500, 'ULTRA ≤2500': 2500, 'LITTLE CUP': 500, 
 module.exports = async function suiteB() {
   const s = await session({ feed: false });
   await s.load(QA);
-  await s.call('recalculateAllRanks'); await s.page.waitForTimeout(1500);
+  await s.recalc();
   const st = await s.state();
   const roster = st.roster;
 
@@ -566,7 +566,7 @@ module.exports = async function suiteB() {
       mk('e3', 'Marill', 183, [4, 5, 6], 260, { ivMeasured: false, ivSolved: true, ...gr(0, 'Marill') }),
       mk('e4', 'Gyarados', 130, [15, 15, 15], 3000), mk('e5', 'Snorlax', 143, [15, 15, 15], 3000), mk('e6', 'Scyther', 123, [15, 15, 15], 3000)];
     await s.set({ addedPokemon: [...(st0.addedPokemon || []), ...roster], candyInventory: { ...(st0.candyInventory || {}), marill: { name: 'Marill', candy: 400 } }, completedIds: [], cutTarget: 100000 });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.recalc();
     const q = (await s.call('evolveQueue')).filter(r => /^e[123]$/.test(String(r.p.idx)));
     const ids = q.map(r => r.p.idx);
     expect(ids.indexOf('e1') === 0, 'the strong measured Marill leads: ' + ids.join());
@@ -585,7 +585,7 @@ module.exports = async function suiteB() {
     const roster = [mk('ee1', 'Eevee', 133, [15, 14, 15], 500, 15), mk('ee2', 'Eevee', 133, [14, 15, 15], 480, 15), mk('ty1', 'Tyrogue', 236, [15, 3, 10], 200, 10),
       mk('ty2', 'Tyrogue', 236, [4, 12, 9], 200, 10), mk('mt1', 'Meltan', 808, [3, 15, 15], 714, 25, { great: { rankPct: 98, evolvesTo: 'Melmetal' } })];
     await s.set({ addedPokemon: [...(st0.addedPokemon || []).filter(x => !/^(Eevee|Tyrogue|Meltan)$/.test(x.name)), ...roster], roster: [], candyInventory: { ...(st0.candyInventory || {}), eevee: { name: 'Eevee', candy: 100 }, meltan: { name: 'Meltan', candy: 500 }, tyrogue: { name: 'Tyrogue', candy: 100 } }, completedIds: [], ivOverrides: { ...(st0.ivOverrides || {}) } });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.recalc();
     const get = async id => (await s.call('effectiveRosterForMatch')).find(p => String(p.idx) === id);
     let q = await s.call('evolveQueue');
     const row = id => q.find(r => String(r.p.idx) === id);
@@ -657,7 +657,7 @@ module.exports = async function suiteB() {
     const day = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
     const weak = []; for (let i = 0; i < 6; i++) weak.push(mk('fr' + i, 16 + (i % 3) * 3, 'Pidgey', [1 + i % 3, 2, 1], 100 + i * 9, day(10)));
     const old = weak.map((p, i) => ({ ...p, name: ['Pidgey', 'Rattata', 'Caterpie', 'Weedle', 'Zubat', 'Spearow'][i], dex: [16, 19, 10, 13, 41, 21][i] }));
-    await s.set({ addedPokemon: old, roster: [], cutTarget: 1, cutTargetDraft: '1', transferFreshAck: '' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: old, roster: [], cutTarget: 1, cutTargetDraft: '1', transferFreshAck: '' }); await s.recalc();
     let v = await s.call('bulkStringVals');
     expect(v.bulkGate === true && v.bulkBatches.length === 0 && /last imported 10 days ago/.test(v.bulkGateText), 'an old import holds the strings: ' + JSON.stringify([v.bulkGate, v.bulkBatches.length, v.bulkGateText]));
     await s.call('ackTransferFresh'); await s.page.waitForTimeout(300);
@@ -713,7 +713,7 @@ module.exports = async function suiteB() {
     const junk = mk('kf2', 'Fearow', 22, [1, 2, 1], 3000);   // over every league cap, low IVs: no league value
     const twin = mk('kf3', 'Azumarill', 184, [14, 15, 14], 1480, { ivMeasured: false, ivSolved: true });   // same name, CP and stars as the keeper, but unmeasured: never a keeper candidate, yet the same search would select it
     const peers = [mk('kp1', 'Pidgeot', 18, [15, 15, 15], 3000), mk('kp2', 'Gyarados', 130, [15, 15, 15], 3000), mk('kp3', 'Snorlax', 143, [15, 15, 15], 3000)];   // so the junk Pidgey has no raid role
-    await s.set({ addedPokemon: [az, junk, ...peers], roster: [], cutTarget: 100000, appFavourited: [], selfProtect: false }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: [az, junk, ...peers], roster: [], cutTarget: 100000, appFavourited: [], selfProtect: false }); await s.recalc();
     const c = (await s.call('keeperCandidates')).map(p => String(p.idx));
     expect(c.indexOf('kf1') >= 0 && c.indexOf('kf2') < 0, 'the keeper is listed, the junk is not: ' + c.join());
     const kb = await s.call('buildKeeperBatches');
@@ -740,7 +740,7 @@ module.exports = async function suiteB() {
     const big = [mk('ng0', 'Snorlax', 143, [15, 15, 15], 3000), mk('ng00', 'Gyarados', 130, [15, 15, 15], 3000)];
     const weak = [mk('ng1', 'Fearow', 22, [1, 2, 1], 3000), mk('ng2', 'Raticate', 20, [2, 2, 2], 3010), mk('ng3', 'Golbat', 42, [1, 1, 3], 3020)];
     const twin = mk('ng4', 'Fearow', 22, [1, 2, 1], 3000, { favorite: true });   // same name, CP and stars as a candidate, but favourited
-    await s.set({ addedPokemon: [...big, ...weak, twin], roster: [], cutTarget: 2, cutTargetDraft: '2', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: [...big, ...weak, twin], roster: [], cutTarget: 2, cutTargetDraft: '2', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.recalc();
     let r = await s.call('buildTransferBatches');
     expect(r.batches.every(b => !/!favorite/.test(b.text)), 'off by default: ' + r.batches.map(b => b.text).join(' | '));
     expect(r.manual.some(m => String(m.p.idx) === 'ng1'), 'the favourited twin blocks the Fearow batch while the option is off: ' + JSON.stringify(r.manual.map(m => m.p.idx)));
@@ -765,7 +765,7 @@ module.exports = async function suiteB() {
       await logicDo('l.setState({ roster: l.state.roster.map((p, i) => i === ' + top + ' ? { ...p, ivMeasured: false, ivManual: false, ivSolved: false, atkIV: undefined, defIV: undefined, staIV: undefined } : p) });');
       const bad = [];
       for (const w of [390, 320]) {
-        await s.page.setViewportSize({ width: w, height: 844 }); await s.go('ROSTER'); await s.page.waitForTimeout(700);
+        await s.page.setViewportSize({ width: w, height: 844 }); await s.go('ROSTER');
         const btn = s.page.getByText('Enter IVs').first(); if (await btn.count()) { await btn.click(); await s.page.waitForTimeout(400); }   // the editor stays open once opened
         expect(await s.page.locator('.rg-iv .iv-grid').count() > 0, 'the IV boxes did not open at ' + w);
         const boxes = await s.page.evaluate(() => [...document.querySelectorAll('.rg-iv .iv-grid input')].map(i => { const r = i.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), label: i.getAttribute('aria-label'), vis: r.width > 0 }; }));
@@ -773,10 +773,10 @@ module.exports = async function suiteB() {
         boxes.forEach(b => { if (b.w < 40 || b.h < 44) bad.push(w + ': ' + b.label + ' is ' + b.w + 'x' + b.h); });
         const labels = await s.page.evaluate(() => [...document.querySelectorAll('.rg-iv .iv-grid label > span')].map(x => x.textContent.trim()).join('/'));
         if (labels !== 'ATK/DEF/STA') bad.push(w + ': labels ' + labels);
-        await s.go('TODAY'); await s.page.waitForTimeout(200);
+        await s.go('TODAY');
       }
       expect(bad.length === 0, bad.join(' | '));
-      await s.page.setViewportSize({ width: 390, height: 844 }); await s.go('ROSTER'); await s.page.waitForTimeout(600);
+      await s.page.setViewportSize({ width: 390, height: 844 }); await s.go('ROSTER');
       if (await s.page.getByText('Enter IVs').count()) { await s.page.getByText('Enter IVs').first().click(); await s.page.waitForTimeout(300); }
       await s.page.locator('[aria-label="Attack IV"]').first().fill(String(saved[top].atkIV)); await s.page.locator('[aria-label="Defense IV"]').first().fill(String(saved[top].defIV)); await s.page.locator('[aria-label="Stamina IV"]').first().fill(String(saved[top].staIV));
       await s.page.locator('[aria-label="Stamina IV"]').first().blur(); await s.page.locator('.rg-iv .iv-save').first().click(); await s.page.waitForTimeout(600);
@@ -846,7 +846,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01', ...extra });
     const st0 = await s.state();
     const roster = [mk('wy0', 'Snorlax', 143, [15, 15, 15], 3000), mk('wy00', 'Gyarados', 130, [15, 15, 15], 3000), mk('wy1', 'Fearow', 22, [1, 2, 1], 3000), mk('wy2', 'Raticate', 20, [2, 2, 2], 3010)];
-    await s.set({ addedPokemon: roster, roster: [], cutTarget: 2, cutTargetDraft: '2', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: roster, roster: [], cutTarget: 2, cutTargetDraft: '2', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.recalc();
     const v = await s.call('bulkStringVals');
     const rows = v.bulkBatches.flatMap(b => b.whyRows);
     expect(rows.length >= 2 && rows.every(r => /^[A-Z][a-z]+ \d+ CP$/.test(r.label) && /IV \d+\/\d+\/\d+ \(\d+%\)/.test(r.detail) && r.why), 'every listed Pokemon has a spread and a reason: ' + JSON.stringify(rows.slice(0, 2)));
@@ -856,7 +856,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('wz0', 'Snorlax', 143, [15, 15, 15], 3000), mk('wz1', 'Machamp', 68, [15, 15, 14], 3000), mk('wz2', 'Gengar', 94, [15, 14, 15], 3000)], roster: [], cutTarget: 1, cutTargetDraft: '1', appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.recalc();
     const v = await s.call('bulkStringVals');
     const rows = v.bulkBatches.flatMap(b => b.whyRows);
     expect(rows.some(r => /Normally kept \(.+\), released only because you are \d+ over your Keep best target of 1/.test(r.why) && /BORDERLINE/.test(r.why)), 'why text: ' + JSON.stringify(rows.map(r => r.why)));
@@ -867,7 +867,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const roster = [mk('st0', 'Snorlax', 143, [15, 15, 15], 3000), mk('st1', 'Fearow', 22, [1, 2, 1], 3000), mk('st2', 'Raticate', 20, [2, 2, 2], 3010)];
     await s.set({ addedPokemon: roster, roster: [], cutTarget: 2, cutTargetDraft: '2', bagCapacity: null, appFavourited: [], selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(300);
+    await s.recalc();
     expect((await s.call('storageCap')) === 1075, 'default cap is 1075');
     await s.set({ bagCapacity: 100 });
     let w = await s.call('storageWarning');
@@ -883,8 +883,8 @@ module.exports = async function suiteB() {
   await T('PVPBAND-01', 'PvP', 'League tabs split Ready now (inside the CP band) from Power up or evolve (under the floor); a copy a few power-ups short stays Ready', async () => {
     const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const st0 = await s.state();
-    await s.set({ addedPokemon: [mk('pb1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('pb2', 'Azumarill', 184, [1, 15, 14], 1260, 97), mk('pb3', 'Azumarill', 184, [2, 14, 15], 420, 96)], roster: [], league: 'great', feed: null }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
-    await s.go('PVP'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [mk('pb1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('pb2', 'Azumarill', 184, [1, 15, 14], 1260, 97), mk('pb3', 'Azumarill', 184, [2, 14, 15], 420, 96)], roster: [], league: 'great', feed: null }); await s.recalc();
+    await s.go('PVP');
     const t = await s.page.evaluate(() => document.body.innerText);
     const iReady = t.indexOf('READY NOW'), iUp = t.indexOf('POWER UP OR EVOLVE');
     expect(iReady >= 0 && iUp > iReady, 'both sections are there: ' + t.slice(0, 200));
@@ -898,8 +898,8 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const day = n => new Date(Date.now() + n * 86400000).toISOString();
     const feed = { source: 'qa', fetchedAt: day(0), events: [], gbl: [{ start: day(-1), end: day(5), season: 'QA', leagues: [{ name: 'Fantasy Cup', cp: 1500, mega: false, rules: ['Steel, Fairy and Dragon only.'], cup: { types: ['steel', 'fairy', 'dragon'], src: 'qa' } }] }] };
-    await s.set({ addedPokemon: [mk('ps1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('ps2', 'Gyarados', 130, [15, 15, 15], 1450, 97)], roster: [], league: 'season', feed }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
-    await s.go('PVP'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [mk('ps1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('ps2', 'Gyarados', 130, [15, 15, 15], 1450, 97)], roster: [], league: 'season', feed }); await s.recalc();
+    await s.go('PVP');
     let t = await s.page.evaluate(() => document.body.innerText);
     expect(/Fantasy Cup/.test(t) && /Steel, Fairy and Dragon only/.test(t), 'the cup and its rules show: ' + t.slice(0, 300));
     const list = t.slice(t.indexOf('READY NOW'), t.indexOf('POWER UP OR EVOLVE'));
@@ -914,7 +914,7 @@ module.exports = async function suiteB() {
     const day = n => new Date(Date.now() + n * 86400000).toISOString();
     const feed = { source: 'qa', fetchedAt: day(0), events: [], gbl: [{ start: day(-1), end: day(5), season: 'QA', leagues: [{ name: 'Master League', cp: 10000, mega: false, rules: [] }, { name: 'Mega Halloween Cup: Great League Edition', cp: 1500, mega: true, rules: ['Mega Evolution allowed.'], cup: { src: 'qa' } }] }] };
     await s.set({ league: 'season', seasonSel: null, feed }); await s.page.waitForTimeout(400);
-    await s.go('PVP'); await s.page.waitForTimeout(500);
+    await s.go('PVP');
     let t = await s.page.evaluate(() => document.body.innerText);
     expect(/Mega Halloween Cup/.test(t) && /MEGA-READY PICKS/.test(t) && /READY NOW/.test(t) && /POWER UP OR EVOLVE/.test(t) && !/No cup is live/.test(t), 'mega cup view has the picks and the usual lists: ' + t.slice(0, 400));
     expect(/Master League/.test(t), 'the Master League pill is offered');
@@ -923,7 +923,7 @@ module.exports = async function suiteB() {
     expect(/READY NOW|RANKED/.test(t) && !/MEGA-READY PICKS/.test(t), 'master view is the normal ranked list: ' + t.slice(0, 300));
     await s.set({ league: 'season', seasonSel: null, feed: { ...feed, gbl: [{ ...feed.gbl[0], leagues: [{ name: 'Mega Halloween Cup: Great League Edition', cp: 1500, mega: true, rules: ['Only Bug, Poison, Ghost, Dark and Fairy.'], cup: { types: ['bug', 'poison', 'dark', 'fairy', 'ghost'], src: 'qa' } }] }] } });
     const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
-    await s.set({ addedPokemon: [mk('mh1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('mh2', 'Gyarados', 130, [15, 15, 15], 1450, 97)], roster: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [mk('mh1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('mh2', 'Gyarados', 130, [15, 15, 15], 1450, 97)], roster: [] }); await s.recalc();
     t = await s.page.evaluate(() => document.body.innerText);
     const ready = t.slice(t.indexOf('READY NOW'), t.indexOf('POWER UP OR EVOLVE'));
     expect(/Azumarill/.test(ready) && !/Gyarados/.test(ready), 'the cup type rule applies to the list: ' + ready.slice(0, 300));
@@ -960,7 +960,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, hp, lv, extra) => ({ idx, name, dex, cp, hp, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lv, lvlMax: lv, ivMeasured: true, great: { rankPct: 40 }, ultra: { rankPct: 40 }, little: { rankPct: 40 }, scanDate: '2026-10-01', ...extra });
     const st0 = await s.state();
     const alolaNt = mk('fm1', 'Ninetales', 38, [11, 15, 14], 1480, 122, 23), kantoNt = mk('fm2', 'Ninetales', 38, [11, 15, 14], 1461, 122, 23), alolaRai = mk('fm3', 'Raichu', 26, [10, 13, 11], 1253, 99, 20);
-    await s.set({ addedPokemon: [alolaNt, kantoNt, alolaRai], roster: [], cutTarget: 1, cutTargetDraft: '1', appFavourited: [], ivOverrides: {} }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: [alolaNt, kantoNt, alolaRai], roster: [], cutTarget: 1, cutTargetDraft: '1', appFavourited: [], ivOverrides: {} }); await s.recalc();
     const a = await s.call('formMismatchOf', alolaNt), k = await s.call('formMismatchOf', kantoNt), r = await s.call('formMismatchOf', alolaRai);
     expect(a && a.form === 'alola' && r && r.form === 'alola', 'both Alolan ones are found: ' + JSON.stringify([a, r]));
     expect(k === null, 'a Ninetales whose stats fit Kanto is left alone: ' + JSON.stringify(k));
@@ -996,7 +996,7 @@ module.exports = async function suiteB() {
     const mk = (idx, extra) => ({ idx, name: 'Ninetales', dex: 38, cp: 1480, hp: 122, atkIV: 11, defIV: 15, staIV: 14, ivAvg: 28 / 45 * 100, lvlMin: 23, lvlMax: 23, ivMeasured: true, great: { rankPct: 40 }, ultra: { rankPct: 40 }, little: { rankPct: 40 }, scanDate: '2026-10-01', ...extra });
     const st0 = await s.state();
     const nt = mk('fx1', { form: null, formReviewed: true, type: 'Fire' });
-    await s.set({ addedPokemon: [nt], roster: [], ivOverrides: {}, cutTarget: 1, cutTargetDraft: '1' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: [nt], roster: [], ivOverrides: {}, cutTarget: 1, cutTargetDraft: '1' }); await s.recalc();
     const fm = await s.call('formMismatchOf', nt);
     expect(fm && fm.form === 'alola' && fm.reviewed === true, 'flagged although reviewed: ' + JSON.stringify(fm));
     await s.call('openDetail', nt); await s.page.waitForTimeout(500);
@@ -1022,7 +1022,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const st0 = await s.state();
     const L = () => s.logic(l => { window.__qaL = l; return true; });
-    await s.set({ addedPokemon: [mk('tg1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('tg2', 'Altaria', 334, [3, 14, 15], 1450, 97), mk('tg3', 'Registeel', 379, [4, 15, 14], 1400, 96), mk('tg4', 'Pidgey', 16, [15, 15, 15], 300, 99)], roster: [], tagSnap: {}, appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500); await L();
+    await s.set({ addedPokemon: [mk('tg1', 'Azumarill', 184, [2, 15, 15], 1420, 98), mk('tg2', 'Altaria', 334, [3, 14, 15], 1450, 97), mk('tg3', 'Registeel', 379, [4, 15, 14], 1400, 96), mk('tg4', 'Pidgey', 16, [15, 15, 15], 300, 99)], roster: [], tagSnap: {}, appFavourited: [] }); await s.recalc(); await L();
     const info = await s.page.evaluate(() => { const l = window.__qaL; const g = l.tagGroups(); const by = k => g.find(x => x.key === k).members.map(p => p.name).sort().join(','); return { s: by('GL-S'), a: by('GL-A'), keys: g.map(x => x.key) }; });
     expect(info.s === 'Altaria,Azumarill' && info.a === 'Registeel', 'S and A groups: ' + JSON.stringify(info));
     const vals = await s.page.evaluate(() => { const l = window.__qaL; const v = l.tagsVals(); const gs = v.tagGroupsList.find(x => x.key === 'GL-S'); return { text: gs.addBatches.map(b => b.text + ' [' + b.expect + ']'), status: gs.status }; });
@@ -1035,7 +1035,7 @@ module.exports = async function suiteB() {
     await s.page.evaluate(() => { const l = window.__qaL; l.tagDone(l.tagGroups().find(x => x.key === 'GL-S')); });
     await s.page.waitForTimeout(300);
     expect((await s.page.evaluate(() => window.__qaL.tagsVals().tagGroupsList.find(x => x.key === 'GL-S').status)) === 'Up to date', 'up to date once tagged');
-    await s.set({ addedPokemon: [...(await s.state()).addedPokemon, mk('tg5', 'Mimikyu', 778, [1, 15, 15], 1380, 96)] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [...(await s.state()).addedPokemon, mk('tg5', 'Mimikyu', 778, [1, 15, 15], 1380, 96)] }); await s.recalc();
     const after = await s.page.evaluate(() => { const l = window.__qaL; const gs = l.tagsVals().tagGroupsList.find(x => x.key === 'GL-S'); return { status: gs.status, add: gs.addBatches.map(b => b.text), n: l.tagsPendingCount() }; });
     expect(/Needs updating: add 1, remove 0/.test(after.status) && after.add.length === 1 && /mimikyu & cp1380/.test(after.add[0]) && after.n === 1, 'only the difference is offered: ' + JSON.stringify(after));
     await s.set({ tab: 'today' }); await s.page.waitForTimeout(500);
@@ -1100,7 +1100,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 120, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 25, lvlMax: 25, ivMeasured: true, quickMove: 'Confusion', chargeMove: 'Synchronoise', great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...extra });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('sc1', 'Gardevoir', 282, [14, 15, 15], 2729), mk('sc2', 'Foongus', 590, [14, 12, 11], 676, { quickMove: 'Astonish', chargeMove: 'Sludge Bomb' }), mk('sc3', 'Azumarill', 184, [3, 14, 14], 1400), mk('sc4', 'Pidgey', 16, [10, 10, 10], 300)], roster: [], ivOverrides: {}, appFavourited: [], cutTarget: 2, cutTargetDraft: '2', selfProtect: false, negationOk: false, transferFreshAck: new Date().toISOString().slice(0, 10) });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.recalc();
     const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(); const rows = l.cutScoreRows(ros); const sc = id => rows.find(x => x.p.idx === id).score; const why = l.transferCandidates().map(c => [c.p.idx, c.why]); return { g: Math.round(sc('sc1')), f: Math.round(sc('sc2')), a: Math.round(sc('sc3')), why }; return null; });
     expect(r.g > r.f, 'Gardevoir 14/15/15 outscores a 82% Foongus: ' + JSON.stringify({ g: r.g, f: r.f }));
     expect(!r.why.some(x => x[0] === 'sc1'), 'Gardevoir is not offered for release while weaker ones are: ' + JSON.stringify(r.why.map(x => x[0])));
@@ -1111,7 +1111,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp, size) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, sizeClass: size, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('sz1', 'Pikachu', 25, [8, 8, 8], 500, 'XXL'), mk('sz2', 'Pikachu', 25, [15, 14, 14], 480, 'XXL'), mk('sz3', 'Pikachu', 25, [3, 3, 3], 400, 'XXL'), mk('sz4', 'Pikachu', 25, [2, 2, 2], 300, 'XXS'), mk('sz5', 'Pikachu', 25, [9, 9, 9], 320, 'XXS'), mk('sz6', 'Eevee', 133, [1, 1, 1], 200, 'XXL'), { ...mk('sz7', 'Beautifly', 267, [5, 0, 6], 1609, ''), height: '1.69m' }, { ...mk('sz8', 'Beautifly', 267, [9, 5, 4], 1492, ''), height: '1.48m' }], roster: [], ivOverrides: {}, protectSizes: 'extreme', appFavourited: [] });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.recalc();
     const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(); const out = {}; ros.forEach(p => { out[p.idx] = l.sizeProtected(p); }); const reasons = l.keepReasons(ros.find(p => p.idx === 'sz3')); const protect = l.bulkStringVals().bulkProtectText; return { out, reasons, protect, keepers: l.keeperCandidates().map(p => p.idx) }; return null; });
     expect(r.out.sz2 === true && r.out.sz1 === false && r.out.sz3 === false, 'XXL: only the best IV copy is locked: ' + JSON.stringify(r.out));
     expect(r.out.sz5 === true && r.out.sz4 === false, 'XXS: only the best IV copy is locked');
@@ -1126,7 +1126,7 @@ module.exports = async function suiteB() {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const st0 = await s.state();
     await s.set({ addedPokemon: [mk('hd0', 'Snorlax', 143, [15, 15, 15], 3000), mk('hd1', 'Fearow', 22, [1, 2, 1], 3000), mk('hd2', 'Raticate', 20, [2, 2, 2], 3010)], roster: [], cutTarget: 1, cutTargetDraft: '1', appFavourited: [], selfProtect: false, negationOk: false, transferHold: [], transferFreshAck: new Date().toISOString().slice(0, 10) });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.recalc();
     const ids = async () => (await s.call('transferCandidates')).map(c => c.p.idx).sort().join();
     expect(await ids() === 'hd1,hd2', 'both weak ones are candidates: ' + await ids());
     await s.logic((l) => { l.holdTransfer(l.effectiveRosterForMatch().find(p => p.idx === 'hd1')); return; });
@@ -1144,7 +1144,7 @@ module.exports = async function suiteB() {
   await T('TAGKEEP-01', 'Safety', 'A Pokemon in a Build/tier group counts as a soft keep that names the group; a second copy of the species does not', async () => {
     const mk = (idx, name, dex, iv, cp, g) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-30' });
     const st0 = await s.state();
-    await s.set({ addedPokemon: [mk('tk1', 'Azumarill', 184, [2, 15, 15], 400, 98), mk('tk2', 'Azumarill', 184, [3, 14, 14], 410, 96), mk('tk3', 'Pidgey', 16, [1, 1, 1], 100, 10)], roster: [], ivOverrides: {}, tagSnap: {}, appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [mk('tk1', 'Azumarill', 184, [2, 15, 15], 400, 98), mk('tk2', 'Azumarill', 184, [3, 14, 14], 410, 96), mk('tk3', 'Pidgey', 16, [1, 1, 1], 100, 10)], roster: [], ivOverrides: {}, tagSnap: {}, appFavourited: [] }); await s.recalc();
     const r = await s.logic((l) => { const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const rows = l.cutScoreRows(ros, ctx); const sc = id => rows.find(x => x.p.idx === id).score; const rs = id => l.keepFull(ros.find(p => p.idx === id), ctx); return { a1: rs('tk1').all, a1soft: rs('tk1').soft, a2: rs('tk2').all, s1: sc('tk1'), s2: sc('tk2') }; return null; });
     expect(r.a1.some(x => /^Worth building: in the PvP-Great-Build group/.test(x)), 'the build copy names its group: ' + JSON.stringify(r.a1));
     expect(r.a1soft.some(x => /Worth building/.test(x)), 'and it is a soft keep, not a hard lock');
@@ -1192,7 +1192,7 @@ module.exports = async function suiteB() {
   await T('KEEPREV-01', 'Safety', 'Keeper review: species with more than 3 kept copies; KEEP locks, RELEASE goes first in the transfer strings, a hard lock still wins', async () => {
     const mk = (idx, iv, cp, extra) => ({ idx, name: 'Machamp', dex: 68, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 50 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...extra });
     const st0 = await s.state();
-    await s.set({ addedPokemon: [mk('kr1', [15, 15, 15], 2100, { favorite: true }), mk('kr2', [15, 15, 14], 2200, { favorite: true }), mk('kr3', [15, 14, 14], 2300), mk('kr4', [14, 14, 14], 2400), mk('kr5', [14, 14, 13], 2500, { shiny: true })], roster: [], ivOverrides: {}, keeperOverrides: {}, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [mk('kr1', [15, 15, 15], 2100, { favorite: true }), mk('kr2', [15, 15, 14], 2200, { favorite: true }), mk('kr3', [15, 14, 14], 2300), mk('kr4', [14, 14, 14], 2400), mk('kr5', [14, 14, 13], 2500, { shiny: true })], roster: [], ivOverrides: {}, keeperOverrides: {}, transferHold: [], tab: 'home' }); await s.recalc();
     const L = fn => s.logic((l, f) => { const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const get = id => ros.find(p => p.idx === id); return (new Function('l', 'ros', 'ctx', 'get', 'return (' + f + ')'))(l, ros, ctx, get); return null; }, fn);
     await s.page.getByText('More', { exact: true }).last().click(); await s.page.waitForTimeout(350);
     await s.page.getByText('Keeper review', { exact: true }).last().click(); await s.page.waitForTimeout(700);
@@ -1243,7 +1243,7 @@ module.exports = async function suiteB() {
   await T('SIMSQUAD-01', 'PvP', 'The Great League squad is picked from simulated matchups that use the Pokemon\u2019s own IVs and moves', async () => {
     const mk = (idx, name, dex, extra) => Object.assign({ idx, name, dex, cp: 1490, hp: 100, atkIV: 1, defIV: 15, staIV: 15, ivAvg: 69, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 97 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) }, extra || {});
     const st0 = await s.state();
-    await s.set({ addedPokemon: [mk('ss1', 'Melmetal', 809), mk('ss2', 'Mimikyu', 778), mk('ss3', 'Sableye', 302), mk('ss4', 'Altaria', 334), mk('ss5', 'Tinkaton', 959)], roster: [], ivOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(600);
+    await s.set({ addedPokemon: [mk('ss1', 'Melmetal', 809), mk('ss2', 'Mimikyu', 778), mk('ss3', 'Sableye', 302), mk('ss4', 'Altaria', 334), mk('ss5', 'Tinkaton', 959)], roster: [], ivOverrides: {}, tab: 'home' }); await s.recalc();
     const r = await s.logic((l) => { let team = null; try { team = l.pvpTeamFor('great'); } catch (e) { return { err: e.message }; }
       return team ? { n: team.members.length, simulated: team.simulated, sims: team.members.map(c => !!(c.mu && c.mu.simulated)), sizes: team.members.map(c => c.mu.counters.length + c.mu.matchups.length) } : null; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
@@ -1258,7 +1258,7 @@ module.exports = async function suiteB() {
     const list = [mk('ev1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('ev2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('ev3', 'Froakie', 656, [15, 15, 15], 1122, 50)];
     const probe = "(() => { const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros); const by = id => ros.find(p => p.idx === id); const cand = l.transferCandidates().map(c => c.p.idx + ':' + c.why.slice(0, 70));"
       + " return { fr: l.keepFull(by('ev1'), ctx).all.filter(x => /^Best/.test(x)), gr: l.keepFull(by('ev2'), ctx).all.filter(x => /^Best/.test(x)), cand, rb: (r => r && { q: r.q.idx, to: r.evolveTo, lk: r.lk })(l.replacedBy(by('ev2'), ctx)), hundoForm: l.pvpFormName(by('ev3'), 'great'), hundoRank: Math.round(l.pvpAssess(by('ev3'), 'great').rank * 10) / 10 }; })()";
-    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: {}, tab: 'home' }); await s.recalc();
     const noCandy = await L(probe);
     expect(noCandy && noCandy.fr.some(x => /evolve it into Greninja first/.test(x)), 'the Froakie is the best Great League copy and says to evolve: ' + JSON.stringify(noCandy));
     expect(noCandy.gr.some(x => /you can use now/.test(x)) && !noCandy.cand.some(x => /^ev2:/.test(x)), 'with the candy unknown the Greninja is kept as the best copy you can use now, not replaced: ' + JSON.stringify(noCandy));
@@ -1272,7 +1272,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     const list = [mk('hu1', 'Charizard', 6, [15, 15, 15], 3266, 50), mk('hu2', 'Charizard', 6, [0, 15, 13], 1500, 19.5), mk('hu3', 'Charizard', 6, [0, 13, 15], 2500, 35), mk('hu4', 'Greninja', 658, [15, 15, 15], 3001, 50), mk('hu5', 'Greninja', 658, [3, 15, 12], 1500, 21), mk('hu6', 'Greninja', 658, [0, 13, 14], 2497, 41)];
-    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], tab: 'home' }); await s.recalc();
     const r = await s.logic((l) => { return l.transferCandidates().map(c => c.p.idx); return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, tab: 'home' });
     expect(r && r.indexOf('hu1') < 0 && r.indexOf('hu4') < 0, 'neither hundo is offered for transfer: ' + JSON.stringify(r));
@@ -1351,7 +1351,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     const list = [mk('lu1', 'Froakie', 656, [3, 15, 12], 400, 20), mk('lu2', 'Greninja', 658, [6, 13, 11], 1495, 20.5), mk('lu3', 'Azumarill', 184, [2, 14, 15], 1480, 30), mk('lu4', 'Medicham', 308, [4, 14, 14], 1490, 33), mk('lu5', 'Registeel', 379, [1, 15, 15], 1495, 33)];
-    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: { froakie: { name: 'Froakie', candy: 200 } }, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    await s.set({ addedPokemon: list, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], candyInventory: { froakie: { name: 'Froakie', candy: 200 } }, tab: 'home' }); await s.recalc();
     const r = await s.logic((l) => { const t = l.pvpTeamFor('great'); const ros = l.effectiveRosterForMatch(), ctx = l.keepContext(ros);
       return { team: t ? t.members.map(c => c.p.name + ':' + c.id) : null, ids: t ? new Set(t.members.map(c => c.id)).size : 0, kept: ros.map(p => p.idx + ':' + l.keepReasons(p, ctx).length), payoff: (l.powerUpPayoff(ros) || []).map(x => x.p ? x.p.idx : x.idx) }; return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, tab: 'home' });
@@ -1363,7 +1363,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('em1', 'Wartortle', 8, [15, 15, 15], 1200, 25)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 300 } }, tab: 'home' });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    await s.recalc();
     const run = async (entry, candy) => s.logic(async (l, { entry, candy }) => { l.setState({ eventMoves: { moves: entry ? [entry] : [] }, candyInventory: { ...l.state.candyInventory, squirtle: { name: 'Squirtle', candy } } }); await new Promise(r => setTimeout(r, 150));
       const opps = l.eventEvolveOpps(); const q = l.evolveQueue();
       return { n: opps.length, held: opps.length ? opps[0].held : null, active: opps.length ? opps[0].active : null, worth: opps.length ? opps[0].worth.worth : null, short: opps.length ? opps[0].short : null, days: opps.length ? opps[0].days : null, inQueue: q.some(r => r.p.idx === 'em1') }; return null; }, { entry, candy });
@@ -1390,7 +1390,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('em2', 'Wartortle', 8, [15, 15, 15], 1200, 25), mk('em3', 'Squirtle', 7, [15, 15, 15], 300, 10)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 300 } }, tab: 'today' });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    await s.recalc();
     const r = await s.logic(async (l) => { const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
       const D = 86400000;
       const keep = { feed: l.state.feed, eventMoves: l.state.eventMoves };
@@ -1411,7 +1411,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('ln1', 'Squirtle', 7, [0, 15, 15], 300, 10), mk('ln2', 'Wartortle', 8, [1, 14, 15], 1200, 25), mk('ln3', 'Wartortle', 8, [12, 5, 6], 1100, 25)], roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { squirtle: { name: 'Squirtle', candy: 400 } }, tab: 'today' });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    await s.recalc();
     const r = await s.logic(async (l) => { const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
       const keep = l.state.eventMoves;
       l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Blastoise', move: 'Hydro Cannon', kind: 'charged', graceHours: 0, scope: 'caught-or-evolved' }] } });
@@ -1437,7 +1437,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('mc1', 'Machop', 66, [1, 15, 15], 300, 10), mk('mc2', 'Machop', 66, [2, 14, 14], 300, 10), mk('mc3', 'Machop', 66, [3, 13, 14], 300, 10)].map(x => ({ ...x, favorite: true })), roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], completedIds: [], candyInventory: { machop: { name: 'Machop', candy: 130 } }, tab: 'today' });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    await s.recalc();
     const r = await s.logic(async (l) => { const iso = off => new Date(Date.now() + off).toISOString().slice(0, 23);
       const keep = l.state.eventMoves;
       l.setState({ eventMoves: { moves: [{ eventId: 'w', eventName: 'Test Wild Area', type: 'wild-area', start: iso(-3600000), end: iso(20 * 3600000), species: null, to: 'Machamp', move: 'Karate Chop', kind: 'fast', graceHours: 0, scope: 'caught-or-evolved' }] } });
@@ -1501,7 +1501,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl, g) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
     await s.set({ addedPokemon: [mk('du1', 'Azumarill', 184, [2, 15, 15], 900, 18, 98)], roster: [], ivOverrides: {}, completedIds: [], stardustBalance: 400000, dustReserve: 0, trainerLevel: 40, candyInventory: { azurill: { name: 'Azurill', candy: 500, xlCandy: 0 } }, cutTarget: 900 });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    await s.recalc();
     const r = await s.logic(async (l) => { const m = l.mechanics;
       const a = l.dustAllocator(); const row = a.pvp.rows[0];
       const base = row ? l.gradeBaseFor(row.p, row.lk) : null; const ivs = row ? l.ivsOf(row.p) : null;
@@ -1519,7 +1519,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl, g, extra) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: g, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...(extra || {}) });
     await s.set({ addedPokemon: [mk('cb1', 'Azumarill', 184, [2, 15, 15], 900, 18, 98), mk('cb2', 'Altaria', 334, [3, 14, 15], 1480, 25, 70)], roster: [], ivOverrides: {}, completedIds: [], stardustBalance: 400000, trainerLevel: 40, cutTarget: 900 });
-    await s.call('recalculateAllRanks'); await s.page.waitForTimeout(700);
+    await s.recalc();
     const r = await s.logic(async (l) => { const rows = l.cupBuildRows('great', null, null, 1500, false); return rows.map(x => ({ n: x.name, s: x.status, d: x.detail })); return null; });
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, stardustBalance: st0.stardustBalance, trainerLevel: st0.trainerLevel });
     expect(r && r.length >= 8, 'ten top species listed: ' + JSON.stringify(r && r.length));
@@ -1772,7 +1772,7 @@ module.exports = async function suiteB() {
     expect(r && r.checks.good === 0 && r.checks.lowHp === 0, 'a consistent read, even with HP below its maximum, passes: ' + JSON.stringify(r && r.checks));
     expect(r.checks.badIv > 0 && r.checks.badFit > 0 && r.checks.badName > 0 && r.checks.stardust > 0, 'bad reads are flagged: ' + JSON.stringify(r.checks));
     expect(r.res.inserted === 1 && r.res.held === 2 && r.hold === 2 && r.added === 1, 'one merged, two held: ' + JSON.stringify(r));
-    await s.go('BULK'); await s.page.waitForTimeout(700);
+    await s.go('BULK');
     let t = await s.text();
     expect(/Import check/.test(t) && /2 to review/.test(t) && /do not fit any level of Machamp/.test(t) && /IVs must be whole numbers/.test(t), 'the Import check list shows both with reasons: ' + t.slice(t.indexOf('Import check'), t.indexOf('Import check') + 400));
     await s.page.getByRole('button', { name: 'Discard', exact: true }).first().click(); await s.page.waitForTimeout(400);
@@ -1797,7 +1797,7 @@ module.exports = async function suiteB() {
     const mk = (idx, iv, cp, extra) => Object.assign({ idx, name: 'Gengar', dex: 94, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-11-05' }, extra || {});
     const st0 = await s.state();
     const gs = [mk('xa', [1, 14, 15], 1480), mk('xb', [12, 12, 12], 1450), mk('xc', [14, 15, 14], 2450), mk('xd', [14, 14, 14], 2440), mk('xe', [13, 13, 14], 2300), mk('xf', [10, 10, 10], 1900), mk('xg', [15, 14, 15], 2480), mk('xh', [8, 9, 10], 900), mk('xi', [5, 5, 5], 1200, { shiny: true })];
-    await s.set({ addedPokemon: gs, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], keeperOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(900);
+    await s.set({ addedPokemon: gs, roster: [], ivOverrides: {}, cutTarget: 900, transferHold: [], keeperOverrides: {}, tab: 'home' }); await s.recalc();
     const r = await s.logic((l) => { const cand = l.transferCandidates().filter(c => c.p.name === 'Gengar');
       const ctx = l.keepContext(l.effectiveRosterForMatch());
       const ros = l.effectiveRosterForMatch().filter(p => p.name === 'Gengar');
@@ -1824,7 +1824,7 @@ module.exports = async function suiteB() {
     const st0 = await s.state();
     const L = fn => s.logic((l, f) => { return new Function('l', 'return (' + f + ')')(l); return null; }, fn);
     const g = { idx: 'pm1', name: 'Gengar', dex: 94, cp: 2450, hp: 120, atkIV: 14, defIV: 15, staIV: 14, ivAvg: 95.6, lvlMin: 30, lvlMax: 30, ivMeasured: true, quickMove: 'Hex', chargeMove: 'Sludge Bomb', great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) };
-    await s.set({ addedPokemon: [g], roster: [], ivOverrides: {}, tab: 'home' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(800);
+    await s.set({ addedPokemon: [g], roster: [], ivOverrides: {}, tab: 'home' }); await s.recalc();
     const r = await L("(() => { const p = l.effectiveRosterForMatch().find(x => x.idx === 'pm1'); const a = l.pvpAssess(p, 'ultra'); return { miss: a && a.missing, elite: a && a.missingElite, issue: l.dataQualityIssues().filter(i => i.key === 'pvpmoves').map(i => i.count) }; })()");
     expect(r && r.miss && r.miss.indexOf('shadow punch') >= 0 && r.miss.indexOf('dark pulse') >= 0, 'missing moves listed: ' + JSON.stringify(r));
     expect(r.elite.indexOf('shadow punch') >= 0 && r.elite.indexOf('dark pulse') >= 0 && r.elite.indexOf('shadow claw') < 0, 'Elite-TM ones marked, a regular move is not: ' + JSON.stringify(r));
@@ -1905,7 +1905,7 @@ module.exports = async function suiteB() {
   await T('GRADE-01', 'Safety', 'Keeper grade by league rank (S 97/93/90, A/B 98/95/92): the setting decides which copy is a league best, equal copies keep only one', async () => {
     const mk = (idx, name, dex, iv, cp) => ({ idx, name, dex, cp, hp: 60, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 10, lvlMax: 10, ivMeasured: true, great: { rankPct: 0, evolvesTo: name }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
     const st0 = await s.state();
-    await s.set({ addedPokemon: [mk('gr1', 'Azumarill', 184, [0, 15, 15], 400), mk('gr2', 'Azumarill', 184, [8, 8, 8], 410), mk('gr3', 'Azumarill', 184, [0, 15, 15], 400), mk('gr4', 'Azumarill', 184, [14, 6, 12], 420)], roster: [], ivOverrides: {}, keepGrade: 'good', appFavourited: [] }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [mk('gr1', 'Azumarill', 184, [0, 15, 15], 400), mk('gr2', 'Azumarill', 184, [8, 8, 8], 410), mk('gr3', 'Azumarill', 184, [0, 15, 15], 400), mk('gr4', 'Azumarill', 184, [14, 6, 12], 420)], roster: [], ivOverrides: {}, keepGrade: 'good', appFavourited: [] }); await s.recalc();
     const info = async () => s.logic((l) => { const ros = l.effectiveRosterForMatch(); const ctx = l.keepContext(ros); const best = ros.filter(p => l.keepFull(p, ctx).all.some(x => /^Best Great League copy/.test(x))).map(p => p.idx).sort(); const stand = id => { const p = ros.find(q => q.idx === id); const st = l.gradeStanding(p, 'great'); return st && Math.round(st.topPct * 10) / 10; }; return { best, top: { gr1: stand('gr1'), gr2: stand('gr2'), gr4: stand('gr4') }, fx: l.gradeEffects() }; return null; });
     const lab = await s.logic((l) => { return [l.gradeLabel(95.27, 'S'), l.gradeLabel(97.21, 'S'), l.gradeLabel(94.0, 'S'), l.gradeLabel(95, 'A'), l.gradeLabel(94.9, 'A'), l.gradeLabel(89, 'S'), l.gradeLabel(98, 'B')]; return null; });
     expect(JSON.stringify(lab) === JSON.stringify(['EXCELLENT', 'TOP', 'EXCELLENT', 'EXCELLENT', 'GOOD', 'AVERAGE', 'TOP']), 'S-tier Mimikyu 95.3 and Cramorant 94.0 are EXCELLENT, Clodsire 97.2 is TOP, A/B needs 95: ' + JSON.stringify(lab));
@@ -2015,7 +2015,7 @@ module.exports = async function suiteB() {
     const weak = []; for (let i = 0; i < 14; i++) weak.push(mk('bsw' + i, 1 + (i % 3), 600 + i * 7));
     const keeper = mk('bsp1', weak[0].atkIV, 600, { favorite: true });   // same name, CP and stars as a candidate, but protected
     const odd = { ...mk('bso1', 2, 888), name: 'Mr. Mime', dex: 122 };    // a name the game search may not accept
-    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, ...weak, keeper, odd], cutTarget: 1, cutTargetDraft: '1', transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(400);
+    await s.set({ addedPokemon: [...(st0.addedPokemon || []), big, ...weak, keeper, odd], cutTarget: 1, cutTargetDraft: '1', transferFreshAck: new Date().toISOString().slice(0, 10) }); await s.recalc();
     const r = await s.call('buildTransferBatches');
     expect(r.batches.length >= 1, 'no batches');
     expect(r.batches.every(b => /^[a-z,]+ & cp\d+(,cp\d+)* & \d\*(,\d\*)*$/.test(b.text)), 'format: ' + r.batches.map(b => b.text).join(' | '));
@@ -2118,7 +2118,7 @@ module.exports = async function suiteB() {
     const sc = rows.map(r => r.r.score); expect(sc.every((v, i) => i === 0 || sc[i - 1] >= v), 'not sorted');
     expect(rows.every(r => r.info.moveType && r.r.damage > 0), 'row without move/damage'); const names = rows.map(r => r.p.name);
     const top = rows[0]; expect(top.eff >= 1, 'top attacker should not be resisted: ' + top.p.name + ' ' + top.eff);
-    await s.go('RAID'); await s.page.waitForTimeout(500); expect(/MAX ATTACKERS vs THIS BOSS/.test(await s.text()), 'section missing'); expect(/PER MAX HIT/.test(await s.text()), 'no ranked rows shown: ' + names.join());
+    await s.go('RAID'); expect(/MAX ATTACKERS vs THIS BOSS/.test(await s.text()), 'section missing'); expect(/PER MAX HIT/.test(await s.text()), 'no ranked rows shown: ' + names.join());
   }, 'high');
   await T('MAX-11', 'Max', 'Real screen (Arcanine, Dynamax, Max Darkness Lv 1, Guard and Spirit locked): type comes from the tile name, not a guess', async () => {
     const patch = await s.call('maxPatch', { dynamax: true, maxMoveName: 'Max Darkness', maxAttackLevel: 1, maxGuardLevel: null, maxSpiritLevel: null });

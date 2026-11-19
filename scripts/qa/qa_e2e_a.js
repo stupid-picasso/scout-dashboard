@@ -17,7 +17,7 @@ module.exports = async function suiteA() {
     const feedFx = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'ui_feed.json'), 'utf8'));   // the person's Today: events and GBL from the feed, the long tail collapsed
     const r = await session({ feed: feedFx, collapsedTail: true }); await r.load(QA); await r.page.waitForTimeout(1200);
     const bad = [];
-    for (const scr of ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG']) { await r.go(scr); await r.page.waitForTimeout(500); const n = (await r.text()).length; if (n <= 300) bad.push(scr + ' ' + n); }
+    for (const scr of ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG']) { await r.go(scr); const n = (await r.text()).length; if (n <= 300) bad.push(scr + ' ' + n); }
     expect(r.errors.length === 0, r.errors[0]); await r.close();
     expect(bad.length === 0, 'too little text on: ' + bad.join(', '));
   });
@@ -148,16 +148,17 @@ module.exports = async function suiteA() {
     await s.page.keyboard.press('Escape');
     const row = s.page.locator('[data-swipe-row]').first(); const b = await row.boundingBox(); const tc = await touch(s);
     const x = b.x + b.width - 60, y = b.y + b.height / 2;
+    const before = await row.evaluate(e => ({ open: e.dataset.swipeOpen, tf: e.style.transform }));
     await tc.start(x, y); for (let i = 1; i <= 8; i++) await tc.move(x - i * 3, y + i * 25);
     const mid = await row.evaluate(e => ({ open: e.dataset.swipeOpen, tf: e.style.transform }));
     await tc.end();
-    expect(mid.open !== '1' && !/translateX\(-/.test(mid.tf), 'the row moved during a vertical drag: ' + JSON.stringify(mid));
-    expect((await s.page.locator('[data-swipe-open="1"]').count()) === 0, 'a row opened after a vertical drag');
+    expect(mid.open === before.open && mid.tf === before.tf, 'the row moved during a vertical drag: ' + JSON.stringify({ before, mid }));
+    expect((await s.page.locator('[data-swipe-open="1"]').count()) === (before.open === '1' ? 1 : 0), 'a row opened after a vertical drag');
   });
   await T('GES-05', 'Gestures', 'Transfer removes the Pokemon and the count drops by one', async () => { await s.page.keyboard.press('Escape'); await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); const before = await s.page.locator('[data-swipe-row]').count(); await s.page.getByText(/Transfer/).first().click({ force: true }).catch(() => {}); await s.page.waitForTimeout(500); expect(await s.page.locator('[data-swipe-row]').count() <= before); });
   // ---- Roster: select mode, bulk actions, saved views, undo, sort, hint
   const rowCount = () => s.page.locator('[data-swipe-row]').count();
-  const reset = async csv => { await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(csv); await s.go('ROSTER'); await s.page.waitForTimeout(400); };
+  const reset = async csv => { await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(csv); await s.go('ROSTER'); };
   await reset(SMOKE);
   await T('ROS-12', 'Roster', 'Select mode: rows toggle on tap, the bar shows the count, Done exits', async () => {
     await s.page.getByRole('button', { name: 'Select', exact: true }).click(); await s.page.waitForTimeout(300);
@@ -172,7 +173,7 @@ module.exports = async function suiteA() {
     const mk = (idx, iv, cp) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const big = { ...mk('bt0', 15, 3000), name: 'Snorlax', dex: 143 };
     const keepAdded = (await s.state()).addedPokemon || [];
-    await s.set({ addedPokemon: [...keepAdded, big, mk('bt1', 1, 640), mk('bt2', 2, 650), mk('bt3', 3, 660)], search: 'luvdisc' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [...keepAdded, big, mk('bt1', 1, 640), mk('bt2', 2, 650), mk('bt3', 3, 660)], search: 'luvdisc' }); await s.recalc();
     const before = await rowCount(); const st0 = await s.state();
     await s.page.getByRole('button', { name: 'Select', exact: true }).click();
     const rws = s.page.locator('[data-swipe-row]'); await rws.nth(0).click(); await rws.nth(1).click();
@@ -210,7 +211,7 @@ module.exports = async function suiteA() {
     const mk = (idx, iv, cp) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const big = { ...mk('br0', 15, 3000), name: 'Snorlax', dex: 143 };
     const keepAdded = (await s.state()).addedPokemon || [];
-    await s.set({ addedPokemon: [...keepAdded, big, mk('br1', 1, 640), mk('br2', 2, 650), mk('br3', 3, 660)], search: 'luvdisc' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [...keepAdded, big, mk('br1', 1, 640), mk('br2', 2, 650), mk('br3', 3, 660)], search: 'luvdisc' }); await s.recalc();
     const st0 = await s.state(); const before = await rowCount();
     await s.page.getByRole('button', { name: 'Select', exact: true }).click(); await s.page.locator('[data-swipe-row]').nth(0).click();
     await s.page.getByRole('button', { name: 'Remove', exact: true }).last().click(); await s.page.waitForTimeout(300);
@@ -227,7 +228,7 @@ module.exports = async function suiteA() {
     await s.page.locator('.om-press', { hasText: /^ALL$/ }).click({ timeout: 4000 }).catch(e => { throw new Error('step 3: ' + e.message.split('\n')[0]); }); await s.page.waitForTimeout(200);
     await s.page.getByRole('button', { name: /^Lucky/ }).first().click({ timeout: 4000 }).catch(e => { throw new Error('step 4: ' + e.message.split('\n')[0]); }); await s.page.waitForTimeout(300); expect((await s.state()).rosterFilter === 'lucky', 'view not applied');
     await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(3000);
-    expect((await s.state()).savedViews.length === 1, 'not persisted'); await s.go('ROSTER'); await s.page.waitForTimeout(500);
+    expect((await s.state()).savedViews.length === 1, 'not persisted'); await s.go('ROSTER');
     await s.page.getByRole('button', { name: /Delete saved view/ }).first().click({ timeout: 4000 }).catch(e => { throw new Error('step 5: ' + e.message.split('\n')[0]); }); await s.page.waitForTimeout(300); expect((await s.state()).savedViews.length === 0, 'not deleted');
   }, 'medium');
   await T('ROS-17', 'Roster', 'Sort "Mega ready" lists Mega-capable Pokemon first', async () => {
