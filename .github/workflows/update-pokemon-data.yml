@@ -26,41 +26,37 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install the bundle builder's dependency
+        run: npm install --no-save terser
+
+      # Refreshes pokemon-mechanics.js and, when it changed, rebuilds the bundles that embed it (version bump included).
       - name: Run data refresh
         id: refresh
-        run: python scripts/update_pokemon_data.py
+        run: scripts/refresh_pokemon_data.sh
 
       # Only auto-commit straight to main when EVERY change this run is a
-      # plain stat correction to a Pokemon we already track. If new Pokemon
-      # were also found, pokemon-mechanics.js now contains BOTH kinds of
-      # edits mixed together, so the whole diff goes through the PR path
-      # below instead (keeps review-required additions out of main).
-      - name: Commit and push base-stat corrections
-        if: steps.refresh.outputs.stat_fixes != '0' && steps.refresh.outputs.new_pokemon == '0'
+      # plain correction to data we already track (base stats, or the CPM and
+      # Power-Up tables). If new Pokemon were also found, pokemon-mechanics.js
+      # now contains BOTH kinds of edits mixed together, so the whole diff goes
+      # through the PR path below instead (keeps review-required additions out
+      # of main). The commit carries the rebuilt bundles; if the push loses a
+      # race, the helper re-runs the refresh on the latest main.
+      - name: Commit and push data corrections
+        if: (steps.refresh.outputs.base_stat_fixes != '0' || steps.refresh.outputs.table_fixes != '0') && steps.refresh.outputs.new_pokemon == '0'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pokemon-mechanics.js
-          if git diff --cached --quiet; then
-            echo "No staged changes"
-          else
-            git commit -m "Auto-update base stats from pogoapi.net ($IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES correction(s)) [skip ci]"
-            for attempt in 1 2 3 4 5; do
-              if git push; then
-                break
-              fi
-              echo "Push rejected (attempt $attempt), fetching and rebasing..."
-              git fetch origin main
-              git rebase origin/main
-              if [ "$attempt" = "5" ]; then
-                echo "::error::Failed to push base-stat corrections after $attempt attempts"
-                exit 1
-              fi
-            done
-          fi
-
+          scripts/ci_push.sh --regen scripts/refresh_pokemon_data.sh \
+            "Auto-update Pokemon data from pogoapi.net ($IN_BASE_STAT_FIXES base-stat correction(s), $IN_TABLE_FIXES table refresh(es)) [skip ci]" \
+            pokemon-mechanics.js "Scout Dashboard.dc.html" "Scout Dashboard Standalone.dc.html" "Scout Dashboard.html" index.html sw.js
         env:
-          IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES: ${{ steps.refresh.outputs.stat_fixes }}
+          CI_PUSH_BRANCH: ${{ github.ref_name }}
+          IN_BASE_STAT_FIXES: ${{ steps.refresh.outputs.base_stat_fixes }}
+          IN_TABLE_FIXES: ${{ steps.refresh.outputs.table_fixes }}
+
       - name: Open PR for new Pokemon / sprites
         if: steps.refresh.outputs.new_pokemon != '0'
         run: |
@@ -68,7 +64,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           BRANCH="new-pokemon-$(date +%Y%m%d)"
           git checkout -b "$BRANCH"
-          git add pokemon-mechanics.js data/new_pokemon.json sprites/
+          git add pokemon-mechanics.js data/new_pokemon.json sprites/ "Scout Dashboard.dc.html" "Scout Dashboard Standalone.dc.html" "Scout Dashboard.html" index.html sw.js
           if git diff --cached --quiet; then
             echo "No new Pokemon to propose"
             exit 0
@@ -77,10 +73,11 @@ jobs:
           git push origin "$BRANCH" --force
           gh pr create \
             --title "New Pokemon detected: review stats/sprites before merging" \
-            --body "Auto-detected $IN_STEPS_REFRESH_OUTPUTS_NEW_POKEMON dex number(s) present in pogoapi.net but missing from DEX_NAMES/BASE_STATS (this diff also includes $IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES routine stat correction(s) found in the same run). Review data/new_pokemon.json and the fetched sprite(s) in sprites/ before merging \u2014 this is NOT auto-merged since it needs a sprite/name sanity check." \
+            --body "Auto-detected $IN_STEPS_REFRESH_OUTPUTS_NEW_POKEMON dex number(s) present in pogoapi.net but missing from DEX_NAMES/BASE_STATS (this diff also includes $IN_BASE_STAT_FIXES routine base-stat correction(s) and $IN_TABLE_FIXES table refresh(es) found in the same run, and the rebuilt app bundles). Review data/new_pokemon.json and the fetched sprite(s) in sprites/ before merging \u2014 this is NOT auto-merged since it needs a sprite/name sanity check." \
             --base main \
             --head "$BRANCH" || echo "PR may already exist for this branch"
         env:
           IN_STEPS_REFRESH_OUTPUTS_NEW_POKEMON: ${{ steps.refresh.outputs.new_pokemon }}
-          IN_STEPS_REFRESH_OUTPUTS_STAT_FIXES: ${{ steps.refresh.outputs.stat_fixes }}
+          IN_BASE_STAT_FIXES: ${{ steps.refresh.outputs.base_stat_fixes }}
+          IN_TABLE_FIXES: ${{ steps.refresh.outputs.table_fixes }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

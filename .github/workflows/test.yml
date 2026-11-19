@@ -58,6 +58,8 @@ jobs:
           python3 scripts/test_event_moves.py
           python3 scripts/test_promo_codes.py
           python3 scripts/test_workflows.py
+          python3 scripts/test_workflow_data.py
+          python3 scripts/test_ci_push.py
 
       - name: Install Playwright
         run: |

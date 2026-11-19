@@ -15,7 +15,7 @@ possible:
      a separate file (new_pokemon.json) and left for the workflow to open as
      a PR instead of auto-committing, since a sprite needs fetching/review.
 
-GITHUB_OUTPUT flags tell the workflow what happened so it can decide whether
+GITHUB_OUTPUT flags (base_stat_fixes, table_fixes, new_pokemon) tell the workflow what happened so it can decide whether
 to commit-to-main, open a PR, both, or do nothing.
 """
 import json
@@ -355,7 +355,10 @@ def main():
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
         with open(gh_out, "a", encoding="utf-8") as f:
-            f.write(f"stat_fixes={len(stat_fixes) + mech_table_fixes}\n")
+            # Two different kinds of change, counted separately: per-species base-stat corrections, and whole-table
+            # refreshes (CPM, Power-Up costs). The workflow commits to main when either is non-zero.
+            f.write(f"base_stat_fixes={len(stat_fixes)}\n")
+            f.write(f"table_fixes={mech_table_fixes}\n")
             f.write(f"new_pokemon={len(new_pokemon)}\n")
 
 

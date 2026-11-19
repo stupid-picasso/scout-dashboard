@@ -146,45 +146,13 @@ jobs:
 
       - name: Commit extracted IV ratings
         if: steps.check_videos.outputs.count > 0 || env.DRIVE_VIDEO_PATH != ''
+        # Only the import file is committed. The bar-measurement frames (data/debug_bars) are uploaded as a build artifact
+        # above: about 10 MB of PNGs in a public repo that grew on every run.
         run: |
           if [ ! -f data/appraisal_import.json ]; then
             echo "::error::data/appraisal_import.json was never written — the extraction step produced no output. Check the 'Extract IV ratings' step log above for the real error (no frames, Gemini quota, or no Pokemon read)."
             exit 1
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/appraisal_import.json
-          # The bar-measurement frames (data/debug_bars) are uploaded as a build artifact above, not committed:
-          # about 10 MB of PNGs in a public repo that grew on every run.
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Auto-extract IV ratings from appraisal video [skip ci]"
-            for attempt in 1 2 3 4 5; do
-              if git push; then
-                break
-              fi
-              if [ "$attempt" = "5" ]; then
-                echo "::error::Failed to push extracted IV ratings after $attempt attempts"
-                exit 1
-              fi
-              # These are generated artefacts, so a textual rebase of them can
-              # only conflict. Park this run's output, hard-reset onto the
-              # latest remote (keeping whatever else landed there), lay our
-              # files back down and recommit.
-              echo "Push rejected (attempt $attempt), re-applying output onto latest main..."
-              STAGE=$(mktemp -d)
-              mkdir -p "$STAGE/data"
-              cp data/appraisal_import.json "$STAGE/data/"
-              git fetch origin main
-              git reset --hard origin/main
-              cp -r "$STAGE/data/." data/
-              rm -rf "$STAGE"
-              git add -f data/appraisal_import.json
-              if git diff --cached --quiet; then
-                echo "Remote already has this output"
-                break
-              fi
-              git commit -m "Auto-extract IV ratings from appraisal video [skip ci]"
-            done
-          fi
+          scripts/ci_push.sh "Auto-extract IV ratings from appraisal video [skip ci]" data/appraisal_import.json
+        env:
+          CI_PUSH_BRANCH: ${{ github.ref_name }}
