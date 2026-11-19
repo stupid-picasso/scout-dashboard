@@ -67,7 +67,9 @@ jobs:
         if: matrix.browser == 'chromium'
         run: |
           export PW_CHROMIUM=$(node -e "console.log(require('playwright').chromium.executablePath())")
-          LH_MIN_PERF=20 LH_MIN_A11Y=85 node scripts/qa/qa_lighthouse.js lighthouse.json
+          # Floors from measured values: performance 37 on the runner (run 44446605697) and 38 to 40 locally in three runs, accessibility 100 in all four.
+          # 30 is a 7-point margin under the lowest sample, so a real regression fails; 95 leaves room for one new minor finding.
+          LH_MIN_PERF=30 LH_MIN_A11Y=95 node scripts/qa/qa_lighthouse.js lighthouse.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
