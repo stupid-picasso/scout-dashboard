@@ -48,7 +48,7 @@ const SRC = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8');
 
 // Same loader test_ranking.js uses — real pokemon-mechanics.js in a sandbox,
 // not reimplemented, so movepoolFor()/AUTHORITATIVE_MOVES stay authoritative.
-const { loadMechanics } = require('./lib/testkit');
+const { loadMechanics, appSchema } = require('./lib/testkit');
 const m = loadMechanics();
 
 let pass = 0;
@@ -600,7 +600,8 @@ function buildLists(roster, bestRank) {
   call('loadLocalSecrets', ls, ctx3);
   check('a fresh load restores the keys and token, and ignores a stored endpoint', !!ctx3._patch && ctx3._patch.geminiKeys.length === 2 && ctx3._patch.githubToken === 'ghp_x' && !('apiEndpoint' in ctx3._patch) && !('apiEndpointDraft' in ctx3._patch), true);
 
-  const syncKeys = extractMethodBody(SRC, 'SYNC_KEYS() {') + extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {') + extractMethodBody(SRC, 'get PACKED_KEYS() {');
+  const lists = appSchema(SRC);
+  const syncKeys = [...lists.SYNC_KEYS(), ...lists.SYNCED_STATE_KEYS, ...lists.PACKED_KEYS].join(' ');
   check('no credential is in the synced or packed key lists', /geminiKey|githubToken|apiEndpoint/.test(syncKeys), false);
 })();
 
@@ -807,7 +808,7 @@ function buildLists(roster, bestRank) {
 (() => {
   const state = { megaEnergyInventory: {}, megaEvolvedHistory: {} };
   const ctx = { mechanics: m, state, setState(p, cb) { Object.assign(state, p); if (cb) cb(); }, haptic() {}, pushCloud() {} };
-  const defs = { megaEvolveInfoFor: 'key', applyMegaEvolve: 'key, form', megaCardFor: 'p', setMegaField: 'key, name, form, field, raw' };
+  const defs = { megaEvolveInfoFor: 'key', applyMegaEvolve: 'key, form', megaCardFor: 'p', setMegaField: 'key, name, form, field, raw', pushNow: '' };
   Object.keys(defs).forEach(n => { ctx[n] = new Function(...defs[n].split(', '), extractMethodBody(SRC, `${n}(${defs[n]}) {`)).bind(ctx); });
   ctx.setMegaField('mewtwo', 'Mewtwo', 'x', 'energy', '0');
   ctx.setMegaField('mewtwo', 'Mewtwo', 'y', 'energy', '500');
@@ -912,7 +913,7 @@ function buildLists(roster, bestRank) {
       setState: function (u, cb) { Object.assign(this.state, typeof u === 'function' ? u(this.state) : u); if (cb) cb(); }, pushCloud: () => {}, recordDistinguisher: () => '' };
     ['appraisalHintFromItem(item)', 'baseStatCandidates(item)', 'spreadFitsStars(spread, stars)', 'appraisalIvUnsure(item)',
      'measuredSpreadOrder(item)', 'unsureSpreadChoices(rec, item)', 'applyMeasuredIv(rec, item, overrides)',
-     'mergeAppraisalImport(rawItems)', 'applyUnsurePick(rid, choiceIdx)', 'normalizeAppraisalItems(items)', 'needsAppraisal(p)'].forEach(sig => {
+     'mergeAppraisalImport(rawItems)', 'applyUnsurePick(rid, choiceIdx)', 'commitBaked(overrides, extra)', 'pushNow()', 'reviewRow(rec, item, iv, count)', 'normalizeAppraisalItems(items)', 'needsAppraisal(p)'].forEach(sig => {
       const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
       ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
     });
@@ -1046,22 +1047,23 @@ function buildLists(roster, bestRank) {
 })();
 
 // Bug 7: the lists that name an account's data must agree (they had drifted: ocrAutoApply watched but never saved; sign-out left eight fields on screen).
+// They are all views over SYNC_SCHEMA now, so this runs the real blob, patch and reset code against the schema.
 (() => {
-  const arr = body => new Function(body)();
-  const synced = arr(extractMethodBody(SRC, 'get SYNCED_STATE_KEYS() {'));
-  const watched = new Function(extractMethodBody(SRC, 'SYNC_KEYS() {')).call({});
-  const packed = arr(extractMethodBody(SRC, 'get PACKED_KEYS() {'));
+  const L = appSchema(SRC);
+  const synced = L.SYNCED_STATE_KEYS, watched = L.SYNC_KEYS(), packed = L.PACKED_KEYS;
   const state = { checklistDate: 'd' };
   synced.forEach(k => { state[k] = packed.indexOf(k) >= 0 ? [] : 1; });
   state.ocrAutoApply = true;
-  const ctx = { state, PACKED_KEYS: packed, chunkString: x => x, packText: x => x };
-  const blob = new Function(extractMethodBody(SRC, 'buildCloudBlob() {')).call(ctx);
+  L.state = state; L.chunkString = x => x; L.packText = x => x;
+  const blob = new Function(extractMethodBody(SRC, 'buildCloudBlob() {')).call(L);
   const blobKeys = Object.keys(blob).filter(k => k !== 'updatedAt' && k !== 'packedVersion').map(k => k.replace(/Json$/, ''));
-  const empty = Object.keys(new Function(extractMethodBody(SRC, 'EMPTY_USER_DATA() {')).call({ state: { checklistDate: 'd' } }));
+  L.state = { checklistDate: 'd' };
+  const emptyFn = () => new Function(extractMethodBody(SRC, 'EMPTY_USER_DATA() {')).call(L);
+  const empty = Object.keys(emptyFn());
   let patch = null;
-  const rctx = { state: { checklistDate: 'd', ivOverrides: {} }, _dirtyUntilPush: false, _hydrated: false, SECRET_CLOUD_FIELDS: [], unpackCloudBlob: r => r,
+  const rctx = Object.assign(appSchema(SRC), { state: { checklistDate: 'd', ivOverrides: {} }, _dirtyUntilPush: false, _hydrated: false, unpackCloudBlob: r => r,
     sanitizeRoster: r => r, mergeIvOverrides: (a, b) => b || a, normalizeCandyInventory: x => x, cleanSnapshotIndex: x => x,
-    setState(p) { if (!patch) patch = p; } };
+    setState(p) { if (!patch) patch = p; } });
   new Function('rawRemote', 'opts', extractMethodBody(SRC, 'applyRemote(rawRemote, opts) {')).call(rctx, {}, null);
   const sorted = a => [...a].sort();
   const diff = (a, b) => sorted(a.filter(k => b.indexOf(k) < 0));
@@ -1070,6 +1072,144 @@ function buildLists(roster, bestRank) {
   check('the applyRemote patch covers every synced field', diff(synced, Object.keys(patch)), []);
   check('the applyRemote patch has nothing synced-looking outside the list', diff(Object.keys(patch), synced), ['cutTargetDraft', 'snapshots'].filter(k => k in patch));
   check('EMPTY_USER_DATA resets every synced field', diff(synced, empty), []);
+
+  // Sign-out and an account switch reset every synced field to the schema default (moveDB, evoTable, chat, queues, trainer level
+  // and dust reserve used to stay on screen), but leave the checklist day and the per-session OCR switch alone.
+  const was = {};
+  synced.forEach(k => { was[k] = packed.indexOf(k) >= 0 ? [{ A: 1 }] : 7; });
+  was.checklistDate = '2026-01-01'; was.trainerLevel = 44; was.dustReserve = 5; was.chatMessages = [{ r: 'u', t: 'hi' }]; was.ocrAutoApply = true;
+  L.state = was;
+  const reset = emptyFn();
+  const defOf = k => L.dataFields().find(f => f.key === k).def;
+  check('a reset takes every field back to its default', synced.filter(k => k !== 'checklistDate').filter(k => JSON.stringify(reset[k]) !== JSON.stringify(defOf(k))), []);
+  check('a reset restores trainer level 36 and dust reserve 100000, empties chat, moves, evolutions and queues', [reset.trainerLevel, reset.dustReserve, reset.chatMessages, reset.moveDB, reset.evoTable, reset.transferQueue, reset.triageKeep, reset.candyAiDecisions], [36, 100000, [], {}, {}, [], {}, {}]);
+  check('a reset keeps the checklist day (not account data) and does not touch ocrAutoApply', [reset.checklistDate, 'ocrAutoApply' in reset], ['2026-01-01', false]);
+  const r1 = emptyFn(), r2 = emptyFn(); r1.resources.fastTM = 9;
+  check('a reset gives fresh objects, never a shared default', r2.resources.fastTM, null);
+  L.state = { ...was, chatMessages: Array.from({ length: 80 }, (_, i) => ({ i })) };
+  const saved = new Function(extractMethodBody(SRC, 'buildCloudBlob() {')).call(L);
+  const sc = JSON.parse(saved.chatMessagesJson);
+  check('only the newest 60 chat messages are saved', [sc.length, sc[0].i], [60, 20]);
+})();
+
+// The schema itself, and every list derived from it (the getter names stay: the rules test and the sync tests read them).
+(() => {
+  const L = appSchema(SRC);
+  const rows = L.SYNC_SCHEMA, keys = rows.map(f => f.key);
+  const data = rows.filter(f => !f.role), secret = rows.filter(f => f.role === 'secret'), meta = rows.filter(f => f.role === 'meta');
+  const same = (name, got, want) => check(name, [[...got].sort(), got.length], [[...want].sort(), want.length]);
+  check('schema keys are unique', keys.length, new Set(keys).size);
+  same('SYNC_KEYS is the data rows', L.SYNC_KEYS(), data.map(f => f.key));
+  same('SYNCED_STATE_KEYS is the data rows that a restore applies', L.SYNCED_STATE_KEYS, data.filter(f => f.restore !== false).map(f => f.key));
+  same('PACKED_KEYS is the packed data rows', L.PACKED_KEYS, data.filter(f => f.packed).map(f => f.key));
+  same('RESTORE_EXCLUDED_KEYS is the secrets and the rows a restore skips', L.RESTORE_EXCLUDED_KEYS, [...secret.map(f => f.key), ...data.filter(f => f.restore === false).map(f => f.key)]);
+  same('SECRET_CLOUD_FIELDS is the secrets', L.SECRET_CLOUD_FIELDS, secret.map(f => f.key));
+  same('CLOUD_META_KEYS is the meta rows', L.CLOUD_META_KEYS, meta.map(f => f.key));
+  const lists = { SYNC_KEYS: L.SYNC_KEYS(), SYNCED_STATE_KEYS: L.SYNCED_STATE_KEYS, PACKED_KEYS: L.PACKED_KEYS, RESTORE_EXCLUDED_KEYS: L.RESTORE_EXCLUDED_KEYS, SECRET_CLOUD_FIELDS: L.SECRET_CLOUD_FIELDS, CLOUD_META_KEYS: L.CLOUD_META_KEYS };
+  check('no list holds a key the schema does not have', Object.keys(lists).filter(n => lists[n].some(k => keys.indexOf(k) < 0)), []);
+  check('every data key is in SYNC_KEYS and SYNCED_STATE_KEYS', data.filter(f => lists.SYNC_KEYS.indexOf(f.key) < 0 || lists.SYNCED_STATE_KEYS.indexOf(f.key) < 0).map(f => f.key), []);
+  check('every packed key is a data key, and no credential is a data row', [lists.PACKED_KEYS.filter(k => !data.some(f => f.key === k)), data.filter(f => /geminiKey|githubToken|apiEndpoint/.test(f.key)).length], [[], 0]);
+  check('every data row has a default', data.filter(f => f.def === undefined).map(f => f.key), []);
+  // Stored names are a contract with documents already in the cloud and on devices: a rename or a removal must be deliberate.
+  check('the stored data keys are exactly the known 30', data.map(f => f.key).sort(), ['addedPokemon', 'bagCapacity', 'candyAiDecisions', 'candyInventory', 'chatMessages', 'checklistDate', 'checklistDone', 'completedIds', 'cutTarget', 'dustReserve', 'eliteTmDone', 'events', 'evoTable', 'evolutionItems', 'history', 'ivOverrides', 'maxBattles', 'megaEnergyInventory', 'megaEvolvedHistory', 'moveDB', 'pvpMaxLevel', 'removedIds', 'resources', 'roster', 'savedTeams', 'stardustBalance', 'transferQueue', 'triageKeep', 'trainerLevel', 'typeTable'].sort());
+  check('the packed keys are exactly the known 19', [...L.PACKED_KEYS].sort(), ['addedPokemon', 'candyAiDecisions', 'candyInventory', 'chatMessages', 'checklistDone', 'completedIds', 'evoTable', 'evolutionItems', 'history', 'ivOverrides', 'megaEnergyInventory', 'megaEvolvedHistory', 'moveDB', 'removedIds', 'resources', 'roster', 'transferQueue', 'triageKeep', 'typeTable'].sort());
+  check('the initial state is built from the schema defaults', /  state = \{\n    \.\.\.this\.schemaDefaults\(\),/.test(SRC), true);
+  check('only the chat is capped, at 60', data.filter(f => f.cap).map(f => [f.key, f.cap]), [['chatMessages', 60]]);
+})();
+
+// One write path for editing a Pokemon (patchMon). Every action that used to push to the cloud still does, the open detail sheet
+// reads the live record, and the sites that skipped the cache clear now clear it.
+(() => {
+  const methodsOf = src => {
+    const out = {};
+    for (const mm of src.matchAll(/^  (?:async |get )?([A-Za-z_]\w*)\(([^)]*)\) \{\n/gm)) { const j = src.indexOf('\n  }\n', mm.index + mm[0].length); out[mm[1]] = src.slice(mm.index, j); }
+    return out;
+  };
+  const ms = methodsOf(SRC);
+  const savesNow = b => /\bpushNow\(\)|push: 'now'|commitBaked\(/.test(b);
+  const savesSoon = b => /queueCloudPush|push: 'soon'/.test(b);
+  // The methods that pushed (at once, or queued) before the write paths were merged. A method that no longer pushes fails here.
+  const NOW = ['applyAppraisalPick', 'applyMegaEvolve', 'applyPowerUp', 'applyPurify', 'applyUnsurePick', 'bulkTransferNow', 'clearMoveData', 'clearTransferQueue', 'confirmClearRoster', 'confirmRestore', 'evolvePokemon', 'fetchEvoData', 'fetchMoveData', 'fetchTypeData', 'markEvolveDone', 'markRemainingNoEvolution', 'mergeAppraisalImport', 'performUndo', 'queueTransfer', 'removePokemon', 'saveCandyEdit', 'saveEvolutionItems', 'saveManualIv', 'saveMovesEdit', 'transferPokemon', 'triageKeepCurrent', 'triageTransferCurrent', 'unqueueTransfer'];
+  const SOON = ['bulkKeepSpecies', 'bulkPickFormNow', 'bulkRenameSpecies', 'bulkSaveTypeNow', 'clearChat', 'confirmCp', 'costumeApply', 'costumeEvolveSet', 'fixFormMismatches', 'recalculateAllRanks', 'revertImportRow', 'sendChat', 'setEvoPick', 'setGeminiKey', 'setNoEvolve', 'undoRefresh'];
+  check('every action that saved to the cloud at once still does', NOW.filter(n => !ms[n] || !savesNow(ms[n])), []);
+  check('every action that queued a cloud save still does', SOON.filter(n => !ms[n] || !savesSoon(ms[n])), []);
+  check('no method pastes the flush tail any more', Object.keys(ms).filter(n => n !== 'pushNow' && /clearTimeout\(this\._pushTimer\);\s*this\.pushCloud\(\)/.test(ms[n])), []);
+
+  const bind = (ctx, sigs) => { sigs.forEach(sig => { const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1); ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx); }); return ctx; };
+  const mk = (state, extra) => {
+    const log = { pushed: 0, queued: 0, cleared: 0, recalc: 0 };
+    const ctx = Object.assign({ state: { ivOverrides: {}, roster: [], addedPokemon: [], removedIds: [], ...state }, log, haptic() {},
+      pushCloud() { log.pushed++; }, queueCloudPush() { log.queued++; }, clearDerivedCaches() { log.cleared++; }, recalculateAllRanks() { log.recalc++; },
+      offerUndo() {}, closeConfirm() {}, closeDetail() {}, _pushTimer: 0,
+      setState(u, cb) { Object.assign(this.state, typeof u === 'function' ? u(this.state) : u); if (cb) cb(); } }, extra || {});
+    return bind(ctx, ['pushNow()', 'patchMons(patches, o)', 'patchMon(idx, patch, o)', 'patchEach(idxs, patch, o)', 'liveDetail()']);
+  };
+
+  // patchMon itself.
+  let c = mk({ ivOverrides: { 3: { name: 'A', cp: 100 } } });
+  const before = c.state.ivOverrides, beforeRec = before[3];
+  c.patchMon(3, { cp: 200 });
+  check('patchMon merges into the override and copies, never mutates', [c.state.ivOverrides[3], before[3] === beforeRec, beforeRec.cp, c.state.ivOverrides === before], [{ name: 'A', cp: 200 }, true, 100, false]);
+  check('patchMon clears the derived caches and pushes nothing by default', [c.log.cleared, c.log.pushed, c.log.queued], [1, 0, 0]);
+  c.patchMon(4, { a: 1 }, { push: 'now', recalc: true, state: { x: 1 } });
+  check('push now saves once, re-ranks and sets the other state', [c.log.pushed, c.log.recalc, c.state.x, c.state.ivOverrides[4]], [1, 1, 1, { a: 1 }]);
+  c.patchMon(4, { a: 2 }, { push: 'soon' });
+  check('push soon queues the debounced save only', [c.log.queued, c.log.pushed], [1, 1]);
+  c.patchEach([5, 6], { f: true });
+  check('patchEach patches every idx in one update', [c.state.ivOverrides[5], c.state.ivOverrides[6]], [{ f: true }, { f: true }]);
+
+  // The sheet shows the live record.
+  c = mk({ detailPoke: { idx: 7, name: 'Old', cp: 1, shown: 'kept' } });
+  c.effectiveRosterForMatch = () => [{ idx: 7, name: 'New', cp: 9 }];
+  check('the detail sheet reads the live record over the copy it was opened with', c.liveDetail(), { idx: 7, name: 'New', cp: 9, shown: 'kept' });
+  c.effectiveRosterForMatch = () => [];
+  check('a Pokemon that left the roster keeps the opened copy', c.liveDetail().name, 'Old');
+  c.state.detailPoke = null;
+  check('no sheet, no record', c.liveDetail(), null);
+
+  // Real methods, driven through patchMon: the push and the cache clear each of them had (or now has).
+  const drive = (sigs, state, fn, extra) => { const x = bind(mk(state, extra), sigs); fn(x); return x; };
+  c = drive(['confirmCp(p, value)'], {}, x => x.confirmCp({ idx: 1 }, '1500'));
+  check('confirmCp: sets the CP, queues a save, now clears caches', [c.state.ivOverrides[1].cp, c.log.queued, c.log.cleared], [1500, 1, 1]);
+  c = drive(['bulkSaveTypeNow(p, types)'], {}, x => x.bulkSaveTypeNow({ idx: 2, name: 'X' }, ['Fire', 'Flying']));
+  check('bulkSaveTypeNow: type saved, queued, now clears caches', [c.state.ivOverrides[2].type, c.log.queued, c.log.cleared], ['Fire / Flying', 1, 1]);
+  c = drive(['bulkKeepSpecies(p)'], {}, x => { x.bulkAnimateOut = (k, f) => f(); x.bulkKeepSpecies({ idx: 2 }); });
+  check('bulkKeepSpecies: reviewed, queued, now clears caches', [c.state.ivOverrides[2].nameReviewed, c.log.queued, c.log.cleared], [true, 1, 1]);
+  c = drive(['setNoEvolve(p, value)'], {}, x => x.setNoEvolve({ idx: 3, name: 'X' }, true));
+  check('setNoEvolve: queued, cleared, re-ranked', [c.state.ivOverrides[3].noEvolve, c.log.queued, c.log.cleared, c.log.recalc], [true, 1, 1, 1]);
+  c = drive(['toggleFavoriteOf(p)'], {}, x => x.toggleFavoriteOf({ idx: 4, favorite: false }));
+  check('toggleFavoriteOf: favourite set, caches cleared', [c.state.ivOverrides[4].favorite, c.log.cleared], [true, 1]);
+  c = drive(['setShinyConfirmed(p, isShiny)'], {}, x => x.setShinyConfirmed({ idx: 5 }, true));
+  check('setShinyConfirmed: shiny set, caches cleared', [c.state.ivOverrides[5].shiny, c.state.ivOverrides[5].shinyState, c.log.cleared], [true, null, 1]);
+  c = drive(['saveMovesEdit(p)'], { moveDraft: { 6: { quickMove: 'Fire Fang', chargeMove: '' } }, pendingTmUse: null, ivOverrides: { 6: { cp: 5, quickMove: 'Bite' } } }, x => x.saveMovesEdit({ idx: 6 }));
+  check('saveMovesEdit: moves merged over the override, draft dropped, saved at once', [c.state.ivOverrides[6], c.state.moveDraft[6], c.log.pushed, c.log.cleared], [{ cp: 5, quickMove: 'Fire Fang', chargeMove: null }, undefined, 1, 1]);
+  c = drive(['bulkFavourite()'], { selectedIdx: [1, 2], selectMode: true }, x => { x.effectiveRosterForMatch = () => [{ idx: 1 }, { idx: 2 }, { idx: 3 }]; x.bulkFavourite(); });
+  check('bulkFavourite: both favourited, selection cleared', [c.state.ivOverrides[1].favorite, c.state.ivOverrides[2].favorite, c.state.ivOverrides[3], c.state.selectedIdx, c.state.selectMode], [true, true, undefined, [], false]);
+  const dpFlow = mk({ detailPoke: { idx: 8, favorite: false } });
+  dpFlow.effectiveRosterForMatch = function () { return [{ idx: 8, favorite: !!(this.state.ivOverrides[8] || {}).favorite }]; };
+  bind(dpFlow, ['toggleFavoriteOf(p)']);
+  dpFlow.toggleFavoriteOf(dpFlow.liveDetail());
+  check('an edit made from the open sheet shows in the sheet at once', dpFlow.liveDetail().favorite, true);
+})();
+
+// spreadFields / rankFields / candidateRange: the one place that turns a known spread (or the spreads that still fit) into record
+// fields. The expectations are the formulas the eight copies used to spell out.
+(() => {
+  const base = m.BASE_STATS[227], ivs = [15, 14, 13];
+  const rank = (k, sh) => m.rankPctForLeague(base, ivs, k, sh);
+  const old = (name, sh, little, level) => ({
+    atkIV: 15, defIV: 14, staIV: 13, ivAvg: (15 + 14 + 13) / 45 * 100,
+    ...(level != null ? { lvlMin: level, lvlMax: level } : {}),
+    great: { rankPct: rank('great', sh), evolvesTo: name }, ultra: { rankPct: rank('ultra', sh), evolvesTo: name },
+    little: { rankPct: little ? rank('little', sh) : null, evolvesTo: name }
+  });
+  check('spreadFields equals the hand-written fields (no level, little eligible)', m.spreadFields({ name: 'Skarmory' }, base, ivs, { shadow: false, littleEligible: true }), old('Skarmory', false, true));
+  check('spreadFields with a level and a shadow, little not eligible', m.spreadFields({ name: 'Skarmory' }, base, ivs, { level: 31.5, shadow: true, littleEligible: false }), old('Skarmory', true, false, 31.5));
+  check('spreadFields tags the ranks with evolvesTo when given', m.spreadFields({ name: 'A' }, base, ivs, { evolvesTo: 'B', littleEligible: true }).great.evolvesTo, 'B');
+  check('rankFields is the rank part of spreadFields', m.rankFields(base, ivs, 'X', true, true), (({ great, ultra, little }) => ({ great, ultra, little }))(old('X', true, true)));
+  const cands = m.solveIVs(m.BASE_STATS[227], 1204, 106);
+  const rg = k => [Math.min(...cands.map(c => c[k])), Math.max(...cands.map(c => c[k]))];
+  check('candidateRange is the min and max of each IV over the candidates', [cands.length > 1, m.candidateRange(cands)], [true, { atk: rg('atkIV'), def: rg('defIV'), sta: rg('staIV') }]);
 })();
 
 // ---------------------------------------------------------------------------

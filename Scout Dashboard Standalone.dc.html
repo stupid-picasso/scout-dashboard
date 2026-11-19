@@ -3313,7 +3313,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.358{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.361{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -5301,7 +5301,7 @@
 <script type="text/x-dc" data-dc-script data-props="{}">
 class Component extends DCLogic {
   state = {
-    roster: [],
+    ...this.schemaDefaults(),
     loaded: false,
     tab: 'today',
     search: '',
@@ -5309,13 +5309,11 @@ class Component extends DCLogic {
     typeFetchBusy: false,
     typeFetchStatus: '',
     typeFetchError: '',
-    moveDB: {},
     moveFetchBusy: false,
     moveFetchStatus: '',
     moveFetchError: '',
     sortField: 'cp',
     league: 'great',
-    history: [],
     syncedFrom: '',
     detailPoke: null,
     visibleCount: 30,
@@ -5360,11 +5358,6 @@ class Component extends DCLogic {
     remindersOn: false,
     pushOn: false, pushBusy: false, pushMsg: '', pushPrefs: null,
     installHintHidden: false,
-    completedIds: [],
-    removedIds: [],
-    stardustBalance: null,
-    candyInventory: {},
-    typeTable: {},
     online: true,
     csvNotice: '',
     csvError: '',
@@ -5378,8 +5371,6 @@ class Component extends DCLogic {
     detailNavList: [],
     detailNavIndex: -1,
     fileFallbackCopied: false,
-    evoTable: {},
-    candyAiDecisions: {},
     tmAiRecommendations: [],
     tmAiBusy: false,
     tmAiError: '',
@@ -5388,13 +5379,9 @@ class Component extends DCLogic {
     evoFetchBusy: false,
     evoFetchStatus: '',
     evoFetchError: '',
-    trainerLevel: 36,
-    dustReserve: 100000,
-    triageKeep: {},
     appFavourited: [],
     selfProtect: false,
     negationOk: false,
-    transferQueue: [],
     transferSearch: '',
     todayExpand: {},
     ocrBusy: false,
@@ -5412,12 +5399,10 @@ class Component extends DCLogic {
     aiUsage: { day: '' },
     importProgress: { day: '', clips: 0, added: 0, updated: 0 },
     clearArmed: false,
-    ivOverrides: {},
     ivManualDraft: {},
     apprShotBusy: false,
     apprShotError: '',
     apprShotSummary: '',
-    addedPokemon: [],
     solvedIvResult: null,
     videoEstimate: null,
     csvExported: false,
@@ -5437,9 +5422,6 @@ class Component extends DCLogic {
     promptCopied: false,
     viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1200,
     showOptimizePlan: false,
-    checklistDate: '',
-    checklistDone: {},
-    chatMessages: [],
     chatInput: '',
     chatBusy: false,
     listening: false,
@@ -5447,18 +5429,12 @@ class Component extends DCLogic {
     lastAnswer: '',
     videoImport: null,
     importScreenMode: 'detail',
-    resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
     resourcesDraft: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
-    evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null },
     evolutionItemsDraft: {},
-    bagCapacity: null,
     bagCapacityDraft: null,
     closestMissRevealed: false,
-    cutTarget: 300,
     evolveSort: 'value',
-    pvpMaxLevel: 50,
     ocrAutoApply: false,
-    maxBattles: [],
     maxStar: 3,
     chatOpen: false,
     chatBubbleOff: false,
@@ -5476,9 +5452,6 @@ class Component extends DCLogic {
     driveWorkflowAppraisalSummary: '',
     recalcBusy: false,
     recalcSummary: '',
-    eliteTmDone: [],
-    megaEnergyInventory: {},
-    megaEvolvedHistory: {},
     megaNameDraft: '',
     megaAmountDraft: '',
     firebaseConfigError: '',
@@ -5494,8 +5467,6 @@ class Component extends DCLogic {
     raidWeather: '',
     updateReady: false,
     diagCount: 0,
-    events: [],
-    savedTeams: [],
     eventDraft: { title: '', date: '', species: '' },
     feed: null,
     eventMoves: null,
@@ -5732,14 +5703,55 @@ class Component extends DCLogic {
     return out;
   }
 
-  // The fields that make up one account's data. SYNC_KEYS (what is watched for a save), SYNCED_STATE_KEYS, buildCloudBlob,
-  // the applyRemote patch and EMPTY_USER_DATA must name the same set (test DATA-04). ocrAutoApply is deliberately not in it: it is
-  // a per-session switch, firestore.rules does not allow it in the user document, and sign-out leaves it alone.
-  SYNC_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable', 'moveDB', 'stardustBalance', 'history', 'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
-      'evoTable', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve', 'megaEnergyInventory', 'megaEvolvedHistory', 'candyAiDecisions',
-      'chatMessages', 'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'maxBattles'];
+  // What an account's data is made of: ONE row per field, and every list of those fields below is derived from it.
+  //   key, def     the field and its value for an empty account (also its first value; a fresh object on every read)
+  //   packed       stored in the cloud document as one compressed JSON string (key + 'Json'), not as a nested value
+  //   kind         how a cloud copy is read: 'or' (default) a missing or falsy value gives def, 'array' anything but an array does,
+  //                'num' only null or undefined does
+  //   keep         a missing value in the cloud copy leaves the current one on screen   stay   sign-out leaves it alone
+  //   cap          the most items saved (the newest)   norm  clean-up on read   restore:false  a backup restore skips it
+  //   role         'secret' kept on this device only, never saved; 'meta' written to the document beside the data
+  // firestore.rules must allow every data key (a packed one as key + 'Json') and every meta key; test_firestore_rules.js and the
+  // schema test check that. ocrAutoApply is deliberately not here: it is a per-session switch the rules do not allow and sign-out
+  // leaves alone.
+  get SYNC_SCHEMA() {
+    const R = (key, def, o) => ({ key, def, ...o });
+    const P = { packed: true };
+    return [
+      R('roster', [], { ...P, norm: (v, c) => c.sanitizeRoster(v) }),
+      R('ivOverrides', {}, { ...P, norm: (v, c) => c.mergeIvOverrides(c.state.ivOverrides, v) }),
+      R('addedPokemon', [], { ...P, norm: (v, c) => c.sanitizeRoster(v) }),
+      R('candyInventory', {}, { ...P, norm: (v, c) => c.normalizeCandyInventory(v) }),
+      R('typeTable', {}, P), R('moveDB', {}, P), R('evoTable', {}, P), R('candyAiDecisions', {}, P),
+      R('stardustBalance', null, { kind: 'num' }),
+      R('history', [], P), R('completedIds', [], P), R('removedIds', [], P),
+      R('checklistDate', '', { keep: true, stay: true }),
+      R('checklistDone', {}, P),
+      R('resources', { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null }, P),
+      R('evolutionItems', { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, P),
+      R('megaEnergyInventory', {}, P), R('megaEvolvedHistory', {}, P), R('triageKeep', {}, P), R('transferQueue', [], P),
+      R('trainerLevel', 36, { kind: 'num', keep: true }), R('dustReserve', 100000, { kind: 'num', keep: true }),
+      R('chatMessages', [], { ...P, kind: 'array', cap: 60 }),
+      R('bagCapacity', null, { kind: 'num' }), R('eliteTmDone', []), R('cutTarget', 300, { kind: 'num' }),
+      R('pvpMaxLevel', 50, { norm: v => [40, 50, 51].includes(v) ? v : 50 }),
+      R('events', [], { kind: 'array' }), R('savedTeams', [], { kind: 'array' }), R('maxBattles', [], { kind: 'array', keep: true }),
+      R('geminiKey', '', { role: 'secret' }), R('geminiKeys', [], { role: 'secret' }), R('apiEndpoint', '', { role: 'secret' }), R('githubToken', '', { role: 'secret' }),
+      R('lastSnapshotAt', null, { role: 'meta' }), R('snapshotIndex', [], { role: 'meta' })
+    ];
   }
+
+  // The data rows only (no secret, no meta).
+  dataFields() { return this.SYNC_SCHEMA.filter(f => !f.role); }
+
+  // The fields of a new or emptied account. With keepStay, a field that sign-out leaves alone keeps its current value.
+  schemaDefaults(keepStay) {
+    const o = {};
+    this.dataFields().forEach(f => { o[f.key] = keepStay && f.stay ? this.state[f.key] : f.def; });
+    return o;
+  }
+
+  // The fields watched for a change to save.
+  SYNC_KEYS() { return this.dataFields().map(f => f.key); }
 
   componentDidUpdate(prevProps, prevState) {
     // The just-changed highlight plays once when the roster shows it, then is forgotten.
@@ -5878,7 +5890,7 @@ class Component extends DCLogic {
         const n = (this.state.roster || []).length + (this.state.addedPokemon || []).length;
         // After "Delete my account" the device copy stays gone until there is something new to keep.
         if (this._localSaveOff) { if (!n) return; this._localSaveOff = false; }
-        ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
+        this.SECRET_CLOUD_FIELDS.forEach(k => { delete blob[k]; });
         const text = JSON.stringify(blob);
         if (text.length < 4200000) { localStorage.setItem(this.localCopyKey(cu && cu.uid), text); this.noteLocalSave(false); }
         else this.noteLocalSave(true);
@@ -6120,19 +6132,7 @@ class Component extends DCLogic {
   }
 
   EMPTY_USER_DATA() {
-    return {
-      roster: [], ivOverrides: {}, addedPokemon: [], candyInventory: {}, typeTable: {},
-      moveDB: {}, evoTable: {}, candyAiDecisions: {}, chatMessages: [], trainerLevel: 36, dustReserve: 100000,
-      stardustBalance: null, history: [], completedIds: [], removedIds: [],
-      checklistDate: this.state.checklistDate, checklistDone: {},
-      resources: { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
-      bagCapacity: null,
-      eliteTmDone: [],
-      cutTarget: 300, pvpMaxLevel: 50, cutTargetDraft: '300',
-      megaEnergyInventory: {}, megaEvolvedHistory: {}, evolutionItems: { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null }, triageKeep: {}, transferQueue: [],
-      syncedFrom: '',
-      events: [], savedTeams: [], maxBattles: []
-    };
+    return { ...this.schemaDefaults(true), cutTargetDraft: '300', syncedFrom: '' };
   }
 
   // Forget everything that belongs to the account that was signed in: timers, flags, the device copy and what is on screen.
@@ -6348,7 +6348,7 @@ class Component extends DCLogic {
 
   // The one-time scrub: credential fields an older build uploaded are deleted from the document, whichever device sees them
   // first. Only fields the document really has (as last read) are named, so nothing is written for a clean document.
-  get SECRET_CLOUD_FIELDS() { return ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint']; }
+  get SECRET_CLOUD_FIELDS() { return this.SYNC_SCHEMA.filter(f => f.role === 'secret').map(f => f.key); }
 
   secretScrubFields() {
     try {
@@ -6395,38 +6395,13 @@ class Component extends DCLogic {
       return;
     }
     this._applyingRemote = true;
-    const patch = {
-      roster: this.sanitizeRoster(remote.roster || []),
-      ivOverrides: this.mergeIvOverrides(this.state.ivOverrides, remote.ivOverrides),
-      addedPokemon: this.sanitizeRoster(remote.addedPokemon || []),
-      candyInventory: this.normalizeCandyInventory(remote.candyInventory || {}),
-      typeTable: remote.typeTable || {},
-      moveDB: remote.moveDB || {},
-      evoTable: remote.evoTable || {},
-      candyAiDecisions: remote.candyAiDecisions || {},
-      chatMessages: Array.isArray(remote.chatMessages) ? remote.chatMessages : [],
-      stardustBalance: remote.stardustBalance != null ? remote.stardustBalance : null,
-      history: remote.history || [],
-      completedIds: remote.completedIds || [],
-      removedIds: remote.removedIds || [],
-      checklistDate: remote.checklistDate || this.state.checklistDate,
-      checklistDone: remote.checklistDone || {},
-      resources: remote.resources || { rareCandy: null, rareCandyXL: null, fastTM: null, chargedTM: null, eliteFastTM: null, eliteChargedTM: null },
-      evolutionItems: remote.evolutionItems || { sunStone: null, kingsRock: null, metalCoat: null, dragonScale: null, upgrade: null, sinnohStone: null, unovaStone: null, gimmighoulCoins: null, sweetApple: null, tartApple: null, syrupyApple: null },
-      bagCapacity: remote.bagCapacity != null ? remote.bagCapacity : null,
-      eliteTmDone: remote.eliteTmDone || [],
-      cutTarget: remote.cutTarget != null ? remote.cutTarget : 300,
-      pvpMaxLevel: [40, 50, 51].includes(remote.pvpMaxLevel) ? remote.pvpMaxLevel : 50,
-      events: Array.isArray(remote.events) ? remote.events : [],
-      savedTeams: Array.isArray(remote.savedTeams) ? remote.savedTeams : [],
-      maxBattles: Array.isArray(remote.maxBattles) ? remote.maxBattles : (this.state.maxBattles || []),
-      megaEnergyInventory: remote.megaEnergyInventory || {},
-      megaEvolvedHistory: remote.megaEvolvedHistory || {},
-      triageKeep: remote.triageKeep || {},
-      transferQueue: remote.transferQueue || [],
-      trainerLevel: remote.trainerLevel != null ? remote.trainerLevel : this.state.trainerLevel,
-      dustReserve: remote.dustReserve != null ? remote.dustReserve : this.state.dustReserve,
-    };
+    const patch = {};
+    this.dataFields().forEach(f => {
+      const v = remote[f.key];
+      let x = f.kind === 'array' ? (Array.isArray(v) ? v : undefined) : f.kind === 'num' ? (v != null ? v : undefined) : (v || undefined);
+      if (x === undefined) x = f.keep && this.state[f.key] != null ? this.state[f.key] : f.def;
+      patch[f.key] = f.norm ? f.norm(x, this) : x;
+    });
     // The snapshot list is the small index kept in the user document; no snapshot body is read to show it.
     if (Array.isArray(remote.snapshotIndex)) { this._snapIndex = this.cleanSnapshotIndex(remote.snapshotIndex); patch.snapshots = this._snapIndex.map(x => ({ id: x.id, reason: x.reason, createdAt: x.createdAt, pokemonCount: x.count })); }
     patch.cutTargetDraft = String(patch.cutTarget);
@@ -6603,39 +6578,24 @@ class Component extends DCLogic {
   // entry instead of tens of thousands. Nothing here is ever queried
   // server-side — the document is only ever read back whole — so indexing it
   // buys nothing and was the only thing standing between the roster and a save.
-  // Every key buildCloudBlob writes. confirmRestore derives its list from THIS
-  // rather than repeating it: the two lists had already drifted, so a restore
-  // silently dropped evoTable (hundreds of AI-resolved species), candyAiDecisions,
-  // triageKeep, transferQueue, trainerLevel and dustReserve — then immediately
-  // pushed the gaps over the good cloud copy.
+  // The lists below are views over SYNC_SCHEMA. Every key buildCloudBlob writes; confirmRestore applies exactly these.
   get SYNCED_STATE_KEYS() {
-    return ['roster', 'ivOverrides', 'addedPokemon', 'candyInventory', 'typeTable',
-      'moveDB', 'evoTable', 'candyAiDecisions', 'stardustBalance', 'history',
-      'completedIds', 'removedIds', 'checklistDate', 'checklistDone', 'resources', 'evolutionItems',
-      'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue', 'trainerLevel', 'dustReserve',
-      'chatMessages',
-      'bagCapacity', 'eliteTmDone', 'cutTarget', 'pvpMaxLevel', 'events', 'savedTeams', 'maxBattles'];
+    return this.dataFields().filter(f => f.restore !== false).map(f => f.key);
   }
 
-  // Credentials are excluded from a restore by NAME, not by being forgotten, so
-  // adding a key to the list above can never silently start overwriting keys.
-  // githubToken is deliberately absent from SYNCED_STATE_KEYS entirely (an old
-  // backup should never resurrect a possibly-revoked PAT) — listed here too so
-  // a future edit that adds it to SYNCED_STATE_KEYS doesn't reintroduce that risk.
+  // Credentials are excluded from a restore by NAME, so a field added to the schema can never start overwriting them. They are
+  // not data rows at all: an old backup must never resurrect a possibly revoked token.
   get RESTORE_EXCLUDED_KEYS() {
-    return ['geminiKey', 'geminiKeys', 'apiEndpoint', 'githubToken'];
+    return this.SYNC_SCHEMA.filter(f => f.role === 'secret' || f.restore === false).map(f => f.key);
   }
 
   // Fields written to the user document outside buildCloudBlob (the snapshot bookkeeping). firestore.rules must list them too.
   get CLOUD_META_KEYS() {
-    return ['lastSnapshotAt', 'snapshotIndex'];
+    return this.SYNC_SCHEMA.filter(f => f.role === 'meta').map(f => f.key);
   }
 
   get PACKED_KEYS() {
-    return ['roster', 'addedPokemon', 'ivOverrides', 'candyInventory', 'typeTable',
-      'moveDB', 'evoTable', 'candyAiDecisions', 'history', 'completedIds', 'removedIds',
-      'checklistDone', 'resources', 'evolutionItems', 'megaEnergyInventory', 'megaEvolvedHistory', 'triageKeep', 'transferQueue',
-      'chatMessages'];
+    return this.dataFields().filter(f => f.packed).map(f => f.key);
   }
 
   // Split on ENCODED BYTES, not string length. slice() counts UTF-16 code units,
@@ -6725,22 +6685,15 @@ class Component extends DCLogic {
 
   buildCloudBlob() {
     const s = this.state;
-    const raw = {
-      roster: s.roster, ivOverrides: s.ivOverrides, addedPokemon: s.addedPokemon, candyInventory: s.candyInventory,
-      typeTable: s.typeTable, moveDB: s.moveDB, evoTable: s.evoTable, candyAiDecisions: s.candyAiDecisions,
-      stardustBalance: s.stardustBalance, history: s.history,
-      completedIds: s.completedIds, removedIds: s.removedIds, checklistDate: s.checklistDate,
-      checklistDone: s.checklistDone, resources: s.resources, evolutionItems: s.evolutionItems, megaEnergyInventory: s.megaEnergyInventory, megaEvolvedHistory: s.megaEvolvedHistory,
-      triageKeep: s.triageKeep, transferQueue: s.transferQueue, trainerLevel: s.trainerLevel, dustReserve: s.dustReserve,
-      bagCapacity: s.bagCapacity, eliteTmDone: s.eliteTmDone, cutTarget: s.cutTarget, pvpMaxLevel: s.pvpMaxLevel,
-      events: s.events || [], savedTeams: s.savedTeams || [], maxBattles: s.maxBattles || [],
-      // Trimmed on write: an unbounded transcript would eventually crowd out the
-      // roster, which is the data that actually matters.
-      chatMessages: Array.isArray(s.chatMessages) ? s.chatMessages.slice(-60) : [],
-      // API keys, the custom endpoint and the GitHub token are never part of this blob (cloud document, snapshots,
-      // device copy, backup file), whatever the browser mode.
-      updatedAt: Date.now()
-    };
+    const raw = {};
+    this.dataFields().forEach(f => {
+      const v = s[f.key];
+      // A chat transcript is trimmed on write: an unbounded one would eventually crowd out the roster, which is the data that
+      // actually matters. API keys, the custom endpoint and the GitHub token are never part of this blob (cloud document,
+      // snapshots, device copy, backup file), whatever the browser mode.
+      raw[f.key] = f.kind === 'array' ? (Array.isArray(v) ? (f.cap ? v.slice(-f.cap) : v) : []) : v;
+    });
+    raw.updatedAt = Date.now();
     const out = {};
     Object.keys(raw).forEach(k => {
       if (this.PACKED_KEYS.indexOf(k) >= 0) {
@@ -7189,9 +7142,7 @@ class Component extends DCLogic {
     const pend = this.state.costumePending;
     if (!pend || !pend.idxs.length) return;
     this.offerUndo(pend.idxs.length + ' marked as costume', ['ivOverrides']);
-    const overrides = { ...(this.state.ivOverrides || {}) };
-    pend.idxs.forEach(i => { overrides[i] = { ...(overrides[i] || {}), costume: true }; });
-    this.setState({ ivOverrides: overrides, costumePending: null }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); } catch (e) {} });
+    this.patchEach(pend.idxs, { costume: true }, { push: 'soon', state: { costumePending: null } });
   }
 
   // Costume Pokemon of a species that evolves, whose Evolve button nobody has checked yet.
@@ -7204,8 +7155,7 @@ class Component extends DCLogic {
   costumeEvolveSet(p, can) {
     this.bulkAnimateOut('ce' + p.idx, () => {
       this.offerUndo(p.name + (can ? ' has an Evolve button' : ' cannot evolve'), ['ivOverrides']);
-      const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], noEvolve: !can } };
-      this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); if (!can) this.recalculateAllRanks(); } catch (e) {} });
+      this.patchMon(p.idx, { noEvolve: !can }, { push: 'soon', recalc: !can });
     });
   }
 
@@ -7291,13 +7241,13 @@ class Component extends DCLogic {
       message: Object.keys(tally).map(k => tally[k] + ' \u00d7 ' + k).join(', ') + '. Their measured IVs, CP and HP only fit the new form' + (hits.some(x => x.fm.reviewed) ? ' (including some you set by hand)' : '') + '. Ranks, types and PvP tiers are recalculated for it. Until then they are locked from every transfer list.',
       actions: [
         { label: 'SET ' + hits.length, style: 'primary', run: () => {
-          const overrides = { ...(this.state.ivOverrides || {}) };
+          const patches = {};
           hits.forEach(({ p, fm }) => {
             const info = m.speciesInfo(p.name, fm.form === 'normal' ? '' : fm.form);
-            overrides[p.idx] = { ...(overrides[p.idx] || {}), form: fm.form === 'normal' ? null : fm.form, type: info ? info.types.join(' / ') : (p.type || null), formReviewed: true };
+            patches[p.idx] = { form: fm.form === 'normal' ? null : fm.form, type: info ? info.types.join(' / ') : (p.type || null), formReviewed: true };
           });
           this.offerUndo(hits.length + ' forms set', ['ivOverrides']);
-          this.setState({ ivOverrides: overrides }, () => { this.closeConfirm(); try { this.queueCloudPush(); this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+          this.patchMons(patches, { push: 'soon', recalc: true, before: () => this.closeConfirm() });
         } },
         { label: 'LEAVE THEM', style: 'neutral', run: () => this.closeConfirm() }
       ]
@@ -7471,8 +7421,7 @@ class Component extends DCLogic {
 
   bulkSaveTypeNow(p, types) {
     this.offerUndo(p.name + ' type set to ' + types.join(' / '), ['ivOverrides']);
-    const overrides = { ...this.state.ivOverrides, [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], type: types.join(' / '), typeReviewed: true } };
-    this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); } catch (e) {} });
+    this.patchMon(p.idx, { type: types.join(' / '), typeReviewed: true }, { push: 'soon' });
   }
 
   // Sets one Pokemon's form, then re-derives everything that depended on its base stats.
@@ -7501,21 +7450,13 @@ class Component extends DCLogic {
           Object.assign(patch, { atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg: (ivs[0] + ivs[1] + ivs[2]) / 45 * 100, lvlMin: c.level, lvlMax: c.level, ivSolved: true, ivCandidates: 1, ivRange: null });
         } else if (cands.length > 1) {
           ivs = null;
-          const rng = k => { let lo = 15, hi = 0; cands.forEach(c => { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }); return [lo, hi]; };
           const lv = cands.map(c => c.level);
-          Object.assign(patch, { atkIV: null, defIV: null, staIV: null, ivAvg: null, ivRange: { atk: rng('atkIV'), def: rng('defIV'), sta: rng('staIV') }, ivCandidates: cands.length, ivSolved: false, lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv), great: null, ultra: null, little: null });
+          Object.assign(patch, { atkIV: null, defIV: null, staIV: null, ivAvg: null, ivRange: m.candidateRange(cands), ivCandidates: cands.length, ivSolved: false, lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv), great: null, ultra: null, little: null });
         }
       }
-      if (ivs) {
-        const shadow = this.isShadow(p);
-        const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
-        patch.great = { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name };
-        patch.ultra = { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name };
-        patch.little = { rankPct: littlePct, evolvesTo: p.name };
-      }
+      if (ivs) Object.assign(patch, m.rankFields(base, ivs, p.name, this.isShadow(p), this.littleCupEligible(p)));
     }
-    const overrides = { ...this.state.ivOverrides, [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], ...patch } };
-    this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); } catch (e) {} });
+    this.patchMon(p.idx, patch, { push: 'soon' });
   }
 
   // ---- Rename & search tools ---------------------------------------------------------------
@@ -7951,10 +7892,7 @@ class Component extends DCLogic {
     // arrives within milliseconds — if the push is still sitting in the debounce
     // window, applyRemote adopts that stale doc and the whole collection comes
     // straight back. This is what made CLEAR ROSTER look like it never worked.
-    if (this.state.cloudUser) {
-      clearTimeout(this._pushTimer);
-      this.pushCloud();
-    }
+    if (this.state.cloudUser) this.pushNow();
   }
 
   // Days since this Pokemon was last read off a screenshot/recording. Null when
@@ -8773,10 +8711,10 @@ class Component extends DCLogic {
         this.setState({ moveFetchError: (e && e.message) || 'Move lookup failed.' });
       }
       // Persist after every batch, not just at the end.
-      this.setState({ moveDB: { ...db } }, () => this.pushCloud());
+      this.setState({ moveDB: { ...db } }, () => this.pushNow());
     }
     this.setState({ moveDB: db, moveFetchBusy: false,
-      moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
+      moveFetchStatus: got + ' moves stored' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushNow());
   }
 
   movePrompt(names) {
@@ -8794,7 +8732,7 @@ class Component extends DCLogic {
   }
 
   clearMoveData() {
-    this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushCloud());
+    this.setState({ moveDB: {}, moveFetchStatus: 'Move data cleared.' }, () => this.pushNow());
   }
 
   // Pokemon GO type palette, used for the sprite well and the type chips. These
@@ -9037,7 +8975,7 @@ class Component extends DCLogic {
       }
     }
     this.setState({ typeTable: table, typeFetchBusy: false,
-      typeFetchStatus: got + ' species typed' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
+      typeFetchStatus: got + ' species typed' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushNow());
   }
 
   typePrompt(names) {
@@ -9767,15 +9705,13 @@ class Component extends DCLogic {
   bulkRenameSpecies(p, look) {
     this.bulkAnimateOut('n' + p.idx, () => {
       this.offerUndo(p.name + ' renamed to ' + look.real, ['ivOverrides']);
-      const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], ...this.lookalikePatch(p, look) } };
-      this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+      this.patchMon(p.idx, this.lookalikePatch(p, look), { push: 'soon', recalc: true });
     });
   }
 
   bulkKeepSpecies(p) {
     this.bulkAnimateOut('n' + p.idx, () => {
-      const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], nameReviewed: true } };
-      this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); } catch (e) {} });
+      this.patchMon(p.idx, { nameReviewed: true }, { push: 'soon' });
     });
   }
 
@@ -9793,9 +9729,9 @@ class Component extends DCLogic {
       message: summary + ' (' + certainty + '). The type or size on these does not fit the name they carry. Their IVs stay unmeasured until you appraise them, and ranks are recalculated for the right species. Do not do this if you really own the older species.',
       actions: [
         { label: 'RENAME ' + hits.length, style: 'primary', run: () => {
-          const overrides = { ...(this.state.ivOverrides || {}) };
-          hits.forEach(({ p, look }) => { overrides[p.idx] = { ...(overrides[p.idx] || {}), ...this.lookalikePatch(p, look) }; });
-          this.setState({ ivOverrides: overrides }, () => { this.closeConfirm(); try { this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+          const patches = {};
+          hits.forEach(({ p, look }) => { patches[p.idx] = this.lookalikePatch(p, look); });
+          this.patchMons(patches, { recalc: true, before: () => this.closeConfirm() });
         } },
         { label: 'LEAVE THEM', style: 'neutral', run: () => this.closeConfirm() }
       ]
@@ -10176,7 +10112,7 @@ class Component extends DCLogic {
     const next = { ...cur };
     Object.keys(d).forEach(k => { next[k] = n(d[k]); });
     this.setState({ evolutionItems: next, evolutionItemsDraft: {} }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+      this.pushNow();
     });
   }
 
@@ -10337,6 +10273,51 @@ class Component extends DCLogic {
 
   clearDerivedCaches() {
     this._memoStore = {}; this._keepCtx = null; this._cutSum = null; this._raidCache = null; this._effRoster = null;
+  }
+
+  // Save to the cloud now instead of after the 1.2 s debounce, for an action the person expects to survive an immediate close.
+  // Signed out, pushCloud returns at once, so callers need no guard.
+  pushNow() { try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {} }
+
+  // The one write path for editing Pokemon. Each patch is merged into a copy of ivOverrides[idx] (the live object is never
+  // changed), the derived caches are cleared, and the open detail sheet needs nothing: it reads the live record (liveDetail).
+  // o.push: 'now' saves to the cloud at once, 'soon' queues the debounced save, nothing leaves it to componentDidUpdate.
+  // o.recalc re-ranks every league afterwards; o.state is other state set in the same update; o.before / o.after run first / last.
+  patchMons(patches, o) {
+    o = o || {};
+    const ov = { ...(this.state.ivOverrides || {}) };
+    Object.keys(patches).forEach(i => { ov[i] = { ...(ov[i] || {}), ...patches[i] }; });
+    this.setState({ ivOverrides: ov, ...(o.state || {}) }, () => {
+      if (o.before) o.before();
+      try {
+        if (o.push === 'soon') this.queueCloudPush();
+        this.clearDerivedCaches();
+        if (o.recalc) this.recalculateAllRanks();
+      } catch (e) {}
+      if (o.push === 'now') this.pushNow();
+      if (o.after) o.after();
+    });
+  }
+
+  patchMon(idx, patch, o) { this.patchMons({ [idx]: patch }, o); }
+
+  // The same patch for every idx in the list.
+  patchEach(idxs, patch, o) { const m = {}; idxs.forEach(i => { m[i] = patch; }); this.patchMons(m, o); }
+
+  // Bake the overrides onto the roster and addedPokemon records (an override is keyed by position, so it would not reach the CSV
+  // export and a re-import would renumber it) and save to the cloud at once.
+  commitBaked(overrides, extra) {
+    const baked = this.bakeOverridesIntoRecords(overrides);
+    this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon, ...(extra || {}) }, () => this.pushNow());
+  }
+
+  // The record the open detail sheet shows: what the sheet was opened with, over the live record, so an edit, an evolve or a
+  // re-rank shows at once. A Pokemon that has left the roster keeps the copy it was opened with.
+  liveDetail() {
+    const dp = this.state.detailPoke;
+    if (!dp) return null;
+    const live = this.effectiveRosterForMatch().find(x => x.idx === dp.idx);
+    return live ? { ...dp, ...live } : dp;
   }
 
   async reloadFeedNow() {
@@ -10603,14 +10584,7 @@ class Component extends DCLogic {
         if (!base) base = m.BASE_STATS[p.dex];
         if (!base) { skipped++; return; }
         const ivs = [p.atkIV, p.defIV, p.staIV];
-        const shadow = this.isShadow(p);
-        const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
-        overrides[p.idx] = {
-          ...overrides[p.idx],
-          great: { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name },
-          ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name },
-          little: { rankPct: littlePct, evolvesTo: p.name }
-        };
+        overrides[p.idx] = { ...overrides[p.idx], ...m.rankFields(base, ivs, p.name, this.isShadow(p), this.littleCupEligible(p)) };
         updated++;
       });
       const summary = updated + ' recalculated' + (skipped ? ' \u00b7 ' + skipped + ' skipped (no IVs on file)' : '');
@@ -10784,7 +10758,7 @@ class Component extends DCLogic {
     const history = { ...(this.state.megaEvolvedHistory || {}) };
     history[key] = { ...(history[key] || {}), [fk]: true };
     this.setState({ megaEnergyInventory: inv, megaEvolvedHistory: history }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+      this.pushNow();
     });
   }
 
@@ -11675,15 +11649,10 @@ class Component extends DCLogic {
     // exactly one fits. Otherwise report the range and how many still fit, and
     // leave APPLY disabled — the appraisal is what narrows it.
     if (candidates.length > 1) {
-      const rangeOf = k => {
-        let lo = 15, hi = 0;
-        for (const cc of candidates) { if (cc[k] < lo) lo = cc[k]; if (cc[k] > hi) hi = cc[k]; }
-        return [lo, hi];
-      };
       const lv = candidates.map(cc => cc.level);
       this.setState({
         solvedIvResult: {
-          ambiguousRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+          ambiguousRange: this.mechanics.candidateRange(candidates),
           lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
           candidateCount: candidates.length, hintMismatch,
           dustUsed: !!levelFilter && !dustIgnored, dustIgnored,
@@ -11694,20 +11663,17 @@ class Component extends DCLogic {
     }
     const c = candidates[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
-    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
     // ocrParsed itself has no shadow field — if this screenshot was matched to
     // an existing roster entry, that entry is the only place shadow status
     // could come from; otherwise assume normal (a shadow OCR'd fresh has no
     // way to signal it here yet).
     const matchedForShadow = p.matchedIdx != null ? this.effectiveRosterForMatch().find(r => r.idx === p.matchedIdx) : null;
     const shadow = this.isShadow(matchedForShadow || p);
-    const great = this.mechanics.rankPctForLeague(base, ivs, 'great', shadow);
-    const ultra = this.mechanics.rankPctForLeague(base, ivs, 'ultra', shadow);
-    const little = this.littleCupEligible(p) ? this.mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
+    const sp = this.mechanics.spreadFields(p, base, ivs, { shadow, littleEligible: this.littleCupEligible(p) });
     this.setState({
       solvedIvResult: {
         level: c.level, atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV,
-        ivAvg, great, ultra, little, candidateCount: candidates.length, hintMismatch,
+        ivAvg: sp.ivAvg, great: sp.great.rankPct, ultra: sp.ultra.rankPct, little: sp.little.rankPct, candidateCount: candidates.length, hintMismatch,
         dustUsed: !!levelFilter && !dustIgnored, dustIgnored,
         // Named so a Galarian/Alolan/Hisuian solve is visibly attributed rather
         // than looking like an ordinary one.
@@ -12010,7 +11976,7 @@ class Component extends DCLogic {
   deviceBackupText() {
     // Unpacked like the cloud backup: plain readable arrays, not the chunked storage form.
     const blob = this.unpackCloudBlob(this.buildCloudBlob());
-    ['githubToken', 'geminiKey', 'geminiKeys', 'apiEndpoint'].forEach(k => { delete blob[k]; });
+    this.SECRET_CLOUD_FIELDS.forEach(k => { delete blob[k]; });
     const count = (this.effectiveRosterForMatch() || []).length;
     return JSON.stringify({ _backup: { app: 'Professor', kind: 'device', takenAt: new Date().toISOString(), count }, data: blob }, null, 2);
   }
@@ -12154,7 +12120,7 @@ class Component extends DCLogic {
     // A CLEAR ROSTER marker would make applyRemote discard the restored roster
     // as "written before the clear", so the restore retires it.
     this.setState(next, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+      this.pushNow();
     });
     clearTimeout(this._csvNoticeTimer);
     this._csvNoticeTimer = setTimeout(() => this.setState({ csvNotice: '' }), 3200);
@@ -14233,11 +14199,8 @@ class Component extends DCLogic {
     const patch = { cpCheck: false, cpCandidates: null, cpNote: '' };
     if (cp != null && Number.isFinite(cp) && cp >= 10 && cp <= 6000) patch.cp = cp;
     else if (value != null && value !== '') return;
-    const ov = { ...(this.state.ivOverrides || {}) };
-    ov[p.idx] = { ...(ov[p.idx] || {}), ...patch };
-    const dp = this.state.detailPoke;
-    this.haptic && this.haptic('light');
-    this.setState({ ivOverrides: ov, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, ...patch } } : {}) }, () => this.queueCloudPush && this.queueCloudPush());
+    this.haptic('light');
+    this.patchMon(p.idx, patch, { push: 'soon' });
   }
 
   importCheck(item) {
@@ -14420,18 +14383,13 @@ class Component extends DCLogic {
               item._solvedCount = cands.length;
               // A CP/HP pair almost always fits many spreads: only a UNIQUE solve is pinned; anything else keeps the
               // candidate range and stays visibly unsolved until the appraisal collapses it in mergeAppraisalImport.
-              const rng = k => {
-                let lo = 15, hi = 0;
-                for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
-                return [lo, hi];
-              };
               if (cands.length === 1) {
                 const c = cands[0];
                 item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
                 item.level = c.level;
                 solvedFrom = 1;
               } else {
-                item._ivRange = { atk: rng('atkIV'), def: rng('defIV'), sta: rng('staIV') };
+                item._ivRange = mechanics.candidateRange(cands);
                 const lv = cands.map(c => c.level);
                 item._lvlRange = [Math.min.apply(null, lv), Math.max.apply(null, lv)];
               }
@@ -14447,19 +14405,13 @@ class Component extends DCLogic {
         const base = (bases[0] && bases[0].base) || mechanics.BASE_STATS[item.dex];
         if (base) {
           const ivs = [item.atkIV, item.defIV, item.staIV];
-          const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-          const shadow = this.isShadow(item);
-          const littlePct = this.littleCupEligible(item) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
           ivPatch = {
-            atkIV: item.atkIV, defIV: item.defIV, staIV: item.staIV, ivAvg,
+            ...mechanics.spreadFields(item, base, ivs, { level: item.level, shadow: this.isShadow(item), littleEligible: this.littleCupEligible(item) }),
             // A fresh solved level is real evidence from CP/HP — it supersedes
             // any POWER UP taps logged in-app since the last scan, so the
             // pending counter clears rather than compounding on top of it.
-            ...(item.level != null ? { lvlMin: item.level, lvlMax: item.level, pendingPowerUps: 0, powerUpsSinceScan: 0 } : {}),
-            ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {}),
-            great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: item.name },
-            ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: item.name },
-            little: { rankPct: littlePct, evolvesTo: item.name }
+            ...(item.level != null ? { pendingPowerUps: 0, powerUpsSinceScan: 0 } : {}),
+            ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {})
           };
         }
       }
@@ -14823,26 +14775,17 @@ class Component extends DCLogic {
     }
     if (!usedBase) {
       const first = spreads[0] || [item.atkIV, item.defIV, item.staIV];
-      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-        iv: first.join('/') + ' \u2014 does not fit this CP/HP', ivCount: 0 } };
+      return { contradiction: true, review: this.reviewRow(rec, item, first.join('/') + ' \u2014 does not fit this CP/HP', 0) };
     }
     const base = usedBase.base;
-    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-    const shadow = this.isShadow(rec);
-    const littlePct = this.littleCupEligible(rec) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
-      atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg,
-      lvlMin: level, lvlMax: level,
+      ...mechanics.spreadFields(rec, base, ivs, { level, shadow: this.isShadow(rec), littleEligible: this.littleCupEligible(rec) }),
       ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true,
       ...(item.ivSource === 'owner-confirmed' || item.ownerPicked ? { ivManual: true } : {}),
-      ivArbitrated: arbitrated || undefined,
-      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: rec.name },
-      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: rec.name },
-      little: { rankPct: littlePct, evolvesTo: rec.name }
+      ivArbitrated: arbitrated || undefined
     };
-    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-      iv: ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), ivCount: 1 } };
+    return { review: this.reviewRow(rec, item, ivs.join('/') + (arbitrated ? ' \u00b7 measured (CP/HP-corrected)' : ' \u00b7 measured'), 1) };
   }
 
   // Appraisal star badge -> allowed sum of the three IVs (spread% = sum / 45).
@@ -14905,6 +14848,9 @@ class Component extends DCLogic {
     return out;
   }
 
+  // One row of the appraisal review: the record, the reading it was matched to, and the spread (or why there is none).
+  reviewRow(rec, item, iv, count) { return { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv, ivCount: count }; }
+
   // Solve one appraisal item against a specific record and write the narrowed
   // spread + PvP ranks into overrides. Returns {review, contradiction}.
   solveAndApplyAppraisal(rec, item, hint, overrides) {
@@ -14923,18 +14869,14 @@ class Component extends DCLogic {
         const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
         if (hit && hit.length) { raw = hit; break; }
       }
-      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: null, ivCount: raw ? raw.length : 0 } };
+      return { contradiction: true, review: this.reviewRow(rec, item, null, raw ? raw.length : 0) };
     }
     const base = usedBase.base;
     // The appraisal narrows the candidates; it does not always collapse them to
     // one. Pinning a guess HERE is the worst version of the bug — this is the
     // code path whose whole job is to make the roster agree with the bars.
     if (cands.length > 1) {
-      const rangeOf = k => {
-        let lo = 15, hi = 0;
-        for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; }
-        return [lo, hi];
-      };
+      const range = mechanics.candidateRange(cands);
       const lv = cands.map(c => c.level);
       // A record can already carry a spread from a trusted earlier source (a
       // Poke Genie/CSV export, a previous exact solve). An ambiguous solve is
@@ -14945,47 +14887,37 @@ class Component extends DCLogic {
       if (known) {
         if (cands.some(c => c.atkIV === known[0] && c.defIV === known[1] && c.staIV === known[2])) {
           overrides[rec.idx] = { ...overrides[rec.idx], apprStars: hint.stars, apprMaxed: hint.maxed, ivConfirmed: true };
-          return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-            iv: known.join('/') + ' (kept \u00b7 consistent)', ivCount: cands.length } };
+          return { review: this.reviewRow(rec, item, known.join('/') + ' (kept \u00b7 consistent)', cands.length) };
         }
         // Genuinely contradicted: the stored spread is not among the spreads
         // that fit this CP/HP + appraisal. Report it, never silently replace.
-        return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-          iv: known.join('/') + ' \u2260 ' + this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+        return { contradiction: true, review: this.reviewRow(rec, item, known.join('/') + ' \u2260 ' + this.rangeText(range), cands.length) };
       }
       overrides[rec.idx] = {
         ...overrides[rec.idx],
         atkIV: null, defIV: null, staIV: null, ivAvg: null,
-        ivRange: { atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') },
+        ivRange: range,
         ivCandidates: cands.length, ivSolved: false,
         lvlMin: Math.min.apply(null, lv), lvlMax: Math.max.apply(null, lv),
         apprStars: hint.stars, apprMaxed: hint.maxed,
         great: null, ultra: null, little: null
       };
-      return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp,
-        iv: this.rangeText({ atk: rangeOf('atkIV'), def: rangeOf('defIV'), sta: rangeOf('staIV') }), ivCount: cands.length } };
+      return { review: this.reviewRow(rec, item, this.rangeText(range), cands.length) };
     }
     const c = cands[0];
     const ivs = [c.atkIV, c.defIV, c.staIV];
     // A spread already on file (a trusted export, a measurement) is never silently replaced by a single solve.
     const knownNow = this.knownSpread(rec, overrides);
     if (knownNow && (knownNow[0] !== ivs[0] || knownNow[1] !== ivs[1] || knownNow[2] !== ivs[2])) {
-      return { contradiction: true, review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: knownNow.join('/') + ' \u2260 ' + ivs.join('/'), ivCount: 1 } };
+      return { contradiction: true, review: this.reviewRow(rec, item, knownNow.join('/') + ' \u2260 ' + ivs.join('/'), 1) };
     }
-    const ivAvg = (ivs[0] + ivs[1] + ivs[2]) / 45 * 100;
-    const shadow = this.isShadow(rec);
-    const littlePct = this.littleCupEligible(rec) ? mechanics.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[rec.idx] = {
       ...overrides[rec.idx],
-      atkIV: c.atkIV, defIV: c.defIV, staIV: c.staIV, ivAvg,
-      lvlMin: c.level, lvlMax: c.level,
+      ...mechanics.spreadFields(rec, base, ivs, { level: c.level, shadow: this.isShadow(rec), littleEligible: this.littleCupEligible(rec) }),
       ivRange: null, ivSolved: true, ivCandidates: 1,
-      apprStars: hint.stars, apprMaxed: hint.maxed,
-      great: { rankPct: mechanics.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: rec.name },
-      ultra: { rankPct: mechanics.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: rec.name },
-      little: { rankPct: littlePct, evolvesTo: rec.name }
+      apprStars: hint.stars, apprMaxed: hint.maxed
     };
-    return { review: { name: rec.name, matchName: rec.name, cp: item.cp, hp: item.hp, iv: ivs.join('/'), ivCount: 1 } };
+    return { review: this.reviewRow(rec, item, ivs.join('/'), 1) };
   }
 
   // Match each appraisal reading to an existing record by name(+dex) + exact
@@ -15049,10 +14981,7 @@ class Component extends DCLogic {
     // the records, so a pinned IV never reached the export, and a re-import
     // renumbered idx out from under every pin. Baking the spread onto the roster
     // and addedPokemon records makes it survive both.
-    const baked = this.bakeOverridesIntoRecords(overrides);
-    this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
-    });
+    this.commitBaked(overrides);
     const measuredCount = Object.keys(overrides).filter(k => overrides[k] && overrides[k].ivMeasured).length;
     console.log('[Scout] appraisal import: ' + applied + ' applied, ' + measuredCount + ' measured pins now held locally');
     // updated/inserted/total keys keep bumpImportProgress happy.
@@ -15071,10 +15000,7 @@ class Component extends DCLogic {
     const overrides = { ...this.state.ivOverrides };
     const hint = this.appraisalHintFromItem(row._item);
     const res = this.solveAndApplyAppraisal(rec, row._item, hint, overrides);
-    const baked = this.bakeOverridesIntoRecords(overrides);
-    this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
-    });
+    this.commitBaked(overrides);
     const review = vi.review.map(r => r._rid === rid
       ? { ...r, _status: res.contradiction ? 'contradiction' : 'applied', matchName: rec.name, iv: res.review.iv, ivCount: res.review.ivCount, _item: null, _choices: null }
       : r);
@@ -15095,10 +15021,7 @@ class Component extends DCLogic {
     const item = { ...row._item, atkIV: ch.spread[0], defIV: ch.spread[1], staIV: ch.spread[2],
       ivCandidateSets: null, ivConflict: false, ownerPicked: true };
     const res = this.applyMeasuredIv(rec, item, overrides);
-    const baked = this.bakeOverridesIntoRecords(overrides);
-    this.setState({ ivOverrides: baked.overrides, roster: baked.roster, addedPokemon: baked.addedPokemon }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
-    });
+    this.commitBaked(overrides);
     const review = vi.review.map(r => r._rid === rid
       ? { ...r, _status: res.contradiction ? 'contradiction' : 'applied', matchName: rec.name, iv: res.review.iv, ivCount: res.review.ivCount, _item: null, _choices: null }
       : r);
@@ -15194,9 +15117,7 @@ class Component extends DCLogic {
   moveDraftFor(p, field) {
     const draft = (this.state.moveDraft || {})[p.idx];
     if (draft && draft[field] !== undefined) return draft[field];
-    // p (state.detailPoke) is a frozen snapshot from when the sheet opened \u2014
-    // it's never refreshed after a save, so it can't be trusted here. The
-    // live override store can be, regardless of how stale p itself is.
+    // The saved override wins over p, whatever record p was taken from.
     const override = (this.state.ivOverrides || {})[p.idx];
     const cur = (override && override[field] !== undefined) ? override[field] : p[field];
     return cur == null ? '' : this.canonicalMoveName(cur);
@@ -15216,12 +15137,10 @@ class Component extends DCLogic {
   saveMovesEdit(p) {
     this.haptic('light');
     const draft = (this.state.moveDraft || {})[p.idx] || {};
-    const overrides = { ...(this.state.ivOverrides || {}) };
-    const patch = { ...(overrides[p.idx] || {}) };
+    const patch = {};
     ['quickMove', 'chargeMove', 'chargeMove2'].forEach(f => {
       if (draft[f] !== undefined) patch[f] = draft[f] === '' ? null : draft[f];
     });
-    overrides[p.idx] = patch;
     const allDraft = { ...(this.state.moveDraft || {}) };
     delete allDraft[p.idx];
 
@@ -15246,18 +15165,9 @@ class Component extends DCLogic {
       }
     }
 
-    // state.detailPoke is a frozen snapshot from when the sheet opened, never
-    // otherwise refreshed on save \u2014 merge the saved fields into it directly
-    // so nothing else displayed in the open sheet can show a stale value the
-    // same way the move pickers just did.
-    const stateUpdate = { ivOverrides: overrides, moveDraft: allDraft, pendingTmUse: null };
+    const stateUpdate = { moveDraft: allDraft, pendingTmUse: null };
     if (resourcesPatch) stateUpdate.resources = resourcesPatch;
-    if (this.state.detailPoke && this.state.detailPoke.idx === p.idx) {
-      stateUpdate.detailPoke = { ...this.state.detailPoke, ...patch };
-    }
-    this.setState(stateUpdate, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
-    });
+    this.patchMon(p.idx, patch, { push: 'now', state: stateUpdate });
   }
 
   // AUTHORITATIVE_MOVES keys are lowercase move ids ("dragon breath", or
@@ -15391,11 +15301,7 @@ class Component extends DCLogic {
 
   setShinyConfirmed(p, isShiny) {
     if (!p) return;
-    const overrides = { ...this.state.ivOverrides };
-    overrides[p.idx] = { ...overrides[p.idx], shiny: !!isShiny, shinyState: null };
-    const patch = { shiny: !!isShiny, shinyState: null };
-    const dp = this.state.detailPoke;
-    this.setState({ ivOverrides: overrides, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, ...patch } } : {}) });
+    this.patchMon(p.idx, { shiny: !!isShiny, shinyState: null });
     this.haptic('light');
   }
 
@@ -15888,12 +15794,9 @@ class Component extends DCLogic {
 
   // Manual correction for species the built-in list does not know (or knows wrongly).
   toggleMaxCapable(p) {
-    const ov = { ...(this.state.ivOverrides || {}) };
     const now = !this.isMaxCapable(p);
-    ov[p.idx] = { ...(ov[p.idx] || {}), dynamax: now, ...(now ? {} : { gigantamax: false }) };
-    const dp = this.state.detailPoke;
     this.haptic('light');
-    this.setState({ ivOverrides: ov, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, ...ov[p.idx] } } : {}) });
+    this.patchMon(p.idx, { dynamax: now, ...(now ? {} : { gigantamax: false }) });
   }
 
   maxTagFor(p) {
@@ -16154,7 +16057,7 @@ class Component extends DCLogic {
     this._undoSnap = null;
     clearTimeout(this._undoTimer);
     this.haptic('light');
-    this.setState({ ...snap, undoLabel: '' }, () => { try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {} });
+    this.setState({ ...snap, undoLabel: '' }, () => { this.pushNow(); });
   }
 
   toggleSelectMode() {
@@ -16212,7 +16115,7 @@ class Component extends DCLogic {
       inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1 };
     });
     this.haptic('heavy');
-    this.setState({ removedIds: [...removed], candyInventory: inv, selectedIdx: [], selectMode: false }, () => { try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {} });
+    this.setState({ removedIds: [...removed], candyInventory: inv, selectedIdx: [], selectMode: false }, () => { this.pushNow(); });
   }
 
   bulkFavourite() {
@@ -16221,9 +16124,7 @@ class Component extends DCLogic {
     const picked = this.effectiveRosterForMatch().filter(p => sel.has(p.idx));
     const makeFav = picked.some(p => !p.favorite);
     this.offerUndo((makeFav ? 'Favourited ' : 'Unfavourited ') + picked.length + ' Pokemon', ['ivOverrides']);
-    const ov = { ...(this.state.ivOverrides || {}) };
-    sel.forEach(i => { ov[i] = { ...(ov[i] || {}), favorite: makeFav }; });
-    this.setState({ ivOverrides: ov, selectedIdx: [], selectMode: false });
+    this.patchEach([...sel], { favorite: makeFav }, { state: { selectedIdx: [], selectMode: false } });
   }
 
   // Saved views: a named combination of filter, search and sort, kept on this device.
@@ -16289,7 +16190,7 @@ class Component extends DCLogic {
     set.add(idx);
     const arr = [...set];
     this.setState({ removedIds: arr }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+      this.pushNow();
     });
   }
 
@@ -16320,7 +16221,7 @@ class Component extends DCLogic {
     const cur = inv[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy != null ? f.candy : 0, xlCandy: f.xlCandy }; })();
     inv[key] = { ...cur, name: cur.name || p.name, candy: (Number(cur.candy) || 0) + 1, xlCandy: gotXl ? (Number(cur.xlCandy) || 0) + 1 : cur.xlCandy };
     this.setState({ candyInventory: inv }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+      this.pushNow();
     });
   }
 
@@ -16860,8 +16761,7 @@ class Component extends DCLogic {
   // Hand mark from the detail sheet: `noEvolve` true (cannot) or false (can, overriding a screen reading of "no button").
   setNoEvolve(p, value) {
     this.offerUndo(p.name + (value ? " marked as unable to evolve" : ' marked as able to evolve'), ['ivOverrides']);
-    const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], noEvolve: value } };
-    this.setState({ ivOverrides: overrides }, () => { try { this.queueCloudPush(); this.clearDerivedCaches(); this.recalculateAllRanks(); } catch (e) {} });
+    this.patchMon(p.idx, { noEvolve: value }, { push: 'soon', recalc: true });
     this.closeDetail();
   }
 
@@ -17195,7 +17095,7 @@ class Component extends DCLogic {
     const all = { ...(this.state.candyDraft || {}) };
     delete all[key];
     this.setState({ candyInventory: inv, candyDraft: all }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+      this.pushNow();
     });
   }
 
@@ -17234,8 +17134,7 @@ class Component extends DCLogic {
       ? Math.max(0, this.state.stardustBalance - cost.dust)
       : this.state.stardustBalance;
 
-    const overrides = { ...(this.state.ivOverrides || {}) };
-    const patch = { ...(overrides[p.idx] || {}) };
+    const patch = { ...((this.state.ivOverrides || {})[p.idx] || {}) };
     const prevPending = Number.isFinite(patch.pendingPowerUps) ? patch.pendingPowerUps
       : Number.isFinite(p.pendingPowerUps) ? p.pendingPowerUps : 0;
     // A power-up really changes the Pokemon: its level goes up half a level per step and its CP and HP
@@ -17255,19 +17154,7 @@ class Component extends DCLogic {
     } else {
       patch.pendingPowerUps = prevPending + steps;
     }
-    overrides[p.idx] = patch;
-
-    const stateUpdate = { candyInventory: candyInv, stardustBalance: nextDust, ivOverrides: overrides };
-    // Same frozen-snapshot fix saveMovesEdit uses — the open detail sheet
-    // reads state.detailPoke directly, which is captured once on open and
-    // never otherwise refreshed, so the sheet would keep showing the
-    // pre-power-up cost/level until closed and reopened without this.
-    if (this.state.detailPoke && this.state.detailPoke.idx === p.idx) {
-      stateUpdate.detailPoke = { ...this.state.detailPoke, ...patch };
-    }
-    this.setState(stateUpdate, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
-    });
+    this.patchMon(p.idx, patch, { push: 'now', state: { candyInventory: candyInv, stardustBalance: nextDust } });
   }
 
   // Confirms a real in-game Purify: deducts the real stardust/candy cost,
@@ -17293,8 +17180,7 @@ class Component extends DCLogic {
     candyInv[key] = { ...curCandy, name: curCandy.name || p.name, candy: Math.max(0, (Number.isFinite(curCandy.candy) ? curCandy.candy : 0) - cost.candy) };
     const nextDust = Number.isFinite(this.state.stardustBalance) ? Math.max(0, this.state.stardustBalance - cost.stardust) : this.state.stardustBalance;
 
-    const overrides = { ...(this.state.ivOverrides || {}) };
-    const patch = { ...(overrides[p.idx] || {}) };
+    const patch = { ...((this.state.ivOverrides || {})[p.idx] || {}) };
     const bump = v => Number.isFinite(v) ? Math.min(15, v + 2) : v;
     patch.atkIV = bump(p.atkIV);
     patch.defIV = bump(p.defIV);
@@ -17306,15 +17192,7 @@ class Component extends DCLogic {
     if (curLevel == null || curLevel < 25) { patch.lvlMin = 25; patch.lvlMax = 25; }
     patch.shadowPurified = '2';
     patch.chargeMove = 'return';
-    overrides[p.idx] = patch;
-
-    const stateUpdate = { candyInventory: candyInv, stardustBalance: nextDust, ivOverrides: overrides };
-    if (this.state.detailPoke && this.state.detailPoke.idx === p.idx) {
-      stateUpdate.detailPoke = { ...this.state.detailPoke, ...patch };
-    }
-    this.setState(stateUpdate, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
-    });
+    this.patchMon(p.idx, patch, { push: 'now', state: { candyInventory: candyInv, stardustBalance: nextDust } });
   }
 
   setManualIvDraft(idx, field, val) {
@@ -17357,18 +17235,11 @@ class Component extends DCLogic {
         return;
       }
     }
-    const ivAvg = (atk + def + sta) / 45 * 100;
     const overrides = { ...this.state.ivOverrides };
-    const shadow = this.isShadow(p);
-    const littlePct = this.littleCupEligible(p) ? m.rankPctForLeague(base, ivs, 'little', shadow) : null;
     overrides[p.idx] = {
       ...overrides[p.idx],
-      atkIV: atk, defIV: def, staIV: sta, ivAvg,
-      lvlMin: level, lvlMax: level,
-      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true, ivManual: true,
-      great: { rankPct: m.rankPctForLeague(base, ivs, 'great', shadow), evolvesTo: p.name },
-      ultra: { rankPct: m.rankPctForLeague(base, ivs, 'ultra', shadow), evolvesTo: p.name },
-      little: { rankPct: littlePct, evolvesTo: p.name }
+      ...m.spreadFields(p, base, ivs, { level, shadow: this.isShadow(p), littleEligible: this.littleCupEligible(p) }),
+      ivRange: null, ivSolved: true, ivCandidates: 1, ivMeasured: true, ivManual: true
     };
     const draftAll = { ...this.state.ivManualDraft };
     delete draftAll[p.idx];
@@ -17377,13 +17248,7 @@ class Component extends DCLogic {
     // by POSITIONAL idx: it never reaches the CSV export (which reads records),
     // and the next import renumbers idx out from under the pin. Manually entered
     // IVs are as real as measured ones, so they belong on the Pokemon.
-    const baked = this.bakeOverridesIntoRecords(overrides);
-    this.setState({
-      ivOverrides: baked.overrides, roster: baked.roster,
-      addedPokemon: baked.addedPokemon, ivManualDraft: draftAll
-    }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
-    });
+    this.commitBaked(overrides, { ivManualDraft: draftAll });
   }
 
   toggleChecklist(id) {
@@ -17444,7 +17309,7 @@ class Component extends DCLogic {
   markRemainingNoEvolution() {
     const table = { ...(this.state.evoTable || {}) };
     this.missingEvoNames().forEach(k => { table[k] = { to: null, candy: null, item: null, assumed: true }; });
-    this.setState({ evoTable: table, evoFetchStatus: 'Marked as having no known evolution.' }, () => this.pushCloud());
+    this.setState({ evoTable: table, evoFetchStatus: 'Marked as having no known evolution.' }, () => this.pushNow());
   }
 
   async fetchEvoData() {
@@ -17478,7 +17343,7 @@ class Component extends DCLogic {
         // already cached, so say so rather than looking like a total failure.
         if (/rate-limited|out of quota|429/i.test(this.state.evoFetchError || '')) {
           this.setState({ evoFetchBusy: false, evoFetchStatus: got + ' species resolved and saved \u2014 daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.' });
-          this.setState({ evoTable: table }, () => this.pushCloud());
+          this.setState({ evoTable: table }, () => this.pushNow());
           return;
         }
         continue;
@@ -17504,10 +17369,10 @@ class Component extends DCLogic {
       });
       // Cache as we go, so a failure halfway through does not throw away the
       // species already paid for.
-      this.setState({ evoTable: { ...table } }, () => this.pushCloud());
+      this.setState({ evoTable: { ...table } }, () => this.pushNow());
     }
     this.setState({ evoTable: table, evoFetchBusy: false,
-      evoFetchStatus: got + ' species resolved' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushCloud());
+      evoFetchStatus: got + ' species resolved' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushNow());
   }
 
   // A truncated reply is a budget problem, so the batch is halved and retried
@@ -18498,14 +18363,14 @@ class Component extends DCLogic {
     if (!list.length) return;
     const keep = { ...(this.state.triageKeep || {}) };
     keep[this.triageSignature(list[0].p)] = true;
-    this.setState({ triageKeep: keep }, () => { this.pushCloud(); });
+    this.setState({ triageKeep: keep }, () => this.pushNow());
   }
 
   triageTransferCurrent() {
     const list = this.triageQueue();
     if (!list.length) return;
     const q = [...(this.state.transferQueue || []), list[0].p.idx];
-    this.setState({ transferQueue: q }, () => { this.pushCloud(); });
+    this.setState({ transferQueue: q }, () => this.pushNow());
   }
 
   // Queue any Pokemon, not just one triage surfaced.
@@ -18513,7 +18378,7 @@ class Component extends DCLogic {
     if ((this.state.transferQueue || []).indexOf(idx) > -1) return;
     this.haptic('medium');
     this.setState({ transferQueue: [...(this.state.transferQueue || []), idx] },
-      () => { this.pushCloud(); });
+      () => this.pushNow());
   }
 
   // A branching species with no choice yet: ask what it became, so the right form, candy and item are recorded.
@@ -18532,11 +18397,9 @@ class Component extends DCLogic {
 
   // Saves the trainer's branch choice on the record; `thenDone` also marks it evolved.
   setEvoPick(p, name, thenDone) {
-    const overrides = { ...(this.state.ivOverrides || {}), [p.idx]: { ...(this.state.ivOverrides || {})[p.idx], evoPick: name } };
-    this.setState({ ivOverrides: overrides }, () => {
-      try { this.clearDerivedCaches(); this.queueCloudPush(); } catch (e) {}
+    this.patchMon(p.idx, { evoPick: name }, { push: 'soon', after: () => {
       if (thenDone) { const fresh = this.effectiveRosterForMatch().find(q => q.idx === p.idx); if (fresh) this.markEvolveDone(fresh); }
-    });
+    } });
   }
 
   // Ticking a row off the evolve queue reuses the existing completed list, so
@@ -18556,9 +18419,7 @@ class Component extends DCLogic {
     // ticking the row off so the queue still behaves.
     const done = [...(this.state.completedIds || [])];
     if (done.indexOf(p.idx) < 0) done.push(p.idx);
-    this.setState({ completedIds: done }, () => {
-      this.pushCloud();
-    });
+    this.setState({ completedIds: done }, () => this.pushNow());
   }
 
   // Returns true when the roster was actually transformed.
@@ -18584,13 +18445,9 @@ class Component extends DCLogic {
     if (ivs && Number.isFinite(level)) {
       const cp = m.cpFor(newBase, ivs, level);
       const hp = m.hpFor(newBase, ivs[2], level);
-      const shadow = this.isShadow(p);
-      const littlePct = this.littleCupEligible({ name: toName }) ? m.rankPctForLeague(newBase, ivs, 'little', shadow) : null;
       if (cp != null) patch.cp = cp;
       if (hp != null) patch.hp = hp;
-      patch.great = { rankPct: m.rankPctForLeague(newBase, ivs, 'great', shadow), evolvesTo: toName };
-      patch.ultra = { rankPct: m.rankPctForLeague(newBase, ivs, 'ultra', shadow), evolvesTo: toName };
-      patch.little = { rankPct: littlePct, evolvesTo: toName };
+      Object.assign(patch, m.rankFields(newBase, ivs, toName, this.isShadow(p), this.littleCupEligible({ name: toName })));
     }
 
     // Spend the candy this evolution actually cost.
@@ -18631,7 +18488,7 @@ class Component extends DCLogic {
       ...(evolutionItemsPatch ? { evolutionItems: evolutionItemsPatch } : {}),
       evoFlashName: toName, evoFlashStats: statLine
     }, () => {
-      try { clearTimeout(this._pushTimer); this.pushCloud(); } catch (e) {}
+      this.pushNow();
     });
     clearTimeout(this._evoFlashTimer);
     this._evoFlashTimer = setTimeout(() => this.setState({ evoFlashName: '', evoFlashStats: '' }), 1400);
@@ -18640,11 +18497,11 @@ class Component extends DCLogic {
 
   unqueueTransfer(idx) {
     const q = (this.state.transferQueue || []).filter(i => i !== idx);
-    this.setState({ transferQueue: q }, () => { this.pushCloud(); });
+    this.setState({ transferQueue: q }, () => this.pushNow());
   }
 
   clearTransferQueue() {
-    this.setState({ transferQueue: [] }, () => { this.pushCloud(); });
+    this.setState({ transferQueue: [] }, () => this.pushNow());
   }
 
   // Which Pokemon to walk as a buddy: among the ones that matter (PvP-ready,
@@ -19836,12 +19693,8 @@ class Component extends DCLogic {
   }
 
   toggleFavoriteOf(p) {
-    const ov = { ...(this.state.ivOverrides || {}) };
-    const nf = !p.favorite;
-    ov[p.idx] = { ...(ov[p.idx] || {}), favorite: nf };
-    const dp = this.state.detailPoke;
     this.haptic('light');
-    this.setState({ ivOverrides: ov, ...(dp && dp.idx === p.idx ? { detailPoke: { ...dp, favorite: nf } } : {}) });
+    this.patchMon(p.idx, { favorite: !p.favorite });
   }
 
   // The header arrows step to the next or previous Pokemon in the list the sheet was opened from (detailNavList/detailNavIndex, set by openDetail).
@@ -20729,7 +20582,7 @@ class Component extends DCLogic {
     const dataQuality = this.dataQualityIssues();
     const tradeAdv = this.tradeAdvice();
     const raidRowsRaw = this.raidCounters();
-    const detailPoke = this.state.detailPoke;
+    const detailPoke = this.liveDetail();
     let detail = null;
     if (detailPoke) {
       const p = detailPoke;
@@ -22601,19 +22454,11 @@ class Component extends DCLogic {
       // answerable on the phone instead of guessed at.
       aboutBuild: (typeof window !== 'undefined' && window.SCOUT_BUILD && window.SCOUT_BUILD !== 'dev') ? ' \u00b7 build ' + window.SCOUT_BUILD : '',
       buildTag: (typeof window !== 'undefined' && window.SCOUT_BUILD) || 'dev',
-      // Fails loudly instead of the two silent-drift bugs already found in
-      // this file's history: any field kept live-synced (SYNC_KEYS) that a
-      // file/snapshot restore would silently skip because it never made it
-      // into SYNCED_STATE_KEYS, and isn't deliberately excluded on purpose
-      // (RESTORE_EXCLUDED_KEYS, for credentials that should never come back
-      // from an old backup). This is a maintenance signal
-      // about the codebase, shown only when the drift is real.
+      // A schema field with no matching state field would be saved as undefined and never shown. A maintenance signal about the
+      // codebase, shown only when it is real.
       syncKeyDriftWarning: (() => {
-        const drift = this.SYNC_KEYS().filter(k =>
-          this.SYNCED_STATE_KEYS.indexOf(k) < 0 && this.RESTORE_EXCLUDED_KEYS.indexOf(k) < 0);
-        return drift.length
-          ? `SYNC/RESTORE KEY DRIFT: ${drift.join(', ')} \u2014 synced live but a file restore or snapshot restore silently skips ${drift.length === 1 ? 'it' : 'them'}. Add to SYNCED_STATE_KEYS (or RESTORE_EXCLUDED_KEYS if that's deliberate).`
-          : null;
+        const gap = this.dataFields().map(f => f.key).filter(k => !(k in this.state));
+        return gap.length ? `SYNC SCHEMA GAP: ${gap.join(', ')} \u2014 in SYNC_SCHEMA but not in state, so ${gap.length === 1 ? 'it is' : 'they are'} saved empty.` : null;
       })(),
       onStardustChange: (e) => this.setStardust(e.target.value),
       stardustDraft,

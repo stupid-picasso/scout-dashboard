@@ -1421,6 +1421,30 @@ function rankPctForLeague(base, ivs, leagueKey, isShadow) {
   return Math.min(100, (own / max) * 100);
 }
 
+// The three league ranks of one exact spread, each tagged with the species it is a rank for. littleEligible false (a confirmed
+// final stage) leaves the Little rank empty.
+function rankFields(base, ivs, evolvesTo, isShadow, littleEligible) {
+  const r = k => ({ rankPct: rankPctForLeague(base, ivs, k, isShadow), evolvesTo });
+  return { great: r('great'), ultra: r('ultra'), little: littleEligible ? r('little') : { rankPct: null, evolvesTo } };
+}
+
+// The lowest and highest of each IV among the spreads that still fit a CP and HP: { atk: [lo, hi], def: [lo, hi], sta: [lo, hi] }.
+function candidateRange(cands) {
+  const r = k => { let lo = 15, hi = 0; for (const c of cands) { if (c[k] < lo) lo = c[k]; if (c[k] > hi) hi = c[k]; } return [lo, hi]; };
+  return { atk: r('atkIV'), def: r('defIV'), sta: r('staIV') };
+}
+
+// What every writer sets once it knows a Pokemon's exact spread: the three IVs, their average, the league ranks and, with a
+// level, lvlMin and lvlMax. opts: level, shadow, littleEligible, evolvesTo (default rec.name).
+function spreadFields(rec, base, ivs, opts) {
+  const o = opts || {};
+  return {
+    atkIV: ivs[0], defIV: ivs[1], staIV: ivs[2], ivAvg: (ivs[0] + ivs[1] + ivs[2]) / 45 * 100,
+    ...(o.level != null ? { lvlMin: o.level, lvlMax: o.level } : {}),
+    ...rankFields(base, ivs, o.evolvesTo != null ? o.evolvesTo : rec.name, o.shadow, o.littleEligible)
+  };
+}
+
 // Cost of the single Power Up that takes a Pokemon from `level` to level+0.5.
 function powerUpStepCost(level) {
   if (!(level >= 1) || level >= MAX_POKEMON_LEVEL) return null;
@@ -6058,7 +6082,7 @@ function pvpMovesetFor(name, isShadow, leagueKey, form) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PokemonMechanics = { CPM, LEVELS, LEAGUES, LEAGUE_CAPS, leagueOf, leagueKeyForCp, TIER_RANK, UNRANKED_TIER_RANK, tierWeight, MAX_LEVEL_SEARCH, cpAt, hpAt, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
+  window.PokemonMechanics = { CPM, LEVELS, LEAGUES, LEAGUE_CAPS, leagueOf, leagueKeyForCp, TIER_RANK, UNRANKED_TIER_RANK, tierWeight, MAX_LEVEL_SEARCH, cpAt, hpAt, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, rankFields, spreadFields, candidateRange, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
     MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxEntryCost, maxDaysToEarn, maxRating,
