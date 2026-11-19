@@ -53,6 +53,49 @@ function isImmutable(pathname) {
   return /\/sprites\//.test(pathname) || /\/icons\//.test(pathname);
 }
 
+// Fetch app code from the network and keep a copy for offline use.
+function fetchShell(request) {
+  return fetch(request).then(function (response) {
+    if (response && response.ok && response.type === 'basic') {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then(function (c) { c.put(request, clone); });
+    }
+    return response;
+  });
+}
+
+function offlineShell(request) {
+  return caches.match(request).then(function (cached) {
+    if (cached) return cached;
+    if (request.mode === 'navigate') return caches.match('./index.html');
+    return new Response('', { status: 504, statusText: 'Offline' });
+  });
+}
+
+function networkFirst(request) {
+  return fetchShell(request).catch(function () { return offlineShell(request); });
+}
+
+// Network-first with a time limit: if the network has not answered in SHELL_TIMEOUT_MS and a cached copy exists, serve
+// that copy. Without a cached copy keep waiting for the network. The fetch is never cancelled, so it still refreshes the cache.
+const SHELL_TIMEOUT_MS = 3000;
+function raceShell(event, request) {
+  const net = fetchShell(request);
+  const quiet = function () {};
+  event.waitUntil(net.then(quiet, quiet));
+  let timer;
+  const slow = {};
+  const timeout = new Promise(function (resolve) { timer = setTimeout(resolve, SHELL_TIMEOUT_MS, slow); });
+  return Promise.race([net, timeout]).then(function (first) {
+    clearTimeout(timer);
+    if (first !== slow) return first;
+    return caches.match(request).then(function (cached) {
+      if (!cached && request.mode === 'navigate') return caches.match('./index.html');
+      return cached;
+    }).then(function (cached) { return cached || net; });
+  }).catch(function () { clearTimeout(timer); return offlineShell(request); });
+}
+
 self.addEventListener('fetch', function (event) {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -75,23 +118,15 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // Network-first for all app code: always get the freshest deploy, fall back
-  // to cache only when genuinely offline.
-  event.respondWith(
-    fetch(request).then(function (response) {
-      if (response && response.ok && response.type === 'basic') {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(function (c) { c.put(request, clone); });
-      }
-      return response;
-    }).catch(function () {
-      return caches.match(request).then(function (cached) {
-        if (cached) return cached;
-        if (request.mode === 'navigate') return caches.match('./index.html');
-        return new Response('', { status: 504, statusText: 'Offline' });
-      });
-    })
-  );
+  // The update check reads sw.js itself and must see the server copy, never a cached one.
+  if (request.cache === 'no-store' || /\/sw\.js$/.test(url.pathname)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Network-first for all app code: always get the freshest deploy. On a stalled connection the cached copy is
+  // served after SHELL_TIMEOUT_MS while the network fetch carries on and refreshes the cache.
+  event.respondWith(raceShell(event, request));
 });
 
 // ---- Web Push (task 28). The Worker sends { t: title, b: body, tag, url } encrypted; every push MUST show a notification (iOS revokes the

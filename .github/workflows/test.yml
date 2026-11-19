@@ -40,6 +40,7 @@ jobs:
           node scripts/test_push_triggers.mjs
           node scripts/test_push_worker.mjs
           node scripts/test_push_sw.mjs
+          node scripts/test_sw_shell.mjs
           node scripts/test_push_config.js
 
       - name: Gemini pipeline tests
