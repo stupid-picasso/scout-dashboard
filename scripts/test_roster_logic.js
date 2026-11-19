@@ -807,7 +807,7 @@ function buildLists(roster, bestRank) {
 (() => {
   const state = { megaEnergyInventory: {}, megaEvolvedHistory: {} };
   const ctx = { mechanics: m, state, setState(p, cb) { Object.assign(state, p); if (cb) cb(); }, haptic() {}, pushCloud() {} };
-  const defs = { megaEvolveInfoFor: 'key', applyMegaEvolve: 'key, form', megaCardFor: 'p', setMegaField: 'key, name, form, field, raw' };
+  const defs = { megaEvolveInfoFor: 'key', applyMegaEvolve: 'key, form', megaCardFor: 'p', setMegaField: 'key, name, form, field, raw', pushNow: '' };
   Object.keys(defs).forEach(n => { ctx[n] = new Function(...defs[n].split(', '), extractMethodBody(SRC, `${n}(${defs[n]}) {`)).bind(ctx); });
   ctx.setMegaField('mewtwo', 'Mewtwo', 'x', 'energy', '0');
   ctx.setMegaField('mewtwo', 'Mewtwo', 'y', 'energy', '500');
@@ -912,7 +912,7 @@ function buildLists(roster, bestRank) {
       setState: function (u, cb) { Object.assign(this.state, typeof u === 'function' ? u(this.state) : u); if (cb) cb(); }, pushCloud: () => {}, recordDistinguisher: () => '' };
     ['appraisalHintFromItem(item)', 'baseStatCandidates(item)', 'spreadFitsStars(spread, stars)', 'appraisalIvUnsure(item)',
      'measuredSpreadOrder(item)', 'unsureSpreadChoices(rec, item)', 'applyMeasuredIv(rec, item, overrides)',
-     'mergeAppraisalImport(rawItems)', 'applyUnsurePick(rid, choiceIdx)', 'normalizeAppraisalItems(items)', 'needsAppraisal(p)'].forEach(sig => {
+     'mergeAppraisalImport(rawItems)', 'applyUnsurePick(rid, choiceIdx)', 'commitBaked(overrides, extra)', 'pushNow()', 'normalizeAppraisalItems(items)', 'needsAppraisal(p)'].forEach(sig => {
       const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1);
       ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx);
     });
@@ -1070,6 +1070,81 @@ function buildLists(roster, bestRank) {
   check('the applyRemote patch covers every synced field', diff(synced, Object.keys(patch)), []);
   check('the applyRemote patch has nothing synced-looking outside the list', diff(Object.keys(patch), synced), ['cutTargetDraft', 'snapshots'].filter(k => k in patch));
   check('EMPTY_USER_DATA resets every synced field', diff(synced, empty), []);
+})();
+
+// One write path for editing a Pokemon (patchMon). Every action that used to push to the cloud still does, the open detail sheet
+// reads the live record, and the sites that skipped the cache clear now clear it.
+(() => {
+  const methodsOf = src => {
+    const out = {};
+    for (const mm of src.matchAll(/^  (?:async |get )?([A-Za-z_]\w*)\(([^)]*)\) \{\n/gm)) { const j = src.indexOf('\n  }\n', mm.index + mm[0].length); out[mm[1]] = src.slice(mm.index, j); }
+    return out;
+  };
+  const ms = methodsOf(SRC);
+  const savesNow = b => /\bpushNow\(\)|push: 'now'|commitBaked\(/.test(b);
+  const savesSoon = b => /queueCloudPush|push: 'soon'/.test(b);
+  // The methods that pushed (at once, or queued) before the write paths were merged. A method that no longer pushes fails here.
+  const NOW = ['applyAppraisalPick', 'applyMegaEvolve', 'applyPowerUp', 'applyPurify', 'applyUnsurePick', 'bulkTransferNow', 'clearMoveData', 'clearTransferQueue', 'confirmClearRoster', 'confirmRestore', 'evolvePokemon', 'fetchEvoData', 'fetchMoveData', 'fetchTypeData', 'markEvolveDone', 'markRemainingNoEvolution', 'mergeAppraisalImport', 'performUndo', 'queueTransfer', 'removePokemon', 'saveCandyEdit', 'saveEvolutionItems', 'saveManualIv', 'saveMovesEdit', 'transferPokemon', 'triageKeepCurrent', 'triageTransferCurrent', 'unqueueTransfer'];
+  const SOON = ['bulkKeepSpecies', 'bulkPickFormNow', 'bulkRenameSpecies', 'bulkSaveTypeNow', 'clearChat', 'confirmCp', 'costumeApply', 'costumeEvolveSet', 'fixFormMismatches', 'recalculateAllRanks', 'revertImportRow', 'sendChat', 'setEvoPick', 'setGeminiKey', 'setNoEvolve', 'undoRefresh'];
+  check('every action that saved to the cloud at once still does', NOW.filter(n => !ms[n] || !savesNow(ms[n])), []);
+  check('every action that queued a cloud save still does', SOON.filter(n => !ms[n] || !savesSoon(ms[n])), []);
+  check('no method pastes the flush tail any more', Object.keys(ms).filter(n => n !== 'pushNow' && /clearTimeout\(this\._pushTimer\);\s*this\.pushCloud\(\)/.test(ms[n])), []);
+
+  const bind = (ctx, sigs) => { sigs.forEach(sig => { const n = sig.slice(0, sig.indexOf('(')), a = sig.slice(sig.indexOf('(') + 1, -1); ctx[n] = new Function(...a.split(', '), extractMethodBody(SRC, sig + ' {')).bind(ctx); }); return ctx; };
+  const mk = (state, extra) => {
+    const log = { pushed: 0, queued: 0, cleared: 0, recalc: 0 };
+    const ctx = Object.assign({ state: { ivOverrides: {}, roster: [], addedPokemon: [], removedIds: [], ...state }, log, haptic() {},
+      pushCloud() { log.pushed++; }, queueCloudPush() { log.queued++; }, clearDerivedCaches() { log.cleared++; }, recalculateAllRanks() { log.recalc++; },
+      offerUndo() {}, closeConfirm() {}, closeDetail() {}, _pushTimer: 0,
+      setState(u, cb) { Object.assign(this.state, typeof u === 'function' ? u(this.state) : u); if (cb) cb(); } }, extra || {});
+    return bind(ctx, ['pushNow()', 'patchMons(patches, o)', 'patchMon(idx, patch, o)', 'patchEach(idxs, patch, o)', 'liveDetail()']);
+  };
+
+  // patchMon itself.
+  let c = mk({ ivOverrides: { 3: { name: 'A', cp: 100 } } });
+  const before = c.state.ivOverrides, beforeRec = before[3];
+  c.patchMon(3, { cp: 200 });
+  check('patchMon merges into the override and copies, never mutates', [c.state.ivOverrides[3], before[3] === beforeRec, beforeRec.cp, c.state.ivOverrides === before], [{ name: 'A', cp: 200 }, true, 100, false]);
+  check('patchMon clears the derived caches and pushes nothing by default', [c.log.cleared, c.log.pushed, c.log.queued], [1, 0, 0]);
+  c.patchMon(4, { a: 1 }, { push: 'now', recalc: true, state: { x: 1 } });
+  check('push now saves once, re-ranks and sets the other state', [c.log.pushed, c.log.recalc, c.state.x, c.state.ivOverrides[4]], [1, 1, 1, { a: 1 }]);
+  c.patchMon(4, { a: 2 }, { push: 'soon' });
+  check('push soon queues the debounced save only', [c.log.queued, c.log.pushed], [1, 1]);
+  c.patchEach([5, 6], { f: true });
+  check('patchEach patches every idx in one update', [c.state.ivOverrides[5], c.state.ivOverrides[6]], [{ f: true }, { f: true }]);
+
+  // The sheet shows the live record.
+  c = mk({ detailPoke: { idx: 7, name: 'Old', cp: 1, shown: 'kept' } });
+  c.effectiveRosterForMatch = () => [{ idx: 7, name: 'New', cp: 9 }];
+  check('the detail sheet reads the live record over the copy it was opened with', c.liveDetail(), { idx: 7, name: 'New', cp: 9, shown: 'kept' });
+  c.effectiveRosterForMatch = () => [];
+  check('a Pokemon that left the roster keeps the opened copy', c.liveDetail().name, 'Old');
+  c.state.detailPoke = null;
+  check('no sheet, no record', c.liveDetail(), null);
+
+  // Real methods, driven through patchMon: the push and the cache clear each of them had (or now has).
+  const drive = (sigs, state, fn, extra) => { const x = bind(mk(state, extra), sigs); fn(x); return x; };
+  c = drive(['confirmCp(p, value)'], {}, x => x.confirmCp({ idx: 1 }, '1500'));
+  check('confirmCp: sets the CP, queues a save, now clears caches', [c.state.ivOverrides[1].cp, c.log.queued, c.log.cleared], [1500, 1, 1]);
+  c = drive(['bulkSaveTypeNow(p, types)'], {}, x => x.bulkSaveTypeNow({ idx: 2, name: 'X' }, ['Fire', 'Flying']));
+  check('bulkSaveTypeNow: type saved, queued, now clears caches', [c.state.ivOverrides[2].type, c.log.queued, c.log.cleared], ['Fire / Flying', 1, 1]);
+  c = drive(['bulkKeepSpecies(p)'], {}, x => { x.bulkAnimateOut = (k, f) => f(); x.bulkKeepSpecies({ idx: 2 }); });
+  check('bulkKeepSpecies: reviewed, queued, now clears caches', [c.state.ivOverrides[2].nameReviewed, c.log.queued, c.log.cleared], [true, 1, 1]);
+  c = drive(['setNoEvolve(p, value)'], {}, x => x.setNoEvolve({ idx: 3, name: 'X' }, true));
+  check('setNoEvolve: queued, cleared, re-ranked', [c.state.ivOverrides[3].noEvolve, c.log.queued, c.log.cleared, c.log.recalc], [true, 1, 1, 1]);
+  c = drive(['toggleFavoriteOf(p)'], {}, x => x.toggleFavoriteOf({ idx: 4, favorite: false }));
+  check('toggleFavoriteOf: favourite set, caches cleared', [c.state.ivOverrides[4].favorite, c.log.cleared], [true, 1]);
+  c = drive(['setShinyConfirmed(p, isShiny)'], {}, x => x.setShinyConfirmed({ idx: 5 }, true));
+  check('setShinyConfirmed: shiny set, caches cleared', [c.state.ivOverrides[5].shiny, c.state.ivOverrides[5].shinyState, c.log.cleared], [true, null, 1]);
+  c = drive(['saveMovesEdit(p)'], { moveDraft: { 6: { quickMove: 'Fire Fang', chargeMove: '' } }, pendingTmUse: null, ivOverrides: { 6: { cp: 5, quickMove: 'Bite' } } }, x => x.saveMovesEdit({ idx: 6 }));
+  check('saveMovesEdit: moves merged over the override, draft dropped, saved at once', [c.state.ivOverrides[6], c.state.moveDraft[6], c.log.pushed, c.log.cleared], [{ cp: 5, quickMove: 'Fire Fang', chargeMove: null }, undefined, 1, 1]);
+  c = drive(['bulkFavourite()'], { selectedIdx: [1, 2], selectMode: true }, x => { x.effectiveRosterForMatch = () => [{ idx: 1 }, { idx: 2 }, { idx: 3 }]; x.bulkFavourite(); });
+  check('bulkFavourite: both favourited, selection cleared', [c.state.ivOverrides[1].favorite, c.state.ivOverrides[2].favorite, c.state.ivOverrides[3], c.state.selectedIdx, c.state.selectMode], [true, true, undefined, [], false]);
+  const dpFlow = mk({ detailPoke: { idx: 8, favorite: false } });
+  dpFlow.effectiveRosterForMatch = function () { return [{ idx: 8, favorite: !!(this.state.ivOverrides[8] || {}).favorite }]; };
+  bind(dpFlow, ['toggleFavoriteOf(p)']);
+  dpFlow.toggleFavoriteOf(dpFlow.liveDetail());
+  check('an edit made from the open sheet shows in the sheet at once', dpFlow.liveDetail().favorite, true);
 })();
 
 // ---------------------------------------------------------------------------
