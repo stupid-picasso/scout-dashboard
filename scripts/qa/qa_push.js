@@ -37,8 +37,7 @@ const STANDALONE = () => { Object.defineProperty(navigator, 'standalone', { conf
 
 // addInitScript serialises a function, so several are joined into one script.
 const inits = (...fns) => ({ content: fns.map(f => '(' + f.toString() + ')();').join('\n') });
-const withLogic = (s, fn, arg) => s.page.evaluate(([src, a]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.PUSH_CONFIG) return (0, eval)('(' + src + ')')(f.stateNode.logic, a); } return null; }, [fn.toString(), arg]);
-const fill = (s, on = true) => withLogic(s, (l, on) => { l.PUSH_CONFIG = () => on ? { workerUrl: 'https://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) } : { workerUrl: '', vapidPublicKey: '' }; l.setState({ pushMsg: l.state.pushMsg || '' }); return true; }, on);
+const fill = (s, on = true) => s.logic((l, on) => { l.PUSH_CONFIG = () => on ? { workerUrl: 'https://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) } : { workerUrl: '', vapidPublicKey: '' }; l.setState({ pushMsg: l.state.pushMsg || '' }); return true; }, on);
 const P = s => s.page.evaluate(() => JSON.parse(JSON.stringify(window.__push, (k, v) => typeof v === 'function' ? undefined : v)));
 const card = s => s.page.locator('[data-push-alerts]');
 const btn = (s, name) => card(s).getByRole('button', { name, exact: true });
@@ -56,9 +55,9 @@ module.exports = async function pushTests() {
     expect(await s.call('pushPost', '/test', {}) === null && (await P(s)).fetches.length === 0, 'pushPost reached the network with an empty config');
     expect((await s.call('pushEnv')) === 'setup', 'env is not "setup"');
     // a half-filled config (address but no key) is still not set up
-    await withLogic(s, l => { l.PUSH_CONFIG = () => ({ workerUrl: 'https://push.example.test', vapidPublicKey: '' }); return 1; });
+    await s.logic(l => { l.PUSH_CONFIG = () => ({ workerUrl: 'https://push.example.test', vapidPublicKey: '' }); return 1; });
     expect(await s.call('pushEnv') === 'setup', 'an address without a key counted as set up');
-    await withLogic(s, l => { l.PUSH_CONFIG = () => ({ workerUrl: 'http://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) }); return 1; });
+    await s.logic(l => { l.PUSH_CONFIG = () => ({ workerUrl: 'http://push.example.test', vapidPublicKey: 'B' + 'A'.repeat(86) }); return 1; });
     expect(await s.call('pushEnv') === 'setup', 'an http address counted as set up');
     expect(s.errors.length === 0, s.errors[0]);
   }, 'high');
@@ -67,7 +66,7 @@ module.exports = async function pushTests() {
   // 2. iPhone in Safari (not installed) vs from the Home Screen.
   s = await session({ init: inits(STUBS, IOS) });
   await T('PUSH-02', 'Push', 'On iPhone in a browser tab the row says to add the app to the Home Screen first and offers no button; no permission is asked', async () => {
-    await fill(s); await s.go('HOME'); await s.page.waitForTimeout(400);
+    await fill(s); await s.go('HOME');
     const t = await card(s).innerText();
     expect(/Add to Home Screen first/.test(t) && /Home Screen icon/.test(t), t);
     expect(await card(s).getByRole('button').count() === 0, 'a button is shown outside the Home Screen app');
@@ -80,7 +79,7 @@ module.exports = async function pushTests() {
   // 3. The tap flow.
   s = await session({ init: inits(STUBS, STANDALONE) });
   await T('PUSH-03', 'Push', 'Standalone: no permission prompt until the tap; the tap asks first, then subscribes (userVisibleOnly, 65-byte key), then registers with the Worker', async () => {
-    await fill(s); await s.go('HOME'); await s.page.waitForTimeout(500);
+    await fill(s); await s.go('HOME');
     expect(/Off/.test(await card(s).locator('[data-push-status]').innerText()), 'status is not Off');
     expect(/small server/.test(await card(s).innerText()) && /device address/.test(await card(s).innerText()), 'the one-sentence explanation is missing');
     let p = await P(s); expect(p.perm === 0 && p.order.length === 0, 'something ran before the tap: ' + JSON.stringify(p.order));

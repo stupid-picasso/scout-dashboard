@@ -1,12 +1,8 @@
 #!/usr/bin/env node
 /** test_max.js — the Max (Dynamax / Gigantamax) tables and cost helpers in pokemon-mechanics.js. */
-const vm = require('vm'), fs = require('fs'), path = require('path');
-const code = fs.readFileSync(path.join(__dirname, '..', 'pokemon-mechanics.js'), 'utf8');
-const ctx = { window: { dispatchEvent: () => {} }, Event: function () {}, console };
-vm.createContext(ctx); vm.runInContext(code, ctx);
-const m = ctx.window.PokemonMechanics;
-let pass = 0, fail = 0;
-function check(name, got, want) { const g = JSON.stringify(got), w = JSON.stringify(want); if (g === w) pass++; else { fail++; console.log('FAIL', name, 'got', g, 'want', w); } }
+const { checker, loadMechanics } = require('./lib/testkit');
+const m = loadMechanics();
+const t = checker(), check = t.eq;
 
 check('max attack power L1-3', [1, 2, 3].map(l => m.maxAttackPower(l, false)), [250, 300, 350]);
 check('g-max attack power L1-3', [1, 2, 3].map(l => m.maxAttackPower(l, true)), [350, 400, 450]);
@@ -26,5 +22,4 @@ check('species list', [m.isMaxSeedSpecies('Machop'), m.isMaxSeedSpecies('Haunter
 check('17 g-max species (Serebii, Nov 2026)', Object.keys(m.MAX_GMAX).length, 17);
 check('g-max Duraludon', m.gmaxFor('G-Max Duraludon'), { move: 'G-Max Depletion', type: 'Dragon' });
 check('meter', [m.MAX_METER.cap, m.MAX_METER.turns], [100, 3]);
-console.log(pass + ' passed, ' + fail + ' failed');
-process.exit(fail ? 1 : 0);
+t.exit(t.pass + ' passed, ' + t.fail + ' failed');

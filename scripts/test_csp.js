@@ -3,25 +3,14 @@
 // Fails on any Content-Security-Policy violation through launch, CSV import, the detail sheet and the chat sheet, and requires that a
 // request to a host outside the policy is blocked. A browser that is not installed is skipped (set CSP_REQUIRE_WEBKIT=1 to make a missing WebKit a failure).
 //   node scripts/test_csp.js            runs every browser in a child process (the QA helper picks the browser from QA_BROWSER)
-const http = require('http'), fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
+const fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
 const REPO = path.join(__dirname, '..');
 const QA_CSV = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
-const MIME = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
-
-function serve() {
-  return new Promise(res => {
-    const srv = http.createServer((req, rsp) => {
-      let p = decodeURIComponent(req.url.split('?')[0]); if (p === '/') p = '/index.html';
-      const f = path.join(REPO, p);
-      if (!f.startsWith(REPO + path.sep) || /\/(node_modules|\.git)\//.test(f) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { rsp.writeHead(404); return rsp.end('not found'); }
-      rsp.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(rsp);
-    }).listen(0, 'localhost', () => res(srv));
-  });
-}
+const { serveRepo } = require('./lib/testkit');
 
 async function child() {
   const { session, close, expect } = require('./qa/qa_lib');
-  const srv = await serve(), port = srv.address().port;
+  const srv = await serveRepo({ host: 'localhost' }), port = srv.address().port;
   const html = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8');
   if (!/<meta http-equiv="Content-Security-Policy"/.test(html)) throw new Error('index.html has no CSP meta tag (run python3 scripts/build_bundles.py)');
   // Sign-in by popup (Google, GitHub) needs the Firebase auth domain and the Google sign-in hosts as frames and apis.google.com as a script host; the token calls

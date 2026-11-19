@@ -1,6 +1,8 @@
 // Shared helpers for the QA suites: test registry, fresh app sessions, navigation.
 const fs = require('fs');
 const path = require('path');
+const { serveRepo } = require('../lib/testkit');
+const { BAR, MORE, MORE_BUTTON } = require('../lib/nav');
 const pw = require(path.join(__dirname, '..', '..', 'node_modules', 'playwright'));
 const chromium = pw[process.env.QA_BROWSER || 'chromium'];
 const REPO = path.join(__dirname, '..', '..');
@@ -25,6 +27,20 @@ async function T(id, area, name, fn, sev = 'normal') {
   return rec;
 }
 
+// The app's component logic object (state, setState and every method), found by climbing the React fibers of any element. withLogic runs
+// fn(logic, arg) in the page and returns its result; null when the app has not mounted. fn and arg must be serialisable like page.evaluate's.
+const findLogic = () => {
+  for (const e of document.querySelectorAll('*')) {
+    const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue;
+    for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) return f.stateNode.logic;
+  }
+  return null;
+};
+async function withLogic(page, fn, arg) {
+  const h = await page.evaluateHandle(findLogic);
+  try { return (await h.evaluate(l => !!l)) ? await h.evaluate(fn, arg) : null; } finally { await h.dispose(); }
+}
+
 let browser;
 async function launch() {
   if (browser) return browser;
@@ -43,14 +59,7 @@ async function close() { if (browser) await browser.close(); if (server) server.
 let server, serverBase;
 async function webBase() {
   if (serverBase) return serverBase;
-  const http = require('http');
-  const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
-  server = http.createServer((req, res) => {
-    const p = path.join(REPO, decodeURIComponent(req.url.split('?')[0]).replace(/\/$/, '/index.html'));
-    if (!p.startsWith(REPO) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
-    res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' }); fs.createReadStream(p).pipe(res);
-  });
-  await new Promise(r => server.listen(0, '127.0.0.1', r)); server.unref();
+  server = await serveRepo({ noStore: true }); server.unref();
   return (serverBase = 'http://127.0.0.1:' + server.address().port + '/');
 }
 
@@ -296,6 +305,7 @@ async function session(opts = {}) {
   const b = await launch();
   const base = IS_WEBKIT && !opts.url ? await webBase() : '';
   const ctx = await b.newContext({ viewport: { width: opts.width || 430, height: opts.height || 932 }, hasTouch: opts.touch !== false, deviceScaleFactor: 2, colorScheme: opts.colorScheme || 'dark', ...(base || opts.blockServiceWorkers ? { serviceWorkers: 'block' } : {}) });
+  await ctx.addInitScript('window.__qaFindLogic = ' + findLogic + ';');
   await ctx.addInitScript(() => { window.__noImportGate = true; });
   if (!opts.firstRun) await ctx.addInitScript(() => { window.__noFirstRun = true; });   // the first-run page covers the app; Task 3's FIRSTRUN tests turn it on with session({ firstRun: true })
   if (opts.init) await ctx.addInitScript(opts.init);
@@ -330,24 +340,35 @@ async function session(opts = {}) {
     } catch (e) { console.error("pinTiers failed:", e.message); }
   }
   const s = { ctx, page, errors, logs, loadMs: Date.now() - t0 };
-  // Tab bar: Today / Roster / PvP / Recs, then More (Settings = HOME, Raid, Intel, Attack, Log...).
-  const BAR = { TODAY: 'Today', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' };
-  const MORE = { HOME: 'Settings', RAID: 'Raid counters', BULK: 'Bulk update', INTEL: 'Collection intel', ATTACK: 'Attackers', LOG: 'Progress log', TOOLS: 'Rename & search', BESTIV: 'Best IV', DITTO: 'Ditto ranking', KEEP: 'Keeper review' };
+  // Navigation waits for its destination instead of sleeping: the app's state.tab is the target, the More menu is closed and no finite
+  // CSS animation or transition is still running. A wrong label fails at the click, a tab that never opens fails at the wait.
+  const settled = s.settled = () => page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || a.effect.getTiming().iterations === Infinity));
   s.go = async label => {
-    if (MORE[label]) { await page.getByText('More', { exact: true }).last().click(); await page.waitForTimeout(350); await page.locator('[role=menuitem][aria-label="' + MORE[label] + '"]').last().click(); await page.waitForTimeout(600); return; }
-    const t = page.getByText(BAR[label] || label, { exact: true }).last(); await t.scrollIntoViewIfNeeded().catch(() => {}); await t.click(); await page.waitForTimeout(500);
+    const dest = MORE[label] || BAR[label];
+    if (MORE[label]) { await page.getByText(MORE_BUTTON, { exact: true }).last().click(); await page.locator('[role=menuitem][aria-label="' + dest.label + '"]').last().click(); }
+    else await page.getByText(dest ? dest.label : label, { exact: true }).last().click();
+    if (dest) await page.waitForFunction(([tab, bar]) => { const l = window.__qaFindLogic(); return !!l && l.state.tab === tab && !l.state.moreOpen && (!bar || document.querySelectorAll('nav[aria-label=Main] button[aria-current=page]').length === 1); }, [dest.tab, !!BAR[label]]);
+    await settled();
   };
   s.text = () => page.evaluate(() => document.body.innerText);
-  // Importing over an existing roster asks first; tests that just want the data in confirm it.
+  // Importing over an existing roster asks first; tests that just want the data in confirm it. load() returns once the app has read the file
+  // (importCsvText ran: the roster is applied, an error is shown, or the "Replace your roster?" question is up). App state is not touched.
   s.load = async (csv, opts = {}) => {
-    await page.setInputFiles('input[type=file][accept=".csv"]', csv); await page.waitForTimeout(700);
+    await s.logic(l => { window.__qaImported = false; const orig = l.importCsvText; l.importCsvText = function (...a) { l.importCsvText = orig; try { return orig.apply(this, a); } finally { window.__qaImported = true; } }; });
+    await page.setInputFiles('input[type=file][accept=".csv"]', csv);
+    await page.waitForFunction(() => window.__qaImported === true);
     if (opts.noConfirm) return;
-    const b = page.getByText('REPLACE', { exact: true }); if (await b.count()) { await b.first().click(); await page.waitForTimeout(500); }
+    const b = page.getByText('REPLACE', { exact: true });
+    if (await b.count()) { await b.first().click(); await page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.pendingConfirm; }); }
+    await settled();
   };
-  s.state = () => page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.state) return JSON.parse(JSON.stringify(f.stateNode.logic.state, (kk, v) => (typeof v === 'function' ? undefined : v))); } return null; });
-  s.set = patch => page.evaluate(p => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.setState) { f.stateNode.logic.setState(p); return true; } } return false; }, patch);
-  s.call = (method, ...args) => page.evaluate(([mth, a]) => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic[mth]) return f.stateNode.logic[mth](...a); } return undefined; }, [method, args]);
+  // Recalculate every rank and return when it has finished (the app calls back when done).
+  s.recalc = async () => { await s.logic(l => new Promise(res => l.recalculateAllRanks(res))); await page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.recalcBusy; }); };
+  s.logic = (fn, arg) => withLogic(page, fn, arg);
+  s.state = () => s.logic(l => JSON.parse(JSON.stringify(l.state, (kk, v) => (typeof v === 'function' ? undefined : v))));
+  s.set = async patch => (await s.logic((l, p) => { l.setState(p); return true; }, patch)) === true;
+  s.call = (method, ...args) => s.logic((l, [mth, a]) => (l[mth] ? l[mth](...a) : undefined), [method, args]);
   s.close = () => ctx.close();
   return s;
 }
-module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch };
+module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch, withLogic, BAR, MORE };

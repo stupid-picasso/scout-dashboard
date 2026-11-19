@@ -11,11 +11,9 @@
  *
  *   node scripts/test_rank_reference.js
  */
-const vm = require('vm'), fs = require('fs'), path = require('path');
-const code = fs.readFileSync(path.join(__dirname, '..', 'pokemon-mechanics.js'), 'utf8');
-const ctx = { window: { dispatchEvent: () => {} }, Event: function () {}, console };
-vm.createContext(ctx); vm.runInContext(code, ctx);
-const m = ctx.window.PokemonMechanics;
+const vm = require('vm');
+const { loadMechanicsContext } = require('./lib/testkit');
+const { m, ctx } = loadMechanicsContext();
 const CPM = vm.runInContext('CPM', ctx);
 const LEVELS = Object.keys(CPM).map(Number).filter(l => l <= 50).sort((a, b) => a - b);
 const CAPS = { great: 1500, ultra: 2500, little: 500, master: Infinity };

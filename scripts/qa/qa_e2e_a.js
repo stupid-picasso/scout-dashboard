@@ -17,7 +17,7 @@ module.exports = async function suiteA() {
     const feedFx = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'ui_feed.json'), 'utf8'));   // the person's Today: events and GBL from the feed, the long tail collapsed
     const r = await session({ feed: feedFx, collapsedTail: true }); await r.load(QA); await r.page.waitForTimeout(1200);
     const bad = [];
-    for (const scr of ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG']) { await r.go(scr); await r.page.waitForTimeout(500); const n = (await r.text()).length; if (n <= 300) bad.push(scr + ' ' + n); }
+    for (const scr of ['TODAY', 'ROSTER', 'PVP', 'RAID', 'HOME', 'RECS', 'INTEL', 'ATTACK', 'LOG']) { await r.go(scr); const n = (await r.text()).length; if (n <= 300) bad.push(scr + ' ' + n); }
     expect(r.errors.length === 0, r.errors[0]); await r.close();
     expect(bad.length === 0, 'too little text on: ' + bad.join(', '));
   });
@@ -66,7 +66,7 @@ module.exports = async function suiteA() {
   fs.writeFileSync(tmp + '/named.csv', 'Name,CP,HP,Atk IV,Def IV,Sta IV,Level,Fast Move,Charged Move\n"Charizard, the first",2002,130,10,12,14,40,Fire Spin,Blast Burn\nGyarados,2422,154,15,15,15,50,Waterfall,Crunch\n');
   await T('IMP-16', 'Import', 'A different exporter\'s CSV is read by column name, including quoted names', async () => { await s2.load(tmp + '/named.csv', { noConfirm: true }); await s2.page.getByText('REPLACE', { exact: true }).first().click().catch(() => {}); await s2.page.waitForTimeout(500); const st = await s2.state(); expect(st.roster.length === 2 && st.roster[0].name === 'Charizard, the first' && st.roster[0].cp === 2002 && st.roster[1].atkIV === 15, JSON.stringify(st.roster.map(p => [p.name, p.cp, p.atkIV]))); }, 'high');
   await T('IMP-17', 'Import', 'Dropping a .csv file on the page imports it', async () => { const data = fs.readFileSync(SMOKE, 'utf8'); await s2.page.evaluate(async txt => { const f = new File([txt], 'dropped.csv', { type: 'text/csv' }); const dt = new DataTransfer(); dt.items.add(f); window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); }, data); await s2.page.waitForTimeout(800); await s2.page.getByText('REPLACE', { exact: true }).first().click().catch(() => {}); await s2.page.waitForTimeout(500); expect(/dropped\.csv/.test(await s2.text())); });
-  await T('IMP-18', 'Import', '200 randomly corrupted files never crash the app or leave it unusable', async () => { let seed = 5; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296; const lines = base.split('\n').filter(Boolean); let bad = 0; for (let i = 0; i < 200; i++) { const rows = [lines[0]]; for (let r = 1; r < 1 + Math.floor(rnd() * 8); r++) { let l = lines[1 + Math.floor(rnd() * (lines.length - 1))]; const cut = Math.floor(rnd() * l.length); const mode = Math.floor(rnd() * 5); l = mode === 0 ? l.slice(0, cut) : mode === 1 ? l.replace(/,/g, () => (rnd() < .3 ? ';' : ',')) : mode === 2 ? l + ',"unterminated' : mode === 3 ? l.replace(/\d+/, 'NaN') : l.split('').reverse().join(''); rows.push(l); } const txt = rows.join(rnd() < .5 ? '\n' : '\r\n'); const e = await s2.page.evaluate(t => { try { const c = new (Object.getPrototypeOf(function () {}).constructor)('return 0'); } catch (x) {} return null; }, txt); const r = await s2.page.evaluate(t => { for (const el of document.querySelectorAll('*')) { const k = Object.keys(el).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = el[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.parseCSV) { try { const L = f.stateNode.logic; const rows = L.parseCSV(t); L.validateImportRows(rows); return 'ok'; } catch (x) { return 'THROW ' + x.message; } } } return 'noapp'; }, txt); if (r !== 'ok') bad++; } expect(bad === 0, bad + ' of 200 threw'); expect(s2.errors.length === 0, s2.errors[0]); }, 'high');
+  await T('IMP-18', 'Import', '200 randomly corrupted files never crash the app or leave it unusable', async () => { let seed = 5; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296; const lines = base.split('\n').filter(Boolean); let bad = 0; for (let i = 0; i < 200; i++) { const rows = [lines[0]]; for (let r = 1; r < 1 + Math.floor(rnd() * 8); r++) { let l = lines[1 + Math.floor(rnd() * (lines.length - 1))]; const cut = Math.floor(rnd() * l.length); const mode = Math.floor(rnd() * 5); l = mode === 0 ? l.slice(0, cut) : mode === 1 ? l.replace(/,/g, () => (rnd() < .3 ? ';' : ',')) : mode === 2 ? l + ',"unterminated' : mode === 3 ? l.replace(/\d+/, 'NaN') : l.split('').reverse().join(''); rows.push(l); } const txt = rows.join(rnd() < .5 ? '\n' : '\r\n'); const e = await s2.page.evaluate(t => { try { const c = new (Object.getPrototypeOf(function () {}).constructor)('return 0'); } catch (x) {} return null; }, txt); const r = await s2.logic((l, t) => { try { const L = l; const rows = L.parseCSV(t); L.validateImportRows(rows); return 'ok'; } catch (x) { return 'THROW ' + x.message; } return 'noapp'; }, txt); if (r !== 'ok') bad++; } expect(bad === 0, bad + ' of 200 threw'); expect(s2.errors.length === 0, s2.errors[0]); }, 'high');
   await T('IMP-12', 'Import', 'Roster is persisted: a reload keeps the imported Pokemon', async () => { await s2.page.waitForTimeout(2000); await s2.page.reload({ waitUntil: 'load' }); await s2.page.waitForTimeout(5000); const t = await s2.text(); expect(/800 Pokemon loaded|Pokemon loaded/.test(t) && !/(^|\D)0 Pokemon loaded$/m.test(t.split('\n').find(l => /Pokemon loaded/.test(l)) || ''), (t.match(/\d+ Pokemon loaded/) || ['none'])[0]); }, 'high');
   await s2.close();
 
@@ -105,7 +105,15 @@ module.exports = async function suiteA() {
       expect(n <= 30, 'rows ' + n); expect((await rows()) === 30, 'ALL did not restore'); return n + ' rows';
     });
   }
-  await T('ROS-09', 'Roster', 'Lucky filter count matches the Lucky stat tile', async () => { const st = await s.state(); const lucky = st.roster.filter(p => p.lucky).length; await s.page.getByText(/^LUCKY/).nth(1).click().catch(() => {}); await s.page.waitForTimeout(400); await s.page.getByText('ALL', { exact: true }).first().click(); return 'lucky in data: ' + lucky; });
+  await T('ROS-09', 'Roster', 'LUCKY filter lists exactly the lucky Pokemon in the data', async () => {
+    const lucky = (await s.state()).roster.filter(p => p.lucky).length;
+    expect(lucky > 0 && lucky < 30, 'the fixture has ' + lucky + ' lucky Pokemon (needs 1 to 29 to fit one page)');
+    await s.page.getByText(/^LUCKY/).first().click();
+    await s.page.waitForFunction(n => document.querySelectorAll('[data-swipe-row]').length === n, lucky, { timeout: 5000 }).catch(() => {});
+    const n = await rows();
+    await s.page.getByText('ALL', { exact: true }).first().click();
+    expect(n === lucky, n + ' rows with the LUCKY filter, ' + lucky + ' lucky in the data');
+  });
   await T('ROS-10', 'Roster', 'Every row shows name, CP, IV triple and a type label', async () => { const t = await s.page.locator('[data-swipe-row]').first().innerText(); expect(/CP\s*\d+/.test(t) && /\d+\s*\/\s*\d+\s*\/\s*\d+/.test(t), t.replace(/\n/g, '|')); });
   await T('ROS-11', 'Roster', 'Row opens the detail sheet on tap', async () => { await s.page.locator('[data-swipe-row]').first().click(); await s.page.waitForTimeout(900); expect(/POWER UP|APPRAISAL|EVOLUTION/i.test(await s.text())); });
   // ------------------------------------------------------------------ DETAIL
@@ -136,11 +144,21 @@ module.exports = async function suiteA() {
   await T('GES-02', 'Gestures', 'Tapping elsewhere closes an open swipe row (iOS list behaviour)', async () => { await s.page.locator('[data-swipe-row]').nth(3).click(); await s.page.waitForTimeout(400); expect((await s.page.locator('[data-swipe-open="1"]').count()) === 0, 'row still open'); });
   await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(SMOKE); await s.go('ROSTER');
   await T('GES-03', 'Gestures', 'Long press opens the action menu', async () => { const row = s.page.locator('[data-swipe-row]').nth(1); const b = await row.boundingBox(); const tc = await touch(s); await tc.start(b.x + 100, b.y + b.height / 2); await s.page.waitForTimeout(800); const open = await s.page.getByText('What would you like to do?').count(); await tc.end(); await s.page.waitForTimeout(400); expect(open === 1 && await s.page.getByText('What would you like to do?').count() === 1, 'open=' + open); }, 'critical');
-  await T('GES-04', 'Gestures', 'Vertical scrolling is not hijacked by the swipe handler', async () => { await s.page.keyboard.press('Escape'); const y0 = await s.page.evaluate(() => window.scrollY); await s.page.mouse.wheel(0, 400); await s.page.waitForTimeout(300); expect(true); });
+  await T('GES-04', 'Gestures', 'A vertical drag on a row neither moves it nor opens its swipe actions', async () => {
+    await s.page.keyboard.press('Escape');
+    const row = s.page.locator('[data-swipe-row]').first(); const b = await row.boundingBox(); const tc = await touch(s);
+    const x = b.x + b.width - 60, y = b.y + b.height / 2;
+    const before = await row.evaluate(e => ({ open: e.dataset.swipeOpen, tf: e.style.transform }));
+    await tc.start(x, y); for (let i = 1; i <= 8; i++) await tc.move(x - i * 3, y + i * 25);
+    const mid = await row.evaluate(e => ({ open: e.dataset.swipeOpen, tf: e.style.transform }));
+    await tc.end();
+    expect(mid.open === before.open && mid.tf === before.tf, 'the row moved during a vertical drag: ' + JSON.stringify({ before, mid }));
+    expect((await s.page.locator('[data-swipe-open="1"]').count()) === (before.open === '1' ? 1 : 0), 'a row opened after a vertical drag');
+  });
   await T('GES-05', 'Gestures', 'Transfer removes the Pokemon and the count drops by one', async () => { await s.page.keyboard.press('Escape'); await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); const before = await s.page.locator('[data-swipe-row]').count(); await s.page.getByText(/Transfer/).first().click({ force: true }).catch(() => {}); await s.page.waitForTimeout(500); expect(await s.page.locator('[data-swipe-row]').count() <= before); });
   // ---- Roster: select mode, bulk actions, saved views, undo, sort, hint
   const rowCount = () => s.page.locator('[data-swipe-row]').count();
-  const reset = async csv => { await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(csv); await s.go('ROSTER'); await s.page.waitForTimeout(400); };
+  const reset = async csv => { await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(2200); await s.load(csv); await s.go('ROSTER'); };
   await reset(SMOKE);
   await T('ROS-12', 'Roster', 'Select mode: rows toggle on tap, the bar shows the count, Done exits', async () => {
     await s.page.getByRole('button', { name: 'Select', exact: true }).click(); await s.page.waitForTimeout(300);
@@ -155,7 +173,7 @@ module.exports = async function suiteA() {
     const mk = (idx, iv, cp) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const big = { ...mk('bt0', 15, 3000), name: 'Snorlax', dex: 143 };
     const keepAdded = (await s.state()).addedPokemon || [];
-    await s.set({ addedPokemon: [...keepAdded, big, mk('bt1', 1, 640), mk('bt2', 2, 650), mk('bt3', 3, 660)], search: 'luvdisc' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [...keepAdded, big, mk('bt1', 1, 640), mk('bt2', 2, 650), mk('bt3', 3, 660)], search: 'luvdisc' }); await s.recalc();
     const before = await rowCount(); const st0 = await s.state();
     await s.page.getByRole('button', { name: 'Select', exact: true }).click();
     const rws = s.page.locator('[data-swipe-row]'); await rws.nth(0).click(); await rws.nth(1).click();
@@ -193,7 +211,7 @@ module.exports = async function suiteA() {
     const mk = (idx, iv, cp) => ({ idx, name: 'Luvdisc', dex: 370, cp, hp: 30, atkIV: iv, defIV: iv, staIV: iv, ivAvg: iv / 15 * 100, lvlMin: 5, lvlMax: 5, ivMeasured: true, great: { rankPct: 10 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: '2026-10-01' });
     const big = { ...mk('br0', 15, 3000), name: 'Snorlax', dex: 143 };
     const keepAdded = (await s.state()).addedPokemon || [];
-    await s.set({ addedPokemon: [...keepAdded, big, mk('br1', 1, 640), mk('br2', 2, 650), mk('br3', 3, 660)], search: 'luvdisc' }); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(500);
+    await s.set({ addedPokemon: [...keepAdded, big, mk('br1', 1, 640), mk('br2', 2, 650), mk('br3', 3, 660)], search: 'luvdisc' }); await s.recalc();
     const st0 = await s.state(); const before = await rowCount();
     await s.page.getByRole('button', { name: 'Select', exact: true }).click(); await s.page.locator('[data-swipe-row]').nth(0).click();
     await s.page.getByRole('button', { name: 'Remove', exact: true }).last().click(); await s.page.waitForTimeout(300);
@@ -210,7 +228,7 @@ module.exports = async function suiteA() {
     await s.page.locator('.om-press', { hasText: /^ALL$/ }).click({ timeout: 4000 }).catch(e => { throw new Error('step 3: ' + e.message.split('\n')[0]); }); await s.page.waitForTimeout(200);
     await s.page.getByRole('button', { name: /^Lucky/ }).first().click({ timeout: 4000 }).catch(e => { throw new Error('step 4: ' + e.message.split('\n')[0]); }); await s.page.waitForTimeout(300); expect((await s.state()).rosterFilter === 'lucky', 'view not applied');
     await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(3000);
-    expect((await s.state()).savedViews.length === 1, 'not persisted'); await s.go('ROSTER'); await s.page.waitForTimeout(500);
+    expect((await s.state()).savedViews.length === 1, 'not persisted'); await s.go('ROSTER');
     await s.page.getByRole('button', { name: /Delete saved view/ }).first().click({ timeout: 4000 }).catch(e => { throw new Error('step 5: ' + e.message.split('\n')[0]); }); await s.page.waitForTimeout(300); expect((await s.state()).savedViews.length === 0, 'not deleted');
   }, 'medium');
   await T('ROS-17', 'Roster', 'Sort "Mega ready" lists Mega-capable Pokemon first', async () => {

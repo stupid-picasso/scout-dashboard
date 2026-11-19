@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import kit from './lib/testkit.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = fs.readFileSync(path.join(here, '..', 'sw.js'), 'utf8');
-let fail = 0, n = 0;
-const check = (name, got, want) => { n++; const a = JSON.stringify(got), b = JSON.stringify(want); if (a !== b) { fail++; console.log('FAIL', name, '\n  got ', a, '\n  want', b); } };
+const t = kit.checker(), check = t.eq;
 
 function scope(clientsList = [], over = {}) {
   const L = {}, shown = [], opened = [], focused = [], posted = [], subscribed = [];
@@ -84,5 +84,4 @@ async function click(s, url, notif) {
   check('subscription change without an old subscription does not throw', s2.subscribed.length, 0);
 }
 
-console.log(fail ? fail + ' of ' + n + ' checks failed' : 'ok: ' + n + ' service worker checks passed');
-process.exit(fail ? 1 : 0);
+t.exit(t.fail ? t.fail + ' of ' + t.n + ' checks failed' : 'ok: ' + t.n + ' service worker checks passed');

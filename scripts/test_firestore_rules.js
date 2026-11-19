@@ -7,8 +7,7 @@ const read = f => fs.readFileSync(path.join(REPO, f), 'utf8');
 const rulesRaw = read('firestore.rules');
 const rules = rulesRaw.replace(/\/\/.*$/gm, '');      // comments may mention anything
 const app = read('Scout Dashboard.dc.html');
-let failed = 0, passed = 0;
-const check = (name, ok, detail) => { if (ok) passed++; else { failed++; console.log('FAIL ' + name + (detail ? ': ' + detail : '')); } };
+const t = require('./lib/testkit').checker(), check = t.ok;
 
 const listOf = (src, name) => { const m = src.match(new RegExp('function ' + name + '\\(\\)\\s*\\{([\\s\\S]*?)\\}')); return m ? (m[1].match(/'([^']+)'/g) || []).map(x => x.slice(1, -1)) : null; };
 const allowed = listOf(rules, 'allowedKeysList'), scrub = listOf(rules, 'scrubKeysList');
@@ -67,5 +66,4 @@ check('DEPLOY.md exists and starts with the client-first rule', fs.existsSync(pa
 check('the app has no admin-by-email left', !/ADMIN_EMAILS|migrateStatsAndSprites|refreshCloudGameData|checkMigrationStatus|loadMechanicsFromCloud/.test(app));
 check('the app does not read gameData or sprites from Firestore', !/collection\('(gameData|sprites)'\)/.test(app));
 
-console.log((failed ? failed + ' failed, ' : '0 failed, ') + passed + ' passed');
-process.exit(failed ? 1 : 0);
+t.exit((t.fail ? t.fail + ' failed, ' : '0 failed, ') + t.pass + ' passed');

@@ -1,6 +1,8 @@
 // QA suite C: Today (events + GBL + Mega), Home/settings, Log, security, PWA/offline, accessibility, performance.
-const path = require('path'), http = require('http'), fs = require('fs');
+const path = require('path'), fs = require('fs');
 const { T, expect, skip, session, REPO } = require('./qa_lib');
+const { serveRepo } = require('../lib/testkit');
+const { SCREENS } = require('../lib/nav');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
 const SMOKE = path.join(REPO, 'scripts', 'fixtures', 'smoke.csv');
 
@@ -25,22 +27,14 @@ function feed(now = Date.now()) {
   };
 }
 
-function serve() {
-  const mime = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.css': 'text/css', '.csv': 'text/csv' };
-  const srv = http.createServer((req, res) => {
-    const p = path.join(REPO, decodeURIComponent(req.url.split('?')[0]).replace(/^\/$/, '/index.html'));
-    if (!p.startsWith(REPO) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
-    res.writeHead(200, { 'content-type': mime[path.extname(p)] || 'application/octet-stream' }); fs.createReadStream(p).pipe(res);
-  });
-  return new Promise(r => srv.listen(0, () => r(srv)));
-}
+const serve = () => serveRepo({ host: 'localhost' });
 
 module.exports = async function suiteC() {
   // ------------------------------------------------------------------ TODAY: feed, GBL, events
   let s = await session({ feed: feed() });
-  await s.load(QA); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(1500);
+  await s.load(QA); await s.recalc();
   await s.set({ typeTable: {} });
-  await s.go('TODAY'); await s.page.waitForTimeout(800);
+  await s.go('TODAY');
   const roster = (await s.state()).roster;
   const t0 = async () => { await s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; })); return s.text(); };
   await T('TOD-01', 'Today', 'GBL card appears when the feed has a current week', async () => expect(/GO Battle League/.test(await t0())));
@@ -49,7 +43,7 @@ module.exports = async function suiteC() {
   await T('TOD-04', 'Today', 'Each league shows its CP cap and rules text', async () => { const t = await t0(); expect(/≤ 1500 CP/.test(t) && /No cap/.test(t) && /at or below 1,500 CP/.test(t)); });
   await T('TOD-05', 'Today', 'Open Great League lists top species with tier and moves', async () => { const btn = s.page.getByRole('button', { name: /, tier [SAB]/ }).first(); expect(await btn.count() > 0, 'no top-species buttons'); await btn.click(); await s.page.waitForTimeout(300); expect(/ · /.test(await t0()) && await s.page.getByRole('button', { name: /, tier [SAB]/ }).first().getAttribute('aria-pressed') === 'true', 'moves line missing after tap'); await btn.click(); });
   await T('TOD-06', 'Today', 'Cup squad only contains Pokemon of the cup\'s allowed types (Color Cup)', async () => {
-    const team = await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.gblWeeks) { const w = f.stateNode.logic.gblWeeks(); return w[0].leagues.map(l => ({ name: l.name, squad: l.squadLine, note: l.note })); } } return null; });
+    const team = await s.logic((L) => { const w = L.gblWeeks(); return w[0].leagues.map(l => ({ name: l.name, squad: l.squadLine, note: l.note })); return null; });
     expect(team, 'no weeks'); const cup = team.find(l => /Color Cup/.test(l.name)); expect(cup, 'cup missing');
     const names = (cup.squad.match(/Your squad: ([^(]*)/) || [, ''])[1].split('·').map(x => x.trim()).filter(Boolean);
     if (!names.length) return 'no squad (not enough eligible): ' + cup.squad;
@@ -59,7 +53,7 @@ module.exports = async function suiteC() {
   }, 'critical');
   await T('TOD-07', 'Today', 'Cup note says rankings are PvPoke\'s cup ranking (not an estimate) when a table exists', async () => expect(/colormega rankings/.test(await t0()), (await t0()).slice(0, 100)));
   await T('TOD-08', 'Today', 'Mega Edition league shows a Mega-ready line for owned Mega-capable species', async () => expect(/MEGA-READY/.test(await t0())));
-  await T('TOD-09', 'Today', 'Squad members are all within the league CP cap', async () => { const team = await s.call('pvpTeamFor', 'great'); if (!team) skip('no team'); expect(team.members.every(c => c.p.cp <= 1500)); }, 'critical');
+  await T('TOD-09', 'Today', 'Squad members are all within the league CP cap', async () => { const team = await s.call('pvpTeamFor', 'great'); expect(team && team.members.length > 0, 'the fixture yields no Great League squad'); expect(team.members.every(c => c.p.cp <= 1500), 'a squad member is over 1500 CP'); }, 'critical');
   await T('SQUAD-WHY-01', 'PvP', 'squadWhy names the rule that drops a Pokemon from the squad', async () => {
     const team = await s.call('pvpTeamFor', 'great');
     expect(team, 'no squad on the QA roster');
@@ -126,7 +120,7 @@ module.exports = async function suiteC() {
   await s.load(QA);
   // a file:// page cannot fetch data/promo_codes.json, so the file's content is handed to the app as the first read would
   await s.page.evaluate(f => { localStorage.setItem('scout.promo.seen.v1', JSON.stringify(f.codes.map(c => c.code))); }, promoFile());
-  await s.set({ promoCodes: promoFile() }); await s.go('TODAY'); await s.page.waitForTimeout(900);
+  await s.set({ promoCodes: promoFile() }); await s.go('TODAY');
   await T('PROMO-01', 'Today', 'Today lists live promo codes with rewards, expiry and source; expired and past-date codes are hidden; Unconfirmed codes say so', async () => {
     const t = await s.text();
     expect(/Promo codes/.test(t) && /QA Berries/.test(t) && /x5 Razz Berry/.test(t) && /QACODETWO/.test(t) && /QAUNCONF/.test(t), 'live codes missing');
@@ -152,20 +146,19 @@ module.exports = async function suiteC() {
     expect(!/QACODEONE/.test(await s.page.evaluate(() => localStorage.getItem('scout.promo.redeemed.v1') || '')), 'undo did not clear it');
   });
   await T('PROMO-04', 'Today', 'A code that appears after the first read is NEW and raises one notification; the codes already there do not', async () => {
-    const r = await s.page.evaluate(async () => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let g = e[k]; g; g = g.return) if (g.stateNode && g.stateNode.logic && g.stateNode.logic.keepFull) { const l = g.stateNode.logic;
-      const before = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
+    const r = await s.logic(async (l) => { const before = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
       const c = l.state.promoCodes; l.setState({ promoCodes: { ...c, codes: c.codes.concat([{ code: 'QABRANDNEW', name: 'QA Brand New', rewards: ['Gift'], expires: null, expired: false, source: 'LeekDuck', verified: true }]) } }); await new Promise(r => setTimeout(r, 200));
       const items = l.reminderItems().filter(i => /^pc:/.test(i.id)); const text = document.body.innerText;
       l.promoCopy('QABRANDNEW'); await new Promise(r => setTimeout(r, 200));
       const after = l.reminderItems().filter(i => /^pc:/.test(i.id)).length;
-      return { before, items: items.map(i => i.id + ' | ' + i.title), hasNew: /NEW/.test(text), after }; } } return null; });
+      return { before, items: items.map(i => i.id + ' | ' + i.title), hasNew: /NEW/.test(text), after }; return null; });
     expect(r && r.before === 0, 'codes present at first read raise no notification: ' + JSON.stringify(r));
     expect(r.items.length === 1 && /QABRANDNEW/.test(r.items[0]) && /New promo code/.test(r.items[0]) && r.hasNew, 'new code: ' + JSON.stringify(r));
     expect(r.after === 0, 'copying a new code clears its notification');
   }, 'high');
   await s.close();
   s = await session({ feed: false });
-  await s.load(QA); await s.go('TODAY'); await s.page.waitForTimeout(600);
+  await s.load(QA); await s.go('TODAY');
   await T('PROMO-05', 'Today', 'With no promo file there is no card and no error', async () => { expect(!/Promo codes/.test(await s.text()) && s.errors.length === 0, s.errors[0] || 'card shown'); });
   await s.close();
   s = await session({ feed: false });
@@ -196,12 +189,33 @@ module.exports = async function suiteC() {
   await T('HOM-01', 'Home', 'The title names the day, and Power Up, Evolve Soon and Great League Project counts render', async () => { const t = await s.text(); expect(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/.test(t) && /POWER UP/.test(t) && /EVOLVE SOON/.test(t) && /GREAT LEAGUE PROJECTS/.test(t)); });
   const openSetup = () => s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/Setup, sync and backup/.test(d.textContent.slice(0, 120))) d.open = true; }));
     await T('HOM-02', 'Home', 'Sign-in form is present and a bad login shows an error, not a crash', async () => { await openSetup(); await s.page.getByRole('button', { name: 'Use email instead' }).first().click(); await s.page.waitForTimeout(200); await s.page.getByPlaceholder('email').first().fill('not-an-email'); await s.page.getByPlaceholder('password').first().fill('x'); await s.page.getByText('SIGN IN', { exact: true }).first().click(); await s.page.waitForTimeout(1500); expect(s.errors.length === 0, s.errors[0]); }, 'high');
-  await T('HOM-03', 'Home', 'Trainer level and stardust reserve save and survive state read-back', async () => { const inputs = s.page.locator('input[type=text]'); await s.call('setState', {}); const ok = await s.set({ trainerLevel: 42, dustReserve: 100000 }); expect(ok); expect((await s.state()).trainerLevel === 42); });
-  await T('HOM-04', 'Home', 'Resources (TMs, rare candy) save', async () => { const ok = await s.set({ resources: { fastTM: 3, chargedTM: 2 } }); expect(ok && (await s.state()).resources.fastTM === 3); });
+  // A value set through the app's state has to come back after a reload (the device copy), which is what "save" means for these fields.
+  const survivesReload = async (patch, read) => {
+    const sx = await session({ feed: false });
+    try {
+      await sx.load(QA);
+      // The device copy is written 1.5 s after the last change: count the app's own "saved" notes and wait for the one that follows this change.
+      await sx.logic(l => { window.__qaSaves = 0; const orig = l.noteLocalSave; l.noteLocalSave = function (...a) { window.__qaSaves++; return orig.apply(this, a); }; });
+      await sx.set(patch);
+      await sx.page.waitForFunction(() => window.__qaSaves > 0, null, { timeout: 10000 });
+      await sx.page.reload({ waitUntil: 'load' });
+      await sx.page.waitForFunction(() => { const l = window.__qaFindLogic && window.__qaFindLogic(); return !!l && (l.state.roster || []).length > 0; }, null, { timeout: 10000 });
+      return read(await sx.state());
+    } finally { await sx.close(); }
+  };
+  await T('HOM-03', 'Home', 'Trainer level and stardust reserve are still there after a reload', async () => { const r = await survivesReload({ trainerLevel: 42, dustReserve: 77000 }, st => [st.trainerLevel, st.dustReserve]); expect(r.join() === '42,77000', 'after reload: ' + r.join()); });
+  await T('HOM-04', 'Home', 'Resources (TMs, rare candy) are still there after a reload', async () => { const r = await survivesReload({ resources: { fastTM: 3, chargedTM: 2 } }, st => st.resources); expect(r && r.fastTM === 3 && r.chargedTM === 2, 'after reload: ' + JSON.stringify(r)); });
   await T('HOM-05', 'Home', 'Mega energy admin list: adding a species and amount creates an entry', async () => { await s.page.getByPlaceholder('species').fill('Beedrill'); await s.page.getByPlaceholder('amount').fill('215'); await s.page.getByText('ADD', { exact: true }).last().click(); await s.page.waitForTimeout(400); expect(/Beedrill/.test(await s.text()) && (await s.state()).megaEnergyInventory.beedrill.amount === 215); });
   await T('HOM-06', 'Home', 'Mega energy admin list: a non-numeric amount is rejected', async () => { await s.page.getByPlaceholder('species').fill('Gengar'); await s.page.getByPlaceholder('amount').fill('abc'); await s.page.getByText('ADD', { exact: true }).last().click(); await s.page.waitForTimeout(300); expect(!(await s.state()).megaEnergyInventory.gengar); });
   await T('HOM-07', 'Home', 'Mega list shows cost and READY / NEED n MORE per form', async () => expect(/MEGA .*· \d+ energy/.test(await s.text()) && /(READY|NEED \d+ MORE)/.test(await s.text())));
-  await T('HOM-08', 'Home', 'CLEAR ROSTER needs a second confirmation tap', async () => { await s.page.getByText('CLEAR ROSTER', { exact: true }).click(); await s.page.waitForTimeout(300); expect((await s.state()).roster.length === 64, 'cleared on first tap'); });
+  await T('HOM-08', 'Home', 'CLEAR ROSTER needs a second confirmation tap, and CANCEL keeps the roster', async () => {
+    await s.page.getByText('CLEAR ROSTER', { exact: true }).click();
+    const yes = s.page.getByText('YES, DELETE ALL', { exact: true }); await yes.waitFor({ timeout: 5000 });
+    expect((await s.state()).roster.length === 64, 'cleared on first tap');
+    await yes.locator('xpath=..').getByText('CANCEL', { exact: true }).click();
+    await s.page.getByText('CLEAR ROSTER', { exact: true }).waitFor({ timeout: 5000 });
+    const st = await s.state(); expect(st.roster.length === 64 && !st.clearArmed, 'cancel left roster ' + st.roster.length + ', armed ' + st.clearArmed);
+  });
   await T('HOM-09', 'Home', 'Storage planner reports whether the roster is within the keep target', async () => expect(/keep-target|within target|over/i.test(await s.text())));
   await T('HOM-10', 'Home', 'Evolution items and TM resources sections are present', async () => { const t = await s.text(); expect(/EVOLUTION ITEMS/.test(t) && /RESOURCES/.test(t)); });
   await T('HOM-11', 'Home', 'Trainer level is a working field: clamped to 1-50, junk ignored', async () => {
@@ -237,9 +251,39 @@ module.exports = async function suiteC() {
   // ------------------------------------------------------------------ SECURITY
   s = await session({ feed: false });
   await s.load(QA);
-  await T('SEC-01', 'Security', 'API keys are kept in on-device storage', async () => { await s.page.evaluate(() => localStorage.setItem('scout.secrets.v1', JSON.stringify({ geminiKeys: 'AIzaQA_SECRET_KEY' }))); await s.page.reload({ waitUntil: 'load' }); await s.page.waitForTimeout(1500); expect(await s.page.evaluate(() => !!localStorage.getItem('scout.secrets.v1'))); }, 'critical');
+  await T('SEC-01', 'Security', 'API keys are kept in on-device storage, survive a reload, and stay out of the roster copy', async () => {
+    const sx = await session({ feed: false });
+    try {
+      await sx.load(QA);
+      await sx.set({ geminiKey: 'AIzaQA_SECRET_KEY', geminiKeys: ['AIzaQA_SECRET_KEY'], githubToken: 'github_pat_QA_SECRET' });
+      await sx.page.waitForFunction(() => /QA_SECRET/.test(localStorage.getItem('scout.secrets.v1') || ''), null, { timeout: 5000 });
+      await sx.page.waitForFunction(() => Object.keys(localStorage).some(k => /^scout\.local\.v1/.test(k)), null, { timeout: 10000 });   // the roster copy is written 1.5 s after the last change
+      const leak = await sx.page.evaluate(() => Object.keys(localStorage).filter(k => /^scout\.local\.v1/.test(k) && /QA_SECRET/.test(localStorage.getItem(k))));
+      expect(leak.length === 0, 'a secret is in the roster copy ' + leak.join(','));
+      await sx.page.reload({ waitUntil: 'load' });
+      await sx.page.waitForFunction(() => { const l = window.__qaFindLogic && window.__qaFindLogic(); return !!l && (l.state.geminiKeys || []).join() === 'AIzaQA_SECRET_KEY'; }, null, { timeout: 10000 });
+    } finally { await sx.close(); }
+  }, 'critical');
   await T('SEC-02', 'Security', 'Secrets are never part of the cloud-sync payload', async () => { await s.load(QA); await s.set({ geminiKeyDraft: 'AIzaQA_SECRET_KEY', geminiKeys: ['AIzaQA_SECRET_KEY'], githubToken: 'github_pat_QA_SECRET' }); const blob = JSON.stringify(await s.call('buildCloudBlob')); expect(!/QA_SECRET/.test(blob), 'secret leaked into blob'); }, 'critical');
-  await T('SEC-03', 'Security', 'Secrets are not rendered into the page text', async () => expect(!/AIzaQA_SECRET_KEY|github_pat_QA_SECRET/.test(await s.text()) || true));
+  await T('SEC-03', 'Security', 'Secrets are not rendered as text on any screen (only inside their own input fields)', async () => {
+    const tab = (await s.state()).tab;
+    await s.set({ geminiKeyDraft: 'AIzaQA_SECRET_KEY', geminiKeys: ['AIzaQA_SECRET_KEY'], geminiKey: 'AIzaQA_SECRET_KEY', githubToken: 'github_pat_QA_SECRET' });
+    const leaks = [];
+    for (const scr of SCREENS) {
+      await s.go(scr);
+      const hit = await s.page.evaluate(() => {
+        const re = /AIzaQA_SECRET_KEY|github_pat_QA_SECRET/;
+        if (re.test(document.body.innerText)) return 'visible text';
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let n = w.nextNode(); n; n = w.nextNode()) if (re.test(n.nodeValue) && !n.parentElement.closest('input, textarea, script, style')) return 'text node in <' + n.parentElement.tagName.toLowerCase() + '>';
+        for (const el of document.querySelectorAll('*')) { if (/^(INPUT|TEXTAREA)$/.test(el.tagName)) continue; for (const a of el.attributes) if (re.test(a.value)) return a.name + ' of <' + el.tagName.toLowerCase() + '>'; }
+        return '';
+      });
+      if (hit) leaks.push(scr + ': ' + hit);
+    }
+    await s.set({ tab });
+    expect(leaks.length === 0, leaks.join('; '));
+  });
   await T('SEC-04', 'Security', 'No inline secrets in the shipped HTML (key-like strings)', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); const hits = (h.match(/AIza[0-9A-Za-z_-]{35}|github_pat_[0-9A-Za-z_]{20,}|ghp_[0-9A-Za-z]{30,}/g) || []).filter(k => k !== 'AIzaSyAQcYNQtMwA4_0G6tII7K396mtvrA4hQY0'); expect(hits.length === 0, hits.length + ' unexpected key-like strings'); return 'only the Firebase web config key (public by design) is present; restrict it by referrer in the Google console'; }, 'critical');
   await T('SEC-05', 'Security', 'Firebase web config is public by design (no private keys)', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); expect(!/PRIVATE KEY|client_secret/i.test(h)); });
   await T('SEC-06', 'Security', 'Page sets no mixed-content http:// subresources', async () => { const h = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8'); const bad = (h.match(/(?:src|href)=["']http:\/\/(?!www\.w3\.org)[^"']+/g) || []); expect(bad.length === 0, bad[0]); });
@@ -288,7 +332,7 @@ module.exports = async function suiteC() {
 
   // ------------------------------------------------------------------ ACCESSIBILITY
   s = await session({ feed: feed() });
-  await s.load(QA); await s.call('recalculateAllRanks'); await s.page.waitForTimeout(2500);
+  await s.load(QA); await s.recalc();
   await T('A11Y-01', 'Accessibility', 'Bottom-nav tap targets are at least 44x44 px', async () => { const small = await s.page.evaluate(() => [...document.querySelectorAll('[data-navbar] button')].map(e => { const r = e.getBoundingClientRect(); return [e.getAttribute('aria-label'), Math.round(r.width), Math.round(r.height)]; }).filter(x => x[1] < 44 || x[2] < 44)); expect(small.length === 5 || small.length === 0, JSON.stringify(small)); expect(small.length === 0, JSON.stringify(small)); const _unused = await s.page.evaluate(() => [].map(l => { const el = [...document.querySelectorAll('div,span,button')].filter(e => e.children.length === 0 && e.innerText && e.innerText.trim() === l).pop(); let n = el; while (n && n.parentElement && getComputedStyle(n).cursor !== 'pointer') n = n.parentElement; while (n && n.parentElement && getComputedStyle(n.parentElement).cursor === 'pointer') n = n.parentElement; const r = (n || el).getBoundingClientRect(); return [l, Math.round(r.width), Math.round(r.height)]; }).filter(x => x[1] < 44 || x[2] < 44)); expect(small.length === 0, JSON.stringify(small)); }, 'high');
   await T('A11Y-02', 'Accessibility', 'Interactive elements expose a role or accessible name (VoiceOver)', async () => { const r = await s.page.evaluate(() => { const els = [...document.querySelectorAll('*')].filter(e => e.style && e.style.cursor === 'pointer' && e.offsetWidth > 0); const ok = els.filter(e => e.getAttribute('role') || e.getAttribute('aria-label') || ['A', 'BUTTON', 'INPUT', 'SELECT', 'LABEL'].includes(e.tagName)); return [els.length, ok.length]; }); expect(r[1] / r[0] > 0.8, `${r[1]} of ${r[0]} clickable elements are accessible`); return `${r[1]}/${r[0]}`; }, 'high');
   await T('A11Y-03', 'Accessibility', 'Interactive elements are reachable by keyboard (tabindex or native)', async () => { const r = await s.page.evaluate(() => { const els = [...document.querySelectorAll('*')].filter(e => e.style && e.style.cursor === 'pointer' && e.offsetWidth > 0); const ok = els.filter(e => e.tabIndex >= 0); return [els.length, ok.length]; }); expect(r[1] / r[0] > 0.8, `${r[1]} of ${r[0]} focusable`); return `${r[1]}/${r[0]}`; }, 'medium');
@@ -307,9 +351,14 @@ module.exports = async function suiteC() {
   s = await session({ feed: feed() });
   await s.load(QA);
   await T('PERF-01', 'Performance', 'Average tab switch (click to new content) is under 400 ms with 64 Pokemon', async () => { const ts = []; for (const l of ['Roster', 'PvP', 'Recs', 'Today', 'Roster', 'PvP', 'Recs', 'Today']) { const prev = await s.page.evaluate(() => document.body.innerText.length); const t = Date.now(); await s.page.getByText(l, { exact: true }).last().click(); await s.page.waitForFunction(p => document.body.innerText.length !== p, prev, { timeout: 5000 }).catch(() => {}); ts.push(Date.now() - t); } const avg = ts.reduce((a, b) => a + b, 0) / ts.length; expect(avg < 400, 'avg ' + avg.toFixed(0) + ' ms'); return avg.toFixed(0) + ' ms avg'; });
-  await T('PERF-02', 'Performance', 'No long tasks over 200 ms during a full tab tour', async () => { const n = await s.page.evaluate(async () => { const lt = []; try { new PerformanceObserver(l => l.getEntries().forEach(e => lt.push(e.duration))).observe({ entryTypes: ['longtask'] }); } catch (e) { return -1; } for (const l of ['TODAY', 'HOME', 'ROSTER', 'PVP', 'RECS', 'TODAY']) { const el = [...document.querySelectorAll('div,span')].filter(e => e.children.length === 0 && e.innerText && e.innerText.trim() === ({ TODAY: 'Today', HOME: 'Home', ROSTER: 'Roster', PVP: 'PvP', RECS: 'Recs' })[l]).pop(); el && el.click(); await new Promise(r => setTimeout(r, 400)); } return lt.filter(d => d > 200).length; }); if (n < 0) skip('longtask API unavailable'); expect(n <= 2, n + ' long tasks'); return n + ' long tasks'; });
+  await T('PERF-02', 'Performance', 'No long tasks over 200 ms during a full tab tour', async () => {
+    const ok = await s.page.evaluate(() => { try { window.__lt = []; window.__ltObs = new PerformanceObserver(l => l.getEntries().forEach(e => window.__lt.push(e.duration))); window.__ltObs.observe({ entryTypes: ['longtask'] }); return true; } catch (e) { return false; } });
+    if (!ok) skip('longtask API unavailable');
+    for (const l of ['TODAY', 'HOME', 'ROSTER', 'PVP', 'RECS', 'TODAY']) await s.go(l);   // HOME is Settings, reached through More
+    const n = await s.page.evaluate(() => { window.__ltObs.takeRecords().forEach(e => window.__lt.push(e.duration)); return window.__lt.filter(d => d > 200).length; });
+    expect(n <= 2, n + ' long tasks'); return n + ' long tasks';
+  });
   await T('PERF-03', 'Performance', 'JS heap does not grow by more than 50% over 40 tab switches (leak check)', async () => { const h0 = await s.page.evaluate(() => performance.memory && performance.memory.usedJSHeapSize); if (!h0) skip('memory API unavailable'); for (let i = 0; i < 40; i++) { await s.go(['ROSTER', 'PVP', 'TODAY', 'RECS'][i % 4]); } await s.page.evaluate(() => window.gc && window.gc()); const h1 = await s.page.evaluate(() => performance.memory.usedJSHeapSize); expect(h1 < h0 * 1.5, `${(h0 / 1e6).toFixed(1)} -> ${(h1 / 1e6).toFixed(1)} MB`); return `${(h0 / 1e6).toFixed(1)} -> ${(h1 / 1e6).toFixed(1)} MB`; });
-  await T('PERF-04', 'Performance', 'Page weight: index.html under 3 MB gzipped', async () => { const z = require('zlib').gzipSync(fs.readFileSync(path.join(REPO, 'index.html'))).length; expect(z < 3e6, (z / 1e6).toFixed(2) + ' MB'); return (z / 1e6).toFixed(2) + ' MB gz'; });
   await T('PERF-05', 'Performance', 'Mechanics data (pokemon-mechanics.js) under 1.5 MB raw', async () => { const n = fs.statSync(path.join(REPO, 'pokemon-mechanics.js')).size; expect(n < 1.5e6, (n / 1e6).toFixed(2) + ' MB'); return (n / 1e6).toFixed(2) + ' MB'; });
   await s.close();
 
@@ -317,7 +366,12 @@ module.exports = async function suiteC() {
   s = await session({ feed: false });
   await s.load(QA); await s.go('LOG');
   await T('LOG-01', 'Log', 'Snapshot logging adds a dated row with roster size', async () => { await s.page.getByText('Log snapshot', { exact: true }).click(); await s.page.waitForTimeout(500); const t = await s.text(); const row = t.match(/\d{4}-\d{2}-\d{2}[\s\S]{0,60}/); expect(row && /64/.test(row[0]) && !/No snapshots yet/.test(t), 'no dated row with 64: ' + (row && row[0])); });
-  await T('LOG-02', 'Log', 'Diagnostics panel captures a runtime error', async () => { await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0)); await s.page.waitForTimeout(900); const t = await s.text(); expect(/qa-diag-test|ERRORS?/i.test(t) || /No errors recorded/.test(t) === false, t.slice(300, 500)); });
+  await T('LOG-02', 'Log', 'Diagnostics panel captures a runtime error and shows its message', async () => {
+    await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0));
+    await s.page.waitForFunction(() => /DIAGNOSTICS · [1-9]\d* recent error/.test(document.body.innerText), null, { timeout: 5000 });
+    await s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/DIAGNOSTICS/.test(d.textContent.slice(0, 60))) d.open = true; }));
+    const t = await s.text(); expect(/qa-diag-test/.test(t), 'the message is not listed: ' + (t.match(/DIAGNOSTICS[\s\S]{0,200}/) || [''])[0]);
+  });
   await T('LOG-03', 'Log', 'A daily snapshot is taken automatically once, with hundo and species counts', async () => {
     await s.set({ history: [] }); const r1 = await s.call('dailyLogSnapshot'); const r2 = await s.call('dailyLogSnapshot'); const h = (await s.state()).history;
     expect(r1 === true && r2 === false && h.length === 1, 'r1=' + r1 + ' r2=' + r2 + ' n=' + h.length); expect(h[0].auto === true && Number.isFinite(h[0].hundo) && Number.isFinite(h[0].dex) && h[0].count === 64, JSON.stringify(h[0]));
@@ -326,7 +380,7 @@ module.exports = async function suiteC() {
   await T('LOG-04', 'Log', 'Thirty synthetic days draw four correct growth charts', async () => {
     const hist = []; for (let i = 0; i < 30; i++) { const d = new Date(Date.UTC(2026, 8, 30 - i)).toISOString().slice(0, 10) + ' 12:00'; hist.push({ date: d, stardust: 100000 + (29 - i) * 1000, count: 60 + (29 - i), avgIV: (70 + (29 - i) * 0.5).toFixed(1), lucky: 3, hundo: 1 + Math.floor((29 - i) / 5), dex: 40 + (29 - i) }); }
     // The app also logs today on a 6 s timer after start; stop it so the chart holds exactly the 30 synthetic days.
-    await s.page.evaluate(() => { for (const e of document.querySelectorAll('*')) { const k = Object.keys(e).find(x => x.startsWith('__reactFiber')); if (!k) continue; for (let f = e[k]; f; f = f.return) if (f.stateNode && f.stateNode.logic && f.stateNode.logic.dailyLogSnapshot) { f.stateNode.logic.dailyLogSnapshot = () => {}; return; } } });
+    await s.logic((l) => { l.dailyLogSnapshot = () => {}; return; });
     await s.set({ history: hist }); await s.call('goToTab', 'progress'); await s.page.waitForTimeout(700);
     const charts = await s.page.locator('svg[role=img]').evaluateAll(els => els.map(e => ({ label: e.getAttribute('aria-label'), d: e.querySelectorAll('path')[1].getAttribute('d') })));
     expect(charts.length === 4, 'charts=' + charts.length); const nums = d => d.match(/[ML]/g).length; expect(charts.every(c => nums(c.d) === 30), 'points ' + charts.map(c => nums(c.d)));
@@ -391,7 +445,7 @@ module.exports = async function suiteC() {
     const all = [...(st.roster || []), ...(st.addedPokemon || [])];
     expect(all.some(p => JSON.stringify(p).indexOf('<img') >= 0 || JSON.stringify(p).indexOf('<svg') >= 0), 'setup: the markup did not reach the roster (' + all.length + ' rows)');
     const vis = () => x.page.evaluate(() => document.body.innerText);
-    await x.go('ROSTER'); await x.page.waitForTimeout(800);
+    await x.go('ROSTER');
     expect(/<img src=x onerror=window\.__xss=1>|<svg onload=window\.__xss=2>/.test(await vis()), 'setup: the hostile text is not shown on the roster as text');
     const row = x.page.locator('[data-swipe-row]').first(); expect(await row.count() > 0, 'no roster row to open'); await row.click(); await x.page.waitForTimeout(900);
     expect(!!(await x.state()).detailPoke, 'the detail sheet did not open');

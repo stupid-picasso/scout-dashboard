@@ -6,12 +6,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildItems, dueFor, cleanPrefs, defaultPrefs, localToUtc, validTz, pipelineFresh, updateFirstSeen, DEFAULT_TYPES, HOUR, MIN } from '../worker/src/logic.js';
+import kit from './lib/testkit.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fx = n => JSON.parse(fs.readFileSync(path.join(here, 'fixtures', n), 'utf8'));
 const feed = fx('push_feed.json'), promo = fx('push_promo.json'), moves = fx('push_moves.json');
-let fail = 0, n = 0;
-const check = (name, got, want) => { n++; const a = JSON.stringify(got), b = JSON.stringify(want); if (a !== b) { fail++; console.log('FAIL', name, '\n  got ', a, '\n  want', b); } };
+const t = kit.checker(), check = t.eq;
 const iso = s => Date.parse(s);
 const ids = list => list.map(i => i.id).sort();
 const sub = (over) => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/x', prefs: defaultPrefs(), tz: 'America/New_York', createdAt: iso('2026-11-01T00:00:00Z'), schedules: [], ...over });
@@ -103,5 +103,4 @@ check('prefs: junk falls back to defaults', cleanPrefs({ promo: 'yes', types: ['
 check('prefs: defaults match the owner decision', defaultPrefs().types, ['community-day', 'raid-hour', 'pokemon-spotlight-hour', 'pokemon-go-tour', 'max-battles']);
 check('prefs: null', cleanPrefs(null), defaultPrefs());
 
-console.log(fail ? fail + ' of ' + n + ' checks failed' : 'ok: ' + n + ' trigger checks passed');
-process.exit(fail ? 1 : 0);
+t.exit(t.fail ? t.fail + ' of ' + t.n + ' checks failed' : 'ok: ' + t.n + ' trigger checks passed');

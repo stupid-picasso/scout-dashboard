@@ -1,12 +1,8 @@
 #!/usr/bin/env node
 /** test_cp_recovery.js — cpCandidatesFor (CP hidden behind the Pokemon) in pokemon-mechanics.js. */
-const vm = require('vm'), fs = require('fs'), path = require('path');
-const code = fs.readFileSync(path.join(__dirname, '..', 'pokemon-mechanics.js'), 'utf8');
-const ctx = { window: { dispatchEvent: () => {} }, Event: function () {}, console };
-vm.createContext(ctx); vm.runInContext(code, ctx);
-const m = ctx.window.PokemonMechanics;
-let pass = 0, fail = 0;
-function check(name, ok, info) { if (ok) pass++; else { fail++; console.log('FAIL', name, info === undefined ? '' : JSON.stringify(info)); } }
+const { checker, loadMechanics } = require('./lib/testkit');
+const m = loadMechanics();
+const t = checker(), check = t.ok;
 
 const kingdra = m.BASE_STATS[230];
 check('Kingdra base stats exist', Array.isArray(kingdra) && kingdra.length === 3, kingdra);
@@ -35,5 +31,4 @@ check('unmatched dust is reported', m.cpCandidatesFor([kingdra], { hp: 155, dust
 // lucky halves the stardust
 const lucky = m.cpCandidatesFor([kingdra], { hp: 155, dust: 5500, lucky: true, pattern: '2??6' });
 check('a lucky Kingdra with half the stardust finds the same level', lucky.cps.indexOf(2656) >= 0 && lucky.dustMatched === true, lucky);
-console.log(pass + ' passed, ' + fail + ' failed');
-process.exit(fail ? 1 : 0);
+t.exit(t.pass + ' passed, ' + t.fail + ' failed');
