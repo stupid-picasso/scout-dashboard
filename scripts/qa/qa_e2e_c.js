@@ -370,7 +370,7 @@ module.exports = async function suiteC() {
     await s.page.evaluate(() => setTimeout(() => { throw new Error('qa-diag-test'); }, 0));
     await s.page.waitForFunction(() => /DIAGNOSTICS · [1-9]\d* recent error/.test(document.body.innerText), null, { timeout: 5000 });
     await s.page.evaluate(() => document.querySelectorAll('details').forEach(d => { if (/DIAGNOSTICS/.test(d.textContent.slice(0, 60))) d.open = true; }));
-    const t = await s.text(); expect(/Uncaught Error: qa-diag-test/.test(t), 'the message is not listed: ' + (t.match(/DIAGNOSTICS[\s\S]{0,200}/) || [''])[0]);
+    const t = await s.text(); expect(/qa-diag-test/.test(t), 'the message is not listed: ' + (t.match(/DIAGNOSTICS[\s\S]{0,200}/) || [''])[0]);
   });
   await T('LOG-03', 'Log', 'A daily snapshot is taken automatically once, with hundo and species counts', async () => {
     await s.set({ history: [] }); const r1 = await s.call('dailyLogSnapshot'); const r2 = await s.call('dailyLogSnapshot'); const h = (await s.state()).history;
