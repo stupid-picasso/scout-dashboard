@@ -957,3 +957,13 @@ Direction: Pokemon GO advisor for one player; exact, calm, a little field-notes;
 - Cards: outlined cards lose `--e1` shadow, get a `--line` hairline and `--r-md`; `.go-row`, Do-now rows and event rows are flat with hairline dividers (event rows keep a neutral 2px left bar); `.rg-cell`, empty state and first-run card lose shadows.
 - Accent: `.go-sec` chips become plain `--text-2` labels (ribbon clip removed), `.go-mini`/`.ui-btn-tint` neutral (`--fill`, `--text`), accent-coloured inline text links/summaries use `--text-2`. Accent stays on primary fills (`--accent-fill`), active nav, focus ring, status dots. Rank/grade/type colours untouched.
 - Re-shoot: `node scripts/qa/ui_shots.js <outdir> 320,390,768 dark,light` (before = main f1df274).
+
+## Unslop PR (b): Today, Roster, PvP, Recs (polish mode)
+
+Markup-only tidy in `Scout Dashboard.dc.html`; no copy, order or palette changes.
+
+- Today: GBL week blocks no longer stack two hairlines around the week label (label gets padding, leagues keep their divider); Events title no longer carries a stray bottom margin beside the Remind-me button.
+- Roster: "Pokemon" heading uses the same 22px/600 title style as the other screens (was 700 with positive tracking).
+- PvP: one tier-chip size (17px) in the ready list, sprite drop-shadow removed from the ready list (matches the power-up list), team and saved-team card titles use the standard card title instead of an electric-yellow 13px label.
+- Recs: Use-a-TM card gets the same hairline as the other cards; Mark done and Transferred buttons bottom-align across uneven card heights.
+- Re-shoot: `node scripts/qa/ui_shots.js <outdir> 320,390,768 dark,light TODAY,ROSTER,PVP,RECS`.
