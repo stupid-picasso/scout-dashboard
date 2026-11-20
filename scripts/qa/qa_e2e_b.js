@@ -2599,6 +2599,14 @@ module.exports = async function suiteB() {
     golden('aijob-evo-errors', out);
   }, 'high');
 
+  // extractJsonArray is the tolerant reader (evolution data, imports). Its salvage step rebuilds objects from a broken reply, which hides a
+  // wrong span for arrays of objects, so the cases here include arrays of plain values.
+  await T('AIJOB-07', 'AI', 'extractJsonArray: fences, prose, plain values, one object, an empty array, a cut-off array, other brackets first, and no JSON', async () => {
+    const x = async t => s.call('extractJsonArray', t); const J = JSON.stringify;
+    const cases = [['[1,2,3]', [1, 2, 3]], ['```json\n[{"a":1},{"b":2}]\n```', [{ a: 1 }, { b: 2 }]], ['Here you go:\n["x","y"]\nBye.', ['x', 'y']], ['{"a":1}', [{ a: 1 }]], ['[]', []],
+      ['[{"a":1},{"b":2},{"c":', [{ a: 1 }, { b: 2 }]], ['Note [1]: below\n[{"a":1}]', [{ a: 1 }]], ['no json here', null], ['', null], [null, null]];
+    for (const [input, want] of cases) { const got = await x(input); expect(J(got) === J(want), J(input) + ' gives ' + J(got) + ', want ' + J(want)); }
+  }, 'high');
   // The chat words for each kind the client reports that GEMERR-01..11 do not reach: no key at all, and a request that fails before any answer.
   await T('CHATERR-01', 'AI', 'Chat error words by kind: no key says no engine is connected, a dropped connection says the model could not be reached, and neither asks again', async () => {
     await appSession(async sx => {
