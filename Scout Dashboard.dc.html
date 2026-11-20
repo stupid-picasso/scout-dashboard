@@ -163,7 +163,6 @@
     --accent:#7fe0b8; --accent-text:#7fe0b8; --accent-fill:#1a7a73; --fill-a:#218068; --fill-b:#1a7a73; --on-accent:#fff; --info:#8fd3ff;
     --good:#6fdc9a; --warn:#ffc659; --bad:#ff8f86; --pink:#ff9ccb; --bad-fill:#c93a58; --ribbon:#c93a58;
     --cost-bar:#1b343a; --hp:#6fdc9a;
-    --page-grad:linear-gradient(90deg,#123a33 0,#0e2428 6%,#0c1b1f 20%,#0c1b1f 80%,#0e2428 94%,#123a33 100%);
     --e0:none; --e1:0 4px 16px rgba(0,0,0,.28); --e2:0 14px 36px rgba(0,0,0,.55);
     --on-yellow:#000; --purple-text:#d7a8ff; --cyan-text:#8fd3ff; --green-text:#7cf29a; --amber-text:#ffb454; --red-text:#ff8a80;
     --bar-bg:rgba(12,27,31,.82); --nav-bg:rgba(15,32,37,.95); --nav-line:rgba(190,240,225,.14); --menu-bg:rgba(27,52,58,.96); --toast-bg:rgba(37,66,73,.96);
@@ -186,7 +185,6 @@
     --accent:#176b5f; --accent-text:#176b5f; --accent-fill:#1f7f76; --fill-a:#2d8059; --fill-b:#1f7f76; --on-accent:#fff; --info:#0a58be;
     --good:#12703a; --warn:#8a5a00; --bad:#b3261e; --pink:#b8336f; --bad-fill:#b3261e; --ribbon:#c93a58;
     --cost-bar:#e4efdb; --hp:#5fcf9d;
-    --page-grad:linear-gradient(90deg,#d6edc4 0,#e6f3de 5%,#f1f8ec 22%,#f1f8ec 78%,#e6f3de 95%,#d6edc4 100%);
     --e1:0 2px 6px rgba(47,74,78,.06),0 10px 28px rgba(47,74,78,.10); --e2:0 14px 36px rgba(47,74,78,.22);
     --on-yellow:#fff; --purple-text:#6d3a9a; --cyan-text:#0a5a85; --green-text:#12703a; --amber-text:#8a5a00; --red-text:#b3261e;
     --bar-bg:rgba(238,245,234,.86); --nav-bg:rgba(250,253,248,.96); --nav-line:rgba(61,90,94,.14); --menu-bg:rgba(255,255,255,.97); --toast-bg:rgba(255,255,255,.97);
@@ -206,7 +204,6 @@
       --accent:#176b5f; --accent-text:#176b5f; --accent-fill:#1f7f76; --fill-a:#2d8059; --fill-b:#1f7f76; --on-accent:#fff; --info:#0a58be;
       --good:#12703a; --warn:#8a5a00; --bad:#b3261e; --pink:#b8336f; --bad-fill:#b3261e; --ribbon:#c93a58;
       --cost-bar:#e4efdb; --hp:#5fcf9d;
-      --page-grad:linear-gradient(90deg,#d6edc4 0,#e6f3de 5%,#f1f8ec 22%,#f1f8ec 78%,#e6f3de 95%,#d6edc4 100%);
       --e1:0 2px 6px rgba(47,74,78,.06),0 10px 28px rgba(47,74,78,.10); --e2:0 14px 36px rgba(47,74,78,.22);
       --on-yellow:#fff; --purple-text:#6d3a9a; --cyan-text:#0a5a85; --green-text:#12703a; --amber-text:#8a5a00; --red-text:#b3261e;
       --bar-bg:rgba(238,245,234,.86); --nav-bg:rgba(250,253,248,.96); --nav-line:rgba(61,90,94,.14); --menu-bg:rgba(255,255,255,.97); --toast-bg:rgba(255,255,255,.97);
@@ -221,7 +218,7 @@
   body{font-family:var(--font-body);font-size:17px;letter-spacing:0;background:var(--surface-page) !important}
   /* Grouped cards: no outline, continuous corners, the elevation is the surface colour.
      The browser re-serialises inline styles as "prop: value;", so selectors match that form. */
-  [style*="background: var(--surface-card); border: 1px solid"]{border-color:transparent !important;border-radius:var(--r-lg) !important;box-shadow:var(--e1) !important}
+  [style*="background: var(--surface-card); border: 1px solid"]{border-color:var(--line) !important;border-radius:var(--r-md) !important;box-shadow:none !important}
   [style*="border-radius: 999px"][style*="border: 1px solid"],[style*="border-radius: var(--r-pill)"][style*="border: 1px solid"]{border-color:transparent !important}
   [style*="background: var(--surface-card)"][style*="border-radius: 999px"],[style*="background: var(--surface-card)"][style*="border-radius: var(--r-pill)"],[style*="background: var(--surface-muted)"][style*="border-radius: var(--r-pill)"]{background:var(--ios-fill) !important}
   [style*="color: var(--type-electric); letter-spacing: 0.05em"],[style*="color: var(--type-electric); letter-spacing: 0.06em"],[style*="color: var(--type-electric); letter-spacing: 0.04em"]{color:var(--ink-400) !important;font-weight:600 !important;font-size:13px !important;letter-spacing:.04em !important}
@@ -258,8 +255,8 @@
   .ui-btn-fill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background-color:var(--accent-fill);background-image:var(--fill-grad);color:var(--on-accent);font:700 15px var(--font-body);letter-spacing:.02em !important;box-shadow:0 2px 8px color-mix(in oklab,var(--fill-b) 35%,transparent)}
   .ui-btn-tint{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--ios-fill);color:var(--accent-text);font:600 15px var(--font-body)}
   .ui-btn-plain{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 4px;color:var(--accent-text);font:600 15px var(--font-body)}
-  @media (max-width:360px){.app-header .app-title{font-size:28px !important}.app-header .app-actions{gap:4px !important}.app-header .ios-icon-btn{width:32px;height:32px}}
-  .ios-icon-btn{cursor:pointer;width:38px;height:38px;border-radius:50%;background:var(--ring-bg);box-shadow:inset 0 0 0 2px var(--ring),var(--e1);display:flex;align-items:center;justify-content:center;color:var(--accent-text);flex-shrink:0}
+  @media (max-width:360px){.app-header .ios-icon-btn{width:32px;height:32px}}
+  .ios-icon-btn{cursor:pointer;width:36px;height:36px;border-radius:var(--r-sm);background:transparent;display:flex;align-items:center;justify-content:center;color:var(--text-2);flex-shrink:0;transition:background-color var(--dur-fast) var(--ease-out)}.ios-icon-btn:hover{background:var(--fill)}.ios-icon-btn[style*="surface-muted"]{background:transparent !important}
   .ios-icon-btn:active{opacity:.6}
   .ios-toast{position:fixed;left:12px;right:12px;bottom:calc(150px + env(safe-area-inset-bottom));max-width:536px;margin:0 auto;z-index:70;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:20px;background:var(--toast-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);color:var(--ink-900);font:15px/1.35 var(--font-body);box-shadow:var(--e2);animation:sheetUp 0.36s var(--ios-spring) backwards}
   /* ---- Unslop passes: calm type, no tracking, neutral surfaces ---- */
@@ -291,7 +288,7 @@
   .ui-chev{font:17px var(--font-body);color:var(--text-3)}
   .fr-h{margin:0;font:600 22px/1.2 var(--font-display);color:var(--ink-900)}.fr-p{font:15px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty;overflow-wrap:anywhere}.fr-c{font:13px/1.4 var(--font-body);color:var(--ink-500);text-wrap:pretty;overflow-wrap:anywhere}.fr-ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}.fr-w{width:100%}.fr-s{align-self:flex-start}.fr-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.fr-n{font:13px/1.4 var(--font-body);color:var(--ink-600);text-wrap:pretty}
   .rg-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(86px,30%,170px),1fr)) !important;gap:10px !important}
-  .rg-cell{display:flex;flex-direction:column;box-shadow:var(--e1)}
+  .rg-cell{display:flex;flex-direction:column}
   .rg-cell>.rg-iv{box-shadow:none}
   .rg-cell:has(.iv-entry){grid-column:1/-1}
   .rg-iv .iv-entry{display:flex;flex-direction:column;gap:8px;max-width:360px;margin:0 auto}
@@ -310,14 +307,15 @@
   details.ui-more>div{margin-top:4px;font:13px/1.4 var(--font-body);color:var(--ink-500)}
   /* ---- Pokemon GO look: shell, tabs, buttons, sheets ---- */
   html,body{background:var(--bg)}
-  .app-root{background:var(--page-grad),var(--bg) !important}
+  .app-root{background:var(--bg) !important}
   .app-header>div{border-bottom:0 !important;box-shadow:0 1px 0 var(--line)}
-  .app-header .app-title{font-weight:700;color:var(--text)}
+  .app-header .app-title{font:600 22px/1.2 var(--font-display) !important;letter-spacing:0 !important;color:var(--text)}.app-header>div{align-items:center !important;padding-top:4px !important;padding-bottom:4px !important}.app-header .app-actions{gap:0 !important;padding-bottom:0 !important}
   .app-header>div{flex-wrap:wrap}.app-header>div>div:first-child{flex:1 1 auto}
   .ios-nav{border-top:0 !important;border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:0 -4px 22px rgba(20,60,50,.12)}
   .ios-nav button[aria-current=page]>span:last-child{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
   [style*="background: var(--accent-fill)"]{background-color:var(--accent-fill) !important;background-image:var(--fill-grad) !important}
-  .ui-btn-tint{background:var(--fill);color:var(--accent-text);font-weight:700}
+  .ui-btn-tint{background:var(--fill);color:var(--text);font-weight:600}
+  .ui-btn-plain,details.ui-more>summary,[style*="color: var(--accent-text)"]:not([style*="background: var(--accent"]):not([style-hover]){color:var(--text-2) !important}
   /* detail: arena header above a rounded card; inner cards are a tint of the card */
   .go-body{--surface-card:var(--surface-2);--ios-fill:var(--surface-3);position:relative;margin-top:-16px;background:var(--surface-1);border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.10)}
   .go-body [style*="background: var(--surface-card)"]{box-shadow:none !important}
@@ -335,28 +333,28 @@
   [style*="linear-gradient(90deg, var(--grass-700), var(--type-electric))"]{background:linear-gradient(90deg,var(--hp),var(--ring)) !important}
   [role=dialog]:focus-visible,[role=alertdialog]:focus-visible{outline:0}
   /* ---- Pokemon GO look, phase 2: Today, PvP, Recs, More, sign-in, empty state, first run (existing tokens only) ---- */
-  .go-sec{display:inline-block;align-self:flex-start;background:var(--fill-grad);color:#fff !important;font:600 12px/1.2 var(--font-body) !important;padding:4px 14px;border-radius:999px;margin:0 0 8px !important}
-  .go-sec.go-rib{background:var(--ribbon);border-radius:0;padding:4px 26px;clip-path:polygon(0 0,100% 0,calc(100% - 10px) 50%,100% 100%,0 100%,10px 50%)}
-  .go-mini{background:var(--fill-grad) !important;border:0 !important;color:#fff !important;padding:4px 14px !important;min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center}
-  .go-list{background:transparent !important;border-color:transparent !important;box-shadow:none !important;border-radius:0 !important;overflow:visible !important;display:flex;flex-direction:column;gap:8px}
+  .go-sec{display:inline-block;align-self:flex-start;background:none;color:var(--text-2) !important;font:600 13px/1.2 var(--font-body) !important;padding:4px 0;border-radius:0;margin:0 0 4px !important}
+  .go-sec.go-rib{background:none;padding:4px 0;clip-path:none}
+  .go-mini{background:var(--fill) !important;border:0 !important;color:var(--text) !important;padding:4px 14px !important;min-height:36px;box-sizing:border-box;display:inline-flex;align-items:center}
+  .go-list{background:transparent !important;border-color:transparent !important;box-shadow:none !important;border-radius:0 !important;overflow:visible !important;display:flex;flex-direction:column;gap:0}
   .go-list>[data-table-header]{border-bottom:0 !important;padding:0 12px}
-  .go-row{background:var(--surface-1) !important;border:0 !important;border-radius:var(--r-md);box-shadow:var(--e1)}
-  .go-row[style*="grid-template-columns"]>div:first-child{color:var(--accent-text) !important}
-  [data-do-now]>[role=button]{background:var(--surface-2);border:0 !important;border-radius:var(--r-md);padding:4px 12px;margin-bottom:8px;min-height:52px}
-  [data-do-now]>[role=button]>span:first-child{min-width:32px;height:32px;box-sizing:border-box;padding:0 8px;border-radius:999px;background:var(--surface-3);color:var(--accent-text);display:inline-flex;align-items:center;justify-content:center}
-  [data-do-now]>[role=button]>span:last-child{color:var(--accent-text)}
-  [role=main] [style*="background: var(--surface-2)"][style*="border-radius: 10px"],[role=main] [style*="background: var(--surface-page)"][style*="border-radius: 10px"]{background:var(--surface-2) !important;border-radius:var(--r-md) !important;box-shadow:inset 3px 0 0 var(--ring)}
+  .go-row{background:transparent !important;border:0 !important;border-top:1px solid var(--line) !important;border-radius:0;box-shadow:none}.go-list>.go-row:first-of-type{border-top:0 !important}
+  .go-row[style*="grid-template-columns"]>div:first-child{color:var(--text) !important}
+  [data-do-now]>[role=button]{background:transparent;border:0 !important;border-top:1px solid var(--line) !important;border-radius:0;padding:4px 0;margin-bottom:0;min-height:52px}[data-do-now]>[role=button]:first-of-type{border-top:0 !important}
+  [data-do-now]>[role=button]>span:first-child{min-width:40px;height:32px;box-sizing:border-box;padding:0;border-radius:0;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:flex-start}
+  [data-do-now]>[role=button]>span:last-child{color:var(--text-3)}
+  [role=main] [style*="background: var(--surface-2)"][style*="border-radius: 10px"],[role=main] [style*="background: var(--surface-page)"][style*="border-radius: 10px"]{background:transparent !important;border-radius:0 !important;box-shadow:inset 2px 0 0 var(--line-strong)}
   [role=menu] [role=menuitem]{margin:0 8px 6px;border-top:0 !important;border-radius:var(--r-md);padding:4px 12px !important;background:color-mix(in oklab,var(--surface-3) 70%,var(--menu-bg))}
   [role=menu] [role=menuitem] svg{box-sizing:content-box;padding:7px;border-radius:50%;background:var(--surface-1)}
   [role=menu] [role=menuitem]>div:last-child{color:var(--accent-text)}
   [role=menu] [role=presentation]{padding-top:14px !important}
   [data-signin-card]{gap:12px}
-  [data-signin-card] .ui-btn-tint{box-shadow:inset 0 0 0 2px var(--ring)}
-  [data-empty-state]{background:var(--surface-1);border-radius:var(--r-lg);box-shadow:var(--e1);padding:32px 24px !important}
-  [data-empty-state] svg{box-sizing:content-box;width:40px;height:40px;padding:20px;border-radius:50%;background:var(--fill-grad);stroke:#fff;box-shadow:0 0 0 8px var(--fill)}
-  [data-firstrun]{background:var(--page-grad),var(--bg) !important}
+  [data-signin-card] .ui-btn-tint{box-shadow:inset 0 0 0 1px var(--line-strong)}
+  [data-empty-state]{background:var(--surface-1);border-radius:var(--r-md);box-shadow:inset 0 0 0 1px var(--line);padding:32px 24px !important}
+  [data-empty-state] svg{box-sizing:content-box;width:40px;height:40px;padding:20px;border-radius:50%;background:var(--surface-2);stroke:var(--text-2);box-shadow:none}
+  [data-firstrun]{background:var(--bg) !important}
   [data-firstrun]::before{content:"Professor";display:block;height:112px;box-sizing:border-box;padding-top:36px;background:var(--fill-grad);color:#fff;font:700 28px/1 var(--font-display);text-align:center;border-radius:0 0 var(--r-lg) var(--r-lg)}
-  [data-firstrun]>div{position:relative;background:var(--surface-1);border-radius:var(--r-lg);box-shadow:var(--e1);margin:-40px auto 24px !important;width:calc(100% - 32px);padding:16px 16px 24px !important}
+  [data-firstrun]>div{position:relative;background:var(--surface-1);border-radius:var(--r-md);box-shadow:inset 0 0 0 1px var(--line);margin:-40px auto 24px !important;width:calc(100% - 32px);padding:16px 16px 24px !important}
   .fr-bar{height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden}
   .fr-bar i{display:block;height:100%;border-radius:999px;background:var(--fill-grad);transition:width var(--dur-base) var(--ease-out)}
   .mg-in{padding:12px 8px !important;text-align:center;font-size:12px !important}
@@ -372,7 +370,7 @@
     <div ref="{{ headerRef }}" style="padding:8px {{ rootPadX }} 10px;background:var(--bar-bg);-webkit-backdrop-filter:blur(28px) saturate(1.8);backdrop-filter:blur(28px) saturate(1.8);border-bottom:.5px solid var(--line-300);display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
       <div style="min-width:0">
         <h1 class="app-title" style="margin:0;font:700 32px/1.1 var(--font-display);letter-spacing:-.025em">Professor</h1>
-        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ syncLabel }}</div>
+        <div onClick="{{ showLayoutInfo }}" style="font:13px var(--font-body);color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:0;line-height:1.3">{{ syncLabel }}</div>
       </div>
       <div class="app-actions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;padding-bottom:2px">
         <button type="button" onClick="{{ cycleTheme }}" class="ios-icon-btn om-press" aria-label="{{ themeLabel }}" title="{{ themeLabel }}">
@@ -2287,7 +2285,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.363{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.366{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
