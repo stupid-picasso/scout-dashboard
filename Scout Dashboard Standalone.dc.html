@@ -17367,7 +17367,18 @@ class Component extends DCLogic {
       this.setState({ evoFetchStatus: 'Every species on your roster already has evolution data.' });
       return;
     }
-    this.setState({ evoFetchBusy: true, evoFetchStatus: 'Looking up ' + missing.length + ' species\u2026', evoFetchError: '' });
+    await this.runAiJob({
+      key: 'evoFetch',
+      start: { evoFetchStatus: 'Looking up ' + missing.length + ' species…', evoFetchError: '' },
+      ask: () => this.lookUpEvolutions(missing),
+      apply: patch => patch,
+      fail: e => ({ evoFetchError: (e && e.message) || String(e) }),
+      after: () => this.pushNow()
+    });
+  }
+
+  // The batches of one lookup. Returns the state to set when it ends.
+  async lookUpEvolutions(missing) {
     const table = { ...(this.state.evoTable || {}) };
     // Each object here is longer than a type lookup's, and the newer Gemini
     // models spend part of the output budget on internal reasoning before
@@ -17376,7 +17387,7 @@ class Component extends DCLogic {
     let got = 0, failed = 0;
     for (let i = 0; i < missing.length; i += BATCH) {
       const batch = missing.slice(i, i + BATCH);
-      this.setState({ evoFetchStatus: 'Species ' + (i + 1) + '\u2013' + Math.min(i + BATCH, missing.length) + ' of ' + missing.length + '\u2026' });
+      this.setState({ evoFetchStatus: 'Species ' + (i + 1) + '–' + Math.min(i + BATCH, missing.length) + ' of ' + missing.length + '…' });
       // The free tier allows 10 requests/minute per key, and firing batches
       // back-to-back exhausts that long before the roster is done. Pace to stay
       // inside the window, scaled by how many keys are actually configured.
@@ -17384,15 +17395,13 @@ class Component extends DCLogic {
         const keyCount = Math.max(1, (this.state.geminiKeys || []).length || 1);
         await new Promise(r => setTimeout(r, Math.round(7000 / keyCount)));
       }
-      const resolved = await this.fetchEvoBatch(batch);
+      const { arr: resolved, err } = await this.fetchEvoBatch(batch);
       if (!resolved) {
         failed += batch.length;
         // A rate-limit stop is not a data problem: everything resolved so far is
         // already cached, so say so rather than looking like a total failure.
-        if (/rate-limited|out of quota|429/i.test(this.state.evoFetchError || '')) {
-          this.setState({ evoFetchBusy: false, evoFetchStatus: got + ' species resolved and saved \u2014 daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.' });
-          this.setState({ evoTable: table }, () => this.pushNow());
-          return;
+        if (err && err.kind === 'rateLimited') {
+          return { evoTable: table, evoFetchStatus: got + ' species resolved and saved — daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.' };
         }
         continue;
       }
@@ -17419,35 +17428,35 @@ class Component extends DCLogic {
       // species already paid for.
       this.setState({ evoTable: { ...table } }, () => this.pushNow());
     }
-    this.setState({ evoTable: table, evoFetchBusy: false,
-      evoFetchStatus: got + ' species resolved' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushNow());
+    return { evoTable: table, evoFetchStatus: got + ' species resolved' + (failed ? ' · ' + failed + ' could not be read' : '') };
   }
 
   // A truncated reply is a budget problem, so the batch is halved and retried
   // rather than counted as a failure. Recurses down to a single species.
+  // Returns { arr } or, when nothing came back, { arr: null, err }.
   async fetchEvoBatch(batch, depth) {
     depth = depth || 0;
     try {
-      const reply = await this.completeWithRetry({
-        messages: [{ role: 'user', content: this.evoPrompt(batch) }],
-        max_tokens: 8000
-      });
-      const arr = this.extractJsonArray(reply);
-      if (Array.isArray(arr)) return arr;
-      throw new Error('Reply was not a JSON array.');
+      const arr = await this.aiJobAsk(
+        () => ({ messages: [{ role: 'user', content: this.evoPrompt(batch) }], max_tokens: 8000 }),
+        reply => {
+          const a = this.extractJsonArray(reply);
+          if (Array.isArray(a)) return a;
+          throw this.geminiErr('badReply', 'Reply was not a JSON array.');
+        });
+      return { arr };
     } catch (e) {
-      const msg = (e && e.message) || String(e);
-      const truncated = /MAX_TOKENS|cut off|not a JSON array/i.test(msg);
-      if (truncated && batch.length > 1 && depth < 4) {
+      const kind = e && e.kind;
+      if ((kind === 'truncated' || kind === 'badReply') && batch.length > 1 && depth < 4) {
         const mid = Math.ceil(batch.length / 2);
-        this.setState({ evoFetchStatus: 'Reply was too long \u2014 retrying in smaller batches\u2026' });
+        this.setState({ evoFetchStatus: 'Reply was too long — retrying in smaller batches…' });
         const a = await this.fetchEvoBatch(batch.slice(0, mid), depth + 1);
         const c = await this.fetchEvoBatch(batch.slice(mid), depth + 1);
-        if (!a && !c) return null;
-        return [...(a || []), ...(c || [])];
+        if (!a.arr && !c.arr) return { arr: null, err: c.err };
+        return { arr: [...(a.arr || []), ...(c.arr || [])] };
       }
-      this.setState({ evoFetchError: msg });
-      return null;
+      this.setState({ evoFetchError: (e && e.message) || String(e) });
+      return { arr: null, err: e };
     }
   }
 
