@@ -11636,6 +11636,42 @@ class Component extends DCLogic {
     }
   }
 
+  // ==== AI jobs ================================================================================================
+  // runAiJob is the shape of a background AI request: one at a time (state[key + 'Busy']), the same input asked once
+  // (this['_' + key + 'Sig'], taken before the call, so a failed job is not asked again until its input changes), build the
+  // body, completeWithRetry, parse the reply, apply it. Returns false when it was skipped, else true.
+  //   start(patch)   state set together with the busy flag      build() -> request body    parse(reply) -> value
+  //   ask()          instead of build+parse: the job's own request(s), for a job that asks more than once
+  //   apply(value) / fail(err) -> state patch, set together with busy off (one setState); after() runs once it is committed
+  // err.kind is the client's typed outcome, or 'badReply' when parse throws. Chat maps it to words in chatErrorText.
+  async runAiJob({ key, signature, start, build, parse, ask, apply, fail, after }) {
+    const busy = key + 'Busy';
+    if (this.state[busy]) return false;
+    if (signature !== undefined) {
+      if (this['_' + key + 'Sig'] === signature) return false;
+      this['_' + key + 'Sig'] = signature;
+    }
+    this.setState({ ...(start || {}), [busy]: true });
+    let patch;
+    try { patch = apply(await (ask ? ask() : this.aiJobAsk(build, parse))); }
+    catch (e) { patch = fail ? fail(e) : {}; }
+    this.setState({ ...patch, [busy]: false }, after);
+    return true;
+  }
+
+  async aiJobAsk(build, parse) {
+    const reply = await this.completeWithRetry(build());
+    try { return parse(reply); }
+    catch (e) { if (e && !e.kind) e.kind = 'badReply'; throw e; }
+  }
+
+  // KNOWN-BUG (AIJOB-01, AIJOB-03; fixing it changes recorded behaviour): from the first [ to the last ], so a reply with another
+  // bracket before the array fails to parse. extractJsonArray is the tolerant reader; TM picks and candy verdicts still use this.
+  greedyJsonArray(reply) {
+    const m = String(reply).match(/\[[\s\S]*\]/);
+    return m ? JSON.parse(m[0]) : [];
+  }
+
   // Frames are kept briefly after a successful read so Retry still works, then
   // dropped — at 600 frames the buffer is ~20 MB of base64.
   _releaseFramesSoon(ms) {
@@ -17170,86 +17206,82 @@ class Component extends DCLogic {
 
   ensureTmAiRecommendations() {
     const candidates = this.tmAiCandidates();
-    if (!candidates.length || this.state.tmAiBusy) return;
-    const sig = this.tmAiSignature(candidates);
-    if (this._tmAiSig === sig) return;
-    this._tmAiSig = sig;
-    this.requestTmAiRecommendations(candidates);
+    if (!candidates.length) return;
+    this.runAiJob({
+      key: 'tmAi', signature: this.tmAiSignature(candidates), start: { tmAiError: '' },
+      build: () => ({ messages: [{ role: 'user', content: this.tmAiPrompt(candidates) }], max_tokens: 1024 }),
+      parse: reply => this.greedyJsonArray(reply),
+      apply: arr => ({ tmAiRecommendations: this.tmAiRecs(arr, candidates) }),
+      fail: e => ({ tmAiError: (e && e.message) || 'Could not get recommendations.' })
+    });
   }
 
-  async requestTmAiRecommendations(candidates) {
-    this.setState({ tmAiBusy: true, tmAiError: '' });
-    try {
-      const res = this.state.resources || {};
-      const lines = candidates.map(p => {
-        const rank = this.bestGreatUltraRank(p);
-        const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
-        const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
-        const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null, p.shiny ? 'Shiny' : null].filter(Boolean).join(', ') || 'none';
-        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
-        const poolLine = pool
-          ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
-            + (pool.fastLegacy.length ? ', Elite-only fast: [' + pool.fastLegacy.join(', ') + ']' : '')
-            + (pool.chargeLegacy.length ? ', Elite-only charge: [' + pool.chargeLegacy.join(', ') + ']' : '') + '.'
-          : ' (movepool not in local database \u2014 use your own knowledge for this one.)';
-        return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + ', Level ' + (p.lvlMin || '?') + '): current fast move ' + fast + ', current charge move(s) ' + charge
-          + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.' + poolLine;
-      }).join('\n');
-      const inv = 'TMs on hand: Fast TM ' + (res.fastTM ?? 0) + ', Charged TM ' + (res.chargedTM ?? 0)
-        + ', Elite Fast TM ' + (res.eliteFastTM ?? 0) + ', Elite Charged TM ' + (res.eliteChargedTM ?? 0) + '.';
-      const prompt = 'The Pokemon below are already this player\'s strongest and most-invested \u2014 each one is Lucky, Shadow, Favorited, '
-        + 'genuinely ranked in Great or Ultra League, or leveled up significantly with real stardust. Your job is to find which of '
-        + 'THESE would become meaningfully MORE dominant (a real raid DPS jump, or a real PvP rank jump) from a moveset change \u2014 '
-        + 'not to flag every mediocre move you notice. Skip a Pokemon if its current moveset is already good, or if it\'s already near the '
-        + 'bottom of this list in overall relevance \u2014 a small move upgrade on the single best attacker or top PvP pick is worth more here '
-        + 'than any change on a middling one. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s REGULAR pool only (no '
-        + 'choice, and never an Elite-only move), so only recommend a regular TM when most of the regular pool would be an improvement. An '
-        + 'Elite Fast/Charged TM lets the player choose the exact move from the regular OR Elite-only pool, so recommend Elite specifically '
-        + 'when only ONE particular move (often an Elite-only one) is the real goal. When a species lists real learnable moves above, your '
-        + 'suggestedMove MUST be one of those exact move names \u2014 never invent or half-remember a move for a species with a real list given. '
-        + 'Only recommend a TM type the player actually has at least 1 of.\n\n'
-        + inv + '\n\nCandidates, already filtered to this player\'s strongest Pokemon:\n' + lines
-        + '\n\nRespond with ONLY a JSON array, at most 6 items, the single highest-impact pick FIRST, no prose: '
-        + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence on the concrete gain"}]';
-      const out = await this.completeWithRetry({ messages: [{ role: 'user', content: prompt }], max_tokens: 1024 });
-      const text = typeof out === 'string' ? out : (out && out.content) || '';
-      const match = String(text).match(/\[[\s\S]*\]/);
-      const arr = match ? JSON.parse(match[0]) : [];
-      const res2 = this.state.resources || {};
-      const recs = [];
-      arr.forEach(item => {
-        const tmType = ['fastTM', 'chargedTM', 'eliteFastTM', 'eliteChargedTM'].indexOf(item.tmType) >= 0 ? item.tmType : null;
-        if (!tmType) return;
-        if (!(Number.isFinite(res2[tmType]) && res2[tmType] > 0)) return;
-        const p = candidates.find(c => String(c.name || '').toLowerCase() === String(item.species || '').toLowerCase());
-        if (!p) return;
-        let suggestedMove = item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null;
-        let moveVerified = null;
-        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
-        if (suggestedMove && pool) {
-          const isFastTm = tmType === 'fastTM' || tmType === 'eliteFastTM';
-          const isElite = tmType === 'eliteFastTM' || tmType === 'eliteChargedTM';
-          const normalPool = isFastTm ? pool.fast : pool.charge;
-          const legacyPool = isFastTm ? pool.fastLegacy : pool.chargeLegacy;
-          const allowed = isElite ? [...normalPool, ...legacyPool] : normalPool;
-          const key = String(suggestedMove).toLowerCase();
-          if (allowed.indexOf(key) >= 0) moveVerified = true;
-          else { suggestedMove = null; moveVerified = false; }
-        }
-        recs.push({
-          idx: p.idx, name: p.name, tmType, tmLabel: { fastTM: 'FAST TM', chargedTM: 'CHARGED TM', eliteFastTM: 'ELITE FAST TM', eliteChargedTM: 'ELITE CHARGED TM' }[tmType],
-          suggestedMove, moveVerified,
-          verifiedNote: moveVerified === true ? '\u2713 verified' : (moveVerified === false ? '(unverified)' : ''),
-          why: item.why || '',
-          use: () => this.useTM(p, tmType)
-        });
+  tmAiPrompt(candidates) {
+    const res = this.state.resources || {};
+    const lines = candidates.map(p => {
+      const rank = this.bestGreatUltraRank(p);
+      const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
+      const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
+      const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null, p.shiny ? 'Shiny' : null].filter(Boolean).join(', ') || 'none';
+      const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
+      const poolLine = pool
+        ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
+          + (pool.fastLegacy.length ? ', Elite-only fast: [' + pool.fastLegacy.join(', ') + ']' : '')
+          + (pool.chargeLegacy.length ? ', Elite-only charge: [' + pool.chargeLegacy.join(', ') + ']' : '') + '.'
+        : ' (movepool not in local database \u2014 use your own knowledge for this one.)';
+      return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + ', Level ' + (p.lvlMin || '?') + '): current fast move ' + fast + ', current charge move(s) ' + charge
+        + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.' + poolLine;
+    }).join('\n');
+    const inv = 'TMs on hand: Fast TM ' + (res.fastTM ?? 0) + ', Charged TM ' + (res.chargedTM ?? 0)
+      + ', Elite Fast TM ' + (res.eliteFastTM ?? 0) + ', Elite Charged TM ' + (res.eliteChargedTM ?? 0) + '.';
+    return 'The Pokemon below are already this player\'s strongest and most-invested \u2014 each one is Lucky, Shadow, Favorited, '
+      + 'genuinely ranked in Great or Ultra League, or leveled up significantly with real stardust. Your job is to find which of '
+      + 'THESE would become meaningfully MORE dominant (a real raid DPS jump, or a real PvP rank jump) from a moveset change \u2014 '
+      + 'not to flag every mediocre move you notice. Skip a Pokemon if its current moveset is already good, or if it\'s already near the '
+      + 'bottom of this list in overall relevance \u2014 a small move upgrade on the single best attacker or top PvP pick is worth more here '
+      + 'than any change on a middling one. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s REGULAR pool only (no '
+      + 'choice, and never an Elite-only move), so only recommend a regular TM when most of the regular pool would be an improvement. An '
+      + 'Elite Fast/Charged TM lets the player choose the exact move from the regular OR Elite-only pool, so recommend Elite specifically '
+      + 'when only ONE particular move (often an Elite-only one) is the real goal. When a species lists real learnable moves above, your '
+      + 'suggestedMove MUST be one of those exact move names \u2014 never invent or half-remember a move for a species with a real list given. '
+      + 'Only recommend a TM type the player actually has at least 1 of.\n\n'
+      + inv + '\n\nCandidates, already filtered to this player\'s strongest Pokemon:\n' + lines
+      + '\n\nRespond with ONLY a JSON array, at most 6 items, the single highest-impact pick FIRST, no prose: '
+      + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence on the concrete gain"}]';
+  }
+
+  tmAiRecs(arr, candidates) {
+    const res2 = this.state.resources || {};
+    const recs = [];
+    arr.forEach(item => {
+      const tmType = ['fastTM', 'chargedTM', 'eliteFastTM', 'eliteChargedTM'].indexOf(item.tmType) >= 0 ? item.tmType : null;
+      if (!tmType) return;
+      if (!(Number.isFinite(res2[tmType]) && res2[tmType] > 0)) return;
+      const p = candidates.find(c => String(c.name || '').toLowerCase() === String(item.species || '').toLowerCase());
+      if (!p) return;
+      let suggestedMove = item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null;
+      let moveVerified = null;
+      const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
+      if (suggestedMove && pool) {
+        const isFastTm = tmType === 'fastTM' || tmType === 'eliteFastTM';
+        const isElite = tmType === 'eliteFastTM' || tmType === 'eliteChargedTM';
+        const normalPool = isFastTm ? pool.fast : pool.charge;
+        const legacyPool = isFastTm ? pool.fastLegacy : pool.chargeLegacy;
+        const allowed = isElite ? [...normalPool, ...legacyPool] : normalPool;
+        const key = String(suggestedMove).toLowerCase();
+        if (allowed.indexOf(key) >= 0) moveVerified = true;
+        else { suggestedMove = null; moveVerified = false; }
+      }
+      recs.push({
+        idx: p.idx, name: p.name, tmType, tmLabel: { fastTM: 'FAST TM', chargedTM: 'CHARGED TM', eliteFastTM: 'ELITE FAST TM', eliteChargedTM: 'ELITE CHARGED TM' }[tmType],
+        suggestedMove, moveVerified,
+        verifiedNote: moveVerified === true ? '\u2713 verified' : (moveVerified === false ? '(unverified)' : ''),
+        why: item.why || '',
+        use: () => this.useTM(p, tmType)
       });
-      this.setState({ tmAiRecommendations: recs, tmAiBusy: false });
-    } catch (e) {
-      this.setState({ tmAiBusy: false, tmAiError: (e && e.message) || 'Could not get recommendations.' });
-    }
+    });
+    return recs;
   }
-
 
   ensureCandyAiDecisions(contested) {
     if (!contested.length) return;
