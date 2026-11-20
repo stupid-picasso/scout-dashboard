@@ -3313,7 +3313,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.362{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.363{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -12202,10 +12202,14 @@ class Component extends DCLogic {
   //   hung          no answer inside the deadline (two in one call end it), or every model hung a moment ago
   //   rejectedKey   HTTP 400 "API key not valid" or 403: nothing else will work with this key
   //   modelGone     HTTP 404: the model leaves the key's cycle
-  //   truncated     the reply stopped at MAX_TOKENS
+  //   truncated     the reply stopped at MAX_TOKENS (with or without text)
   //   badJson       a 200 whose body is not JSON
-  //   other         the rest (5xx, a 400 this model will not serve, no text, no network, a body that stalled);
+  //   network       the request itself failed (no connection)
+  //   noEngine      completeWithRetry only: no key is set
+  //   other         the rest (5xx, a 400 this model will not serve, no text, a body that stalled);
   //                 err.status holds the HTTP failures, err.retry marks the transient ones; an Error with no kind is `other`
+  // completeWithRetry throws the kind of the last failure on its own "every engine failed" Error, so a caller reads err.kind
+  // whatever the wording.
   // The next model is tried after rateLimited, modelGone, and the HTTP failures of `other`; the key is dropped for the day after
   // rejectedKey; truncated, badJson, a stalled body and a network failure end the call (another model would fail the same way).
   // Cooldowns live in ONE table, this._gemCool, keyed `key|model`; `key|*` stands for every model of that key.
@@ -12530,7 +12534,7 @@ class Component extends DCLogic {
     // are used for the next hour instead of failing the request.
     const useSearch = !!body.search && !(this._searchOffUntil > Date.now());
     try { res = await post(false, useSearch); }
-    catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); throw netErr; }
+    catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); if (netErr && !netErr.kind) netErr.kind = 'network'; throw netErr; }
     while (res.status === 400 && rung < ladder.length - 1 && !/API.?key not valid|API_KEY_INVALID/i.test(await res.clone().text().catch(() => ''))) {
       rung++;
       res = await post(false, useSearch);
@@ -12564,7 +12568,7 @@ class Component extends DCLogic {
     const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
     if (!text) {
       const why = cand && (cand.finishReason || (cand.safetyRatings ? 'blocked by safety filter' : ''));
-      return { kind: 'other', err: new Error('Gemini returned no text' + (why ? ' (' + why + ')' : '')) };
+      return { kind: why === 'MAX_TOKENS' ? 'truncated' : 'other', err: this.geminiErr(why === 'MAX_TOKENS' ? 'truncated' : 'other', 'Gemini returned no text' + (why ? ' (' + why + ')' : '')) };
     }
     // Truncation is a budget problem, not a model problem: the other candidates would fail identically and burn
     // 4 of the free tier's 10 requests/minute for nothing.
@@ -12650,7 +12654,7 @@ class Component extends DCLogic {
         throw Object.assign(new Error(this.state.geminiKey
           ? 'Every AI engine failed for this batch.' + why
           : 'No AI engine available \u2014 paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).'),
-        { retry: !!(failure && failure.retry) });
+        { retry: !!(failure && failure.retry), kind: failure ? (failure.kind || 'other') : 'noEngine' });
       } catch (err) {
         if (!(err && err.retry) || i === G.ATTEMPTS - 1) throw err;
         await new Promise(r => setTimeout(r, G.BACKOFF_MS * Math.pow(2, i)));
