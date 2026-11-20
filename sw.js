@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scout-v420';
+const CACHE_NAME = 'scout-v421';
 
 // App shell — code that changes on every deploy. NETWORK-FIRST.
 const SHELL_ASSETS = [

@@ -2287,7 +2287,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.362{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.363{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -11176,10 +11176,14 @@ class Component extends DCLogic {
   //   hung          no answer inside the deadline (two in one call end it), or every model hung a moment ago
   //   rejectedKey   HTTP 400 "API key not valid" or 403: nothing else will work with this key
   //   modelGone     HTTP 404: the model leaves the key's cycle
-  //   truncated     the reply stopped at MAX_TOKENS
+  //   truncated     the reply stopped at MAX_TOKENS (with or without text)
   //   badJson       a 200 whose body is not JSON
-  //   other         the rest (5xx, a 400 this model will not serve, no text, no network, a body that stalled);
+  //   network       the request itself failed (no connection)
+  //   noEngine      completeWithRetry only: no key is set
+  //   other         the rest (5xx, a 400 this model will not serve, no text, a body that stalled);
   //                 err.status holds the HTTP failures, err.retry marks the transient ones; an Error with no kind is `other`
+  // completeWithRetry throws the kind of the last failure on its own "every engine failed" Error, so a caller reads err.kind
+  // whatever the wording.
   // The next model is tried after rateLimited, modelGone, and the HTTP failures of `other`; the key is dropped for the day after
   // rejectedKey; truncated, badJson, a stalled body and a network failure end the call (another model would fail the same way).
   // Cooldowns live in ONE table, this._gemCool, keyed `key|model`; `key|*` stands for every model of that key.
@@ -11504,7 +11508,7 @@ class Component extends DCLogic {
     // are used for the next hour instead of failing the request.
     const useSearch = !!body.search && !(this._searchOffUntil > Date.now());
     try { res = await post(false, useSearch); }
-    catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); throw netErr; }
+    catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); if (netErr && !netErr.kind) netErr.kind = 'network'; throw netErr; }
     while (res.status === 400 && rung < ladder.length - 1 && !/API.?key not valid|API_KEY_INVALID/i.test(await res.clone().text().catch(() => ''))) {
       rung++;
       res = await post(false, useSearch);
@@ -11538,7 +11542,7 @@ class Component extends DCLogic {
     const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
     if (!text) {
       const why = cand && (cand.finishReason || (cand.safetyRatings ? 'blocked by safety filter' : ''));
-      return { kind: 'other', err: new Error('Gemini returned no text' + (why ? ' (' + why + ')' : '')) };
+      return { kind: why === 'MAX_TOKENS' ? 'truncated' : 'other', err: this.geminiErr(why === 'MAX_TOKENS' ? 'truncated' : 'other', 'Gemini returned no text' + (why ? ' (' + why + ')' : '')) };
     }
     // Truncation is a budget problem, not a model problem: the other candidates would fail identically and burn
     // 4 of the free tier's 10 requests/minute for nothing.
@@ -11624,12 +11628,48 @@ class Component extends DCLogic {
         throw Object.assign(new Error(this.state.geminiKey
           ? 'Every AI engine failed for this batch.' + why
           : 'No AI engine available \u2014 paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).'),
-        { retry: !!(failure && failure.retry) });
+        { retry: !!(failure && failure.retry), kind: failure ? (failure.kind || 'other') : 'noEngine' });
       } catch (err) {
         if (!(err && err.retry) || i === G.ATTEMPTS - 1) throw err;
         await new Promise(r => setTimeout(r, G.BACKOFF_MS * Math.pow(2, i)));
       }
     }
+  }
+
+  // ==== AI jobs ================================================================================================
+  // runAiJob is the shape of a background AI request: one at a time (state[key + 'Busy']), the same input asked once
+  // (this['_' + key + 'Sig'], taken before the call, so a failed job is not asked again until its input changes), build the
+  // body, completeWithRetry, parse the reply, apply it. Returns false when it was skipped, else true.
+  //   start(patch)   state set together with the busy flag      build() -> request body    parse(reply) -> value
+  //   ask()          instead of build+parse: the job's own request(s), for a job that asks more than once
+  //   apply(value) / fail(err) -> state patch, set together with busy off (one setState); after() runs once it is committed
+  // err.kind is the client's typed outcome, or 'badReply' when parse throws. Chat maps it to words in chatErrorText.
+  async runAiJob({ key, signature, start, build, parse, ask, apply, fail, after }) {
+    const busy = key + 'Busy';
+    if (this.state[busy]) return false;
+    if (signature !== undefined) {
+      if (this['_' + key + 'Sig'] === signature) return false;
+      this['_' + key + 'Sig'] = signature;
+    }
+    this.setState({ ...(start || {}), [busy]: true });
+    let patch;
+    try { patch = apply(await (ask ? ask() : this.aiJobAsk(build, parse))); }
+    catch (e) { patch = fail ? fail(e) : {}; }
+    this.setState({ ...patch, [busy]: false }, after);
+    return true;
+  }
+
+  async aiJobAsk(build, parse) {
+    const reply = await this.completeWithRetry(build());
+    try { return parse(reply); }
+    catch (e) { if (e && !e.kind) e.kind = 'badReply'; throw e; }
+  }
+
+  // KNOWN-BUG (AIJOB-01, AIJOB-03; fixing it changes recorded behaviour): from the first [ to the last ], so a reply with another
+  // bracket before the array fails to parse. extractJsonArray is the tolerant reader; TM picks and candy verdicts still use this.
+  greedyJsonArray(reply) {
+    const m = String(reply).match(/\[[\s\S]*\]/);
+    return m ? JSON.parse(m[0]) : [];
   }
 
   // Frames are kept briefly after a successful read so Retry still works, then
@@ -16301,7 +16341,18 @@ class Component extends DCLogic {
       this.setState({ evoFetchStatus: 'Every species on your roster already has evolution data.' });
       return;
     }
-    this.setState({ evoFetchBusy: true, evoFetchStatus: 'Looking up ' + missing.length + ' species\u2026', evoFetchError: '' });
+    await this.runAiJob({
+      key: 'evoFetch',
+      start: { evoFetchStatus: 'Looking up ' + missing.length + ' species…', evoFetchError: '' },
+      ask: () => this.lookUpEvolutions(missing),
+      apply: patch => patch,
+      fail: e => ({ evoFetchError: (e && e.message) || String(e) }),
+      after: () => this.pushNow()
+    });
+  }
+
+  // The batches of one lookup. Returns the state to set when it ends.
+  async lookUpEvolutions(missing) {
     const table = { ...(this.state.evoTable || {}) };
     // Each object here is longer than a type lookup's, and the newer Gemini
     // models spend part of the output budget on internal reasoning before
@@ -16310,7 +16361,7 @@ class Component extends DCLogic {
     let got = 0, failed = 0;
     for (let i = 0; i < missing.length; i += BATCH) {
       const batch = missing.slice(i, i + BATCH);
-      this.setState({ evoFetchStatus: 'Species ' + (i + 1) + '\u2013' + Math.min(i + BATCH, missing.length) + ' of ' + missing.length + '\u2026' });
+      this.setState({ evoFetchStatus: 'Species ' + (i + 1) + '–' + Math.min(i + BATCH, missing.length) + ' of ' + missing.length + '…' });
       // The free tier allows 10 requests/minute per key, and firing batches
       // back-to-back exhausts that long before the roster is done. Pace to stay
       // inside the window, scaled by how many keys are actually configured.
@@ -16318,15 +16369,13 @@ class Component extends DCLogic {
         const keyCount = Math.max(1, (this.state.geminiKeys || []).length || 1);
         await new Promise(r => setTimeout(r, Math.round(7000 / keyCount)));
       }
-      const resolved = await this.fetchEvoBatch(batch);
+      const { arr: resolved, err } = await this.fetchEvoBatch(batch);
       if (!resolved) {
         failed += batch.length;
         // A rate-limit stop is not a data problem: everything resolved so far is
         // already cached, so say so rather than looking like a total failure.
-        if (/rate-limited|out of quota|429/i.test(this.state.evoFetchError || '')) {
-          this.setState({ evoFetchBusy: false, evoFetchStatus: got + ' species resolved and saved \u2014 daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.' });
-          this.setState({ evoTable: table }, () => this.pushNow());
-          return;
+        if (err && err.kind === 'rateLimited') {
+          return { evoTable: table, evoFetchStatus: got + ' species resolved and saved — daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.' };
         }
         continue;
       }
@@ -16353,35 +16402,35 @@ class Component extends DCLogic {
       // species already paid for.
       this.setState({ evoTable: { ...table } }, () => this.pushNow());
     }
-    this.setState({ evoTable: table, evoFetchBusy: false,
-      evoFetchStatus: got + ' species resolved' + (failed ? ' \u00b7 ' + failed + ' could not be read' : '') }, () => this.pushNow());
+    return { evoTable: table, evoFetchStatus: got + ' species resolved' + (failed ? ' · ' + failed + ' could not be read' : '') };
   }
 
   // A truncated reply is a budget problem, so the batch is halved and retried
   // rather than counted as a failure. Recurses down to a single species.
+  // Returns { arr } or, when nothing came back, { arr: null, err }.
   async fetchEvoBatch(batch, depth) {
     depth = depth || 0;
     try {
-      const reply = await this.completeWithRetry({
-        messages: [{ role: 'user', content: this.evoPrompt(batch) }],
-        max_tokens: 8000
-      });
-      const arr = this.extractJsonArray(reply);
-      if (Array.isArray(arr)) return arr;
-      throw new Error('Reply was not a JSON array.');
+      const arr = await this.aiJobAsk(
+        () => ({ messages: [{ role: 'user', content: this.evoPrompt(batch) }], max_tokens: 8000 }),
+        reply => {
+          const a = this.extractJsonArray(reply);
+          if (Array.isArray(a)) return a;
+          throw this.geminiErr('badReply', 'Reply was not a JSON array.');
+        });
+      return { arr };
     } catch (e) {
-      const msg = (e && e.message) || String(e);
-      const truncated = /MAX_TOKENS|cut off|not a JSON array/i.test(msg);
-      if (truncated && batch.length > 1 && depth < 4) {
+      const kind = e && e.kind;
+      if ((kind === 'truncated' || kind === 'badReply') && batch.length > 1 && depth < 4) {
         const mid = Math.ceil(batch.length / 2);
-        this.setState({ evoFetchStatus: 'Reply was too long \u2014 retrying in smaller batches\u2026' });
+        this.setState({ evoFetchStatus: 'Reply was too long — retrying in smaller batches…' });
         const a = await this.fetchEvoBatch(batch.slice(0, mid), depth + 1);
         const c = await this.fetchEvoBatch(batch.slice(mid), depth + 1);
-        if (!a && !c) return null;
-        return [...(a || []), ...(c || [])];
+        if (!a.arr && !c.arr) return { arr: null, err: c.err };
+        return { arr: [...(a.arr || []), ...(c.arr || [])] };
       }
-      this.setState({ evoFetchError: msg });
-      return null;
+      this.setState({ evoFetchError: (e && e.message) || String(e) });
+      return { arr: null, err: e };
     }
   }
 
@@ -17166,139 +17215,132 @@ class Component extends DCLogic {
 
   ensureTmAiRecommendations() {
     const candidates = this.tmAiCandidates();
-    if (!candidates.length || this.state.tmAiBusy) return;
-    const sig = this.tmAiSignature(candidates);
-    if (this._tmAiSig === sig) return;
-    this._tmAiSig = sig;
-    this.requestTmAiRecommendations(candidates);
+    if (!candidates.length) return;
+    this.runAiJob({
+      key: 'tmAi', signature: this.tmAiSignature(candidates), start: { tmAiError: '' },
+      build: () => ({ messages: [{ role: 'user', content: this.tmAiPrompt(candidates) }], max_tokens: 1024 }),
+      parse: reply => this.greedyJsonArray(reply),
+      apply: arr => ({ tmAiRecommendations: this.tmAiRecs(arr, candidates) }),
+      fail: e => ({ tmAiError: (e && e.message) || 'Could not get recommendations.' })
+    });
   }
 
-  async requestTmAiRecommendations(candidates) {
-    this.setState({ tmAiBusy: true, tmAiError: '' });
-    try {
-      const res = this.state.resources || {};
-      const lines = candidates.map(p => {
-        const rank = this.bestGreatUltraRank(p);
-        const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
-        const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
-        const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null, p.shiny ? 'Shiny' : null].filter(Boolean).join(', ') || 'none';
-        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
-        const poolLine = pool
-          ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
-            + (pool.fastLegacy.length ? ', Elite-only fast: [' + pool.fastLegacy.join(', ') + ']' : '')
-            + (pool.chargeLegacy.length ? ', Elite-only charge: [' + pool.chargeLegacy.join(', ') + ']' : '') + '.'
-          : ' (movepool not in local database \u2014 use your own knowledge for this one.)';
-        return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + ', Level ' + (p.lvlMin || '?') + '): current fast move ' + fast + ', current charge move(s) ' + charge
-          + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.' + poolLine;
-      }).join('\n');
-      const inv = 'TMs on hand: Fast TM ' + (res.fastTM ?? 0) + ', Charged TM ' + (res.chargedTM ?? 0)
-        + ', Elite Fast TM ' + (res.eliteFastTM ?? 0) + ', Elite Charged TM ' + (res.eliteChargedTM ?? 0) + '.';
-      const prompt = 'The Pokemon below are already this player\'s strongest and most-invested \u2014 each one is Lucky, Shadow, Favorited, '
-        + 'genuinely ranked in Great or Ultra League, or leveled up significantly with real stardust. Your job is to find which of '
-        + 'THESE would become meaningfully MORE dominant (a real raid DPS jump, or a real PvP rank jump) from a moveset change \u2014 '
-        + 'not to flag every mediocre move you notice. Skip a Pokemon if its current moveset is already good, or if it\'s already near the '
-        + 'bottom of this list in overall relevance \u2014 a small move upgrade on the single best attacker or top PvP pick is worth more here '
-        + 'than any change on a middling one. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s REGULAR pool only (no '
-        + 'choice, and never an Elite-only move), so only recommend a regular TM when most of the regular pool would be an improvement. An '
-        + 'Elite Fast/Charged TM lets the player choose the exact move from the regular OR Elite-only pool, so recommend Elite specifically '
-        + 'when only ONE particular move (often an Elite-only one) is the real goal. When a species lists real learnable moves above, your '
-        + 'suggestedMove MUST be one of those exact move names \u2014 never invent or half-remember a move for a species with a real list given. '
-        + 'Only recommend a TM type the player actually has at least 1 of.\n\n'
-        + inv + '\n\nCandidates, already filtered to this player\'s strongest Pokemon:\n' + lines
-        + '\n\nRespond with ONLY a JSON array, at most 6 items, the single highest-impact pick FIRST, no prose: '
-        + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence on the concrete gain"}]';
-      const out = await this.completeWithRetry({ messages: [{ role: 'user', content: prompt }], max_tokens: 1024 });
-      const text = typeof out === 'string' ? out : (out && out.content) || '';
-      const match = String(text).match(/\[[\s\S]*\]/);
-      const arr = match ? JSON.parse(match[0]) : [];
-      const res2 = this.state.resources || {};
-      const recs = [];
-      arr.forEach(item => {
-        const tmType = ['fastTM', 'chargedTM', 'eliteFastTM', 'eliteChargedTM'].indexOf(item.tmType) >= 0 ? item.tmType : null;
-        if (!tmType) return;
-        if (!(Number.isFinite(res2[tmType]) && res2[tmType] > 0)) return;
-        const p = candidates.find(c => String(c.name || '').toLowerCase() === String(item.species || '').toLowerCase());
-        if (!p) return;
-        let suggestedMove = item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null;
-        let moveVerified = null;
-        const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
-        if (suggestedMove && pool) {
-          const isFastTm = tmType === 'fastTM' || tmType === 'eliteFastTM';
-          const isElite = tmType === 'eliteFastTM' || tmType === 'eliteChargedTM';
-          const normalPool = isFastTm ? pool.fast : pool.charge;
-          const legacyPool = isFastTm ? pool.fastLegacy : pool.chargeLegacy;
-          const allowed = isElite ? [...normalPool, ...legacyPool] : normalPool;
-          const key = String(suggestedMove).toLowerCase();
-          if (allowed.indexOf(key) >= 0) moveVerified = true;
-          else { suggestedMove = null; moveVerified = false; }
-        }
-        recs.push({
-          idx: p.idx, name: p.name, tmType, tmLabel: { fastTM: 'FAST TM', chargedTM: 'CHARGED TM', eliteFastTM: 'ELITE FAST TM', eliteChargedTM: 'ELITE CHARGED TM' }[tmType],
-          suggestedMove, moveVerified,
-          verifiedNote: moveVerified === true ? '\u2713 verified' : (moveVerified === false ? '(unverified)' : ''),
-          why: item.why || '',
-          use: () => this.useTM(p, tmType)
-        });
+  tmAiPrompt(candidates) {
+    const res = this.state.resources || {};
+    const lines = candidates.map(p => {
+      const rank = this.bestGreatUltraRank(p);
+      const fast = p.quickMove ? this.formatMoveName(p.quickMove) : 'not set';
+      const charge = [p.chargeMove, p.chargeMove2].filter(Boolean).map(mv => this.formatMoveName(mv)).join(' / ') || 'not set';
+      const flags = [p.lucky ? 'Lucky' : null, this.isShadow(p) ? 'Shadow' : null, p.favorite ? 'Favorite' : null, p.shiny ? 'Shiny' : null].filter(Boolean).join(', ') || 'none';
+      const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
+      const poolLine = pool
+        ? ' Real learnable moves \u2014 regular pool fast: [' + pool.fast.join(', ') + '], regular pool charge: [' + pool.charge.join(', ') + ']'
+          + (pool.fastLegacy.length ? ', Elite-only fast: [' + pool.fastLegacy.join(', ') + ']' : '')
+          + (pool.chargeLegacy.length ? ', Elite-only charge: [' + pool.chargeLegacy.join(', ') + ']' : '') + '.'
+        : ' (movepool not in local database \u2014 use your own knowledge for this one.)';
+      return '- ' + (p.name || 'Unknown') + ' (CP ' + p.cp + ', Level ' + (p.lvlMin || '?') + '): current fast move ' + fast + ', current charge move(s) ' + charge
+        + '. Great/Ultra league rank: ' + (rank > 0 ? Math.round(rank) + '%' : 'unranked \u2014 likely a raid/attacker pick, not a PvP one') + '. Flags: ' + flags + '.' + poolLine;
+    }).join('\n');
+    const inv = 'TMs on hand: Fast TM ' + (res.fastTM ?? 0) + ', Charged TM ' + (res.chargedTM ?? 0)
+      + ', Elite Fast TM ' + (res.eliteFastTM ?? 0) + ', Elite Charged TM ' + (res.eliteChargedTM ?? 0) + '.';
+    return 'The Pokemon below are already this player\'s strongest and most-invested \u2014 each one is Lucky, Shadow, Favorited, '
+      + 'genuinely ranked in Great or Ultra League, or leveled up significantly with real stardust. Your job is to find which of '
+      + 'THESE would become meaningfully MORE dominant (a real raid DPS jump, or a real PvP rank jump) from a moveset change \u2014 '
+      + 'not to flag every mediocre move you notice. Skip a Pokemon if its current moveset is already good, or if it\'s already near the '
+      + 'bottom of this list in overall relevance \u2014 a small move upgrade on the single best attacker or top PvP pick is worth more here '
+      + 'than any change on a middling one. A regular Fast/Charged TM re-rolls to a RANDOM move from that Pokemon\'s REGULAR pool only (no '
+      + 'choice, and never an Elite-only move), so only recommend a regular TM when most of the regular pool would be an improvement. An '
+      + 'Elite Fast/Charged TM lets the player choose the exact move from the regular OR Elite-only pool, so recommend Elite specifically '
+      + 'when only ONE particular move (often an Elite-only one) is the real goal. When a species lists real learnable moves above, your '
+      + 'suggestedMove MUST be one of those exact move names \u2014 never invent or half-remember a move for a species with a real list given. '
+      + 'Only recommend a TM type the player actually has at least 1 of.\n\n'
+      + inv + '\n\nCandidates, already filtered to this player\'s strongest Pokemon:\n' + lines
+      + '\n\nRespond with ONLY a JSON array, at most 6 items, the single highest-impact pick FIRST, no prose: '
+      + '[{"species":"name","tmType":"fastTM|chargedTM|eliteFastTM|eliteChargedTM","suggestedMove":"move name or null if a regular TM reroll","why":"one short sentence on the concrete gain"}]';
+  }
+
+  tmAiRecs(arr, candidates) {
+    const res2 = this.state.resources || {};
+    const recs = [];
+    arr.forEach(item => {
+      const tmType = ['fastTM', 'chargedTM', 'eliteFastTM', 'eliteChargedTM'].indexOf(item.tmType) >= 0 ? item.tmType : null;
+      if (!tmType) return;
+      if (!(Number.isFinite(res2[tmType]) && res2[tmType] > 0)) return;
+      const p = candidates.find(c => String(c.name || '').toLowerCase() === String(item.species || '').toLowerCase());
+      if (!p) return;
+      let suggestedMove = item.suggestedMove && item.suggestedMove !== 'null' ? item.suggestedMove : null;
+      let moveVerified = null;
+      const pool = this.mechanics && this.mechanics.movepoolFor ? this.mechanics.movepoolFor(p.name, p.form) : null;
+      if (suggestedMove && pool) {
+        const isFastTm = tmType === 'fastTM' || tmType === 'eliteFastTM';
+        const isElite = tmType === 'eliteFastTM' || tmType === 'eliteChargedTM';
+        const normalPool = isFastTm ? pool.fast : pool.charge;
+        const legacyPool = isFastTm ? pool.fastLegacy : pool.chargeLegacy;
+        const allowed = isElite ? [...normalPool, ...legacyPool] : normalPool;
+        const key = String(suggestedMove).toLowerCase();
+        if (allowed.indexOf(key) >= 0) moveVerified = true;
+        else { suggestedMove = null; moveVerified = false; }
+      }
+      recs.push({
+        idx: p.idx, name: p.name, tmType, tmLabel: { fastTM: 'FAST TM', chargedTM: 'CHARGED TM', eliteFastTM: 'ELITE FAST TM', eliteChargedTM: 'ELITE CHARGED TM' }[tmType],
+        suggestedMove, moveVerified,
+        verifiedNote: moveVerified === true ? '\u2713 verified' : (moveVerified === false ? '(unverified)' : ''),
+        why: item.why || '',
+        use: () => this.useTM(p, tmType)
       });
-      this.setState({ tmAiRecommendations: recs, tmAiBusy: false });
-    } catch (e) {
-      this.setState({ tmAiBusy: false, tmAiError: (e && e.message) || 'Could not get recommendations.' });
-    }
+    });
+    return recs;
   }
-
 
   ensureCandyAiDecisions(contested) {
     if (!contested.length) return;
-    const sig = this.candyContestSignature(contested);
-    if (this._candyAiSig === sig || this.state.candyAiBusy) return;
-    this._candyAiSig = sig;
-    this.requestCandyAiDecisions(contested, sig);
-  }
-
-  async requestCandyAiDecisions(contested, sig) {
-    this.setState({ candyAiBusy: true });
-    try {
-      const lines = contested.map(c => {
-        const p = c.evoRow.p;
-        const evolvesInto = this.evolvesToName ? this.evolvesToName(p) : null;
-        return '- ' + (p.name || 'Unknown') + ': has ' + c.stock + ' candy. Evolving costs ' + c.evoRow.evo.need
-          + ' candy' + (evolvesInto ? (' (becomes ' + evolvesInto + ')') : '') + '. Its current best league rank is '
-          + (Number.isFinite(c.evoRow.rank) ? c.evoRow.rank : 'unranked') + '. Powering up this Pokémon to the level cap instead costs '
-          + c.puCandy + ' candy and ' + (c.puRow.now.dust || 0) + ' stardust, raising its raid attacker score from '
-          + Math.round(c.puRow.score || 0) + '. It does not have enough candy to do both.';
-      }).join('\n');
-      const prompt = 'You are helping a Pokémon GO player decide, for each Pokémon below, whether to spend its limited candy '
-        + 'on EVOLVING it or on POWERING UP the current form instead — the two options compete for the same candy. '
-        + 'Evolving is usually better when the evolved form is meaningfully stronger for leagues/raids or is needed for a Pokédex/task goal; '
-        + 'powering up the current form is usually better when the current IVs/rank are already excellent and evolving would reset useful moves, '
-        + 'or when the evolved form offers little advantage. Weigh each case on its own merits.\n\n' + lines
-        + '\n\nRespond with ONLY a JSON array, one object per Pokémon, no prose: '
-        + '[{"species":"name","choice":"evolve"|"powerup","reason":"one short sentence"}]';
-      const out = await this.completeWithRetry({ messages: [{ role: 'user', content: prompt }], max_tokens: 1024 });
-      const text = typeof out === 'string' ? out : (out && out.content) || '';
-      const match = String(text).match(/\[[\s\S]*\]/);
-      const arr = match ? JSON.parse(match[0]) : [];
-      const patch = { ...(this.state.candyAiDecisions || {}) };
-      const notes = [];
-      arr.forEach(item => {
-        const k = String(item.species || '').toLowerCase();
-        const row = contested.find(c => c.key === k || c.evoRow.p.name.toLowerCase() === k);
-        if (!row) return;
-        const choice = item.choice === 'powerup' ? 'powerup' : 'evolve';
-        patch[row.key] = { choice, reason: item.reason || '' };
-        notes.push({
-          name: row.evoRow.p.name,
-          verdict: choice === 'powerup' ? 'POWER UP FIRST' : 'EVOLVE FIRST',
-          verdictColor: choice === 'powerup' ? 'var(--type-flying)' : 'var(--grass-700)',
-          reason: item.reason || ''
-        });
-      });
-      this.setState({ candyAiDecisions: patch, candyAiBusy: false, candyAiNotes: notes });
-    } catch (e) {
+    this.runAiJob({
+      key: 'candyAi', signature: this.candyContestSignature(contested),
+      build: () => ({ messages: [{ role: 'user', content: this.candyAiPrompt(contested) }], max_tokens: 1024 }),
+      parse: reply => this.greedyJsonArray(reply),
+      apply: arr => this.candyAiVerdicts(arr, contested),
       // AI unavailable: fall back to the safe default (reserve for evolution)
       // already baked into dustPlan, just without a stated reason.
-      this.setState({ candyAiBusy: false, candyAiNotes: [] });
-    }
+      fail: () => ({ candyAiNotes: [] })
+    });
+  }
+
+  candyAiPrompt(contested) {
+    const lines = contested.map(c => {
+      const p = c.evoRow.p;
+      const evolvesInto = this.evolvesToName ? this.evolvesToName(p) : null;
+      return '- ' + (p.name || 'Unknown') + ': has ' + c.stock + ' candy. Evolving costs ' + c.evoRow.evo.need
+        + ' candy' + (evolvesInto ? (' (becomes ' + evolvesInto + ')') : '') + '. Its current best league rank is '
+        + (Number.isFinite(c.evoRow.rank) ? c.evoRow.rank : 'unranked') + '. Powering up this Pokémon to the level cap instead costs '
+        + c.puCandy + ' candy and ' + (c.puRow.now.dust || 0) + ' stardust, raising its raid attacker score from '
+        + Math.round(c.puRow.score || 0) + '. It does not have enough candy to do both.';
+    }).join('\n');
+    return 'You are helping a Pokémon GO player decide, for each Pokémon below, whether to spend its limited candy '
+      + 'on EVOLVING it or on POWERING UP the current form instead — the two options compete for the same candy. '
+      + 'Evolving is usually better when the evolved form is meaningfully stronger for leagues/raids or is needed for a Pokédex/task goal; '
+      + 'powering up the current form is usually better when the current IVs/rank are already excellent and evolving would reset useful moves, '
+      + 'or when the evolved form offers little advantage. Weigh each case on its own merits.\n\n' + lines
+      + '\n\nRespond with ONLY a JSON array, one object per Pokémon, no prose: '
+      + '[{"species":"name","choice":"evolve"|"powerup","reason":"one short sentence"}]';
+  }
+
+  candyAiVerdicts(arr, contested) {
+    const patch = { ...(this.state.candyAiDecisions || {}) };
+    const notes = [];
+    arr.forEach(item => {
+      const k = String(item.species || '').toLowerCase();
+      const row = contested.find(c => c.key === k || c.evoRow.p.name.toLowerCase() === k);
+      if (!row) return;
+      const choice = item.choice === 'powerup' ? 'powerup' : 'evolve';
+      patch[row.key] = { choice, reason: item.reason || '' };
+      notes.push({
+        name: row.evoRow.p.name,
+        verdict: choice === 'powerup' ? 'POWER UP FIRST' : 'EVOLVE FIRST',
+        verdictColor: choice === 'powerup' ? 'var(--type-flying)' : 'var(--grass-700)',
+        reason: item.reason || ''
+      });
+    });
+    return { candyAiDecisions: patch, candyAiNotes: notes };
   }
 
   // ---- Triage ----
@@ -18251,31 +18293,29 @@ class Component extends DCLogic {
       })()
     ].concat((() => { try { return this.chatMentionLines(text, roster); } catch (e) { return []; } })()).join('\n');
     const messages = [...this.state.chatMessages, { role: 'user', content: text }];
-    this.setState({ chatMessages: messages, chatInput: '', chatBusy: true });
-    try {
-      const reply = await this.completeWithRetry({
+    const say = content => ({ chatMessages: [...messages, { role: 'assistant', content }] });
+    await this.runAiJob({
+      key: 'chat', start: { chatMessages: messages, chatInput: '' },
+      build: () => ({
         system: `You are Professor, a sharp, concise Pokemon GO assistant for one trainer's real roster. Use the data below to answer specifically (name real Pokemon from their roster when relevant). Keep answers short — 2-4 sentences unless asked for a list. No emoji spam, no filler.\n\nAbout the data: it is this trainer's own live roster, synced from their account into this app via Firebase, and rebuilt fresh from their current save every single time you are called — including this message. It was not pasted into a chat by them. You have never had a "static snapshot" or a session start — every reply reflects their live data right now. If any earlier message in this conversation claimed you lack live access, that claim was wrong; do not repeat or defer to it. Never say you lack access to their data, never say you cannot sync or connect to their account, never say you are limited to a snapshot, and never ask them to paste their roster or inventory — you already have it below.\n\nCandy counts are NOT in the RESOURCES form: they come from scanning each Pokemon's detail screen and are in the CANDY ON HAND line below ("?" means that species has not been scanned yet: say to scan one of its Pokemon's detail screens, never to enter it in RESOURCES). A resource listed as "unknown" means the trainer has not entered that count into the app's RESOURCES form yet — it is a gap in what they have logged, not a limitation of your access. Say plainly that they have not logged it, and suggest they enter it under HOME > RESOURCES if relevant, rather than describing it as inaccessible.\n\nFor "how many X do I have" always count from the COMPLETE species census — it covers every Pokemon owned and its counts are authoritative. The BEST BY LEAGUE RANK list is truncated to ${this.chatLimits().topRanked}, so never treat a Pokemon\'s absence from it as evidence the trainer does not own it. If the census and your expectation disagree, trust the census. Never invent explanations for a discrepancy (storage filters, export settings, favorited Pokemon) — if the data genuinely does not answer the question, say exactly what is missing instead.\n\nFor "which hits harder" or "which does more damage": compare the dps field directly when both Pokemon have it. If either shows "dps unknown", say plainly that its moveset isn\'t fully on file (never scanned, or a move the database doesn\'t cover yet) rather than guessing from CP or IV — CP and IV do not tell you damage output on their own.\n\nFor "should I transfer this / what should I cut": check the EVERYTHING ELSE list first, not just BEST BY LEAGUE RANK — the weak Pokemon that actually matter for this question live there, and so does any Pokemon (lucky, shadow, favorite, or shiny included) that simply isn\'t in the top ${this.chatLimits().topRanked} by PvP rank. A dominated:X entry (beaten on every IV by an owned copy) is close to a free transfer. raidRole:Y is a reason to keep something despite a mediocre PvP rank; raidRole:N plus a low rank plus no L/S/F/H flag is the profile of an easy cut — but never suggest transferring anything showing L, S, F, or H (shiny) regardless of its rank. HARD RULE: every line ends with keep:<reasons> or keep:none. A Pokemon that has no line of its own (it appears only in the census) cannot be verified: never recommend transferring it, say you cannot check it. If keep is anything other than none (lucky, shiny, size, legendary or mythical, good IV, PvP rank, raid role, best copy for a league, nondo, good-IV shadow, IVs not measured), you must NOT recommend transferring that Pokemon, whatever else the data says. You may suggest transferring only Pokemon showing keep:none, and when unsure say so and recommend keeping it. Never call something a safe transfer solely because it\'s absent from the BEST list — check its actual line in EVERYTHING ELSE (or say you don\'t have it if it\'s in neither, and only then treat it as genuinely missing).\n\n${contextLines}`,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
-      });
-      this.setState({ chatMessages: [...messages, { role: 'assistant', content: this.guardChatReply(reply) }], chatBusy: false }, () => this.queueCloudPush());
-    } catch (e) {
-      // The engine chain already knows WHY it failed - quota, missing key,
-      // rejected key, network. Throwing that away and printing "try again"
-      // told the user to repeat the one thing guaranteed not to work.
-      const raw = (e && e.message) || String(e);
-      let msg;
-      if (/No AI engine available/i.test(raw)) {
-        msg = 'No AI engine connected. Paste a free Google Gemini key under AI ENGINE - no card, 1,500 requests a day.';
-      } else if (/quota|429|RESOURCE_EXHAUSTED/i.test(raw)) {
-        msg = "Today's Gemini quota is used up. It resets at midnight Pacific, or add a second key under AI ENGINE.";
-      } else if (/key was rejected|API_KEY_INVALID|refused the key/i.test(raw)) {
-        msg = 'That Gemini key was rejected. Check it under AI ENGINE.';
-      } else if (/Failed to fetch|NetworkError|Load failed|network connection/i.test(raw)) {
-        msg = 'Could not reach the model - looks like a connection problem. Try again in a moment.';
-      } else {
-        msg = 'Chat failed: ' + raw;
-      }
-      this.setState({ chatMessages: [...messages, { role: 'assistant', content: msg }], chatBusy: false }, () => this.queueCloudPush());
+      }),
+      parse: reply => reply,
+      apply: reply => say(this.guardChatReply(reply)),
+      fail: e => say(this.chatErrorText(e)),
+      after: () => this.queueCloudPush()
+    });
+  }
+
+  // The engine chain already knows WHY it failed - quota, missing key, rejected key, network. Throwing that away and printing
+  // "try again" told the user to repeat the one thing guaranteed not to work. Read from err.kind (see the Gemini client).
+  chatErrorText(e) {
+    switch (e && e.kind) {
+      case 'noEngine': return 'No AI engine connected. Paste a free Google Gemini key under AI ENGINE - no card, 1,500 requests a day.';
+      case 'rateLimited': return "Today's Gemini quota is used up. It resets at midnight Pacific, or add a second key under AI ENGINE.";
+      case 'rejectedKey': return 'That Gemini key was rejected. Check it under AI ENGINE.';
+      case 'network': return 'Could not reach the model - looks like a connection problem. Try again in a moment.';
+      default: return 'Chat failed: ' + ((e && e.message) || String(e));
     }
   }
   // Eases the header stat cards toward their real values. Driven by rAF and
