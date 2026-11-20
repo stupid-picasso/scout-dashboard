@@ -2285,7 +2285,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.367{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.368{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -11663,11 +11663,12 @@ class Component extends DCLogic {
     catch (e) { if (e && !e.kind) e.kind = 'badReply'; throw e; }
   }
 
-  // KNOWN-BUG (AIJOB-01, AIJOB-03; fixing it changes recorded behaviour): from the first [ to the last ], so a reply with another
-  // bracket before the array fails to parse. extractJsonArray is the tolerant reader; TM picks and candy verdicts still use this.
-  greedyJsonArray(reply) {
-    const m = String(reply).match(/\[[\s\S]*\]/);
-    return m ? JSON.parse(m[0]) : [];
+  // The list of a reply for the TM and candy jobs, read with extractJsonArray (stray brackets before or after the list are
+  // tolerated). A reply with no list at all is a bad reply: it throws, so aiJobAsk marks it kind 'badReply'.
+  aiListReply(reply) {
+    const arr = this.extractJsonArray(reply);
+    if (!Array.isArray(arr)) throw Object.assign(new Error('The AI reply had no list in it.'), { kind: 'badReply' });
+    return arr;
   }
 
   // Frames are kept briefly after a successful read so Retry still works, then
@@ -17217,7 +17218,7 @@ class Component extends DCLogic {
     this.runAiJob({
       key: 'tmAi', signature: this.tmAiSignature(candidates), start: { tmAiError: '' },
       build: () => ({ messages: [{ role: 'user', content: this.tmAiPrompt(candidates) }], max_tokens: 1024 }),
-      parse: reply => this.greedyJsonArray(reply),
+      parse: reply => this.aiListReply(reply),
       apply: arr => ({ tmAiRecommendations: this.tmAiRecs(arr, candidates) }),
       fail: e => ({ tmAiError: (e && e.message) || 'Could not get recommendations.' })
     });
@@ -17295,7 +17296,7 @@ class Component extends DCLogic {
     this.runAiJob({
       key: 'candyAi', signature: this.candyContestSignature(contested),
       build: () => ({ messages: [{ role: 'user', content: this.candyAiPrompt(contested) }], max_tokens: 1024 }),
-      parse: reply => this.greedyJsonArray(reply),
+      parse: reply => this.aiListReply(reply),
       apply: arr => this.candyAiVerdicts(arr, contested),
       // AI unavailable: fall back to the safe default (reserve for evolution)
       // already baked into dustPlan, just without a stated reason.

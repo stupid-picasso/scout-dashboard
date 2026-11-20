@@ -2556,6 +2556,37 @@ module.exports = async function suiteB() {
     }
     golden('aijob-candy-errors', out);
   }, 'high');
+  // 6d: TM picks and candy verdicts read the list with extractJsonArray, so brackets before or after it no longer fail the reply.
+  await T('AIJOB-08', 'AI', 'TM picks: stray bracket text after or before the list still gives the picks, a plain reply still does, a reply with no list shows an error', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(JSON.stringify(TM_PICKS)) });
+      await useKey(sx, gkey('J8')); await tmSeed(sx);
+      const L = JSON.stringify(TM_PICKS); let n = 0;
+      const ask = async reply => { g.handler = G.ok(reply); n++; await tmBump(sx, n); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, n, 'tmAiBusy'); const st = await sx.state(); return { err: st.tmAiError, names: (st.tmAiRecommendations || []).map(r => r.name + ':' + r.tmType) }; };
+      const want = ['Machamp:chargedTM', 'Gengar:eliteChargedTM'];
+      for (const [label, reply] of [['plain', L], ['trailing', L + ' (see [note])'], ['trailing line', L + '\nSources: [1] [2]'], ['leading', 'Note [1]: picks below.\n' + L], ['both', 'Note [1]:\n' + L + '\n(see [2])']]) {
+        const r = await ask(reply);
+        expect(!r.err && JSON.stringify(r.names) === JSON.stringify(want), label + ': ' + JSON.stringify(r));
+      }
+      const r = await ask('I could not decide on any of them.');
+      expect(!!r.err, 'no list: an error is shown: ' + JSON.stringify(r));
+      expect(g.generated().length === n, 'one request per reply: ' + g.generated().length + ' of ' + n);
+    });
+  }, 'high');
+  await T('AIJOB-09', 'AI', 'Candy decisions: stray bracket text after or before the list still gives the verdicts, a plain reply still does, a reply with no list gives none', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(JSON.stringify(CANDY_PICKS)) });
+      await useKey(sx, gkey('J9')); await sx.set({ candyAiDecisions: {}, candyAiNotes: [], tab: 'home' });
+      const L = JSON.stringify(CANDY_PICKS); let n = 0;
+      const ask = async reply => { g.handler = G.ok(reply); n++; await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 40 + n), contest('Axew', 610, 30)]); await settle(sx, g, n, 'candyAiBusy'); const st = await sx.state(); return { decisions: Object.keys(st.candyAiDecisions || {}).sort(), notes: (st.candyAiNotes || []).map(x => x.name + ':' + x.verdict) }; };
+      for (const [label, reply] of [['plain', L], ['trailing', L + ' (see [note])'], ['trailing line', L + '\nSources: [1] [2]'], ['leading', 'Note [1]: verdicts below.\n' + L], ['both', 'Note [1]:\n' + L + '\n(see [2])']]) {
+        const r = await ask(reply);
+        expect(JSON.stringify(r.decisions) === '["axew","machop"]' && JSON.stringify(r.notes) === '["Machop:POWER UP FIRST","Axew:EVOLVE FIRST"]', label + ': ' + JSON.stringify(r));
+      }
+      const r = await ask('I cannot choose.');
+      expect(r.decisions.length === 0 && r.notes.length === 0, 'no list: no verdicts: ' + JSON.stringify(r));
+    });
+  }, 'high');
   const evoSeed = sx => sx.set({ addedPokemon: [jobMon('ev1', 'Machop', 66), jobMon('ev2', 'Axew', 610), jobMon('ev3', 'Fraxure', 611)], roster: [], ivOverrides: {}, evoTable: {}, evoFetchError: '', evoFetchStatus: '', evoFetchBusy: false, tab: 'home' });
   const EVO_ROWS = [{ name: 'Machop', evolvesTo: 'Machoke', candy: 25, item: null }, { name: 'Axew', evolvesTo: 'Fraxure', candy: 25, item: null }, { name: 'Fraxure', evolvesTo: 'Zzzmon', candy: 100, item: null }, { name: 'Pikachu', evolvesTo: 'Raichu', candy: 50, item: null }];
   const evoOut = (st, g, from) => ({ busy: st.evoFetchBusy, status: maskMsg(st.evoFetchStatus), error: maskMsg(st.evoFetchError), table: st.evoTable, requests: g.generated().length - (from || 0), asked: g.generated().slice(from || 0).map(r => r.text.split('\n\n').pop().split('\n')) });
