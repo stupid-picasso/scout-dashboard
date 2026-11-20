@@ -2599,6 +2599,23 @@ module.exports = async function suiteB() {
     golden('aijob-evo-errors', out);
   }, 'high');
 
+  // The chat words for each kind the client reports that GEMERR-01..11 do not reach: no key at all, and a request that fails before any answer.
+  await T('CHATERR-01', 'AI', 'Chat error words by kind: no key says no engine is connected, a dropped connection says the model could not be reached, and neither asks again', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('should not be asked') });
+      await sx.set({ geminiKeys: [], geminiKey: '' });
+      const r = await chatAsk(sx, 'hello');
+      expect(r === 'No AI engine connected. Paste a free Google Gemini key under AI ENGINE - no card, 1,500 requests a day.', 'no key: ' + r);
+      expect(g.generated().length === 0, 'no key, no request: ' + g.generated().length);
+    });
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.abort });
+      await useKey(sx, gkey('CE')); await fixClock(sx);
+      const r = await chatAsk(sx, 'hello', fast(g));
+      expect(r === 'Could not reach the model - looks like a connection problem. Try again in a moment.', 'dropped connection: ' + r);
+      expect(g.generated().length === 1, 'a dropped connection is asked once, not retried: ' + g.generated().length);
+    });
+  }, 'high');
   // ------------------------------------------------------------------ the two client rules 6a left unpinned
   // A rejected key ends the call: the job gets the key's own words (no "Every AI engine failed" wrapper) after the requests below, and nothing is asked again.
   await T('GEMERR-12', 'AI', 'A rejected key is terminal: the TM job shows the key\'s own sentence (not the "every engine failed" wrapper) after one request (403), two (400: the JSON-mime retry), or one round per key', async () => {
