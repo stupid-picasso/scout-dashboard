@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // Runs the QA suites (qa_e2e_<letter>.js) and writes the results as JSON to QA_OUT (default /tmp/qa/e2e.json, directory created).
-// Usage: node scripts/qa/qa_run.js [a|b|c|d|e ...]   default a b c. Exits 1 on a failed test, an unknown suite letter or a duplicate test id.
+// Usage: node scripts/qa/qa_run.js [a|b|c|d|e ...] [--write]   default a b c. --write rewrites the golden files instead of comparing. Exits 1 on a failed test, an unknown suite letter or a duplicate test id.
 const fs = require('fs');
 const path = require('path');
 const { results, close } = require('./qa_lib');
 
 const suiteFile = w => path.join(__dirname, 'qa_e2e_' + w + '.js');
 const known = fs.readdirSync(__dirname).map(f => (f.match(/^qa_e2e_([a-z])\.js$/) || [])[1]).filter(Boolean).sort();
-const which = process.argv.slice(2).length ? process.argv.slice(2) : ['a', 'b', 'c'];
+if (process.argv.includes('--write')) process.env.QA_WRITE_GOLDEN = '1';   // rewrite the golden files (scripts/fixtures/golden) instead of comparing
+const args = process.argv.slice(2).filter(a => a !== '--write');
+const which = args.length ? args : ['a', 'b', 'c'];
 const unknown = which.filter(w => !known.includes(w));
 if (unknown.length) { console.error('unknown suite letter(s): ' + unknown.join(' ') + ' (known: ' + known.join(' ') + ')'); process.exit(1); }
 

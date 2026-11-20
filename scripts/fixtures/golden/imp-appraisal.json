@@ -1,0 +1,701 @@
+{
+ "recording": {
+  "requests": [
+   {
+    "batch": "",
+    "images": 2,
+    "model": "gemini-3.8-flash"
+   }
+  ],
+  "state": {
+   "addedPokemon": [
+    {
+     "atkIV": 10,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 1680,
+     "defIV": 15,
+     "dex": 68,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Machamp",
+      "rankPct": 94.4473576573432
+     },
+     "height": null,
+     "hp": 127,
+     "idx": "IDX1",
+     "ivAvg": 71.11111111111111,
+     "ivCandidates": 1,
+     "ivMeasured": true,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Machamp",
+      "rankPct": 93.28364903944407
+     },
+     "lucky": false,
+     "lvlMax": 20,
+     "lvlMin": 20,
+     "name": "Machamp",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 7,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Machamp",
+      "rankPct": 95.90517522299513
+     },
+     "weight": null
+    },
+    {
+     "apprMaxed": [
+      "atk",
+      "def"
+     ],
+     "apprStars": 3,
+     "atkIV": 15,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 901,
+     "defIV": 15,
+     "dex": 184,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Azumarill",
+      "rankPct": 93.41648682726523
+     },
+     "height": null,
+     "hp": 141,
+     "idx": "IDX2",
+     "ivAvg": 93.33333333333333,
+     "ivCandidates": 1,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Azumarill",
+      "rankPct": 92.7283670182538
+     },
+     "lucky": false,
+     "lvlMax": 20,
+     "lvlMin": 20,
+     "name": "Azumarill",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 12,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Azumarill",
+      "rankPct": 99.0049751243781
+     },
+     "weight": null
+    },
+    {
+     "apprMaxed": [],
+     "apprStars": 1,
+     "atkIV": null,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 2574,
+     "defIV": null,
+     "dex": 149,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": null,
+     "height": null,
+     "hp": 148,
+     "idx": "IDX3",
+     "ivAvg": null,
+     "ivCandidates": 3,
+     "ivRange": {
+      "atk": [
+       3,
+       6
+      ],
+      "def": [
+       3,
+       14
+      ],
+      "sta": [
+       11,
+       14
+      ]
+     },
+     "ivSolved": false,
+     "little": null,
+     "lucky": false,
+     "lvlMax": 25.5,
+     "lvlMin": 25,
+     "name": "Dragonite",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": null,
+     "type": null,
+     "ultra": null,
+     "weight": null
+    }
+   ],
+   "ivOverrides": {}
+  },
+  "videoImport": {
+   "batchCount": 1,
+   "droppedNoName": 0,
+   "droppedUnknown": 0,
+   "emptyBatches": 0,
+   "engines": [
+    "Gemini (gemini-3.8-flash)"
+   ],
+   "error": null,
+   "failedBatches": 0,
+   "frameCount": 2,
+   "lastError": "",
+   "mode": "appraisal",
+   "note": "",
+   "progress": 100,
+   "rawRead": 2,
+   "review": [
+    {
+     "_rid": "a0",
+     "_status": "applied",
+     "cp": 901,
+     "hp": 141,
+     "iv": "15/15/12",
+     "ivCount": 1,
+     "matchName": "Azumarill",
+     "name": "Azumarill",
+     "read": "CP 901 · 141 HP · 3★ · ATK+DEF full"
+    },
+    {
+     "_rid": "a1",
+     "_status": "applied",
+     "cp": 2574,
+     "hp": 148,
+     "iv": "3-6/3-14/11-14",
+     "ivCount": 3,
+     "matchName": "Dragonite",
+     "name": "Dragonite",
+     "read": "CP 2574 · 148 HP · 1★ · no full bars"
+    }
+   ],
+   "stage": "done",
+   "summary": {
+    "_review": [
+     {
+      "_rid": "a0",
+      "_status": "applied",
+      "cp": 901,
+      "hp": 141,
+      "iv": "15/15/12",
+      "ivCount": 1,
+      "matchName": "Azumarill",
+      "name": "Azumarill",
+      "read": "CP 901 · 141 HP · 3★ · ATK+DEF full"
+     },
+     {
+      "_rid": "a1",
+      "_status": "applied",
+      "cp": 2574,
+      "hp": 148,
+      "iv": "3-6/3-14/11-14",
+      "ivCount": 3,
+      "matchName": "Dragonite",
+      "name": "Dragonite",
+      "read": "CP 2574 · 148 HP · 1★ · no full bars"
+     }
+    ],
+    "applied": 2,
+    "collided": 0,
+    "contradiction": 0,
+    "inserted": 0,
+    "solved": 2,
+    "total": 2,
+    "unmatched": 0,
+    "unsure": 0,
+    "updated": 2
+   },
+   "unreadableBatches": 0
+  }
+ },
+ "server": {
+  "error": "",
+  "review": [
+   {
+    "_rid": "a0",
+    "_status": "applied",
+    "cp": 299,
+    "hp": 58,
+    "iv": "14/13/13 · measured",
+    "ivCount": 1,
+    "matchName": "Beldum",
+    "name": "Beldum",
+    "read": "CP 299 · 58 HP · no stars · no full bars"
+   },
+   {
+    "_rid": "a1",
+    "_status": "applied",
+    "cp": 167,
+    "hp": 45,
+    "iv": "1/13/12 · measured",
+    "ivCount": 1,
+    "matchName": "Charmander",
+    "name": "Charmander",
+    "read": "CP 167 · 45 HP · no stars · no full bars"
+   },
+   {
+    "_rid": "a2",
+    "_status": "applied",
+    "cp": 501,
+    "hp": 100,
+    "iv": "13/13/12 · measured",
+    "ivCount": 1,
+    "matchName": "Tadbulb",
+    "name": "Tadbulb",
+    "read": "CP 501 · 100 HP · no stars · no full bars"
+   },
+   {
+    "_rid": "a3",
+    "_status": "unmatched",
+    "name": "Salandit",
+    "read": "CP 611 · 87 HP · no stars · no full bars"
+   },
+   {
+    "_rid": "a4",
+    "_status": "unmatched",
+    "name": "Beldum",
+    "read": "CP 138 · 42 HP · no stars · no full bars"
+   },
+   {
+    "_rid": "a5",
+    "_status": "unmatched",
+    "name": "Charmander",
+    "read": "CP 415 · 68 HP · no stars · no full bars"
+   }
+  ],
+  "state": {
+   "addedPokemon": [
+    {
+     "atkIV": 10,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 1680,
+     "defIV": 15,
+     "dex": 68,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Machamp",
+      "rankPct": 94.4473576573432
+     },
+     "height": null,
+     "hp": 127,
+     "idx": "IDX1",
+     "ivAvg": 71.11111111111111,
+     "ivCandidates": 1,
+     "ivMeasured": true,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Machamp",
+      "rankPct": 93.28364903944407
+     },
+     "lucky": false,
+     "lvlMax": 20,
+     "lvlMin": 20,
+     "name": "Machamp",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 7,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Machamp",
+      "rankPct": 95.90517522299513
+     },
+     "weight": null
+    },
+    {
+     "apprMaxed": [
+      "atk",
+      "def"
+     ],
+     "apprStars": 3,
+     "atkIV": 15,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 901,
+     "defIV": 15,
+     "dex": 184,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Azumarill",
+      "rankPct": 93.41648682726523
+     },
+     "height": null,
+     "hp": 141,
+     "idx": "IDX2",
+     "ivAvg": 93.33333333333333,
+     "ivCandidates": 1,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Azumarill",
+      "rankPct": 92.7283670182538
+     },
+     "lucky": false,
+     "lvlMax": 20,
+     "lvlMin": 20,
+     "name": "Azumarill",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 12,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Azumarill",
+      "rankPct": 99.0049751243781
+     },
+     "weight": null
+    },
+    {
+     "apprMaxed": [],
+     "apprStars": 1,
+     "atkIV": null,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 2574,
+     "defIV": null,
+     "dex": 149,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": null,
+     "height": null,
+     "hp": 148,
+     "idx": "IDX3",
+     "ivAvg": null,
+     "ivCandidates": 3,
+     "ivRange": {
+      "atk": [
+       3,
+       6
+      ],
+      "def": [
+       3,
+       14
+      ],
+      "sta": [
+       11,
+       14
+      ]
+     },
+     "ivSolved": false,
+     "little": null,
+     "lucky": false,
+     "lvlMax": 25.5,
+     "lvlMin": 25,
+     "name": "Dragonite",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": null,
+     "type": null,
+     "ultra": null,
+     "weight": null
+    },
+    {
+     "atkIV": 14,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 299,
+     "defIV": 13,
+     "dex": 374,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Beldum",
+      "rankPct": 96.02070916862321
+     },
+     "height": null,
+     "hp": 58,
+     "idx": "IDX4",
+     "ivAvg": 88.88888888888889,
+     "ivCandidates": 1,
+     "ivMeasured": true,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Beldum",
+      "rankPct": 90.45619317023889
+     },
+     "lucky": false,
+     "lvlMax": 11,
+     "lvlMin": 11,
+     "name": "Beldum",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 13,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Beldum",
+      "rankPct": 96.02070916862321
+     },
+     "weight": null
+    },
+    {
+     "atkIV": 1,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 167,
+     "defIV": 13,
+     "dex": 4,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Charmander",
+      "rankPct": 86.07959104142307
+     },
+     "height": null,
+     "hp": 45,
+     "idx": "IDX5",
+     "ivAvg": 57.77777777777777,
+     "ivCandidates": 1,
+     "ivMeasured": true,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Charmander",
+      "rankPct": 95.34084835398117
+     },
+     "lucky": false,
+     "lvlMax": 7,
+     "lvlMin": 7,
+     "name": "Charmander",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 12,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Charmander",
+      "rankPct": 86.07959104142307
+     },
+     "weight": null
+    },
+    {
+     "atkIV": 13,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 501,
+     "defIV": 13,
+     "dex": 938,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Tadbulb",
+      "rankPct": 94.74095423293286
+     },
+     "height": null,
+     "hp": 100,
+     "idx": "IDX6",
+     "ivAvg": 84.44444444444444,
+     "ivCandidates": 1,
+     "ivMeasured": true,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Tadbulb",
+      "rankPct": 90.16199094347795
+     },
+     "lucky": false,
+     "lvlMax": 20,
+     "lvlMin": 20,
+     "name": "Tadbulb",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 12,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Tadbulb",
+      "rankPct": 94.74095423293286
+     },
+     "weight": null
+    }
+   ],
+   "ivOverrides": {}
+  },
+  "summary": "3 pinned · 0 need a pick · 3 unmatched"
+ },
+ "shot": {
+  "error": "",
+  "requests": 1,
+  "result": {
+   "_review": [
+    {
+     "_rid": "a0",
+     "_status": "applied",
+     "cp": 1680,
+     "hp": 127,
+     "iv": "10/15/7 · measured",
+     "ivCount": 1,
+     "matchName": "Machamp",
+     "name": "Machamp",
+     "read": "CP 1680 · 127 HP · no stars · no full bars"
+    }
+   ],
+   "applied": 1,
+   "collided": 0,
+   "contradiction": 0,
+   "inserted": 0,
+   "solved": 1,
+   "total": 1,
+   "unmatched": 0,
+   "unsure": 0,
+   "updated": 1
+  },
+  "review": [
+   {
+    "_rid": "a0",
+    "_status": "applied",
+    "cp": 1680,
+    "hp": 127,
+    "iv": "10/15/7 · measured",
+    "ivCount": 1,
+    "matchName": "Machamp",
+    "name": "Machamp",
+    "read": "CP 1680 · 127 HP · no stars · no full bars"
+   }
+  ],
+  "state": {
+   "addedPokemon": [
+    {
+     "atkIV": 10,
+     "canEvolve": null,
+     "catchDate": null,
+     "chargeMove": null,
+     "chargeMove2": null,
+     "cp": 1680,
+     "defIV": 15,
+     "dex": 68,
+     "dust": null,
+     "evolveCandy": null,
+     "favorite": false,
+     "form": null,
+     "gender": null,
+     "great": {
+      "evolvesTo": "Machamp",
+      "rankPct": 94.4473576573432
+     },
+     "height": null,
+     "hp": 127,
+     "idx": "IDX1",
+     "ivAvg": 71.11111111111111,
+     "ivCandidates": 1,
+     "ivMeasured": true,
+     "ivRange": null,
+     "ivSolved": true,
+     "little": {
+      "evolvesTo": "Machamp",
+      "rankPct": 93.28364903944407
+     },
+     "lucky": false,
+     "lvlMax": 20,
+     "lvlMin": 20,
+     "name": "Machamp",
+     "quickMove": null,
+     "scanDate": "<date>",
+     "shadowPurified": "0",
+     "shiny": false,
+     "shinyState": null,
+     "sizeClass": null,
+     "staIV": 7,
+     "type": null,
+     "ultra": {
+      "evolvesTo": "Machamp",
+      "rankPct": 95.90517522299513
+     },
+     "weight": null
+    }
+   ],
+   "ivOverrides": {}
+  },
+  "summary": "Pinned 10/15/7 to Machamp"
+ }
+}

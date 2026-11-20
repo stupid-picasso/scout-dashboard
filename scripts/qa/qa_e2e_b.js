@@ -1,9 +1,52 @@
 const fs = require('fs');
 // QA suite B: PvP, Attackers, Raid, Recs, Intel.
 const path = require('path');
-const { T, expect, skip, session, REPO } = require('./qa_lib');
+const { T, G, golden, expect, skip, session, REPO } = require('./qa_lib');
 const QA = path.join(REPO, 'scripts', 'fixtures', 'qa_roster.csv');
 const CAPS = { 'GREAT ≤1500': 1500, 'ULTRA ≤2500': 2500, 'LITTLE CUP': 500, 'MASTER': Infinity };
+
+
+// ---- Gemini behaviour tests: everything goes through s.stubGemini (route level), nothing reaches into the app's private fields ----
+// The app's rotation lists, round-robin position and cooldown tables are internal; what a person (and the Gemini API) can see is which
+// model URLs were requested, in what order, and what the screen says. Every test here asserts only that.
+const GEM_MODELS = ['gemini-3.9-flash', 'gemini-3.9-flash-lite', 'gemini-3.8-flash'];   // a text call tries the lite one first, then the others newest first
+const gkey = tag => 'AIzaSyQA' + tag + 'k'.repeat(30);
+// The page's clock, started at midday on a fixed day, so a test that parks a key until midnight reads the same words at any hour it is run.
+const fixClock = sx => sx.page.clock.install({ time: new Date(2026, 10, 20, 12, 0, 0) });
+async function appSession(fn, opts) { const sx = await session({ feed: false, ...(opts || {}) }); try { return await fn(sx); } finally { await sx.close(); } }
+const useKey = (sx, key) => sx.set({ geminiKey: key, geminiKeys: [key] });
+// Waits for a condition in the page. With a Gemini stub and hangMs it also plays the clock forward whenever a request is hanging, so a
+// request that never answers reaches the app's own deadline without the test sleeping for it (page.clock.install() first).
+async function waitPage(sx, cond, arg, hang) {
+  const t0 = Date.now(); let ticked = 0; let handled = hang ? (hang.base !== undefined ? hang.base : hang.g.hung()) : 0;   // base: hung requests already seen before the action that is being waited for
+  for (;;) {
+    if (await sx.page.evaluate(cond, arg)) return;
+    if (hang && hang.ms && hang.g.hung() > handled) { handled = hang.g.hung(); await sx.page.clock.fastForward(hang.ms); }
+    if (hang && hang.tick && ticked < (hang.budget !== undefined ? hang.budget : 20000)) { ticked += hang.tick; await sx.page.clock.fastForward(hang.tick); }   // retry and pacing waits are played out, not slept; the budget keeps the jump far below any cooldown under test (60 s and up)
+    if (Date.now() - t0 > 90000) throw new Error('timed out waiting for the page');
+    await new Promise(r => setTimeout(r, 40));
+  }
+}
+// One chat question typed into the Professor sheet; returns the reply text the person reads.
+async function chatAsk(sx, q, hang) {
+  const dlg = sx.page.locator('[role=dialog][aria-label="Ask the Professor"]');
+  if (!(await dlg.count())) { await sx.go('ROSTER'); await sx.page.locator('button[aria-label="Ask the Professor"]').click(); }
+  const n = ((await sx.state()).chatMessages || []).length; const h = hang ? { ...hang, base: hang.g.hung() } : undefined;
+  const inp = dlg.locator('input[type=text]'); await inp.fill(q); await inp.press('Enter');
+  await waitPage(sx, n0 => { const l = window.__qaFindLogic(); return !!l && !l.state.chatBusy && (l.state.chatMessages || []).length >= n0 + 2; }, n, h);
+  const ms = (await sx.state()).chatMessages; const reply = ms[ms.length - 1].content;
+  expect((await sx.text()).includes(reply.slice(0, 40)), 'the reply is on screen: ' + reply.slice(0, 80));
+  return reply;
+}
+// One screenshot read through Settings > Import screenshot; returns the name the read panel holds (or the error shown).
+const PIKA_READ = JSON.stringify({ name: 'Pikachu', cp: 500, hp: 60, type1: 'Electric', fastMove: 'Thunder Shock', chargeMove1: 'Wild Charge', lucky: false, shadow: false });
+async function readShot(sx, hang, file) {
+  await sx.call('cancelOcr'); await sx.go('HOME'); const h = hang ? { ...hang, base: hang.g.hung() } : undefined;
+  const png = file || { name: 'shot.png', mimeType: 'image/png', buffer: await sx.png(64, 64, (c, w, h) => { c.fillStyle = '#456'; c.fillRect(0, 0, w, h); c.fillStyle = '#fc0'; c.fillRect(8, 8, 24, 24); }) };
+  await sx.page.locator('.ui-list input[type=file][accept="image/*"]').first().setInputFiles(png);
+  await waitPage(sx, () => { const l = window.__qaFindLogic(); return !!l && !l.state.ocrBusy && (!!l.state.ocrParsed || !!l.state.ocrError); }, null, h);
+  const st = await sx.state(); return st.ocrParsed ? st.ocrParsed.name : 'ERROR: ' + st.ocrError;
+}
 
 module.exports = async function suiteB() {
   const s = await session({ feed: false });
@@ -229,26 +272,16 @@ module.exports = async function suiteB() {
     expect(/ninetales,vulpix&ice/.test(await s.page.evaluate(() => document.body.innerText)), 'search ui');
   }, 'high');
   await T('GEM-01', 'AI', 'In-app Gemini cycle is live: retired models dropped, a 503 moves to the next model', async () => {
-    const r = await s.logic(async logic => {
-      const gen = []; const orig = window.fetch;
-      const J = (status, obj) => ({ status, ok: status < 400, json: async () => obj, text: async () => JSON.stringify(obj) });
-      window.fetch = async (url, opt) => {
-        url = String(url);
-        if (url.indexOf('generativelanguage') < 0) return orig(url, opt);
-        if (/\/models\?/.test(url)) return J(200, { models: ['gemini-3.9-flash', 'gemini-3.5-flash-lite', 'gemini-3.4-flash', 'gemini-2.5-flash', 'gemini-3.9-flash-image'].map(n => ({ name: 'models/' + n, supportedGenerationMethods: ['generateContent'] })) });
-        const m = /models\/([^:]+):(\w+)/.exec(url);
-        if (m[2] === 'countTokens') return J(m[1] === 'gemini-3.5-flash-lite' ? 404 : 200, {});
-        gen.push(m[1]);
-        if (m[1] === 'gemini-3.9-flash') return J(503, { error: { message: 'high demand' } });
-        return J(200, { candidates: [{ content: { parts: [{ text: 'OK' }] }, finishReason: 'STOP' }] });
-      };
-      try {
-        const out = await logic.callGeminiWithKey({ messages: [{ content: 'hi' }] }, 'QAKEY-' + Date.now());
-        return { out, gen, rot: await logic.geminiRotation('QAKEY-x', false).catch(() => null) };
-      } finally { window.fetch = orig; }
+    await appSession(async sx => {
+      const g = await sx.stubGemini({
+        models: ['gemini-3.9-flash', 'gemini-3.5-flash-lite', 'gemini-3.4-flash', 'gemini-2.5-flash', 'gemini-3.9-flash-image'],
+        countTokens: m => (m === 'gemini-3.5-flash-lite' ? 404 : 200),
+        generate: G.byModel({ 'gemini-3.9-flash': G.err(503, 'high demand') }, G.ok('OK')) });
+      await useKey(sx, gkey('G1'));
+      const reply = await chatAsk(sx, 'hello');
+      expect(reply === 'OK', 'the reply from the second model reaches the screen: ' + reply);
+      expect(g.order().join() === 'gemini-3.9-flash,gemini-3.4-flash', 'the 503 moves on to the next model; the model that answers 404 to the token check and the image model are never asked: ' + g.order().join());
     });
-    expect(r.out === 'OK', JSON.stringify(r));
-    expect(r.gen[0] === 'gemini-3.9-flash' && r.gen[1] === 'gemini-3.4-flash' && r.gen.indexOf('gemini-3.5-flash-lite') < 0 && r.gen.indexOf('gemini-3.9-flash-image') < 0, 'order: ' + r.gen.join(','));
   }, 'critical');
   await T('OCR-CLEAN-01', 'Import', 'Screenshot read: species typos snapped, types cased, units fixed, regional form from types', async () => {
     const c = async r => (await s.call('cleanScreenshotRecord', r));
@@ -265,28 +298,19 @@ module.exports = async function suiteB() {
     expect(r.rec.pokemon_name === 'Zzzzzzzz', 'unknown names are left alone');
   }, 'high');
   await T('GEM-02', 'AI', 'A model out of daily quota is parked alone: the key keeps working on the other models', async () => {
-    const r = await s.logic(async logic => {
-      const gen = []; const orig = window.fetch;
-      const J = (status, obj) => ({ status, ok: status < 400, json: async () => obj, text: async () => JSON.stringify(obj) });
-      window.fetch = async (url) => {
-        url = String(url);
-        if (url.indexOf('generativelanguage') < 0) return orig(url);
-        if (/\/models\?/.test(url)) return J(200, { models: ['gemini-3.9-flash', 'gemini-3.5-flash-lite'].map(n => ({ name: 'models/' + n, supportedGenerationMethods: ['generateContent'] })) });
-        const m = /models\/([^:]+):(\w+)/.exec(url);
-        if (m[2] === 'countTokens') return J(200, {});
-        gen.push(m[1]);
-        if (m[1] === 'gemini-3.9-flash') return J(429, { error: { message: 'quota', details: [{ violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] } });
-        return J(200, { candidates: [{ content: { parts: [{ text: 'OK' }] }, finishReason: 'STOP' }] });
-      };
-      try {
-        const key = 'QAQUOTA-' + Date.now();
-        const img = { messages: [{ content: [{ type: 'text', text: 'x' }, { type: 'image', source: { data: 'AAAA', media_type: 'image/jpeg' } }] }] };
-        const a = await logic.callGeminiWithKey(img, key); const b = await logic.callGeminiWithKey(img, key);
-        return { a, b, gen };
-      } finally { window.fetch = orig; }
+    await appSession(async sx => {
+      // Screenshots use the accurate (non-lite) models first: 3.9-flash, then 3.5-flash-lite. The first is out of quota for the day.
+      const g = await sx.stubGemini({
+        models: ['gemini-3.9-flash', 'gemini-3.5-flash-lite'],
+        generate: G.byModel({ 'gemini-3.9-flash': G.err(429, 'quota', { details: [{ violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] }) }, G.ok(PIKA_READ)) });
+      await useKey(sx, gkey('G2'));
+      const names = [], per = [];
+      for (let i = 0; i < 3; i++) { const m = g.mark(); names.push(await readShot(sx)); per.push(g.orderSince(m).join('>')); }
+      expect(names.every(n => n === 'Pikachu'), 'every read succeeds on the key: ' + names.join());
+      expect(per[0] === 'gemini-3.9-flash>gemini-3.5-flash-lite', 'the first read meets the exhausted model and moves on: ' + per.join(' | '));
+      // The round robin comes back round to the exhausted model on the third read; it must not be asked again.
+      expect(per[2] === 'gemini-3.5-flash-lite' && g.order().filter(m => m === 'gemini-3.9-flash').length === 1, 'the exhausted model is asked once and then left alone: ' + per.join(' | '));
     });
-    expect(r.a === 'OK' && r.b === 'OK', JSON.stringify(r));
-    expect(r.gen.filter(x => x === 'gemini-3.9-flash').length === 1, 'the exhausted model must not be retried: ' + r.gen.join(','));
   }, 'critical');
   await T('TYPE-01', 'Import', 'A one-badge read of a two-type species is completed; real forms are untouched', async () => {
     let r = await s.call('cleanScreenshotRecord', { pokemon_name: 'Landorus', dex_number: 645, type_1: 'Flying' });
@@ -1542,12 +1566,17 @@ module.exports = async function suiteB() {
       ['How many hundos do I have?', /Hundo: 1\b/], ['How is my Kanto dex?', /Kanto Dex: \d+\/151/], ['Do I have Rare Candy XL?', /Rare Candy XL 9/],
       ['What is my strongest Pokemon?', /Gengar[^;]*2400/], ['How is my living dex doing?', /Living Dex: \d+\//], ['Which need a second move?', /second charge move/i],
       ['How many lucky Pokemon?', /Lucky: 1\b/], ['What should I evolve soon?', /Evolve-soon candidates/], ['What can I safely transfer?', /Transfer-safe candidates/]];
-    const out = await s.logic(async (l, Q) => { const keep = l.completeWithRetry; const res = [];
-      for (const q of Q) { let sent = ''; l.completeWithRetry = async o => { sent = JSON.stringify(o); return 'ok'; }; l.setState({ chatInput: q[0], chatMessages: [] }); await new Promise(r => setTimeout(r, 80)); await l.sendChat(); await new Promise(r => setTimeout(r, 80)); res.push(sent); }
-      l.completeWithRetry = keep; l.setState({ chatMessages: [] }); return res; return null; }, Q.map(q => [q[0]]));
-    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, resources: st0.resources, chatMessages: [] });
+    // What the model is sent is read off the request that reaches the (stubbed) Gemini API, not off a swapped-in app method.
+    const gc = await s.stubGemini({ models: GEM_MODELS, generate: G.ok('ok') }); const CKEY = gkey('C1');
+    await s.set({ geminiKey: CKEY, geminiKeys: [CKEY] });
+    const out = [];
+    try {
+      for (const q of Q) { const n0 = gc.generated().length; await s.set({ chatInput: q[0], chatMessages: [] }); await s.call('sendChat'); const rq = gc.generated().slice(n0).find(r => r.text.includes(q[0])); out.push(rq ? rq.text : ''); }
+    } finally { await gc.stop(); }
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, candyInventory: st0.candyInventory || {}, resources: st0.resources, chatMessages: [], geminiKey: st0.geminiKey || '', geminiKeys: st0.geminiKeys || [] });
     const hits = Q.filter((q, i) => out && q[1].test(out[i] || ''));
     const score = hits.length / Q.length;
+    if (process.env.QA_DEBUG) console.log('\ngrounding hits ' + hits.length + '/' + Q.length);
     expect(score >= 0.9, 'grounding ' + Math.round(score * 100) + '%; missed: ' + Q.filter((q, i) => !(out && q[1].test(out[i] || ''))).map(q => q[0]).join(' | '));
   });
   await T('CHATEVAL-02', 'Chat', 'Chat rubric over the real prompt and context (no model call): the rules that stop wrong answers are in the system prompt, protected Pokemon carry a keep reason, an asked-about family gets its own detail and verdict, a missing species is absent from the census, a hostile name cannot start a new line, no API key is sent, and the payload stays under budget. A mutation check proves each rule is actually scored', async () => {
@@ -1559,9 +1588,13 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: ros, roster: [], ivOverrides: {}, chatMessages: [], geminiKey: KEY, geminiKeys: [KEY] });
     await s.page.waitForTimeout(600);
     const Q = ['Is my Gengar worth keeping?', 'Should I transfer my Machop?', 'Do I have a Mewtwo?'];
-    const out = await s.logic(async (l, Q) => { const keep = l.completeWithRetry; const res = [];
-      for (const q of Q) { let sent = ''; l.completeWithRetry = async o => { sent = o.system; return 'ok'; }; l.setState({ chatInput: q, chatMessages: [] }); await new Promise(r => setTimeout(r, 80)); await l.sendChat(); await new Promise(r => setTimeout(r, 80)); res.push(sent); }
-      l.completeWithRetry = keep; l.setState({ chatMessages: [] }); return res; return null; }, Q);
+    // The system prompt is the first part of the request that reaches the (stubbed) Gemini API.
+    const gc = await s.stubGemini({ models: GEM_MODELS, generate: G.ok('ok') });
+    const out = [];
+    try {
+      for (const q of Q) { const n0 = gc.generated().length; await s.set({ chatInput: q, chatMessages: [] }); await s.call('sendChat'); const rq = gc.generated().slice(n0).find(r => r.text.includes(q)); out.push(rq ? rq.parts[0].text : ''); }
+      expect(gc.generated().every(r => r.key === KEY), 'the key travels in the header of every request');
+    } finally { await gc.stop(); }
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, chatMessages: [], geminiKey: st0.geminiKey || '', geminiKeys: st0.geminiKeys || [] });
     expect(out && out.length === 3 && out.every(x => typeof x === 'string' && x.length > 500), 'three prompts were captured');
     // The rubric: returns the names of the rules a set of prompts breaks.
@@ -1598,7 +1631,8 @@ module.exports = async function suiteB() {
   await T('CHATBUBBLE-01', 'Chat', 'A floating chat bubble on every tab except Home opens the same chat as a sheet, tells the model which screen and which Pokemon is open, and fades while the page scrolls', async () => {
     const st0 = await s.state();
     const mk = (idx, name, dex, iv, cp, lvl) => ({ idx, name, dex, cp, hp: 100, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lvl, lvlMax: lvl, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10) });
-    await s.set({ addedPokemon: [mk('cb1', 'Gengar', 94, [14, 14, 14], 2400, 40)], roster: [], ivOverrides: {}, chatMessages: [], chatInput: '', chatOpen: false, detailPoke: null, tab: 'today' });
+    const gc = await s.stubGemini({ models: GEM_MODELS, generate: G.ok('ok') }); const BKEY = gkey('CB');
+    await s.set({ addedPokemon: [mk('cb1', 'Gengar', 94, [14, 14, 14], 2400, 40)], roster: [], ivOverrides: {}, chatMessages: [], chatInput: '', chatOpen: false, detailPoke: null, tab: 'today', geminiKey: BKEY, geminiKeys: [BKEY] });
     await s.page.waitForTimeout(700);
     const bubble = s.page.locator('button[aria-label="Ask the Professor"]');
     const onToday = await bubble.count();
@@ -1610,12 +1644,12 @@ module.exports = async function suiteB() {
     const r = await s.logic(async (l) => { const a = l.chatScreenLine();
       l.setState({ detailPoke: l.effectiveRosterForMatch().find(p => p.idx === 'cb1') }); await new Promise(r => setTimeout(r, 150));
       const b = l.chatScreenLine();
-      let sent = null; const keep = l.completeWithRetry; l.completeWithRetry = async o => { sent = o.system; return 'ok'; };
-      l.setState({ chatInput: 'should I keep this one?' }); await new Promise(r => setTimeout(r, 100)); await l.sendChat(); await new Promise(r => setTimeout(r, 200));
-      l.completeWithRetry = keep;
-      const out = { a, b, reply: (l.state.chatMessages || []).map(m => m.content).join('|'), hasScreen: !!sent && /Screen: Roster; the details sheet is open on Gengar/.test(sent), faded: (() => { const el = document.querySelector('button[aria-label="Ask the Professor"]'); document.dispatchEvent(new Event('scroll')); return !!el; })() };
+      l.setState({ chatInput: 'should I keep this one?' }); await new Promise(r => setTimeout(r, 100)); await l.sendChat();
+      const out = { a, b, reply: (l.state.chatMessages || []).map(m => m.content).join('|'), faded: (() => { const el = document.querySelector('button[aria-label="Ask the Professor"]'); document.dispatchEvent(new Event('scroll')); return !!el; })() };
       l.setState({ detailPoke: null, chatOpen: false, chatMessages: [] }); return out; return null; });
-    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, chatMessages: st0.chatMessages || [], chatOpen: false, detailPoke: null, tab: 'home' });
+    const rqB = gc.generated().find(r => r.text.includes('should I keep this one?')); const sentBubble = rqB ? rqB.parts[0].text : null; r.hasScreen = !!sentBubble && /Screen: Roster; the details sheet is open on Gengar/.test(sentBubble);
+    await gc.stop();
+    await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], ivOverrides: st0.ivOverrides || {}, chatMessages: st0.chatMessages || [], chatOpen: false, detailPoke: null, tab: 'home', geminiKey: st0.geminiKey || '', geminiKeys: st0.geminiKeys || [] });
     // the Home checkbox brings a hidden bubble back
     await s.set({ tab: 'home', chatBubbleOff: true }); await s.page.waitForTimeout(400);
     const homeBox = s.page.locator('label', { hasText: 'Show the floating chat button' }).locator('input');
@@ -1727,24 +1761,20 @@ module.exports = async function suiteB() {
     expect(r.shown && r.cp === 2646 && r.check === false && r.b[0] === 2400 && r.b[1] === false, 'the detail sheet offers the candidates; confirming a CP sets it and clears the tag: ' + JSON.stringify(r));
   });
   await T('GEMPARK-01', 'AI', 'A Gemini model that hangs is set aside, so the next read goes straight to one that answers', async () => {
-    const r = await s.logic(async (l) => { const calls = [];
-      const keepF = l.fetchWithDeadline, keepR = l.geminiRotation, keepC = l._modelCool, keepGT = l._geminiTimeoutMs, keepLog = l._aiLog ? l._aiLog.slice() : undefined;
-      l._geminiTimeoutMs = 0; l._modelCool = {};
-      l.geminiRotation = async () => ['gemini-hang', 'gemini-good'];
-      l.fetchWithDeadline = async url => { const m = /models\/([^:]+):generateContent/.exec(url); calls.push(m ? m[1] : url);
-        if (m && m[1] === 'gemini-hang') { const e = new Error('Gemini did not answer within 90s'); e.__geminiTimeout = true; throw e; }
-        return { ok: true, status: 200, clone() { return this; }, text: async () => '', json: async () => ({ candidates: [{ content: { parts: [{ text: '{"name":"Machamp"}' }] }, finishReason: 'STOP' }] }) }; };
-      const body = { messages: [{ content: [{ type: 'image', source: { data: 'AAAA' } }, { type: 'text', text: 'read' }] }] };
-      const out = {};
-      try {
-        l._geminiModelIdxVision = 0;
-        out.a = await l.callGeminiWithKey(body, 'KEY-PARK'); out.callsA = calls.slice();
-        l._geminiModelIdxVision = 0;
-        out.b = await l.callGeminiWithKey(body, 'KEY-PARK'); out.callsB = calls.slice(out.callsA.length);
-      } catch (e) { out.err = e.message; } finally { l.fetchWithDeadline = keepF; l.geminiRotation = keepR; l._modelCool = keepC; l._geminiTimeoutMs = keepGT; delete l._modelMs; l._aiLog = keepLog; }
-      return out; return null; });
-    expect(r && !r.err && /Machamp/.test(r.a) && r.callsA.join() === 'gemini-hang,gemini-good', 'the first read tries the hanging model, then the good one: ' + JSON.stringify(r));
-    expect(r.callsB.join() === 'gemini-good', 'the next read skips the hanging model: ' + JSON.stringify(r));
+    await appSession(async sx => {
+      const g = await sx.stubGemini({
+        models: ['gemini-3.9-flash', 'gemini-3.5-flash-lite'],
+        generate: G.byModel({ 'gemini-3.9-flash': G.hang }, G.ok(PIKA_READ)) });
+      await useKey(sx, gkey('GP'));
+      await fixClock(sx);
+      const hang = { g, ms: 91000 };   // a screenshot read waits 90 s for an answer
+      const names = [], per = [];
+      for (let i = 0; i < 3; i++) { const m = g.mark(); names.push(await readShot(sx, hang)); per.push(g.orderSince(m).join('>')); }
+      expect(names.every(n => n === 'Pikachu'), 'every read ends with a Pikachu on screen: ' + names.join());
+      expect(per[0] === 'gemini-3.9-flash>gemini-3.5-flash-lite', 'the first read tries the hanging model, then the good one: ' + per.join(' | '));
+      // The round robin is back at the hanging model on the third read; it is set aside, so the read goes straight to the good one.
+      expect(per[2] === 'gemini-3.5-flash-lite', 'the next read skips the hanging model: ' + per.join(' | '));
+    });
   });
   await T('GEMTIME-01', 'AI', 'A Gemini request that never answers is dropped after the deadline instead of hanging the import', async () => {
     const st0 = await s.state();
@@ -2138,5 +2168,454 @@ module.exports = async function suiteB() {
     const src = fs.readFileSync(path.join(REPO, 'Scout Dashboard.dc.html'), 'utf8'); const n = (src.match(/dynamax\\?":\s?true\|null/g) || []).length; expect(n >= 3, 'prompts with the field: ' + n);
     expect((src.match(/maxAttackLevel/g) || []).length >= 8, 'levels not wired'); const py = fs.readFileSync(path.join(REPO, 'pogo_extract.py'), 'utf8'); expect(/"dynamax": true\|null/.test(py) && /maxAttackLevel/.test(py), 'server prompt');
   }, 'medium');
+
+  // ------------------------------------------------------------------ GEMINI ERROR OUTCOMES (recorded as they are today, before the client is refactored)
+  // One test per way a Gemini call can end. Each asks the Professor twice through the real chat sheet, with the Gemini API answered by a
+  // route stub, and records: the words the person reads, which model URLs were requested in what order, and whether a cooldown applies
+  // (a second question asked straight away makes no request when the key is parked, and a third one after the wait makes them again).
+  const PERDAY = { details: [{ violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] };
+  const fast = g => ({ g, ms: 0, tick: 2000 });   // retries wait 1.2 s, 2.4 s and 4.8 s; the page's clock plays them out (page.clock.install() first)
+  const QUOTA_MSG = "Today's Gemini quota is used up. It resets at midnight Pacific, or add a second key under AI ENGINE.";
+  const REJECT_MSG = 'That Gemini key was rejected. Check it under AI ENGINE.';
+  const FAILED = 'Chat failed: Every AI engine failed for this batch. Last engine said: ';
+  const [LITE, FLASH, OLDER] = ['gemini-3.9-flash-lite', 'gemini-3.9-flash', 'gemini-3.8-flash'];
+  await T('GEMERR-01', 'AI', 'Daily quota spent on every model: the chat says the quota is used up, each model is asked once, and the key stays parked until midnight', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.err(429, 'quota', PERDAY) });
+      await useKey(sx, gkey('E1')); await fixClock(sx);
+      const r1 = await chatAsk(sx, 'first', fast(g)); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second', fast(g)); const o2 = g.orderSince(m2).join();
+      await sx.page.clock.fastForward(61000); const m3 = g.mark();
+      const r3 = await chatAsk(sx, 'third', fast(g)); const o3 = g.orderSince(m3).join();
+      expect(r1 === QUOTA_MSG && r2 === QUOTA_MSG && r3 === QUOTA_MSG, 'the quota message each time: ' + [r1, r2, r3].join(' | '));
+      expect(o1 === [LITE, FLASH, OLDER].join(), 'every model is asked once, none twice: ' + o1);
+      expect(o2 === '', 'asked again straight away, the parked key makes no request: ' + o2);
+      expect(o3 === '', 'a minute later the key is still parked (a daily limit lasts until midnight): ' + o3);
+    });
+  }, 'high');
+  await T('GEMERR-02', 'AI', 'Per-minute rate limit on every model: each model is asked once, the key is parked for about a minute and then tried again; the chat shows the daily-quota text (KNOWN-BUG)', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.err(429, 'Quota exceeded for metric', { details: [{ violations: [{ quotaId: 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier' }] }] }) });
+      await useKey(sx, gkey('E2')); await fixClock(sx);
+      const r1 = await chatAsk(sx, 'first', fast(g)); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second', fast(g)); const o2 = g.orderSince(m2).join();
+      await sx.page.clock.fastForward(61000); const m3 = g.mark();
+      const r3 = await chatAsk(sx, 'third', fast(g)); const o3 = g.orderSince(m3).join();
+      // KNOWN-BUG: a per-minute limit is reported with the "Today's quota is used up ... midnight" text, because the chat matches the word
+      // "quota" in the "out of quota right now" line the key pool throws once every key is parked. The golden records today's words.
+      expect(r1 === QUOTA_MSG && r2 === QUOTA_MSG && r3 === QUOTA_MSG, 'the (daily-quota) text each time: ' + [r1, r2, r3].join(' | '));
+      expect(o1 === [LITE, FLASH, OLDER].join(), 'every model is asked once: ' + o1);
+      expect(o2 === '', 'asked again straight away, the parked key makes no request: ' + o2);
+      expect(o3 === [LITE, FLASH, OLDER].join(), 'after a minute the models are tried again, in the same order: ' + o3);
+    });
+  }, 'high');
+  await T('GEMERR-03', 'AI', 'A request that never answers: the chat waits for the deadline, drops it after two models, and the models that hung are set aside for three minutes', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.hang });
+      await useKey(sx, gkey('E3')); await sx.go('ROSTER'); await sx.page.locator('button[aria-label="Ask the Professor"]').click(); await fixClock(sx);
+      const hang = { g, ms: 46000 };   // a text call waits 45 s
+      const r1 = await chatAsk(sx, 'first', hang); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second', hang); const o2 = g.orderSince(m2).join();
+      await sx.page.clock.fastForward(181000); const m3 = g.mark();
+      const r3 = await chatAsk(sx, 'third', hang); const o3 = g.orderSince(m3).join();
+      expect(r1 === FAILED + 'Gemini did not answer (2 tries, 45s each). The request is dropped instead of waiting; skip or retry this one.', 'the first question gives up after two hung models: ' + r1);
+      expect(o1 === [LITE, FLASH].join(), 'two models are asked, the third never: ' + o1);
+      expect(r2 === FAILED + 'Gemini did not answer (1 try, 45s each). The request is dropped instead of waiting; skip or retry this one.' && o2 === OLDER, 'the next question skips the two that hung and tries the third, which also hangs: ' + o2 + ' / ' + r2);
+      expect(o3 === [LITE, FLASH].join(), 'after three minutes the first two are tried again: ' + o3);
+    });
+  }, 'high');
+  await T('GEMERR-04', 'AI', 'A rejected key (400 API key not valid): one retry on the same model, then "rejected"; the key is parked, so the next question says the quota is used up (KNOWN-BUG)', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.err(400, 'API key not valid. Please pass a valid API key.', { status: 'INVALID_ARGUMENT' }) });
+      await useKey(sx, gkey('E4')); await fixClock(sx);
+      const r1 = await chatAsk(sx, 'first', fast(g)); const reqs = g.generated(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second', fast(g)); const o2 = g.orderSince(m2).join();
+      expect(r1 === REJECT_MSG, 'the rejected-key message: ' + r1);
+      expect(reqs.map(r => r.model).join() === [LITE, LITE].join() && reqs[0].mime === null && reqs[1].mime === 'application/json', 'the one model is asked, then asked again with the JSON mime type, and no other model is tried: ' + JSON.stringify(reqs.map(r => [r.model, r.mime])));
+      // KNOWN-BUG: the key is parked for the day without saying so; the next question reads as an exhausted quota.
+      expect(r2 === QUOTA_MSG && o2 === '', 'the parked key makes no request and the chat says the quota is used up: ' + r2 + ' / ' + o2);
+    });
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.err(403, 'Generative Language API has not been used in project 1 before or it is disabled.') });
+      await useKey(sx, gkey('E5')); await fixClock(sx);
+      const r1 = await chatAsk(sx, 'first', fast(g)); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second', fast(g)); const o2 = g.orderSince(m2).join();
+      expect(r1 === REJECT_MSG && o1 === LITE, '403: the same rejected-key message after one request: ' + r1 + ' / ' + o1);
+      expect(r2 === QUOTA_MSG && o2 === '', '403: parked for the day, the next question reads as an exhausted quota (KNOWN-BUG): ' + r2 + ' / ' + o2);
+    });
+  }, 'high');
+  await T('GEMERR-05', 'AI', 'A model that is gone (404): every model is tried, the dead ones leave the cycle, and the next question uses the built-in model names', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.err(404, 'models/x is not found for API version v1beta') });
+      await useKey(sx, gkey('E6'));
+      const r1 = await chatAsk(sx, 'first'); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second'); const o2 = g.orderSince(m2).join();
+      expect(r1.startsWith(FAILED + '[g4] Gemini gemini-3.8-flash error 404:'), 'the last model\'s 404 is what the chat shows: ' + r1);
+      expect(o1 === [LITE, FLASH, OLDER].join(), 'every model is tried once: ' + o1);
+      // All three were dropped from the key's list, so the empty list falls back to the built-in names (a second list of models in the app).
+      expect(o2 === 'gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-3.5-flash' && r2.startsWith(FAILED + '[g4] Gemini gemini-3.5-flash error 404:'), 'the next question asks the built-in models: ' + o2 + ' / ' + r2);
+    });
+  }, 'high');
+  await T('GEMERR-06', 'AI', 'Malformed JSON inside a 200: no other model is tried, no cooldown, and the chat shows a "chat failed" line with the parser\'s words', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.raw(200, '{"candidates":[') });
+      await useKey(sx, gkey('E7'));
+      const r1 = await chatAsk(sx, 'first'); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second'); const o2 = g.orderSince(m2).join();
+      // The parser's own sentence differs between browsers, so only the fixed part is recorded.
+      expect(r1.startsWith(FAILED) && r1.length > FAILED.length && r2.startsWith(FAILED), 'the failed line: ' + r1 + ' | ' + r2);
+      expect(o1 === LITE && o2 === LITE, 'one request per question, the next model is not tried and nothing is parked: ' + o1 + ' | ' + o2);
+    });
+  }, 'high');
+  await T('GEMERR-07', 'AI', 'Truncated output (MAX_TOKENS): no other model is tried, no cooldown, and the chat says the reply was cut off', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('A half-written answ', 'MAX_TOKENS') });
+      await useKey(sx, gkey('E8'));
+      const r1 = await chatAsk(sx, 'first'); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second'); const o2 = g.orderSince(m2).join();
+      expect(r1 === FAILED + 'Gemini reply was cut off (MAX_TOKENS).' && r2 === r1, 'the cut-off line: ' + r1 + ' | ' + r2);
+      expect(o1 === LITE && o2 === LITE, 'one request per question, no other model, no cooldown: ' + o1 + ' | ' + o2);
+    });
+  }, 'high');
+  await T('GEMERR-08', 'AI', 'An overloaded service (503 on every model): the three models are tried, the whole round is repeated four times, then the chat shows the 503', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.err(503, 'high demand') });
+      await useKey(sx, gkey('E9')); await fixClock(sx);
+      const r1 = await chatAsk(sx, 'first', fast(g)); const o1 = g.order().join(); const m2 = g.mark();
+      const r2 = await chatAsk(sx, 'second', fast(g)); const o2 = g.orderSince(m2).join();
+      const round = [LITE, FLASH, OLDER].join();
+      expect(r1.startsWith(FAILED + '[g4] Gemini gemini-3.8-flash error 503:'), 'the 503 is what the chat shows: ' + r1);
+      expect(o1 === [round, round, round, round].join() && o2 === o1, 'four rounds of the three models for each question, and a 503 parks nothing: ' + o1 + ' | ' + o2);
+    });
+  }, 'high');
+  await T('GEMERR-09', 'AI', 'A 200 with no text (safety block): every model is tried once and the chat says no text came back', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: { status: 200, json: { candidates: [{ finishReason: 'SAFETY' }] } } });
+      await useKey(sx, gkey('EA'));
+      const r1 = await chatAsk(sx, 'first');
+      expect(r1 === FAILED + 'Gemini returned no text (SAFETY)', 'the no-text line: ' + r1);
+      expect(g.order().join() === [LITE, FLASH, OLDER].join(), 'every model is tried once: ' + g.order().join());
+    });
+  }, 'medium');
+
+
+  // Two keys: the key level. The app starts from the key AFTER the last one that answered (a new session counts key 1 as the last), so the
+  // first request of a fresh session goes to key 2. Each line below is "key:model", A = the first key stored, B = the second.
+  const KEY_A = gkey('K1'), KEY_B = gkey('K2');
+  const kt = r => (r.key === KEY_A ? 'A' : 'B') + ':' + r.model.replace('gemini-', '');
+  const twoKeys = (bad, fn) => appSession(async sx => {
+    const g = await sx.stubGemini({ models: GEM_MODELS, generate: req => (req.key === KEY_B ? bad : G.ok('answered by the other key')) });
+    await sx.set({ geminiKeys: [KEY_A, KEY_B], geminiKey: KEY_A }); await fixClock(sx);
+    const ask = async (q) => { const m = g.mark(); const reply = await chatAsk(sx, q, fast(g)); return { reply, seq: g.requests.slice(m).filter(r => r.kind === 'generate').map(kt).join() }; };
+    return fn(sx, g, ask);
+  });
+  await T('GEMERR-10', 'AI', 'Two keys, the first one asked is out of quota (daily), rate limited (per minute) or rejected (400, 403): the other key answers in the same question, and the bad key is skipped until its cooldown ends', async () => {
+    const cases = [['daily', G.err(429, 'quota', PERDAY), true], ['minute', G.err(429, 'Quota exceeded', { details: [{ violations: [{ quotaId: 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier' }] }] }), false],
+      ['rejected 400', G.err(400, 'API key not valid. Please pass a valid API key.'), true], ['refused 403', G.err(403, 'Generative Language API has not been used'), true]];
+    const want = { daily: 'B:3.9-flash-lite,B:3.9-flash,B:3.8-flash,A:3.9-flash-lite', minute: 'B:3.9-flash-lite,B:3.9-flash,B:3.8-flash,A:3.9-flash-lite', 'rejected 400': 'B:3.9-flash-lite,B:3.9-flash-lite,A:3.9-flash-lite', 'refused 403': 'B:3.9-flash-lite,A:3.9-flash-lite' };
+    for (const [name, bad, parkedAMinuteLater] of cases) {
+      await twoKeys(bad, async (sx, g, ask) => {
+        const a = await ask('first'); const b = await ask('second'); await sx.page.clock.fastForward(61000); const c = await ask('third');
+        expect(a.reply === 'answered by the other key' && b.reply === a.reply && c.reply === a.reply, name + ': every question is answered: ' + [a.reply, b.reply, c.reply].join(' | '));
+        expect(a.seq === want[name], name + ': the first question tries the bad key (every model it has, or the one that decides) and then the other key: ' + a.seq);
+        expect(b.seq === 'A:3.9-flash', name + ': asked again straight away, the bad key is parked and only the other key is used: ' + b.seq);
+        expect(c.seq === (parkedAMinuteLater ? 'A:3.8-flash' : 'B:3.8-flash,B:3.9-flash-lite,B:3.9-flash,A:3.8-flash'), name + ': a minute later ' + (parkedAMinuteLater ? 'the bad key is still parked (until midnight)' : 'the bad key is tried again first') + ': ' + c.seq);
+      });
+    }
+  }, 'high');
+  await T('GEMERR-11', 'AI', 'Two keys, the first one asked answers with a cut-off reply, malformed JSON, a gone model (404) or a server error (500): the other key is NOT tried', async () => {
+    const cases = [['truncated', G.ok('half', 'MAX_TOKENS'), 'B:3.9-flash-lite'], ['malformed JSON', G.raw(200, '{"cand'), 'B:3.9-flash-lite'], ['404', G.err(404, 'gone'), 'B:3.9-flash-lite,B:3.9-flash,B:3.8-flash'], ['500', G.err(500, 'oops'), 'B:3.9-flash-lite,B:3.9-flash,B:3.8-flash']];
+    for (const [name, bad, want] of cases) {
+      await twoKeys(bad, async (sx, g, ask) => {
+        const a = await ask('first');
+        expect(a.reply.startsWith(FAILED), name + ': the question ends in a failure line: ' + a.reply);
+        expect(a.seq === want, name + ': only the first key\'s models are tried: ' + a.seq);
+      });
+    }
+  }, 'high');
+
+  // ------------------------------------------------------------------ IMPORT GOLDENS
+  // What each import path produces today for a fixed input, recorded in scripts/fixtures/golden/*.json so a refactor can prove it kept the
+  // result. The model is the route stub and returns canned output; nothing here reads a real recording. Run `node scripts/qa/qa_run.js b --write`
+  // to regenerate the files after an intended change, and read the diff before committing it.
+  // The recording path is driven from the stage right after frame extraction: extractFrames needs a seekable video and a real decoder,
+  // which these fixtures do not have (and a synthetic clip would test the codec, not the import). runVideoPipeline(frames) is the next
+  // stage and is handed small placeholder frames; the stub answers each batch of frames with the canned reply for that batch.
+  const slice = (st, keys) => Object.fromEntries(keys.map(k => [k, st[k] === undefined ? null : st[k]]));
+  const reqSummary = g => g.generated().map(r => ({ model: r.model, images: r.parts.filter(p => p.inline_data).length, batch: (/\(This is batch \d+ of \d+ from the same recording\.\)$/.exec(r.text) || [''])[0] }));
+  const pageLine = async (sx, from) => { const t = await sx.text(); const i = t.indexOf(from); return i < 0 ? null : t.slice(i).split('\n')[0].replace(/[ \t]+/g, ' '); };
+  // Values the game could really show: CP and HP worked out from the app's own mechanics for chosen IVs and level.
+  const realMon = (sx, list) => sx.logic((l, ls) => { const m = l.mechanics; return ls.map(([dex, iv, lvl]) => ({ cp: m.cpFor(m.BASE_STATS[dex], iv, lvl), hp: m.hpFor(m.BASE_STATS[dex], iv[2], lvl) })); }, list);
+  // The goldens start from the 64-Pokemon QA roster, so an import has rows to match, update and solve against, and they run with the import
+  // gate ON (the app's real setting; the other tests switch it off): a read that cannot be right is held for review instead of merged.
+  const gateOn = sx => sx.page.evaluate(() => { window.__noImportGate = false; });
+  const withRoster = async fn => appSession(async sx => { await sx.load(QA); await sx.recalc(); await gateOn(sx); return fn(sx); });
+  const rowsAt = (st, idxs) => st.roster.filter(p => idxs.indexOf(p.idx) >= 0);
+  const overridesAt = (st, idxs) => Object.fromEntries(Object.keys(st.ivOverrides || {}).filter(k => idxs.map(String).indexOf(k) >= 0 || (st.addedPokemon || []).some(p => String(p.idx) === k)).map(k => [k, st.ivOverrides[k]]));
+  const importState = (st, idxs) => ({ matchedRows: rowsAt(st, idxs), newRosterRows: st.roster.slice(64), overrides: overridesAt(st, idxs), addedPokemon: st.addedPokemon, candyInventory: st.candyInventory, importHold: st.importHold, importProgress: st.importProgress, rosterSize: st.roster.length });
+  const videoReplies = (c, A, B) => [
+    'Here is the JSON you asked for:\n```json\n' + JSON.stringify([
+      { name: A.name, cp: A.cp, hp: A.hp, candy: 77, xlCandy: 5, fastMove: 'Dragon Breath', chargeMove1: 'Outrage', lucky: true },                           // a Pokemon already in the roster, no IVs read: updates it
+      { name: B.name, cp: B.cp, hp: B.hp, atkIV: B.atkIV, defIV: B.defIV, staIV: B.staIV, shiny: true, type: 'Dragon / Ground' },                              // already in the roster, IVs read: updates it
+      { name: 'Machamp', cp: c[0].cp, hp: c[0].hp, atkIV: 12, defIV: 13, staIV: 14, candy: 55, type: 'Fighting', fastMove: 'Counter', chargeMove1: 'Cross Chop' },   // new
+      { name: 'Pikachu', cp: c[1].cp, hp: c[1].hp, atkIV: null, defIV: null, staIV: null, candy: 12, type: 'Electric', stardust: 148482 },                      // new, IVs to be solved from CP and HP
+      { name: 'Alakazam', cp: 1200, hp: 90, atkIV: 20, defIV: 3, staIV: 4 },                                                                                      // IVs out of range: held by the import gate
+      { name: 'Notamon', cp: 10, hp: 10 }]) + '\n```',                                                                                                            // not a species: dropped before the merge
+    JSON.stringify([{ name: 'Machamp', cp: c[0].cp, xlCandy: 3, hp: c[0].hp },                                                                                    // the same Machamp seen again in a later batch
+      { name: 'Ninetales', cp: c[2].cp, hp: c[2].hp, atkIV: 10, defIV: 10, staIV: 10, type: 'Ice / Fairy' },
+      { name: 'Gengar', cp: null, cpCovered: true, cpVisible: String(c[3].cp)[0] + '??' + String(c[3].cp).slice(-1), hp: c[3].hp, atkIV: 15, defIV: 15, staIV: 15, shadow: true }])];
+  const VIDEO_MONS = [[68, [12, 13, 14], 20], [25, [5, 12, 8], 15], [38, [10, 10, 10], 25], [94, [15, 15, 15], 25]];
+  await T('IMPGOLD-01', 'Import', 'Golden: a screen recording read by the model into the QA roster (two batches, updates to rows already owned, new Pokemon, IVs solved from CP and HP, a repeated sighting, a read the import gate holds, an unknown name, a covered CP) gives this roster, these overrides and this receipt', async () => {
+    await withRoster(async sx => {
+      const st0 = await sx.state(); const [A, B] = st0.roster;
+      const rep = videoReplies(await realMon(sx, VIDEO_MONS), A, B);
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: [G.ok(rep[0]), G.ok(rep[1])] });
+      await useKey(sx, gkey('V1')); await fixClock(sx);
+      const frames = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(c => c.repeat(8));   // seven frames: a batch of five and a batch of two
+      await sx.logic((l, f) => { l.runVideoPipeline(f); return true; }, frames);
+      await waitPage(sx, () => { const l = window.__qaFindLogic(); const v = l && l.state.videoImport; return !!v && (v.stage === 'done' || v.stage === 'error'); }, null, { g, ms: 0, tick: 8000, budget: Infinity });
+      const st = await sx.state(); await sx.go('HOME');
+      // KNOWN-BUG (P25, stage 6d): the receipt rows are copies taken before the merge, so they never show the solved or recovered CP
+      // (the covered-CP Gengar stays cp null here) and _solvedCount is always null. The golden records that.
+      golden('imp-video', { requests: reqSummary(g), videoImport: st.videoImport, state: importState(st, [A.idx, B.idx]), receiptText: await pageLine(sx, 'Done!') });
+    });
+  }, 'high');
+  await T('IMPGOLD-02', 'Import', 'Golden: pasting a chat\'s JSON into the QA roster (extractor rows, prose and fences around it, snake_case and camelCase names, an update to an owned row, a read the gate holds, an unknown species) gives this roster, and a second paste updates instead of duplicating', async () => {
+    await withRoster(async sx => {
+      const st0 = await sx.state(); const owned = st0.roster[3];   // Machamp in the roster
+      const c = await realMon(sx, [[68, [12, 13, 14], 20], [25, [5, 12, 8], 15], [38, [10, 10, 10], 25]]);
+      const sample = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'pokemon_import_sample.json'), 'utf8'));   // the first rows of an extractor run
+      const pasted = 'Sure! Here is the JSON for your screenshots:\n```json\n' + JSON.stringify([...sample,
+        { name: owned.name, cp: owned.cp, hp: owned.hp, candy: 99, fast_move: 'Counter', charged_move_1: 'Cross Chop', xl_candy: 4 },
+        { name: 'Machamp', cp: c[0].cp, hp: c[0].hp, attack_iv: 12, defense_iv: 13, stamina_iv: 14, type_1: 'Fighting', fast_move: 'Karate Chop', charged_move_1: 'Rock Slide', xl_candy: 3, candy: 55 },
+        { name: 'Pikachu', cp: c[1].cp, hp: c[1].hp, atkIV: 5, defIV: 12, staIV: 8, type: 'Electric', evolution_candy_cost: 50, evolve_button: true },
+        { name: 'Ninetales', cp: c[2].cp, hp: c[2].hp, atkIV: 10, defIV: 10, staIV: 10, type1: 'Ice', type2: 'Fairy', current_stardust: 148482 },
+        { name: 'Alakazam', cp: 1200, hp: 90, atkIV: 20, defIV: 3, staIV: 4 },
+        { name: 'Notamon', cp: 10, hp: 10 }]) + '\n```\nLet me know if you need anything else!';
+      const out = {};
+      const paste = async text => { await sx.set({ pasteDraft: text, pasteError: '', pasteSummary: '' }); await sx.call('applyPastedImport'); const st = await sx.state(); return { summary: st.pasteSummary, error: st.pasteError, draftLeft: st.pasteDraft }; };
+      out.empty = await paste('   ');
+      out.notJson = await paste('here you go, no data at all');
+      out.noNames = await paste('[{"cp": 100, "hp": 20}]');
+      out.first = await paste(pasted); out.afterFirst = importState(await sx.state(), [owned.idx]);
+      out.second = await paste(pasted); out.afterSecond = importState(await sx.state(), [owned.idx]);
+      golden('imp-paste', out);
+    });
+  }, 'high');
+  const shotReply = (c, extra) => JSON.stringify({ name: 'Machamp', cp: c.cp, hp: c.hp, candy: 55, xlCandy: 3, stardust: 148482, type1: 'Fighting', fastMove: 'Counter', chargeMove1: 'Cross Chop', evolveButton: false, atkIV: 12, defIV: 13, staIV: 14, lucky: false, shadow: false, shiny: false, ...(extra || {}) });
+  await T('IMPGOLD-03', 'Import', 'Golden: a detail screenshot read by the model gives this read panel and this roster change (a new Pokemon added, an owned one updated); a garbled first answer is asked again once; two garbled answers show an error; a real screenshot file from the fixtures is read', async () => {
+    await withRoster(async sx => {
+      const c = (await realMon(sx, [[68, [12, 13, 14], 20]]))[0]; const out = {};
+      const st0 = await sx.state(); const owned = st0.roster[1];   // Garchomp in the roster
+      await sx.set({ ocrAutoApply: false });
+      let g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(shotReply(c)) });
+      await useKey(sx, gkey('S1'));
+      out.cleanRead = await readShot(sx); let st = await sx.state();
+      out.cleanPanel = { parsed: st.ocrParsed, error: st.ocrError }; out.cleanRequests = g.generated().length;
+      await sx.call('addOcrAsNew'); st = await sx.state();   // with the import gate on: a read that adds up goes straight in
+      out.afterAdd = { ...importState(st, [owned.idx]), ocrQueueSummary: st.ocrQueueSummary, confirm: st.pendingConfirm ? st.pendingConfirm.title : null };
+      await g.stop();
+      g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(JSON.stringify({ name: owned.name, cp: owned.cp, hp: owned.hp, candy: 88, xlCandy: 6, stardust: 5000, type1: 'Dragon', type2: 'Ground', fastMove: 'Dragon Tail', chargeMove1: 'Outrage', chargeMove2: 'Earthquake', lucky: false, shadow: false, shiny: true })) });
+      out.matchedRead = await readShot(sx); st = await sx.state(); out.matchedPanel = { parsed: st.ocrParsed, error: st.ocrError };
+      await sx.call('applyOcrResult'); st = await sx.state();
+      out.afterUpdate = { ...importState(st, [owned.idx]), ocrQueueSummary: st.ocrQueueSummary };
+      await g.stop();
+      g = await sx.stubGemini({ models: GEM_MODELS, generate: [G.ok('sorry, I cannot read this one'), G.ok(shotReply(c))] });
+      await sx.call('cancelOcr'); out.garbledThenOk = await readShot(sx); out.garbledThenOkRequests = g.generated().length;
+      await g.stop();
+      g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('still not a Pokemon') });
+      // KNOWN-BUG: two unreadable answers show the browser's own JSON-parser sentence ("Unexpected token ...") as the error, and the
+      // screenshot is asked for four times (the read-ahead, the read on its turn, and a second try for each). The wording differs between
+      // browsers, so the golden records that an error with text is shown and the number of requests, not the words.
+      await sx.call('cancelOcr'); const bad = await readShot(sx); out.garbledTwice = /^ERROR: .{10,}/.test(bad) ? 'ERROR: <parser message>' : bad; out.garbledTwiceRequests = g.generated().length;
+      await g.stop();
+      g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(JSON.stringify({ name: 'Sableye', cp: 1043, hp: 114, type1: 'Dark', type2: 'Ghost', fastMove: 'Shadow Claw', chargeMove1: 'Foul Play', lucky: false, shadow: false })) });
+      await sx.call('cancelOcr'); out.fixtureFile = await readShot(sx, undefined, path.join(REPO, 'scripts', 'fixtures', 'detail_screens', 'sableye_male.png'));
+      out.fixtureRequest = { count: g.generated().length, images: g.generated()[0] ? g.generated()[0].parts.filter(p => p.inline_data).length : 0 };
+      golden('imp-screenshot', out);
+    });
+  }, 'high');
+  const BARS_PNG = (c, w, h) => {   // an appraisal card: three bars of three segments, filled to 10, 15 and 7 out of 15
+    c.fillStyle = '#fff'; c.fillRect(0, 0, w, h);
+    [10, 15, 7].forEach((iv, i) => { const y = 500 + i * 60; for (let s = 0; s < 3; s++) { const sx = 100 + s * 132, a = s * 132, f = Math.max(0, Math.min(a + 126, 26 * iv) - a); c.fillStyle = '#d7d7d7'; c.fillRect(sx, y, 126, 14); if (f > 0) { c.fillStyle = '#e6783c'; c.fillRect(sx, y, f, 14); } } });
+  };
+  const seedUnknown = (sx, list) => sx.call('mergeVideoImport', list.map(([name, dex, cp, hp]) => ({ name, dex, cp, hp })));
+  await T('IMPGOLD-04', 'Import', 'Golden: appraisal imports (a screenshot whose bars are measured, a recording read for stars and full bars, the server file) pin these IVs and say these words', async () => {
+    await appSession(async sx => {
+      const out = {};
+      // (a) one appraisal screenshot: the bars are measured in the page from the pixels, the model only reads name, CP and HP
+      const c = (await realMon(sx, [[68, [10, 15, 7], 20]]))[0];
+      await seedUnknown(sx, [['Machamp', 68, c.cp, c.hp]]);
+      let g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(JSON.stringify({ name: 'Machamp', cp: c.cp, hp: c.hp })) });
+      await useKey(sx, gkey('A1')); await sx.go('HOME');
+      await sx.page.locator('.ui-list input[type=file][accept="image/*"]').nth(1).setInputFiles({ name: 'appraisal.png', mimeType: 'image/png', buffer: await sx.png(600, 900, BARS_PNG) });
+      await waitPage(sx, () => { const l = window.__qaFindLogic(); return !!l && !l.state.apprShotBusy && (!!l.state.apprShotSummary || !!l.state.apprShotError); }, null);
+      let st = await sx.state();
+      out.shot = { summary: st.apprShotSummary, error: st.apprShotError, requests: reqSummary(g).length, state: slice(st, ['addedPokemon', 'ivOverrides']), review: st.videoImport && st.videoImport.review, result: st.videoImport && st.videoImport.summary };
+      await g.stop();
+      // (b) a recording in appraisal mode: the model reads stars and which bars are full; the app narrows the IVs from CP, HP and those
+      const c2 = await realMon(sx, [[184, [15, 15, 12], 20], [149, [3, 14, 13], 25]]);
+      await seedUnknown(sx, [['Azumarill', 184, c2[0].cp, c2[0].hp], ['Dragonite', 149, c2[1].cp, c2[1].hp]]);
+      g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('```json\n' + JSON.stringify([{ name: 'Azumarill', cp: c2[0].cp, hp: c2[0].hp, stars: 3, perfect: false, maxed: ['atk', 'def'] }, { name: 'Dragonite', cp: c2[1].cp, hp: c2[1].hp, stars: 1, perfect: false, maxed: [] }]) + '\n```') });
+      await sx.set({ importScreenMode: 'appraisal' }); await fixClock(sx);
+      await sx.logic((l, f) => { l.runVideoPipeline(f); return true; }, ['A'.repeat(8), 'B'.repeat(8)]);
+      await waitPage(sx, () => { const l = window.__qaFindLogic(); const v = l && l.state.videoImport; return !!v && (v.stage === 'done' || v.stage === 'error'); }, null, { g, ms: 0, tick: 8000 });
+      st = await sx.state();
+      out.recording = { requests: reqSummary(g), videoImport: st.videoImport, state: slice(st, ['addedPokemon', 'ivOverrides']) };
+      await g.stop(); await sx.set({ importScreenMode: 'detail' });
+      // (c) the server file: committed readings of exact bar IVs, matched to the roster by name, CP and HP
+      const served = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'appraisal_server_input.json'), 'utf8'));
+      await seedUnknown(sx, [['Beldum', 374, 299, 58], ['Charmander', 4, 167, 45], ['Tadbulb', 938, 501, 100]]);
+      await sx.page.route('**/raw.githubusercontent.com/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(served) }));
+      await sx.call('importIvFromServer');
+      await waitPage(sx, () => { const l = window.__qaFindLogic(); return !!l && !l.state.ivServerBusy && (!!l.state.ivServerSummary || !!l.state.ivServerError); }, null);
+      st = await sx.state();
+      out.server = { summary: st.ivServerSummary, error: st.ivServerError, review: st.videoImport && st.videoImport.review, state: slice(st, ['addedPokemon', 'ivOverrides']) };
+      golden('imp-appraisal', out);
+    });
+  }, 'high');
+
+
+  // ------------------------------------------------------------------ AI JOBS (TM picks, candy decisions, evolution data), recorded as they are today
+  // The three background jobs each guard against a second run, skip a repeat of the same input, parse the model's reply and turn a failure
+  // into text. The Gemini API is the route stub; each test records the requests made and what the screen state holds afterwards.
+  // These tests sit on Settings (tab 'home'): on Today the app asks the model for the morning briefing by itself, which would add requests that are not the job under test.
+  const jobMon = (idx, name, dex, extra) => ({ idx, name, dex, cp: 1500, hp: 100, atkIV: 14, defIV: 14, staIV: 14, ivAvg: 93, lvlMin: 30, lvlMax: 30, ivMeasured: true, great: { rankPct: 95 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-10-30', ...(extra || {}) });
+  const KINDS = { quota: G.err(429, 'quota', PERDAY), key: G.err(400, 'API key not valid. Please pass a valid API key.'), network: G.abort, truncated: G.ok('[{"species":"x"', 'MAX_TOKENS'), other: G.err(500, 'internal') };
+  const maskMsg = m => (m == null ? m : String(m).replace(/\(\d+h away\)/, '(Nh away)').replace(/Last engine said: (Failed to fetch|Load failed|NetworkError.*|.*network connection.*)$/, 'Last engine said: <network error>'));
+  const FAST = { ms: 0, tick: 2000 };   // the retry waits (1.2 s, 2.4 s, 4.8 s) are played out on the page's clock instead of slept
+  const gate = () => { let open; const p = new Promise(r => { open = r; }); return { p, open }; };
+  const flush = async (sx, cond, arg, g) => waitPage(sx, cond, arg, g ? { g, ...FAST } : undefined);
+  const tmSeed = sx => sx.set({ addedPokemon: [jobMon('tm1', 'Machamp', 68, { favorite: true, quickMove: 'Counter', chargeMove: 'Cross Chop' }), jobMon('tm2', 'Gengar', 94, { favorite: true, quickMove: 'Shadow Claw', chargeMove: 'Shadow Ball' })], roster: [], ivOverrides: {}, resources: { rareCandy: 0, rareCandyXL: 0, fastTM: 2, chargedTM: 1, eliteFastTM: 0, eliteChargedTM: 1 }, tmAiRecommendations: null, tmAiError: '', tab: 'home' });
+  const tmBump = (sx, n) => sx.set({ addedPokemon: [jobMon('tm1', 'Machamp', 68, { favorite: true, quickMove: 'Counter ' + n, chargeMove: 'Cross Chop' }), jobMon('tm2', 'Gengar', 94, { favorite: true, quickMove: 'Shadow Claw', chargeMove: 'Shadow Ball' })] });   // a changed move changes the job's signature
+  const TM_PICKS = [{ species: 'Machamp', tmType: 'chargedTM', suggestedMove: null, why: 'Reroll the charge move.' }, { species: 'Gengar', tmType: 'eliteChargedTM', suggestedMove: 'Sludge Bomb', why: 'Poison coverage.' },
+    { species: 'Gengar', tmType: 'eliteFastTM', suggestedMove: null, why: 'None on hand.' }, { species: 'Notamon', tmType: 'fastTM', suggestedMove: null, why: 'Not on the roster.' }];
+  const tmOut = st => ({ busy: st.tmAiBusy, error: maskMsg(st.tmAiError), recs: st.tmAiRecommendations });
+  const tmWait = (sx, g) => flush(sx, () => { const l = window.__qaFindLogic(); return !!l && !l.state.tmAiBusy && (Array.isArray(l.state.tmAiRecommendations) || !!l.state.tmAiError); }, null, g);
+  // Waits until the stub has seen n generate requests (the job has really started), then until the job has finished.
+  // fast: the page's clock is installed and the retry waits are played out instead of slept.
+  const settle = async (sx, g, n, busyKey, fast) => { const t0 = Date.now(); while (g.generated().length < n) { if (Date.now() - t0 > 30000) throw new Error('the job never asked'); await new Promise(r => setTimeout(r, 25)); }
+    await flush(sx, k => { const l = window.__qaFindLogic(); return !!l && !l.state[k]; }, busyKey, fast ? g : undefined); };
+  await T('AIJOB-01', 'AI', 'TM picks: one run at a time, the same input asks once, a valid array and an array inside prose give the picks, a reply with other brackets fails (KNOWN-BUG), no array gives nothing', async () => {
+    await appSession(async sx => {
+      const out = {}; const gt = gate();
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: async () => { await gt.p; return G.ok(JSON.stringify(TM_PICKS)); } });
+      await useKey(sx, gkey('J1')); await tmSeed(sx);
+      // busy guard: a second ensure while the first is in flight is ignored, even for changed input
+      await sx.call('ensureTmAiRecommendations');
+      while (g.generated().length < 1) await new Promise(r => setTimeout(r, 25));
+      await tmBump(sx, 1); await sx.call('ensureTmAiRecommendations');
+      gt.open(); await settle(sx, g, 1, 'tmAiBusy');
+      out.afterFirst = { ...tmOut(await sx.state()), requests: g.generated().length, asksFor: (/TMs on hand: [^\n]*/.exec(g.generated()[0].text) || [''])[0] };
+      // the input changed while it was busy, so the next ensure asks once; a repeat of the same input asks nothing
+      await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 2, 'tmAiBusy'); await sx.call('ensureTmAiRecommendations');
+      out.changedWhileBusy = { requests: g.generated().length };
+      g.handler = G.ok('Sure! Here are my picks:\n' + JSON.stringify(TM_PICKS) + '\nHope that helps.'); await tmBump(sx, 2); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 3, 'tmAiBusy');
+      out.wrappedInProse = { ...tmOut(await sx.state()), requests: g.generated().length };
+      // KNOWN-BUG: the job takes everything from the first [ to the last ] of the reply, so a reply with another bracket before the array fails
+      // to parse. The parser's sentence differs between browsers, so only "an error is shown" is recorded.
+      g.handler = G.ok('Note [1]: picks below.\n' + JSON.stringify(TM_PICKS)); await tmBump(sx, 3); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 4, 'tmAiBusy');
+      const stB = await sx.state(); out.otherBrackets = { hasError: !!stB.tmAiError, error: stB.tmAiError ? '<parser message>' : '', recs: stB.tmAiRecommendations, requests: g.generated().length };
+      g.handler = G.ok('I could not decide on any of them.'); await tmBump(sx, 4); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 5, 'tmAiBusy');
+      out.noArray = { ...tmOut(await sx.state()), requests: g.generated().length };
+      golden('aijob-tm', out);
+    });
+  }, 'high');
+  await T('AIJOB-02', 'AI', 'TM picks: the message for a daily quota, a rejected key, a dropped connection, a cut-off reply and a server error', async () => {
+    const out = {};
+    for (const [kind, spec] of Object.entries(KINDS)) {
+      await appSession(async sx => {
+        const g = await sx.stubGemini({ models: GEM_MODELS, generate: spec });
+        await useKey(sx, gkey('J2' + kind[0])); await tmSeed(sx); await fixClock(sx);
+        await sx.call('ensureTmAiRecommendations');
+        await tmWait(sx, g);
+        const st = await sx.state(); out[kind] = { ...tmOut(st), requests: g.generated().length };
+      });
+    }
+    golden('aijob-tm-errors', out);
+  }, 'high');
+
+  const contest = (name, dex, stock) => ({ key: name.toLowerCase(), stock, puCandy: 20, evoRow: { p: jobMon('cd' + dex, name, dex), evo: { need: 25 }, rank: 80 }, puRow: { now: { dust: 5000, candy: 20 }, score: 100 } });
+  const CANDY_PICKS = [{ species: 'Machop', choice: 'powerup', reason: 'Great IVs already.' }, { species: 'Axew', choice: 'evolve', reason: 'Fraxure is stronger.' }, { species: 'Notamon', choice: 'evolve', reason: 'Not contested.' }];
+  const candyOut = st => ({ busy: st.candyAiBusy, decisions: st.candyAiDecisions, notes: st.candyAiNotes });
+  await T('AIJOB-03', 'AI', 'Candy decisions: one run at a time, the same contest asks once, a valid array and an array inside prose give verdicts, a reply with other brackets or no array gives none (KNOWN-BUG: silent)', async () => {
+    await appSession(async sx => {
+      const out = {}; const gt = gate();
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: async () => { await gt.p; return G.ok(JSON.stringify(CANDY_PICKS)); } });
+      await useKey(sx, gkey('J3')); await sx.set({ candyAiDecisions: {}, candyAiNotes: [], tab: 'home' });
+      const A = [contest('Machop', 66, 30), contest('Axew', 610, 30)], B = [contest('Machop', 66, 31), contest('Axew', 610, 30)];
+      await sx.call('ensureCandyAiDecisions', A);
+      while (g.generated().length < 1) await new Promise(r => setTimeout(r, 25));
+      await sx.call('ensureCandyAiDecisions', B);   // ignored: a run is in flight
+      gt.open(); await settle(sx, g, 1, 'candyAiBusy');
+      out.afterFirst = { ...candyOut(await sx.state()), requests: g.generated().length, mentions: ['Machop', 'Axew'].map(n => g.generated()[0].text.includes('- ' + n + ': has 30 candy. Evolving costs 25 candy')) };
+      await sx.call('ensureCandyAiDecisions', A);   // the same contest as the run that finished: nothing asked
+      await sx.call('ensureCandyAiDecisions', B); await settle(sx, g, 2, 'candyAiBusy'); await sx.call('ensureCandyAiDecisions', B);
+      out.changedThenRepeated = { requests: g.generated().length };
+      g.handler = G.ok('Here you go:\n' + JSON.stringify(CANDY_PICKS) + '\nAnything else?'); await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 32), contest('Axew', 610, 30)]); await settle(sx, g, 3, 'candyAiBusy');
+      out.wrappedInProse = { ...candyOut(await sx.state()), requests: g.generated().length };
+      // KNOWN-BUG: a reply with another bracket before the array fails to parse, and the job swallows the failure: no verdict, no message.
+      g.handler = G.ok('Note [1]: verdicts below.\n' + JSON.stringify(CANDY_PICKS)); await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 33), contest('Axew', 610, 30)]); await settle(sx, g, 4, 'candyAiBusy');
+      out.otherBrackets = { ...candyOut(await sx.state()), requests: g.generated().length };
+      g.handler = G.ok('I cannot choose.'); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 34), contest('Axew', 610, 30)]); await settle(sx, g, 5, 'candyAiBusy');
+      out.noArray = { ...candyOut(await sx.state()), requests: g.generated().length };
+      golden('aijob-candy', out);
+    });
+  }, 'high');
+  await T('AIJOB-04', 'AI', 'Candy decisions: a daily quota, a rejected key, a dropped connection, a cut-off reply and a server error all end the same way (no verdicts, no message: KNOWN-BUG) after these requests', async () => {
+    const out = {};
+    for (const [kind, spec] of Object.entries(KINDS)) {
+      await appSession(async sx => {
+        const g = await sx.stubGemini({ models: GEM_MODELS, generate: spec });
+        await useKey(sx, gkey('J4' + kind[0])); await sx.set({ candyAiDecisions: {}, candyAiNotes: [], tab: 'home' }); await fixClock(sx);
+        await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 30)]); await settle(sx, g, 1, 'candyAiBusy', true);
+        out[kind] = { ...candyOut(await sx.state()), requests: g.generated().length };
+      });
+    }
+    golden('aijob-candy-errors', out);
+  }, 'high');
+  const evoSeed = sx => sx.set({ addedPokemon: [jobMon('ev1', 'Machop', 66), jobMon('ev2', 'Axew', 610), jobMon('ev3', 'Fraxure', 611)], roster: [], ivOverrides: {}, evoTable: {}, evoFetchError: '', evoFetchStatus: '', evoFetchBusy: false, tab: 'home' });
+  const EVO_ROWS = [{ name: 'Machop', evolvesTo: 'Machoke', candy: 25, item: null }, { name: 'Axew', evolvesTo: 'Fraxure', candy: 25, item: null }, { name: 'Fraxure', evolvesTo: 'Zzzmon', candy: 100, item: null }, { name: 'Pikachu', evolvesTo: 'Raichu', candy: 50, item: null }];
+  const evoOut = (st, g, from) => ({ busy: st.evoFetchBusy, status: maskMsg(st.evoFetchStatus), error: maskMsg(st.evoFetchError), table: st.evoTable, requests: g.generated().length - (from || 0), asked: g.generated().slice(from || 0).map(r => r.text.split('\n\n').pop().split('\n')) });
+  const fire = (sx, m, ...a) => sx.logic((l, [mm, aa]) => { l[mm](...aa); return true; }, [m, a]);   // starts an async method without waiting for it to finish
+  await T('AIJOB-05', 'AI', 'Evolution data: one run at a time, a valid array fills the table (unknown targets and unasked species are dropped), prose and extra brackets around the array are tolerated, no array halves the batch down to one species', async () => {
+    await appSession(async sx => {
+      const out = {}; const gt = gate();
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: async () => { await gt.p; return G.ok(JSON.stringify(EVO_ROWS)); } });
+      await useKey(sx, gkey('J5')); await evoSeed(sx);
+      await fire(sx, 'fetchEvoData');
+      while (g.generated().length < 1) await new Promise(r => setTimeout(r, 25));
+      await fire(sx, 'fetchEvoData');   // ignored: a lookup is running
+      gt.open(); await settle(sx, g, 1, 'evoFetchBusy');
+      out.valid = evoOut(await sx.state(), g);
+      // Fraxure's answer named a species the app does not know, so it was dropped and is still missing: the next run asks for just that one.
+      await fire(sx, 'fetchEvoData'); await settle(sx, g, 2, 'evoFetchBusy');
+      out.secondRun = evoOut(await sx.state(), g, 1);
+      let n = g.generated().length;
+      g.handler = G.ok('Sure thing!\n' + JSON.stringify(EVO_ROWS) + '\nDone.'); await evoSeed(sx); await fire(sx, 'fetchEvoData'); await settle(sx, g, n + 1, 'evoFetchBusy');
+      out.wrappedInProse = evoOut(await sx.state(), g, n);
+      n = g.generated().length;
+      g.handler = G.ok('Note [1]: evolutions below.\n' + JSON.stringify(EVO_ROWS)); await evoSeed(sx); await fire(sx, 'fetchEvoData'); await settle(sx, g, n + 1, 'evoFetchBusy');
+      out.otherBrackets = evoOut(await sx.state(), g, n);
+      n = g.generated().length;
+      g.handler = G.ok('I do not know these.'); await evoSeed(sx); await fire(sx, 'fetchEvoData');
+      await settle(sx, g, n + 1, 'evoFetchBusy');
+      out.noArray = evoOut(await sx.state(), g, n);
+      golden('aijob-evo', out);
+    });
+  }, 'high');
+  await T('AIJOB-06', 'AI', 'Evolution data: the line shown for a daily quota, a rejected key, a dropped connection, a cut-off reply (halved down to one species) and a server error', async () => {
+    const out = {};
+    for (const [kind, spec] of Object.entries(KINDS)) {
+      await appSession(async sx => {
+        const g = await sx.stubGemini({ models: GEM_MODELS, generate: spec });
+        await useKey(sx, gkey('J6' + kind[0])); await evoSeed(sx); await fixClock(sx);
+        await fire(sx, 'fetchEvoData'); await settle(sx, g, 1, 'evoFetchBusy', true);
+        out[kind] = evoOut(await sx.state(), g);
+      });
+    }
+    golden('aijob-evo-errors', out);
+  }, 'high');
+
   await s.close();
 };

@@ -1,0 +1,32 @@
+{
+ "key": {
+  "busy": false,
+  "error": "That Gemini API key was rejected — check it under AI ENGINE.",
+  "recs": null,
+  "requests": 2
+ },
+ "network": {
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: <network error>",
+  "recs": null,
+  "requests": 1
+ },
+ "other": {
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: [g4] Gemini gemini-3.8-flash error 500: {\"error\":{\"code\":500,\"message\":\"internal\"}}",
+  "recs": null,
+  "requests": 3
+ },
+ "quota": {
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: All 1 Gemini keys are rate-limited or out of quota right now. Daily quota is spent — it resets at midnight (Nh away).",
+  "recs": null,
+  "requests": 3
+ },
+ "truncated": {
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: Gemini reply was cut off (MAX_TOKENS).",
+  "recs": null,
+  "requests": 1
+ }
+}
