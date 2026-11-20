@@ -809,43 +809,31 @@ module.exports = async function suiteB() {
     } finally { await logicDo('l.setState({ roster: ' + JSON.stringify(saved) + ' });'); await s.page.waitForTimeout(300); }
   });
   await T('THINK-01', 'AI', 'Image reads ask for the least thinking a model accepts, step down when it refuses one, remember the working setting, leave text calls alone, and every call is timed in the diagnostics', async () => {
-    const seen = [];
-    await s.page.route('**/generativelanguage.googleapis.com/**', async r => {
-      const u = r.request().url();
-      if (/:generateContent/.test(u)) {
-        const body = JSON.parse(r.request().postData() || '{}');
-        const th = body.generationConfig && body.generationConfig.thinkingConfig;
-        seen.push({ model: (u.match(/models\/([^:]+):/) || [])[1], th: th ? JSON.stringify(th) : 'none', img: /inline_?[dD]ata/.test(JSON.stringify(body)) });   // img: an image read; a background text call (the briefing starts when a key is set) can land at any moment and is not one
-        if (th && th.thinkingLevel === 'minimal') return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: { message: 'thinking level not supported' } }) });
-        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"name":"Pikachu"}' }] } }] }) });
-      }
-      if (/:countTokens/.test(u)) return r.fulfill({ contentType: 'application/json', body: '{"totalTokens":1}' });
-      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [{ name: 'models/gemini-3.5-flash', supportedGenerationMethods: ['generateContent'] }] }) });
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: ['gemini-3.5-flash'],
+        generate: req => (req.thinking && req.thinking.thinkingLevel === 'minimal' ? G.err(400, 'thinking level not supported') : G.ok(PIKA_READ)) });
+      await useKey(sx, gkey('TK'));
+      const imgs = () => g.generated().filter(r => r.hasImage).map(r => r.thinking ? JSON.stringify(r.thinking) : 'none');   // an image read; a background text call (the briefing starts when a key is set) can land at any moment and is not one
+      expect(await readShot(sx) === 'Pikachu', 'the image read returns');
+      expect(imgs().length >= 2 && imgs()[0] === '{"thinkingLevel":"minimal"}' && imgs()[1] === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + imgs().join());
+      const before = imgs().length;
+      await readShot(sx);
+      expect(imgs().length === before + 1 && imgs()[before] === '{"thinkingLevel":"low"}', 'the working setting is remembered: ' + imgs().slice(before).join());
+      const m = g.mark();
+      await sx.call('cancelOcr');
+      await chatAsk(sx, 'hello');
+      const txt = g.requests.slice(m).filter(r => r.kind === 'generate' && !r.hasImage);
+      expect(txt.length >= 1 && txt.every(r => r.thinking === null), 'a text call is sent as before (no thinking setting): ' + JSON.stringify(txt.map(r => r.thinking)));
+      // a text call on the same model must not reset what the image calls learned (a background briefing call used to do exactly that)
+      await sx.set({ chatOpen: false });
+      const b2 = imgs().length;
+      await readShot(sx);
+      expect(imgs().length === b2 + 1 && imgs()[b2] === '{"thinkingLevel":"low"}', 'the remembered setting survives a text call: ' + imgs().slice(b2).join());
+      const diag = await sx.call('diagnosticsText');
+      const lines = (diag.match(/\[ai\] gemini-3\.5-flash \d+ ms HTTP \d+ (?:image|text) thinking \S+( \d+)?/g) || []);
+      expect(lines.length >= 4 && lines.every(l => /HTTP 200 /.test(l)), 'every call is timed: ' + diag);
+      expect(/HTTP 200 image thinking low/.test(diag), 'the log is in the copyable diagnostics');
     });
-    const key = 'q'.repeat(30) + Date.now();
-    await s.set({ geminiKey: key, geminiKeys: [key] });
-    await s.call('clearDerivedCaches');
-    const img = { messages: [{ role: 'user', content: [{ type: 'text', text: 'read' }, { type: 'image', source: { media_type: 'image/jpeg', data: 'AAAA' } }] }], max_tokens: 200 };
-    await s.logic((l) => { l._aiLog = []; l._thinkRung = {}; return; });
-    const call = b => s.logic(async (l, body) => { return await l.callGemini(body); return null; }, b);
-    expect((await call(img)) === '{"name":"Pikachu"}', 'the image read returns');
-    const imgs = () => seen.filter(x => x.img);
-    expect(imgs().length >= 2 && imgs()[0].th === '{"thinkingLevel":"minimal"}' && imgs()[1].th === '{"thinkingLevel":"low"}', 'minimal first, then low after the 400: ' + JSON.stringify(seen));
-    const before = imgs().length;
-    await call(img);
-    expect(imgs().length === before + 1 && imgs()[before].th === '{"thinkingLevel":"low"}', 'the working setting is remembered: ' + JSON.stringify(imgs().slice(before)));
-    const tBefore = seen.length;
-    await call({ messages: [{ role: 'user', content: 'hello' }], max_tokens: 100 });
-    expect(seen[tBefore].th === 'none', 'a text call is sent as before (no thinking setting): ' + JSON.stringify(seen[tBefore]));
-    // a text call on the same model must not reset what the image calls learned (a background briefing call used to do exactly that)
-    const b2 = imgs().length;
-    await call(img);
-    expect(imgs().length === b2 + 1 && imgs()[b2].th === '{"thinkingLevel":"low"}', 'the remembered setting survives a text call: ' + JSON.stringify(imgs().slice(b2)));
-    const log = await s.logic((l) => { return l._aiLog; return null; });
-    expect(log && log.length >= 3 && log.every(a => typeof a.ms === 'number' && a.model && a.status === 200), 'every call is timed: ' + JSON.stringify(log && log.map(a => [a.model, a.ms, a.status, a.thinking])));
-    expect(/thinking low/.test(await s.call('diagnosticsText')), 'the log is in the copyable diagnostics');
-    await s.page.unroute('**/generativelanguage.googleapis.com/**');
-    await s.set({ geminiKey: '', geminiKeys: [] });
   });
   await T('GEM-KEY-01', 'Security', 'The Gemini key travels in the x-goog-api-key header on the model list, the token count and the generate call, never in a URL', async () => {
     const reqs = [];
@@ -955,30 +943,21 @@ module.exports = async function suiteB() {
     await s.set({ league: 'great', seasonSel: null, feed: st0.feed || null });
   });
   await T('BRIEF-02', 'Today', 'A search-grounded briefing refused with 429 falls back to a plain answer, and a failed update shows the real reason', async () => {
-    const seen = [];
-    await s.page.route('**/generativelanguage.googleapis.com/**', async r => {
-      const u = r.request().url();
-      if (/:generateContent/.test(u)) {
-        const body = r.request().postData() || ''; seen.push(body);
-        if (/google_search/.test(body)) return r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: { code: 429, message: 'Quota exceeded for this tool' } }) });
-        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '- Power up your best Great League pick first.\n- Evolve the Pokemon with enough candy.\n- Check this weekend event.' }] } }] }) });
-      }
-      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [] }) });
+    await appSession(async sx => {
+      await sx.load(QA); await sx.recalc();
+      const g = await sx.stubGemini({ models: [], generate: req => (req.grounded ? G.err(429, 'Quota exceeded for this tool') : G.ok('- Power up your best Great League pick first.\n- Evolve the Pokemon with enough candy.\n- Check this weekend event.')) });
+      const key = 'k'.repeat(30);
+      await sx.set({ geminiKey: key, geminiKeys: [key], briefing: null, briefingSearch: true, tab: 'today' });
+      await sx.call('generateBriefing', true); await sx.page.waitForTimeout(500);
+      const b = (await sx.state()).briefing;
+      expect(b && b.bullets.length === 3, 'the plain answer was used: ' + JSON.stringify(b));
+      const seen = g.generated();
+      expect(seen.length === 2 && seen[0].grounded && !seen[1].grounded, 'one grounded try, then one plain: ' + seen.map(r => r.grounded).join());
+      g.handler = G.err(429, 'PerDay quota');
+      await sx.set({ briefingSearch: false }); try { await sx.call('generateBriefing', true); } catch (e) {} await sx.page.waitForTimeout(400);
+      const txt = await sx.text();
+      expect(/did not go through \(.*(quota|rate)/i.test(txt) && !/\(AI limit\)/.test(txt), 'the real reason is shown: ' + (txt.match(/did not go through[^\n]*/) || ['none'])[0]);
     });
-    const key = 'k'.repeat(30);
-    await s.set({ geminiKey: key, geminiKeys: [key], briefing: null, briefingSearch: true, tab: 'today' });
-    await s.call('generateBriefing', true); await s.page.waitForTimeout(500);
-    const b = (await s.state()).briefing;
-    expect(b && b.bullets.length === 3, 'the plain answer was used: ' + JSON.stringify(b));
-    expect(seen.length === 2 && /google_search/.test(seen[0]) && !/google_search/.test(seen[1]), 'one grounded try, then one plain: ' + seen.length);
-    await s.page.unroute('**/generativelanguage.googleapis.com/**');
-    await s.page.route('**/generativelanguage.googleapis.com/**', r => /:generateContent/.test(r.request().url()) ? r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: { message: 'PerDay quota' } }) }) : r.fulfill({ contentType: 'application/json', body: JSON.stringify({ models: [] }) }));
-    await s.set({ briefingSearch: false }); try { await s.call('generateBriefing', true); } catch (e) {} await s.page.waitForTimeout(400);
-    const txt = await s.page.evaluate(() => document.body.innerText);
-    expect(/did not go through \(.*(quota|rate)/i.test(txt) && !/\(AI limit\)/.test(txt), 'the real reason is shown: ' + (txt.match(/did not go through[^\n]*/) || ['none'])[0]);
-    await s.page.unroute('**/generativelanguage.googleapis.com/**');
-    await s.logic((l) => { l._modelCool = {}; l._keyCooldown = {}; l._searchOffUntil = 0; return; });
-    await s.set({ geminiKey: '', geminiKeys: [], briefing: null, briefingError: '', briefingSearch: false });
   });
   await T('FORM-01', 'Safety', 'A regional form the measured stats prove wrong is flagged, locked from transfer, and set after one confirmation; a Pokemon whose stats fit its own form is left alone', async () => {
     const mk = (idx, name, dex, iv, cp, hp, lv, extra) => ({ idx, name, dex, cp, hp, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: lv, lvlMax: lv, ivMeasured: true, great: { rankPct: 40 }, ultra: { rankPct: 40 }, little: { rankPct: 40 }, scanDate: '2026-10-01', ...extra });
@@ -1235,19 +1214,22 @@ module.exports = async function suiteB() {
   await T('PARSE-01', 'AI', 'A garbled screenshot reply is repaired, and a hopeless one is asked again once', async () => {
     const r = await s.logic(async (l) => { const ok = x => { try { return l.parseLooseObject(x); } catch (e) { return { err: e.message }; } };
       const out = { missingComma: ok('{"cp":1200,"purified":false "shiny":true,"favorite":false}'), missingQuote: ok('{"cp":1200,"purified":false,\n shiny":true}'), cutOff: ok('{"cp":1200,"hp":80,"candy":3,"shi'), fenced: ok('Here you go:\n```json\n{"cp":900,"shiny":false,}\n```'), undef: ok('{"cp":undefined,"hp":70}'), junk: ok('no object here') };
-      let calls = 0; const keep = [l.completeWithRetry, l.fileToVisionJpeg];
-      l.fileToVisionJpeg = async () => 'AAAA';
-      l.completeWithRetry = async () => { calls++; return calls === 1 ? 'sorry, I cannot read this' : '{"name":"Machamp","cp":2100,"shiny":true}'; };
-      let rec = null; try { rec = await l.readScreenshotWithVision({}); } catch (e) { rec = { err: e.message }; }
-      l.completeWithRetry = keep[0]; l.fileToVisionJpeg = keep[1];
-      out.reask = { calls, cp: rec && rec.cp, shiny: rec && rec.shiny };
       return out; return null; });
     expect(r && r.missingComma.shiny === true && r.missingComma.cp === 1200, 'missing comma repaired: ' + JSON.stringify(r && r.missingComma));
     expect(r.missingQuote.shiny === true, 'missing opening quote repaired: ' + JSON.stringify(r.missingQuote));
     expect(r.cutOff.cp === 1200 && r.cutOff.candy === 3, 'cut-off reply keeps the complete fields: ' + JSON.stringify(r.cutOff));
     expect(r.fenced.cp === 900 && r.undef.hp === 70 && r.undef.cp === null, 'fences, trailing comma and undefined handled');
     expect(r.junk.err, 'a reply with no object still fails');
-    expect(r.reask.calls === 2 && r.reask.cp === 2100 && r.reask.shiny === true, 'a hopeless first reply is asked again once: ' + JSON.stringify(r.reask));
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: [G.ok('sorry, I cannot read this'), G.ok('{"name":"Machamp","cp":2100,"shiny":true}')] });
+      await useKey(sx, gkey('PA'));
+      const name = await readShot(sx); const o = (await sx.state()).ocrParsed || {};
+      expect(name === 'Machamp' && o.cp === 2100 && g.generated().length === 2, 'a hopeless first reply is asked again once: ' + JSON.stringify([name, o.cp, g.generated().length]));
+      // The import asks once more when a read fails, and each read asks its own screenshot twice: a hopeless reply costs four requests, not two.
+      const g2 = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('still not a Pokemon') });
+      const bad = await readShot(sx);
+      expect(/^ERROR: /.test(bad) && g2.generated().length === 4, 'a hopeless screenshot is asked twice per read, twice per import: ' + g2.generated().length + ' / ' + bad);
+    });
   });
   await T('SQUAD-01', 'PvP', 'The squad prefers Pokemon that already have their recommended moves, and says which are missing', async () => {
     const mk = (idx, name, dex) => ({ idx, name, dex, cp: 1490, hp: 100, atkIV: 1, defIV: 15, staIV: 15, ivAvg: 69, lvlMin: 20, lvlMax: 20, ivMeasured: true, great: { rankPct: 97 }, ultra: { rankPct: 50 }, little: { rankPct: 0 }, scanDate: '2026-11-01' });
@@ -1777,13 +1759,13 @@ module.exports = async function suiteB() {
     });
   });
   await T('GEMTIME-01', 'AI', 'A Gemini request that never answers is dropped after the deadline instead of hanging the import', async () => {
-    const st0 = await s.state();
-    await s.page.route(/generativelanguage\.googleapis\.com/, () => { /* never answers */ });
-    await s.set({ geminiKeys: ['AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1', 'AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA2'].slice(0, 1), geminiKey: 'AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1' });
-    const r = await s.logic(async (l) => { l._geminiTimeoutMs = 700; l._gemRot = { AIzaSyQAQAQAQAQAQAQAQAQAQAQAQAQAQAQA1: { at: Date.now(), vision: ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite'], text: ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'] } }; const t0 = Date.now(); let msg = ''; try { await l.callGemini({ messages: [{ role: 'user', content: 'hi' }] }); } catch (err) { msg = err.message; } const calls = (l._aiLog || []).filter(x => x.status === 599).length; l._geminiTimeoutMs = 0; return { ms: Date.now() - t0, msg, calls }; return null; });
-    await s.page.unroute(/generativelanguage\.googleapis\.com/);
-    await s.set({ geminiKeys: st0.geminiKeys || [], geminiKey: st0.geminiKey || '' });
-    expect(r && /did not answer/.test(r.msg) && r.ms < 6000 && r.calls === 2, 'times out after two tries, not forever: ' + JSON.stringify(r));
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.hang });
+      await useKey(sx, gkey('TM')); await sx.go('ROSTER'); await sx.page.locator('button[aria-label="Ask the Professor"]').click(); await fixClock(sx);
+      const t0 = Date.now();
+      const reply = await chatAsk(sx, 'hi', { g, ms: 46000 });   // a text call waits 45 s: the page clock plays that forward
+      expect(/did not answer/.test(reply) && Date.now() - t0 < 6000 && g.hung() === 2 && g.generated().length === 2, 'times out after two tries, not forever: ' + JSON.stringify({ reply, ms: Date.now() - t0, hung: g.hung(), asked: g.generated().length }));
+    });
   });
   await T('IMPCHK-01', 'Import', 'The import gate holds reads that cannot be right, merges the good ones, and Accept / Discard work from Bulk update', async () => {
     const st0 = await s.state();
