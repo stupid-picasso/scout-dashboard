@@ -2478,7 +2478,7 @@ module.exports = async function suiteB() {
   // fast: the page's clock is installed and the retry waits are played out instead of slept.
   const settle = async (sx, g, n, busyKey, fast) => { const t0 = Date.now(); while (g.generated().length < n) { if (Date.now() - t0 > 30000) throw new Error('the job never asked'); await new Promise(r => setTimeout(r, 25)); }
     await flush(sx, k => { const l = window.__qaFindLogic(); return !!l && !l.state[k]; }, busyKey, fast ? g : undefined); };
-  await T('AIJOB-01', 'AI', 'TM picks: one run at a time, the same input asks once, a valid array and an array inside prose give the picks, a reply with other brackets fails (KNOWN-BUG), no array gives nothing', async () => {
+  await T('AIJOB-01', 'AI', 'TM picks: one run at a time, the same input asks once, a valid array and an array inside prose give the picks, a reply with other brackets still gives the picks (6d), no array shows an error', async () => {
     await appSession(async sx => {
       const out = {}; const gt = gate();
       const g = await sx.stubGemini({ models: GEM_MODELS, generate: async () => { await gt.p; return G.ok(JSON.stringify(TM_PICKS)); } });
@@ -2494,8 +2494,7 @@ module.exports = async function suiteB() {
       out.changedWhileBusy = { requests: g.generated().length };
       g.handler = G.ok('Sure! Here are my picks:\n' + JSON.stringify(TM_PICKS) + '\nHope that helps.'); await tmBump(sx, 2); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 3, 'tmAiBusy');
       out.wrappedInProse = { ...tmOut(await sx.state()), requests: g.generated().length };
-      // KNOWN-BUG: the job takes everything from the first [ to the last ] of the reply, so a reply with another bracket before the array fails
-      // to parse. The parser's sentence differs between browsers, so only "an error is shown" is recorded.
+      // Since 6d the list is read with extractJsonArray, so a bracket before the array no longer breaks the parse.
       g.handler = G.ok('Note [1]: picks below.\n' + JSON.stringify(TM_PICKS)); await tmBump(sx, 3); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 4, 'tmAiBusy');
       const stB = await sx.state(); out.otherBrackets = { hasError: !!stB.tmAiError, error: stB.tmAiError ? '<parser message>' : '', recs: stB.tmAiRecommendations, requests: g.generated().length };
       g.handler = G.ok('I could not decide on any of them.'); await tmBump(sx, 4); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 5, 'tmAiBusy');
@@ -2520,7 +2519,7 @@ module.exports = async function suiteB() {
   const contest = (name, dex, stock) => ({ key: name.toLowerCase(), stock, puCandy: 20, evoRow: { p: jobMon('cd' + dex, name, dex), evo: { need: 25 }, rank: 80 }, puRow: { now: { dust: 5000, candy: 20 }, score: 100 } });
   const CANDY_PICKS = [{ species: 'Machop', choice: 'powerup', reason: 'Great IVs already.' }, { species: 'Axew', choice: 'evolve', reason: 'Fraxure is stronger.' }, { species: 'Notamon', choice: 'evolve', reason: 'Not contested.' }];
   const candyOut = st => ({ busy: st.candyAiBusy, decisions: st.candyAiDecisions, notes: st.candyAiNotes });
-  await T('AIJOB-03', 'AI', 'Candy decisions: one run at a time, the same contest asks once, a valid array and an array inside prose give verdicts, a reply with other brackets or no array gives none (KNOWN-BUG: silent)', async () => {
+  await T('AIJOB-03', 'AI', 'Candy decisions: one run at a time, the same contest asks once, a valid array and an array inside prose give verdicts, a reply with other brackets still gives verdicts (6d), no array gives none (silent)', async () => {
     await appSession(async sx => {
       const out = {}; const gt = gate();
       const g = await sx.stubGemini({ models: GEM_MODELS, generate: async () => { await gt.p; return G.ok(JSON.stringify(CANDY_PICKS)); } });
@@ -2536,7 +2535,7 @@ module.exports = async function suiteB() {
       out.changedThenRepeated = { requests: g.generated().length };
       g.handler = G.ok('Here you go:\n' + JSON.stringify(CANDY_PICKS) + '\nAnything else?'); await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 32), contest('Axew', 610, 30)]); await settle(sx, g, 3, 'candyAiBusy');
       out.wrappedInProse = { ...candyOut(await sx.state()), requests: g.generated().length };
-      // KNOWN-BUG: a reply with another bracket before the array fails to parse, and the job swallows the failure: no verdict, no message.
+      // Since 6d a bracket before the array no longer breaks the parse; a reply with no array at all still gives no verdict and no message.
       g.handler = G.ok('Note [1]: verdicts below.\n' + JSON.stringify(CANDY_PICKS)); await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 33), contest('Axew', 610, 30)]); await settle(sx, g, 4, 'candyAiBusy');
       out.otherBrackets = { ...candyOut(await sx.state()), requests: g.generated().length };
       g.handler = G.ok('I cannot choose.'); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 34), contest('Axew', 610, 30)]); await settle(sx, g, 5, 'candyAiBusy');

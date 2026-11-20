@@ -36,14 +36,45 @@
  },
  "noArray": {
   "busy": false,
-  "decisions": {},
+  "decisions": {
+   "axew": {
+    "choice": "evolve",
+    "reason": "Fraxure is stronger."
+   },
+   "machop": {
+    "choice": "powerup",
+    "reason": "Great IVs already."
+   }
+  },
   "notes": [],
   "requests": 5
  },
  "otherBrackets": {
   "busy": false,
-  "decisions": {},
-  "notes": [],
+  "decisions": {
+   "axew": {
+    "choice": "evolve",
+    "reason": "Fraxure is stronger."
+   },
+   "machop": {
+    "choice": "powerup",
+    "reason": "Great IVs already."
+   }
+  },
+  "notes": [
+   {
+    "name": "Machop",
+    "reason": "Great IVs already.",
+    "verdict": "POWER UP FIRST",
+    "verdictColor": "var(--type-flying)"
+   },
+   {
+    "name": "Axew",
+    "reason": "Fraxure is stronger.",
+    "verdict": "EVOLVE FIRST",
+    "verdictColor": "var(--grass-700)"
+   }
+  ],
   "requests": 4
  },
  "wrappedInProse": {

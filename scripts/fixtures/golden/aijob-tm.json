@@ -32,14 +32,35 @@
  },
  "noArray": {
   "busy": false,
-  "error": "",
-  "recs": [],
+  "error": "The AI reply had no list in it.",
+  "recs": null,
   "requests": 5
  },
  "otherBrackets": {
-  "error": "<parser message>",
-  "hasError": true,
-  "recs": null,
+  "error": "",
+  "hasError": false,
+  "recs": [
+   {
+    "idx": "IDX1",
+    "moveVerified": null,
+    "name": "Machamp",
+    "suggestedMove": null,
+    "tmLabel": "CHARGED TM",
+    "tmType": "chargedTM",
+    "verifiedNote": "",
+    "why": "Reroll the charge move."
+   },
+   {
+    "idx": "IDX2",
+    "moveVerified": true,
+    "name": "Gengar",
+    "suggestedMove": "Sludge Bomb",
+    "tmLabel": "ELITE CHARGED TM",
+    "tmType": "eliteChargedTM",
+    "verifiedNote": "✓ verified",
+    "why": "Poison coverage."
+   }
+  ],
   "requests": 4
  },
  "wrappedInProse": {
