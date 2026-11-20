@@ -1,0 +1,110 @@
+{
+ "key": {
+  "asked": [
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ],
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ]
+  ],
+  "busy": false,
+  "error": "That Gemini API key was rejected — check it under AI ENGINE.",
+  "requests": 2,
+  "status": "0 species resolved · 3 could not be read",
+  "table": {}
+ },
+ "network": {
+  "asked": [
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ]
+  ],
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: <network error>",
+  "requests": 1,
+  "status": "0 species resolved · 3 could not be read",
+  "table": {}
+ },
+ "other": {
+  "asked": [
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ],
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ],
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ]
+  ],
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: [g4] Gemini gemini-3.8-flash error 500: {\"error\":{\"code\":500,\"message\":\"internal\"}}",
+  "requests": 3,
+  "status": "0 species resolved · 3 could not be read",
+  "table": {}
+ },
+ "quota": {
+  "asked": [
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ],
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ],
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ]
+  ],
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: All 1 Gemini keys are rate-limited or out of quota right now. Daily quota is spent — it resets at midnight (Nh away).",
+  "requests": 3,
+  "status": "0 species resolved and saved — daily or per-minute limit reached. Wait a minute and tap again to continue where it stopped.",
+  "table": {}
+ },
+ "truncated": {
+  "asked": [
+   [
+    "machop",
+    "axew",
+    "fraxure"
+   ],
+   [
+    "machop",
+    "axew"
+   ],
+   [
+    "machop"
+   ],
+   [
+    "axew"
+   ],
+   [
+    "fraxure"
+   ]
+  ],
+  "busy": false,
+  "error": "Every AI engine failed for this batch. Last engine said: Gemini reply was cut off (MAX_TOKENS).",
+  "requests": 5,
+  "status": "0 species resolved · 3 could not be read",
+  "table": {}
+ }
+}

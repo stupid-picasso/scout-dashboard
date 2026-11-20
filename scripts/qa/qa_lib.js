@@ -299,6 +299,109 @@ async function installCloud(page, C) {
   await page.route(/(googleapis\.com|firebaseio\.com|firebaseapp\.com|jsdelivr\.net)/, r => r.abort());
 }
 
+// ---- Route-level stand-in for the Gemini API --------------------------------------------------------------------------------
+// The app talks to generativelanguage.googleapis.com with fetch(); a test that wants to know how it behaves answers those requests
+// here, at the network edge, and reads back what was asked. Nothing inside the app is touched, so the tests survive a refactor of
+// how the app builds, rotates or retries its requests. Nothing leaves the machine: every request to that host ends in this handler.
+//   const g = await s.stubGemini({ models: ['gemini-3.9-flash', ...], generate: req => G.ok('hi') });
+//   g.order()            the model names of the generateContent requests, in the order they were made
+//   g.requests           every request: { kind: 'list' | 'countTokens' | 'generate', model, key, parts, text, hasImage, thinking, grounded }
+// A generate handler is a function (req, n) => spec, a spec, or an array of specs used one per generate request (the last repeats).
+// A spec is G.ok(text) | G.err(status, message) | G.raw(status, body) | G.hang (never answers) | G.abort (connection fails) | G.byModel({ model: spec }, fallback).
+// opts.models: names the model list returns (null = the list call fails with 404, so the app uses its built-in lists).
+// opts.countTokens: (model) => HTTP status for the retired-model check (default 200).
+const G = {
+  ok: (text, finishReason = 'STOP') => ({ status: 200, json: { candidates: [{ content: { parts: [{ text }] }, finishReason }] } }),
+  err: (status, message, extra) => ({ status, json: { error: { code: status, message, ...(extra || {}) } } }),
+  raw: (status, body) => ({ status, body }),
+  hang: { hang: true },
+  abort: { abort: true },                                   // the connection fails (the browser's "Failed to fetch")
+  byModel: (map, fallback) => req => (map[req.model] !== undefined ? map[req.model] : fallback),
+};
+async function stubGemini(page, opts = {}) {
+  const g = { requests: [], handler: opts.generate, models: opts.models === undefined ? null : opts.models, countTokens: opts.countTokens || (() => 200) };
+  g.generated = () => g.requests.filter(r => r.kind === 'generate');
+  g.order = () => g.generated().map(r => r.model);
+  g.hung = () => g.generated().filter(r => r.hung).length;
+  g.mark = () => g.requests.length;                       // how many requests so far; slice(mark) is "what happened since"
+  g.orderSince = m => g.requests.slice(m).filter(r => r.kind === 'generate').map(r => r.model);
+  const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+  const json = (route, status, obj) => route.fulfill({ status, contentType: 'application/json', headers: CORS, body: JSON.stringify(obj) });
+  const HOST = /generativelanguage\.googleapis\.com/;
+  g.stop = () => page.unroute(HOST);                      // hand the host back (a stub on a shared session is removed when its test ends)
+  await page.route(HOST, async route => {
+    const q = route.request(), url = q.url();
+    if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+    const key = q.headers()['x-goog-api-key'] || '';
+    const mm = /\/models\/([^:/?]+):(\w+)/.exec(url);
+    if (!mm) {   // the model list
+      g.requests.push({ kind: 'list', url, key });
+      if (!g.models) return json(route, 404, { error: { message: 'not found' } });
+      return json(route, 200, { models: g.models.map(n => ({ name: 'models/' + n, supportedGenerationMethods: ['generateContent'] })) });
+    }
+    if (mm[2] === 'countTokens') {
+      g.requests.push({ kind: 'countTokens', model: mm[1], url, key });
+      const st = g.countTokens(mm[1]);
+      return json(route, st, st === 200 ? { totalTokens: 1 } : { error: { message: 'gone' } });
+    }
+    let body = {}; try { body = q.postDataJSON() || {}; } catch (e) { /* not JSON */ }
+    const parts = ((body.contents || [])[0] || {}).parts || [];
+    const req = { kind: 'generate', model: mm[1], url, key, parts, text: parts.filter(p => p.text != null).map(p => p.text).join('\n'), hasImage: parts.some(p => p.inline_data),
+      thinking: (body.generationConfig || {}).thinkingConfig || null, mime: (body.generationConfig || {}).responseMimeType || null, grounded: !!body.tools, n: g.generated().length };
+    g.requests.push(req);
+    const h = g.handler; let spec = typeof h === 'function' ? await h(req, req.n) : Array.isArray(h) ? h[Math.min(req.n, h.length - 1)] : h;
+    if (!spec) spec = G.ok('OK');
+    if (spec.abort) return route.abort('failed');
+    if (spec.hang) { req.hung = true; return new Promise(() => {}); }   // never answers; the page's own deadline ends it
+    if (spec.body !== undefined) return route.fulfill({ status: spec.status, contentType: 'application/json', headers: CORS, body: spec.body });
+    return json(route, spec.status, spec.json);
+  });
+  return g;
+}
+
+
+// ---- Golden files ---------------------------------------------------------------------------------------------------------
+// A golden is a committed JSON file recording what the app produces today for a fixed input (scripts/fixtures/golden/<name>.json). A test
+// passes its actual value to golden(); it is compared with the file, and a difference fails with the first path that differs. QA_WRITE_GOLDEN=1
+// (or `node scripts/qa/qa_run.js b --write`) rewrites the files instead; look at the diff before committing one. Values that change from
+// run to run (item ids made from a clock, dates, timestamps) are replaced first by normalise(), so the file is stable across runs and browsers.
+const GOLD_DIR = path.join(REPO, 'scripts', 'fixtures', 'golden');
+const canon = v => (Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, canon(v[k])])) : v);
+const TIME_KEY = /^(at|ts|time|date|day|scanDate|savedAt|addedAt|updatedAt|createdAt|importedAt|lastSeen|appraisedAt|[a-z]+At)$/;
+const DATE_VAL = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/;
+function normalise(value) {
+  const ids = new Map(); const tok = s => { if (!ids.has(s)) ids.set(s, 'IDX' + (ids.size + 1)); return ids.get(s); };
+  (function collect(v) {   // sorted walk, so the numbering does not depend on the order the app happened to insert keys
+    if (!v || typeof v !== 'object') return;
+    if (!Array.isArray(v) && typeof v.idx === 'string') tok(v.idx);
+    for (const k of Object.keys(v).sort()) { if (k === 'ivOverrides' && v[k] && typeof v[k] === 'object') Object.keys(v[k]).sort().forEach(tok); collect(v[k]); }
+  })(value);
+  const rewrite = (v, key) => {
+    if (Array.isArray(v)) return v.map(x => rewrite(x));
+    if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v).map(k => [ids.has(k) ? ids.get(k) : k, rewrite(v[k], k)]));
+    if (typeof v === 'string') return ids.has(v) ? ids.get(v) : DATE_VAL.test(v) ? '<date>' : (key === 'id' && /^[a-z0-9]{8,}$/.test(v)) ? '<id>' : v;
+    if (typeof v === 'number' && key && TIME_KEY.test(key) && v > 1e9) return '<time>';
+    return v;
+  };
+  return rewrite(value);
+}
+function firstDiff(a, b, p = '') {
+  if (JSON.stringify(a) === JSON.stringify(b)) return null;
+  if (a && b && typeof a === 'object' && typeof b === 'object' && Array.isArray(a) === Array.isArray(b)) {
+    for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) { const d = firstDiff(a[k], b[k], p + '/' + k); if (d) return d; }
+  }
+  return (p || '/') + ': golden ' + JSON.stringify(a) + ' but now ' + JSON.stringify(b);
+}
+function golden(name, actual) {
+  const file = path.join(GOLD_DIR, name + '.json');
+  const now = canon(normalise(actual)); const text = JSON.stringify(now, null, 1) + '\n';
+  if (process.env.QA_WRITE_GOLDEN === '1') { fs.mkdirSync(GOLD_DIR, { recursive: true }); fs.writeFileSync(file, text); return 'golden written: ' + name; }
+  if (!fs.existsSync(file)) throw new Error('no golden file ' + name + '.json yet (run once with --write and review it)');
+  const want = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const d = firstDiff(want, JSON.parse(text));
+  if (d) throw new Error('differs from golden ' + name + ' at ' + d.slice(0, 240));
+}
+
 // A fresh, isolated app session. opts: csv (path), feed (object|false), width/height,
 // types (inject typeTable), offline, init (fn run before load)
 async function session(opts = {}) {
@@ -368,7 +471,10 @@ async function session(opts = {}) {
   s.state = () => s.logic(l => JSON.parse(JSON.stringify(l.state, (kk, v) => (typeof v === 'function' ? undefined : v))));
   s.set = async patch => (await s.logic((l, p) => { l.setState(p); return true; }, patch)) === true;
   s.call = (method, ...args) => s.logic((l, [mth, a]) => (l[mth] ? l[mth](...a) : undefined), [method, args]);
+  s.stubGemini = o => stubGemini(page, o);
+  // A PNG made in the page (nothing on disk): draw(ctx, w, h, arg) paints it. Returned as a Buffer for setInputFiles.
+  s.png = async (w, h, draw, arg) => Buffer.from(await page.evaluate(([w2, h2, src, a]) => { const c = document.createElement('canvas'); c.width = w2; c.height = h2; const x = c.getContext('2d'); (new Function('return ' + src))()(x, w2, h2, a); return c.toDataURL('image/png').split(',')[1]; }, [w, h, String(draw), arg]), 'base64');
   s.close = () => ctx.close();
   return s;
 }
-module.exports = { T, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch, withLogic, BAR, MORE };
+module.exports = { T, G, golden, expect, skip, session, launch, close, results, REPO, PAGE, IS_WEBKIT, touch, withLogic, BAR, MORE };
