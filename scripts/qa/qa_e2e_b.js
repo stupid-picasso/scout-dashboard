@@ -2599,5 +2599,71 @@ module.exports = async function suiteB() {
     golden('aijob-evo-errors', out);
   }, 'high');
 
+  // extractJsonArray is the tolerant reader (evolution data, imports). Its salvage step rebuilds objects from a broken reply, which hides a
+  // wrong span for arrays of objects, so the cases here include arrays of plain values.
+  await T('AIJOB-07', 'AI', 'extractJsonArray: fences, prose, plain values, one object, an empty array, a cut-off array, other brackets first, and no JSON', async () => {
+    const x = async t => s.call('extractJsonArray', t); const J = JSON.stringify;
+    const cases = [['[1,2,3]', [1, 2, 3]], ['```json\n[{"a":1},{"b":2}]\n```', [{ a: 1 }, { b: 2 }]], ['Here you go:\n["x","y"]\nBye.', ['x', 'y']], ['{"a":1}', [{ a: 1 }]], ['[]', []],
+      ['[{"a":1},{"b":2},{"c":', [{ a: 1 }, { b: 2 }]], ['Note [1]: below\n[{"a":1}]', [{ a: 1 }]], ['no json here', null], ['', null], [null, null]];
+    for (const [input, want] of cases) { const got = await x(input); expect(J(got) === J(want), J(input) + ' gives ' + J(got) + ', want ' + J(want)); }
+  }, 'high');
+  // The chat words for each kind the client reports that GEMERR-01..11 do not reach: no key at all, and a request that fails before any answer.
+  await T('CHATERR-01', 'AI', 'Chat error words by kind: no key says no engine is connected, a dropped connection says the model could not be reached, and neither asks again', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('should not be asked') });
+      await sx.set({ geminiKeys: [], geminiKey: '' });
+      const r = await chatAsk(sx, 'hello');
+      expect(r === 'No AI engine connected. Paste a free Google Gemini key under AI ENGINE - no card, 1,500 requests a day.', 'no key: ' + r);
+      expect(g.generated().length === 0, 'no key, no request: ' + g.generated().length);
+    });
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.abort });
+      await useKey(sx, gkey('CE')); await fixClock(sx);
+      const r = await chatAsk(sx, 'hello', fast(g));
+      expect(r === 'Could not reach the model - looks like a connection problem. Try again in a moment.', 'dropped connection: ' + r);
+      expect(g.generated().length === 1, 'a dropped connection is asked once, not retried: ' + g.generated().length);
+    });
+  }, 'high');
+  // ------------------------------------------------------------------ the two client rules 6a left unpinned
+  // A rejected key ends the call: the job gets the key's own words (no "Every AI engine failed" wrapper) after the requests below, and nothing is asked again.
+  await T('GEMERR-12', 'AI', 'A rejected key is terminal: the TM job shows the key\'s own sentence (not the "every engine failed" wrapper) after one request (403), two (400: the JSON-mime retry), or one round per key', async () => {
+    const R400 = 'That Gemini API key was rejected — check it under AI ENGINE.', R403 = 'Gemini refused the key (403). Enable the Generative Language API for this key at aistudio.google.com.';
+    const run = async (label, keys, spec, wantErr, wantSeq) => appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: spec });
+      await sx.set({ geminiKeys: keys, geminiKey: keys[0] }); await tmSeed(sx); await fixClock(sx);
+      await sx.call('ensureTmAiRecommendations'); await tmWait(sx, g);
+      const st = await sx.state(); const seq = g.generated().map(r => (r.key === keys[0] ? 'A' : 'B') + ':' + r.model.replace('gemini-', '') + ':' + (r.mime ? 'json' : 'plain')).join();
+      expect(st.tmAiError === wantErr, label + ': the error is the key\'s own sentence: ' + st.tmAiError);
+      expect(seq === wantSeq, label + ': requests (key:model:mime), no retry round after a rejected key: ' + seq);
+      expect(st.tmAiBusy === false && !st.tmAiRecommendations, label + ': the job ended with no picks');
+    });
+    const A = gkey('T1'), B = gkey('T2');
+    await run('one key, 400', [A], G.err(400, 'API key not valid. Please pass a valid API key.'), R400, 'A:3.9-flash-lite:plain,A:3.9-flash-lite:json');
+    await run('one key, 403', [A], G.err(403, 'Generative Language API has not been used in project 1 before or it is disabled.'), R403, 'A:3.9-flash-lite:plain');
+    // two keys, both rejected: each is tried once (the app starts at the second key of a new session), then the call ends with the last key's words
+    await run('two keys, both 403', [A, B], G.err(403, 'disabled'), R403, 'B:3.9-flash-lite:plain,A:3.9-flash-lite:plain');
+  }, 'high');
+  // A key whose models answer 429 in different ways: a daily limit on one and a per-minute limit on another. With nothing else wrong the day wins and the key is
+  // parked until midnight; when another model failed some other way (500) the last answer stands and the key is parked for a minute only.
+  await T('GEMERR-13', 'AI', 'Mixed 429s on one key: daily and per-minute with nothing else wrong parks the key for the day; with a 500 in between it parks for a minute', async () => {
+    const PERMIN = { details: [{ violations: [{ quotaId: 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier' }] }] };
+    const cases = [
+      ['daily then per-minute', G.byModel({ [LITE]: G.err(429, 'quota', PERDAY), [FLASH]: G.err(429, 'Quota exceeded', PERMIN), [OLDER]: G.err(429, 'Quota exceeded', PERMIN) }), [LITE, FLASH, OLDER].join(), '', ''],
+      ['daily, 500, per-minute', G.byModel({ [LITE]: G.err(429, 'quota', PERDAY), [FLASH]: G.err(500, 'oops'), [OLDER]: G.err(429, 'Quota exceeded', PERMIN) }), [LITE, FLASH, OLDER].join(), '', [FLASH, OLDER].join()]];
+    for (const [name, spec, want1, want2, want3] of cases) {
+      await appSession(async sx => {
+        const g = await sx.stubGemini({ models: GEM_MODELS, generate: spec });
+        await useKey(sx, gkey('T3')); await fixClock(sx);
+        await chatAsk(sx, 'first', fast(g)); const o1 = g.order().join(); const m2 = g.mark();
+        await chatAsk(sx, 'second', fast(g)); const o2 = g.orderSince(m2).join();
+        await sx.page.clock.fastForward(61000); const m3 = g.mark();
+        await chatAsk(sx, 'third', fast(g)); const o3 = g.orderSince(m3).join();
+        expect(o1 === want1, name + ': every model is asked once: ' + o1);
+        expect(o2 === want2, name + ': asked again straight away, the key is parked: ' + o2);
+        expect(o3 === want3, name + ': a minute later ' + (want3 ? 'the key is free again (only the minute-parked model and the failing one are asked)' : 'the key is still parked, a daily limit lasts until midnight') + ': ' + o3);
+      });
+    }
+  }, 'high');
+
   await s.close();
 };
