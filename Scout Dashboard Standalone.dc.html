@@ -1762,7 +1762,7 @@
     <sc-if value="{{ hasFeedEvents }}" hint-placeholder-val="{{ false }}">
       <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-          <div style="font:600 22px var(--font-display);letter-spacing:-.012em;color:var(--ink-900);margin-bottom:4px">Events &middot; next 14 days</div>
+          <div style="font:600 22px var(--font-display);letter-spacing:-.012em;color:var(--ink-900)">Events &middot; next 14 days</div>
           <button type="button" onClick="{{ toggleReminders }}" class="ui-btn-tint" style="font:600 15px var(--font-body);padding:4px 14px;min-height:36px">{{ remindLabel }}</button>
         </div>
         <div style="font:13px var(--font-body);color:var(--ink-500);margin:0 0 12px">Reminders appear while the app is open.</div>
@@ -1808,8 +1808,8 @@
           <div style="font:12px/1.45 var(--font-body);color:var(--ink-500);margin-top:2px">{{ feedVerify }}</div>
         </details>
         <sc-for list="{{ gblWeekRows }}" as="wk" hint-placeholder-count="2">
-          <div style="border-top:1px solid var(--line);padding:12px 0 0;margin-bottom:12px">
-            <div style="font:700 12px var(--font-display);letter-spacing:.06em;color:var(--ink-500)">{{ wk.title }} <span style="color:var(--ink-400)">{{ wk.season }}</span></div>
+          <div style="padding:8px 0 0;margin-bottom:12px">
+            <div style="font:700 12px var(--font-display);letter-spacing:.06em;color:var(--ink-500);padding-bottom:8px">{{ wk.title }} <span style="color:var(--ink-400)">{{ wk.season }}</span></div>
             <sc-for list="{{ wk.leagues }}" as="lg" hint-placeholder-count="2">
               <details data-league style="border-top:1px solid var(--line-200)">
                 <summary class="om-tap" style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:44px"><span style="flex:1;font:600 15px var(--font-body)">{{ lg.name }}</span><span style="font:13px var(--font-body);color:var(--ink-500)">{{ lg.cap }}</span><span aria-hidden="true" style="font:17px var(--font-body);color:var(--ink-300)">&rsaquo;</span></summary>
@@ -3311,7 +3311,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.366{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.367{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -3326,7 +3326,7 @@
       </div>
     </sc-if>
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin:2px 2px 12px">
-      <div style="font:700 22px var(--font-display);letter-spacing:.03em">Pokemon</div>
+      <div style="font:600 22px var(--font-display);letter-spacing:-.012em;color:var(--ink-900)">Pokemon</div>
       <div style="display:flex;align-items:center;gap:16px">
         <div style="font:12px var(--font-display);color:var(--ink-300)">{{ rosterCountLabel }}</div>
         <button type="button" onClick="{{ toggleSelectMode }}" style="font:600 17px var(--font-body);color:var(--accent-text);padding:8px 2px">{{ selectLabel }}</button>
@@ -4062,7 +4062,7 @@
           <div style="min-width:0;display:flex;align-items:center;gap:8px">
             <div style="flex-shrink:0;width:40px;height:40px;position:relative;display:flex;align-items:center;justify-content:center">
               <span aria-hidden="true" style="position:absolute;font:700 15px var(--font-display);color:rgba(255,255,255,.12)">{{ p.initial }}</span>
-              <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.4))" />
+              <img ref="{{ p.spriteRef }}" alt="" loading="lazy" decoding="async" style="position:relative;width:40px;height:40px;object-fit:contain" />
             </div>
             <div style="min-width:0">
               <div data-pvp-name="1" style="font-weight:600;overflow-wrap:normal;word-break:keep-all;hyphens:none">{{ p.displayName }}</div>
@@ -4077,7 +4077,7 @@
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0">
             <div style="font:700 13px var(--font-display);font-variant-numeric:tabular-nums">{{ p.cp }}</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="flex-shrink:0;width:18px;height:18px;border-radius:6px;background:{{ p.tierColor }};color:var(--surface-page);font:700 12px var(--font-display);display:flex;align-items:center;justify-content:center">{{ p.tierLabel }}</span>
+              <span style="flex-shrink:0;width:17px;height:17px;border-radius:6px;background:{{ p.tierColor }};color:var(--surface-page);font:700 12px var(--font-display);display:flex;align-items:center;justify-content:center">{{ p.tierLabel }}</span>
               <span style="font:700 13px var(--font-display);color:var(--grass-700)">{{ p.rankPctDisplay }}</span>
             </div>
             <div style="font:600 12px var(--font-display);color:var(--ink-500);text-align:right">{{ p.levelDisplay }}</div>
@@ -4119,7 +4119,7 @@
     </sc-if>
     <sc-if value="{{ pvpTeam }}" hint-placeholder-val="{{ false }}">
       <div style="margin-top:20px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px">
-        <div style="font:700 13px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:4px">{{ pvpTeam.title }}</div>
+        <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em;margin-bottom:4px">{{ pvpTeam.title }}</div>
         <div style="font:12px var(--font-body);color:var(--ink-500);margin-bottom:12px">From PvPoke&rsquo;s simulated matchups, using only Pokemon with measured IVs.</div><details class="ui-more"><summary>More</summary><div>90%+ IV rank and an S/A/B species.</div></details>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:12px">
           <sc-for list="{{ pvpTeam.members }}" as="tm" hint-placeholder-count="3">
@@ -4144,7 +4144,7 @@
     </sc-if>
     <sc-if value="{{ hasSavedTeams }}" hint-placeholder-val="{{ false }}">
       <div style="margin-top:16px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px">
-        <div style="font:700 13px var(--font-display);color:var(--type-electric);letter-spacing:.05em;margin-bottom:12px">MY TEAMS</div>
+        <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em;margin-bottom:12px">MY TEAMS</div>
         <div style="display:flex;flex-direction:column;gap:12px">
           <sc-for list="{{ savedTeamRows }}" as="st" hint-placeholder-count="1">
             <div style="background:var(--surface-sunken);border-radius:10px;padding:12px">
@@ -4552,7 +4552,7 @@
         <button type="button" onClick="{{ pickCsv }}" class="om-press ui-btn-fill" style="margin-top:8px">Import roster</button>
       </div>
     </sc-if>
-    <div style="background:var(--surface-card);border-radius:var(--r-lg);padding:20px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:var(--r-lg);padding:20px">
       <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em;margin-bottom:4px">Use a TM</div>
       <details style="font:13px var(--font-body);color:var(--ink-500);margin-bottom:16px;max-width:80ch;text-wrap:pretty"><summary style="list-style:none;cursor:pointer">Search a Pokemon, then tap the TM you used on it in-game. <span style="color:var(--accent-text);font-weight:600">More</span></summary><div style="margin-top:4px">Opens its move picker to log what it learned, and deducts 1 from your TM count on save. Greyed-out buttons mean you're logged as having none of that TM.</div></details>
       <input type="text" value="{{ tmUseSearch }}" onChange="{{ onTmUseSearchChange }}" placeholder="Search roster" aria-label="Search your roster by name" style="width:100%;box-sizing:border-box;background:var(--surface-page);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 12px;border-radius:10px;font:13px var(--font-display);margin-bottom:12px" />
@@ -4670,7 +4670,7 @@
             <sc-if value="{{ p.movesetNote }}" hint-placeholder-val="{{ false }}">
               <div style="font:12px var(--font-display);color:var(--ink-400)">{{ p.movesetNote }} &mdash; stats-only rank</div>
             </sc-if>
-            <div onClick="{{ p.markDone }}" role="button" class="om-press ui-btn-tint" style="cursor:pointer;width:100%">MARK DONE</div>
+            <div onClick="{{ p.markDone }}" role="button" class="om-press ui-btn-tint" style="cursor:pointer;width:100%;margin-top:auto">MARK DONE</div>
           </div>
         </sc-for>
       </div>
@@ -4690,7 +4690,7 @@
             </div>
             <div style="font:var(--font-display);font-size:12px;color:var(--type-fighting)">IV {{ p.ivDisplay }} &middot; {{ p.cp }} CP</div>
             <div style="font:12px/1.35 var(--font-body);color:var(--ink-500);margin-top:2px">{{ p.why }}</div>
-            <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:8px;border-radius:var(--r-pill);background:var(--bad-fill);color:var(--ink-900);font:700 12px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
+            <div onClick="{{ p.markTransferred }}" style="cursor:pointer;text-align:center;padding:8px;margin-top:auto;border-radius:var(--r-pill);background:var(--bad-fill);color:var(--ink-900);font:700 12px var(--font-display)">TRANSFERRED &mdash; REMOVE</div>
           </div>
         </sc-for>
       </div>
