@@ -2287,7 +2287,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.361{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.362{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -9448,11 +9448,10 @@ class Component extends DCLogic {
   aiCooldownMs() {
     const now = Date.now();
     const keys = this.state.geminiKeys || [];
-    const keyWaits = keys.map(k => ((this._keyCooldown || {})[k] || 0) - now);
+    const keyWaits = keys.map(k => this.keyCoolUntil(k) - now);
     if (keyWaits.some(ms => ms <= 0)) {
       // a key is open; only its models can still be parked
-      const mc = this._modelCool || {};
-      const parked = Object.keys(mc).map(k => (mc[k].until || 0) - now).filter(ms => ms > 0);
+      const parked = Object.keys(this._gemCool || {}).filter(k => !/\|\*$/.test(k)).map(k => this._gemCool[k].until - now).filter(ms => ms > 0);
       return parked.length ? Math.min.apply(null, parked) : 0;
     }
     const pos = keyWaits.filter(ms => ms > 0);
@@ -11165,11 +11164,76 @@ class Component extends DCLogic {
     this._lastVideoFrames = null;
   }
 
-  // Google AI Studio free tier. Key is stored locally on this device only.
-  // Rotates across every stored key. Both Gemini limits (10 rpm and 1,500/day)
-  // are PER KEY, so a 429 on one key is not a 429 on the next — rotating turns
-  // a hard stop into a hop. Keys go on a cooldown rather than being discarded:
-  // 60s for a per-minute 429, until midnight for a daily-quota 429.
+  // ==== Gemini client (Google AI Studio free tier) ============================================================
+  // The key is stored on this device only. Both Gemini limits (10 rpm and 1,500/day) are PER KEY and the free-tier model
+  // limits are PER MODEL, so a 429 on one key or model is not a 429 on the next: rotating turns a hard stop into a hop.
+  // completeWithRetry(body) is what the rest of the app calls; callGemini(body) rotates the keys, callGeminiWithKey()
+  // rotates the models of one key, geminiTryModel() makes one model's call.
+  //
+  // Every failed attempt is ONE typed outcome, carried on the Error as err.kind (the message text is only for people):
+  //   ok            the reply text comes back, no Error
+  //   rateLimited   HTTP 429, or every model of the key is cooling. err.daily: out for the day, else about a minute
+  //   hung          no answer inside the deadline (two in one call end it), or every model hung a moment ago
+  //   rejectedKey   HTTP 400 "API key not valid" or 403: nothing else will work with this key
+  //   modelGone     HTTP 404: the model leaves the key's cycle
+  //   truncated     the reply stopped at MAX_TOKENS
+  //   badJson       a 200 whose body is not JSON
+  //   other         the rest (5xx, a 400 this model will not serve, no text, no network, a body that stalled);
+  //                 err.status holds the HTTP failures, err.retry marks the transient ones; an Error with no kind is `other`
+  // The next model is tried after rateLimited, modelGone, and the HTTP failures of `other`; the key is dropped for the day after
+  // rejectedKey; truncated, badJson, a stalled body and a network failure end the call (another model would fail the same way).
+  // Cooldowns live in ONE table, this._gemCool, keyed `key|model`; `key|*` stands for every model of that key.
+  GEMINI = Object.freeze({
+    API: 'https://generativelanguage.googleapis.com/v1beta/',
+    REQ_TAG: 'g4',                      // shown in the text of an HTTP failure, so a stale cached build is identifiable from it
+    TEXT_MS: 45000,                     // one text request may take this long
+    IMAGE_MS: 90000,                    // a read of one image; each further image in the same request adds IMAGE_MORE_MS, up to IMAGE_MAX_MS
+    IMAGE_MORE_MS: 30000,
+    IMAGE_MAX_MS: 240000,
+    LEARNED_X: 4,                       // once a model has answered an image, wait this many times its usual time ...
+    LEARNED_MIN_MS: 30000,              // ... but never less than this
+    BODY_MS: 30000,                     // the body of an answer that has started
+    LIST_MS: 8000,                      // the model list, and each token-count check
+    LIST_TTL_MS: 3 * 3600 * 1000,       // how long a key's live model list is trusted
+    HUNG_LIMIT: 2,                      // hung requests that end a call
+    HUNG_PARK_MS: 180000,               // a model that hung is set aside this long
+    RATE_PARK_MS: 60000,                // a per-minute 429 parks a model, and a key, this long
+    SEARCH_OFF_MS: 3600000,             // grounded search is left off this long after it was refused for quota
+    ATTEMPTS: 4,                        // completeWithRetry: tries before a transient failure is given up
+    BACKOFF_MS: 1200,                   // the pause before the second try, doubled before each further one
+    LOG_STATUS_HUNG: 599,               // what Diagnostics shows for a request that never answered (not an HTTP status)
+    DAILY_MSG: 'Gemini daily quota exhausted for this key (429).',
+    TRANSIENT: /overload|rate.?limit|\b(429|503|529)\b/i,   // an HTTP failure worth asking again
+    FALLBACK_MODELS: ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']   // used when the live list is unreachable or empty: in this order for images, reversed (cheap first) for text
+  });
+
+  geminiErr(kind, message, extra) { return Object.assign(new Error(message), { kind }, extra); }
+
+  // ---- Cooldowns ---------------------------------------------------------------------------------------------
+  geminiCool(key, model, until, flags) {
+    this._gemCool = this._gemCool || {};
+    this._gemCool[key + '|' + model] = { until, ...flags };
+  }
+
+  // The active cooldown of a model on a key, or null.
+  coolOf(key, model) { const c = (this._gemCool || {})[key + '|' + model]; return c && c.until > Date.now() ? c : null; }
+
+  // When a key as a whole (every model) is cooling until; 0 when it is not.
+  keyCoolUntil(key) { return (this.coolOf(key, '*') || {}).until || 0; }
+
+  // A new key list gives every key a fresh start as a whole; models parked on their own stay parked.
+  clearKeyCools() { const t = this._gemCool || {}; Object.keys(t).forEach(k => { if (/\|\*$/.test(k)) delete t[k]; }); }
+
+  midnightMs() { const d = new Date(); d.setHours(24, 0, 0, 0); return d.getTime(); }
+
+  coolDownKey(key, until) {
+    this.geminiCool(key, '*', until === 'day' ? this.midnightMs() : Date.now() + until);
+    this.forceUpdate();
+  }
+
+  // ---- Keys --------------------------------------------------------------------------------------------------
+  // Rotates across every stored key. Keys go on a cooldown rather than being discarded: a minute for a per-minute 429,
+  // until midnight for a daily quota or a rejected key.
   async callGemini(body) {
     const keys = this.activeGeminiKeys();
     if (!keys.length) {
@@ -11177,8 +11241,7 @@ class Component extends DCLogic {
       if (!total) throw new Error('No Gemini key set.');
       // "Rate-limited" reads the same whether the wait is 40 seconds or until
       // tomorrow. Say which, so a per-minute stall isn't mistaken for a dead day.
-      const cd = this._keyCooldown || {};
-      const waits = (this.state.geminiKeys || []).map(k => (cd[k] || 0) - Date.now()).filter(ms => ms > 0);
+      const waits = (this.state.geminiKeys || []).map(k => this.keyCoolUntil(k) - Date.now()).filter(ms => ms > 0);
       const soonest = waits.length ? Math.min.apply(null, waits) : 0;
       let when = '';
       if (soonest > 0 && soonest < 5 * 60000) {
@@ -11186,10 +11249,10 @@ class Component extends DCLogic {
       } else if (soonest > 0) {
         const mins = Math.round(soonest / 60000);
         when = mins >= 90
-          ? ' Daily quota is spent \u2014 it resets at midnight (' + Math.round(mins / 60) + 'h away).'
+          ? ' Daily quota is spent — it resets at midnight (' + Math.round(mins / 60) + 'h away).'
           : ' Try again in ~' + mins + ' min.';
       }
-      throw new Error('All ' + total + ' Gemini keys are rate-limited or out of quota right now.' + when);
+      throw this.geminiErr('rateLimited', 'All ' + total + ' Gemini keys are rate-limited or out of quota right now.' + when, { retry: true });
     }
     let lastErr = null;
     for (let ki = 0; ki < keys.length; ki++) {
@@ -11199,21 +11262,10 @@ class Component extends DCLogic {
         this._geminiKeyIdx = (this.state.geminiKeys || []).indexOf(key);
         return out;
       } catch (e) {
-        const m = (e && e.message) || '';
-        if (/quota|exhausted|RESOURCE_EXHAUSTED/i.test(m) && /day|daily|PerDay/i.test(m)) {
-          this.coolDownKey(key, 'day');
-          lastErr = e; continue;
-        }
-        if (/429|rate limit/i.test(m)) {
-          this.coolDownKey(key, 60000);
-          lastErr = e; continue;
-        }
-        if (/rejected|API_KEY_INVALID|refused the key/i.test(m)) {
-          // Bad key: park it for the session so it stops costing a round-trip.
-          this.coolDownKey(key, 'day');
-          lastErr = e; continue;
-        }
-        throw e;
+        // A bad key is parked for the day too, so it stops costing a round-trip.
+        if (!e || (e.kind !== 'rateLimited' && e.kind !== 'rejectedKey')) throw e;
+        this.coolDownKey(key, e.kind === 'rateLimited' && !e.daily ? this.GEMINI.RATE_PARK_MS : 'day');
+        lastErr = e;
       }
     }
     throw lastErr || new Error('All Gemini keys failed.');
@@ -11224,8 +11276,7 @@ class Component extends DCLogic {
   aiQuotaNote() {
     const keys = this.state.geminiKeys || [];
     if (!keys.length || this.activeGeminiKeys().length) return '';
-    const cd = this._keyCooldown || {};
-    const waits = keys.map(k => (cd[k] || 0) - Date.now()).filter(ms => ms > 0);
+    const waits = keys.map(k => this.keyCoolUntil(k) - Date.now()).filter(ms => ms > 0);
     if (!waits.length) return '';
     const soonest = Math.min.apply(null, waits);
     const when = soonest < 5 * 60000 ? 'about ' + Math.max(1, Math.ceil(soonest / 60000)) + ' min' : soonest < 90 * 60000 ? Math.round(soonest / 60000) + ' min' : 'until midnight (about ' + Math.round(soonest / 3600000) + ' h)';
@@ -11234,9 +11285,8 @@ class Component extends DCLogic {
 
   activeGeminiKeys() {
     const all = this.state.geminiKeys || [];
-    const cd = this._keyCooldown || {};
     const now = Date.now();
-    const live = all.filter(k => !cd[k] || cd[k] <= now);
+    const live = all.filter(k => this.keyCoolUntil(k) <= now);
     if (!live.length) return [];
     // Start from the key AFTER the last successful one. Starting AT it means
     // every request reuses the same key until it 429s, which combined with the
@@ -11247,19 +11297,7 @@ class Component extends DCLogic {
     return live.slice(start).concat(live.slice(0, start));
   }
 
-  coolDownKey(key, until) {
-    this._keyCooldown = this._keyCooldown || {};
-    if (until === 'day') {
-      const midnight = new Date();
-      midnight.setHours(24, 0, 0, 0);
-      this._keyCooldown[key] = midnight.getTime();
-    } else {
-      this._keyCooldown[key] = Date.now() + until;
-    }
-    this.forceUpdate();
-  }
-
-  // ---- Live Gemini model list ------------------------------------------------------------------
+  // ---- Models ------------------------------------------------------------------------------------------------
   // flash / flash-lite text models only; previews rank after stable ones, 2.x is used only when nothing
   // newer exists (Google keeps listing retired models, so each one is checked with a free countTokens call).
   geminiClassify(name) {
@@ -11274,24 +11312,29 @@ class Component extends DCLogic {
   }
 
   // fetch() with a deadline: a request that never answers used to leave an import on "Reading screenshot..." for ever.
-  // On timeout it throws an Error tagged __geminiTimeout, so callers can move to the next model instead of waiting.
+  // On timeout it rejects with a `hung` Error, so callers can move to the next model instead of waiting.
   async fetchWithDeadline(url, opts, ms) {
     const ctl = typeof AbortController === 'function' ? new AbortController() : null;
-    const limit = ms || this._geminiTimeoutMs || 45000;
+    const limit = ms || this.GEMINI.TEXT_MS;
     let timer = null;
-    const dead = new Promise((_, rej) => { timer = setTimeout(() => { const e = new Error('Gemini did not answer within ' + Math.round(limit / 1000) + 's'); e.__geminiTimeout = true; rej(e); try { if (ctl) ctl.abort(); } catch (x) {} }, limit); });
+    const dead = new Promise((_, rej) => { timer = setTimeout(() => { rej(this.geminiErr('hung', 'Gemini did not answer within ' + Math.round(limit / 1000) + 's')); try { if (ctl) ctl.abort(); } catch (x) {} }, limit); });
     try { return await Promise.race([fetch(url, ctl ? { ...(opts || {}), signal: ctl.signal } : opts), dead]); }
     finally { clearTimeout(timer); }
   }
 
+  // Which models to ask for this key, in order: the key's live list (what Google says it can call right now, retired ones dropped,
+  // so a model Google shuts down leaves the cycle by itself), or the built-in names when that lookup is unreachable or has
+  // lost every model. Vision calls (screenshots, video frames) and text calls (chat, jobs) keep separate orders so the
+  // two workloads do not compete for the same daily quota.
   async geminiRotation(key, hasImage) {
+    const G = this.GEMINI;
     this._gemRot = this._gemRot || {};
     let c = this._gemRot[key];
-    if (!c || Date.now() - c.at > 3 * 3600 * 1000) {
+    if (!c || Date.now() - c.at > G.LIST_TTL_MS) {
       c = this._gemRot[key] = c || { at: 0, vision: [], text: [] };
       c.at = Date.now();    // set first: a failing lookup is not retried on every call
       try {
-        const res = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } }, 8000);
+        const res = await this.fetchWithDeadline(G.API + 'models?pageSize=200', { headers: { 'x-goog-api-key': key } }, G.LIST_MS);
         if (res.ok) {
           const data = await res.json();
           let rows = (data.models || []).filter(m => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
@@ -11301,9 +11344,9 @@ class Component extends DCLogic {
           // Live check: a retired model answers 404/403 to countTokens (which needs no generation quota).
           const alive = await Promise.all(rows.map(async r => {
             try {
-              const t = await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + r.name + ':countTokens', {
+              const t = await this.fetchWithDeadline(G.API + 'models/' + r.name + ':countTokens', {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
-              }, 8000);
+              }, G.LIST_MS);
               return t.status !== 404 && t.status !== 403;
             } catch (e) { return true; }
           }));
@@ -11314,9 +11357,10 @@ class Component extends DCLogic {
           c.vision = order(rows.filter(r => !r.lite)).concat(order(rows.filter(r => r.lite)));
           c.text = order(rows.filter(r => r.lite)).concat(order(rows.filter(r => !r.lite)));
         }
-      } catch (e) { /* offline or blocked: the caller falls back to its built-in list */ }
+      } catch (e) { /* offline or blocked: the built-in names are used */ }
     }
-    return hasImage ? c.vision : c.text;
+    const live = hasImage ? c.vision : c.text;
+    return live.length ? live : hasImage ? G.FALLBACK_MODELS : G.FALLBACK_MODELS.slice().reverse();
   }
 
   // Thinking settings to try for a call, least thinking first. Text calls are left as they were (null = the model's default).
@@ -11339,7 +11383,9 @@ class Component extends DCLogic {
   // A named step of an import (reading the file, measuring bars) and how long it took.
   noteAiStage(label, ms) { this.noteAiCall('(' + label + ')', false, '-', ms, null); }
 
+  // ---- One key: its models, in order -------------------------------------------------------------------------
   async callGeminiWithKey(body, key) {
+    const G = this.GEMINI;
     const parts = [];
     (body.messages || []).forEach(m => {
       const c = m.content;
@@ -11352,187 +11398,182 @@ class Component extends DCLogic {
       });
     });
     if (body.system) parts.unshift({ text: body.system });
-    // Model rotation: cycle through top 5 models for best accuracy + quota spread.
-    // (3.5 Flash is best, then 2.5 Flash, then lite variants)
-    // Two separate rotations, kept apart on purpose: vision calls (video/
-    // screenshot appraisal reading) use the same 3 models as the pogo_extract.py
-    // pipeline; text-only calls (chat/evolve/moves/types/candy-ai) use a
-    // different 3 so the two workloads don't compete for the same daily quota.
     const hasImage = parts.some(p => p.inline_data);
-    // The lists are no longer fixed: geminiRotation() asks Google which flash models this key can call
-    // right now (and drops retired ones), so a model Google shuts down leaves the cycle by itself.
-    // The names below are only the fallback when that lookup is unreachable.
-    const visionFallback = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
-    const textFallback = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
-    const live = await this.geminiRotation(key, hasImage);
-    const modelRotation = live.length ? live : (hasImage ? visionFallback : textFallback);
+    const rotation = await this.geminiRotation(key, hasImage);
     const idxKey = hasImage ? '_geminiModelIdxVision' : '_geminiModelIdxText';
     // Every model is a candidate, starting where the round-robin left off, so one overloaded model
     // (503) moves on to the next instead of failing the whole batch.
-    const start = (this[idxKey] || 0) % modelRotation.length;
-    const ordered = modelRotation.slice(start).concat(modelRotation.slice(0, start));
+    const start = (this[idxKey] || 0) % rotation.length;
+    const ordered = rotation.slice(start).concat(rotation.slice(0, start));
     // Free-tier limits are PER MODEL (the accurate flash models allow ~20 requests a day, the lite ones
     // ~500), so a model that hit its limit is parked on its own and the next model carries on. Only when
     // every model is parked does the key count as out of quota.
-    const coolOf = m => { const c = (this._modelCool || {})[key + '|' + m]; return c && c.until > Date.now() ? c : null; };
-    const candidates = ordered.filter(m => !coolOf(m));
+    const candidates = ordered.filter(m => !this.coolOf(key, m));
     if (!candidates.length) {
-      if (ordered.some(m => { const c = coolOf(m); return c && c.hung; })) throw new Error('Gemini did not answer on any model a moment ago. Wait a minute and try again.');
-      const anyDaily = ordered.some(m => { const c = coolOf(m); return c && c.daily; });
-      throw new Error(anyDaily ? 'Gemini daily quota exhausted for this key (429).' : 'Gemini rate limit (429) \u2014 every model is cooling down for a minute.');
+      const cools = ordered.map(m => this.coolOf(key, m));
+      if (cools.some(c => c.hung)) throw this.geminiErr('hung', 'Gemini did not answer on any model a moment ago. Wait a minute and try again.');
+      const daily = cools.some(c => c.daily);
+      throw this.geminiErr('rateLimited', daily ? G.DAILY_MSG : 'Gemini rate limit (429) — every model is cooling down for a minute.', { daily, retry: true });
     }
-    let sawOther = false, sawDaily = false, timeouts = 0;
+    let sawOther = false, sawDaily = false, hungCount = 0;
     let lastErr = null;
     for (const model of candidates) {
-      // Reading a screenshot needs no reasoning, and a model that "thinks" first can take 10 to 30 seconds per image. Vision
-      // calls therefore ask for the least thinking the model accepts (the server-side extractor does the same); a model that
-      // rejects a setting (400) steps down the ladder, and the rung that worked is remembered per model.
-      const ladder = this.thinkingLadder(model, hasImage);
-      this._thinkRung = this._thinkRung || {};
-      let rung = Math.min(this._thinkRung[model] || 0, ladder.length - 1);
-      const buildConfig = (extras) => {
-        // Minimal, maximally-compatible config. responseMimeType is model-dependent and can trigger a bare
-        // 400 INVALID_ARGUMENT, so it is only added on a later attempt.
-        const cfg = {
-          maxOutputTokens: Math.max(body.max_tokens || 2048, 4096),
-          temperature: 0
-        };
-        if (ladder[rung]) cfg.thinkingConfig = ladder[rung];
-        if (extras) {
-          cfg.responseMimeType = 'application/json';
-          if (!cfg.thinkingConfig) cfg.thinkingConfig = { thinkingBudget: 0 };
-        }
-        return cfg;
-      };
-      // A request that does not answer in time is not left hanging: it counts as a failed attempt on this model (HTTP 599 in the
-      // diagnostics) and the next model is tried; two timeouts in one call end the call.
-      // How long one request may take: a read of one image gets 90 s, each further image in the same request 30 s more (up to 4 minutes),
-      // text calls 45 s. 45 s was too short for image reads, which can legitimately take a minute or more.
-      const imgN = parts.filter(x => x.inline_data).length;
-      let deadlineMs = this._geminiTimeoutMs || (hasImage ? Math.min(240000, 90000 + 30000 * Math.max(0, imgN - 1)) : 45000);
-      // Once a model has answered, wait four times its usual time (never under 30 s) instead of the full allowance, so a model that
-      // hangs later costs seconds, not minutes.
-      if (!this._geminiTimeoutMs && hasImage && this._modelMs && this._modelMs[model]) deadlineMs = Math.max(30000, Math.min(deadlineMs, Math.round(this._modelMs[model] * 4)));
-      const post = async (extras, grounded) => {
-        try {
-          return await this.fetchWithDeadline('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-            body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras), ...(grounded ? { tools: [{ google_search: {} }] } : {}) })
-          }, deadlineMs);
-        } catch (e) {
-          if (!(e && e.__geminiTimeout)) throw e;
-          const stub = { status: 599, ok: false, clone() { return stub; }, text: async () => e.message, json: async () => ({}) };
-          return stub;
-        }
-      };
-      // body.search asks for Google Search grounding (live meta and news). A model or key that refuses the
-      // tool falls straight back to a plain answer rather than failing the whole request.
-      const t0 = Date.now();
-      let res;
-      // Search grounding has its own, much smaller free quota. Once a grounded call was refused for it, plain answers
-      // are used for the next hour instead of failing the request.
-      const useSearch = !!body.search && !(this._searchOffUntil > Date.now());
-      try { res = await post(false, useSearch); }
-      catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); throw netErr; }
-      while (res.status === 400 && rung < ladder.length - 1 && !/API.?key not valid|API_KEY_INVALID/i.test(await res.clone().text().catch(() => ''))) {
-        rung++;
-        res = await post(false, useSearch);
-      }
-      if (res.status === 400 && useSearch) res = await post(false, false);
-      // A grounded call refused with 429 is retried once without the search tool: the plain answer may well be inside
-      // the model's normal quota.
-      if (res.status === 429 && useSearch) {
-        const t429 = await res.clone().text().catch(() => '');
-        if (/ground|google.?search/i.test(t429)) this._searchOffUntil = Date.now() + 3600000;
-        res = await post(false, false);
-      }
-      if (res.status === 400) {
-        // Some models need the JSON mime type to return parseable output.
-        res = await post(true);
-      }
-      this.noteAiCall(model, hasImage, res.status, Date.now() - t0, ladder[rung]);
-      if (res.status === 599) {
-        timeouts = (timeouts || 0) + 1;
-        // A model that hung is set aside for three minutes, so the next screenshot goes to one that answers instead of waiting again.
-        if (candidates.length > 1) { this._modelCool = this._modelCool || {}; this._modelCool[key + '|' + model] = { until: Date.now() + 180000, daily: false, hung: true }; }
-        lastErr = new Error('Gemini ' + model + ' did not answer within ' + Math.round(deadlineMs / 1000) + 's');
-        sawOther = true;
-        if (timeouts >= 2 || model === candidates[candidates.length - 1]) throw new Error('Gemini did not answer (' + timeouts + (timeouts === 1 ? ' try' : ' tries') + ', ' + Math.round(deadlineMs / 1000) + 's each). The request is dropped instead of waiting; skip or retry this one.');
-        continue;
-      }
-      if (res.ok && hasImage) this._thinkRung[model] = rung;   // only an image call knows the ladder; a text call (one rung) must not overwrite the remembered image setting
-      if (res.ok && hasImage) { this._modelMs = this._modelMs || {}; const took = Date.now() - t0; this._modelMs[model] = this._modelMs[model] ? Math.round(this._modelMs[model] * 0.6 + took * 0.4) : took; }
-      if (res.ok) {
-        const data = await Promise.race([res.json(), new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini did not finish sending its answer within 30s')), 30000))]);
-        const cand = data && data.candidates && data.candidates[0];
-        const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
-        if (!text) {
-          const why = cand && (cand.finishReason || (cand.safetyRatings ? 'blocked by safety filter' : ''));
-          lastErr = new Error('Gemini returned no text' + (why ? ' (' + why + ')' : ''));
-          continue;
-        }
-        if (cand.finishReason === 'MAX_TOKENS') {
-          // Truncation is a budget problem, not a model problem — the other
-          // candidates would fail identically and burn 4 of the free tier's
-          // 10 requests/minute for nothing.
-          throw new Error('Gemini reply was cut off (MAX_TOKENS).');
-        }
+      const out = await this.geminiTryModel(key, model, parts, body, hasImage);
+      if (out.kind === 'ok') {
         this._lastEngine = 'Gemini (' + model + ')';
         // Advance this workload's rotation index for next batch (round-robin)
-        this[idxKey] = ((this[idxKey] || 0) + 1) % modelRotation.length;
+        this[idxKey] = ((this[idxKey] || 0) + 1) % rotation.length;
         this.bumpAiUsage('gemini');
-        return text;
+        return out.text;
       }
-      const errText = await res.text().catch(() => '');
-      if (res.status === 429) {
-        const q = errText.match(/"quotaValue"\s*:\s*"?(\d+)/i)
-          || errText.match(/quota_value["\s:]+(\d+)/i);
-        if (q && /PerMinute|per minute/i.test(errText)) {
-          const rpm = parseInt(q[1], 10);
-          if (rpm > 0 && rpm < 60) {
-            this._geminiRpm = rpm;
-            console.warn('[Scout] Gemini reports ' + rpm + ' requests/minute for this key \u2014 pacing to that.');
-          }
-        }
-        const daily = /PerDay|per day|daily/i.test(errText);
-        // Park just this model (until midnight for a daily limit, a minute for a per-minute one) and try the next.
-        this._modelCool = this._modelCool || {};
-        const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
-        this._modelCool[key + '|' + model] = { until: daily ? midnight.getTime() : Date.now() + 60000, daily };
-        if (daily) sawDaily = true;
-        lastErr = new Error(daily
-          ? 'Gemini daily quota exhausted for this key (429).'
-          : 'Gemini rate limit (429) \u2014 10 requests/minute per key.');
+      if (out.kind === 'hung') {
+        // A model that hung is set aside for three minutes, so the next screenshot goes to one that answers instead of waiting again.
+        hungCount++;
+        if (candidates.length > 1) this.geminiCool(key, model, Date.now() + G.HUNG_PARK_MS, { hung: true });
+        sawOther = true;
+        if (hungCount >= G.HUNG_LIMIT || model === candidates[candidates.length - 1]) throw this.geminiErr('hung', 'Gemini did not answer (' + hungCount + (hungCount === 1 ? ' try' : ' tries') + ', ' + Math.round(out.deadlineMs / 1000) + 's each). The request is dropped instead of waiting; skip or retry this one.');
         continue;
       }
-      if (res.status === 400 && /API.?key not valid|API_KEY_INVALID/i.test(errText)) {
-        throw new Error('That Gemini API key was rejected \u2014 check it under AI ENGINE.');
+      lastErr = out.err;
+      if (out.kind === 'rateLimited') {
+        // Park just this model (until midnight for a daily limit, a minute for a per-minute one) and try the next.
+        this.geminiCool(key, model, lastErr.daily ? this.midnightMs() : Date.now() + G.RATE_PARK_MS, { daily: lastErr.daily });
+        if (lastErr.daily) sawDaily = true;
+        continue;
       }
-      if (res.status === 403) {
-        throw new Error('Gemini refused the key (403). Enable the Generative Language API for this key at aistudio.google.com.');
-      }
-      // 400/404 = this model won't serve the request (bad alias, unsupported
-      // arg, not enabled on the key) — try the next candidate rather than
-      // giving up on Gemini entirely.
-      lastErr = new Error('[' + this.GEMINI_REQ_VERSION + '] Gemini ' + model + ' error ' + res.status + ': ' + errText.slice(0, 160));
-      sawOther = true;
       // 404 = the model is gone for this key: leave it out of the cycle from now on.
-      if (res.status === 404) this.geminiForget(key, model);
-      // 400/404 (this model will not serve it) and 5xx (this model is overloaded right now) are per-model
-      // problems: try the next model. Anything else is not going to improve by switching.
-      if (res.status !== 404 && res.status !== 400 && res.status < 500) throw lastErr;
+      if (out.kind === 'modelGone') this.geminiForget(key, model);
+      if (lastErr.status) {   // an HTTP failure of this model (an empty answer has no status)
+        sawOther = true;
+        // 400/404 (this model will not serve it) and 5xx (this model is overloaded right now) are per-model
+        // problems: try the next model. Anything else is not going to improve by switching.
+        if (lastErr.status !== 404 && lastErr.status !== 400 && lastErr.status < 500) throw lastErr;
+      }
     }
     // Every model said 429: the key is out (daily) or cooling (per minute). If anything else failed
     // too (overload, a bad request), report that instead so the key is not written off for the day.
-    if (!sawOther && lastErr && /429/.test(lastErr.message || '') && sawDaily) lastErr = new Error('Gemini daily quota exhausted for this key (429).');
+    if (!sawOther && lastErr && lastErr.kind === 'rateLimited' && sawDaily) lastErr = this.geminiErr('rateLimited', G.DAILY_MSG, { daily: true, retry: true });
     throw lastErr || new Error('No Gemini model available for this key.');
   }
 
-  // Bump on every change to callGemini's request shape, so a stale cached build
-  // is identifiable from the error text alone.
-  get GEMINI_REQ_VERSION() { return 'g4'; }
+  // One call to one model. Returns { kind: 'ok', text } | { kind: 'hung', deadlineMs } | { kind, err } for an outcome the next
+  // model may still fix (err is what the caller throws if the call ends there). A rejected key, a truncated reply, a network
+  // failure and an unparseable 200 are thrown as they are: switching model cannot help.
+  async geminiTryModel(key, model, parts, body, hasImage) {
+    const G = this.GEMINI;
+    // Reading a screenshot needs no reasoning, and a model that "thinks" first can take 10 to 30 seconds per image. Vision
+    // calls therefore ask for the least thinking the model accepts (the server-side extractor does the same); a model that
+    // rejects a setting (400) steps down the ladder, and the rung that worked is remembered per model.
+    const ladder = this.thinkingLadder(model, hasImage);
+    this._thinkRung = this._thinkRung || {};
+    let rung = Math.min(this._thinkRung[model] || 0, ladder.length - 1);
+    const buildConfig = (extras) => {
+      // Minimal, maximally-compatible config. responseMimeType is model-dependent and can trigger a bare
+      // 400 INVALID_ARGUMENT, so it is only added on a later attempt.
+      const cfg = { maxOutputTokens: Math.max(body.max_tokens || 2048, 4096), temperature: 0 };
+      if (ladder[rung]) cfg.thinkingConfig = ladder[rung];
+      if (extras) {
+        cfg.responseMimeType = 'application/json';
+        if (!cfg.thinkingConfig) cfg.thinkingConfig = { thinkingBudget: 0 };
+      }
+      return cfg;
+    };
+    // How long one request may take: a read of one image gets IMAGE_MS, each further image in the same request a little more (up to
+    // a cap), text calls TEXT_MS. Once a model has answered an image, wait four times its usual time instead of the full
+    // allowance, so a model that hangs later costs seconds, not minutes.
+    let deadlineMs = hasImage ? Math.min(G.IMAGE_MAX_MS, G.IMAGE_MS + G.IMAGE_MORE_MS * Math.max(0, parts.filter(x => x.inline_data).length - 1)) : G.TEXT_MS;
+    if (hasImage && this._modelMs && this._modelMs[model]) deadlineMs = Math.max(G.LEARNED_MIN_MS, Math.min(deadlineMs, Math.round(this._modelMs[model] * G.LEARNED_X)));
+    // One generateContent request. A request that does not answer in time comes back as { hung: true }, not as an Error.
+    const post = async (extras, grounded) => {
+      try {
+        return await this.fetchWithDeadline(G.API + 'models/' + model + ':generateContent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify({ contents: [{ role: 'user', parts: parts }], generationConfig: buildConfig(extras), ...(grounded ? { tools: [{ google_search: {} }] } : {}) })
+        }, deadlineMs);
+      } catch (e) {
+        if (!(e && e.kind === 'hung')) throw e;
+        return { hung: true };
+      }
+    };
+    const t0 = Date.now();
+    let res;
+    // body.search asks for Google Search grounding (live meta and news). A model or key that refuses the
+    // tool falls straight back to a plain answer rather than failing the whole request.
+    // Search grounding has its own, much smaller free quota. Once a grounded call was refused for it, plain answers
+    // are used for the next hour instead of failing the request.
+    const useSearch = !!body.search && !(this._searchOffUntil > Date.now());
+    try { res = await post(false, useSearch); }
+    catch (netErr) { this.noteAiCall(model, hasImage, 0, Date.now() - t0, ladder[rung]); throw netErr; }
+    while (res.status === 400 && rung < ladder.length - 1 && !/API.?key not valid|API_KEY_INVALID/i.test(await res.clone().text().catch(() => ''))) {
+      rung++;
+      res = await post(false, useSearch);
+    }
+    if (res.status === 400 && useSearch) res = await post(false, false);
+    // A grounded call refused with 429 is retried once without the search tool: the plain answer may well be inside
+    // the model's normal quota.
+    if (res.status === 429 && useSearch) {
+      const t429 = await res.clone().text().catch(() => '');
+      if (/ground|google.?search/i.test(t429)) this._searchOffUntil = Date.now() + G.SEARCH_OFF_MS;
+      res = await post(false, false);
+    }
+    if (res.status === 400) {
+      // Some models need the JSON mime type to return parseable output.
+      res = await post(true);
+    }
+    this.noteAiCall(model, hasImage, res.hung ? G.LOG_STATUS_HUNG : res.status, Date.now() - t0, ladder[rung]);
+    if (res.hung) return { kind: 'hung', deadlineMs };
+    if (!res.ok) return this.geminiOutcomeOf(res.status, await res.text().catch(() => ''), model);
+    if (hasImage) {   // only an image call knows the ladder; a text call (one rung) must not overwrite the remembered image setting
+      this._thinkRung[model] = rung;
+      this._modelMs = this._modelMs || {};
+      const took = Date.now() - t0;
+      this._modelMs[model] = this._modelMs[model] ? Math.round(this._modelMs[model] * 0.6 + took * 0.4) : took;
+    }
+    let data;
+    try {
+      data = await Promise.race([res.json(), new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini did not finish sending its answer within 30s')), G.BODY_MS))]);
+    } catch (e) { if (e && !e.kind) e.kind = 'badJson'; throw e; }
+    const cand = data && data.candidates && data.candidates[0];
+    const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
+    if (!text) {
+      const why = cand && (cand.finishReason || (cand.safetyRatings ? 'blocked by safety filter' : ''));
+      return { kind: 'other', err: new Error('Gemini returned no text' + (why ? ' (' + why + ')' : '')) };
+    }
+    // Truncation is a budget problem, not a model problem: the other candidates would fail identically and burn
+    // 4 of the free tier's 10 requests/minute for nothing.
+    if (cand.finishReason === 'MAX_TOKENS') throw this.geminiErr('truncated', 'Gemini reply was cut off (MAX_TOKENS).');
+    return { kind: 'ok', text };
+  }
 
+  // An HTTP error answer as a typed outcome. The one place a status and the server's words are read.
+  geminiOutcomeOf(status, errText, model) {
+    const G = this.GEMINI;
+    if (status === 429) {
+      const q = errText.match(/"quotaValue"\s*:\s*"?(\d+)/i)
+        || errText.match(/quota_value["\s:]+(\d+)/i);
+      if (q && /PerMinute|per minute/i.test(errText)) {
+        const rpm = parseInt(q[1], 10);
+        if (rpm > 0 && rpm < 60) {
+          this._geminiRpm = rpm;
+          console.warn('[Scout] Gemini reports ' + rpm + ' requests/minute for this key — pacing to that.');
+        }
+      }
+      const daily = /PerDay|per day|daily/i.test(errText);
+      return { kind: 'rateLimited', err: this.geminiErr('rateLimited', daily
+        ? G.DAILY_MSG
+        : 'Gemini rate limit (429) — 10 requests/minute per key.', { daily, retry: true }) };
+    }
+    if (status === 400 && /API.?key not valid|API_KEY_INVALID/i.test(errText)) {
+      throw this.geminiErr('rejectedKey', 'That Gemini API key was rejected — check it under AI ENGINE.');
+    }
+    if (status === 403) {
+      throw this.geminiErr('rejectedKey', 'Gemini refused the key (403). Enable the Generative Language API for this key at aistudio.google.com.');
+    }
+    const msg = '[' + G.REQ_TAG + '] Gemini ' + model + ' error ' + status + ': ' + errText.slice(0, 160);
+    const gone = status === 404;
+    return { kind: gone ? 'modelGone' : 'other', err: this.geminiErr(gone ? 'modelGone' : 'other', msg, { status, retry: G.TRANSIENT.test(msg) }) };
+  }
 
   // Per-day call counters, so the free-tier budgets are visible before they run out.
   todayKey() { return new Date().toISOString().slice(0, 10); }
@@ -11555,61 +11596,40 @@ class Component extends DCLogic {
       .map(s => s.trim())
       .filter(s => s.length > 20);
     const uniq = [...new Set(keys)];
-    this.setState({ geminiKeys: uniq, geminiKey: uniq[0] || '', aiOutOfCredit: false });
-    this._keyCooldown = {};
+    this.setState({ geminiKeys: uniq, geminiKey: uniq[0] || '' });
+    this.clearKeyCools();
     this._geminiKeyIdx = 0;
     this.queueCloudPush();
   }
 
-  async completeWithRetry(body, attempts) {
-    attempts = attempts || 4;
-    let lastErr;
-    for (let i = 0; i < attempts; i++) {
+  // The one call the rest of the app makes. Gemini only (the Claude and gateway paths are gone): the free tier is 1,500
+  // requests/day and 10 rpm and includes vision, far past what this app needs, with no card required. A transient failure
+  // (a rate limit, an overloaded model) is asked again after a growing pause; a rejected key is final.
+  async completeWithRetry(body) {
+    const G = this.GEMINI;
+    for (let i = 0; i < G.ATTEMPTS; i++) {
       try {
-        // Vision calls (screenshot/video frame reading) always go to Gemini —
-        // it's verified against real appraisal cards and is the one engine
-        // guaranteed to accept image parts. The custom text gateway (Groq,
-        // OmniRoute, OpenRouter…) is for chat/evolve/move-lookup/candy-AI only.
-        // Gemini only (Claude/gateway paths removed) — free tier is 1500 req/day, 10 rpm, and
-        // includes vision — far past what this app needs, and no card required.
+        let failure = null;
         if (this.state.geminiKey) {
           try { return await this.callGemini(body); }
           catch (gErr) {
-            const gm = (gErr && gErr.message) || '';
-            // A rejected key is terminal — there is nothing behind Gemini now.
-            // Everything else (rate limit, truncation, safety block, 5xx,
-            // network) falls through so a transient failure does not hard-fail
-            // a whole recording import.
-            const terminal = /key was rejected|API_KEY_INVALID|refused the key/i.test(gm);
-            this._lastAiError = gm;
-            if (terminal) throw gErr;
+            this._lastAiError = (gErr && gErr.message) || '';
+            if (gErr && gErr.kind === 'rejectedKey') throw gErr;
+            failure = gErr;
           }
         }
         // No custom proxy endpoint in the public build: a request to an arbitrary host would be blocked by the page's
         // Content-Security-Policy (connect-src) and is how a stolen setting could send screenshots elsewhere.
         const why = this._lastAiError ? ' Last engine said: ' + this._lastAiError : '';
-        throw new Error(this.state.geminiKey
+        throw Object.assign(new Error(this.state.geminiKey
           ? 'Every AI engine failed for this batch.' + why
-          : 'No AI engine available — paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).');
+          : 'No AI engine available \u2014 paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day).'),
+        { retry: !!(failure && failure.retry) });
       } catch (err) {
-        lastErr = err;
-        const msg = (err && (err.message || err.error && err.error.message)) || String(err);
-        const code = err && (err.code || (err.error && err.error.code));
-        // Billing/credit exhaustion on a paid gateway: not retryable, and the
-        // proxy branch's "no endpoint set" message would be misleading. Note
-        // /quota/ is deliberately NOT matched here — Gemini's daily-quota error
-        // contains it, and treating that as "no credit" short-circuited the
-        // retry chain.
-        if (/insufficient|low balance|not enough funding|payment required|upgrade to continue/i.test(msg)
-            || code === 'insufficient_funds') {
-          this.setState({ aiOutOfCredit: true });
-          throw new Error('AI_NO_CREDIT');
-        }
-        if (!/overload|rate.?limit|\b(429|503|529)\b/i.test(msg) || i === attempts - 1) throw err;
-        await new Promise(r => setTimeout(r, 1200 * Math.pow(2, i)));
+        if (!(err && err.retry) || i === G.ATTEMPTS - 1) throw err;
+        await new Promise(r => setTimeout(r, G.BACKOFF_MS * Math.pow(2, i)));
       }
     }
-    throw lastErr;
   }
 
   // Frames are kept briefly after a successful read so Retry still works, then
@@ -11683,10 +11703,9 @@ class Component extends DCLogic {
   // (daily quota) since those cannot be waited out inside an import.
   msUntilKeyFree() {
     const all = this.state.geminiKeys || [];
-    const cd = this._keyCooldown || {};
     const now = Date.now();
     const soon = all
-      .map(k => cd[k])
+      .map(k => this.keyCoolUntil(k))
       .filter(t => Number.isFinite(t) && t > now && (t - now) <= 180000);
     if (!soon.length) return 0;
     return Math.min(...soon) - now;
@@ -12241,7 +12260,6 @@ class Component extends DCLogic {
       const rawReplies = [];
       let failedBatches = 0;
       let unreadableBatches = 0;
-      let noCredit = false;
       let lastBatchError = '';
       this._rateBackoff = 1;
       const runBatch = async (b, spacing, pass) => {
@@ -12264,7 +12282,6 @@ class Component extends DCLogic {
         } catch (err) {
           const bMsg = (err && err.message) || String(err);
           console.error('[Scout] batch ' + (b + 1) + '/' + batches.length + ' (pass ' + pass + ') failed:', bMsg);
-          if (bMsg === 'AI_NO_CREDIT') { noCredit = true; return 'nocredit'; }
           if (/429|rate limit|quota|overload|503|529/i.test(bMsg)) this.noteRateLimit();
           this._lastAiError = bMsg;
           lastBatchError = bMsg;
@@ -12291,7 +12308,6 @@ class Component extends DCLogic {
       const retryQueue = [];
       for (let b = 0; b < batches.length; b++) {
         const res = await runBatch(b, this.RATE_INTERVAL_MS, 1);
-        if (res === 'nocredit') break;
         if (res === 'failed') retryQueue.push(b);
         else if (res === 'unreadable') unreadableBatches++;
         else if (res === 'empty') emptyBatches++;
@@ -12301,12 +12317,11 @@ class Component extends DCLogic {
       // Second pass at double spacing — most first-pass failures are 429s and
       // succeed once the window clears.
       this._failedFrames = retryQueue.flatMap(b => batches[b] || []);
-      if (retryQueue.length && !noCredit) {
+      if (retryQueue.length) {
         const stillFailed = [];
         for (let q = 0; q < retryQueue.length; q++) {
           const b = retryQueue[q];
           const res = await runBatch(b, this.RATE_INTERVAL_MS * 2, 2);
-          if (res === 'nocredit') { stillFailed.push(...retryQueue.slice(q)); break; }
           if (res === 'failed') { failedBatches++; stillFailed.push(b); }
           else if (res === 'unreadable') unreadableBatches++;
           else if (res === 'empty') emptyBatches++;
@@ -12340,10 +12355,6 @@ class Component extends DCLogic {
       this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, emptyBatches, lastError: lastBatchError, frameCount: frames.length, engines: [...enginesUsed], rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
 
       if (!parsed.length) {
-        // Hold the extracted frames for 30 minutes on a credit failure: the fix
-        // is "go and get a Gemini key", which takes longer than the normal
-        // retry window, and re-extracting is minutes of work.
-        if (noCredit) this._releaseFramesSoon(1800000);
         this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: rawReplies.join('\n---\n').slice(0, 800) } }));
         // Spell out the breakdown: "answered but saw nothing" (frames/prompt) is
         // a completely different problem from "never landed" (transport).
@@ -12353,13 +12364,11 @@ class Component extends DCLogic {
         if (failedBatches) parts.push(failedBatches + ' failed to send');
         if (unreadableBatches) parts.push(unreadableBatches + ' returned unreadable output');
         const breakdown = parts.length ? ' (' + parts.join(', ') + ').' : '';
-        const composed = new Error(noCredit
-          ? 'Free AI credit is used up, so the recording could not be read. Your ' + frames.length + ' extracted frames are held for 30 minutes \u2014 paste a free Google Gemini key under AI ENGINE (no credit card, 1,500 requests/day) or sign in to restore a saved key, then hit RETRY.'
-          : (failedBatches === batches.length
-            ? 'No batch reached the AI' + breakdown + ' Wait a moment and hit RETRY \u2014 your frames are held.'
-            : (emptyBatches === batches.length
-              ? 'The AI read every frame but found no Pokemon' + breakdown + eng + ' Make sure the recording shows Pokemon detail screens, and pan slowly enough to pause on each one.'
-              : 'Could not read any Pokemon off that recording' + breakdown + eng + ' Try a slower pan across each screen.')));
+        const composed = new Error(failedBatches === batches.length
+          ? 'No batch reached the AI' + breakdown + ' Wait a moment and hit RETRY \u2014 your frames are held.'
+          : (emptyBatches === batches.length
+            ? 'The AI read every frame but found no Pokemon' + breakdown + eng + ' Make sure the recording shows Pokemon detail screens, and pan slowly enough to pause on each one.'
+            : 'Could not read any Pokemon off that recording' + breakdown + eng + ' Try a slower pan across each screen.'));
         composed.composed = true;
         throw composed;
       }
@@ -13696,7 +13705,6 @@ class Component extends DCLogic {
   // solve runs on CP/HP alone — unique there is real, anything else stays a range.
   appraisalHintFromItem(item) {
     if (!item) return null;
-    if (item.ivSource === 'model-guess') return { stars: null, maxed: null, maxedKnown: false };
     const maxed = Array.isArray(item.maxed) ? item.maxed.filter(s => ['atk', 'def', 'sta'].includes(s)) : [];
     const allMaxed = maxed.length === 3;
     const hint = {};
@@ -20559,7 +20567,6 @@ class Component extends DCLogic {
       candyEntries,
       candyCount: (candyEntries || []).length,
       ocrBusy: this.state.ocrBusy,
-      aiOutOfCredit: !!this.state.aiOutOfCredit && !this.state.geminiKey,
       ocrError: this.state.ocrError,
       ocrParsedDisplay,
       hasOcrParsed: !!ocrParsedDisplay,
