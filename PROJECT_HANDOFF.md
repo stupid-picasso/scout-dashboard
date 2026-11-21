@@ -968,6 +968,18 @@ Markup-only tidy in `Scout Dashboard.dc.html`; no copy, order or palette changes
 - Recs: Use-a-TM card gets the same hairline as the other cards; Mark done and Transferred buttons bottom-align across uneven card heights.
 - Re-shoot: `node scripts/qa/ui_shots.js <outdir> 320,390,768 dark,light TODAY,ROSTER,PVP,RECS`.
 
+## Unslop PR (c): Raid, Home, Intel, Attackers, Log, first-run (polish mode)
+
+Edits in `Scout Dashboard.dc.html` only; no copy, order or palette changes.
+
+- Primary fill: `--fill-grad` is now a flat `--accent-fill` (gradient and the `.ui-btn-fill` glow removed). Same token, one colour on every screen.
+- First run: the teal "Professor" band is a plain 22px/600 wordmark on the page background (64px tall, card no longer overlaps it). `[data-firstrun]` hooks and behaviour unchanged.
+- Raid: "Raid counters" card gets the same radius, padding and gap as the Max planner card below it.
+- Home: "Welcome tour" row matches the other Home cards (hairline, 14px radius, 12px gap).
+- Intel: the sparkle emoji before SHINIES is removed.
+- Attackers, Log, sign-in card: no change beyond the shared primary-fill change.
+- Re-shoot: `node scripts/qa/ui_shots.js <outdir> 320,390,768 dark,light RAID,HOME,INTEL,ATTACK,LOG,FIRSTRUN1,FIRSTRUN2,FIRSTRUN3,FIRSTRUN4,FIRSTRUN5,FIRSTRUN6,SIGNIN`.
+
 ## Untangle stage 6d: tolerant list reader for TM picks and candy decisions
 - `ensureTmAiRecommendations` and `ensureCandyAiDecisions` now parse with `aiListReply(reply)`, which calls `extractJsonArray` (the same reader as evolution data and chat). Stray `[`/`]` text before or after the list ("Note [1]: ...", "... (see [note])") no longer fails the reply. `greedyJsonArray` is gone: no caller was left and no test referenced it.
 - A reply with no list at all now throws a `badReply` error ("The AI reply had no list in it."). Before, the greedy reader returned an empty list: TM picks showed no error and left the picks empty, candy changed nothing. Now TM picks show that error (and `tmAiRecommendations` stays as it was), candy stays silent as before (its failure branch is unchanged).
