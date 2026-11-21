@@ -2681,7 +2681,12 @@
             <span>Import screen recording</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span>
             <input type="file" accept="video/*" onChange="{{ onVideoUpload }}" style="display:none" />
           </label>
+          <label class="om-press ui-row-link">
+            <span>Check against the game</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span>
+            <input type="file" accept="video/*" aria-label="Check against the game: recording of the Pokemon list" onChange="{{ onGridUpload }}" style="display:none" />
+          </label>
         </div>
+        <details class="ui-more"><summary>How checking works</summary><div>Open the game's Pokemon list in grid view, sorted any way you like, keep the count at the top in frame, and record it scrolling slowly from the top to the bottom. The app reads each tile and lists what it has wrong. It changes nothing.</div></details>
       </div>
       <div style="font:12px var(--font-body);color:var(--ink-300)">Update your roster from a screenshot or a screen recording.</div><details class="ui-more"><summary>More</summary><div>A detail screenshot updates Stardust, that species' candy/XL candy and its type. A screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div></details>
       <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
@@ -2711,6 +2716,42 @@
             <div onClick="{{ cancelVideoEstimate }}" style="cursor:pointer;padding:8px 16px;border-radius:var(--r-pill);background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display)">CANCEL</div>
           </div>
         </div>
+      </sc-if>
+      <sc-if value="{{ grid }}" hint-placeholder-val="{{ false }}">
+        <section aria-label="Check against the game" data-grid-sheet style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <h2 style="margin:0;font:600 22px var(--font-display);color:var(--ink-900)">Check against the game</h2>
+            <button type="button" onClick="{{ grid.onClose }}" class="om-press" style="min-height:44px;padding:0 12px;font:600 15px var(--font-body);color:var(--ink-700)">Close</button>
+          </div>
+          <sc-if value="{{ grid.msg }}" hint-placeholder-val="{{ false }}"><div role="status" style="font:13px var(--font-body);color:var(--ink-700)">{{ grid.msg }}</div></sc-if>
+          <sc-if value="{{ grid.error }}" hint-placeholder-val="{{ false }}"><div role="alert" style="font:13px var(--font-body);color:var(--ink-900)">{{ grid.error }}</div></sc-if>
+          <sc-if value="{{ grid.sheet }}" hint-placeholder-val="{{ false }}">
+            <div style="font:600 15px var(--font-body);color:var(--ink-900);line-height:1.45;text-wrap:pretty">{{ grid.sheet.line }}</div>
+            <sc-for list="{{ grid.sheet.notes }}" as="n" hint-placeholder-count="1">
+              <div style="font:13px var(--font-body);color:var(--ink-700);line-height:1.45">{{ n }}</div>
+            </sc-for>
+            <sc-for list="{{ grid.sheet.sections }}" as="sec" hint-placeholder-count="2">
+              <div data-grid-section="{{ sec.key }}" style="border-top:1px solid var(--line-200);padding-top:12px;display:flex;flex-direction:column;gap:4px">
+                <div style="font:600 15px var(--font-body);color:var(--ink-900)">{{ sec.title }}</div>
+                <div style="font:12px var(--font-body);color:var(--ink-500)">{{ sec.note }}</div>
+                <sc-for list="{{ sec.rows }}" as="row" hint-placeholder-count="3">
+                  <div style="font:13px var(--font-body);color:var(--ink-700);line-height:1.5">{{ row }}</div>
+                </sc-for>
+              </div>
+            </sc-for>
+            <div data-grid-section="strings" style="border-top:1px solid var(--line-200);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:600 15px var(--font-body);color:var(--ink-900)">Search strings</div>
+              <div style="font:12px var(--font-body);color:var(--ink-500);line-height:1.5">Paste one into the game's search box to find the Pokemon to import again. A comma means or.</div>
+              <sc-if value="{{ grid.noStrings }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--ink-700)">Nothing to look for.</div></sc-if>
+              <sc-for list="{{ grid.sheet.strings }}" as="b" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div data-grid-string style="flex:1;min-width:0;font:12px var(--font-display);color:var(--ink-900);line-height:1.45;overflow-wrap:anywhere;user-select:all">{{ b.text }}</div>
+                  <button type="button" onClick="{{ b.onCopy }}" aria-label="{{ b.aria }}" class="om-press ui-btn-tint" style="min-height:44px;min-width:44px">{{ b.label }}</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
       </sc-if>
       <sc-if value="{{ hasCoverage }}" hint-placeholder-val="{{ false }}">
         <details class="ui-disc">
@@ -3311,7 +3352,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.369{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.370{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -5329,6 +5370,7 @@ class Component extends DCLogic {
     transferHold: [],
     transferJunkOnly: false,
     costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null,
+    gridBusy: false, gridMsg: '', gridError: '', gridRes: null,
     tagSnap: {},
     tagNames: {},
     leagueSel: null,
@@ -6270,7 +6312,7 @@ class Component extends DCLogic {
 
   firstRunImporting() {
     const s = this.state;
-    return !!(s.ocrBusy || (s.videoImport && !s.videoImport.error && !s.videoImport.summary) || s.videoEstimate || s.pendingConfirm || s.restorePending);
+    return !!(s.ocrBusy || (s.videoImport && !s.videoImport.error && !s.videoImport.summary) || s.videoEstimate || s.gridBusy || s.pendingConfirm || s.restorePending);
   }
 
   openFirstRun(auto) {
@@ -7141,6 +7183,190 @@ class Component extends DCLogic {
     if (!pend || !pend.idxs.length) return;
     this.offerUndo(pend.idxs.length + ' marked as costume', ['ivOverrides']);
     this.patchEach(pend.idxs, { costume: true }, { push: 'soon', state: { costumePending: null } });
+  }
+
+  // ---- Grid reconcile -----------------------------------------------------------------------------------------
+  // Check against the game: a recording of the game's Pokemon list (grid view), scrolled top to bottom, is read as {name, cp} per
+  // tile plus the header count ("POKEMON n / max"). The tiles are compared with the roster as a multiset of (name, CP). Nothing
+  // is written to the roster: the sheet lists what differs and gives in-game search strings for what to import again.
+  // reads: [{name, cp}] in tile order (recents sort puts the newest first). header: {n, max} or null. Pure.
+  gridReconcile(reads, roster, header) {
+    const nz = s => this.costumeNorm(s), m = this.mechanics;
+    const own = new Set((roster || []).map(p => nz(p.name)));
+    const known = nm => own.has(nz(nm)) || !!(m && m.speciesInfo && m.speciesInfo(nm, ''));
+    const game = new Map(), nameCheck = [];
+    (reads || []).forEach((r, i) => {
+      const name = String((r && r.name) || '').trim(), cp = r && r.cp != null && r.cp !== '' ? Number(r.cp) : NaN;
+      if (!name || !Number.isFinite(cp) || !known(name)) { nameCheck.push({ pos: i + 1, name, cp: Number.isFinite(cp) ? cp : null }); return; }
+      const k = nz(name) + '|' + cp;
+      const g = game.get(k) || game.set(k, { name, cp, n: 0 }).get(k);
+      g.n++;
+    });
+    const app = new Map();
+    let noCp = 0;
+    (roster || []).forEach(p => {
+      if (!Number.isFinite(p.cp)) { noCp++; return; }
+      const k = nz(p.name) + '|' + p.cp;
+      (app.get(k) || app.set(k, { name: p.name, cp: p.cp, n: 0 }).get(k)).n++;
+    });
+    let missing = [], extra = [];
+    const ambiguous = [];
+    new Set([...game.keys(), ...app.keys()]).forEach(k => {
+      const g = game.get(k), a = app.get(k), n = g ? g.n : 0, c = a ? a.n : 0, e = g || a;
+      if (n === c) return;
+      if (Math.max(n, c) > 1) { ambiguous.push({ name: e.name, cp: e.cp, game: n, app: c }); return; }
+      (n > c ? missing : extra).push({ name: e.name, cp: e.cp });
+    });
+    // A nickname tile cannot be matched by name: it takes one unmatched roster Pokemon of the same CP, shown for a hand check.
+    nameCheck.forEach(t => {
+      const j = Number.isFinite(t.cp) ? extra.findIndex(x => x.cp === t.cp) : -1;
+      if (j >= 0) t.near = extra.splice(j, 1)[0].name;
+    });
+    // The same species both missing and extra: most likely powered up since the import.
+    const byName = list => { const o = new Map(); list.forEach(x => { const k = nz(x.name); (o.get(k) || o.set(k, []).get(k)).push(x); }); o.forEach(v => v.sort((a, b) => a.cp - b.cp)); return o; };
+    const pairs = [], bm = byName(missing), be = byName(extra), paired = new Set();
+    bm.forEach((ms, nm) => { const es = be.get(nm) || []; for (let i = 0; i < Math.min(ms.length, es.length); i++) { pairs.push({ name: ms[i].name, game: ms[i].cp, app: es[i].cp }); paired.add(ms[i]); paired.add(es[i]); } });
+    missing = missing.filter(x => !paired.has(x));
+    extra = extra.filter(x => !paired.has(x));
+    const order = (a, b) => nz(a.name).localeCompare(nz(b.name)) || a.cp - b.cp;
+    missing.sort(order); extra.sort(order); ambiguous.sort(order);
+    pairs.sort((a, b) => nz(a.name).localeCompare(nz(b.name)) || a.game - b.game);
+    // What to look for in the game again: the missing ones, the game side of each pair, and the surplus side of a differing count.
+    const find = [...missing, ...pairs.map(p => ({ name: p.name, cp: p.game })), ...ambiguous.filter(x => x.game > x.app).map(x => ({ name: x.name, cp: x.cp }))].sort(order);
+    const hn = header && Number.isFinite(header.n) ? header.n : null, read = reads ? reads.length : 0;
+    return { missingInApp: missing, extraInApp: extra, pairs, ambiguous, nameCheck, find,
+      count: { read, header: hn, max: header && Number.isFinite(header.max) ? header.max : null, short: hn == null ? null : hn - read, app: (roster || []).length, noCp } };
+  }
+
+  // Frames' tile lists (in recording order; null = a frame that could not be read) into one list. Neighbouring frames overlap: the
+  // longest tail of the previous frame that opens the next one is the same tiles and counts once. No overlap is a gap.
+  gridMerge(frames) {
+    const key = t => this.costumeNorm(t.name) + '|' + t.cp, tiles = [];
+    let prev = null, gaps = 0, failed = 0;
+    (frames || []).forEach(f => {
+      if (!f) { failed++; prev = null; return; }
+      if (!f.length) return;
+      let k = 0;
+      if (prev) for (let n = Math.min(prev.length, f.length); n > 0 && !k; n--) if (prev.slice(-n).every((t, i) => key(t) === key(f[i]))) k = n;
+      if (prev && !k) gaps++;
+      tiles.push(...f.slice(k));
+      prev = f;
+    });
+    return { tiles, gaps, failed };
+  }
+
+  // In-game search strings for tiles [{name, cp}], in the format of isolationStrings: `name1,name2 & cp1,cp2` (names or-ed, then exact CPs
+  // or-ed), lower case, at most 90 characters, sorted by name then CP and batched greedily. A name that is not a-z only (Farfetch'd,
+  // Mr. Mime, a nickname) cannot be typed that way: it goes to `manual`. No roster check: a surplus match only updates a Pokemon.
+  gridStrings(list) {
+    const MAX = 90, seen = new Set(), manual = [], batches = [];
+    let items = [];
+    (list || []).forEach(t => {
+      const name = String(t.name || '').trim().toLowerCase(), k = name + '|' + t.cp;
+      if (!Number.isFinite(t.cp) || seen.has(k)) return;
+      seen.add(k);
+      if (!/^[a-z]+$/.test(name)) manual.push({ name: String(t.name || '').trim(), cp: t.cp }); else items.push({ name, cp: t.cp });
+    });
+    items.sort((a, b) => a.name.localeCompare(b.name) || a.cp - b.cp);
+    const textOf = it => [...new Set(it.map(x => x.name))].join(',') + ' & ' + [...new Set(it.map(x => x.cp))].sort((a, b) => a - b).map(c => 'cp' + c).join(',');
+    while (items.length) {
+      let cur = [];
+      items.forEach(x => { const trial = cur.concat(x); if (textOf(trial).length <= MAX) cur = trial; });
+      if (!cur.length) { manual.push({ name: items[0].name, cp: items[0].cp }); items = items.slice(1); continue; }
+      batches.push({ text: textOf(cur), n: cur.length });
+      items = items.filter(x => cur.indexOf(x) < 0);
+    }
+    return { batches, manual };
+  }
+
+  // The sheet as plain data (the template and the tests read the same thing).
+  gridSheet(res) {
+    if (!res) return null;
+    const c = res.count, cap = (a, f) => a.slice(0, 30).map(f).concat(a.length > 30 ? ['and ' + (a.length - 30) + ' more'] : []);
+    const cpOf = x => x.name + ' CP ' + x.cp;
+    let line;
+    if (c.header == null) line = 'Read ' + c.read + ' tiles. The count in the header was not seen, so missed tiles cannot be told.';
+    else if (c.short > 0) line = 'Read ' + c.read + ' of ' + c.header + '. ' + c.short + (c.short === 1 ? ' tile' : ' tiles') + ' may be missed. Scroll again.';
+    else if (c.short < 0) line = 'Read ' + c.read + ' but the game has ' + c.header + '. ' + (-c.short) + ' tiles were read twice or misread.';
+    else line = 'Read ' + c.read + ' of ' + c.header + '. Every tile was seen.';
+    const notes = [];
+    if (res.failed) notes.push(res.failed + (res.failed === 1 ? ' frame' : ' frames') + ' could not be read.');
+    if (res.gaps) notes.push('The scroll jumped ' + res.gaps + (res.gaps === 1 ? ' time' : ' times') + '. Tiles in between may be missed. Scroll slower.');
+    if (c.header != null && c.app !== c.header) notes.push('The app has ' + c.app + ' Pokemon, the game ' + c.header + '.');
+    const sections = [
+      { key: 'missing', title: 'In the game, not in the app', note: 'Import these again.', rows: cap(res.missingInApp, cpOf) },
+      { key: 'pairs', title: 'Probably powered up', note: 'Same species, new CP. Import again to update.', rows: cap(res.pairs, p => p.name + ': CP ' + p.app + ' in the app, ' + p.game + ' in the game') },
+      { key: 'extra', title: 'In the app, not in the game', note: c.short > 0 ? 'Not confirmed: tiles that were not read show here too.' : 'Traded, released or changed since the import.', rows: cap(res.extraInApp, cpOf) },
+      { key: 'ambiguous', title: 'Same name and CP', note: 'Twins cannot be told apart. The counts differ.', rows: cap(res.ambiguous, x => cpOf(x) + ': ' + x.game + ' in the game, ' + x.app + ' in the app') },
+      { key: 'names', title: 'Check by hand', note: 'Nickname or unreadable tile. Not matched, not guessed.', rows: cap(res.nameCheck, t => 'Tile ' + t.pos + ': ' + (t.name || 'no name') + (t.cp != null ? ' CP ' + t.cp : ' no CP') + (t.near ? ' (the app has ' + t.near + ' at this CP)' : '')) }
+    ];
+    const st = this.gridStrings(res.find);
+    sections.push({ key: 'manual', title: 'Search by hand', note: 'These names cannot be typed into a search string.', rows: cap(st.manual, cpOf) });
+    return { line, notes, sections: sections.filter(s => s.rows.length), strings: st.batches, toFind: res.find.length };
+  }
+
+  gridPrompt() {
+    return 'Each image is a frame from the Pokemon GO Pokemon list in grid view: tiles with the CP number above a picture and the name below, and a header reading "POKEMON n / max". '
+      + 'For EACH image, in the order given, report the two numbers of the header (null if the header is not visible) and every tile whose CP and name are both fully visible, in reading order (left to right, top to bottom). '
+      + 'Skip a tile cut off at an edge. Copy each name exactly as shown, a nickname included. Do not read stats, tags, stars or anything else. '
+      + 'Respond with ONLY a JSON array, no markdown fences, one object per image: [{"image": 1, "count": number|null, "max": number|null, "tiles": [{"name": string, "cp": number}]}].';
+  }
+
+  async gridFromVideo(file) {
+    if (!file || this.state.gridBusy) return;
+    this.setState({ gridBusy: true, gridError: '', gridMsg: 'Opening the recording', gridRes: null });
+    try {
+      const raw = await this.extractFrames(file, { fps: 2, maxFrames: 120, width: 600, quality: 0.6 });
+      this.setState({ videoImport: null, gridBusy: false });
+      await this.gridRun(raw.frames);
+    } catch (err) {
+      this.setState({ videoImport: null, gridBusy: false, gridMsg: '', gridError: (err && err.message) || 'Could not read that recording.' });
+    }
+  }
+
+  // frames: base64 JPEGs in recording order. Reads them a few at a time (the existing pacing and key rotation), merges, compares.
+  async gridRun(frames) {
+    if (this.state.gridBusy || !frames || !frames.length) return;
+    this.setState({ gridBusy: true, gridError: '', gridMsg: 'Reading frames', gridRes: null });
+    const PER = 4, batches = [], lists = [], heads = [];
+    for (let i = 0; i < frames.length; i += PER) batches.push(frames.slice(i, i + PER));
+    let lastErr = '', okBatches = 0;
+    this._rateBackoff = 1;
+    try {
+      for (let b = 0; b < batches.length; b++) {
+        if ((this.state.geminiKeys || []).length && !this.activeGeminiKeys().length && this.msUntilKeyFree() > 0) await this.waitForKeyCooldown();
+        await this.throttleForRateLimit(b === 0 ? 0 : 1, batches.length);
+        this.setState({ gridMsg: this.batchLabel(b + 1, batches.length) || 'Reading frames' });
+        let arr = null;
+        try {
+          const reply = await this.completeWithRetry({ messages: [{ role: 'user', content: [{ type: 'text', text: this.gridPrompt() }, ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))] }], max_tokens: 4000 });
+          this.noteRateSuccess();
+          arr = this.extractJsonArray(reply);
+        } catch (e) {
+          lastErr = (e && e.message) || String(e);
+          if (e && (e.kind === 'noEngine' || e.kind === 'rejectedKey')) throw e;
+          if (e && e.kind === 'rateLimited') this.noteRateLimit();
+        }
+        if (arr) okBatches++;
+        batches[b].forEach((_, i) => {
+          const o = arr && (arr.find(x => x && x.image === i + 1) || arr[i]);
+          if (!o) { lists.push(null); return; }
+          const num = v => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+          if (num(o.count) != null && num(o.max) != null) heads.push(num(o.count) + '/' + num(o.max));
+          lists.push((Array.isArray(o.tiles) ? o.tiles : []).filter(t => t && (t.name || t.cp != null)).map(t => ({ name: String(t.name || '').trim(), cp: num(t.cp) })));
+        });
+      }
+      if (!okBatches) throw new Error(lastErr || 'The AI reply could not be read.');
+      const merged = this.gridMerge(lists), tally = {};
+      heads.forEach(h => { tally[h] = (tally[h] || 0) + 1; });
+      const top = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0], hp = top ? top.split('/').map(Number) : null;
+      const res = this.gridReconcile(merged.tiles, this.effectiveRosterForMatch(), hp ? { n: hp[0], max: hp[1] } : null);
+      res.gaps = merged.gaps;
+      res.failed = merged.failed;
+      this.setState({ gridBusy: false, gridMsg: '', gridRes: res });
+    } catch (e) {
+      this.setState({ gridBusy: false, gridMsg: '', gridError: (e && e.message) || 'Could not read the recording.' });
+    }
   }
 
   // Costume Pokemon of a species that evolves, whose Evolve button nobody has checked yet.
@@ -16036,7 +16262,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'pushOn', 'pushBusy', 'pushMsg', 'pushPrefs', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'gridBusy', 'gridMsg', 'gridError', 'gridRes', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'pushOn', 'pushBusy', 'pushMsg', 'pushPrefs', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -21731,6 +21957,15 @@ class Component extends DCLogic {
       onPasteDraftChange: (e) => this.setState({ pasteDraft: e.target.value, pasteError: '' }),
       applyPastedImport: () => this.applyPastedImport(),
       copyImportPrompt: () => this.copyImportPrompt(),
+      onGridUpload: (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; this.gridFromVideo(f); },
+      grid: (() => {
+        const st = this.state;
+        if (!st.gridBusy && !st.gridError && !st.gridRes) return null;
+        const sheet = this.gridSheet(st.gridRes);
+        if (sheet) sheet.strings = sheet.strings.map((b, i) => ({ ...b, label: st.copiedKey === 'grid' + i ? 'Copied' : 'Copy', aria: 'Copy search string ' + (i + 1) + ' of ' + sheet.strings.length, onCopy: () => this.copyText(b.text, 'grid' + i) }));
+        return { msg: st.gridBusy ? st.gridMsg : '', error: st.gridError || '', sheet, noStrings: !!(sheet && !sheet.strings.length),
+          onClose: () => this.setState({ gridRes: null, gridError: '', gridMsg: '' }) };
+      })(),
       serverImportBusy: !!this.state.serverImportBusy,
       serverImportError: this.state.serverImportError || '',
       serverImportSummary: this.state.serverImportSummary || '',
