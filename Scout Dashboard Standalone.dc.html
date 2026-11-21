@@ -1193,7 +1193,7 @@
     --bar-bg:rgba(12,27,31,.82); --nav-bg:rgba(15,32,37,.95); --nav-line:rgba(190,240,225,.14); --menu-bg:rgba(27,52,58,.96); --toast-bg:rgba(37,66,73,.96);
     --type-electric:#ffd60a; --type-fighting:#ff453a;
     --type-lift:#fff; --tt-dragon:#aaa0f4; --tt-ghost:#bdb2ec; --tt-poison:#d6a9ee; --tt-dark:#b0abbd; --tt-psychic:#ff9db8; --tt-fairy:#f5a8d6; --tt-fighting:#ff8a80;
-    --fill-grad:linear-gradient(100deg,var(--fill-a),var(--fill-b));
+    --fill-grad:linear-gradient(var(--accent-fill),var(--accent-fill));
     --surface-page:var(--bg); --surface:var(--surface-1); --surface-card:var(--surface-1); --surface-muted:var(--muted); --surface-sunken:var(--surface-2); --surface-field:var(--surface-2);
     --ink-900:var(--text); --ink-700:var(--text); --ink-600:var(--text-2); --ink-500:var(--text-2); --ink-400:var(--text-3); --ink-300:var(--text-3);
     --line-100:var(--fill); --line-200:var(--line); --line-300:var(--line-strong);
@@ -1277,7 +1277,7 @@
   [data-scroller]>*{scroll-snap-align:start}
   .app-root:not(.tab-today) .stat-strip{display:none}
   .no-roster:is(.tab-today,.tab-roster,.tab-pvp,.tab-recommend) [role=main] > :not([data-empty-state]), .no-roster .stat-strip{display:none !important}
-  .ui-btn-fill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background-color:var(--accent-fill);background-image:var(--fill-grad);color:var(--on-accent);font:700 15px var(--font-body);letter-spacing:.02em !important;box-shadow:0 2px 8px color-mix(in oklab,var(--fill-b) 35%,transparent)}
+  .ui-btn-fill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background-color:var(--accent-fill);background-image:var(--fill-grad);color:var(--on-accent);font:700 15px var(--font-body);letter-spacing:.02em !important}
   .ui-btn-tint{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;border-radius:999px;background:var(--ios-fill);color:var(--accent-text);font:600 15px var(--font-body)}
   .ui-btn-plain{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 4px;color:var(--accent-text);font:600 15px var(--font-body)}
   @media (max-width:360px){.app-header .ios-icon-btn{width:32px;height:32px}}
@@ -1378,8 +1378,8 @@
   [data-empty-state]{background:var(--surface-1);border-radius:var(--r-md);box-shadow:inset 0 0 0 1px var(--line);padding:32px 24px !important}
   [data-empty-state] svg{box-sizing:content-box;width:40px;height:40px;padding:20px;border-radius:50%;background:var(--surface-2);stroke:var(--text-2);box-shadow:none}
   [data-firstrun]{background:var(--bg) !important}
-  [data-firstrun]::before{content:"Professor";display:block;height:112px;box-sizing:border-box;padding-top:36px;background:var(--fill-grad);color:#fff;font:700 28px/1 var(--font-display);text-align:center;border-radius:0 0 var(--r-lg) var(--r-lg)}
-  [data-firstrun]>div{position:relative;background:var(--surface-1);border-radius:var(--r-md);box-shadow:inset 0 0 0 1px var(--line);margin:-40px auto 24px !important;width:calc(100% - 32px);padding:16px 16px 24px !important}
+  [data-firstrun]::before{content:"Professor";display:block;height:64px;box-sizing:border-box;padding-top:28px;color:var(--text);font:600 22px/1 var(--font-display);text-align:center}
+  [data-firstrun]>div{position:relative;background:var(--surface-1);border-radius:var(--r-md);box-shadow:inset 0 0 0 1px var(--line);margin:0 auto 24px !important;width:calc(100% - 32px);padding:16px 16px 24px !important}
   .fr-bar{height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden}
   .fr-bar i{display:block;height:100%;border-radius:999px;background:var(--fill-grad);transition:width var(--dur-base) var(--ease-out)}
   .mg-in{padding:12px 8px !important;text-align:center;font-size:12px !important}
@@ -2331,7 +2331,7 @@
       <sc-if value="{{ refreshUndone }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--grass-700)">Restored the ranks, evolution and move data from before this refresh.</div></sc-if>
     </section>
 
-    <div onClick="{{ openFirstRun }}" role="button" class="om-press ui-row-link" style="padding:0 16px;background:var(--surface-card);border-radius:var(--r-lg)"><span>Welcome tour</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span></div>
+    <div onClick="{{ openFirstRun }}" role="button" class="om-press ui-row-link" style="padding:0 16px;background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;margin-bottom:12px"><span>Welcome tour</span><span aria-hidden="true" class="ui-chev">&rsaquo;</span></div>
 
     <div data-push-alerts style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -3311,7 +3311,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.368{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.369{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -4186,7 +4186,7 @@
 
   <sc-if value="{{ isRaid }}" hint-placeholder-val="{{ false }}">
   <div role="main" style="animation:fadeSlideIn 0.36s ease">
-    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px 20px;margin-bottom:20px">
+    <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:16px;margin-bottom:16px">
       <div style="font:600 22px/1.2 var(--font-display);color:var(--ink-900);letter-spacing:-.012em">RAID COUNTERS</div>
       <div style="font:13px/1.6 var(--font-body);color:var(--ink-500);margin-top:8px;text-wrap:pretty">Name the boss or pick its types to rank your Pokemon by damage per second.</div><details class="ui-more"><summary>More</summary><div>STAB, type effectiveness and optional weather) weighted by how well each one survives the boss&rsquo;s own types. It assumes the boss uses moves of its own types, so it is an estimate, not a battle simulation. Pokemon whose moves aren&rsquo;t in the move database are left out rather than guessed.</div></details>
     </div>
@@ -4846,7 +4846,7 @@
       <div style="font:700 28px var(--font-display);color:var(--grass-700)">{{ intelDisplay.pvpReadyCount }}</div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:10px;padding:16px;grid-column:1/-1">
-      <div style="font:12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">&#10024; SHINIES</div>
+      <div style="font:12px var(--font-display);color:var(--ink-400);letter-spacing:.05em;margin-bottom:6px">SHINIES</div>
       <div style="font:700 28px var(--font-display);color:var(--type-electric)">{{ intelDisplay.shinyCount }} <span style="font-size:12px;color:var(--ink-300)">{{ intelDisplay.shinyToConfirm }} to confirm</span></div>
       <div style="font:12px var(--font-body);color:var(--ink-500);margin-top:4px">{{ intelDisplay.shinySpecies }}</div>
     </div>
