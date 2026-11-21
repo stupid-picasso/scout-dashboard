@@ -26,8 +26,8 @@ const ctx = { mechanics: loadMechanics() };
 ctx.costumeNorm = new Function('s', body('costumeNorm(s) {')).bind(ctx);
 ctx.gridReconcile = new Function('reads', 'roster', 'header', body('gridReconcile(reads, roster, header) {')).bind(ctx);
 ctx.gridMerge = new Function('frames', body('gridMerge(frames) {')).bind(ctx);
-ctx.gridStrings = new Function('list', 'plain', 'per', body('gridStrings(list, plain, per) {')).bind(ctx);
-ctx.gridSheet = new Function('res', 'plain', body('gridSheet(res, plain) {')).bind(ctx);
+ctx.gridStrings = new Function('list', body('gridStrings(list) {')).bind(ctx);
+ctx.gridSheet = new Function('res', body('gridSheet(res) {')).bind(ctx);
 
 let pass = 0;
 const failures = [];
@@ -120,13 +120,11 @@ const rec = (reads, roster, header) => ctx.gridReconcile(frozen(reads), frozen(r
   check('reads and roster are left as they were', JSON.stringify([reads, roster]), before);
 })();
 
-// ---- stop point (recents sort) ----
-(function stopPoint() {
+// ---- the reader never stops at a tile the app already has ----
+(function noStop() {
   const roster = [mon('Feebas', 115), mon('Whismur', 81)];
-  const r = rec([t('Pidgey', 30), t('Rattata', 20), t('Feebas', 115), t('Zubat', 10), t('Whismur', 81)], roster);
-  check('first known tile, new above it, unknown below it', r.stop, { first: 3, newAbove: 2, unknownBelow: 1 });
-  check('first tile known', rec([t('Feebas', 115)], roster).stop, { first: 1, newAbove: 0, unknownBelow: 0 });
-  check('no known tile', rec([t('Pidgey', 30)], roster).stop, null);
+  const r = rec([t('Feebas', 115), t('Whismur', 81), t('Pidgey', 30), t('Zubat', 10), t('Rattata', 20)], roster, { n: 5, max: 1225 });
+  check('tiles after known ones are all counted and the later missing ones are listed', [r.count.read, r.missingInApp, 'stop' in r], [5, [t('Pidgey', 30), t('Rattata', 20), t('Zubat', 10)], false]);
 })();
 
 // ---- merging scroll frames ----
@@ -144,33 +142,39 @@ const rec = (reads, roster, header) => ctx.gridReconcile(frozen(reads), frozen(r
   check('no frames', ctx.gridMerge([]).tiles, []);
 })();
 
-// ---- search strings ----
+// ---- search strings (the Search & rename format: names or-ed & exact CPs or-ed, lower case, 90 characters) ----
 (function strings() {
-  const list = Array.from({ length: 25 }, (_, i) => t('Feebas', 100 + i));
-  check('batches of ten', ctx.gridStrings(list, false).map(b => b.n), [10, 10, 5]);
-  check('batch text', ctx.gridStrings([t('Feebas', 109), t('Whismur', 81)], false), [{ text: 'Feebas&cp109,Whismur&cp81', n: 2 }]);
-  check('plain CP form drops the name', ctx.gridStrings([t('Feebas', 109), t('Whismur', 81)], true), [{ text: 'cp109,cp81', n: 2 }]);
-  check('plain form of equal CPs is one term', ctx.gridStrings([t('Feebas', 109), t('Whismur', 109)], true), [{ text: 'cp109', n: 1 }]);
-  check('a different batch size', ctx.gridStrings(list, false, 4).map(b => b.n), [4, 4, 4, 4, 4, 4, 1]);
-  check('spaces, diacritics and apostrophes stay as the game shows them', ctx.gridStrings([t('Mr. Mime', 700), t('Flabébé', 500), t("Farfetch'd", 300), t('Nidoran♀', 200)], false)[0].text, "Mr. Mime&cp700,Flabébé&cp500,Farfetch'd&cp300,Nidoran♀&cp200");
-  check('a name with a comma or & is searched by CP alone', ctx.gridStrings([t('A,B', 11), t('C&D', 12)], false)[0].text, 'cp11,cp12');
-  check('no CP, no term', ctx.gridStrings([t('Feebas', null)], false), []);
-  check('empty', ctx.gridStrings([], false), []);
-  const same = ctx.gridStrings([t('Feebas', 109), t('Feebas', 109)], false);
-  check('the same tile twice is searched once', same[0].n, 1);
+  const gs = l => ctx.gridStrings(l);
+  check('one string: names, then CPs', gs([t('Feebas', 109), t('Whismur', 81)]), { batches: [{ text: 'feebas,whismur & cp81,cp109', n: 2 }], manual: [] });
+  check('sorted by name then CP, lower case', gs([t('Zubat', 55), t('Feebas', 115), t('Feebas', 109)]).batches[0].text, 'feebas,zubat & cp55,cp109,cp115');
+  check('the same tile twice is searched once', gs([t('Feebas', 109), t('FEEBAS', 109)]).batches[0].n, 1);
+  const many = Array.from({ length: 30 }, (_, i) => t('feebas', 100 + i));
+  const b = gs(many).batches;
+  check('no string is longer than 90 characters', b.every(x => x.text.length <= 90), true);
+  check('a string is filled before the next one starts', [b.length, b[0].text.length > 80, b.reduce((a, x) => a + x.n, 0)], [3, true, 30]);
+  const fit = (lo, n) => [t('feebas', 10), ...(lo > 1 ? [t('feebas', 11)] : []), ...Array.from({ length: n }, (_, i) => t('feebas', 100 + i))];
+  const at90 = gs(fit(2, 12)).batches, at91 = gs(fit(1, 13)).batches;
+  check('a string of exactly 90 characters is allowed', [at90.length, at90[0].text.length], [1, 90]);
+  check('a string that would be 91 characters starts the next one', [at91.length, at91[0].text.length <= 90, at91[1].n], [2, true, 1]);
+  check('the first batch holds the lowest CPs', b[0].text.startsWith('feebas & cp100,cp101,'), true);
+  const mix = [t('Mr. Mime', 700), t('Flabébé', 500), t("Farfetch'd", 300), t('Bobby2', 200), t('Gible', 248)];
+  check('names that are not a-z only go to the by-hand list, as the game shows them', gs(mix), { batches: [{ text: 'gible & cp248', n: 1 }], manual: [t('Mr. Mime', 700), t('Flabébé', 500), t("Farfetch'd", 300), t('Bobby2', 200)] });
+  check('no CP, no term', gs([t('Feebas', null)]), { batches: [], manual: [] });
+  check('empty', gs([]), { batches: [], manual: [] });
+  check('undefined', gs(undefined), { batches: [], manual: [] });
 })();
 
 // ---- sheet words ----
 (function sheet() {
   const roster = [mon('Feebas', 115)];
-  const s = ctx.gridSheet(rec([t('Feebas', 115), t('Whismur', 81)], roster, { n: 14, max: 1225 }), false);
+  const s = ctx.gridSheet(rec([t('Feebas', 115), t('Whismur', 81)], roster, { n: 14, max: 1225 }));
   check('short line', s.line, 'Read 2 of 14. 12 tiles may be missed. Scroll again.');
-  check('the extras are marked unconfirmed while tiles are short', ctx.gridSheet(rec([], roster, { n: 3, max: 9 }), false).sections.find(x => x.key === 'extra').note, 'Not confirmed: tiles that were not read show here too.');
-  check('exact line', ctx.gridSheet(rec([t('Feebas', 115)], roster, { n: 1, max: 9 }), false).line, 'Read 1 of 1. Every tile was seen.');
-  check('over line', ctx.gridSheet(rec([t('Feebas', 115), t('Feebas', 115)], roster, { n: 1, max: 9 }), false).line, 'Read 2 but the game has 1. 1 tiles were read twice or misread.');
-  check('no header', ctx.gridSheet(rec([t('Feebas', 115)], roster, null), false).line, 'Read 1 tiles. The count in the header was not seen, so missed tiles cannot be told.');
-  check('strings follow the toggle', [s.strings[0].text, ctx.gridSheet(rec([t('Feebas', 115), t('Whismur', 81)], roster, null), true).strings[0].text], ['Whismur&cp81', 'cp81']);
-  const long = ctx.gridSheet(rec(Array.from({ length: 40 }, (_, i) => t('Feebas', 100 + i)), [], null), false);
+  check('the extras are marked unconfirmed while tiles are short', ctx.gridSheet(rec([], roster, { n: 3, max: 9 })).sections.find(x => x.key === 'extra').note, 'Not confirmed: tiles that were not read show here too.');
+  check('exact line', ctx.gridSheet(rec([t('Feebas', 115)], roster, { n: 1, max: 9 })).line, 'Read 1 of 1. Every tile was seen.');
+  check('over line', ctx.gridSheet(rec([t('Feebas', 115), t('Feebas', 115)], roster, { n: 1, max: 9 })).line, 'Read 2 but the game has 1. 1 tiles were read twice or misread.');
+  check('no header', ctx.gridSheet(rec([t('Feebas', 115)], roster, null)).line, 'Read 1 tiles. The count in the header was not seen, so missed tiles cannot be told.');
+  check('the sheet carries the strings and the by-hand list', [s.strings[0].text, ctx.gridSheet(rec([t('Feebas', 115), t('Whismur', 81), t("Farfetch'd", 300)], roster, null)).sections.find(x => x.key === 'manual').rows[0]], ['whismur & cp81', "Farfetch'd CP 300"]);
+  const long = ctx.gridSheet(rec(Array.from({ length: 40 }, (_, i) => t('Feebas', 100 + i)), [], null));
   check('long lists are cut with a count', [long.sections[0].rows.length, long.sections[0].rows[30]], [31, 'and 10 more']);
   check('no result, no sheet', ctx.gridSheet(null, false), null);
 })();

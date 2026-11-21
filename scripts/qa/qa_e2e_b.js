@@ -2696,7 +2696,7 @@ module.exports = async function suiteB() {
   }, 'high');
 
   // Grid reconcile: the recording is read by a stubbed model (one request of three frames), merged, matched to the roster and shown as a sheet.
-  await T('GRID-01', 'Import', 'Check against the game: a stubbed read of three grid frames gives the count line, the lists, the search strings and the plain CP form, and writes nothing to the roster', async () => {
+  await T('GRID-01', 'Import', 'Check against the game: a stubbed read of three grid frames gives the count line, the lists, the search string in the Search & rename format, and writes nothing to the roster', async () => {
     await appSession(async sx => {
       const mk = (idx, name, cp) => ({ idx, name, cp, hp: 60, atkIV: 10, defIV: 10, staIV: 10, ivAvg: 66.7, scanDate: '2026-10-01' });
       const mons = [mk('g1', 'Feebas', 115), mk('g2', 'Pidgey', 300), mk('g3', 'Dragonite', 800), mk('g4', 'Zubat', 40)];
@@ -2719,19 +2719,16 @@ module.exports = async function suiteB() {
       expect(/Zubat: CP 40 in the app, 55 in the game/.test(t1) && /Bobby CP 800/.test(t1) && /Pidgey CP 300/.test(t1), 'pair, nickname and extra are listed');
       const strings = async () => sx.page.locator('[data-grid-string]').allInnerTexts();
       const s1 = await strings();
-      expect(s1.join() === 'Feebas&cp109,Whismur&cp81,Zubat&cp55', 'the default search string: ' + s1.join());
-      await sx.page.getByRole('switch').first().click(); await sx.page.waitForTimeout(250);
-      const s2 = await strings();
-      expect(s2.join() === 'cp109,cp81,cp55', 'the plain CP form: ' + s2.join());
+      expect(s1.join() === 'feebas,whismur,zubat & cp55,cp81,cp109', 'the search string: ' + s1.join());
       await sx.page.getByRole('button', { name: /Copy search string 1 of 1/ }).click(); await sx.page.waitForTimeout(400);
       const st2 = await sx.state();
       expect(st2.copiedKey === 'grid0' || !!st2.fileFallback, 'copied, or the text is offered when the clipboard refuses');
       expect(JSON.stringify(st2.addedPokemon) === before, 'the roster is untouched');
       const req = g.generated();
       expect(req.length === 1 && req[0].parts.filter(p => p.inline_data).length === 3 && /POKEMON n \/ max/.test(req[0].text), 'one request, three frames, the grid prompt');
-      await sx.set({ gridPlain: false, copiedKey: '', fileFallback: null });
+      await sx.set({ copiedKey: '', fileFallback: null });
       await sx.page.waitForTimeout(200);
-      golden('grid-sheet', { requests: req.length, images: req[0].parts.filter(p => p.inline_data).length, sheetDefault: await txt(), plain: s2 });
+      golden('grid-sheet', { requests: req.length, images: req[0].parts.filter(p => p.inline_data).length, sheetDefault: await txt(), strings: s1 });
     });
   }, 'high');
 
