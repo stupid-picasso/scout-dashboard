@@ -977,12 +977,12 @@ function buildLists(roster, bestRank) {
   const oc = { ...hi, ivSource: 'owner-confirmed', barConfidence: 'low' };
   const sum3 = ctx.mergeAppraisalImport([oc]);
   check('an owner-confirmed row applies even though the bars were low confidence', [sum3.applied, sum3.unsure], [1, 0]);
-  // The real data-file row, through the real normaliser.
+  // A real data-file row (copied from the owner's appraisal file; the live file is rewritten by every video import, so the row is kept as a fixture), through the real normaliser.
   ctx = mkCtx();
-  const real = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'appraisal_import.json'), 'utf8')).find(r => r.name === 'Skarmory' && r.cp === 1204);
+  const real = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'fixtures', 'appraisal_row_skarmory_1204.json'), 'utf8'));
   const sum4 = ctx.mergeAppraisalImport(ctx.normalizeAppraisalItems([real]));
   const ro = ctx.state.ivOverrides[7] || {};
-  check('data/appraisal_import.json Skarmory 1204 applies as 9/15/11 at L21', [sum4.applied, sum4.unsure, ro.atkIV, ro.defIV, ro.staIV, ro.lvlMin], [1, 0, 9, 15, 11, 21]);
+  check('the owner-confirmed Skarmory 1204 appraisal row applies as 9/15/11 at L21', [sum4.applied, sum4.unsure, ro.atkIV, ro.defIV, ro.staIV, ro.lvlMin], [1, 0, 9, 15, 11, 21]);
   // The pre-fix row (bar-measure, conflict) normalises to a flagged item that is not applied.
   ctx = mkCtx();
   const old = { ...real, ivSource: 'bar-measure', atkIV: 15, staIV: 15, ivConflict: true };
