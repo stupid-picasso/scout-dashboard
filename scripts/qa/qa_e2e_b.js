@@ -2478,7 +2478,7 @@ module.exports = async function suiteB() {
   // fast: the page's clock is installed and the retry waits are played out instead of slept.
   const settle = async (sx, g, n, busyKey, fast) => { const t0 = Date.now(); while (g.generated().length < n) { if (Date.now() - t0 > 30000) throw new Error('the job never asked'); await new Promise(r => setTimeout(r, 25)); }
     await flush(sx, k => { const l = window.__qaFindLogic(); return !!l && !l.state[k]; }, busyKey, fast ? g : undefined); };
-  await T('AIJOB-01', 'AI', 'TM picks: one run at a time, the same input asks once, a valid array and an array inside prose give the picks, a reply with other brackets fails (KNOWN-BUG), no array gives nothing', async () => {
+  await T('AIJOB-01', 'AI', 'TM picks: one run at a time, the same input asks once, a valid array and an array inside prose give the picks, a reply with other brackets still gives the picks (6d), no array shows an error', async () => {
     await appSession(async sx => {
       const out = {}; const gt = gate();
       const g = await sx.stubGemini({ models: GEM_MODELS, generate: async () => { await gt.p; return G.ok(JSON.stringify(TM_PICKS)); } });
@@ -2494,8 +2494,7 @@ module.exports = async function suiteB() {
       out.changedWhileBusy = { requests: g.generated().length };
       g.handler = G.ok('Sure! Here are my picks:\n' + JSON.stringify(TM_PICKS) + '\nHope that helps.'); await tmBump(sx, 2); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 3, 'tmAiBusy');
       out.wrappedInProse = { ...tmOut(await sx.state()), requests: g.generated().length };
-      // KNOWN-BUG: the job takes everything from the first [ to the last ] of the reply, so a reply with another bracket before the array fails
-      // to parse. The parser's sentence differs between browsers, so only "an error is shown" is recorded.
+      // Since 6d the list is read with extractJsonArray, so a bracket before the array no longer breaks the parse.
       g.handler = G.ok('Note [1]: picks below.\n' + JSON.stringify(TM_PICKS)); await tmBump(sx, 3); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 4, 'tmAiBusy');
       const stB = await sx.state(); out.otherBrackets = { hasError: !!stB.tmAiError, error: stB.tmAiError ? '<parser message>' : '', recs: stB.tmAiRecommendations, requests: g.generated().length };
       g.handler = G.ok('I could not decide on any of them.'); await tmBump(sx, 4); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, 5, 'tmAiBusy');
@@ -2520,7 +2519,7 @@ module.exports = async function suiteB() {
   const contest = (name, dex, stock) => ({ key: name.toLowerCase(), stock, puCandy: 20, evoRow: { p: jobMon('cd' + dex, name, dex), evo: { need: 25 }, rank: 80 }, puRow: { now: { dust: 5000, candy: 20 }, score: 100 } });
   const CANDY_PICKS = [{ species: 'Machop', choice: 'powerup', reason: 'Great IVs already.' }, { species: 'Axew', choice: 'evolve', reason: 'Fraxure is stronger.' }, { species: 'Notamon', choice: 'evolve', reason: 'Not contested.' }];
   const candyOut = st => ({ busy: st.candyAiBusy, decisions: st.candyAiDecisions, notes: st.candyAiNotes });
-  await T('AIJOB-03', 'AI', 'Candy decisions: one run at a time, the same contest asks once, a valid array and an array inside prose give verdicts, a reply with other brackets or no array gives none (KNOWN-BUG: silent)', async () => {
+  await T('AIJOB-03', 'AI', 'Candy decisions: one run at a time, the same contest asks once, a valid array and an array inside prose give verdicts, a reply with other brackets still gives verdicts (6d), no array gives none (silent)', async () => {
     await appSession(async sx => {
       const out = {}; const gt = gate();
       const g = await sx.stubGemini({ models: GEM_MODELS, generate: async () => { await gt.p; return G.ok(JSON.stringify(CANDY_PICKS)); } });
@@ -2536,7 +2535,7 @@ module.exports = async function suiteB() {
       out.changedThenRepeated = { requests: g.generated().length };
       g.handler = G.ok('Here you go:\n' + JSON.stringify(CANDY_PICKS) + '\nAnything else?'); await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 32), contest('Axew', 610, 30)]); await settle(sx, g, 3, 'candyAiBusy');
       out.wrappedInProse = { ...candyOut(await sx.state()), requests: g.generated().length };
-      // KNOWN-BUG: a reply with another bracket before the array fails to parse, and the job swallows the failure: no verdict, no message.
+      // Since 6d a bracket before the array no longer breaks the parse; a reply with no array at all still gives no verdict and no message.
       g.handler = G.ok('Note [1]: verdicts below.\n' + JSON.stringify(CANDY_PICKS)); await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 33), contest('Axew', 610, 30)]); await settle(sx, g, 4, 'candyAiBusy');
       out.otherBrackets = { ...candyOut(await sx.state()), requests: g.generated().length };
       g.handler = G.ok('I cannot choose.'); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 34), contest('Axew', 610, 30)]); await settle(sx, g, 5, 'candyAiBusy');
@@ -2555,6 +2554,37 @@ module.exports = async function suiteB() {
       });
     }
     golden('aijob-candy-errors', out);
+  }, 'high');
+  // 6d: TM picks and candy verdicts read the list with extractJsonArray, so brackets before or after it no longer fail the reply.
+  await T('AIJOB-08', 'AI', 'TM picks: stray bracket text after or before the list still gives the picks, a plain reply still does, a reply with no list shows an error', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(JSON.stringify(TM_PICKS)) });
+      await useKey(sx, gkey('J8')); await tmSeed(sx);
+      const L = JSON.stringify(TM_PICKS); let n = 0;
+      const ask = async reply => { g.handler = G.ok(reply); n++; await tmBump(sx, n); await sx.set({ tmAiRecommendations: null }); await sx.call('ensureTmAiRecommendations'); await settle(sx, g, n, 'tmAiBusy'); const st = await sx.state(); return { err: st.tmAiError, names: (st.tmAiRecommendations || []).map(r => r.name + ':' + r.tmType) }; };
+      const want = ['Machamp:chargedTM', 'Gengar:eliteChargedTM'];
+      for (const [label, reply] of [['plain', L], ['trailing', L + ' (see [note])'], ['trailing line', L + '\nSources: [1] [2]'], ['leading', 'Note [1]: picks below.\n' + L], ['both', 'Note [1]:\n' + L + '\n(see [2])']]) {
+        const r = await ask(reply);
+        expect(!r.err && JSON.stringify(r.names) === JSON.stringify(want), label + ': ' + JSON.stringify(r));
+      }
+      const r = await ask('I could not decide on any of them.');
+      expect(!!r.err, 'no list: an error is shown: ' + JSON.stringify(r));
+      expect(g.generated().length === n, 'one request per reply: ' + g.generated().length + ' of ' + n);
+    });
+  }, 'high');
+  await T('AIJOB-09', 'AI', 'Candy decisions: stray bracket text after or before the list still gives the verdicts, a plain reply still does, a reply with no list gives none', async () => {
+    await appSession(async sx => {
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(JSON.stringify(CANDY_PICKS)) });
+      await useKey(sx, gkey('J9')); await sx.set({ candyAiDecisions: {}, candyAiNotes: [], tab: 'home' });
+      const L = JSON.stringify(CANDY_PICKS); let n = 0;
+      const ask = async reply => { g.handler = G.ok(reply); n++; await sx.set({ candyAiDecisions: {}, candyAiNotes: [] }); await sx.call('ensureCandyAiDecisions', [contest('Machop', 66, 40 + n), contest('Axew', 610, 30)]); await settle(sx, g, n, 'candyAiBusy'); const st = await sx.state(); return { decisions: Object.keys(st.candyAiDecisions || {}).sort(), notes: (st.candyAiNotes || []).map(x => x.name + ':' + x.verdict) }; };
+      for (const [label, reply] of [['plain', L], ['trailing', L + ' (see [note])'], ['trailing line', L + '\nSources: [1] [2]'], ['leading', 'Note [1]: verdicts below.\n' + L], ['both', 'Note [1]:\n' + L + '\n(see [2])']]) {
+        const r = await ask(reply);
+        expect(JSON.stringify(r.decisions) === '["axew","machop"]' && JSON.stringify(r.notes) === '["Machop:POWER UP FIRST","Axew:EVOLVE FIRST"]', label + ': ' + JSON.stringify(r));
+      }
+      const r = await ask('I cannot choose.');
+      expect(r.decisions.length === 0 && r.notes.length === 0, 'no list: no verdicts: ' + JSON.stringify(r));
+    });
   }, 'high');
   const evoSeed = sx => sx.set({ addedPokemon: [jobMon('ev1', 'Machop', 66), jobMon('ev2', 'Axew', 610), jobMon('ev3', 'Fraxure', 611)], roster: [], ivOverrides: {}, evoTable: {}, evoFetchError: '', evoFetchStatus: '', evoFetchBusy: false, tab: 'home' });
   const EVO_ROWS = [{ name: 'Machop', evolvesTo: 'Machoke', candy: 25, item: null }, { name: 'Axew', evolvesTo: 'Fraxure', candy: 25, item: null }, { name: 'Fraxure', evolvesTo: 'Zzzmon', candy: 100, item: null }, { name: 'Pikachu', evolvesTo: 'Raichu', candy: 50, item: null }];
