@@ -2695,5 +2695,45 @@ module.exports = async function suiteB() {
     }
   }, 'high');
 
+  // Grid reconcile: the recording is read by a stubbed model (one request of three frames), merged, matched to the roster and shown as a sheet.
+  await T('GRID-01', 'Import', 'Check against the game: a stubbed read of three grid frames gives the count line, the lists, the search strings and the plain CP form, and writes nothing to the roster', async () => {
+    await appSession(async sx => {
+      const mk = (idx, name, cp) => ({ idx, name, cp, hp: 60, atkIV: 10, defIV: 10, staIV: 10, ivAvg: 66.7, scanDate: '2026-10-01' });
+      const mons = [mk('g1', 'Feebas', 115), mk('g2', 'Pidgey', 300), mk('g3', 'Dragonite', 800), mk('g4', 'Zubat', 40)];
+      const reply = JSON.stringify([
+        { image: 1, count: 7, max: 1225, tiles: [{ name: 'Feebas', cp: 115 }, { name: 'Whismur', cp: 81 }, { name: 'Feebas', cp: 109 }] },
+        { image: 2, count: 7, max: 1225, tiles: [{ name: 'Feebas', cp: 109 }, { name: 'Bobby', cp: 800 }, { name: 'Zubat', cp: 55 }] },
+        { image: 3, count: null, max: null, tiles: [{ name: 'Zubat', cp: 55 }] }]);
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('```json\n' + reply + '\n```') });
+      await useKey(sx, gkey('GR')); await sx.set({ addedPokemon: mons, roster: [], ivOverrides: {} });
+      await sx.go('HOME');
+      const before = JSON.stringify((await sx.state()).addedPokemon);
+      await sx.logic((l, f) => { l.gridRun(f); return true; }, ['A'.repeat(8), 'B'.repeat(8), 'C'.repeat(8)]);
+      await sx.page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.gridBusy && (l.state.gridRes || l.state.gridError); }, null, { timeout: 30000 });
+      const st = await sx.state();
+      expect(!st.gridError, 'no error: ' + st.gridError);
+      const sheet = sx.page.locator('[data-grid-sheet]');
+      const txt = async () => (await sheet.innerText()).replace(/[ \t]+/g, ' ').replace(/\n+/g, '\n').trim();
+      const t1 = await txt();
+      expect(/Read 5 of 7\. 2 tiles may be missed\. Scroll again\./.test(t1), 'the count line: ' + t1.slice(0, 160));
+      expect(/Zubat: CP 40 in the app, 55 in the game/.test(t1) && /Bobby CP 800/.test(t1) && /Pidgey CP 300/.test(t1), 'pair, nickname and extra are listed');
+      const strings = async () => sx.page.locator('[data-grid-string]').allInnerTexts();
+      const s1 = await strings();
+      expect(s1.join() === 'Feebas&cp109,Whismur&cp81,Zubat&cp55', 'the default search string: ' + s1.join());
+      await sx.page.getByRole('switch').first().click(); await sx.page.waitForTimeout(250);
+      const s2 = await strings();
+      expect(s2.join() === 'cp109,cp81,cp55', 'the plain CP form: ' + s2.join());
+      await sx.page.getByRole('button', { name: /Copy search string 1 of 1/ }).click(); await sx.page.waitForTimeout(400);
+      const st2 = await sx.state();
+      expect(st2.copiedKey === 'grid0' || !!st2.fileFallback, 'copied, or the text is offered when the clipboard refuses');
+      expect(JSON.stringify(st2.addedPokemon) === before, 'the roster is untouched');
+      const req = g.generated();
+      expect(req.length === 1 && req[0].parts.filter(p => p.inline_data).length === 3 && /POKEMON n \/ max/.test(req[0].text), 'one request, three frames, the grid prompt');
+      await sx.set({ gridPlain: false, copiedKey: '', fileFallback: null });
+      await sx.page.waitForTimeout(200);
+      golden('grid-sheet', { requests: req.length, images: req[0].parts.filter(p => p.inline_data).length, sheetDefault: await txt(), plain: s2 });
+    });
+  }, 'high');
+
   await s.close();
 };
