@@ -2326,7 +2326,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.373{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.376{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -12500,7 +12500,7 @@ class Component extends DCLogic {
         + '- Use null for any FIELD not clearly visible. Never guess a field value \u2014 but never drop the Pokemon itself over a missing field.');
 
       const batches = this.readFrames(frames);
-      const { collected, rawReplies, failedBatches, unreadableBatches, emptyBatches, lastBatchError, enginesUsed } = await this.askModel(batches, prompt);
+      const [collected, rawReplies, failedBatches, unreadableBatches, emptyBatches, lastBatchError, enginesUsed] = await this.askModel(batches, prompt);
       clearInterval(this._videoReadingTimer);
       this.setVideoStage('reading', 100);
       if (!failedBatches) {
@@ -12580,7 +12580,8 @@ class Component extends DCLogic {
   }
 
   // askModel: send every batch (second pass, at double spacing, for the ones that failed) and collect what the model read.
-  // -> { collected: item[], rawReplies: string[], failedBatches, unreadableBatches, emptyBatches: counts, lastBatchError: string, enginesUsed: Set }
+  // -> [collected: item[], rawReplies: string[], failedBatches, unreadableBatches, emptyBatches (counts), lastBatchError: string, enginesUsed: Set]
+  // (an array: property names are not minified, so seven keys would cost more than the stage saves)
   async askModel(batches, prompt) {
     const collected = [];
     const rawReplies = [];
@@ -12656,7 +12657,7 @@ class Component extends DCLogic {
       this._failedFrames = stillFailed.flatMap(b => batches[b] || []);
     }
 
-    return { collected, rawReplies, failedBatches, unreadableBatches, emptyBatches, lastBatchError, enginesUsed };
+    return [collected, rawReplies, failedBatches, unreadableBatches, emptyBatches, lastBatchError, enginesUsed];
   }
 
   // normalizeReads, part 1: the model's items from all batches -> one item per Pokemon (same name + CP), sightings merged.
@@ -13574,10 +13575,10 @@ class Component extends DCLogic {
       }
       seenThisImport.set(dupeKey, true);
       const itemForm = item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : '';
-      const { match, ambiguous } = this.matchRecord(item, itemForm, roster, added, removedSet);
+      const pool = this.matchRecord(item, itemForm, roster, added, removedSet), match = pool[0];
       const solvedFrom = this.solveIvs(item);
       if (solvedFrom != null) solved++;
-      const { ivPatch, ivNote } = this.ivPatchFor(item, solvedFrom, match, ambiguous, overrides);
+      const { ivPatch, ivNote } = this.ivPatchFor(item, solvedFrom, match, pool.length > 1, overrides);
       if (match) {
         // Re-imports used to overwrite silently, so a mis-read CP looked
         // identical to a real power-up. Record what each update actually
@@ -13641,7 +13642,7 @@ class Component extends DCLogic {
 
   // reconcile (merge side): the roster Pokemon an item is. Same name, exact CP, compatible HP, not removed; the form decides between several.
   // itemForm is the item's form BEFORE the solve (the solve can change item.matchedForm; the update keeps using this one).
-  // -> { match: record | undefined, ambiguous: more than one look-alike }
+  // -> the candidates, best first: [0] is the match (undefined when there is none), more than one means look-alikes
   matchRecord(item, itemForm, roster, added, removedSet) {
     const nameLower = item.name.toLowerCase();
     const formOk = p => !item.type || !item.matchedForm || String(p.form || '').toLowerCase() === itemForm;
@@ -13651,11 +13652,11 @@ class Component extends DCLogic {
     const same = p => p.name.toLowerCase() === nameLower && p.cp === item.cp && hpOk(p) && !this.isRemoved(p, removedSet);
     const tier1 = [...roster.filter(p => same(p) && formOk(p)), ...added.filter(p => same(p) && formOk(p))];
     const pool = tier1.length ? tier1 : [...roster.filter(same), ...added.filter(same)];
-    return { match: pool[0], ambiguous: pool.length > 1 };
+    return pool;
   }
 
   // solve: the IVs an item's CP + HP allow (and the Power Up stardust cost, which fixes the level), tried against each form this species can have.
-  // Writes onto the item: atkIV/defIV/staIV/level when exactly one spread fits, else _ivRange/_lvlRange; also _solvedCount, _formChoices, matchedForm.
+  // Writes onto the item: the three IVs and level when exactly one spread fits, else _ivRange/_lvlRange; also _solvedCount, _formChoices, matchedForm.
   // -> 1 when the spread was pinned, else null
   solveIvs(item) {
     const mechanics = this.mechanics;
