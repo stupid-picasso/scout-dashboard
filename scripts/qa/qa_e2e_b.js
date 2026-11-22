@@ -2112,6 +2112,30 @@ module.exports = async function suiteB() {
     expect(/Vulpix/.test(await s.page.evaluate(() => document.body.innerText)), 'form-to-check filter should list the Vulpix'); await s.set({ rosterFilter: 'all' });
     await s.set({ addedPokemon: [], candyInventory: {}, ivOverrides: {}, lastImport: null });
   }, 'high');
+  await T('IMP-PU-01', 'Import', 'A powered-up Pokemon in a re-import is offered as a pair in the receipt; Merge retires the old record and carries the owner data; Undo restores', async () => {
+    const old = { idx: 'qa-pu1', name: 'Machamp', dex: 68, cp: 1500, hp: 120, atkIV: 10, defIV: 11, staIV: 12, ivAvg: 73, scanDate: '2026-10-01', favorite: true };
+    await s.set({ addedPokemon: [old], ivOverrides: { 'qa-pu1': { ivMeasured: true, ivManual: true } }, removedIds: [], lastImport: null, tab: 'today' }); await s.page.waitForTimeout(400);
+    const count = async () => (await s.call('effectiveRosterForMatch')).filter(p => p.name === 'Machamp').length;
+    const c0 = await count();
+    await s.call('mergeVideoImport', [{ name: 'Machamp', dex: 68, cp: 1600, hp: 125, atkIV: 10, defIV: 11, staIV: 12 }, { name: 'Rattata', dex: 19, cp: 222, hp: 40, atkIV: 4, defIV: 4, staIV: 4 }]); await s.page.waitForTimeout(400);
+    expect(await count() === c0 + 1, 'the powered-up one is inserted as new: ' + await count());
+    expect(((await s.state()).lastImport.pairs || []).length === 1, 'one pair');
+    await s.set({ tab: 'roster' }); await s.page.waitForTimeout(400); await s.page.getByText(/^Last import:/).first().click(); await s.page.waitForTimeout(500);
+    const txt = await s.page.evaluate(() => document.body.innerText);
+    expect(/Probably the same Pokemon, powered up/.test(txt) && /CP 1500\s*\u2192\s*1600/.test(txt), 'receipt row: ' + JSON.stringify(txt.slice(-250)));
+    expect(await s.page.getByRole('button', { name: 'Merge Machamp' }).count() === 1 && await s.page.getByRole('button', { name: /^Merge/ }).count() === 1, 'one Merge button, no bulk action');
+    await s.page.getByRole('button', { name: 'Merge Machamp' }).click(); await s.page.waitForTimeout(400);
+    let st = await s.state();
+    expect(await count() === c0 && st.removedIds.includes('qa-pu1'), 'old retired, roster count drops by one');
+    const nw = st.addedPokemon.find(p => p.idx !== 'qa-pu1' && p.name === 'Machamp');
+    expect(st.ivOverrides[nw.idx].ivManual === true && st.ivOverrides[nw.idx].favorite === true, 'owner data carried: ' + JSON.stringify(st.ivOverrides[nw.idx]));
+    await s.page.getByRole('button', { name: 'Undo the merge of Machamp' }).click(); await s.page.waitForTimeout(400);
+    st = await s.state();
+    expect(await count() === c0 + 1 && !st.removedIds.includes('qa-pu1') && !(st.ivOverrides[nw.idx] || {}).ivManual, 'Undo restores both');
+    await s.set({ importSheetOpen: false, lastImport: null }); await s.call('mergeVideoImport', [{ name: 'Rattata', dex: 19, cp: 223, hp: 40, atkIV: 5, defIV: 5, staIV: 5 }]); await s.set({ importSheetOpen: true }); await s.page.waitForTimeout(400);
+    expect(!/powered up/.test(await s.page.evaluate(() => document.body.innerText)), 'no pair: the receipt shows no powered-up section');
+    await s.set({ importSheetOpen: false, addedPokemon: [], ivOverrides: {}, removedIds: [], candyInventory: {}, lastImport: null });
+  }, 'high');
   await T('MAX-06', 'Max', 'A scan of an unlisted species teaches the app; manual toggle can add or remove the tag', async () => {
     const pid = { idx: 'qa-pid', name: 'Pidgey', dynamax: undefined };
     expect(await s.call('isMaxCapable', pid) === false, 'pidgey should not be capable'); expect(await s.call('isMaxCapable', { name: 'Pidgey', dynamax: true }) === true, 'scan evidence');
