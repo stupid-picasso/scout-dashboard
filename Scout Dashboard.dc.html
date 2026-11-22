@@ -2432,7 +2432,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.380{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.382{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -6337,7 +6337,7 @@ class Component extends DCLogic {
     if (strong && !pend.armed) { this.setState({ costumePending: { ...pend, armed: true } }); return; }
     const left = off ? { ...pend, [strong ? 'strong' : 'clear']: [] } : { ...pend, idxs: [], names: [], already: pend.already + idxs.length };
     this.offerUndo(idxs.length + (off ? ' cleared of ' : ' marked as ') + pend.flag, ['ivOverrides']);
-    this.patchEach(idxs, this.flagPatch(pend.flag, pend.kind, off), { push: 'soon', state: { costumePending: left.idxs.length || left.clear.length || left.strong.length ? left : null } });
+    this.patchEach(idxs, { ...this.flagPatch(pend.flag, pend.kind, off), ...(pend.flag === 'shiny' ? {} : { [pend.flag + 'Suspected']: false }) }, { push: 'soon', state: { costumePending: left.idxs.length || left.clear.length || left.strong.length ? left : null } });
   }
 
   // ---- Grid reconcile -----------------------------------------------------------------------------------------
@@ -10549,7 +10549,7 @@ class Component extends DCLogic {
       weight: rec.weight || '',
       height: rec.height || '',
       lucky: rec.lucky || false,
-      ...this.shinyPatch({ shiny: !!rec.shiny, shinyIcon: !!rec.shiny_icon }, {}),
+      ...this.shinyPatch({ shiny: !!rec.shiny, shinyIcon: !!rec.shiny_icon, costume: rec.costume, background: rec.background }, {}),
       shadowPurified: rec.shadow ? '1' : (rec.purified ? '2' : '0'),
       favorite: rec.favorite || false,
       dust: rec.stardust || null,
@@ -10653,7 +10653,7 @@ class Component extends DCLogic {
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,'
       + '"powerUpStardust":number|null,"powerUpCandy":number|null,"powerUpIsXl":true|false|null,"evolveCandy":number|null,"evolveButton":true|false|null,"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
       + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,'
-      + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,'
+      + '"lucky":boolean,"shadow":boolean,"purified":boolean,"shiny":boolean,"shinyIcon":boolean,"costume":boolean,"background":boolean,'
       + '"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}. '
       + 'Rules: Types: the type names are printed as TEXT next to each type icon (one or two of them). Read the words, not the icon artwork. Read every one that is printed: type1 is the first, type2 the second (null only when there is a single badge). Read them from the screen, never from the Pokemon name, because a regional form shares its name with the normal form but has different types (Alolan Ninetales is Ice and Fairy, Ninetales is Fire). '
       + 'CP is the number in the badge at the very TOP of the screen. If the top of the card is scrolled off and no CP badge is visible, return null — never substitute another number. '
@@ -10671,6 +10671,7 @@ class Component extends DCLogic {
       + 'Moves are listed under Gyms & Raids: the first is fastMove, the rest are chargeMove1/chargeMove2. Give move names only, without the type in parentheses. '
       + 'Only report atkIV/defIV/staIV if exact 0-15 numbers are visible; never infer them from appraisal bars or stars. '
       + 'shiny: true if the Pokemon shows the small sparkles icon on its detail card, or its coloring is clearly a different palette from its normal form. shinyIcon: true ONLY if you can actually see that sparkles icon (coloring alone is not enough). Never guess either from name or CP alone. '
+      + 'costume: true only if the Pokemon visibly wears a hat, outfit or accessory it does not wear by default. background: true only if the detail card shows a special illustrated backdrop (event or location art) instead of the plain default sky or gradient. Answer false when unsure. '
       + 'Never guess. Any field not clearly visible must be null.';
     // A reply that is not valid JSON is repaired when it can be (see parseLooseObject); when it cannot, the screenshot is asked
     // once more before the read fails, because the model rarely garbles the same screenshot twice.
@@ -10703,7 +10704,7 @@ class Component extends DCLogic {
       evolve_candy: num(o.evolveCandy), evolve_button: o.evolveButton === true ? true : o.evolveButton === false ? false : undefined, mega_energy: num(o.megaEnergy),
       mega_energy_x: num(o.megaEnergyX), mega_energy_y: num(o.megaEnergyY), mega_forms: Array.isArray(o.megaForms) ? o.megaForms : undefined,
       attack_iv: num(o.atkIV), defense_iv: num(o.defIV), stamina_iv: num(o.staIV),
-      lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, shiny_icon: !!o.shinyIcon, favorite: !!o.favorite,
+      lucky: !!o.lucky, shadow: !!o.shadow, purified: !!o.purified, shiny: !!o.shiny, shiny_icon: !!o.shinyIcon, costume: o.costume === true || o.costume === false ? o.costume : undefined, background: o.background === true || o.background === false ? o.background : undefined, favorite: !!o.favorite,
       dynamax: !!o.dynamax, gigantamax: !!o.gigantamax, max_move_name: o.maxMoveName || undefined, max_attack_level: num(o.maxAttackLevel), max_guard_level: num(o.maxGuardLevel), max_spirit_level: num(o.maxSpiritLevel), max_particles: num(o.maxParticles),
       _source: 'vision'
     };
@@ -11162,7 +11163,7 @@ class Component extends DCLogic {
       ultra: { rankPct: r.ultra, evolvesTo: p.matchedName || p.name },
       little: { rankPct: r.little, evolvesTo: p.matchedName || p.name }
     };
-    const shinyItem = { shiny: p._rec ? !!p._rec.shiny : undefined, shinyIcon: p._rec ? !!p._rec.shiny_icon : false };
+    const shinyItem = { shiny: p._rec ? !!p._rec.shiny : undefined, shinyIcon: p._rec ? !!p._rec.shiny_icon : false, costume: p._rec ? p._rec.costume : undefined, background: p._rec ? p._rec.background : undefined };
     if (p.matchedIdx != null) {
       const prevOv = overrides[p.matchedIdx] || {};
       const keep = {};
@@ -11177,6 +11178,7 @@ class Component extends DCLogic {
         cp: p.cp, hp: p.hp, atkIV: r.atkIV, defIV: r.defIV, staIV: r.staIV, ivAvg: r.ivAvg,
         lvlMin: r.level, lvlMax: r.level, ivSolved: true, ivCandidates: 1, quickMove: null, chargeMove: null, chargeMove2: null,
         catchDate: null, lucky: false, shadowPurified: '0', favorite: false, shiny: !!shinyItem.shiny, shinyState: shinyItem.shiny && !shinyItem.shinyIcon ? 'suspected' : null, dust: null,
+        ...(shinyItem.costume === true ? { costumeSuspected: true } : {}), ...(shinyItem.background === true ? { backgroundSuspected: true } : {}),
         ...(p._rec ? this.maxPatch(p._rec) : {}),
         great: patch.great, ultra: patch.ultra, little: patch.little
       };
@@ -11222,7 +11224,7 @@ class Component extends DCLogic {
       put('height', p.height || rec.height);
       put('sizeClass', rec.size_class);
       const mp = this.maxPatch(rec); Object.keys(mp).forEach(k => { patch[k] = mp[k]; touched = true; });
-      const sp = this.shinyPatch({ shiny: !!rec.shiny, shinyIcon: !!rec.shiny_icon }, this.monWithOverrides(p.matchedIdx));
+      const sp = this.shinyPatch({ shiny: !!rec.shiny, shinyIcon: !!rec.shiny_icon, costume: rec.costume, background: rec.background }, this.monWithOverrides(p.matchedIdx));
       Object.keys(sp).forEach(k => { patch[k] = sp[k]; touched = true; });
       if (touched) {
         overrides[p.matchedIdx] = patch;
@@ -12704,12 +12706,12 @@ class Component extends DCLogic {
         + '"stardust": number|null, "type": string|null, "weight": string|null, "height": string|null, '
         + '"fastMove": string|null, "chargeMove1": string|null, "chargeMove2": string|null, "evolveCandy": number|null, "evolveButton": true|false|null, '
         + '"megaEnergy": number|null, "megaEnergyX": number|null, "megaEnergyY": number|null, "megaForms": [{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}], '
-        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "dynamax": true|null, "gigantamax": true|null, "maxMoveName": string|null, "maxAttackLevel": number|null, "maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, "favorite": boolean}. '
+        + '"atkIV": number|null, "defIV": number|null, "staIV": number|null, "lucky": boolean, "shadow": boolean, "shiny": boolean, "shinyIcon": boolean, "costume": boolean, "background": boolean, "dynamax": true|null, "gigantamax": true|null, "maxMoveName": string|null, "maxAttackLevel": number|null, "maxGuardLevel": number|null, "maxSpiritLevel": number|null, "maxParticles": number|null, "favorite": boolean}. '
         + 'Mega: a single "<SPECIES> MEGA ENERGY" count is megaEnergy; "MEGA ENERGY X" and "MEGA ENERGY Y" are megaEnergyX and megaEnergyY. One megaForms entry per MEGA EVOLVE button: form X or Y from the "MEGA <SPECIES> X/Y" label, cost = number on the button, dotsFilled = filled round Mega Level dots under it, dotsTotal = all dots, rest = rest text like "4 DAYS" on the Mega badge. Empty array if no MEGA EVOLVE button. '
         + 'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '
         + 'CP is the badge at the TOP of a detail card \u2014 never the stardust figure (the large comma-grouped number). If a card is scrolled past its top and no CP badge is visible in any frame, use null. '
         + 'CP COVERED: the big CP number at the top can be partly hidden behind the Pokemon (a tall Pokemon covers its own digits). When ANY digit of it is hidden or unclear, set cp to null, cpCovered to true, and cpVisible to the digits you CAN see in order with a ? for every hidden digit (e.g. \\"2??6\\" for a four-digit CP whose middle two digits are hidden). Never guess a hidden digit. When every digit is clearly visible set cpCovered false and cpVisible null. powerUpIsXl: true when the second cost on the POWER UP button is Candy XL (the striped candy icon), false when it is plain Candy, null if unsure. '
-        + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring or the small sparkles icon on the card, never guess from name or CP alone. Set shinyIcon true ONLY if you can actually see that sparkles icon. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
+        + 'A shadow Pokemon shows a PURIFY button and the Frustration move. A shiny Pokemon has a visibly different color palette from its normal coloring (e.g. a gold Magikarp instead of red-orange) \u2014 set shiny true only when you can see that distinct coloring or the small sparkles icon on the card, never guess from name or CP alone. Set shinyIcon true ONLY if you can actually see that sparkles icon. costume: true only if the Pokemon visibly wears a hat, outfit or accessory it does not wear by default. background: true only if the detail card shows a special illustrated backdrop (event or location art) instead of the plain default sky or gradient. Answer false when unsure. Moves come from the Gyms & Raids section: the first is fastMove, the rest are charge moves; names only, without the type in parentheses. '
         + 'REPORTING RULE (read first): report EVERY Pokemon whose name you can read, even if every other field is null. '
         + 'A partially-readable Pokemon is still a Pokemon \u2014 emit it with nulls. The null/never-guess rules below apply to individual FIELDS, never to whether a Pokemon is listed. '
         + 'Only return an empty array if these frames genuinely contain no Pokemon at all (map view, item bag, loading screen).\n'
@@ -13095,7 +13097,7 @@ class Component extends DCLogic {
       + '"stardust":number|null,"type1":string|null,"type2":string|null,"weight":string|null,"height":string|null,'
       + '"fastMove":string|null,"chargeMove1":string|null,"chargeMove2":string|null,"evolveCandy":number|null,"evolveButton":true|false|null,'
       + '"megaEnergy":number|null,"megaEnergyX":number|null,"megaEnergyY":number|null,"megaForms":[{"form":"X"|"Y"|null,"cost":number|null,"dotsFilled":number|null,"dotsTotal":number|null,"rest":string|null}],'
-      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}\n\n'
+      + '"atkIV":number|null,"defIV":number|null,"staIV":number|null,"lucky":boolean,"shadow":boolean,"shiny":boolean,"shinyIcon":boolean,"costume":boolean,"background":boolean,"dynamax":true|null,"gigantamax":true|null,"maxMoveName":string|null,"maxAttackLevel":number|null,"maxGuardLevel":number|null,"maxSpiritLevel":number|null,"maxParticles":number|null,"favorite":boolean}\n\n'
       + 'Report EVERY Pokemon whose name is readable, even if all other fields are null \u2014 the rules below govern individual field values, not whether a Pokemon is listed.\n'
       + 'Rules:\n'
       + '- CP is the number in the badge at the very TOP of the screen. If the top is cut off and no CP badge is visible, use null. Never substitute another number.\n'
@@ -13110,6 +13112,7 @@ class Component extends DCLogic {
       + '- '+'Max (Dynamax): a Pokemon that can Dynamax shows a row with a round magenta badge (crossed swords) and the word "Dynamax" between the height/weight strip and the stardust/candy counts; the same badge and word sit in the top bar once the card is scrolled. Set dynamax true ONLY if you can see that badge and word, else null. Set gigantamax true ONLY if the screen shows a Gigantamax form or names a G-Max move, else null. A "Max Moves" section shows three tiles: the Max Attack tile is named after its move (for example "Max Darkness", "Max Flare" or a "G-Max ..." move) and the other two are "Max Guard" and "Max Spirit". Each tile reads "LEVEL n" or "LOCKED": maxAttackLevel, maxGuardLevel and maxSpiritLevel are that n (null when LOCKED or not visible) and maxMoveName is the name on the Max Attack tile. maxParticles is the Max Particles balance if shown. Never guess these. '+'\n'
       + '- A shadow Pokemon shows a PURIFY button and the Frustration move.\n'
       + '- A shiny Pokemon has a visibly different color palette from its normal coloring and/or shows a small sparkles icon on its card. Set shiny true only when that is actually visible \u2014 never guess from name or CP alone. Set shinyIcon true ONLY if the sparkles icon itself is visible.\n'
+      + '- costume: true only if the Pokemon visibly wears a hat, outfit or accessory it does not wear by default. background: true only if the detail card shows a special illustrated backdrop (event or location art) instead of the plain default sky or gradient. Answer false when unsure.\n'
       + '- Only give atkIV/defIV/staIV if exact 0-15 numbers are visible. Never infer them from appraisal bars or stars.\n'
       + '- Never guess a FIELD: anything not clearly visible must be null. Never omit a Pokemon because fields are missing.';
   }
@@ -14062,6 +14065,7 @@ class Component extends DCLogic {
       canEvolve: item.evolveButton === true || item.evolveButton === false ? item.evolveButton : null,
       catchDate: null, scanDate: today,
       lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
+      ...(item.costume === true ? { costumeSuspected: true } : {}), ...(item.background === true ? { backgroundSuspected: true } : {}),
       ...this.maxPatch(item),
       ...(item.cpCheck ? { cpCheck: true, cpCandidates: item.cpCandidates || null, cpNote: item.cpNote || '' } : {}),
       // Never null — the render path reads p.great.rankPct directly.
@@ -14876,12 +14880,21 @@ class Component extends DCLogic {
   // 'suspected' until the trainer confirms it; a visible sparkles icon counts
   // as confirmed. A shiny the trainer already confirmed (or one saved before
   // shinyState existed) is never changed by a later scan.
+  // Costume and background ride along: read the same way but only ever as a suspicion (costumeSuspected / backgroundSuspected). A scan
+  // never sets the confirmed flag and never touches a record whose flag is confirmed; a later false clears an unconfirmed suspicion.
   shinyPatch(item, prior) {
+    const out = {};
+    if (!item) return out;
+    ['costume', 'background'].forEach(f => {
+      if (prior && prior[f]) return;
+      if (item[f] === true) out[f + 'Suspected'] = true;
+      else if (item[f] === false && prior && prior[f + 'Suspected']) out[f + 'Suspected'] = false;
+    });
     const priorConfirmed = !!(prior && prior.shiny && prior.shinyState !== 'suspected');
-    if (priorConfirmed || !item) return {};
-    if (item.shiny) return { shiny: true, shinyState: item.shinyIcon ? null : 'suspected' };
-    if (item.shiny === false && prior && prior.shiny) return { shiny: false, shinyState: null };
-    return {};
+    if (priorConfirmed) return out;
+    if (item.shiny) return { ...out, shiny: true, shinyState: item.shinyIcon ? null : 'suspected' };
+    if (item.shiny === false && prior && prior.shiny) return { ...out, shiny: false, shinyState: null };
+    return out;
   }
 
   setShinyConfirmed(p, isShiny) {
@@ -20327,7 +20340,7 @@ class Component extends DCLogic {
         ivSourceColor: p.ivMeasured ? 'var(--grass-700)'
           : (!Number.isFinite(p.atkIV) ? 'var(--ink-400)' : 'var(--type-electric)'),
         flags: flags || 'No special flags',
-        flagChips: (() => { const fc = [p.lucky ? 'Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? 'Shadow' : '', p.favorite ? 'Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? 'Shiny (unconfirmed)' : 'Shiny') : '', p.costume ? 'Costume' : '', p.background ? 'Background' : ''].filter(Boolean); return fc.length ? fc : null; })(),
+        flagChips: (() => { const fc = [p.lucky ? 'Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? 'Shadow' : '', p.favorite ? 'Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? 'Shiny (unconfirmed)' : 'Shiny') : '', p.costume ? 'Costume' : p.costumeSuspected ? 'Costume?' : '', p.background ? 'Background' : p.backgroundSuspected ? 'Background?' : ''].filter(Boolean); return fc.length ? fc : null; })(),
         shinyControl: (() => {
           if (!p.shiny) return { title: 'NOT SHINY', tone: 'var(--ink-400)', buttons: [{ label: 'MARK AS SHINY', primary: false, onClick: () => this.setShinyConfirmed(p, true) }] };
           if (p.shinyState === 'suspected') return { title: 'Shiny? Read FROM COLOR \u2014 CONFIRM IT', tone: 'var(--type-electric)', buttons: [{ label: 'CONFIRM SHINY', primary: true, onClick: () => this.setShinyConfirmed(p, true) }, { label: 'NOT SHINY', primary: false, onClick: () => this.setShinyConfirmed(p, false) }] };

@@ -2872,5 +2872,42 @@ module.exports = async function suiteB() {
     });
   }, 'high');
 
+  // ---- Flags from the game, part 2: costume and background read by the import prompts, kept as suspicions only ----
+  await T('FLAG-04', 'Import', 'A recording that says costume and background marks them as suspected only (new and owned Pokemon), never the confirmed flags, never over a confirmed one; the detail sheet shows a "?"; a later "no" clears an unconfirmed suspicion', async () => {
+    await withRoster(async sx => {
+      const st0 = await sx.state(); const [A, B] = st0.roster;
+      await sx.set({ ivOverrides: { ...st0.ivOverrides, [B.idx]: { costume: true } } });   // B's costume was confirmed from a game search
+      const c = await realMon(sx, [[68, [12, 13, 14], 20]]);
+      const reply = JSON.stringify([
+        { name: A.name, cp: A.cp, hp: A.hp, costume: true, background: true },
+        { name: B.name, cp: B.cp, hp: B.hp, costume: true, background: true },
+        { name: 'Machamp', cp: c[0].cp, hp: c[0].hp, atkIV: 12, defIV: 13, staIV: 14, costume: true, background: false }]);
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(reply) });
+      await useKey(sx, gkey('F4')); await fixClock(sx);
+      await sx.logic((l, f) => { l.runVideoPipeline(f); return true; }, ['A'.repeat(8), 'B'.repeat(8)]);
+      await waitPage(sx, () => { const l = window.__qaFindLogic(); const v = l && l.state.videoImport; return !!v && (v.stage === 'done' || v.stage === 'error'); }, null, { g, ms: 0, tick: 8000, budget: Infinity });
+      const ask = g.generated()[0].text;
+      expect(/"costume":\s*boolean/.test(ask) && /"background":\s*boolean/.test(ask) && /Answer false when unsure/.test(ask), 'the prompt asks for both');
+      const get = async idx => (await sx.call('effectiveRosterForMatch')).find(p => p.idx === idx);
+      const a = await get(A.idx), b = await get(B.idx), m = (await sx.call('effectiveRosterForMatch')).find(p => String(p.idx).startsWith('video-'));
+      expect(a.costumeSuspected === true && a.backgroundSuspected === true && a.costume !== true && a.background !== true, 'owned: suspected only ' + JSON.stringify([a.costume, a.costumeSuspected, a.background, a.backgroundSuspected]));
+      expect(b.costume === true && b.costumeSuspected === undefined && b.backgroundSuspected === true && b.background !== true, 'confirmed costume untouched, background suspected');
+      expect(m && m.costumeSuspected === true && m.backgroundSuspected === undefined && m.costume !== true && m.background !== true, 'new: costume suspected only ' + JSON.stringify(m && [m.costume, m.costumeSuspected, m.backgroundSuspected]));
+      await sx.set({ tab: 'roster' });
+      await sx.logic((l, i) => { l.openDetail(l.effectiveRosterForMatch().find(p => p.idx === i)); return true; }, A.idx); await sx.page.waitForTimeout(800);
+      let t = await sx.page.evaluate(() => document.body.innerText);
+      expect(/Costume\?/.test(t) && /Background\?/.test(t), 'the detail sheet shows both chips with a "?"');
+      await sx.logic(l => { l.closeDetail && l.closeDetail(); return true; });
+      await sx.logic((l, i) => { l.openDetail(l.effectiveRosterForMatch().find(p => p.idx === i)); return true; }, B.idx); await sx.page.waitForTimeout(800);
+      t = await sx.page.evaluate(() => document.body.innerText);
+      expect(/Costume(?!\?)/.test(t) && /Background\?/.test(t) && !/Costume\?/.test(t), 'confirmed costume has no "?"');
+      await sx.call('mergeVideoImport', [{ name: A.name, cp: A.cp, hp: A.hp, costume: false, background: true }]);
+      const a2 = await get(A.idx);
+      expect(a2.costumeSuspected === false && a2.backgroundSuspected === true, 'a later "no" clears the unconfirmed costume suspicion only');
+      await sx.call('mergeVideoImport', [{ name: B.name, cp: B.cp, hp: B.hp, costume: false }]);
+      expect((await get(B.idx)).costume === true, 'a "no" never clears a confirmed flag');
+    });
+  }, 'high');
+
   await s.close();
 };
