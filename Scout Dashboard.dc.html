@@ -2432,7 +2432,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.379{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.380{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -4034,11 +4034,19 @@
         </sc-if>
         <sc-if value="{{ chk.isCostumeCheck }}" hint-placeholder-val="{{ false }}">
           <div style="background:var(--surface-card);border:1px solid var(--line-200);border-radius:14px;padding:12px 16px;display:flex;flex-direction:column;gap:8px">
-            <label class="om-press" style="cursor:pointer;align-self:flex-start;background:var(--ios-blue-fill);color:#fff;font:700 12px var(--font-display);padding:12px 16px;border-radius:999px">
-              UPLOAD COSTUME SEARCH SCREENSHOTS
-              <input type="file" accept="image/*" multiple="multiple" onChange="{{ chk.onFiles }}" aria-label="Costume search screenshots" class="su46" />
-            </label>
-            <sc-if value="{{ chk.msg }}" hint-placeholder-val="{{ false }}"><div class="su7">{{ chk.msg }}</div></sc-if>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ chk.flagChips }}" as="c" hint-placeholder-count="3"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:8px 12px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div>
+            <sc-if value="{{ chk.hasKinds }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ chk.kindChips }}" as="c" hint-placeholder-count="3"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" class="om-press" style="padding:8px 12px;min-height:36px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ c.bd }};font:600 13px var(--font-body)">{{ c.label }}</button></sc-for></div></sc-if>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <label class="om-press" style="cursor:pointer;background:var(--ios-blue-fill);color:#fff;font:700 12px var(--font-display);padding:0 16px;min-height:44px;display:inline-flex;align-items:center;border-radius:999px">
+                {{ chk.uploadLabel }}
+                <input type="file" accept="image/*" multiple="multiple" onChange="{{ chk.onFiles }}" aria-label="{{ chk.shotsAria }}" style="display:none" />
+              </label>
+              <label class="om-press" style="cursor:pointer;background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display);padding:0 16px;min-height:44px;display:inline-flex;align-items:center;border-radius:999px">
+                OR A SCREEN RECORDING
+                <input type="file" accept="video/*" onChange="{{ chk.onVideo }}" aria-label="Search results recording" style="display:none" />
+              </label>
+            </div>
+            <sc-if value="{{ chk.msg }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--ink-500)">{{ chk.msg }}</div></sc-if>
             <sc-if value="{{ chk.error }}" hint-placeholder-val="{{ false }}"><div style="font:13px var(--font-body);color:var(--ios-red)">{{ chk.error }}</div></sc-if>
             <sc-if value="{{ chk.hasPending }}" hint-placeholder-val="{{ false }}">
               <div style="font:700 13px var(--font-body);color:var(--ink-900)">{{ chk.pendingLine }}</div>
@@ -4049,6 +4057,19 @@
                 <sc-if value="{{ chk.canApply }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ chk.onApply }}" class="om-press" style="padding:0 20px;border-radius:999px;background:var(--ios-blue);color:#fff;font:700 13px var(--font-display)">{{ chk.applyLabel }}</button></sc-if>
                 <button type="button" onClick="{{ chk.onClear }}" class="om-press" style="padding:0 16px;border-radius:999px;background:var(--surface-muted);color:var(--ink-700);font:700 12px var(--font-display)">DISCARD</button>
               </div>
+              <sc-if value="{{ chk.hasClear }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid var(--line-200);padding-top:8px;display:flex;flex-direction:column;gap:8px">
+                  <div style="font:700 13px var(--font-body);color:var(--ink-900)">Clear marks the game list does not show</div>
+                  <div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ chk.clearLine }}</div>
+                  <div style="font:12px/1.45 var(--font-body);color:var(--ink-500)">{{ chk.clearNames }}</div>
+                  <sc-if value="{{ chk.isShots }}" hint-placeholder-val="{{ false }}"><label style="display:flex;gap:12px;align-items:center;min-height:44px;font:13px var(--font-body);color:var(--ink-700)"><input type="checkbox" checked="{{ chk.allPages }}" onChange="{{ chk.onAllPages }}" style="width:20px;height:20px;flex-shrink:0" /><span>I captured every page of the results</span></label></sc-if>
+                  <sc-if value="{{ chk.clearHint }}" hint-placeholder-val="{{ false }}"><div style="font:12px/1.45 var(--font-body);color:var(--type-electric)">{{ chk.clearHint }}</div></sc-if>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <sc-if value="{{ chk.canClear }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ chk.onClearMarks }}" class="om-press" style="padding:0 20px;min-height:44px;display:inline-flex;align-items:center;border-radius:999px;background:var(--ios-blue-fill);color:#fff;font:700 13px var(--font-display)">{{ chk.clearLabel }}</button></sc-if>
+                    <sc-if value="{{ chk.canClearStrong }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ chk.onClearStrong }}" class="om-press" style="padding:0 20px;min-height:44px;display:inline-flex;align-items:center;border-radius:999px;background:var(--bad-fill);color:#fff;font:700 13px var(--font-display)">{{ chk.clearStrongLabel }}</button></sc-if>
+                  </div>
+                </div>
+              </sc-if>
             </sc-if>
           </div>
         </sc-if>
@@ -4449,7 +4470,7 @@ class Component extends DCLogic {
     bestIvQuery: '', bestIvSel: null, bestIvForm: 'normal', bestIvShadow: false, bestIvVisible: 60, dtQuery: '', dtSel: null, dtForm: 'normal', dtShadow: false, dtVisible: 60,
     transferHold: [],
     transferJunkOnly: false,
-    costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null,
+    costumeBusy: false, costumeMsg: '', costumeError: '', costumePending: null, costumeFlag: 'costume', costumeKind: '', costumeAll: false,
     gridBusy: false, gridMsg: '', gridError: '', gridRes: null,
     tagSnap: {},
     tagNames: {},
@@ -6209,7 +6230,7 @@ class Component extends DCLogic {
     if (pr.done) { removedIds = rm.filter(i => i !== pr.o); next = { ...pr, done: false }; if (pr.prev) ov[n] = pr.prev; else delete ov[n]; }
     else {
       const o = this.monWithOverrides(pr.o) || {}, c = {};
-      ['ivMeasured', 'ivManual', 'favorite', 'lucky', 'costume', 'noEvolve', 'evoPick', 'typeReviewed', 'formReviewed', 'nameReviewed'].forEach(k => { if (o[k]) c[k] = o[k]; });
+      ['ivMeasured', 'ivManual', 'favorite', 'lucky', 'costume', 'background', 'backgroundKind', 'noEvolve', 'evoPick', 'typeReviewed', 'formReviewed', 'nameReviewed'].forEach(k => { if (o[k]) c[k] = o[k]; });
       if (o.shiny && !o.shinyState) { c.shiny = true; c.shinyState = null; }
       if (o.catchDate) c.catchDate = o.catchDate;   // the old record's date is the original one
       ov[n] = { ...ov[n], ...c };
@@ -6230,30 +6251,57 @@ class Component extends DCLogic {
   costumeNorm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
   // reads: [{name, cp, n}] (n = how many tiles of it were seen in one screenshot). Pure, so it can be tested.
-  costumeMatch(reads) {
-    const roster = this.effectiveRosterForMatch();
+  costumeMatch(reads) { return this.flagMatch(reads, 'costume'); }
+
+  // The same match for the three flags the game's search can list: costume, background (kind: 'special' | 'location' | '' for the
+  // `background` term) and shiny. "Already marked" means confirmed for shiny, so a suspected shiny is taken and confirmed.
+  // Also returns the flagged records (with a CP) the tiles did not account for: `clear`, and `strong` for confirmed shiny ones.
+  // A flagged record at the CP of a tile that was not found is never listed (that tile may be it, misread or renamed).
+  flagMatch(reads, flag, kind) {
+    const roster = this.effectiveRosterForMatch(), shiny = flag === 'shiny';
+    const has = p => shiny ? !!p.shiny && p.shinyState !== 'suspected' : !!p[flag] && (flag !== 'background' || !kind || p.backgroundKind === kind);
     const byKey = new Map();
     roster.forEach(p => { if (!Number.isFinite(p.cp)) return; const k = this.costumeNorm(p.name) + '|' + p.cp; (byKey.get(k) || byKey.set(k, []).get(k)).push(p); });
-    const matched = [], unmatched = [], ambiguous = [];
+    const matched = [], unmatched = [], ambiguous = [], seen = new Set(), lostCp = new Set();
     let already = 0;
     reads.forEach(r => {
       const all = byKey.get(this.costumeNorm(r.name) + '|' + r.cp) || [];
-      const fresh = all.filter(p => !p.costume);
+      const fresh = all.filter(p => !has(p));
+      fresh.sort((a, b) => !!b[flag] - !!a[flag]);
       already += Math.min(r.n, all.length - fresh.length);
+      all.filter(has).slice(0, r.n).forEach(p => seen.add(p.idx));
       const need = Math.max(0, r.n - (all.length - fresh.length));
       if (!need) return;
-      if (!fresh.length) { unmatched.push(r.name + ' ' + r.cp); return; }
+      if (!fresh.length) { unmatched.push(r.name + ' ' + r.cp); lostCp.add(r.cp); return; }
       matched.push(...fresh.slice(0, need));
-      if (fresh.length > need) ambiguous.push(r.name + ' ' + r.cp + ': you own ' + fresh.length + ' with that CP and ' + need + ' showed as costume, so the first ' + need + ' were taken (they cannot be told apart by name and CP)');
-      if (need > fresh.length) unmatched.push((need - fresh.length) + ' × ' + r.name + ' ' + r.cp);
+      if (fresh.length > need) ambiguous.push(r.name + ' ' + r.cp + ': you own ' + fresh.length + ' with that CP and ' + need + ' showed as ' + flag + ', so the first ' + need + ' were taken (they cannot be told apart by name and CP)');
+      if (need > fresh.length) { unmatched.push((need - fresh.length) + ' × ' + r.name + ' ' + r.cp); lostCp.add(r.cp); }
     });
-    return { idxs: matched.map(p => p.idx), names: matched.map(p => p.name + ' ' + p.cp), unmatched, ambiguous, already, tiles: reads.reduce((a, r) => a + r.n, 0) };
+    const hit = new Set(matched.map(p => p.idx)), nm = p => p.name + ' ' + p.cp;
+    const gone = roster.filter(p => Number.isFinite(p.cp) && (shiny ? p.shiny : has(p)) && !seen.has(p.idx) && !hit.has(p.idx) && !lostCp.has(p.cp));
+    const strong = gone.filter(p => shiny && p.shinyState !== 'suspected'), soft = gone.filter(p => strong.indexOf(p) < 0);
+    return { idxs: matched.map(p => p.idx), names: matched.map(nm), unmatched, ambiguous, already, tiles: reads.reduce((a, r) => a + r.n, 0), flag, kind: kind || '',
+      clear: soft.map(p => p.idx), clearNames: soft.map(nm), strong: strong.map(p => p.idx), strongNames: strong.map(nm) };
+  }
+
+  // What marking sets, per flag (off = clearing). A confirmed shiny is "already marked", so marking never reaches it.
+  flagPatch(flag, kind, off) {
+    if (flag === 'background') return off ? { background: false, backgroundKind: null } : { background: true, ...(kind ? { backgroundKind: kind } : {}) };
+    return flag === 'shiny' ? { shiny: !off, shinyState: null } : { costume: !off };
+  }
+
+  // May "Clear marks the game list does not show" be offered? Only when the whole result list was read: a recording with no failed
+  // frame, no scroll jump and no tile dropped for a missing name or CP; screenshots only when the owner says every page was captured
+  // and every reply was readable. The tile count is not checked against the header: the header may count the whole box.
+  flagOffer(read, all) {
+    if (!read || !read.tiles || read.dropped) return false;
+    return read.input === 'video' ? !read.failed && !read.gaps : !!all && !read.blank;
   }
 
   async costumeFromShots(files) {
     if (!files || !files.length) return;
-    this.setState({ costumeBusy: true, costumeError: '', costumeMsg: 'Reading screenshot 1 of ' + files.length + '…', costumePending: null });
-    const best = new Map();
+    this.setState({ costumeBusy: true, costumeError: '', costumeMsg: 'Reading screenshot 1 of ' + files.length + '…', costumePending: null, costumeAll: false });
+    const best = new Map(), flag = this.state.costumeFlag || 'costume', rd = { input: 'shots', dropped: 0, blank: 0 };
     try {
       for (let i = 0; i < files.length; i++) {
         this.setState({ costumeMsg: 'Reading screenshot ' + (i + 1) + ' of ' + files.length + '…' });
@@ -6265,24 +6313,31 @@ class Component extends DCLogic {
           ] }],
           max_tokens: 2000
         });
-        const arr = this.extractJsonArray(reply) || [];
+        const arr0 = this.extractJsonArray(reply), arr = arr0 || [];
+        if (!arr0) rd.blank++;
         // Neighbouring screenshots overlap by a row, so a tile seen twice across screenshots counts once; twins inside ONE screenshot count twice.
         const here = new Map();
-        arr.forEach(r => { const cp = Number(r && r.cp), name = String((r && r.name) || '').trim(); if (!name || !Number.isFinite(cp)) return; const k = name + '|' + cp; here.set(k, { name, cp, n: (here.get(k) ? here.get(k).n : 0) + 1 }); });
+        arr.forEach(r => { const cp = Number(r && r.cp), name = String((r && r.name) || '').trim(); if (!name || !Number.isFinite(cp)) { rd.dropped++; return; } const k = name + '|' + cp; here.set(k, { name, cp, n: (here.get(k) ? here.get(k).n : 0) + 1 }); });
         here.forEach((v, k) => { const cur = best.get(k); if (!cur || v.n > cur.n) best.set(k, v); });
       }
-      const res = this.costumeMatch([...best.values()]);
+      const res = this.flagMatch([...best.values()], flag, this.state.costumeKind);
+      res.read = { ...rd, tiles: res.tiles };
       this.setState({ costumeBusy: false, costumeMsg: '', costumePending: res });
     } catch (e) {
       this.setState({ costumeBusy: false, costumeMsg: '', costumeError: (e && e.message) || 'Could not read those screenshots.' });
     }
   }
 
-  costumeApply() {
+  // Mark the matched Pokemon, or (off) clear the marks the game list does not show; `strong` = the confirmed shiny ones, a second tap.
+  costumeApply(off, strong) {
     const pend = this.state.costumePending;
-    if (!pend || !pend.idxs.length) return;
-    this.offerUndo(pend.idxs.length + ' marked as costume', ['ivOverrides']);
-    this.patchEach(pend.idxs, { costume: true }, { push: 'soon', state: { costumePending: null } });
+    if (!pend) return;
+    const idxs = off ? (strong ? pend.strong : pend.clear) : pend.idxs;
+    if (!idxs.length) return;
+    if (strong && !pend.armed) { this.setState({ costumePending: { ...pend, armed: true } }); return; }
+    const left = off ? { ...pend, [strong ? 'strong' : 'clear']: [] } : { ...pend, idxs: [], names: [], already: pend.already + idxs.length };
+    this.offerUndo(idxs.length + (off ? ' cleared of ' : ' marked as ') + pend.flag, ['ivOverrides']);
+    this.patchEach(idxs, this.flagPatch(pend.flag, pend.kind, off), { push: 'soon', state: { costumePending: left.idxs.length || left.clear.length || left.strong.length ? left : null } });
   }
 
   // ---- Grid reconcile -----------------------------------------------------------------------------------------
@@ -6412,22 +6467,27 @@ class Component extends DCLogic {
       + 'Respond with ONLY a JSON array, no markdown fences, one object per image: [{"image": 1, "count": number|null, "max": number|null, "tiles": [{"name": string, "cp": number}]}].';
   }
 
-  async gridFromVideo(file) {
-    if (!file || this.state.gridBusy) return;
-    this.setState({ gridBusy: true, gridError: '', gridMsg: 'Opening the recording', gridRes: null });
+  // The state keys a frame read reports to: the grid check's, or (flag given) the flag check's.
+  gridKeys(flag) { return flag ? ['costumeBusy', 'costumeMsg', 'costumeError', 'costumePending'] : ['gridBusy', 'gridMsg', 'gridError', 'gridRes']; }
+
+  async gridFromVideo(file, flag) {
+    const K = this.gridKeys(flag);
+    if (!file || this.state.gridBusy || this.state.costumeBusy) return;
+    this.setState({ [K[0]]: true, [K[2]]: '', [K[1]]: 'Opening the recording', [K[3]]: null });
     try {
       const raw = await this.extractFrames(file, { fps: 2, maxFrames: 120, width: 600, quality: 0.6 });
-      this.setState({ videoImport: null, gridBusy: false });
-      await this.gridRun(raw.frames);
+      this.setState({ videoImport: null, [K[0]]: false });
+      await this.gridRun(raw.frames, flag);
     } catch (err) {
-      this.setState({ videoImport: null, gridBusy: false, gridMsg: '', gridError: (err && err.message) || 'Could not read that recording.' });
+      this.setState({ videoImport: null, [K[0]]: false, [K[1]]: '', [K[2]]: (err && err.message) || 'Could not read that recording.' });
     }
   }
 
   // frames: base64 JPEGs in recording order. Reads them a few at a time (the existing pacing and key rotation), merges, compares.
-  async gridRun(frames) {
-    if (this.state.gridBusy || !frames || !frames.length) return;
-    this.setState({ gridBusy: true, gridError: '', gridMsg: 'Reading frames', gridRes: null });
+  async gridRun(frames, flag) {
+    const K = this.gridKeys(flag);
+    if (this.state.gridBusy || this.state.costumeBusy || !frames || !frames.length) return;
+    this.setState({ [K[0]]: true, [K[2]]: '', [K[1]]: 'Reading frames', [K[3]]: null });
     const PER = 4, batches = [], lists = [], heads = [];
     for (let i = 0; i < frames.length; i += PER) batches.push(frames.slice(i, i + PER));
     let lastErr = '', okBatches = 0;
@@ -6436,7 +6496,7 @@ class Component extends DCLogic {
       for (let b = 0; b < batches.length; b++) {
         if ((this.state.geminiKeys || []).length && !this.activeGeminiKeys().length && this.msUntilKeyFree() > 0) await this.waitForKeyCooldown();
         await this.throttleForRateLimit(b === 0 ? 0 : 1, batches.length);
-        this.setState({ gridMsg: this.batchLabel(b + 1, batches.length) || 'Reading frames' });
+        this.setState({ [K[1]]: this.batchLabel(b + 1, batches.length) || 'Reading frames' });
         let arr = null;
         try {
           const reply = await this.completeWithRetry({ messages: [{ role: 'user', content: [{ type: 'text', text: this.gridPrompt() }, ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))] }], max_tokens: 4000 });
@@ -6460,13 +6520,56 @@ class Component extends DCLogic {
       const merged = this.gridMerge(lists), tally = {};
       heads.forEach(h => { tally[h] = (tally[h] || 0) + 1; });
       const top = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0], hp = top ? top.split('/').map(Number) : null;
-      const res = this.gridReconcile(merged.tiles, this.effectiveRosterForMatch(), hp ? { n: hp[0], max: hp[1] } : null);
-      res.gaps = merged.gaps;
-      res.failed = merged.failed;
-      this.setState({ gridBusy: false, gridMsg: '', gridRes: res });
+      let res;
+      if (flag) {
+        // Search results: tiles counted per name and CP (the merge already took out the overlap between frames).
+        const cnt = new Map(), usable = merged.tiles.filter(t => t.name && Number.isFinite(t.cp));
+        usable.forEach(t => { const k = this.costumeNorm(t.name) + '|' + t.cp, c = cnt.get(k); if (c) c.n++; else cnt.set(k, { name: t.name, cp: t.cp, n: 1 }); });
+        res = this.flagMatch([...cnt.values()], flag, this.state.costumeKind);
+        res.read = { input: 'video', tiles: res.tiles, gaps: merged.gaps, failed: merged.failed, dropped: merged.tiles.length - usable.length };
+      } else {
+        res = this.gridReconcile(merged.tiles, this.effectiveRosterForMatch(), hp ? { n: hp[0], max: hp[1] } : null);
+        res.gaps = merged.gaps;
+        res.failed = merged.failed;
+      }
+      this.setState({ [K[0]]: false, [K[1]]: '', [K[3]]: res });
     } catch (e) {
-      this.setState({ gridBusy: false, gridMsg: '', gridError: (e && e.message) || 'Could not read the recording.' });
+      this.setState({ [K[0]]: false, [K[1]]: '', [K[2]]: (e && e.message) || 'Could not read the recording.' });
     }
+  }
+
+  flagWord(f) { return f === 'background' ? 'Background' : f === 'shiny' ? 'Shiny' : 'Costume'; }
+
+  // Fields of the Bulk "costume" check card: the flag picker, the two inputs, the result sheet and the clear option.
+  flagVals(pend) {
+    const st = this.state, fl = st.costumeFlag || 'costume', kd = st.costumeKind || '', W = this.flagWord(fl), lw = W.toLowerCase(), pf = pend ? pend.flag : fl;
+    const chip = (label, on, onClick) => ({ label, onClick, bg: on ? 'var(--ios-blue-fill)' : 'var(--surface-muted)', fg: on ? '#ffffff' : 'var(--ink-700)', bd: on ? 'var(--ios-blue-fill)' : 'var(--line-300)', pressed: on ? 'true' : 'false' });
+    const names = (a, n) => a.slice(0, n).join(' \u00b7 ') + (a.length > n ? ' \u00b7 and ' + (a.length - n) + ' more' : '');
+    const offer = !!pend && this.flagOffer(pend.read, st.costumeAll), nc = pend ? pend.clear.length : 0, ns = pend ? pend.strong.length : 0;
+    const read = (e, go) => { const files = Array.from((e && e.target && e.target.files) || []); if (e && e.target) e.target.value = ''; go(files); };
+    return {
+      blurb: fl === 'costume' ? 'Costume Pokemon are the ones some events make unable to evolve. In the game, search `costume`, scroll the list and screenshot it (the Evolutionary line box can stay ticked). Upload those screenshots here: the app reads each tile\u2019s name and CP and matches them to your roster. Nothing is marked until you confirm. Marking changes nothing about keeping or transferring.'
+        : 'The game knows which Pokemon have ' + (fl === 'shiny' ? 'the shiny sparkles' : 'a special background') + '; this app cannot see it. In the game, search `' + lw + '`' + (fl === 'background' ? ' (or `specialbackground` for global events, `locationbackground` for in-person events)' : '') + ', then screenshot the list or record the screen while you scroll it slowly. The app reads each tile\u2019s name and CP and matches them to your roster. Nothing is marked until you confirm.' + (fl === 'shiny' ? ' A match is marked as a confirmed shiny.' : ''),
+      flagChips: ['costume', 'background', 'shiny'].map(k => chip(this.flagWord(k), fl === k, () => this.setState({ costumeFlag: k, costumePending: null, costumeError: '' }))),
+      hasKinds: fl === 'background',
+      kindChips: [['', 'Either kind'], ['special', 'Global events'], ['location', 'In-person events']].map(([k, l]) => chip(l, kd === k, () => this.setState({ costumeKind: k, costumePending: null }))),
+      uploadLabel: 'UPLOAD ' + W.toUpperCase() + ' SEARCH SCREENSHOTS', shotsAria: W + ' search screenshots',
+      onFiles: e => read(e, f => this.costumeFromShots(f)),
+      onVideo: e => read(e, f => this.gridFromVideo(f[0], fl)),
+      hasPending: !!pend,
+      pendingLine: pend ? 'Read ' + pend.tiles + ' tiles: ' + pend.idxs.length + ' matched to your roster' + (pend.already ? ', ' + pend.already + ' already marked' : '') + (pend.unmatched.length ? ', ' + pend.unmatched.length + ' not found' : '') + '.' : '',
+      pendingNames: pend ? names(pend.names, 14) : '',
+      pendingUnmatched: pend && pend.unmatched.length ? 'Not found (renamed, traded away or misread): ' + pend.unmatched.slice(0, 8).join(', ') + (pend.unmatched.length > 8 ? ', \u2026' : '') : '',
+      pendingAmbiguous: pend && pend.ambiguous.length ? pend.ambiguous.slice(0, 3).join('. ') : '',
+      canApply: !!(pend && pend.idxs.length), applyLabel: 'MARK ' + (pend ? pend.idxs.length : 0) + ' AS ' + this.flagWord(pf).toUpperCase(), onApply: () => this.costumeApply(),
+      onClear: () => this.setState({ costumePending: null }),
+      hasClear: !!(pend && (nc || ns)), isShots: !!(pend && pend.read && pend.read.input === 'shots'), allPages: !!st.costumeAll, onAllPages: () => this.setState({ costumeAll: !st.costumeAll }),
+      clearOffered: offer, clearHint: offer ? '' : 'Not offered: tiles may be missing' + (pend && pend.read && pend.read.input === 'shots' ? ' (tick the box if you captured every page).' : ' (needs a recording with no gaps or failed frames).'),
+      clearLine: nc + ns + ' marked ' + pf + ' in the app, not in the game list. Only reliable if the whole result list was recorded.',
+      clearNames: pend ? names([...pend.clearNames, ...pend.strongNames], 10) : '',
+      canClear: offer && nc > 0, clearLabel: 'CLEAR ' + nc + (ns ? ' UNCONFIRMED' : '') + ' MARKS', onClearMarks: () => this.costumeApply(true, false),
+      canClearStrong: offer && ns > 0, clearStrongLabel: pend && pend.armed ? 'TAP AGAIN: CLEAR ' + ns + ' CONFIRMED SHINY' : 'CLEAR ' + ns + ' CONFIRMED SHINY', onClearStrong: () => this.costumeApply(true, true)
+    };
   }
 
   // Costume Pokemon of a species that evolves, whose Evolve button nobody has checked yet.
@@ -6703,18 +6806,10 @@ class Component extends DCLogic {
       more: typeTotal > typeRows.length, remaining: typeTotal - typeRows.length,
       showMore: () => this.setState({ bulkVisible: (this.state.bulkVisible || 12) + 12 })
     }, {
-      key: 'costume', title: 'COSTUME POKEMON', count: costumePend ? costumePend.idxs.length : 0, isCostumeCheck: true, isFormCheck: false, isTypeCheck: false, typeRows: [], rows: [],
-      blurb: 'Costume Pokemon are the ones some events make unable to evolve. In the game, search `costume`, scroll the list and screenshot it (the Evolutionary line box can stay ticked). Upload those screenshots here: the app reads each tile\u2019s name and CP and matches them to your roster. Nothing is marked until you confirm. Marking changes nothing about keeping or transferring.',
+      key: 'costume', title: this.flagWord(costumePend ? costumePend.flag : this.state.costumeFlag).toUpperCase() + ' POKEMON', count: costumePend ? costumePend.idxs.length : 0, isCostumeCheck: true, isFormCheck: false, isTypeCheck: false, typeRows: [], rows: [],
       empty: false, more: false, remaining: 0, showMore: () => {},
       busy: !!this.state.costumeBusy, msg: this.state.costumeMsg || '', error: this.state.costumeError || '',
-      onFiles: e => { const files = Array.from((e && e.target && e.target.files) || []); if (e && e.target) e.target.value = ''; this.costumeFromShots(files); },
-      hasPending: !!costumePend,
-      pendingLine: costumePend ? 'Read ' + costumePend.tiles + ' tiles: ' + costumePend.idxs.length + ' matched to your roster' + (costumePend.already ? ', ' + costumePend.already + ' already marked' : '') + (costumePend.unmatched.length ? ', ' + costumePend.unmatched.length + ' not found' : '') + '.' : '',
-      pendingNames: costumePend ? costumePend.names.slice(0, 14).join(' \u00b7 ') + (costumePend.names.length > 14 ? ' \u00b7 and ' + (costumePend.names.length - 14) + ' more' : '') : '',
-      pendingUnmatched: costumePend && costumePend.unmatched.length ? 'Not found (renamed, traded away or misread): ' + costumePend.unmatched.slice(0, 8).join(', ') + (costumePend.unmatched.length > 8 ? ', \u2026' : '') : '',
-      pendingAmbiguous: costumePend && costumePend.ambiguous.length ? costumePend.ambiguous.slice(0, 3).join('. ') : '',
-      canApply: !!(costumePend && costumePend.idxs.length), applyLabel: 'MARK ' + (costumePend ? costumePend.idxs.length : 0) + ' AS COSTUME', onApply: () => this.costumeApply(),
-      onClear: () => this.setState({ costumePending: null })
+      ...this.flagVals(costumePend)
     }, {
       key: 'costevo', title: 'COSTUME EVOLVE CHECK', count: costEvo.length, isFormCheck: false, isTypeCheck: false, typeRows: [],
       blurb: 'A costume Pokemon of a species that evolves: open it in the game. If it shows an Evolve button, tap the first answer; if it has none, tap the second and the app stops planning an evolution (and stardust) for it. Costumes that can evolve are left alone.',
@@ -6857,7 +6952,7 @@ class Component extends DCLogic {
     const names = String(st.srchName || '').split(/[,\n]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
     const lo = parseInt(st.srchCpMin, 10), hi = parseInt(st.srchCpMax, 10);
     const formKey = { alola: 'alola', galar: 'galarian', hisui: 'hisuian', paldea: 'paldea' }[st.srchForm];
-    const get = { xxl: p => this.sizeTagOf(p) === 'XXL', xxs: p => this.sizeTagOf(p) === 'XXS', xl: p => this.sizeTagOf(p) === 'XL', xs: p => this.sizeTagOf(p) === 'XS', shadow: p => this.isShadow(p), lucky: p => !!p.lucky, shiny: p => !!p.shiny, favorite: p => !!p.favorite };
+    const get = { xxl: p => this.sizeTagOf(p) === 'XXL', xxs: p => this.sizeTagOf(p) === 'XXS', xl: p => this.sizeTagOf(p) === 'XL', xs: p => this.sizeTagOf(p) === 'XS', shadow: p => this.isShadow(p), lucky: p => !!p.lucky, shiny: p => !!p.shiny, favorite: p => !!p.favorite, background: p => !!p.background };
     return this.effectiveRosterForMatch().filter(p => {
       if (names.length && !names.some(n => String(p.name || '').toLowerCase().indexOf(n) >= 0)) return false;
       if ((st.srchTypes || []).length) { const t = this.typesOf(p).map(x => x.toLowerCase()); if (!st.srchTypes.some(x => t.indexOf(x.toLowerCase()) >= 0)) return false; }
@@ -6923,7 +7018,7 @@ class Component extends DCLogic {
     const R = this.renameRows();
     const sample = this.renameFor({ name: 'Ninetales', form: 'alola', atkIV: 15, defIV: 14, staIV: 13, great: { rankPct: 97 }, ultra: { rankPct: 71 }, little: { rankPct: 40 }, cp: 1801 }, st.renameTpl);
     const mkChip = (label, on, onClick, extra) => ({ label, onClick, bg: on === 1 ? 'var(--ios-blue-fill)' : on === -1 ? '#e5484d' : '#ffffff', fg: on ? '#ffffff' : 'var(--ink-700)', bd: on === 1 ? 'var(--ios-blue-fill)' : on === -1 ? '#e5484d' : 'var(--line-300)', pressed: on ? 'true' : 'false' });
-    const flagDefs = [['xxl', 'XXL'], ['xxs', 'XXS'], ['xl', 'XL'], ['xs', 'XS'], ['shadow', 'Shadow'], ['purified', 'Purified'], ['lucky', 'Lucky'], ['shiny', 'Shiny'], ['favorite', 'Favorite'], ['legendary', 'Legendary'], ['mythical', 'Mythical'], ['costume', 'Costume'], ['evolve', 'Can evolve']];
+    const flagDefs = [['xxl', 'XXL'], ['xxs', 'XXS'], ['xl', 'XL'], ['xs', 'XS'], ['shadow', 'Shadow'], ['purified', 'Purified'], ['lucky', 'Lucky'], ['shiny', 'Shiny'], ['favorite', 'Favorite'], ['legendary', 'Legendary'], ['mythical', 'Mythical'], ['costume', 'Costume'], ['background', 'Background'], ['evolve', 'Can evolve']];
     const flags = st.srchFlags || {};
     const types = ['Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
     const forms = [['', 'Any'], ['alola', 'Alolan'], ['galar', 'Galarian'], ['hisui', 'Hisuian'], ['paldea', 'Paldean']];
@@ -15479,7 +15574,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'gridBusy', 'gridMsg', 'gridError', 'gridRes', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'pushOn', 'pushBusy', 'pushMsg', 'pushPrefs', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'costumeFlag', 'costumeKind', 'costumeAll', 'gridBusy', 'gridMsg', 'gridError', 'gridRes', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'pushOn', 'pushBusy', 'pushMsg', 'pushPrefs', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -19422,6 +19517,7 @@ class Component extends DCLogic {
       if (rosterFilter === 'cpcheck') return !!p.cpCheck;
       if (rosterFilter === 'formCheck') return !p.formReviewed && !!(this.mechanics && this.mechanics.hasRegionalForms && p.dex != null && this.mechanics.hasRegionalForms(p.name, p.dex));
       if (rosterFilter === 'costume') return !!p.costume;
+      if (rosterFilter === 'background') return !!p.background;
       if (rosterFilter === 'noType') return !this.typeOf(p);
       if (rosterFilter === 'sizeXx') { const t = this.sizeTagOf(p); return t === 'XXL' || t === 'XXS'; }
       if (rosterFilter === 'sizeX') { const t = this.sizeTagOf(p); return t === 'XL' || t === 'XS'; }
@@ -20231,7 +20327,7 @@ class Component extends DCLogic {
         ivSourceColor: p.ivMeasured ? 'var(--grass-700)'
           : (!Number.isFinite(p.atkIV) ? 'var(--ink-400)' : 'var(--type-electric)'),
         flags: flags || 'No special flags',
-        flagChips: (() => { const fc = [p.lucky ? 'Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? 'Shadow' : '', p.favorite ? 'Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? 'Shiny (unconfirmed)' : 'Shiny') : ''].filter(Boolean); return fc.length ? fc : null; })(),
+        flagChips: (() => { const fc = [p.lucky ? 'Lucky' : '', (p.shadowPurified === '1' || p.shadowPurified === 1) ? 'Shadow' : '', p.favorite ? 'Favorite' : '', p.shiny ? (p.shinyState === 'suspected' ? 'Shiny (unconfirmed)' : 'Shiny') : '', p.costume ? 'Costume' : '', p.background ? 'Background' : ''].filter(Boolean); return fc.length ? fc : null; })(),
         shinyControl: (() => {
           if (!p.shiny) return { title: 'NOT SHINY', tone: 'var(--ink-400)', buttons: [{ label: 'MARK AS SHINY', primary: false, onClick: () => this.setShinyConfirmed(p, true) }] };
           if (p.shinyState === 'suspected') return { title: 'Shiny? Read FROM COLOR \u2014 CONFIRM IT', tone: 'var(--type-electric)', buttons: [{ label: 'CONFIRM SHINY', primary: true, onClick: () => this.setShinyConfirmed(p, true) }, { label: 'NOT SHINY', primary: false, onClick: () => this.setShinyConfirmed(p, false) }] };
@@ -20861,6 +20957,7 @@ class Component extends DCLogic {
         { key: 'sizeXx', label: 'XXL / XXS' },
         { key: 'formCheck', label: 'FORM TO CHECK' },
         ...(roster.some(p => p.costume) ? [{ key: 'costume', label: 'COSTUME' }] : []),
+        ...(roster.some(p => p.background) ? [{ key: 'background', label: 'BACKGROUND' }] : []),
         { key: 'noType', label: 'NO TYPE' },
         { key: 'sizeX', label: 'XL / XS' },
         { key: 'shadow', label: 'SHADOW / PURIFIED' },
