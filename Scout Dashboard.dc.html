@@ -519,6 +519,15 @@
           <button type="button" onClick="{{ r.onRevert }}" class="om-press" aria-label="Undo the change to {{ r.name }}" style="flex-shrink:0;min-width:64px;border-radius:999px;background:var(--ios-fill);color:var(--ink-700);font:600 15px var(--font-body)">Undo</button>
         </div>
       </sc-for>
+      <sc-if value="{{ importPairs }}" hint-placeholder-val="{{ false }}">
+        <div style="font:500 13px var(--font-body);color:var(--ink-400);margin:12px 0 2px">Probably the same Pokemon, powered up</div>
+        <sc-for list="{{ importPairs }}" as="r" hint-placeholder-count="0">
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 2px;border-top:.5px solid var(--line-200)">
+            <div style="flex:1;min-width:0"><div style="font:600 17px var(--font-body)">{{ r.name }}</div><div style="font:500 13px var(--font-body);color:var(--ink-500);margin-top:2px">{{ r.text }}</div></div>
+            <button type="button" onClick="{{ r.onGo }}" class="om-press" aria-label="{{ r.aria }}" style="flex-shrink:0;min-width:64px;border-radius:999px;background:var(--ios-fill);color:var(--ink-700);font:600 15px var(--font-body)">{{ r.label }}</button>
+          </div>
+        </sc-for>
+      </sc-if>
     </div>
   </div>
   </sc-if>
@@ -2326,7 +2335,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.376{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.378{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -6088,8 +6097,27 @@ class Component extends DCLogic {
     if (r.kind === 'insert') { added = added.filter(p => p.idx !== idx); delete overrides[idx]; }
     else if (r.prev) overrides[idx] = r.prev; else delete overrides[idx];
     const rows = li.rows.filter(x => x.idx !== idx), revert = { ...li.revert }; delete revert[idx];
-    this.setState({ ivOverrides: overrides, addedPokemon: added, lastImport: rows.length ? { ...li, rows, revert } : null, importSheetOpen: rows.length > 0 && this.state.importSheetOpen },
+    const pr = (li.pairs || []).find(x => x.n === idx);   // a merged new record that is undone brings its old record back
+    this.setState({ ivOverrides: overrides, addedPokemon: added, lastImport: rows.length ? { ...li, rows, revert, pairs: (li.pairs || []).filter(x => x !== pr) } : null, importSheetOpen: rows.length > 0 && this.state.importSheetOpen, ...(pr && pr.done ? { removedIds: (this.state.removedIds || []).filter(i => i !== pr.o) } : {}) },
       () => { try { this.queueCloudPush(); } catch (e) {} });
+  }
+
+  // Merge (or, on a merged row, undo) one powered-up pair of the receipt: the old record is retired like a transferred one and the new record
+  // takes over what the owner set on it (their own judgements only; the new scan keeps its CP, HP, level and moves). Undo puts both back.
+  mergePowerUp(n) {
+    const li = this.state.lastImport, pr = li && (li.pairs || []).find(x => x.n === n);
+    if (!pr) return;
+    const ov = { ...(this.state.ivOverrides || {}) }, rm = this.state.removedIds || [], prev = ov[n] || null;
+    let removedIds, next;
+    if (pr.done) { removedIds = rm.filter(i => i !== pr.o); next = { ...pr, done: false }; if (pr.prev) ov[n] = pr.prev; else delete ov[n]; }
+    else {
+      const o = this.monWithOverrides(pr.o) || {}, c = {};
+      ['ivMeasured', 'ivManual', 'favorite', 'lucky', 'costume', 'noEvolve', 'evoPick', 'typeReviewed', 'formReviewed', 'nameReviewed'].forEach(k => { if (o[k]) c[k] = o[k]; });
+      if (o.shiny && !o.shinyState) { c.shiny = true; c.shinyState = null; }
+      ov[n] = { ...ov[n], ...c };
+      removedIds = [...rm, pr.o]; next = { ...pr, done: true, prev };
+    }
+    this.setState({ ivOverrides: ov, removedIds, lastImport: { ...li, pairs: li.pairs.map(x => x === pr ? next : x) } }, () => { try { this.pushNow(); } catch (e) {} });
   }
 
   recentChangedHas(idx) {
@@ -13867,8 +13895,29 @@ class Component extends DCLogic {
     }
   }
 
+  // reconcile (powered up): for each new record, the one old record that is the same Pokemon after a power-up: same species and form, the same
+  // known IV triple, a lower CP and no higher HP, not removed. Zero or several candidates -> no pair; an old record claimed twice -> no pair.
+  // -> [{ n: new idx, o: old idx, name, ocp, ncp }]
+  findPoweredUpPairs(news, pool, removed) {
+    const iv = p => ['atk', 'def', 'sta'].map(k => p[k + 'IV']), key = p => String(p.name).toLowerCase() + '|' + String(p.form || 'normal').toLowerCase();
+    const known = p => iv(p).every(Number.isFinite) && Number.isFinite(p.cp);
+    const pairs = [];
+    news.forEach(n => {
+      const c = known(n) ? pool.filter(o => o.idx !== n.idx && !removed.has(o.idx) && known(o) && key(o) === key(n) && String(iv(o)) === String(iv(n)) && o.cp < n.cp && (o.hp == null || n.hp == null || o.hp <= n.hp)) : [];
+      if (c.length === 1) pairs.push({ n: n.idx, o: c[0].idx, name: n.name + (n.form ? ' (' + n.form + ')' : ''), ocp: c[0].cp, ncp: n.cp });
+    });
+    return pairs.filter(p => pairs.filter(q => q.o === p.o).length === 1);
+  }
+
   // commit: write the merged lists to state in one setState, then the stardust balance. patch is the state patch.
   commitImport(patch, seenStardust) {
+    // reconcile (powered up): new records that look like an old record after a power-up go in the receipt as pairs to merge. Never blocks the import.
+    try {
+      const li = patch.lastImport, hit = new Set(patch.recentChanged.ids), eff = p => ({ ...p, ...(patch.ivOverrides[p.idx] || {}) });
+      const pairs = this.findPoweredUpPairs(patch.addedPokemon.filter(p => li.revert[p.idx] && li.revert[p.idx].kind === 'insert').map(eff),
+        [...this.state.roster, ...patch.addedPokemon].filter(p => !hit.has(p.idx)).map(eff), new Set(patch.removedIds));
+      if (pairs.length) patch = { ...patch, lastImport: { ...li, pairs } };
+    } catch (e) {}
     this.setState(patch);
     if (seenStardust != null) this.setStardust(seenStardust);
   }
@@ -21533,7 +21582,8 @@ class Component extends DCLogic {
       lastImportHas: !!(this.state.lastImport && this.state.lastImport.rows.length),
       lastImportTitle: (() => { const r = (this.state.lastImport && this.state.lastImport.rows) || []; const n = r.filter(x => x.kind === 'new').length; return 'Last import: ' + r.length + ' changed' + (n ? ', ' + n + ' new' : ''); })(),
       lastImportSub: 'See what changed for each Pokemon and undo any of it',
-      openImportSheet: () => this.openImportSheet(), closeImportSheet: () => this.closeImportSheet(),
+      importSheetOpen: !!this.state.importSheetOpen, openImportSheet: () => this.openImportSheet(), closeImportSheet: () => this.closeImportSheet(),
+      importPairs: (() => { const q = (this.state.lastImport && this.state.lastImport.pairs) || []; return q.length ? q.map(r => ({ name: r.name, text: (r.done ? 'Merged \u00b7 ' : '') + 'CP ' + r.ocp + ' \u2192 ' + r.ncp, label: r.done ? 'Undo' : 'Merge', aria: (r.done ? 'Undo the merge of ' : 'Merge ') + r.name, onGo: () => this.mergePowerUp(r.n) })) : null; })(),
       importSheetRows: ((this.state.lastImport && this.state.lastImport.rows) || []).map(r => ({ name: r.name, cpLabel: r.cp != null ? 'CP ' + r.cp : '', text: r.text, color: r.kind === 'new' ? 'var(--ios-green)' : 'var(--ink-500)', onRevert: () => this.revertImportRow(r.idx) })),
       candyLockChoices: [[false, 'Newest wins'], [true, 'Keep mine']].map(([k, l]) => ({ label: l, pressed: String(!!this.state.candyLock === k), bg: !!this.state.candyLock === k ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: !!this.state.candyLock === k ? '#fff' : 'var(--ink-600)', onClick: () => this.setCandyLock(k) })),
       protectChoices: [['extreme', 'XXL and XXS'], ['all', 'Also XL and XS'], ['off', 'Off']].map(([k, l]) => ({ label: l, pressed: String(this.state.protectSizes === k), bg: this.state.protectSizes === k ? 'var(--brand-primary-strong)' : 'var(--ios-fill)', fg: this.state.protectSizes === k ? '#fff' : 'var(--ink-600)', onClick: () => this.setProtectSizes(k) })),
