@@ -95,13 +95,13 @@ function mergeCtx(oldExtra, ovOld, ovNew) {
     lastImport: { at: 1, rows: [{ idx: 'video-1', kind: 'new', name: 'Machamp', cp: 1600, text: 'x' }], revert: { 'video-1': { kind: 'insert' } }, pairs: [{ n: 'video-1', o: 'r1', name: 'Machamp', ocp: 1500, ncp: 1600 }] } });
 }
 (function merge() {
-  const c = mergeCtx({ favorite: true }, { ivMeasured: true, ivManual: true, formReviewed: true, nameReviewed: true, typeReviewed: true, lucky: true, costume: true, noEvolve: true, evoPick: 'Machamp', shiny: true, shinyState: null,
+  const c = mergeCtx({ favorite: true, catchDate: '2024-05-01' }, { ivMeasured: true, ivManual: true, formReviewed: true, nameReviewed: true, typeReviewed: true, lucky: true, costume: true, noEvolve: true, evoPick: 'Machamp', shiny: true, shinyState: null,
     cp: 1500, hp: 120, level: 20, pendingPowerUps: 2, powerUpsSinceScan: 1 }, { level: 25 });
   const before = JSON.parse(JSON.stringify(c.state));
   c.mergePowerUp('video-1');
   eq('the old record is retired like a transferred one', c.state.removedIds, ['r1']);
   eq('the owner data is carried onto the new record, what the scan measured is kept',
-    c.state.ivOverrides['video-1'], { level: 25, ivMeasured: true, ivManual: true, favorite: true, lucky: true, costume: true, noEvolve: true, evoPick: 'Machamp', typeReviewed: true, formReviewed: true, nameReviewed: true, shiny: true, shinyState: null });
+    c.state.ivOverrides['video-1'], { level: 25, ivMeasured: true, ivManual: true, favorite: true, lucky: true, costume: true, noEvolve: true, evoPick: 'Machamp', typeReviewed: true, formReviewed: true, nameReviewed: true, shiny: true, shinyState: null, catchDate: '2024-05-01' });
   ok('CP, HP and the power-up counters of the old record are not carried', !('cp' in c.state.ivOverrides['video-1']) && !('hp' in c.state.ivOverrides['video-1']) && !('pendingPowerUps' in c.state.ivOverrides['video-1']));
   eq('the old record keeps its own override (it is only hidden)', c.state.ivOverrides.r1.ivManual, true);
   eq('the row now reads as merged', c.state.lastImport.pairs[0].done, true);
