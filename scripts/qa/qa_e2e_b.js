@@ -978,6 +978,8 @@ module.exports = async function suiteB() {
     await s.set({ addedPokemon: st0.addedPokemon || [], roster: st0.roster || [], cutTarget: 300, cutTargetDraft: '300', ivOverrides: st0.ivOverrides || {} });
   });
   await T('PERF-04', 'Performance', 'The merged roster and keep context are reused across tab switches and rebuilt as soon as anything they read changes', async () => {
+    // The memo is keyed by the wall-clock minute (memoDeps), so a minute that rolls over inside this test rebuilds the roster on purpose. Start only when at least 9 s of the minute are left.
+    { const left = 60000 - (Date.now() % 60000); if (left < 9000) await s.page.waitForTimeout(left + 300); }
     const logic = () => s.logic(l => { window.__qaL = l; return true; });
     await logic();
     const st0 = await s.state();
@@ -2753,6 +2755,114 @@ module.exports = async function suiteB() {
       await sx.set({ copiedKey: '', fileFallback: null });
       await sx.page.waitForTimeout(200);
       golden('grid-sheet', { requests: req.length, images: req[0].parts.filter(p => p.inline_data).length, sheetDefault: await txt(), strings: s1 });
+    });
+  }, 'high');
+
+  // ---- Flags from the game, part 1: Costume / Background / Shiny from a game search (screenshots or a recording) ----
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const fmon = (idx, name, cp, extra) => ({ idx, name, cp, hp: 60, atkIV: 10, defIV: 10, staIV: 10, ivAvg: 66.7, scanDate: '2026-10-01', ...(extra || {}) });
+  const bodyText = sx => sx.page.evaluate(() => document.body.innerText);
+  const pickFlag = async (sx, label) => { await sx.page.getByRole('button', { name: label, exact: true }).first().click(); await sx.page.waitForTimeout(250); };
+  const recordFlag = async (sx, flag, frames) => {   // fake frames, like GRID-01: the model is stubbed, the frame bytes do not matter
+    await sx.logic((l, a) => { l.gridRun(a.frames, a.flag); return true; }, { frames, flag });
+    await sx.page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.costumeBusy && (l.state.costumePending || l.state.costumeError); }, null, { timeout: 30000 });
+    await sx.page.waitForTimeout(500);
+  };
+  const flagOf = async (sx, idx) => (await sx.call('effectiveRosterForMatch')).find(p => p.idx === idx);
+
+  await T('FLAG-01', 'Bulk', 'Background from screenshots of the game search: matched by name and CP, nothing marked before the confirm, the kind is stored, the clear option needs the every-page tick, and the filter, the builder and the detail sheet show it', async () => {
+    await appSession(async sx => {
+      const mons = [fmon('b1', 'Pidgey', 100), fmon('b2', 'Pidgey', 100), fmon('b3', 'Eevee', 200), fmon('b4', 'Flabébé', 300, { background: true, backgroundKind: 'special' }), fmon('b5', 'Zubat', 50, { background: true, backgroundKind: 'special' }), fmon('b6', 'Oddish', 70)];
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok('[{"name":"Pidgey","cp":100},{"name":"Pidgey","cp":100},{"name":"Eevee","cp":200},{"name":"Flabebe","cp":300},{"name":"Ghost","cp":9}]') });
+      await useKey(sx, gkey('F1')); await sx.set({ addedPokemon: mons, roster: [], ivOverrides: {}, tab: 'bulk', costumeFlag: 'costume', costumeKind: '', costumePending: null });
+      await sx.page.waitForTimeout(500);
+      await pickFlag(sx, 'Background'); await pickFlag(sx, 'Global events');
+      await sx.page.locator('input[aria-label="Background search screenshots"]').setInputFiles({ name: 'bg.png', mimeType: 'image/png', buffer: PNG });
+      await sx.page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.costumeBusy && (l.state.costumePending || l.state.costumeError); }, null, { timeout: 30000 });
+      let t = await bodyText(sx);
+      expect(/Read 5 tiles: 3 matched to your roster, 1 already marked, 1 not found\./.test(t), 'the line: ' + (t.match(/Read [^\n]*/) || ['none'])[0]);
+      expect(/Ghost 9/.test(t) && /renamed, traded away or misread/.test(t), 'the tile that is not in the roster is listed');
+      expect(/Pidgey 100: you own 2 with that CP and 2 showed as background/.test(t) === false, 'two tiles, two twins: no ambiguity');
+      expect(/Clear marks the game list does not show/.test(t) && /Zubat 50/.test(t) && /only reliable if the whole result list was recorded/i.test(t), 'the clear section names the absent one and says when it is reliable');
+      expect(/Not offered/.test(t) && !(await sx.page.getByRole('button', { name: /^CLEAR \d/ }).count()), 'screenshots: clear is not offered without the tick');
+      expect((await sx.call('effectiveRosterForMatch')).every(p => !['b1', 'b2', 'b3'].includes(p.idx) || !p.background), 'nothing is marked before the confirm');
+      await sx.page.getByText(/^MARK 3 AS BACKGROUND$/).first().click(); await sx.page.waitForTimeout(600);
+      for (const i of ['b1', 'b2', 'b3']) { const p = await flagOf(sx, i); expect(p.background === true && p.backgroundKind === 'special', i + ' is marked, kind special: ' + JSON.stringify([p.background, p.backgroundKind])); }
+      expect((await flagOf(sx, 'b6')).background !== true, 'a Pokemon that was not in the list is untouched');
+      await sx.page.getByLabel('I captured every page of the results').check(); await sx.page.waitForTimeout(300);
+      await sx.page.getByRole('button', { name: /^CLEAR 1 MARKS$/ }).click(); await sx.page.waitForTimeout(600);
+      const z = await flagOf(sx, 'b5');
+      expect(z.background === false && !z.backgroundKind, 'with the tick, one confirm clears the mark the list does not show: ' + JSON.stringify([z.background, z.backgroundKind]));
+      expect((await flagOf(sx, 'b4')).background === true, 'the one the list showed keeps its mark');
+      // roster filter, builder term, detail sheet
+      await sx.set({ tab: 'roster', rosterFilter: 'all', search: '' }); await sx.page.waitForTimeout(500);
+      expect(await sx.page.getByRole('button', { name: /^BACKGROUND$/ }).count() > 0, 'the Roster has a Background filter once one exists');
+      await sx.set({ rosterFilter: 'background' }); await sx.page.waitForTimeout(500);
+      t = await bodyText(sx);
+      expect(/Eevee/.test(t) && !/Oddish/.test(t) && !/Zubat/.test(t), 'the filter lists only the marked ones');
+      await sx.set({ rosterFilter: 'all', tab: 'tools', toolsMode: 'search', srchFlags: { background: 1 } }); await sx.page.waitForTimeout(500);
+      expect(await sx.call('searchStringFromBuilder') === 'background', 'the builder emits the game term');
+      expect(/STATUS/.test(await bodyText(sx)) && await sx.page.getByRole('button', { name: /^Background$/ }).count() > 0, 'the Background chip is in the builder');
+      await sx.set({ srchFlags: {}, tab: 'roster' });
+      await sx.logic((l, i) => { l.openDetail(l.effectiveRosterForMatch().find(p => p.idx === i)); return true; }, 'b3'); await sx.page.waitForTimeout(800);
+      expect(/Background/.test(await bodyText(sx)), 'the detail sheet shows the Background chip');
+      expect(g.generated().length === 1, 'one read');
+    });
+  }, 'high');
+
+  await T('FLAG-02', 'Bulk', 'Shiny from a recording of the game search: frames are merged, a suspected shiny is confirmed, a confirmed one is never touched, and the two-step clear works on a complete read', async () => {
+    await appSession(async sx => {
+      const mons = [fmon('s1', 'Eevee', 500, { shiny: true, shinyState: 'suspected' }), fmon('s2', 'Pikachu', 600, { shiny: true, shinyState: null }), fmon('s3', 'Charmander', 100, { shiny: true, shinyState: null }),
+        fmon('s4', 'Zubat', 40, { shiny: true, shinyState: 'suspected' }), fmon('s5', 'Oddish', 70)];
+      const reply = JSON.stringify([
+        { image: 1, count: 4, max: 9, tiles: [{ name: 'Eevee', cp: 500 }, { name: 'Pikachu', cp: 600 }] },
+        { image: 2, count: 4, max: 9, tiles: [{ name: 'Pikachu', cp: 600 }, { name: 'Oddish', cp: 70 }] },
+        { image: 3, count: 4, max: 9, tiles: [{ name: 'Oddish', cp: 70 }, { name: 'Rattata', cp: 8 }] }]);
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(reply) });
+      await useKey(sx, gkey('F2')); await sx.set({ addedPokemon: mons, roster: [], ivOverrides: {}, tab: 'bulk', costumeFlag: 'shiny', costumeKind: '', costumePending: null });
+      await sx.page.waitForTimeout(500);
+      const before = JSON.stringify((await sx.state()).addedPokemon);
+      await recordFlag(sx, 'shiny', ['A'.repeat(8), 'B'.repeat(8), 'C'.repeat(8)]);
+      let t = await bodyText(sx);
+      expect(/SHINY POKEMON/.test(t) && /Read 4 tiles: 2 matched to your roster, 1 already marked, 1 not found\./.test(t), 'the line (frames overlapped, so 4 tiles): ' + (t.match(/Read [^\n]*/) || ['none'])[0]);
+      expect(/Rattata 8/.test(t), 'the unknown tile is listed');
+      expect(JSON.stringify((await sx.state()).addedPokemon) === before, 'nothing is written before the confirm');
+      expect(await sx.page.getByRole('button', { name: /^CLEAR 1 UNCONFIRMED MARKS$/ }).count() === 1 && await sx.page.getByRole('button', { name: /^CLEAR 1 CONFIRMED SHINY$/ }).count() === 1, 'a complete recording offers the clear, the confirmed shiny on its own button');
+      expect(/only reliable if the whole result list was recorded/i.test(t), 'the sheet says when it is reliable');
+      await sx.page.getByText(/^MARK 2 AS SHINY$/).first().click(); await sx.page.waitForTimeout(600);
+      const s1 = await flagOf(sx, 's1'), s5 = await flagOf(sx, 's5'), s2 = await flagOf(sx, 's2');
+      expect(s1.shiny === true && s1.shinyState === null, 'the suspected shiny is confirmed');
+      expect(s5.shiny === true && s5.shinyState === null, 'a plain one is marked confirmed');
+      expect(s2.shiny === true && s2.shinyState === null, 'the confirmed one is untouched');
+      await sx.page.getByRole('button', { name: /^CLEAR 1 UNCONFIRMED MARKS$/ }).click(); await sx.page.waitForTimeout(600);
+      expect((await flagOf(sx, 's4')).shiny === false, 'the unconfirmed one the list does not show is cleared');
+      expect((await flagOf(sx, 's3')).shiny === true, 'the confirmed one is still shiny after the first tap');
+      await sx.page.getByRole('button', { name: /^CLEAR 1 CONFIRMED SHINY$/ }).click(); await sx.page.waitForTimeout(500);
+      expect((await flagOf(sx, 's3')).shiny === true && await sx.page.getByRole('button', { name: /^TAP AGAIN: CLEAR 1 CONFIRMED SHINY$/ }).count() === 1, 'one tap on a confirmed shiny only arms the button');
+      await sx.page.getByRole('button', { name: /^TAP AGAIN: CLEAR 1 CONFIRMED SHINY$/ }).click(); await sx.page.waitForTimeout(600);
+      expect((await flagOf(sx, 's3')).shiny === false, 'a second explicit tap clears the confirmed one');
+      expect(g.generated().length === 1 && g.generated()[0].parts.filter(p => p.inline_data).length === 3, 'one request of three frames');
+    });
+  }, 'high');
+
+  await T('FLAG-03', 'Bulk', 'A recording with a scroll jump or a failed frame matches what it saw but never offers to clear marks', async () => {
+    await appSession(async sx => {
+      const mons = [fmon('c1', 'Pidgey', 100), fmon('c2', 'Rattata', 8, { costume: true }), fmon('c3', 'Zubat', 40, { costume: true })];
+      const jump = JSON.stringify([{ image: 1, count: null, max: null, tiles: [{ name: 'Pidgey', cp: 100 }] }, { image: 2, count: null, max: null, tiles: [{ name: 'Zubat', cp: 40 }] }]);
+      const g = await sx.stubGemini({ models: GEM_MODELS, generate: G.ok(jump) });
+      await useKey(sx, gkey('F3')); await sx.set({ addedPokemon: mons, roster: [], ivOverrides: {}, tab: 'bulk', costumeFlag: 'costume', costumeKind: '', costumePending: null });
+      await sx.page.waitForTimeout(500);
+      await recordFlag(sx, 'costume', ['A'.repeat(8), 'B'.repeat(8)]);
+      let t = await bodyText(sx);
+      expect(/Read 2 tiles: 1 matched to your roster, 1 already marked/.test(t), 'what it saw is matched: ' + (t.match(/Read [^\n]*/) || ['none'])[0]);
+      expect(/Clear marks the game list does not show/.test(t) && /Rattata 8/.test(t) && /Not offered/.test(t) && !(await sx.page.getByRole('button', { name: /^CLEAR \d/ }).count()), 'a scroll jump: the clear is listed but not offered');
+      await sx.page.getByRole('button', { name: 'DISCARD' }).first().click(); await sx.page.waitForTimeout(300);
+      // a frame the model did not answer for
+      g.handler = G.ok(JSON.stringify([{ image: 1, count: null, max: null, tiles: [{ name: 'Pidgey', cp: 100 }, { name: 'Zubat', cp: 40 }] }]));
+      await recordFlag(sx, 'costume', ['A'.repeat(8), 'B'.repeat(8)]);
+      t = await bodyText(sx);
+      expect(/Not offered/.test(t) && !(await sx.page.getByRole('button', { name: /^CLEAR \d/ }).count()), 'a failed frame: not offered');
+      expect((await flagOf(sx, 'c2')).costume === true, 'nothing was cleared');
     });
   }, 'high');
 
