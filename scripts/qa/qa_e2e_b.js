@@ -2765,11 +2765,13 @@ module.exports = async function suiteB() {
   const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
   const fmon = (idx, name, cp, extra) => ({ idx, name, cp, hp: 60, atkIV: 10, defIV: 10, staIV: 10, ivAvg: 66.7, scanDate: '2026-10-01', ...(extra || {}) });
   const bodyText = sx => sx.page.evaluate(() => document.body.innerText);
+  // The state flips before the sheet is painted (slow on WebKit): wait for the result line, or the error that replaces it, before reading the page.
+  const settleText = sx => sx.page.waitForFunction(() => { const l = window.__qaFindLogic(); return /Read \d+ tiles/.test(document.body.innerText) || !!(l && l.state.costumeError); }, null, { timeout: 15000 }).catch(() => {});
   const pickFlag = async (sx, label) => { await sx.page.getByRole('button', { name: label, exact: true }).first().click(); await sx.page.waitForTimeout(250); };
   const recordFlag = async (sx, flag, frames) => {   // fake frames, like GRID-01: the model is stubbed, the frame bytes do not matter
     await sx.logic((l, a) => { l.gridRun(a.frames, a.flag); return true; }, { frames, flag });
     await sx.page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.costumeBusy && (l.state.costumePending || l.state.costumeError); }, null, { timeout: 30000 });
-    await sx.page.waitForTimeout(500);
+    await settleText(sx); await sx.page.waitForTimeout(500);
   };
   const flagOf = async (sx, idx) => (await sx.call('effectiveRosterForMatch')).find(p => p.idx === idx);
 
@@ -2782,8 +2784,9 @@ module.exports = async function suiteB() {
       await pickFlag(sx, 'Background'); await pickFlag(sx, 'Global events');
       await sx.page.locator('input[aria-label="Background search screenshots"]').setInputFiles({ name: 'bg.png', mimeType: 'image/png', buffer: PNG });
       await sx.page.waitForFunction(() => { const l = window.__qaFindLogic(); return !!l && !l.state.costumeBusy && (l.state.costumePending || l.state.costumeError); }, null, { timeout: 30000 });
+      await settleText(sx);
       let t = await bodyText(sx);
-      expect(/Read 5 tiles: 3 matched to your roster, 1 already marked, 1 not found\./.test(t), 'the line: ' + (t.match(/Read [^\n]*/) || ['none'])[0]);
+      expect(/Read 5 tiles: 3 matched to your roster, 1 already marked, 1 not found\./.test(t), 'the line: ' + (t.match(/Read [^\n]*/) || ['none'])[0] + ' (error state: ' + ((await sx.state()).costumeError || 'none') + ')');
       expect(/Ghost 9/.test(t) && /renamed, traded away or misread/.test(t), 'the tile that is not in the roster is listed');
       expect(/Pidgey 100: you own 2 with that CP and 2 showed as background/.test(t) === false, 'two tiles, two twins: no ambiguity');
       expect(/Clear marks the game list does not show/.test(t) && /Zubat 50/.test(t) && /only reliable if the whole result list was recorded/i.test(t), 'the clear section names the absent one and says when it is reliable');
