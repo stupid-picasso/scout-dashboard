@@ -984,11 +984,14 @@ module.exports = async function suiteB() {
     await logic();
     const st0 = await s.state();
     await s.set({ tab: 'home' }); await s.page.waitForTimeout(600); await s.set({ tab: 'roster' }); await s.page.waitForTimeout(600); await s.set({ tab: 'home' }); await s.page.waitForTimeout(600);   // the first visit logs a history snapshot
-    const r1 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); window.__a = a; window.__c = L.keepContext(a); return a === L.effectiveRosterForMatch(); });
+    // Late async writes (cloud or snapshot status text, which carries the time of day) also rebuild the cache on purpose: read only once the inputs have been calm for a full second.
+    await s.page.evaluate(async () => { const L = window.__qaL; let prev = L.memoDeps().slice(), calm = 0; for (let t = 0; t < 75 && calm < 5; t++) { await new Promise(r => setTimeout(r, 200)); const cur = L.memoDeps().slice(); if (L.sameDeps(prev, cur)) calm++; else { calm = 0; prev = cur; } } });
+    const r1 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); window.__a = a; window.__d1 = L.memoDeps().slice(); window.__c = L.keepContext(a); return a === L.effectiveRosterForMatch(); });
     expect(r1, 'the same array is returned twice');
     await s.set({ tab: 'roster' }); await s.page.waitForTimeout(200);
     const r2 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); return a === window.__a && L.keepContext(a) === window.__c; });
-    expect(r2, 'a tab switch reuses the roster and the keep context');
+    const why = r2 ? '' : await s.page.evaluate(() => { const L = window.__qaL, ui = L.MEMO_UI_KEYS(), keys = Object.keys(L.state).filter(k => !ui.has(k)), d = L.memoDeps(), o = window.__d1 || [], ch = keys.filter((k, i) => d[i] !== o[i]); return ' (state keys that changed: ' + (ch.join(', ') || 'none') + '; minute changed: ' + (d[keys.length + 1] !== o[keys.length + 1]) + ')'; });
+    expect(r2, 'a tab switch reuses the roster and the keep context' + why);
     await s.set({ cutTarget: 7, cutTargetDraft: '7' }); await s.page.waitForTimeout(200);
     const r3 = await s.page.evaluate(() => { const L = window.__qaL; const a = L.effectiveRosterForMatch(); const c = L.keepContext(a); return { rebuilt: c !== window.__c, target: L.floatCut(c).target }; });
     expect(r3.rebuilt && r3.target === 7, 'a changed keep target rebuilds it: ' + JSON.stringify(r3));
