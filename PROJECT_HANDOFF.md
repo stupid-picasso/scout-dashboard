@@ -1023,3 +1023,6 @@ Edits in `Scout Dashboard.dc.html` only; no copy, order or palette changes.
 - Tests: `scripts/test_powered_up.js` (51 checks on the real method source; `POWERED_SRC=<copy>` points it at a broken copy; added to `.github/workflows/test.yml`), e2e `IMP-PU-01` in `scripts/qa/qa_e2e_b.js` (pill -> receipt -> Merge -> roster count drops by one and owner data carried -> Undo restores; no pair, no section). 11 mutants fail the node test: IV equality, CP order, HP order, form, removed ignored, two candidates, double claim, carry-over dropped, retire dropped, undo not restoring, revert not restoring the old record.
 - Reader contract: the new code builds the IV property names from parts (`k + 'IV'`) and the comments avoid the three IV tokens, so H7 and `data/schema/reader_fields.json` are unchanged.
 - Size: `index.html` 1,695,842 -> 1,698,898 bytes (+3,056; cap 1,700,000). Goldens byte-identical.
+
+## Size cap raised (owner decision)
+- The PWA-12 cap on `index.html` (qa_e2e_c.js) went from 1,700,000 to 1,750,000 bytes. The owner asked for the cap to be raised and the code shrunk at the same time; the shrink is a separate pass. Size at the time of the change: 1,698,937 bytes.
