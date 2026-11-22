@@ -19,26 +19,22 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        12,
         13
       ],
       [
-        14,
-        15
+        14
       ],
       [
-        11,
         12
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 2,
+    "i": 1,
     "name": "Passimian",
     "cp": 562,
     "hp": 81,
@@ -141,7 +137,7 @@
     ]
   },
   {
-    "i": 5,
+    "i": 7,
     "name": "Feebas",
     "cp": 115,
     "hp": 51,
@@ -175,6 +171,7 @@
     ]
   },
   {
+    "i": 1,
     "name": "Illumise",
     "cp": 973,
     "hp": 108,
@@ -193,11 +190,12 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        3
+        3,
+        7
       ],
       [
         12
@@ -205,45 +203,11 @@
       [
         15
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
-    "i": 0,
-    "name": "Illumise",
-    "cp": 97,
-    "hp": 108,
-    "atkIV": 4,
-    "defIV": 11,
-    "staIV": 15,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      4.133,
-      10.796,
-      14.857
-    ],
-    "barDrift": 0.204,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "low",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        4
-      ],
-      [
-        11,
-        10
-      ],
-      [
-        15
-      ]
-    ]
-  },
-  {
-    "i": 1,
+    "i": 2,
     "name": "Bidoof",
     "cp": 519,
     "hp": 118,
@@ -277,7 +241,7 @@
     ]
   },
   {
-    "i": 2,
+    "i": 3,
     "name": "Panpour",
     "cp": 645,
     "hp": 101,
@@ -311,7 +275,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 4,
     "name": "Hitmontop",
     "cp": 875,
     "hp": 78,
@@ -345,7 +309,7 @@
     ]
   },
   {
-    "i": 4,
+    "i": 5,
     "name": "Hitmontop",
     "cp": 1888,
     "hp": 113,
@@ -354,11 +318,11 @@
     "staIV": 13,
     "ivSource": "bar-measure",
     "barRaw": [
-      8.993,
-      12.974,
-      12.974
+      8.965,
+      12.882,
+      12.882
     ],
-    "barDrift": 0.026,
+    "barDrift": 0.118,
     "barSegmentRaw": [
       null,
       null,
@@ -447,20 +411,20 @@
     ]
   },
   {
-    "i": 0,
+    "i": 1,
     "name": "Caterpie",
     "cp": 209,
     "hp": 80,
     "atkIV": 12,
     "defIV": 12,
-    "staIV": 11,
+    "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
       11.894,
       11.894,
-      10.906
+      13.871
     ],
-    "barDrift": 0.106,
+    "barDrift": 0.129,
     "barSegmentRaw": [
       null,
       null,
@@ -476,7 +440,7 @@
         12
       ],
       [
-        11,
+        10,
         14
       ]
     ],
@@ -517,7 +481,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 5,
     "name": "Munna",
     "cp": 178,
     "hp": 62,
@@ -536,7 +500,7 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
@@ -546,12 +510,14 @@
         8
       ],
       [
+        8,
         11
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
-    "i": 4,
+    "i": 6,
     "name": "Squawkabilly",
     "cp": 673,
     "hp": 96,
@@ -585,7 +551,7 @@
     ]
   },
   {
-    "i": 5,
+    "i": 7,
     "name": "Rhyhorn",
     "cp": 1051,
     "hp": 132,
@@ -619,7 +585,7 @@
     ]
   },
   {
-    "i": 6,
+    "i": 0,
     "name": "Dunsparce",
     "cp": 388,
     "hp": 93,
@@ -653,7 +619,7 @@
     ]
   },
   {
-    "i": 0,
+    "i": 3,
     "name": "Bounsweet",
     "cp": 227,
     "hp": 74,
@@ -687,7 +653,7 @@
     ]
   },
   {
-    "i": 2,
+    "i": 4,
     "name": "Cottonee",
     "cp": 343,
     "hp": 73,
@@ -721,43 +687,41 @@
     ]
   },
   {
-    "i": 3,
+    "i": 5,
     "name": "Deino",
     "cp": 296,
     "hp": 66,
     "atkIV": 10,
-    "defIV": 3,
+    "defIV": 2,
     "staIV": 10,
     "ivSource": "bar-measure",
     "barRaw": [
-      9.847,
-      3.0,
-      9.847
+      9.801,
+      2.002,
+      9.801
     ],
-    "barDrift": 0.153,
+    "barDrift": 0.199,
     "barSegmentRaw": [
       null,
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
         10
       ],
       [
-        2,
-        3
+        2
       ],
       [
         10
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 5,
+    "i": 6,
     "name": "Dunsparce",
     "cp": 620,
     "hp": 114,
@@ -895,7 +859,7 @@
     ]
   },
   {
-    "i": 5,
+    "i": 4,
     "name": "Wailmer",
     "cp": 728,
     "hp": 165,
@@ -929,7 +893,7 @@
     ]
   },
   {
-    "i": 6,
+    "i": 5,
     "name": "Shuckle",
     "cp": 252,
     "hp": 70,
@@ -963,7 +927,7 @@
     ]
   },
   {
-    "i": 7,
+    "i": 6,
     "name": "Surskit",
     "cp": 419,
     "hp": 77,
@@ -997,42 +961,7 @@
     ]
   },
   {
-    "i": 0,
-    "name": "Surskit",
-    "cp": 41,
-    "hp": 77,
-    "atkIV": 14,
-    "defIV": 5,
-    "staIV": 9,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      13.765,
-      4.906,
-      8.824
-    ],
-    "barDrift": 0.235,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "low",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        14,
-        13
-      ],
-      [
-        5
-      ],
-      [
-        9
-      ]
-    ]
-  },
-  {
-    "i": 1,
+    "i": 7,
     "name": "Dunsparce",
     "cp": 345,
     "hp": 85,
@@ -1066,7 +995,7 @@
     ]
   },
   {
-    "i": 2,
+    "i": 0,
     "name": "Pumpkaboo",
     "cp": 217,
     "hp": 49,
@@ -1100,7 +1029,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 1,
     "name": "Dunsparce",
     "cp": 346,
     "hp": 89,
@@ -1109,11 +1038,11 @@
     "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
-      3.021,
-      12.974,
-      13.969
+      3.035,
+      12.882,
+      13.871
     ],
-    "barDrift": 0.031,
+    "barDrift": 0.129,
     "barSegmentRaw": [
       null,
       null,
@@ -1134,7 +1063,7 @@
     ]
   },
   {
-    "i": 4,
+    "i": 3,
     "name": "Dunsparce",
     "cp": 561,
     "hp": 113,
@@ -1164,6 +1093,41 @@
       ],
       [
         10
+      ]
+    ]
+  },
+  {
+    "i": 4,
+    "name": "Dunsparce",
+    "cp": 56,
+    "hp": 113,
+    "atkIV": 1,
+    "defIV": 14,
+    "staIV": 9,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      1.054,
+      13.806,
+      8.782
+    ],
+    "barDrift": 0.218,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "low",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        1
+      ],
+      [
+        14
+      ],
+      [
+        9,
+        8
       ]
     ]
   },
@@ -1206,12 +1170,12 @@
     "name": "Zigzagoon",
     "cp": 108,
     "hp": 47,
-    "atkIV": 11,
+    "atkIV": 14,
     "defIV": 10,
     "staIV": 11,
     "ivSource": "bar-measure",
     "barRaw": [
-      11.047,
+      13.871,
       9.847,
       10.906
     ],
@@ -1221,11 +1185,10 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        11,
         14
       ],
       [
@@ -1234,24 +1197,23 @@
       [
         11
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 1,
+    "i": 7,
     "name": "Sobble",
     "cp": 92,
     "hp": 37,
-    "atkIV": 1,
-    "defIV": 2,
-    "staIV": 9,
+    "atkIV": 3,
+    "defIV": 1,
+    "staIV": 8,
     "ivSource": "bar-measure",
     "barRaw": [
-      1.165,
-      2.153,
-      9.071
+      2.775,
+      1.054,
+      7.939
     ],
-    "barDrift": 0.165,
+    "barDrift": 0.225,
     "barSegmentRaw": [
       null,
       null,
@@ -1261,22 +1223,19 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        1,
-        7
+        3,
+        2
       ],
       [
-        2,
-        3
+        1
       ],
       [
-        8,
-        9
+        8
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 2,
+    "i": 1,
     "name": "Caterpie",
     "cp": 183,
     "hp": 80,
@@ -1310,7 +1269,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 2,
     "name": "Caterpie",
     "cp": 18,
     "hp": 80,
@@ -1344,7 +1303,7 @@
     ]
   },
   {
-    "i": 4,
+    "i": 3,
     "name": "Shelmet",
     "cp": 155,
     "hp": 54,
@@ -1397,10 +1356,11 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
+        9,
         13
       ],
       [
@@ -1409,10 +1369,11 @@
       [
         13
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
-    "i": 6,
+    "i": 7,
     "name": "Sizzlipede",
     "cp": 42,
     "hp": 24,
@@ -1447,6 +1408,40 @@
   },
   {
     "i": 1,
+    "name": "Poochyena",
+    "cp": 56,
+    "hp": 28,
+    "atkIV": 1,
+    "defIV": 10,
+    "staIV": 1,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      1.066,
+      9.917,
+      1.066
+    ],
+    "barDrift": 0.083,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        1
+      ],
+      [
+        10
+      ],
+      [
+        1
+      ]
+    ]
+  },
+  {
+    "i": 2,
     "name": "Beldum",
     "cp": 547,
     "hp": 75,
@@ -1465,38 +1460,35 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        3,
         9
       ],
       [
-        12,
         14
       ],
       [
         1
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 4,
+    "i": 3,
     "name": "Rookidee",
     "cp": 77,
     "hp": 35,
-    "atkIV": 9,
+    "atkIV": 10,
     "defIV": 6,
-    "staIV": 8,
+    "staIV": 7,
     "ivSource": "bar-measure",
     "barRaw": [
-      8.929,
-      5.965,
-      8.082
+      9.847,
+      6.106,
+      6.953
     ],
-    "barDrift": 0.082,
+    "barDrift": 0.153,
     "barSegmentRaw": [
       null,
       null,
@@ -1506,23 +1498,20 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        9,
         10
       ],
       [
         5,
-        6,
-        7
+        6
       ],
       [
-        7,
-        8
+        7
       ]
     ],
     "ivConflict": true
   },
   {
-    "i": 5,
+    "i": 6,
     "name": "Illumise",
     "cp": 611,
     "hp": 84,
@@ -1541,23 +1530,19 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        9,
-        10
+        9
       ],
       [
-        6,
-        7
+        6
       ],
       [
-        12,
-        13
+        12
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
     "i": 7,
@@ -1565,15 +1550,51 @@
     "cp": 765,
     "hp": 102,
     "atkIV": 15,
-    "defIV": 15,
+    "defIV": 14,
     "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
-      14.858,
-      14.858,
-      13.868
+      14.964,
+      13.863,
+      13.969
     ],
-    "barDrift": 0.142,
+    "barDrift": 0.137,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "low",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        15
+      ],
+      [
+        14,
+        15
+      ],
+      [
+        14
+      ]
+    ],
+    "ivConflict": true
+  },
+  {
+    "i": 2,
+    "name": "Shuckle",
+    "cp": 129,
+    "hp": 50,
+    "atkIV": 6,
+    "defIV": 14,
+    "staIV": 10,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      5.965,
+      13.871,
+      9.847
+    ],
+    "barDrift": 0.153,
     "barSegmentRaw": [
       null,
       null,
@@ -1583,62 +1604,28 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        15
-      ],
-      [
-        15
+        6
       ],
       [
         14
+      ],
+      [
+        10
       ]
     ]
   },
   {
-    "i": 0,
-    "name": "Shuckle",
-    "cp": 129,
-    "hp": 50,
-    "atkIV": 15,
-    "defIV": 15,
-    "staIV": 15,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      15.0,
-      15.0,
-      15.0
-    ],
-    "barDrift": 0.0,
-    "barSegmentRaw": [
-      15.0,
-      15.0,
-      15.0
-    ],
-    "barConfidence": "high",
-    "barMethod": "colour",
-    "ivCandidateSets": [
-      [
-        15
-      ],
-      [
-        15
-      ],
-      [
-        15
-      ]
-    ]
-  },
-  {
-    "i": 2,
+    "i": 4,
     "name": "Houndour",
     "cp": 207,
     "hp": 49,
     "atkIV": 1,
-    "defIV": 6,
+    "defIV": 4,
     "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
       1.059,
-      6.106,
+      4.024,
       13.871
     ],
     "barDrift": 0.129,
@@ -1655,7 +1642,7 @@
       ],
       [
         4,
-        6
+        8
       ],
       [
         14
@@ -1664,7 +1651,7 @@
     "ivConflict": true
   },
   {
-    "i": 4,
+    "i": 5,
     "name": "Oshawott",
     "cp": 795,
     "hp": 111,
@@ -1766,7 +1753,7 @@
     ]
   },
   {
-    "i": 1,
+    "i": 0,
     "name": "Joltik",
     "cp": 511,
     "hp": 86,
@@ -1800,7 +1787,7 @@
     ]
   },
   {
-    "i": 2,
+    "i": 1,
     "name": "Rowlet",
     "cp": 591,
     "hp": 109,
@@ -1834,7 +1821,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 2,
     "name": "Litten",
     "cp": 116,
     "hp": 37,
@@ -1868,7 +1855,7 @@
     ]
   },
   {
-    "i": 4,
+    "i": 3,
     "name": "Jynx",
     "cp": 995,
     "hp": 86,
@@ -1902,7 +1889,7 @@
     ]
   },
   {
-    "i": 5,
+    "i": 4,
     "name": "Caterpie",
     "cp": 55,
     "hp": 43,
@@ -1945,11 +1932,11 @@
     "staIV": 12,
     "ivSource": "bar-measure",
     "barRaw": [
-      14.859,
-      11.894,
-      11.894
+      14.964,
+      11.979,
+      11.979
     ],
-    "barDrift": 0.141,
+    "barDrift": 0.036,
     "barSegmentRaw": [
       null,
       null,
@@ -1959,7 +1946,7 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        11,
+        13,
         15
       ],
       [
@@ -1972,54 +1959,20 @@
     "ivConflict": true
   },
   {
-    "i": 0,
+    "i": 3,
     "name": "Pawniard",
-    "cp": 924,
-    "hp": 87,
-    "atkIV": 14,
-    "defIV": 10,
-    "staIV": 5,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      13.871,
-      9.847,
-      4.906
-    ],
-    "barDrift": 0.153,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        14
-      ],
-      [
-        10
-      ],
-      [
-        5
-      ]
-    ]
-  },
-  {
-    "i": 1,
-    "name": "Pawniard",
-    "cp": 176,
-    "hp": 40,
-    "atkIV": 5,
+    "cp": 988,
+    "hp": 90,
+    "atkIV": 4,
     "defIV": 14,
-    "staIV": 13,
+    "staIV": 15,
     "ivSource": "bar-measure",
     "barRaw": [
-      4.906,
-      13.871,
-      12.882
+      4.281,
+      13.903,
+      14.858
     ],
-    "barDrift": 0.129,
+    "barDrift": 0.281,
     "barSegmentRaw": [
       null,
       null,
@@ -2029,8 +1982,82 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        2,
-        5
+        4,
+        7,
+        14
+      ],
+      [
+        7,
+        10,
+        14
+      ],
+      [
+        10,
+        11,
+        15
+      ]
+    ],
+    "ivConflict": true
+  },
+  {
+    "i": 7,
+    "name": "Pawniard",
+    "cp": 924,
+    "hp": 87,
+    "atkIV": 7,
+    "defIV": 4,
+    "staIV": 4,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      7.002,
+      4.052,
+      4.052
+    ],
+    "barDrift": 0.052,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        7
+      ],
+      [
+        4
+      ],
+      [
+        4
+      ]
+    ]
+  },
+  {
+    "i": 2,
+    "name": "Pawniard",
+    "cp": 176,
+    "hp": 40,
+    "atkIV": 2,
+    "defIV": 14,
+    "staIV": 13,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      2.012,
+      13.871,
+      12.882
+    ],
+    "barDrift": 0.129,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        2
       ],
       [
         14
@@ -2038,8 +2065,7 @@
       [
         13
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
     "i": 4,
@@ -2110,7 +2136,7 @@
     ]
   },
   {
-    "i": 0,
+    "i": 1,
     "name": "Pawniard",
     "cp": 783,
     "hp": 86,
@@ -2119,7 +2145,7 @@
     "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
-      3.0,
+      3.035,
       10.906,
       13.871
     ],
@@ -2129,51 +2155,20 @@
       null,
       null
     ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        3
-      ],
-      [
-        11
-      ],
-      [
-        14
-      ]
-    ]
-  },
-  {
-    "i": 2,
-    "name": "Pawniard",
-    "cp": 401,
-    "hp": 60,
-    "atkIV": 15,
-    "defIV": 10,
-    "staIV": 15,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      14.858,
-      9.835,
-      14.858
-    ],
-    "barDrift": 0.165,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
     "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        6,
-        15
+        3,
+        4
       ],
       [
-        10
+        10,
+        11
       ],
       [
+        12,
+        14,
         15
       ]
     ],
@@ -2182,18 +2177,18 @@
   {
     "i": 3,
     "name": "Pawniard",
-    "cp": 40,
+    "cp": 401,
     "hp": 60,
-    "atkIV": 14,
-    "defIV": 11,
-    "staIV": 14,
+    "atkIV": 15,
+    "defIV": 10,
+    "staIV": 15,
     "ivSource": "bar-measure",
     "barRaw": [
-      13.827,
-      10.983,
-      13.827
+      14.929,
+      9.869,
+      14.857
     ],
-    "barDrift": 0.173,
+    "barDrift": 0.143,
     "barSegmentRaw": [
       null,
       null,
@@ -2203,13 +2198,13 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        14
+        15
       ],
       [
-        11
+        10
       ],
       [
-        14
+        15
       ]
     ]
   },
@@ -2248,7 +2243,7 @@
     ]
   },
   {
-    "i": 6,
+    "i": 5,
     "name": "Pawniard",
     "cp": 1142,
     "hp": 104,
@@ -2257,11 +2252,11 @@
     "staIV": 15,
     "ivSource": "bar-measure",
     "barRaw": [
-      4.917,
-      11.922,
-      14.894
+      4.881,
+      11.936,
+      14.857
     ],
-    "barDrift": 0.106,
+    "barDrift": 0.143,
     "barSegmentRaw": [
       null,
       null,
@@ -2271,20 +2266,22 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        5,
-        7
+        4,
+        5
       ],
       [
-        12
+        12,
+        13
       ],
       [
+        14,
         15
       ]
     ],
     "ivConflict": true
   },
   {
-    "i": 1,
+    "i": 7,
     "name": "Bulbasaur",
     "cp": 454,
     "hp": 72,
@@ -2303,11 +2300,10 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        11,
         12
       ],
       [
@@ -2316,11 +2312,10 @@
       [
         12
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 2,
+    "i": 1,
     "name": "Pawniard",
     "cp": 280,
     "hp": 52,
@@ -2354,7 +2349,7 @@
     ]
   },
   {
-    "i": 4,
+    "i": 3,
     "name": "Pawniard",
     "cp": 218,
     "hp": 45,
@@ -2388,7 +2383,7 @@
     ]
   },
   {
-    "i": 5,
+    "i": 4,
     "name": "Pawniard",
     "cp": 792,
     "hp": 81,
@@ -2422,20 +2417,20 @@
     ]
   },
   {
-    "i": 6,
+    "i": 5,
     "name": "Pawniard",
     "cp": 133,
     "hp": 34,
-    "atkIV": 6,
+    "atkIV": 7,
     "defIV": 15,
     "staIV": 8,
     "ivSource": "bar-measure",
     "barRaw": [
-      6.218,
+      7.307,
       14.789,
       7.939
     ],
-    "barDrift": 0.218,
+    "barDrift": 0.307,
     "barSegmentRaw": [
       null,
       null,
@@ -2445,8 +2440,8 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        6,
-        7
+        7,
+        8
       ],
       [
         15,
@@ -2458,7 +2453,6 @@
     ]
   },
   {
-    "i": 7,
     "name": "Pawniard",
     "cp": 821,
     "hp": 88,
@@ -2526,7 +2520,7 @@
     ]
   },
   {
-    "i": 2,
+    "i": 1,
     "name": "Hitmontop",
     "cp": 899,
     "hp": 76,
@@ -2594,7 +2588,7 @@
     ]
   },
   {
-    "i": 4,
+    "i": 5,
     "name": "Spheal",
     "cp": 410,
     "hp": 96,
@@ -2628,18 +2622,18 @@
     ]
   },
   {
-    "i": 6,
+    "i": 7,
     "name": "Pawniard",
     "cp": 1059,
     "hp": 96,
-    "atkIV": 6,
+    "atkIV": 7,
     "defIV": 11,
-    "staIV": 6,
+    "staIV": 7,
     "ivSource": "bar-measure",
     "barRaw": [
-      5.965,
+      7.094,
       10.906,
-      5.965
+      7.094
     ],
     "barDrift": 0.094,
     "barSegmentRaw": [
@@ -2651,17 +2645,18 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        6
+        7
       ],
       [
         11
       ],
       [
-        6
+        7
       ]
     ]
   },
   {
+    "i": 0,
     "name": "Pawniard",
     "cp": 445,
     "hp": 62,
@@ -2695,7 +2690,7 @@
     ]
   },
   {
-    "i": 0,
+    "i": 2,
     "name": "Pawniard",
     "cp": 907,
     "hp": 91,
@@ -2729,109 +2724,44 @@
     ]
   },
   {
-    "i": 1,
+    "i": 3,
     "name": "Weepinbell",
     "cp": 908,
     "hp": 105,
-    "atkIV": 13,
+    "atkIV": 15,
     "defIV": 15,
-    "staIV": 14,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      12.974,
-      14.964,
-      13.969
-    ],
-    "barDrift": 0.036,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        13
-      ],
-      [
-        15
-      ],
-      [
-        14
-      ]
-    ]
-  },
-  {
-    "i": 2,
-    "name": "Pawniard",
-    "cp": 485,
-    "hp": 68,
-    "atkIV": 2,
-    "defIV": 12,
     "staIV": 15,
     "ivSource": "bar-measure",
     "barRaw": [
-      2.017,
-      11.922,
-      14.894
+      15.0,
+      15.0,
+      15.0
     ],
-    "barDrift": 0.106,
+    "barDrift": 0.0,
     "barSegmentRaw": [
-      null,
-      null,
-      null
+      15.0,
+      15.0,
+      15.0
     ],
-    "barConfidence": "high",
-    "barMethod": "warm",
+    "barConfidence": "low",
+    "barMethod": "colour",
     "ivCandidateSets": [
       [
-        2
-      ],
-      [
-        12
+        13,
+        15
       ],
       [
         15
-      ]
-    ]
-  },
-  {
-    "i": 3,
-    "name": "Pawniard",
-    "cp": 596,
-    "hp": 71,
-    "atkIV": 13,
-    "defIV": 14,
-    "staIV": 11,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      12.822,
-      13.806,
-      10.855
-    ],
-    "barDrift": 0.194,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        13
       ],
       [
-        14
-      ],
-      [
-        11
+        14,
+        15
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
-    "i": 5,
+    "i": 1,
     "name": "Pawniard",
     "cp": 175,
     "hp": 40,
@@ -2865,6 +2795,7 @@
     ]
   },
   {
+    "i": 2,
     "name": "Pawniard",
     "cp": 590,
     "hp": 72,
@@ -2883,11 +2814,10 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        11,
         12
       ],
       [
@@ -2896,11 +2826,10 @@
       [
         12
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 0,
+    "i": 4,
     "name": "Pawniard",
     "cp": 846,
     "hp": 87,
@@ -2909,11 +2838,11 @@
     "staIV": 11,
     "ivSource": "bar-measure",
     "barRaw": [
-      7.002,
-      14.964,
-      10.983
+      6.967,
+      14.929,
+      10.948
     ],
-    "barDrift": 0.036,
+    "barDrift": 0.071,
     "barSegmentRaw": [
       null,
       null,
@@ -2934,78 +2863,10 @@
     ]
   },
   {
-    "i": 1,
+    "i": 7,
     "name": "Pawniard",
     "cp": 1060,
     "hp": 101,
-    "atkIV": 1,
-    "defIV": 10,
-    "staIV": 13,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      1.059,
-      9.847,
-      12.882
-    ],
-    "barDrift": 0.153,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        1
-      ],
-      [
-        10
-      ],
-      [
-        13
-      ]
-    ]
-  },
-  {
-    "i": 3,
-    "name": "Pawniard",
-    "cp": 560,
-    "hp": 70,
-    "atkIV": 13,
-    "defIV": 14,
-    "staIV": 13,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      12.882,
-      13.871,
-      12.882
-    ],
-    "barDrift": 0.129,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "high",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        13
-      ],
-      [
-        14
-      ],
-      [
-        13
-      ]
-    ]
-  },
-  {
-    "i": 5,
-    "name": "Pawniard",
-    "cp": 555,
-    "hp": 70,
     "atkIV": 15,
     "defIV": 8,
     "staIV": 14,
@@ -3021,22 +2882,64 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
+        1,
+        13,
         15
       ],
       [
-        8
+        8,
+        10,
+        14
       ],
       [
+        13,
         14
+      ]
+    ],
+    "ivConflict": true
+  },
+  {
+    "i": 0,
+    "name": "Pawniard",
+    "cp": 900,
+    "hp": 87,
+    "atkIV": 9,
+    "defIV": 7,
+    "staIV": 8,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      9.318,
+      6.953,
+      8.294
+    ],
+    "barDrift": 0.318,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "low",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        9,
+        10
+      ],
+      [
+        7
+      ],
+      [
+        8,
+        9
       ]
     ]
   },
   {
-    "i": 0,
+    "i": 2,
     "name": "Pawniard",
     "cp": 1035,
     "hp": 99,
@@ -3059,20 +2962,20 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        8,
-        9
+        8
       ],
       [
         9
       ],
       [
+        12,
         15
       ]
     ],
     "ivConflict": true
   },
   {
-    "i": 2,
+    "i": 4,
     "name": "Pawniard",
     "cp": 1185,
     "hp": 104,
@@ -3091,25 +2994,22 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        11,
         13
       ],
       [
-        9,
-        11
+        9
       ],
       [
         15
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 4,
+    "i": 5,
     "name": "Pawniard",
     "cp": 801,
     "hp": 87,
@@ -3143,7 +3043,7 @@
     ]
   },
   {
-    "i": 5,
+    "i": 6,
     "name": "Pawniard",
     "cp": 1146,
     "hp": 99,
@@ -3166,7 +3066,6 @@
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        2,
         11,
         12
       ],
@@ -3181,6 +3080,40 @@
   },
   {
     "i": 0,
+    "name": "Pawniard",
+    "cp": 557,
+    "hp": 71,
+    "atkIV": 2,
+    "defIV": 15,
+    "staIV": 10,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      2.017,
+      14.894,
+      9.87
+    ],
+    "barDrift": 0.13,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        2
+      ],
+      [
+        15
+      ],
+      [
+        10
+      ]
+    ]
+  },
+  {
+    "i": 2,
     "name": "Pawniard",
     "cp": 473,
     "hp": 63,
@@ -3215,7 +3148,7 @@
     ]
   },
   {
-    "i": 2,
+    "i": 4,
     "name": "Darumaka",
     "cp": 607,
     "hp": 96,
@@ -3249,7 +3182,7 @@
     ]
   },
   {
-    "i": 4,
+    "i": 6,
     "name": "Magikarp",
     "cp": 106,
     "hp": 51,
@@ -3268,61 +3201,56 @@
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
-        10,
         11
       ],
       [
         14
       ],
       [
-        13,
         14
-      ]
-    ],
-    "ivConflict": true
-  },
-  {
-    "i": 7,
-    "name": "Pawniard",
-    "cp": 60,
-    "hp": 23,
-    "atkIV": 9,
-    "defIV": 8,
-    "staIV": 7,
-    "ivSource": "bar-measure",
-    "barRaw": [
-      8.929,
-      8.294,
-      7.306
-    ],
-    "barDrift": 0.306,
-    "barSegmentRaw": [
-      null,
-      null,
-      null
-    ],
-    "barConfidence": "low",
-    "barMethod": "warm",
-    "ivCandidateSets": [
-      [
-        9
-      ],
-      [
-        8,
-        9
-      ],
-      [
-        7,
-        8
       ]
     ]
   },
   {
     "i": 0,
+    "name": "Pawniard",
+    "cp": 60,
+    "hp": 23,
+    "atkIV": 8,
+    "defIV": 14,
+    "staIV": 13,
+    "ivSource": "bar-measure",
+    "barRaw": [
+      7.976,
+      13.871,
+      12.882
+    ],
+    "barDrift": 0.129,
+    "barSegmentRaw": [
+      null,
+      null,
+      null
+    ],
+    "barConfidence": "high",
+    "barMethod": "warm",
+    "ivCandidateSets": [
+      [
+        8
+      ],
+      [
+        14
+      ],
+      [
+        13
+      ]
+    ]
+  },
+  {
+    "i": 1,
     "name": "Pawniard",
     "cp": 169,
     "hp": 38,
@@ -3356,7 +3284,7 @@
     ]
   },
   {
-    "i": 1,
+    "i": 3,
     "name": "Pawniard",
     "cp": 1141,
     "hp": 100,
@@ -3375,22 +3303,27 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
+        11,
         12
       ],
       [
+        10,
+        11,
         12
       ],
       [
+        11,
         12
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
-    "i": 3,
+    "i": 6,
     "name": "Pawniard",
     "cp": 855,
     "hp": 85,
@@ -3409,41 +3342,46 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
         8
       ],
       [
-        3
+        3,
+        5,
+        9
       ],
       [
-        2
+        2,
+        5,
+        10
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
-    "i": 4,
+    "i": 0,
     "name": "Drampa",
     "cp": 2221,
     "hp": 141,
     "atkIV": 8,
     "defIV": 9,
-    "staIV": 11,
+    "staIV": 14,
     "ivSource": "bar-measure",
     "barRaw": [
       7.941,
       8.929,
-      10.906
+      13.871
     ],
-    "barDrift": 0.094,
+    "barDrift": 0.129,
     "barSegmentRaw": [
       null,
       null,
       null
     ],
-    "barConfidence": "low",
+    "barConfidence": "high",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
@@ -3453,14 +3391,12 @@
         9
       ],
       [
-        11,
         14
       ]
-    ],
-    "ivConflict": true
+    ]
   },
   {
-    "i": 7,
+    "i": 2,
     "name": "Roggenrola",
     "cp": 287,
     "hp": 64,
@@ -3494,7 +3430,7 @@
     ]
   },
   {
-    "i": 0,
+    "i": 3,
     "name": "Stunfisk",
     "cp": 1195,
     "hp": 149,
@@ -3528,7 +3464,7 @@
     ]
   },
   {
-    "i": 1,
+    "i": 4,
     "name": "Pawniard",
     "cp": 548,
     "hp": 68,
@@ -3562,7 +3498,7 @@
     ]
   },
   {
-    "i": 3,
+    "i": 7,
     "name": "Sizzlipede",
     "cp": 234,
     "hp": 58,
@@ -3589,7 +3525,7 @@
       ],
       [
         4,
-        9
+        8
       ],
       [
         10
@@ -3598,7 +3534,7 @@
     "ivConflict": true
   },
   {
-    "i": 5,
+    "i": 1,
     "name": "Drilbur",
     "cp": 1028,
     "hp": 116,
@@ -3632,7 +3568,7 @@
     ]
   },
   {
-    "i": 6,
+    "i": 2,
     "name": "Rhyhorn",
     "cp": 628,
     "hp": 101,
@@ -3666,7 +3602,7 @@
     ]
   },
   {
-    "i": 7,
+    "i": 4,
     "name": "Hoppip",
     "cp": 413,
     "hp": 85,
@@ -3700,7 +3636,7 @@
     ]
   },
   {
-    "i": 0,
+    "i": 5,
     "name": "Cyndaquil",
     "cp": 270,
     "hp": 54,
@@ -3719,22 +3655,26 @@
       null,
       null
     ],
-    "barConfidence": "high",
+    "barConfidence": "low",
     "barMethod": "warm",
     "ivCandidateSets": [
       [
+        14,
         15
       ],
       [
-        10
+        10,
+        11
       ],
       [
+        11,
         12
       ]
-    ]
+    ],
+    "ivConflict": true
   },
   {
-    "i": 1,
+    "i": 7,
     "name": "Smoliv",
     "cp": 724,
     "hp": 98,
