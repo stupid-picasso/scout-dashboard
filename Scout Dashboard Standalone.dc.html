@@ -3352,7 +3352,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.371{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.376{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -13525,102 +13525,8 @@ class Component extends DCLogic {
         + '- The same Pokemon often appears on both screen kinds across frames: take CP/HP/candy from the detail frames and the IV numbers from the appraisal frames, and merge them into one entry.\n'
         + '- Use null for any FIELD not clearly visible. Never guess a field value \u2014 but never drop the Pokemon itself over a missing field.');
 
-      // Split into batches that each fit the request budget, instead of throwing
-      // frames away. Decimating to fit (the old behaviour) is what limited a
-      // whole recording to ~2 Pokemon.
-      const BUDGET = 180000;
-      // 5 frames per request instead of 3: ~40% fewer requests, which is the
-      // single biggest lever on wall-clock time for a long import (each request
-      // carries a rate-limit gap). Payload cap still wins if frames are large.
-      const MAX_FRAMES_PER_BATCH = 5;
-      const batches = [];
-      let current = [];
-      let currentSize = 0;
-      frames.forEach(f => {
-        if (current.length && (currentSize + f.length > BUDGET || current.length >= MAX_FRAMES_PER_BATCH)) {
-          batches.push(current);
-          current = [];
-          currentSize = 0;
-        }
-        current.push(f);
-        currentSize += f.length;
-      });
-      if (current.length) batches.push(current);
-
-      const collected = [];
-      const rawReplies = [];
-      let failedBatches = 0;
-      let unreadableBatches = 0;
-      let lastBatchError = '';
-      this._rateBackoff = 1;
-      const runBatch = async (b, spacing, pass) => {
-        const content = [
-          { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
-          ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
-        ];
-        if ((this.state.geminiKeys || []).length && !this.activeGeminiKeys().length) {
-          const wait = this.msUntilKeyFree();
-          if (wait > 0) {
-            this.setVideoStage('reading', Math.round((b / batches.length) * 92),
-              'Rate limit reached \u2014 waiting ' + Math.ceil(wait / 1000) + 's for a key to free up');
-            await this.waitForKeyCooldown();
-          }
-        }
-        await this.throttleForRateLimit(pass === 1 && b === 0 ? 0 : 1, batches.length, spacing);
-        let reply;
-        try {
-          reply = await this.completeWithRetry({ messages: [{ role: 'user', content }], max_tokens: 4000 });
-        } catch (err) {
-          const bMsg = (err && err.message) || String(err);
-          console.error('[Scout] batch ' + (b + 1) + '/' + batches.length + ' (pass ' + pass + ') failed:', bMsg);
-          if (/429|rate limit|quota|overload|503|529/i.test(bMsg)) this.noteRateLimit();
-          this._lastAiError = bMsg;
-          lastBatchError = bMsg;
-          return 'failed';
-        }
-        this.noteRateSuccess();
-        rawReplies.push(String(reply));
-        if (this._lastEngine) enginesUsed.add(this._lastEngine);
-        const arr = this.extractJsonArray(reply);
-        if (arr === null) {
-          // null means genuinely unparseable. An empty array is a real answer.
-          console.warn('[Scout] batch ' + (b + 1) + '/' + batches.length + ' returned unparseable output:', String(reply).slice(0, 300));
-          return 'unreadable';
-        }
-        if (arr.length) collected.push(...arr);
-        // Distinguish "answered, found nothing" from "answered with Pokemon" —
-        // a wall of empty answers means the frames or the prompt are at fault,
-        // not the network.
-        return arr.length ? 'ok' : 'empty';
-      };
-
-      const enginesUsed = new Set();
-      let emptyBatches = 0;
-      const retryQueue = [];
-      for (let b = 0; b < batches.length; b++) {
-        const res = await runBatch(b, this.RATE_INTERVAL_MS, 1);
-        if (res === 'failed') retryQueue.push(b);
-        else if (res === 'unreadable') unreadableBatches++;
-        else if (res === 'empty') emptyBatches++;
-        this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 92), this.batchLabel(b + 1, batches.length));
-      }
-
-      // Second pass at double spacing — most first-pass failures are 429s and
-      // succeed once the window clears.
-      this._failedFrames = retryQueue.flatMap(b => batches[b] || []);
-      if (retryQueue.length) {
-        const stillFailed = [];
-        for (let q = 0; q < retryQueue.length; q++) {
-          const b = retryQueue[q];
-          const res = await runBatch(b, this.RATE_INTERVAL_MS * 2, 2);
-          if (res === 'failed') { failedBatches++; stillFailed.push(b); }
-          else if (res === 'unreadable') unreadableBatches++;
-          else if (res === 'empty') emptyBatches++;
-          this.setVideoStage('reading', 92 + Math.round(((q + 1) / retryQueue.length) * 6), this.retryLabel(q + 1, retryQueue.length));
-        }
-        this._failedFrames = stillFailed.flatMap(b => batches[b] || []);
-      }
-
+      const batches = this.readFrames(frames);
+      const [collected, rawReplies, failedBatches, unreadableBatches, emptyBatches, lastBatchError, enginesUsed] = await this.askModel(batches, prompt);
       clearInterval(this._videoReadingTimer);
       this.setVideoStage('reading', 100);
       if (!failedBatches) {
@@ -13629,64 +13535,20 @@ class Component extends DCLogic {
         this.idbDelete('frames');
       }
 
-      // Merge duplicate sightings across batches (same name + CP).
-      const seen = new Map();
-      collected.forEach(item => {
-        if (!item || !item.name) return;
-        const key = String(item.name).toLowerCase() + '|' + (item.cp == null ? '?' + (item.cpCovered === true ? '|' + (item.hp == null ? '' : item.hp) + '|' + (item.cpVisible || '') : '') : item.cp);
-        const prev = seen.get(key);
-        if (!prev) { seen.set(key, { ...item }); return; }
-        // Prefer non-null values from whichever sighting had them.
-        Object.keys(item).forEach(k => {
-          if (prev[k] == null && item[k] != null) prev[k] = item[k];
-        });
-      });
-      const parsed = [...seen.values()];
-
+      const parsed = this.dedupeSightings(collected);
       this.setState(s => ({ videoImport: { ...s.videoImport, batchCount: batches.length, failedBatches, unreadableBatches, emptyBatches, lastError: lastBatchError, frameCount: frames.length, engines: [...enginesUsed], rawReply: unreadableBatches ? rawReplies.slice(-1)[0] && String(rawReplies.slice(-1)[0]).slice(0, 800) : undefined } }));
 
       if (!parsed.length) {
         this.setState(s => ({ videoImport: { ...s.videoImport, rawReply: rawReplies.join('\n---\n').slice(0, 800) } }));
-        // Spell out the breakdown: "answered but saw nothing" (frames/prompt) is
-        // a completely different problem from "never landed" (transport).
-        const eng = enginesUsed.size ? ' Read by ' + [...enginesUsed].join(' + ') + '.' : '';
-        const parts = [];
-        if (emptyBatches) parts.push(emptyBatches + ' of ' + batches.length + ' batches answered but saw no Pokemon');
-        if (failedBatches) parts.push(failedBatches + ' failed to send');
-        if (unreadableBatches) parts.push(unreadableBatches + ' returned unreadable output');
-        const breakdown = parts.length ? ' (' + parts.join(', ') + ').' : '';
-        const composed = new Error(failedBatches === batches.length
-          ? 'No batch reached the AI' + breakdown + ' Wait a moment and hit RETRY \u2014 your frames are held.'
-          : (emptyBatches === batches.length
-            ? 'The AI read every frame but found no Pokemon' + breakdown + eng + ' Make sure the recording shows Pokemon detail screens, and pan slowly enough to pause on each one.'
-            : 'Could not read any Pokemon off that recording' + breakdown + eng + ' Try a slower pan across each screen.'));
-        composed.composed = true;
-        throw composed;
+        throw this.noReadError(emptyBatches, failedBatches, unreadableBatches, enginesUsed, batches.length);
       }
       this.setVideoStage('validating', 40);
-      const mechanics = this.mechanics;
-      let droppedNoName = 0;
-      let droppedUnknown = 0;
-      const validated = (Array.isArray(parsed) ? parsed : []).map(item => {
-        const name = (item && item.name || '').trim();
-        if (!name) { droppedNoName++; return null; }
-        const dex = mechanics && mechanics.resolveDexByName ? mechanics.resolveDexByName(name) : null;
-        // No dex match means the name is not a real species (an OCR artefact or
-        // a UI label), so there is nothing useful to store.
-        if (dex == null) { droppedUnknown++; return null; }
-        return { ...item, name, dex };
-      }).filter(Boolean);
-      const raw = Array.isArray(parsed) ? parsed.length : 0;
-      if (raw !== validated.length) {
-        console.warn('[Scout] validation kept ' + validated.length + '/' + raw
-          + ' (no name: ' + droppedNoName + ', unknown species: ' + droppedUnknown + ')');
-      }
+      const { validated, raw, droppedNoName, droppedUnknown } = this.validateReads(parsed);
       this.setState(s => ({ videoImport: { ...s.videoImport, droppedNoName, droppedUnknown, rawRead: raw } }));
       this.setVideoStage('validating', 100);
       // Save immediately, then show what landed. The table is a receipt, not a
       // gate — it exists so a bad read is easy to spot, not to be approved.
       const roster = this.state.roster || [];
-      const seenKeys = new Set();
       this.setVideoStage('updating', 30);
       // Merge FIRST: it solves IVs from CP/HP and writes them back onto each
       // item, so the receipt below reports the solved spread rather than the
@@ -13698,15 +13560,7 @@ class Component extends DCLogic {
         receipt = summary._review || [];
       } else {
         summary = this.mergeVideoImport(validated);
-        receipt = validated.map((item, i) => {
-          const nameLower = item.name.toLowerCase();
-          const match = roster.find(p => p.cp === item.cp && p.name.toLowerCase() === nameLower)
-            || roster.find(p => p.dex != null && item.dex != null && p.dex === item.dex && p.cp === item.cp);
-          const key = nameLower + '|' + (item.cp == null ? '?' : item.cp);
-          const isDupe = seenKeys.has(key);
-          seenKeys.add(key);
-          return { ...item, _rid: 'r' + i, _isNew: !match, _matchName: match ? match.name : null, _dupe: isDupe, _solvedCount: item._solvedCount || null };
-        });
+        receipt = this.receiptRows(validated, roster);
       }
       this.bumpImportProgress(summary);
       this.setVideoStage('updating', 100);
@@ -13723,6 +13577,187 @@ class Component extends DCLogic {
         : msg;
       this.setState(s => ({ videoImport: { ...s.videoImport, stage: 'error', error: friendly } }));
     }
+  }
+
+  // readFrames: the frames of one recording -> batches (arrays of frames), each within the request budget.
+  readFrames(frames) {
+    // Split into batches that each fit the request budget, instead of throwing
+    // frames away. Decimating to fit (the old behaviour) is what limited a
+    // whole recording to ~2 Pokemon.
+    const BUDGET = 180000;
+    // 5 frames per request instead of 3: ~40% fewer requests, which is the
+    // single biggest lever on wall-clock time for a long import (each request
+    // carries a rate-limit gap). Payload cap still wins if frames are large.
+    const MAX_FRAMES_PER_BATCH = 5;
+    const batches = [];
+    let current = [];
+    let currentSize = 0;
+    frames.forEach(f => {
+      if (current.length && (currentSize + f.length > BUDGET || current.length >= MAX_FRAMES_PER_BATCH)) {
+        batches.push(current);
+        current = [];
+        currentSize = 0;
+      }
+      current.push(f);
+      currentSize += f.length;
+    });
+    if (current.length) batches.push(current);
+    return batches;
+  }
+
+  // askModel: send every batch (second pass, at double spacing, for the ones that failed) and collect what the model read.
+  // -> [collected: item[], rawReplies: string[], failedBatches, unreadableBatches, emptyBatches (counts), lastBatchError: string, enginesUsed: Set]
+  // (an array: property names are not minified, so seven keys would cost more than the stage saves)
+  async askModel(batches, prompt) {
+    const collected = [];
+    const rawReplies = [];
+    let failedBatches = 0;
+    let unreadableBatches = 0;
+    let lastBatchError = '';
+    this._rateBackoff = 1;
+    const runBatch = async (b, spacing, pass) => {
+      const content = [
+        { type: 'text', text: prompt + (batches.length > 1 ? ` (This is batch ${b + 1} of ${batches.length} from the same recording.)` : '') },
+        ...batches[b].map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
+      ];
+      if ((this.state.geminiKeys || []).length && !this.activeGeminiKeys().length) {
+        const wait = this.msUntilKeyFree();
+        if (wait > 0) {
+          this.setVideoStage('reading', Math.round((b / batches.length) * 92),
+            'Rate limit reached \u2014 waiting ' + Math.ceil(wait / 1000) + 's for a key to free up');
+          await this.waitForKeyCooldown();
+        }
+      }
+      await this.throttleForRateLimit(pass === 1 && b === 0 ? 0 : 1, batches.length, spacing);
+      let reply;
+      try {
+        reply = await this.completeWithRetry({ messages: [{ role: 'user', content }], max_tokens: 4000 });
+      } catch (err) {
+        const bMsg = (err && err.message) || String(err);
+        console.error('[Scout] batch ' + (b + 1) + '/' + batches.length + ' (pass ' + pass + ') failed:', bMsg);
+        if (/429|rate limit|quota|overload|503|529/i.test(bMsg)) this.noteRateLimit();
+        this._lastAiError = bMsg;
+        lastBatchError = bMsg;
+        return 'failed';
+      }
+      this.noteRateSuccess();
+      rawReplies.push(String(reply));
+      if (this._lastEngine) enginesUsed.add(this._lastEngine);
+      const arr = this.extractJsonArray(reply);
+      if (arr === null) {
+        // null means genuinely unparseable. An empty array is a real answer.
+        console.warn('[Scout] batch ' + (b + 1) + '/' + batches.length + ' returned unparseable output:', String(reply).slice(0, 300));
+        return 'unreadable';
+      }
+      if (arr.length) collected.push(...arr);
+      // Distinguish "answered, found nothing" from "answered with Pokemon" —
+      // a wall of empty answers means the frames or the prompt are at fault,
+      // not the network.
+      return arr.length ? 'ok' : 'empty';
+    };
+
+    const enginesUsed = new Set();
+    let emptyBatches = 0;
+    const retryQueue = [];
+    for (let b = 0; b < batches.length; b++) {
+      const res = await runBatch(b, this.RATE_INTERVAL_MS, 1);
+      if (res === 'failed') retryQueue.push(b);
+      else if (res === 'unreadable') unreadableBatches++;
+      else if (res === 'empty') emptyBatches++;
+      this.setVideoStage('reading', Math.round(((b + 1) / batches.length) * 92), this.batchLabel(b + 1, batches.length));
+    }
+
+    // Second pass at double spacing — most first-pass failures are 429s and
+    // succeed once the window clears.
+    this._failedFrames = retryQueue.flatMap(b => batches[b] || []);
+    if (retryQueue.length) {
+      const stillFailed = [];
+      for (let q = 0; q < retryQueue.length; q++) {
+        const b = retryQueue[q];
+        const res = await runBatch(b, this.RATE_INTERVAL_MS * 2, 2);
+        if (res === 'failed') { failedBatches++; stillFailed.push(b); }
+        else if (res === 'unreadable') unreadableBatches++;
+        else if (res === 'empty') emptyBatches++;
+        this.setVideoStage('reading', 92 + Math.round(((q + 1) / retryQueue.length) * 6), this.retryLabel(q + 1, retryQueue.length));
+      }
+      this._failedFrames = stillFailed.flatMap(b => batches[b] || []);
+    }
+
+    return [collected, rawReplies, failedBatches, unreadableBatches, emptyBatches, lastBatchError, enginesUsed];
+  }
+
+  // normalizeReads, part 1: the model's items from all batches -> one item per Pokemon (same name + CP), sightings merged.
+  dedupeSightings(collected) {
+    // Merge duplicate sightings across batches (same name + CP).
+    const seen = new Map();
+    collected.forEach(item => {
+      if (!item || !item.name) return;
+      const key = String(item.name).toLowerCase() + '|' + (item.cp == null ? '?' + (item.cpCovered === true ? '|' + (item.hp == null ? '' : item.hp) + '|' + (item.cpVisible || '') : '') : item.cp);
+      const prev = seen.get(key);
+      if (!prev) { seen.set(key, { ...item }); return; }
+      // Prefer non-null values from whichever sighting had them.
+      Object.keys(item).forEach(k => {
+        if (prev[k] == null && item[k] != null) prev[k] = item[k];
+      });
+    });
+    return [...seen.values()];
+  }
+
+  // normalizeReads, part 2: drop items with no name or no species (OCR artefacts, UI labels), add the dex number.
+  // -> { validated: item[], raw: items read, droppedNoName, droppedUnknown }
+  validateReads(parsed) {
+    const mechanics = this.mechanics;
+    let droppedNoName = 0;
+    let droppedUnknown = 0;
+    const validated = parsed.map(item => {
+      const name = (item && item.name || '').trim();
+      if (!name) { droppedNoName++; return null; }
+      const dex = mechanics && mechanics.resolveDexByName ? mechanics.resolveDexByName(name) : null;
+      // No dex match means the name is not a real species (an OCR artefact or
+      // a UI label), so there is nothing useful to store.
+      if (dex == null) { droppedUnknown++; return null; }
+      return { ...item, name, dex };
+    }).filter(Boolean);
+    const raw = parsed.length;
+    if (raw !== validated.length) {
+      console.warn('[Scout] validation kept ' + validated.length + '/' + raw
+        + ' (no name: ' + droppedNoName + ', unknown species: ' + droppedUnknown + ')');
+    }
+    return { validated, raw, droppedNoName, droppedUnknown };
+  }
+
+  // The error for a recording that gave no Pokemon at all: says which of the three ways each batch ended (empty, failed, unreadable).
+  noReadError(emptyBatches, failedBatches, unreadableBatches, enginesUsed, n) {
+    // Spell out the breakdown: "answered but saw nothing" (frames/prompt) is
+    // a completely different problem from "never landed" (transport).
+    const eng = enginesUsed.size ? ' Read by ' + [...enginesUsed].join(' + ') + '.' : '';
+    const parts = [];
+    if (emptyBatches) parts.push(emptyBatches + ' of ' + n + ' batches answered but saw no Pokemon');
+    if (failedBatches) parts.push(failedBatches + ' failed to send');
+    if (unreadableBatches) parts.push(unreadableBatches + ' returned unreadable output');
+    const breakdown = parts.length ? ' (' + parts.join(', ') + ').' : '';
+    const composed = new Error(failedBatches === n
+      ? 'No batch reached the AI' + breakdown + ' Wait a moment and hit RETRY \u2014 your frames are held.'
+      : (emptyBatches === n
+            ? 'The AI read every frame but found no Pokemon' + breakdown + eng + ' Make sure the recording shows Pokemon detail screens, and pan slowly enough to pause on each one.'
+        : 'Could not read any Pokemon off that recording' + breakdown + eng + ' Try a slower pan across each screen.'));
+    composed.composed = true;
+    return composed;
+  }
+
+  // reconcile, part 1 (the recording's receipt): one row per item with whether it matched a Pokemon already in the roster (read BEFORE the merge)
+  // and whether it repeats an earlier row. Rows are copies taken after the merge, so they never show solved or recovered CPs (KNOWN-BUG, 6d).
+  receiptRows(validated, roster) {
+    const seenKeys = new Set();
+    return validated.map((item, i) => {
+      const nameLower = item.name.toLowerCase();
+      const match = roster.find(p => p.cp === item.cp && p.name.toLowerCase() === nameLower)
+        || roster.find(p => p.dex != null && item.dex != null && p.dex === item.dex && p.cp === item.cp);
+      const key = nameLower + '|' + (item.cp == null ? '?' : item.cp);
+      const isDupe = seenKeys.has(key);
+      seenKeys.add(key);
+      return { ...item, _rid: 'r' + i, _isNew: !match, _matchName: match ? match.name : null, _dupe: isDupe, _solvedCount: item._solvedCount || null };
+    });
   }
 
   // Import from any external AI chat (Kimi, Claude, ChatGPT, Gemini web — all
@@ -14530,18 +14565,7 @@ class Component extends DCLogic {
   }
 
   mergeVideoImport(rawItems) {
-    try { this.logMegaScans(rawItems || []); } catch (e) {}
-    try { (rawItems || []).forEach(o => this.noteMaxParticles(o)); } catch (e) {}
-    let items = this.coalesceFragments(rawItems || []);
-    // A CP hidden behind the Pokemon, or one that cannot fit its HP and Power Up cost, is worked out or tagged CHECK CP (see recoverItemCp).
-    { const rosterNow = this.effectiveRosterForMatch(); items.forEach(it => { if (it && it.name) { if (it.powerUpDust == null && it.powerUpStardust != null) it.powerUpDust = it.powerUpStardust; try { this.recoverItemCp(it, rosterNow); } catch (e) { /* leave the read as it is */ } } }); }
-    // The import gate: reads that cannot be right wait in Bulk update > Import check until you accept or discard them.
-    let heldNow = 0;
-    if (!this._gateBypass && !(typeof window !== 'undefined' && window.__noImportGate)) {   // __noImportGate: the QA harness feeds synthetic reads
-      const keep = [], held = [];
-      items.forEach(it => { const why = this.importCheck(it); if (why.length) held.push({ id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: Date.now(), reasons: why, item: it }); else keep.push(it); });
-      if (held.length) { items = keep; heldNow = held.length; this.holdImportItems(held); }
-    }
+    const { items, heldNow } = this.readItems(rawItems);
     const overrides = { ...this.state.ivOverrides };
     const candyInv = { ...this.state.candyInventory };
     const types = { ...this.state.typeTable };
@@ -14571,6 +14595,63 @@ class Component extends DCLogic {
         if (seenStardust == null || item.stardust > seenStardust) seenStardust = item.stardust;
       }
       const nameLower = item.name.toLowerCase();
+      const dupeKey = nameLower + '|' + (item.cp == null ? '?' : item.cp) + (item.matchedForm && item.matchedForm !== 'normal' ? '|' + item.matchedForm : '');
+      if (seenThisImport.has(dupeKey)) {
+        dupes.push({ name: item.name, cp: item.cp });
+      }
+      seenThisImport.set(dupeKey, true);
+      const itemForm = item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : '';
+      const pool = this.matchRecord(item, itemForm, roster, added, removedSet), match = pool[0];
+      const solvedFrom = this.solveIvs(item);
+      if (solvedFrom != null) solved++;
+      const { ivPatch, ivNote } = this.ivPatchFor(item, solvedFrom, match, pool.length > 1, overrides);
+      if (match) {
+        // Re-imports used to overwrite silently, so a mis-read CP looked
+        // identical to a real power-up. Record what each update actually
+        // changed so the receipt can show it rather than just a count.
+        const before = { ...match, ...(overrides[match.idx] || {}) };
+        const changes = this.diffRecord(item, before, ivPatch, ivNote);
+        if (changes.length) changeLog.push({ name: match.name, changes: changes.join('  \u00b7  ') });
+        overrides[match.idx] = this.updatePatch(item, itemForm, match, before, overrides, ivPatch, today);
+        updated++;
+        touchedIdx.push(match.idx);
+        revertMap[match.idx] = { kind: 'update', prev: (this.state.ivOverrides || {})[match.idx] ? { ...(this.state.ivOverrides || {})[match.idx] } : null };
+        sheetRows.push({ idx: match.idx, name: match.name + (match.form ? ' (' + match.form + ')' : ''), cp: item.cp, kind: 'updated', text: changes.length ? changes.join('  \u00b7  ') : 'Details refreshed' });
+      } else {
+        const newRec = this.newRecord(item, i, ivPatch, today);
+        added.push(newRec);
+        removedIds = this.removedIdsWithout(newRec, removedIds);
+        inserted++;
+        touchedIdx.push(newRec.idx);
+        revertMap[newRec.idx] = { kind: 'insert' };
+        sheetRows.push({ idx: newRec.idx, name: newRec.name + (newRec.form ? ' (' + newRec.form + ')' : ''), cp: item.cp, kind: 'new', text: 'New in your roster' + (item.cpCheck ? ' \u00b7 CP needs a check' + (item.cp != null ? ' (' + item.cp + ' is the only CP that fits)' : ' (hidden behind the Pokemon)') : '') });
+      }
+      this.mergeCandy(candyInv, item);
+      if (item.type && !(mechanics && mechanics.hasRegionalForms && mechanics.hasRegionalForms(item.name, item.dex))) types[nameLower] = item.type;
+    });
+    this.commitImport({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds, recentChanged: { ids: touchedIdx, at: Date.now(), shown: false }, lastImport: { at: Date.now(), rows: sheetRows, revert: revertMap }, importSheetOpen: false }, seenStardust);
+    const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
+    return { held: heldNow, updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
+  }
+
+  // normalizeReads (merge side): the reads of one import -> the items to merge. Logs Mega and Max Particles evidence, joins fragments,
+  // recovers a hidden CP, holds back what cannot be right (the import gate), then reads the form off the type badges (item.type and
+  // item.matchedForm are set in place). -> { items: item[], heldNow: count held back }
+  readItems(rawItems) {
+    try { this.logMegaScans(rawItems || []); } catch (e) {}
+    try { (rawItems || []).forEach(o => this.noteMaxParticles(o)); } catch (e) {}
+    let items = this.coalesceFragments(rawItems || []);
+    // A CP hidden behind the Pokemon, or one that cannot fit its HP and Power Up cost, is worked out or tagged CHECK CP (see recoverItemCp).
+    { const rosterNow = this.effectiveRosterForMatch(); items.forEach(it => { if (it && it.name) { if (it.powerUpDust == null && it.powerUpStardust != null) it.powerUpDust = it.powerUpStardust; try { this.recoverItemCp(it, rosterNow); } catch (e) { /* leave the read as it is */ } } }); }
+    // The import gate: reads that cannot be right wait in Bulk update > Import check until you accept or discard them.
+    let heldNow = 0;
+    if (!this._gateBypass && !(typeof window !== 'undefined' && window.__noImportGate)) {   // __noImportGate: the QA harness feeds synthetic reads
+      const keep = [], held = [];
+      items.forEach(it => { const why = this.importCheck(it); if (why.length) held.push({ id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: Date.now(), reasons: why, item: it }); else keep.push(it); });
+      if (held.length) { items = keep; heldNow = held.length; this.holdImportItems(held); }
+    }
+    const mechanics = this.mechanics;
+    items.forEach(item => {
       // The detail screen prints the type badges but not "Alolan". Same name, different typing
       // means a different form (own base stats, moves and rankings), so read the form off the type.
       if (item.type && mechanics && mechanics.completeTypes && String(item.type).indexOf('/') < 0) {
@@ -14581,226 +14662,241 @@ class Component extends DCLogic {
         const f = mechanics.formForTypes(item.name, item.type, item.dex);
         if (f) item.matchedForm = f;
       }
-      const dupeKey = nameLower + '|' + (item.cp == null ? '?' : item.cp) + (item.matchedForm && item.matchedForm !== 'normal' ? '|' + item.matchedForm : '');
-      if (seenThisImport.has(dupeKey)) {
-        dupes.push({ name: item.name, cp: item.cp });
-      }
-      seenThisImport.set(dupeKey, true);
-      const itemForm = item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : '';
-      const formOk = p => !item.type || !item.matchedForm || String(p.form || '').toLowerCase() === itemForm;
-      // HP is part of the identity too: two Pokemon of one species at the same CP but different HP are
-      // different individuals, and merging them overwrote the wrong one's IVs.
-      const hpOk = p => item.hp == null || p.hp == null || Number(p.hp) === Number(item.hp);
-      const same = p => p.name.toLowerCase() === nameLower && p.cp === item.cp && hpOk(p) && !this.isRemoved(p, removedSet);
-      const tier1 = [...roster.filter(p => same(p) && formOk(p)), ...added.filter(p => same(p) && formOk(p))];
-      const pool = tier1.length ? tier1 : [...roster.filter(same), ...added.filter(same)];
-      const match = pool[0];
-      const ambiguousMatch = pool.length > 1;
-      let ivPatch = {};
-      let solvedFrom = null;
-      if ((item.atkIV == null || item.defIV == null || item.staIV == null)
-          && item.dex && item.cp && item.hp && mechanics && mechanics.solveIVs) {
-        const solveBases = this.baseStatCandidates(item);
-        if (solveBases.length) {
-          try {
-            // CP+HP alone is usually ambiguous across dozens of level/IV
-            // combos. The stardust cost printed on the Power Up button is a
-            // fixed, public function of level only (Niantic's own cost
-            // table), so reversing it narrows the search to the 1-2 levels
-            // that could actually produce that cost \u2014 the same trick
-            // third-party IV checkers use instead of requiring an appraisal.
-            // Levels 1-40.5 are covered; 41+ tiers are omitted from the cost
-            // table until their values can be source-confirmed, so a maxed
-            // Pokemon just solves unrestricted. levelsForPowerUpDust
-            // returns [] whenever it can't confidently narrow, in which case
-            // this silently falls back to the old unrestricted solve.
-            let levelFilter = null;
-            if (item.powerUpDust != null && mechanics.levelsForPowerUpDust) {
-              const levels = mechanics.levelsForPowerUpDust(item.powerUpDust, {
-                lucky: !!item.lucky,
-                shadow: !!item.shadow,
-                purified: item.shadowPurified === '1' && !item.shadow
-              });
-              if (levels && levels.length) levelFilter = levels;
-            }
-            // Regional forms have completely different base stats (Galarian
-            // Farfetch'd is 174/114/141 against Kantonian 124/115/141), and the
-            // detail screen names them identically — so the Kantonian numbers
-            // produce ZERO matching spreads and the Pokemon reports as
-            // unsolvable. Each known form for this dex is tried in turn and the
-            // first that actually explains the CP and HP wins.
-            let cands = null, usedBase = null;
+    });
+    return { items, heldNow };
+  }
+
+  // reconcile (merge side): the roster Pokemon an item is. Same name, exact CP, compatible HP, not removed; the form decides between several.
+  // itemForm is the item's form BEFORE the solve (the solve can change item.matchedForm; the update keeps using this one).
+  // -> the candidates, best first: [0] is the match (undefined when there is none), more than one means look-alikes
+  matchRecord(item, itemForm, roster, added, removedSet) {
+    const nameLower = item.name.toLowerCase();
+    const formOk = p => !item.type || !item.matchedForm || String(p.form || '').toLowerCase() === itemForm;
+    // HP is part of the identity too: two Pokemon of one species at the same CP but different HP are
+    // different individuals, and merging them overwrote the wrong one's IVs.
+    const hpOk = p => item.hp == null || p.hp == null || Number(p.hp) === Number(item.hp);
+    const same = p => p.name.toLowerCase() === nameLower && p.cp === item.cp && hpOk(p) && !this.isRemoved(p, removedSet);
+    const tier1 = [...roster.filter(p => same(p) && formOk(p)), ...added.filter(p => same(p) && formOk(p))];
+    const pool = tier1.length ? tier1 : [...roster.filter(same), ...added.filter(same)];
+    return pool;
+  }
+
+  // solve: the IVs an item's CP + HP allow (and the Power Up stardust cost, which fixes the level), tried against each form this species can have.
+  // Writes onto the item: the three IVs and level when exactly one spread fits, else _ivRange/_lvlRange; also _solvedCount, _formChoices, matchedForm.
+  // -> 1 when the spread was pinned, else null
+  solveIvs(item) {
+    const mechanics = this.mechanics;
+    let solvedFrom = null;
+    if ((item.atkIV == null || item.defIV == null || item.staIV == null)
+        && item.dex && item.cp && item.hp && mechanics && mechanics.solveIVs) {
+      const solveBases = this.baseStatCandidates(item);
+      if (solveBases.length) {
+        try {
+          // CP+HP alone is usually ambiguous across dozens of level/IV
+          // combos. The stardust cost printed on the Power Up button is a
+          // fixed, public function of level only (Niantic's own cost
+          // table), so reversing it narrows the search to the 1-2 levels
+          // that could actually produce that cost \u2014 the same trick
+          // third-party IV checkers use instead of requiring an appraisal.
+          // Levels 1-40.5 are covered; 41+ tiers are omitted from the cost
+          // table until their values can be source-confirmed, so a maxed
+          // Pokemon just solves unrestricted. levelsForPowerUpDust
+          // returns [] whenever it can't confidently narrow, in which case
+          // this silently falls back to the old unrestricted solve.
+          let levelFilter = null;
+          if (item.powerUpDust != null && mechanics.levelsForPowerUpDust) {
+            const levels = mechanics.levelsForPowerUpDust(item.powerUpDust, {
+              lucky: !!item.lucky,
+              shadow: !!item.shadow,
+              purified: item.shadowPurified === '1' && !item.shadow
+            });
+            if (levels && levels.length) levelFilter = levels;
+          }
+          // Regional forms have completely different base stats (Galarian
+          // Farfetch'd is 174/114/141 against Kantonian 124/115/141), and the
+          // detail screen names them identically — so the Kantonian numbers
+          // produce ZERO matching spreads and the Pokemon reports as
+          // unsolvable. Each known form for this dex is tried in turn and the
+          // first that actually explains the CP and HP wins.
+          let cands = null, usedBase = null;
+          for (const cand of solveBases) {
+            const hit = mechanics.solveIVs(cand.base, item.cp, item.hp, null, levelFilter);
+            if (hit && hit.length) { cands = hit; usedBase = cand; break; }
+          }
+          // A bad OCR read of powerUpDust could narrow to the wrong level
+          // and wipe out every real candidate; if that happens, fall back
+          // to the unrestricted solve rather than reporting "unsolvable".
+          if ((!cands || !cands.length) && levelFilter) {
             for (const cand of solveBases) {
-              const hit = mechanics.solveIVs(cand.base, item.cp, item.hp, null, levelFilter);
+              const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
               if (hit && hit.length) { cands = hit; usedBase = cand; break; }
             }
-            // A bad OCR read of powerUpDust could narrow to the wrong level
-            // and wipe out every real candidate; if that happens, fall back
-            // to the unrestricted solve rather than reporting "unsolvable".
-            if ((!cands || !cands.length) && levelFilter) {
-              for (const cand of solveBases) {
-                const hit = mechanics.solveIVs(cand.base, item.cp, item.hp);
-                if (hit && hit.length) { cands = hit; usedBase = cand; break; }
-              }
+          }
+          if (usedBase && usedBase.form) item.matchedForm = usedBase.form;
+          // Several forms can reproduce one CP/HP pair (Farfetch'd cp879/hp92
+          // fits both the default and Galarian stats). First-match-wins would
+          // commit one of them to the roster with a confident PvP rank and no
+          // hint that the other fits, so the alternatives are recorded and
+          // reported in the import receipt instead.
+          if (cands && cands.length) {
+            const fits = solveBases.filter(c => mechanics.solveIVs(c.base, item.cp, item.hp).length);
+            if (fits.length > 1) item._formChoices = fits.map(c => c.form || 'default');
+          }
+          if (cands && cands.length) {
+            item._solvedCount = cands.length;
+            // A CP/HP pair almost always fits many spreads: only a UNIQUE solve is pinned; anything else keeps the
+            // candidate range and stays visibly unsolved until the appraisal collapses it in mergeAppraisalImport.
+            if (cands.length === 1) {
+              const c = cands[0];
+              item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
+              item.level = c.level;
+              solvedFrom = 1;
+            } else {
+              item._ivRange = mechanics.candidateRange(cands);
+              const lv = cands.map(c => c.level);
+              item._lvlRange = [Math.min.apply(null, lv), Math.max.apply(null, lv)];
             }
-            if (usedBase && usedBase.form) item.matchedForm = usedBase.form;
-            // Several forms can reproduce one CP/HP pair (Farfetch'd cp879/hp92
-            // fits both the default and Galarian stats). First-match-wins would
-            // commit one of them to the roster with a confident PvP rank and no
-            // hint that the other fits, so the alternatives are recorded and
-            // reported in the import receipt instead.
-            if (cands && cands.length) {
-              const fits = solveBases.filter(c => mechanics.solveIVs(c.base, item.cp, item.hp).length);
-              if (fits.length > 1) item._formChoices = fits.map(c => c.form || 'default');
-            }
-            if (cands && cands.length) {
-              item._solvedCount = cands.length;
-              // A CP/HP pair almost always fits many spreads: only a UNIQUE solve is pinned; anything else keeps the
-              // candidate range and stays visibly unsolved until the appraisal collapses it in mergeAppraisalImport.
-              if (cands.length === 1) {
-                const c = cands[0];
-                item.atkIV = c.atkIV; item.defIV = c.defIV; item.staIV = c.staIV;
-                item.level = c.level;
-                solvedFrom = 1;
-              } else {
-                item._ivRange = mechanics.candidateRange(cands);
-                const lv = cands.map(c => c.level);
-                item._lvlRange = [Math.min.apply(null, lv), Math.max.apply(null, lv)];
-              }
-            }
-          } catch (e) { /* unsolvable — leave IVs null */ }
-        }
+          }
+        } catch (e) { /* unsolvable — leave IVs null */ }
       }
-      if (solvedFrom != null) solved++;
-      if (item.atkIV != null && item.defIV != null && item.staIV != null && item.dex && mechanics) {
-        // Same form problem as the solve: ranking a Galarian Farfetch'd against
-        // Kantonian base stats gives a PvP percentage for a different Pokemon.
-        const bases = this.baseStatCandidates(item);
-        const base = (bases[0] && bases[0].base) || mechanics.BASE_STATS[item.dex];
-        if (base) {
-          const ivs = [item.atkIV, item.defIV, item.staIV];
-          ivPatch = {
-            ...mechanics.spreadFields(item, base, ivs, { level: item.level, shadow: this.isShadow(item), littleEligible: this.littleCupEligible(item) }),
-            // A fresh solved level is real evidence from CP/HP — it supersedes
-            // any POWER UP taps logged in-app since the last scan, so the
-            // pending counter clears rather than compounding on top of it.
-            ...(item.level != null ? { pendingPowerUps: 0, powerUpsSinceScan: 0 } : {}),
-            ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {})
-          };
-        }
-      }
-      // Ambiguous solve: store the range, and actively null out any previously
-      // guessed spread + PvP rank rather than leaving a stale fabricated value.
-      // Only fill a range into records that have NO spread yet. If one is
-      // already recorded (an older trusted export or an exact solve), an
-      // ambiguous re-solve is weaker evidence and is left to the appraisal path,
-      // which checks membership properly before flagging a contradiction.
-      if (item._ivRange && !(match && this.knownSpread(match, overrides))) {
+    }
+    return solvedFrom;
+  }
+
+  // solve (patch): the IV fields to write for an item (a pinned spread with its PvP ranks, or the candidate range with the old guess cleared),
+  // minus what must not overwrite measured or typed IVs. -> { ivPatch: object, ivNote: why the IVs were left alone, or '' }
+  ivPatchFor(item, solvedFrom, match, ambiguousMatch, overrides) {
+    const mechanics = this.mechanics;
+    let ivPatch = {};
+    if (item.atkIV != null && item.defIV != null && item.staIV != null && item.dex && mechanics) {
+      // Same form problem as the solve: ranking a Galarian Farfetch'd against
+      // Kantonian base stats gives a PvP percentage for a different Pokemon.
+      const bases = this.baseStatCandidates(item);
+      const base = (bases[0] && bases[0].base) || mechanics.BASE_STATS[item.dex];
+      if (base) {
+        const ivs = [item.atkIV, item.defIV, item.staIV];
         ivPatch = {
-          atkIV: null, defIV: null, staIV: null, ivAvg: null,
-          ivRange: item._ivRange, ivCandidates: item._solvedCount, ivSolved: false,
-          lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1], pendingPowerUps: 0, powerUpsSinceScan: 0,
-          great: null, ultra: null, little: null
+          ...mechanics.spreadFields(item, base, ivs, { level: item.level, shadow: this.isShadow(item), littleEligible: this.littleCupEligible(item) }),
+          // A fresh solved level is real evidence from CP/HP — it supersedes
+          // any POWER UP taps logged in-app since the last scan, so the
+          // pending counter clears rather than compounding on top of it.
+          ...(item.level != null ? { pendingPowerUps: 0, powerUpsSinceScan: 0 } : {}),
+          ...(solvedFrom != null ? { ivSolved: true, ivCandidates: solvedFrom } : {})
         };
       }
-      // A scan must never overwrite IVs that were measured or typed in: if it disagrees, the measured
-      // spread stays and the disagreement is reported. Several look-alike matches: IVs are left alone.
-      let ivNote = '';
-      if (match) {
-        const was = { ...match, ...(overrides[match.idx] || {}) };
-        const differs = ivPatch.atkIV != null && Number.isFinite(was.atkIV) && (was.atkIV !== ivPatch.atkIV || was.defIV !== ivPatch.defIV || was.staIV !== ivPatch.staIV);
-        if (ambiguousMatch && ivPatch.atkIV != null) { ivPatch = {}; ivNote = 'matched more than one Pokemon: IVs left alone'; }
-        else if (differs && (was.ivMeasured || was.ivManual)) { ivPatch = {}; ivNote = 'scan disagrees with your measured IVs: kept yours'; }
-      }
-      if (match) {
-        // Re-imports used to overwrite silently, so a mis-read CP looked
-        // identical to a real power-up. Record what each update actually
-        // changed so the receipt can show it rather than just a count.
-        const before = { ...match, ...(overrides[match.idx] || {}) };
-        const changes = [];
-        if (item.cp != null && before.cp != null && item.cp !== before.cp) changes.push('CP ' + before.cp + ' \u2192 ' + item.cp);
-        if (item.hp != null && before.hp != null && item.hp !== before.hp) changes.push('HP ' + before.hp + ' \u2192 ' + item.hp);
-        if (ivPatch.atkIV != null && Number.isFinite(before.atkIV)
-          && (before.atkIV !== ivPatch.atkIV || before.defIV !== ivPatch.defIV || before.staIV !== ivPatch.staIV)) {
-          changes.push('IV ' + [before.atkIV, before.defIV, before.staIV].join('/') + ' \u2192 ' + [ivPatch.atkIV, ivPatch.defIV, ivPatch.staIV].join('/'));
-        }
-        if (ivNote) changes.push(ivNote);
-        if (changes.length) changeLog.push({ name: match.name, changes: changes.join('  \u00b7  ') });
-        overrides[match.idx] = {
-          ...overrides[match.idx], cp: item.cp,
-          hp: item.hp != null ? item.hp : match.hp,
-          lucky: item.lucky ? true : !!before.lucky,
-          favorite: item.favorite ? true : !!before.favorite,
-          // A single-type read must not wipe a regional form the record already has.
-          ...(item.matchedForm && (itemForm || !before.form) ? { form: itemForm || null } : {}),
-          ...(item.type ? { type: item.type } : {}),
-          ...(item.shadow ? { shadowPurified: '1' } : {}),
-          ...(item.sizeClass ? { sizeClass: item.sizeClass } : {}),
-          ...this.shinyPatch(item, before),
-          ...(item.gender ? { gender: item.gender } : {}),
-          ...(item.fastMove ? { quickMove: item.fastMove } : {}),
-          ...(item.chargeMove1 ? { chargeMove: item.chargeMove1 } : {}),
-          ...(item.chargeMove2 ? { chargeMove2: item.chargeMove2 } : {}),
-          ...(item.weight ? { weight: item.weight } : {}),
-          ...(item.height ? { height: item.height } : {}),
-          ...this.maxPatch(item),
-          scanDate: today,
-          ...ivPatch
-        };
-        updated++;
-        touchedIdx.push(match.idx);
-        revertMap[match.idx] = { kind: 'update', prev: (this.state.ivOverrides || {})[match.idx] ? { ...(this.state.ivOverrides || {})[match.idx] } : null };
-        sheetRows.push({ idx: match.idx, name: match.name + (match.form ? ' (' + match.form + ')' : ''), cp: item.cp, kind: 'updated', text: changes.length ? changes.join('  \u00b7  ') : 'Details refreshed' });
-      } else {
-        const newRec = {
-          idx: 'video-' + Date.now() + '-' + i, name: item.name, form: item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : null, dex: item.dex,
-          type: item.type || null,
-          gender: item.gender || null,
-          cp: item.cp, hp: item.hp != null ? item.hp : null,
-          atkIV: ivPatch.atkIV != null ? ivPatch.atkIV : null, defIV: ivPatch.defIV != null ? ivPatch.defIV : null,
-          staIV: ivPatch.staIV != null ? ivPatch.staIV : null, ivAvg: ivPatch.ivAvg != null ? ivPatch.ivAvg : null,
-          lvlMin: null, lvlMax: null,
-          quickMove: item.fastMove || null,
-          chargeMove: item.chargeMove1 || null,
-          chargeMove2: item.chargeMove2 || null,
-          weight: item.weight || null, height: item.height || null, sizeClass: item.sizeClass || null,
-          evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
-          canEvolve: item.evolveButton === true || item.evolveButton === false ? item.evolveButton : null,
-          catchDate: null, scanDate: today,
-          lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
-          ...this.maxPatch(item),
-          ...(item.cpCheck ? { cpCheck: true, cpCandidates: item.cpCandidates || null, cpNote: item.cpNote || '' } : {}),
-          // Never null — the render path reads p.great.rankPct directly.
-          great: ivPatch.great || this.emptyLeague(),
-          ultra: ivPatch.ultra || this.emptyLeague(),
-          little: ivPatch.little || this.emptyLeague()
-        };
-        added.push(newRec);
-        removedIds = this.removedIdsWithout(newRec, removedIds);
-        inserted++;
-        touchedIdx.push(newRec.idx);
-        revertMap[newRec.idx] = { kind: 'insert' };
-        sheetRows.push({ idx: newRec.idx, name: newRec.name + (newRec.form ? ' (' + newRec.form + ')' : ''), cp: item.cp, kind: 'new', text: 'New in your roster' + (item.cpCheck ? ' \u00b7 CP needs a check' + (item.cp != null ? ' (' + item.cp + ' is the only CP that fits)' : ' (hidden behind the Pokemon)') : '') });
-      }
-      if (item.candy != null || item.xlCandy != null) {
-        const famKey = this.candyKey(item.name);
-        if (this.candyLocked(candyInv[famKey])) {
-          const cur = candyInv[famKey];
-          if ((item.candy != null && item.candy !== cur.candy) || (item.xlCandy != null && item.xlCandy !== cur.xlCandy)) candyInv[famKey] = { ...cur, ignoredScan: { candy: item.candy != null ? item.candy : null, xlCandy: item.xlCandy != null ? item.xlCandy : null, at: Date.now() } };
-        } else
-        candyInv[famKey] = {
-          name: item.name,
-          candy: item.candy != null ? item.candy : (candyInv[famKey] && candyInv[famKey].candy),
-          xlCandy: item.xlCandy != null ? item.xlCandy : (candyInv[famKey] && candyInv[famKey].xlCandy),
-          at: Date.now(), source: 'scan'
-        };
-      }
-      if (item.type && !(mechanics && mechanics.hasRegionalForms && mechanics.hasRegionalForms(item.name, item.dex))) types[nameLower] = item.type;
-    });
-    this.setState({ ivOverrides: overrides, addedPokemon: added, candyInventory: candyInv, typeTable: types, removedIds, recentChanged: { ids: touchedIdx, at: Date.now(), shown: false }, lastImport: { at: Date.now(), rows: sheetRows, revert: revertMap }, importSheetOpen: false });
+    }
+    // Ambiguous solve: store the range, and actively null out any previously
+    // guessed spread + PvP rank rather than leaving a stale fabricated value.
+    // Only fill a range into records that have NO spread yet. If one is
+    // already recorded (an older trusted export or an exact solve), an
+    // ambiguous re-solve is weaker evidence and is left to the appraisal path,
+    // which checks membership properly before flagging a contradiction.
+    if (item._ivRange && !(match && this.knownSpread(match, overrides))) {
+      ivPatch = {
+        atkIV: null, defIV: null, staIV: null, ivAvg: null,
+        ivRange: item._ivRange, ivCandidates: item._solvedCount, ivSolved: false,
+        lvlMin: item._lvlRange[0], lvlMax: item._lvlRange[1], pendingPowerUps: 0, powerUpsSinceScan: 0,
+        great: null, ultra: null, little: null
+      };
+    }
+    // A scan must never overwrite IVs that were measured or typed in: if it disagrees, the measured
+    // spread stays and the disagreement is reported. Several look-alike matches: IVs are left alone.
+    let ivNote = '';
+    if (match) {
+      const was = { ...match, ...(overrides[match.idx] || {}) };
+      const differs = ivPatch.atkIV != null && Number.isFinite(was.atkIV) && (was.atkIV !== ivPatch.atkIV || was.defIV !== ivPatch.defIV || was.staIV !== ivPatch.staIV);
+      if (ambiguousMatch && ivPatch.atkIV != null) { ivPatch = {}; ivNote = 'matched more than one Pokemon: IVs left alone'; }
+      else if (differs && (was.ivMeasured || was.ivManual)) { ivPatch = {}; ivNote = 'scan disagrees with your measured IVs: kept yours'; }
+    }
+    return { ivPatch, ivNote };
+  }
+
+  // reconcile (update side): what an update changes, in words, for the receipt. -> string[]
+  diffRecord(item, before, ivPatch, ivNote) {
+    const changes = [];
+    if (item.cp != null && before.cp != null && item.cp !== before.cp) changes.push('CP ' + before.cp + ' \u2192 ' + item.cp);
+    if (item.hp != null && before.hp != null && item.hp !== before.hp) changes.push('HP ' + before.hp + ' \u2192 ' + item.hp);
+    if (ivPatch.atkIV != null && Number.isFinite(before.atkIV)
+      && (before.atkIV !== ivPatch.atkIV || before.defIV !== ivPatch.defIV || before.staIV !== ivPatch.staIV)) {
+      changes.push('IV ' + [before.atkIV, before.defIV, before.staIV].join('/') + ' \u2192 ' + [ivPatch.atkIV, ivPatch.defIV, ivPatch.staIV].join('/'));
+    }
+    if (ivNote) changes.push(ivNote);
+    return changes;
+  }
+
+  // commit (update side): the override that refreshes an owned Pokemon from the scan.
+  updatePatch(item, itemForm, match, before, overrides, ivPatch, today) {
+    return {
+      ...overrides[match.idx], cp: item.cp,
+      hp: item.hp != null ? item.hp : match.hp,
+      lucky: item.lucky ? true : !!before.lucky,
+      favorite: item.favorite ? true : !!before.favorite,
+      // A single-type read must not wipe a regional form the record already has.
+      ...(item.matchedForm && (itemForm || !before.form) ? { form: itemForm || null } : {}),
+      ...(item.type ? { type: item.type } : {}),
+      ...(item.shadow ? { shadowPurified: '1' } : {}),
+      ...(item.sizeClass ? { sizeClass: item.sizeClass } : {}),
+      ...this.shinyPatch(item, before),
+      ...(item.gender ? { gender: item.gender } : {}),
+      ...(item.fastMove ? { quickMove: item.fastMove } : {}),
+      ...(item.chargeMove1 ? { chargeMove: item.chargeMove1 } : {}),
+      ...(item.chargeMove2 ? { chargeMove2: item.chargeMove2 } : {}),
+      ...(item.weight ? { weight: item.weight } : {}),
+      ...(item.height ? { height: item.height } : {}),
+      ...this.maxPatch(item),
+      scanDate: today,
+      ...ivPatch
+    };
+  }
+
+  // commit (insert side): the record a scan of an unknown Pokemon adds.
+  newRecord(item, i, ivPatch, today) {
+    return {
+      idx: 'video-' + Date.now() + '-' + i, name: item.name, form: item.matchedForm && item.matchedForm !== 'normal' ? String(item.matchedForm).toLowerCase() : null, dex: item.dex,
+      type: item.type || null,
+      gender: item.gender || null,
+      cp: item.cp, hp: item.hp != null ? item.hp : null,
+      atkIV: ivPatch.atkIV != null ? ivPatch.atkIV : null, defIV: ivPatch.defIV != null ? ivPatch.defIV : null,
+      staIV: ivPatch.staIV != null ? ivPatch.staIV : null, ivAvg: ivPatch.ivAvg != null ? ivPatch.ivAvg : null,
+      lvlMin: null, lvlMax: null,
+      quickMove: item.fastMove || null,
+      chargeMove: item.chargeMove1 || null,
+      chargeMove2: item.chargeMove2 || null,
+      weight: item.weight || null, height: item.height || null, sizeClass: item.sizeClass || null,
+      evolveCandy: item.evolveCandy != null ? item.evolveCandy : null,
+      canEvolve: item.evolveButton === true || item.evolveButton === false ? item.evolveButton : null,
+      catchDate: null, scanDate: today,
+      lucky: !!item.lucky, shadowPurified: item.shadow ? '1' : '0', favorite: !!item.favorite, shiny: !!item.shiny, shinyState: item.shiny && !item.shinyIcon ? 'suspected' : null, dust: null,
+      ...this.maxPatch(item),
+      ...(item.cpCheck ? { cpCheck: true, cpCandidates: item.cpCandidates || null, cpNote: item.cpNote || '' } : {}),
+      // Never null — the render path reads p.great.rankPct directly.
+      great: ivPatch.great || this.emptyLeague(),
+      ultra: ivPatch.ultra || this.emptyLeague(),
+      little: ivPatch.little || this.emptyLeague()
+    };
+  }
+
+  // commit (candy): the candy counts a scan read for the species' family, unless the count is locked.
+  mergeCandy(candyInv, item) {
+    if (item.candy != null || item.xlCandy != null) {
+      const famKey = this.candyKey(item.name);
+      if (this.candyLocked(candyInv[famKey])) {
+        const cur = candyInv[famKey];
+        if ((item.candy != null && item.candy !== cur.candy) || (item.xlCandy != null && item.xlCandy !== cur.xlCandy)) candyInv[famKey] = { ...cur, ignoredScan: { candy: item.candy != null ? item.candy : null, xlCandy: item.xlCandy != null ? item.xlCandy : null, at: Date.now() } };
+      } else
+      candyInv[famKey] = {
+        name: item.name,
+        candy: item.candy != null ? item.candy : (candyInv[famKey] && candyInv[famKey].candy),
+        xlCandy: item.xlCandy != null ? item.xlCandy : (candyInv[famKey] && candyInv[famKey].xlCandy),
+        at: Date.now(), source: 'scan'
+      };
+    }
+  }
+
+  // commit: write the merged lists to state in one setState, then the stardust balance. patch is the state patch.
+  commitImport(patch, seenStardust) {
+    this.setState(patch);
     if (seenStardust != null) this.setStardust(seenStardust);
-    const frag = this._fragmentStats || { mergedIn: 0, discarded: 0 };
-    return { held: heldNow, updated, inserted, total: items.length, dupes, solved, fragmentsMerged: frag.mergedIn, fragmentsDropped: frag.discarded, changeLog };
   }
 
   setImportScreenMode(mode) {
