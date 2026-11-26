@@ -31,6 +31,7 @@ jobs:
           node scripts/test_ranking.js
           node scripts/test_roster_logic.js
           node scripts/test_grid_reconcile.js
+          node scripts/test_grid_server.js
           node scripts/test_import_stages.js
           node scripts/test_powered_up.js
           node scripts/test_flags_from_game.js
@@ -53,9 +54,10 @@ jobs:
 
       - name: Gemini pipeline tests
         run: |
-          pip install -r requirements.txt
+          pip install -r requirements.txt pyyaml
           python3 scripts/test_gemini_pool.py
           python3 scripts/test_extract_pipeline.py
+          python3 scripts/test_extract_grid.py
           python3 scripts/test_postprocess.py
           python3 scripts/test_evolution_branches.py
           python3 scripts/test_powerup_runs.py
@@ -79,3 +81,7 @@ jobs:
 
       - name: Smoke render
         run: node scripts/smoke_render.js
+
+      # Check against the game > Check from Google Drive, with the workflow dispatch and the result file stubbed (suite f is not part of qa.yml).
+      - name: Grid check from Google Drive
+        run: node scripts/qa/qa_run.js f
