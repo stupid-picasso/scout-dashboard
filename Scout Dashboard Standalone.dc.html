@@ -3471,7 +3471,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.386{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.389{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -5680,6 +5680,7 @@ class Component extends DCLogic {
     eventDraft: { title: '', date: '', species: '' },
     feed: null,
     eventMoves: null,
+    maxData: null,
     promoCodes: null,
     promoRedeemed: [],
     promoCopied: '',
@@ -5808,6 +5809,7 @@ class Component extends DCLogic {
     try {
       const mechanics = await this.waitForGlobal('PokemonMechanics', 'scout-mechanics-ready');
       this.mechanics = mechanics;
+      try { this.loadMaxData(); } catch (e) {}
       try { const ci = this.normalizeCandyInventory(this.state.candyInventory || {}); if (ci !== this.state.candyInventory) this.setState({ candyInventory: ci }); } catch (e) {}
       this.setState({ roster: [], loaded: true, checklistDate: new Date().toISOString().slice(0, 10), checklistDone: {} });
     } catch (e) {
@@ -10872,12 +10874,52 @@ class Component extends DCLogic {
     return false;
   }
 
+  // ---- Max Battle data (data/max_data.json, written by the weekly import) ----
+  // Upgrade groups and costs from the game master. The copy baked into the app is the offline fallback; a fetched copy that passes the
+  // shape check replaces it in place (mechanics applyMaxData) and is kept on this device. Returns null when no valid copy was found.
+  async reloadMaxDataNow() {
+    const m = this.mechanics;
+    if (!m || !m.applyMaxData || !m.validMaxData) return null;
+    const urls = ['data/max_data.json?t=' + Date.now(), 'https://raw.githubusercontent.com/stupid-picasso/scout-dashboard/main/data/max_data.json?t=' + Date.now()];
+    for (const u of urls) {
+      try {
+        const res = await fetch(u, { cache: 'no-store' });
+        if (!res.ok) continue;
+        const d = await res.json();
+        if (!m.validMaxData(d)) continue;
+        const diff = m.maxDataDiff(m.maxDataSnapshot(), d);
+        if (!m.applyMaxData(d)) continue;
+        this.setState({ maxData: { generatedAt: d.generatedAt || null } });
+        try { localStorage.setItem('scout.maxdata.v1', JSON.stringify(d)); } catch (e) {}
+        return { generatedAt: d.generatedAt || null, diff };
+      } catch (e) { /* try the next source */ }
+    }
+    return null;
+  }
+
+  maxDataNote(r) {
+    if (!r) return 'Offline: using the saved copy';
+    const d = r.diff || {};
+    if (d.species || d.groups || d.moves) return [d.species ? d.species + ' species' : '', d.groups ? d.groups + ' groups' : '', d.moves ? 'move ids' : ''].filter(Boolean).join(' / ') + ' changed';
+    return 'Up to date' + (r.generatedAt ? ' (as of ' + r.generatedAt + ')' : '');
+  }
+
+  loadMaxData() {
+    const m = this.mechanics;
+    if (!m || !m.applyMaxData) return;
+    try {
+      const raw = localStorage.getItem('scout.maxdata.v1'), c = raw ? JSON.parse(raw) : null;
+      if (c && m.applyMaxData(c)) this.setState({ maxData: { generatedAt: c.generatedAt || null } });
+    } catch (e) {}
+    this.reloadMaxDataNow().catch(() => {});
+  }
+
   async refreshEverything() {
     if (this._refreshing) return;
     this._refreshing = true;
     this.setState({ transferHold: [] });   // Pokemon left out of the transfer strings "for now" are judged again
     const defs = [['snapshot', 'Note where everything stands'], ['update', 'Check for a newer app version'], ['feed', 'Reload events and GBL feed'],
-      ['evo', 'Fill in missing evolution data'], ['moves', 'Fill in missing move data'], ['ranks', 'Recalculate every league rank'],
+      ['maxdata', 'Reload Max Battle data'], ['evo', 'Fill in missing evolution data'], ['moves', 'Fill in missing move data'], ['ranks', 'Recalculate every league rank'],
       ['keep', 'Re-run the keep check and transfer lists'], ['squads', 'Rebuild PvP squads'], ['brief', 'Update today\u2019s briefing']];
     const run = { running: true, steps: defs.map(([k, label]) => ({ k, label, status: 'wait', note: '' })), summary: null, undone: false };
     const push = () => this.setState({ refreshRun: { ...run, steps: run.steps.map(x => ({ ...x })) } });
@@ -10901,6 +10943,10 @@ class Component extends DCLogic {
       step('feed', (await this.reloadFeedNow()) ? 'done' : 'skip', null);
       run.steps.find(x => x.k === 'feed').note = this.validFeed(this.state.feed) ? 'Up to date' : 'Offline: using the saved copy';
       push();
+
+      step('maxdata', 'run');
+      try { const r = await this.reloadMaxDataNow(); step('maxdata', r ? 'done' : 'skip', this.maxDataNote(r)); }
+      catch (e) { step('maxdata', 'skip', 'Offline: using the saved copy'); }
 
       const gap = async (k, missingFn, fetchFn) => {
         const n = missingFn.call(this).length;
@@ -16623,14 +16669,16 @@ class Component extends DCLogic {
 
   // ---- Max planner: who to Dynamax first and what each Max Move upgrade costs ----------------------------------------------------
   // Every Max-capable Pokemon with measured IVs is scored on one Max Attack at its best (level 3) against a neutral target, so the order
-  // does not depend on a boss. The next Max Attack level of each is priced in Max Particles, Candy and Candy XL (mechanics MAX_MOVE_STEP_COST;
-  // Candy XL is 40 to 55 by species group, 40 is assumed) and set against what you hold, with the days of free Particles (800 a day) a
+  // does not depend on a boss. The next Max Attack level of each is priced in Max Particles, Candy and Candy XL (the species' group costs from
+  // the game master, MAX_GROUP_COSTS; Zacian and Zamazenta pay Stardust instead of Particles) and set against what you hold, with the days of free Particles (800 a day) a
   // shortfall takes. The tank (best HP x DEF, for Max Guard) and healer (Max Spirit) are named too. Numbers are estimates, not Niantic's.
   maxPlanner() {
     const m = this.mechanics;
     if (!m || !m.maxRating || !m.maxUpgradeCost) return null;
     const bal = Number((this.state.resources || {}).maxParticles);
     const have = Number.isFinite(bal) ? bal : null;
+    const haveDust = Number.isFinite(this.state.stardustBalance) ? this.state.stardustBalance : null;
+    const fmtN = n => Number(n).toLocaleString('en-US');
     const ros = this.effectiveRosterForMatch();
     const ctx = ros.length ? this.keepContext(ros) : null;
     const cand = [];
@@ -16656,13 +16704,14 @@ class Component extends DCLogic {
       const xlNeed = cost ? cost.xl : 0;
       const short = [];
       if (cost) {
-        if (have != null && have < cost.mp) short.push((cost.mp - have) + ' Particles (about ' + m.maxDaysToEarn(cost.mp - have) + ' day' + (m.maxDaysToEarn(cost.mp - have) === 1 ? '' : 's') + ' of free ones)');
+        if (cost.usesDust) { if (haveDust != null && haveDust < cost.dust) short.push(fmtN(cost.dust - haveDust) + ' Stardust'); }
+        else if (have != null && have < cost.mp) short.push((cost.mp - have) + ' Particles (about ' + m.maxDaysToEarn(cost.mp - have) + ' day' + (m.maxDaysToEarn(cost.mp - have) === 1 ? '' : 's') + ' of free ones)');
         if (st.candy != null && st.candy < cost.candy) short.push((cost.candy - st.candy) + ' Candy');
         if (xlNeed && st.xlCandy != null && st.xlCandy < xlNeed) short.push((xlNeed - st.xlCandy) + '+ Candy XL');
       }
       const nextPower = lvl < 3 ? m.maxAttackPower(lvl + 1, c.info.gmax) : null;
       const gain = nextPower ? Math.round((nextPower / c.info.power - 1) * 100) : 0;
-      return { c, rank: i + 1, cost, short, gain, perK: cost && cost.mp ? gain / (cost.mp / 1000) : 0, ready: !!cost && short.length === 0 && (have != null) };
+      return { c, rank: i + 1, cost, short, gain, perK: cost && cost.mp ? gain / (cost.mp / 1000) : 0, ready: !!cost && short.length === 0 && ((cost.usesDust ? haveDust : have) != null) };
     });
     const tank = keptRows.slice().sort((a, b) => b.bulk - a.bulk)[0] || null;
     const guardCost = tank ? this.maxCostFor(tank.p, 'guard', tank.info.guard, Math.min(3, tank.info.guard + 1)) : null;
@@ -16687,7 +16736,13 @@ class Component extends DCLogic {
   // rides sync, backup and export like costume. What the owner typed from the game's upgrade sheet is kept per species family (candyKey) in
   // resources.maxCosts = { family: { 1|2|3: { mp, candy, xl } } }: resources is already synced, so no new cloud key is needed.
   maxLearned(p) { return ((this.state.resources || {}).maxCosts || {})[this.candyKey(p.name)] || null; }
-  maxCostFor(p, move, from, to) { const m = this.mechanics; return m && m.maxUpgradeCostWith ? m.maxUpgradeCostWith(move, from, to, this.maxLearned(p)) : null; }
+  // Priced from the species' Max upgrade group (game master) when it is known, else the estimate; group Z pays Stardust, not Max Particles.
+  maxCostFor(p, move, from, to) {
+    const m = this.mechanics;
+    if (!m || !m.maxUpgradeCostWith) return null;
+    const g = m.maxGroupFor ? m.maxGroupFor(p.dex != null ? p.dex : (p.matchedName || p.name), p.form) : null, c = m.maxUpgradeCostWith(move, from, to, this.maxLearned(p), undefined, g);
+    return c && g ? { ...c, group: g, usesDust: !!(m.maxStepCost(g, 'guard', 1).dust) } : c;
+  }
   maxLevelKey(move) { return move === 'guard' ? 'maxGuardLevel' : move === 'spirit' ? 'maxSpiritLevel' : 'maxAttackLevel'; }
   setMaxLevel(p, move, level) {
     this.haptic('light');
@@ -16705,19 +16760,21 @@ class Component extends DCLogic {
     if (!i) return null;
     const from = u.move === 'attack' ? i.level : u.move === 'guard' ? i.guard : i.spirit;
     const to = Math.min(3, Math.max(from + 1, u.to || 0)), c = this.maxCostFor(p, u.move, from, to) || { mp: 0, candy: 0, xl: 0, steps: 0, mine: 0 };
-    const n = {}, f = ['mp', 'candy', 'xl'].map(k => { const t = u[k]; n[k] = t === undefined ? c[k] : Math.floor(Number(String(t).replace(/,/g, ''))) || 0; return { k, typed: t !== undefined, val: t !== undefined ? String(t) : String(c[k]) }; });
+    const n = c.usesDust ? { mp: 0 } : {}, f = [c.usesDust ? 'dust' : 'mp', 'candy', 'xl'].map(k => { const t = u[k]; n[k] = t === undefined ? c[k] : Math.floor(Number(String(t).replace(/,/g, ''))) || 0; return { k, typed: t !== undefined, val: t !== undefined ? String(t) : String(c[k]) }; });
     return { u, from, to, c, n, f, typed: f.some(x => x.typed) };
   }
   confirmMaxUp(p) {
     const v = this.maxUpView(p), m = this.mechanics;
     if (!v || !m || !m.maxSpend) return;
     const key = this.candyKey(p.name), res = { ...(this.state.resources || {}) };
-    let inv = this.state.candyInventory;
-    this.offerUndo('Max ' + { attack: 'Attack', guard: 'Guard', spirit: 'Spirit' }[v.u.move] + (v.from ? ' to ' : ' unlocked at ') + (v.to === 3 ? 'Max' : 'level ' + v.to), ['ivOverrides', 'candyInventory', 'resources']);
+    let inv = this.state.candyInventory, stardustLeft = null;
+    this.offerUndo('Max ' + { attack: 'Attack', guard: 'Guard', spirit: 'Spirit' }[v.u.move] + (v.from ? ' to ' : ' unlocked at ') + (v.to === 3 ? 'Max' : 'level ' + v.to), ['ivOverrides', 'candyInventory', 'resources', 'stardustBalance']);
     if (v.u.take) {
       const st = this.candyStockFor(p), mp = res.maxParticles;
-      const left = m.maxSpend({ mp: mp != null && Number.isFinite(Number(mp)) ? Number(mp) : null, candy: st.candy, xl: st.xlCandy }, v.n);
+      const sd = this.state.stardustBalance;
+      const left = m.maxSpend({ mp: mp != null && Number.isFinite(Number(mp)) ? Number(mp) : null, candy: st.candy, xl: st.xlCandy, dust: Number.isFinite(sd) ? sd : null }, v.n);
       if (left.mp != null) res.maxParticles = left.mp;
+      if (left.dust != null) stardustLeft = left.dust;
       if (left.candy != null || left.xl != null) {
         const cur = (inv || {})[key] || (() => { const f = this.familyCandyFor(p); return { name: p.name, candy: f.candy, xlCandy: f.xlCandy }; })();
         inv = { ...(inv || {}), [key]: { ...cur, name: cur.name || p.name, candy: left.candy != null ? left.candy : cur.candy, xlCandy: left.xl != null ? left.xl : cur.xlCandy } };
@@ -16725,7 +16782,7 @@ class Component extends DCLogic {
     }
     if (v.typed && v.to - v.from === 1) res.maxCosts = { ...(res.maxCosts || {}), [key]: m.maxLearnStep(this.maxLearned(p), v.to, v.n) };
     this.haptic('light');
-    this.patchMon(p.idx, { [this.maxLevelKey(v.u.move)]: v.to }, { push: 'now', state: { resources: res, candyInventory: inv, maxUp: null } });
+    this.patchMon(p.idx, { [this.maxLevelKey(v.u.move)]: v.to }, { push: 'now', state: { resources: res, candyInventory: inv, maxUp: null, ...(stardustLeft != null ? { stardustBalance: stardustLeft } : {}) } });
   }
 
   // Ranks the person's Max-capable Pokemon against the boss chosen on the Raid tab.
@@ -21773,13 +21830,13 @@ class Component extends DCLogic {
           const have = (this.state.resources || {}).maxParticles, st = v ? this.candyStockFor(p) : null;
           const up = !v ? null : {
             title: (v.from ? 'LEVEL UP ' : 'UNLOCK ') + names[v.u.move].toUpperCase(),
-            targets: [1, 2, 3].filter(n => n > v.from).map(n => chip(lvName(n), v.to === n, () => this.setMaxUp({ to: n, mp: undefined, candy: undefined, xl: undefined }), 'Target: ' + lvName(n))),
+            targets: [1, 2, 3].filter(n => n > v.from).map(n => chip(lvName(n), v.to === n, () => this.setMaxUp({ to: n, mp: undefined, dust: undefined, candy: undefined, xl: undefined }), 'Target: ' + lvName(n))),
             from: lvName(v.from) + ' to ' + lvName(v.to),
-            fields: v.f.map(x => ({ label: { mp: 'Max Particles', candy: 'Candy', xl: 'Candy XL' }[x.k], val: x.val, onChange: e => this.setMaxUp({ [x.k]: String(e && e.target ? e.target.value : e).replace(/[^0-9]/g, '') }) })),
+            fields: v.f.map(x => ({ label: { mp: 'Max Particles', dust: 'Stardust', candy: 'Candy', xl: 'Candy XL' }[x.k], val: x.val, onChange: e => this.setMaxUp({ [x.k]: String(e && e.target ? e.target.value : e).replace(/[^0-9]/g, '') }) })),
             src: v.typed && v.to - v.from > 1 ? 'Typed totals for several levels are not remembered. Level up one step at a time to save them.'
-              : v.c.mine === 0 ? 'Estimate: the price depends on the species. Type what the game shows and it is remembered.'
+              : v.c.mine === 0 ? (v.c.group ? 'Estimate from the game data for this species\u2019 group. Type what the game shows and it is remembered.' : 'Estimate: the price depends on the species. Type what the game shows and it is remembered.')
               : v.c.mine === v.c.steps ? 'Your cost for this species, from an earlier level-up.' : 'Partly your cost from earlier level-ups, partly estimate.',
-            hold: 'You hold ' + [Number.isFinite(Number(have)) && have != null ? fmt(have) + ' Max Particles' : '', st && st.candy != null ? fmt(st.candy) + ' Candy' : '', st && st.xlCandy != null ? fmt(st.xlCandy) + ' Candy XL' : ''].filter(Boolean).join(', ') + '.',
+            hold: 'You hold ' + [v.c.usesDust ? (Number.isFinite(this.state.stardustBalance) ? fmt(this.state.stardustBalance) + ' Stardust' : '') : (Number.isFinite(Number(have)) && have != null ? fmt(have) + ' Max Particles' : ''), st && st.candy != null ? fmt(st.candy) + ' Candy' : '', st && st.xlCandy != null ? fmt(st.xlCandy) + ' Candy XL' : ''].filter(Boolean).join(', ') + '.',
             take: v.u.take !== false, onTake: () => this.setMaxUp({ take: v.u.take === false }),
             onConfirm: () => this.confirmMaxUp(p), onCancel: () => this.setState({ maxUp: null })
           };
@@ -23100,7 +23157,7 @@ class Component extends DCLogic {
         const pl = this.maxPlanner();
         if (!pl) return null;
         const fmt = n => Number(n).toLocaleString('en-US');
-        const costText = c => c ? fmt(c.mp) + ' Max Particles' + (c.candy ? ' + ' + c.candy + ' Candy' : '') + (c.xl ? ' + ' + c.xl + (c.mine ? '' : '\u201355') + ' Candy XL' : '') + (c.mine && c.mine === c.steps ? ' (your cost)' : c.mine ? ' (partly your cost)' : ' (estimate)') : '';
+        const costText = c => c ? (c.usesDust ? fmt(c.dust || 0) + ' Stardust' : fmt(c.mp) + ' Max Particles') + (c.candy ? ' + ' + c.candy + ' Candy' : '') + (c.xl ? ' + ' + c.xl + (c.mine || c.group ? '' : '\u201355') + ' Candy XL' : '') + (c.mine && c.mine === c.steps ? ' (your cost)' : c.mine ? ' (partly your cost)' : ' (estimate)') : '';
         const nm = c => c.p.name + (c.info.gmax ? ' (G-Max)' : '') + ' ' + (c.p.cp != null ? c.p.cp + ' CP' : '');
         return {
           balance: pl.have != null ? fmt(pl.have) + ' Max Particles' + (pl.tiers.length ? ' \u00b7 ' + pl.tiers.map(t => t.battles + '\u00d7 ' + t.star + '\u2605 (' + t.mp + ')').join(' \u00b7 ') : '') : 'Max Particles balance not known yet \u2014 type it below or scan your Max screen',

@@ -22,7 +22,7 @@ GAME_MASTER_ENV = "GAME_MASTER_FILE"
 
 # Blocks of pokemon-mechanics.js that scripts write, in file order. POWERUP_RUNS and the CPM / move tables above them are
 # written by update_pokemon_data.py with its own marker style and are not listed.
-BLOCK_ORDER = ["SPECIES_GM", "SPECIES_FAMILY", "MEGA_LEVEL_DATA", "SIZE_DATA", "SPECIES_CLASS", "EVOLUTION_BRANCHES", "TIER_TRENDS", "PVP_TIER", "PVPOKE_GM"]
+BLOCK_ORDER = ["SPECIES_GM", "SPECIES_FAMILY", "MEGA_LEVEL_DATA", "SIZE_DATA", "SPECIES_CLASS", "EVOLUTION_BRANCHES", "TIER_TRENDS", "PVP_TIER", "PVPOKE_GM", "MAX_TIER_GROUP", "MAX_GROUP_COSTS", "MAX_MOVE_IDS"]
 
 
 def fetch_json(url, timeout=60, retries=3, pause=2.0):

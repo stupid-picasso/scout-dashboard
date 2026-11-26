@@ -5387,6 +5387,18 @@ function candyFamilyKey(name) {
   return fam || n;
 }
 
+// GENERATED BLOCK: MAX_TIER_GROUP (import_max_data.py) — do not hand-edit
+const MAX_TIER_GROUP = {"1":"1","2":"1","3":"1","4":"1","5":"1","6":"1","7":"1","8":"1","9":"1","10":"1","11":"1","12":"1","13":"1","14":"1","15":"1","16":"1","17":"1","18":"1","19":"1","20":"1","21":"1","22":"1","23":"2","24":"2","25":"1","26":"1","27":"2","28":"2","29":"2","30":"2","31":"2","32":"2","33":"2","34":"2","35":"1","36":"1","37":"2","38":"2","39":"1","40":"1","41":"1","42":"1","43":"2","44":"2","45":"2","46":"2","47":"2","48":"2","49":"2","50":"2","51":"2","52":"2","53":"2","54":"2","55":"2","56":"2","57":"2","58":"2","59":"2","60":"2","61":"2","62":"2","63":"2","64":"2","65":"2","66":"2","67":"2","68":"2","69":"2","70":"2","71":"2","72":"2","73":"2","74":"1","75":"1","76":"1","77":"2","78":"2","79":"2","80":"2","81":"2","82":"2","83":"2","84":"2","85":"2","86":"2","87":"2","88":"2","89":"2","90":"2","91":"2","92":"2","93":"2","94":"2","95":"3","96":"2","97":"2","98":"2","99":"2","100":"2","101":"2","102":"2","103":"2","104":"2","105":"2","106":"3","107":"3","108":"2","109":"2","110":"2","111":"2","112":"2","113":"3","114":"2","115":"2","116":"2","117":"2","118":"2","119":"2","120":"2","121":"2","122":"3","123":"3","124":"3","125":"3","126":"3","127":"3","128":"2","129":"1","130":"1","131":"3","132":"2","133":"3","134":"3","135":"3","136":"3","137":"2","138":"3","139":"3","140":"3","141":"3","142":"3","143":"3","144":"4","145":"4","146":"4","147":"3","148":"3","149":"3","150":"4","151":"4","152":"1","153":"1","154":"1","155":"1","156":"1","157":"1","158":"1","159":"1","160":"1","161":"1","162":"1","163":"1","164":"1","165":"1","166":"1","167":"1","168":"1","169":"1","170":"2","171":"2","172":"1","173":"1","174":"1","175":"1","176":"2","177":"2","178":"2","179":"3","180":"3","181":"3","182":"2","183":"2","184":"2","185":"3","186":"2","187":"2","188":"2","189":"2","190":"2","191":"2","192":"2","193":"2","194":"2","195":"2","196":"3","197":"3","198":"2","199":"2","200":"2","201":"3","202":"2","203":"2","204":"3","205":"3","206":"2","207":"3","208":"3","209":"2","210":"2","211":"2","212":"3","213":"2","214":"2","215":"2","216":"2","217":"2","218":"1","219":"1","220":"2","221":"2","222":"2","223":"1","224":"1","225":"3","226":"3","227":"3","228":"2","229":"2","230":"2","231":"2","232":"2","233":"2","234":"2","235":"2","236":"1","237":"3","238":"1","239":"1","240":"1","241":"3","242":"3","243":"4","244":"4","245":"4","246":"3","247":"3","248":"3","249":"4","250":"4","251":"4","252":"1","253":"1","254":"1","255":"1","256":"1","257":"1","258":"1","259":"1","260":"1","261":"1","262":"1","263":"1","264":"1","265":"1","266":"1","267":"1","268":"1","269":"1","270":"2","271":"2","272":"2","273":"2","274":"2","275":"2","276":"1","277":"1","278":"2","279":"2","280":"3","281":"3","282":"3","283":"1","284":"1","285":"2","286":"2","287":"3","288":"3","289":"3","290":"3","291":"3","292":"3","293":"1","294":"1","295":"1","296":"2","297":"2","298":"1","299":"2","300":"2","301":"2","302":"3","303":"3","304":"1","305":"1","306":"1","307":"2","308":"2","309":"2","310":"2","311":"2","312":"2","313":"2","314":"2","315":"2","316":"1","317":"1","318":"2","319":"2","320":"1","321":"1","322":"2","323":"2","324":"2","325":"1","326":"1","327":"2","328":"3","329":"3","330":"3","331":"2","332":"2","333":"1","334":"1","335":"2","336":"2","337":"2","338":"2","339":"1","340":"1","341":"2","342":"2","343":"2","344":"2","345":"2","346":"2","347":"2","348":"2","349":"3","350":"3","351":"3","352":"3","353":"2","354":"2","355":"2","356":"2","357":"3","358":"3","359":"3","360":"1","361":"2","362":"2","363":"2","364":"2","365":"2","366":"2","367":"2","368":"2","369":"3","370":"2","371":"3","372":"3","373":"3","374":"3","375":"3","376":"3","377":"4","378":"4","379":"4","380":"4","381":"4","382":"4","383":"4","384":"4","385":"4","386":"4","387":"1","388":"1","389":"1","390":"1","391":"1","392":"1","393":"1","394":"1","395":"1","396":"1","397":"1","398":"1","399":"1","400":"1","401":"1","402":"1","403":"3","404":"3","405":"3","406":"1","407":"2","408":"3","409":"3","410":"3","411":"3","412":"1","413":"1","414":"1","415":"2","416":"2","417":"3","418":"2","419":"2","420":"1","421":"1","422":"2","423":"2","424":"2","425":"3","426":"3","427":"2","428":"2","429":"2","430":"2","431":"2","432":"2","433":"1","434":"2","435":"2","436":"2","437":"2","438":"1","439":"1","440":"1","441":"3","442":"3","443":"3","444":"3","445":"3","446":"1","447":"1","448":"3","449":"2","450":"2","451":"3","452":"3","453":"2","454":"2","455":"3","456":"2","457":"2","458":"1","459":"2","460":"2","461":"2","462":"2","463":"2","464":"2","465":"2","466":"3","467":"3","468":"2","469":"2","470":"2","471":"2","472":"3","473":"2","474":"2","475":"3","476":"2","477":"2","478":"2","479":"3","480":"4","481":"4","482":"4","483":"4","484":"4","485":"4","486":"4","487":"4","488":"4","489":"4","490":"4","491":"4","493":"4","494":"4","495":"1","496":"1","497":"1","498":"1","499":"1","500":"1","501":"1","502":"1","503":"1","504":"1","505":"1","506":"1","507":"1","508":"1","509":"1","510":"1","511":"2","512":"2","513":"2","514":"2","515":"2","516":"2","517":"2","518":"2","519":"1","520":"1","521":"1","522":"2","523":"2","524":"2","525":"2","526":"2","527":"1","528":"1","529":"2","530":"2","531":"2","532":"3","533":"3","534":"3","535":"2","536":"2","537":"2","538":"3","539":"3","540":"1","541":"1","542":"1","543":"1","544":"1","545":"1","546":"1","547":"1","548":"1","549":"1","550":"1","551":"3","552":"3","553":"3","554":"2","555":"2","556":"1","557":"1","558":"1","559":"2","560":"2","561":"3","562":"2","563":"2","564":"3","565":"3","566":"3","567":"3","568":"2","569":"2","570":"3","571":"3","572":"2","573":"2","574":"2","575":"2","576":"2","577":"2","578":"2","579":"2","580":"2","581":"2","582":"2","583":"2","584":"2","585":"2","586":"2","587":"1","588":"2","589":"2","590":"2","591":"2","592":"2","593":"2","594":"3","595":"2","596":"2","597":"3","598":"3","599":"3","600":"3","601":"3","602":"1","603":"1","604":"1","605":"2","606":"2","607":"3","608":"3","609":"3","610":"3","611":"3","612":"3","613":"2","614":"2","615":"3","616":"2","617":"2","618":"3","619":"2","620":"2","621":"3","622":"3","623":"3","624":"3","625":"3","626":"2","627":"3","628":"3","629":"3","630":"3","631":"2","632":"2","633":"3","634":"3","635":"3","636":"3","637":"3","638":"4","639":"4","640":"4","641":"4","642":"4","643":"4","644":"4","645":"4","646":"4","647":"4","648":"4","649":"4","650":"1","651":"1","652":"1","653":"1","654":"1","655":"1","656":"1","657":"1","658":"1","659":"1","660":"1","661":"1","662":"1","663":"1","664":"1","665":"1","666":"1","667":"1","668":"1","669":"2","670":"2","671":"2","672":"2","673":"2","674":"2","675":"2","676":"3","677":"2","678":"2","679":"3","680":"3","681":"3","682":"2","683":"2","684":"2","685":"2","686":"2","687":"2","688":"2","689":"2","690":"2","691":"2","692":"2","693":"2","694":"2","695":"2","696":"3","697":"3","698":"3","699":"3","700":"2","701":"3","702":"2","703":"3","704":"3","705":"3","706":"3","707":"2","708":"3","709":"3","710":"3","711":"3","712":"2","713":"2","714":"3","715":"3","716":"4","717":"4","718":"4","719":"4","720":"4","721":"4","722":"1","723":"1","724":"1","725":"1","726":"1","727":"1","728":"1","729":"1","730":"1","731":"1","732":"1","733":"1","734":"1","735":"1","736":"1","737":"1","738":"1","739":"2","740":"2","741":"3","742":"1","743":"1","744":"2","745":"2","746":"3","747":"2","748":"2","749":"2","750":"2","751":"2","752":"2","753":"2","754":"2","755":"2","756":"2","757":"2","758":"2","759":"1","760":"1","761":"1","762":"1","763":"1","764":"2","765":"3","766":"3","767":"1","768":"1","769":"2","770":"2","771":"3","772":"4","773":"4","774":"2","775":"2","776":"3","777":"2","778":"2","779":"2","780":"3","781":"2","782":"3","783":"3","784":"3","785":"4","786":"4","787":"4","788":"4","789":"4","790":"4","791":"4","792":"4","793":"4","794":"4","795":"4","796":"4","797":"4","798":"4","799":"4","800":"4","801":"4","802":"4","803":"4","804":"4","805":"4","806":"4","807":"4","808":"4","809":"4","810":"1","811":"1","812":"1","813":"1","814":"1","815":"1","816":"1","817":"1","818":"1","819":"1","820":"1","821":"1","822":"1","823":"1","824":"1","825":"1","826":"1","827":"1","828":"1","829":"2","830":"2","831":"1","832":"1","833":"2","834":"2","835":"2","836":"2","837":"1","838":"1","839":"1","840":"3","841":"3","842":"3","843":"2","844":"2","845":"2","846":"2","847":"2","848":"3","849":"3","850":"3","851":"3","852":"2","853":"2","854":"2","855":"2","856":"2","857":"2","858":"2","859":"2","860":"2","861":"2","862":"1","863":"2","864":"2","865":"2","866":"3","867":"2","868":"2","869":"2","870":"3","871":"3","872":"3","873":"3","874":"3","875":"3","876":"2","877":"2","878":"3","879":"3","880":"3","881":"3","882":"3","883":"3","884":"3","885":"3","886":"3","887":"3","888":"Z","889":"Z","890":"8","891":"4","892":"4","893":"4","894":"4","895":"4","896":"4","897":"4","898":"4","899":"3","900":"3","901":"2","903":"3","904":"3","905":"4","906":"1","907":"1","908":"1","909":"1","910":"1","911":"1","912":"1","913":"1","914":"1","915":"1","916":"1","917":"2","918":"2","919":"2","920":"2","921":"3","922":"3","923":"3","924":"1","925":"1","926":"2","927":"2","928":"2","929":"2","930":"2","931":"3","932":"2","933":"2","934":"2","935":"2","936":"2","937":"2","938":"2","939":"2","940":"1","941":"1","942":"2","943":"2","944":"2","945":"2","946":"3","947":"3","948":"2","949":"2","950":"3","951":"1","952":"1","953":"3","954":"3","955":"2","956":"2","957":"3","958":"3","959":"3","960":"2","961":"2","962":"3","963":"3","964":"3","965":"2","966":"2","967":"3","968":"3","969":"2","970":"2","971":"2","972":"2","973":"3","974":"2","975":"2","976":"3","977":"3","978":"3","979":"2","980":"2","981":"2","982":"2","983":"3","984":"4","985":"4","986":"4","987":"4","988":"4","989":"4","990":"4","991":"4","992":"4","993":"4","994":"4","995":"4","996":"3","997":"3","998":"3","999":"1","1000":"1","1001":"4","1002":"4","1003":"4","1004":"4","1005":"4","1006":"4","1007":"4","1008":"4","1009":"1","1010":"1","1011":"1","1012":"1","1013":"1","1014":"1","1015":"1","1016":"1","1017":"1","1018":"1","1019":"1","1020":"1","1021":"1","1022":"1","1023":"1","1024":"1","1025":"1"};
+// END GENERATED BLOCK: MAX_TIER_GROUP
+
+// GENERATED BLOCK: MAX_GROUP_COSTS (import_max_data.py) — do not hand-edit
+const MAX_GROUP_COSTS = {"1":{"attack":[{"mp":600,"candy":100},{"mp":800,"xl":40}],"guard":[{"mp":400,"candy":50},{"mp":600,"candy":100},{"mp":800,"xl":40}],"spirit":[{"mp":400,"candy":50},{"mp":600,"candy":100},{"mp":800,"xl":40}]},"2":{"attack":[{"mp":600,"candy":110},{"mp":800,"xl":45}],"guard":[{"mp":400,"candy":60},{"mp":600,"candy":110},{"mp":800,"xl":45}],"spirit":[{"mp":400,"candy":60},{"mp":600,"candy":110},{"mp":800,"xl":45}]},"3":{"attack":[{"mp":600,"candy":120},{"mp":800,"xl":50}],"guard":[{"mp":400,"candy":70},{"mp":600,"candy":120},{"mp":800,"xl":50}],"spirit":[{"mp":400,"candy":70},{"mp":600,"candy":120},{"mp":800,"xl":50}]},"4":{"attack":[{"mp":600,"candy":130},{"mp":800,"xl":55}],"guard":[{"mp":400,"candy":80},{"mp":600,"candy":130},{"mp":800,"xl":55}],"spirit":[{"mp":400,"candy":80},{"mp":600,"candy":130},{"mp":800,"xl":55}]},"Z":{"attack":[{"candy":130,"dust":50000},{"xl":55,"dust":100000}],"guard":[{"candy":80,"dust":25000},{"candy":130,"dust":50000},{"xl":55,"dust":100000}],"spirit":[{"candy":80,"dust":25000},{"candy":130,"dust":50000},{"xl":55,"dust":100000}]},"8":{"attack":[{"mp":600,"candy":1200},{"mp":800,"candy":1200,"xl":320}],"guard":[{"mp":400,"candy":400},{"mp":600,"candy":1200},{"mp":800,"candy":1200,"xl":320}],"spirit":[{"mp":400,"candy":400},{"mp":600,"candy":1200},{"mp":800,"candy":1200,"xl":320}]}};
+// END GENERATED BLOCK: MAX_GROUP_COSTS
+
+// GENERATED BLOCK: MAX_MOVE_IDS (import_max_data.py) — do not hand-edit
+const MAX_MOVE_IDS = {"types":{"Fire":"VN_BM_001","Bug":"VN_BM_002","Electric":"VN_BM_003","Normal":"VN_BM_004","Fighting":"VN_BM_005","Ghost":"VN_BM_006","Ice":"VN_BM_007","Poison":"VN_BM_008","Water":"VN_BM_009","Flying":"VN_BM_010","Fairy":"VN_BM_011","Dragon":"VN_BM_012","Psychic":"VN_BM_013","Rock":"VN_BM_014","Ground":"VN_BM_015","Dark":"VN_BM_016","Grass":"VN_BM_017","Steel":"VN_BM_018"},"gmax":[["VN_BM_019","Fire","gmax_wildfire"],["VN_BM_020","Bug","gmax_befuddle"],["VN_BM_021","Electric","gmax_voltcrash"],["VN_BM_022","Normal","gmax_goldrush"],["VN_BM_023","Fighting","gmax_chistrike"],["VN_BM_024","Ghost","gmax_terror"],["VN_BM_025","Water","gmax_foamburst"],["VN_BM_026","Ice","gmax_resonance"],["VN_BM_027","Normal","gmax_cuddle"],["VN_BM_028","Normal","gmax_replenish"],["VN_BM_029","Poison","gmax_malodor"],["VN_BM_030","Steel","gmax_meltdown"],["VN_BM_031","Flying","gmax_windrage"],["VN_BM_032","Psychic","gmax_gravitas"],["VN_BM_033","Water","gmax_stonesurge"],["VN_BM_034","Rock","gmax_volcalith"],["VN_BM_035","Grass","gmax_tartness"],["VN_BM_036","Grass","gmax_sweetness"],["VN_BM_037","Ground","gmax_sandblast"],["VN_BM_038","Electric","gmax_stun_shock"],["VN_BM_039","Fire","gmax_centiferno"],["VN_BM_040","Fairy","gmax_smite"],["VN_BM_041","Dark","gmax_snooze"],["VN_BM_042","Fairy","gmax_finale"],["VN_BM_043","Steel","gmax_steelsurge"],["VN_BM_044","Dragon","gmax_depletion"],["VN_BM_045","Grass","gmax_vinelash"],["VN_BM_046","Water","gmax_cannonade"],["VN_BM_047","Grass","gmax_drumsolo"],["VN_BM_048","Fire","gmax_fireball"],["VN_BM_049","Water","gmax_hydrosnipe"],["VN_BM_050","Dark","gmax_oneblow"],["VN_BM_051","Water","gmax_rapidflow"]]};
+// END GENERATED BLOCK: MAX_MOVE_IDS
+
 // ---- Max (Dynamax / Gigantamax) data ----------------------------------------------------------
 // The game master carries none of this, so it is curated by hand from public Max Battle guides
 // (Serebii's Dynamax list, Pokemon GO Hub, Bulbapedia, Nov 2026) and can fall behind the game: scans of the "Dynamax"
@@ -5407,10 +5419,11 @@ const MAX_ATTACK_POWER = { max: [250, 300, 350], gmax: [350, 400, 450] };
 const MAX_GUARD_HP = [20, 40, 60];
 const MAX_SPIRIT_PCT = [8, 12, 16];
 // Max Move levels run 1..3. Max Attack starts unlocked at level 1; Max Guard and Max Spirit start locked (level 0) and are unlocked by
-// the first step. Cost of reaching a level (Max Particles + the species' Candy / Candy XL), Nov 2026 guides: unlock 400 MP + 50 Candy,
-// level 2 = 600 MP + 100 Candy, level 3 = 800 MP + 40 Candy XL. Candy XL is 40 to 55 depending on the species' upgrade group (the
-// group list is not published anywhere reliable), so 40 is the floor. Traded Pokemon keep unlocks but drop to level 1.
+// the first step. MAX_MOVE_STEP_COST is the estimate for a species whose group is not known (it is group 1 of MAX_GROUP_COSTS: unlock
+// 400 MP + 50 Candy, level 2 = 600 MP + 100 Candy, level 3 = 800 MP + 40 Candy XL); a species with a group in MAX_TIER_GROUP is priced from
+// MAX_GROUP_COSTS, which the game master carries. Traded Pokemon keep unlocks but drop to level 1.
 const MAX_MOVE_STEP_COST = { 1: { mp: 400, candy: 50, xl: 0 }, 2: { mp: 600, candy: 100, xl: 0 }, 3: { mp: 800, candy: 0, xl: 40 } };
+// Candy XL of the last step by group: 40 / 45 / 50 / 55 for groups 1 to 4 (55 also for Zacian and Zamazenta); group 8 (Eternatus) is 320 with 1200 Candy.
 const MAX_XL_RANGE = [40, 55];
 // Max Battle entry cost in Max Particles by star tier (spent only on a win) and the XP of a win.
 const MAX_BATTLE_TIERS = { 1: { mp: 250, xp: 5000 }, 2: { mp: 400, xp: 7500 }, 3: { mp: 400, xp: 7500 }, 4: { mp: 800, xp: 25000 }, 5: { mp: 800, xp: 25000 }, 6: { mp: 800, xp: 25000 } };
@@ -5446,43 +5459,103 @@ function maxAttackPower(level, gmax) {
 }
 function maxGuardHp(level) { return level >= 1 ? MAX_GUARD_HP[Math.min(MAX_GUARD_HP.length, Math.floor(level)) - 1] : 0; }
 function maxSpiritPct(level) { return level >= 1 ? MAX_SPIRIT_PCT[Math.min(MAX_SPIRIT_PCT.length, Math.floor(level)) - 1] : 0; }
-// Cost of raising one Max Move from `from` to `to` (1..3; Guard/Spirit start at 0 = locked, Attack at 1). `xlBase` is the Candy XL of the
-// species' group (40 to 55, see MAX_XL_RANGE). Returns { mp, candy, xl, steps } or null when there is nothing to buy.
-function maxUpgradeCost(move, from, to, xlBase) {
+// Upgrade group of a species ("1".."4", "8" or "Z"), from a Pokedex number or a species name (a form is looked up first when it has its own
+// group); null when the species is not in the game master's Max list.
+function maxGroupFor(who, form) {
+  const dex = typeof who === 'number' || /^\d+$/.test(String(who)) ? Number(who) : resolveDexByName(who);
+  if (dex == null || !Number.isFinite(Number(dex))) return null;
+  const f = form ? MAX_TIER_GROUP[dex + '_' + String(form).toLowerCase()] : null;
+  return f || MAX_TIER_GROUP[String(dex)] || null;
+}
+// Live Max data (data/max_data.json, written by import_max_data.py; the app fetches it and keeps the last good copy). The baked blocks above
+// are the offline fallback. validMaxData says whether a fetched object has the right shape; applyMaxData swaps it in (in place, so every
+// reference to the tables sees it) and returns false, changing nothing, when the shape is wrong; maxDataDiff counts what differs.
+function validMaxData(d) {
+  const num = v => Number.isInteger(v) && v > 0;
+  try {
+    if (!d || typeof d !== 'object' || !d.tierGroup || !d.groupCosts || !d.moveIds) return false;
+    const groups = Object.keys(d.groupCosts);
+    if (!groups.length || Object.keys(d.tierGroup).length < 500) return false;
+    if (!Object.values(d.tierGroup).every(g => typeof g === 'string' && groups.includes(g))) return false;
+    const steps = { attack: 2, guard: 3, spirit: 3 };
+    if (!groups.every(g => Object.keys(steps).every(k => Array.isArray(d.groupCosts[g][k]) && d.groupCosts[g][k].length === steps[k]
+      && d.groupCosts[g][k].every(x => x && typeof x === 'object' && Object.keys(x).every(f => ['mp', 'candy', 'xl', 'dust'].includes(f) && num(x[f])))))) return false;
+    const types = d.moveIds.types, gm = d.moveIds.gmax;
+    return !!types && Object.keys(types).length === 18 && Object.values(types).every(v => /^VN_BM_\d+$/.test(v))
+      && Array.isArray(gm) && gm.every(e => Array.isArray(e) && e.length === 3 && e.every(x => typeof x === 'string'));
+  } catch (e) { return false; }
+}
+function maxDataSnapshot() { return { tierGroup: MAX_TIER_GROUP, groupCosts: MAX_GROUP_COSTS, moveIds: MAX_MOVE_IDS }; }
+function maxDataDiff(a, b) {
+  const j = JSON.stringify, keys = (x, y) => new Set([...Object.keys(x || {}), ...Object.keys(y || {})]);
+  let species = 0, groups = 0;
+  keys(a.tierGroup, b.tierGroup).forEach(k => { if ((a.tierGroup || {})[k] !== (b.tierGroup || {})[k]) species++; });
+  keys(a.groupCosts, b.groupCosts).forEach(k => { if (j((a.groupCosts || {})[k]) !== j((b.groupCosts || {})[k])) groups++; });
+  return { species, groups, moves: j(a.moveIds) !== j(b.moveIds) ? 1 : 0 };
+}
+function applyMaxData(d) {
+  if (!validMaxData(d)) return false;
+  [[MAX_TIER_GROUP, d.tierGroup], [MAX_GROUP_COSTS, d.groupCosts], [MAX_MOVE_IDS, d.moveIds]].forEach(([t, v]) => {
+    const copy = JSON.parse(JSON.stringify(v));
+    Object.keys(t).forEach(k => { delete t[k]; });
+    Object.assign(t, copy);
+  });
+  return true;
+}
+// What one step costs { mp, candy, xl, dust } (dust = Stardust, group Z only; absent fields are 0). `level` is the level the step reaches
+// (Attack 2..3, Guard and Spirit 1..3); an unknown group falls back to the estimate MAX_MOVE_STEP_COST. null when the level has no step.
+function maxStepCost(group, move, level) {
+  const g = group && MAX_GROUP_COSTS[group], sp = move === 'guard' || move === 'spirit';
+  const s = g && g[sp ? move : 'attack'][level - (sp ? 1 : 2)];
+  if (s) return { mp: s.mp || 0, candy: s.candy || 0, xl: s.xl || 0, dust: s.dust || 0 };
+  const c = MAX_MOVE_STEP_COST[level];
+  return c ? { mp: c.mp, candy: c.candy, xl: c.xl, dust: 0 } : null;
+}
+// Cost of raising one Max Move from `from` to `to` (1..3; Guard/Spirit start at 0 = locked, Attack at 1). `group` prices it from the
+// species' group (see maxGroupFor); without it `xlBase` (40 to 55, MAX_XL_RANGE) sets the last step's Candy XL. A group that pays Stardust
+// adds a `dust` field. Returns { mp, candy, xl, steps } or null when there is nothing to buy.
+function maxUpgradeCost(move, from, to, xlBase, group) {
   const lo = Math.max(move === 'attack' ? 1 : 0, Math.floor(Number(from)) || 0), hi = Math.min(3, Math.floor(Number(to)) || 0);
   if (!(hi > lo)) return null;
   const out = { mp: 0, candy: 0, xl: 0, steps: 0 };
+  let dust = 0;
   for (let lv = lo + 1; lv <= hi; lv++) {
-    const c = MAX_MOVE_STEP_COST[lv];
-    out.mp += c.mp; out.candy += c.candy; out.xl += c.xl ? (xlBase > 0 ? xlBase : c.xl) : 0; out.steps++;
+    const c = maxStepCost(group, move, lv);
+    out.mp += c.mp; out.candy += c.candy; out.xl += c.xl ? (!group && xlBase > 0 ? xlBase : c.xl) : 0; dust += c.dust; out.steps++;
   }
+  if (dust) out.dust = dust;
   return out;
 }
-// Learned costs: `learned` maps a level a step reaches (1..3) to what the owner typed from the game, { mp, candy, xl }. A learned step
-// replaces the estimate for that step only. Returns { mp, candy, xl, steps, mine, est } (mine = steps priced from learned figures).
-function maxUpgradeCostWith(move, from, to, learned, xlBase) {
+// Learned costs: `learned` maps a level a step reaches (1..3) to what the owner typed from the game, { mp, candy, xl } (and dust for a
+// group that pays Stardust). A learned step replaces the estimate for that step only. Returns { mp, candy, xl, steps, mine, est } (mine =
+// steps priced from learned figures), plus dust when any step pays Stardust.
+function maxUpgradeCostWith(move, from, to, learned, xlBase, group) {
   const lo = Math.max(move === 'attack' ? 1 : 0, Math.floor(Number(from)) || 0), hi = Math.min(3, Math.floor(Number(to)) || 0);
   if (!(hi > lo)) return null;
   const out = { mp: 0, candy: 0, xl: 0, steps: 0, mine: 0, est: 0 };
+  let dust = 0;
   for (let lv = lo + 1; lv <= hi; lv++) {
-    const l = learned && learned[lv], c = MAX_MOVE_STEP_COST[lv];
-    if (l && Number.isFinite(Number(l.mp))) { out.mp += Number(l.mp) || 0; out.candy += Number(l.candy) || 0; out.xl += Number(l.xl) || 0; out.mine++; }
-    else { out.mp += c.mp; out.candy += c.candy; out.xl += c.xl ? (xlBase > 0 ? xlBase : c.xl) : 0; out.est++; }
+    const l = learned && learned[lv], c = maxStepCost(group, move, lv);
+    if (l && Number.isFinite(Number(l.mp))) { out.mp += Number(l.mp) || 0; out.candy += Number(l.candy) || 0; out.xl += Number(l.xl) || 0; dust += Number(l.dust) || 0; out.mine++; }
+    else { out.mp += c.mp; out.candy += c.candy; out.xl += c.xl ? (!group && xlBase > 0 ? xlBase : c.xl) : 0; dust += c.dust; out.est++; }
     out.steps++;
   }
+  if (dust) out.dust = dust;
   return out;
 }
 // Balances after paying `cost`: never below 0, and a balance that is not known (null) stays unknown.
 function maxSpend(bal, cost) {
   const f = (b, c) => (b == null || !Number.isFinite(Number(b)) ? null : Math.max(0, Number(b) - (Number(c) || 0)));
-  return { mp: f(bal && bal.mp, cost && cost.mp), candy: f(bal && bal.candy, cost && cost.candy), xl: f(bal && bal.xl, cost && cost.xl) };
+  const out = { mp: f(bal && bal.mp, cost && cost.mp), candy: f(bal && bal.candy, cost && cost.candy), xl: f(bal && bal.xl, cost && cost.xl) };
+  if (cost && cost.dust) out.dust = f(bal && bal.dust, cost.dust);
+  return out;
 }
 // The learned map after the owner confirmed `cost` for the single step that reaches `level` (a jump of several steps is not split).
 function maxLearnStep(learned, level, cost) {
   const lv = Math.floor(Number(level));
   if (!(lv >= 1 && lv <= 3) || !cost) return learned || {};
   const n = v => Math.max(0, Math.floor(Number(v)) || 0);
-  return { ...(learned || {}), [lv]: { mp: n(cost.mp), candy: n(cost.candy), xl: n(cost.xl) } };
+  return { ...(learned || {}), [lv]: { mp: n(cost.mp), candy: n(cost.candy), xl: n(cost.xl), ...(cost.dust ? { dust: n(cost.dust) } : {}) } };
 }
 function maxEntryCost(star) { const t = MAX_BATTLE_TIERS[Math.max(1, Math.min(6, Math.floor(Number(star)) || 1))]; return t ? t.mp : null; }
 // Whole days of free Max Particles (800 a day) it takes to make up `short` Particles.
@@ -6111,7 +6184,7 @@ if (typeof window !== 'undefined') {
   window.PokemonMechanics = { CPM, LEVELS, LEAGUES, LEAGUE_CAPS, leagueOf, leagueKeyForCp, TIER_RANK, UNRANKED_TIER_RANK, tierWeight, MAX_LEVEL_SEARCH, cpAt, hpAt, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, rankFields, spreadFields, candidateRange, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
-    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxUpgradeCostWith, maxSpend, maxLearnStep, maxEntryCost, maxDaysToEarn, maxRating,
+    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_TIER_GROUP, MAX_GROUP_COSTS, MAX_MOVE_IDS, maxGroupFor, maxStepCost, validMaxData, applyMaxData, maxDataDiff, maxDataSnapshot, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxUpgradeCostWith, maxSpend, maxLearnStep, maxEntryCost, maxDaysToEarn, maxRating,
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,

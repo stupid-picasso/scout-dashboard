@@ -135,7 +135,7 @@ const snapshot = c => JSON.stringify([c.state.resources, c.state.candyInventory,
   // the next level-up of this species starts from what was learned (the unlock of Guard is a different step, still the estimate)
   open(c, 'guard', 2);
   const g = c.maxUpView({ idx: 'd1', name: 'Dialga' });
-  eq('learned step 2 is prefilled, step 1 is the estimate', [g.n, g.c.mine, g.c.est], [{ mp: 1000, candy: 180, xl: 0 }, 1, 1]);
+  eq('learned step 2 is prefilled, step 1 is the estimate', [g.n, g.c.mine, g.c.est], [{ mp: 1000, candy: 210, xl: 0 }, 1, 1]);
   open(c, 'spirit', 2);
   eq('level 2 for another move uses the same learned step', c.maxUpView({ idx: 'd1', name: 'Dialga' }).c.mine, 1);
   // undo restores the level, both balances and the learned cost
@@ -148,12 +148,12 @@ const snapshot = c => JSON.stringify([c.state.resources, c.state.candyInventory,
   const c = makeCtx();
   open(c, 'guard', 1);
   c.confirmMaxUp(c.rec());
-  eq('estimate accepted: level set, estimate paid', [c.state.ivOverrides.d1.maxGuardLevel, c.state.resources.maxParticles, c.state.candyInventory.dialga.candy], [1, 4600, 350]);
+  eq('estimate accepted: level set, estimate paid', [c.state.ivOverrides.d1.maxGuardLevel, c.state.resources.maxParticles, c.state.candyInventory.dialga.candy], [1, 4600, 320]);
   eq('estimate accepted: nothing learned', c.state.resources.maxCosts, undefined);
   // a typed total over several levels is not split into steps
   open(c, 'spirit', 3, { mp: '1800', candy: '210', xl: '55' });
   c.confirmMaxUp(c.rec());
-  eq('several levels typed: level set, balances paid', [c.state.ivOverrides.d1.maxSpiritLevel, c.state.resources.maxParticles, c.state.candyInventory.dialga.candy, c.state.candyInventory.dialga.xlCandy], [3, 2800, 140, 45]);
+  eq('several levels typed: level set, balances paid', [c.state.ivOverrides.d1.maxSpiritLevel, c.state.resources.maxParticles, c.state.candyInventory.dialga.candy, c.state.candyInventory.dialga.xlCandy], [3, 2800, 110, 45]);
   eq('several levels typed: nothing learned', c.state.resources.maxCosts, undefined);
 }
 {

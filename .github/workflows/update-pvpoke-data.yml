@@ -68,6 +68,7 @@ jobs:
           retry python scripts/import_size_data.py
           retry python scripts/import_species_class.py
           retry python scripts/import_evolution_branches.py
+          retry python scripts/import_max_data.py
 
       - name: Rebuild the app bundles from the source
         run: |
@@ -106,7 +107,7 @@ jobs:
           git commit -m "Refresh PvPoke data ($(date +%Y-%m-%d))"
           git push origin "$BRANCH" --force
           {
-            echo "Automated weekly refresh of PvPoke tiers, recommended movesets, matchups, move numbers, species typing and the simulator's opponent pool, with the app bundles rebuilt."
+            echo "Automated weekly refresh of PvPoke tiers, recommended movesets, matchups, move numbers, species typing, the simulator's opponent pool and the Max Battle upgrade groups and costs (also data/max_data.json, which the app loads in Refresh everything once this is merged), with the app bundles rebuilt."
             echo
             echo "Diff size:"
             echo '```'
