@@ -20,6 +20,8 @@ data/*.json
 !data/grid_import.json
 # Event-day moves (evolve during an event), written by the Update Events & GBL workflow and fetched by the app.
 !data/event_moves.json
+# Max Battle upgrade groups and costs from the game master (weekly Update PvPoke Data workflow); the app fetches it in Refresh everything.
+!data/max_data.json
 !data/promo_codes.json
 # Committed on purpose by workflows: the model benchmark's raw results (benchmark-models.yml) and the new-Pokemon list
 # the weekly refresh puts in its review PR (update-pokemon-data.yml). Allow-listed like the files above so a plain

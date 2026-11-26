@@ -1940,7 +1940,7 @@ module.exports = async function suiteB() {
     await s.call('refreshEverything');
     const st = await s.state();
     const run = st.refreshRun;
-    expect(run && !run.running && run.steps.length === 9, 'run missing: ' + JSON.stringify(run).slice(0, 200));
+    expect(run && !run.running && run.steps.length === 10, 'run missing: ' + JSON.stringify(run).slice(0, 200));
     expect(run.steps.every(x => x.status !== 'wait' && x.status !== 'run'), 'a step never finished: ' + run.steps.map(x => x.k + ':' + x.status).join());
     expect(run.summary && run.summary.lines.length >= 1, 'no summary');
     const txt = await s.page.evaluate(() => document.body.innerText);
