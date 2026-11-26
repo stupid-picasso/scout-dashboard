@@ -1,9 +1,10 @@
 name: Extract recording (reusable)
 
 # The one place that downloads a screen recording, runs pogo_extract.py on it and commits the result. It is only ever called:
-# by extract.yml (mode "detail": Pokemon detail screens, data/pokemon_import.json) and by extract-iv.yml (mode "appraisal":
-# appraisal screens, data/appraisal_import.json). Those two keep their own names, triggers and inputs, because the app starts
-# them by file name (runGithubWorkflow in Scout Dashboard.dc.html) and the owner starts them from the Actions tab.
+# by extract.yml (mode "detail": Pokemon detail screens, data/pokemon_import.json), by extract-iv.yml (mode "appraisal":
+# appraisal screens, data/appraisal_import.json) and by extract-grid.yml (mode "grid": the game's Pokemon list in grid view,
+# data/grid_import.json, for the app's "Check against the game"). Those callers keep their own names, triggers and inputs, because
+# the app starts them by file name (runGithubWorkflow in Scout Dashboard.dc.html) and the owner starts them from the Actions tab.
 #
 # The concurrency group (pogo-data-commit) is declared by the two callers, not here: two workflows writing generated files at
 # the same moment is what once produced an unresolvable rebase conflict. The job below can only write what its caller's job
@@ -13,7 +14,7 @@ on:
   workflow_call:
     inputs:
       mode:
-        description: 'detail (videos/, data/pokemon_import.json) or appraisal (appraisal_videos/, data/appraisal_import.json)'
+        description: 'detail (videos/, data/pokemon_import.json), appraisal (appraisal_videos/, data/appraisal_import.json) or grid (grid_videos/, data/grid_import.json)'
         required: true
         type: string
       drive_link:
@@ -65,8 +66,10 @@ jobs:
               { echo "VIDEO_DIR=videos"; echo "EXTRACT_FLAG=--video"; echo "IMPORT_FILE=data/pokemon_import.json"; } >> "$GITHUB_ENV" ;;
             appraisal)
               { echo "VIDEO_DIR=appraisal_videos"; echo "EXTRACT_FLAG=--appraisal"; echo "IMPORT_FILE=data/appraisal_import.json"; } >> "$GITHUB_ENV" ;;
+            grid)
+              { echo "VIDEO_DIR=grid_videos"; echo "EXTRACT_FLAG=--grid"; echo "IMPORT_FILE=data/grid_import.json"; } >> "$GITHUB_ENV" ;;
             *)
-              echo "::error::unknown extract mode '$IN_MODE' (expected detail or appraisal)"
+              echo "::error::unknown extract mode '$IN_MODE' (expected detail, appraisal or grid)"
               exit 1 ;;
           esac
 
@@ -112,9 +115,10 @@ jobs:
       # before any video is processed, so every video in THIS session (repo folder and a Drive-link video alike, whether one or
       # several) still merges together normally afterward; only past sessions get cleared. Skipped when fresh_import is
       # explicitly 'false' (continuing a session already in progress across separate workflow runs). A push trigger passes
-      # the default 'true', so push-triggered runs start fresh too.
+      # the default 'true', so push-triggered runs start fresh too. A grid run is always a clean session, whatever fresh_import
+      # says: its file is one recording's reading and is never mixed with an earlier one (pogo_extract.py --grid also writes it whole).
       - name: Reset import file for a clean session
-        if: inputs.fresh_import != 'false'
+        if: inputs.fresh_import != 'false' || inputs.mode == 'grid'
         run: |
           mkdir -p data
           rm -f "$IMPORT_FILE"
@@ -191,6 +195,14 @@ jobs:
               exit 1
             fi
             scripts/ci_push.sh "Auto-extract IV ratings from appraisal video [skip ci]" "$IMPORT_FILE"
+          elif [ "$IN_MODE" = "grid" ]; then
+            if [ ! -f "$IMPORT_FILE" ]; then
+              echo "::error::$IMPORT_FILE was never written - the extraction step produced no output. Check the extraction step log above for the real error (no frames, Gemini quota, or no frame read)."
+              exit 1
+            fi
+            # data/*.json is git-ignored and this file is not allow-listed there, so it is added by force; only this one file is committed.
+            git add -f "$IMPORT_FILE"
+            scripts/ci_push.sh "Auto-extract grid check from video [skip ci]" "$IMPORT_FILE"
           else
             scripts/ci_push.sh "Auto-extract Pokemon data from video [skip ci]" data/
           fi

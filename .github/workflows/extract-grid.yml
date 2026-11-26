@@ -1,0 +1,52 @@
+name: Extract Grid Check
+
+# Reads a recording of the game's Pokemon list (grid view) for the app's "Check against the game > From Google Drive". Writes
+# data/grid_import.json, which the app loads and compares with the roster; it is always a clean file, never mixed with the
+# detail or appraisal imports. Two extraction runs pushing generated files at the same time is what produced the unresolvable
+# rebase conflict; serialise them instead. No push trigger: a Drive link is the only way in.
+concurrency:
+  group: pogo-data-commit
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      drive_link:
+        description: 'Google Drive share link to a recording of the Pokemon list in grid view, scrolled top to bottom (must be set to "Anyone with the link")'
+        required: false
+        default: ''
+      fresh_import:
+        description: 'Always a clean import: data/grid_import.json is reset first whatever this says (the app sends it for symmetry with the other imports).'
+        required: false
+        default: 'true'
+      fps:
+        description: 'Frames per second for extraction (a scrolling grid needs overlap between frames: 2 suits a slow scroll)'
+        required: false
+        default: '2'
+      scene_detect:
+        description: 'Use scene detection instead of fixed FPS (off for a grid: a smooth scroll has no scene cuts)'
+        required: false
+        default: 'false'
+      scene_threshold:
+        description: 'Scene change threshold (0.0-1.0)'
+        required: false
+        default: '0.3'
+
+permissions:
+  contents: read   # default for every job; a job that commits overrides it below
+
+jobs:
+  extract:
+    permissions:
+      contents: write  # the called workflow commits the results; it can only use what this job grants
+    uses: ./.github/workflows/extract-run.yml
+    with:
+      mode: grid
+      drive_link: ${{ inputs.drive_link }}
+      fresh_import: 'true'
+      fps: ${{ inputs.fps || '2' }}
+      scene_detect: ${{ inputs.scene_detect || 'false' }}
+      scene_threshold: ${{ inputs.scene_threshold || '0.3' }}
+    secrets:
+      GEMINI_API_KEY_ONE: ${{ secrets.GEMINI_API_KEY_ONE }}
+      GEMINI_API_KEY_TWO: ${{ secrets.GEMINI_API_KEY_TWO }}

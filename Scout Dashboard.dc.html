@@ -1767,6 +1767,19 @@
           </label>
         </div>
         <details class="ui-more"><summary>How checking works</summary><div>Open the game's Pokemon list in grid view, sorted any way you like, keep the count at the top in frame, and record it scrolling slowly from the top to the bottom. The app reads each tile and lists what it has wrong. It changes nothing.</div></details>
+        <details class="ui-disc">
+          <summary>Check from Google Drive</summary>
+          <div class="su19">
+            <div class="su32">For a long recording. Put it on Google Drive, shared as "Anyone with the link", paste the link and start. GitHub reads the recording for you (needs GitHub Access above) and can take several minutes. Then load the result.</div>
+            <input type="text" aria-label="Google Drive link to the Pokemon list recording" placeholder="https://drive.google.com/file/d/…" value="{{ driveGridLink }}" onChange="{{ onDriveGridLinkChange }}" spellcheck="false" autocapitalize="off" autocorrect="off" style="width:100%;box-sizing:border-box;min-height:44px;background:var(--surface-card);border:1px solid var(--line-300);color:var(--ink-900);padding:8px 12px;border-radius:6px;font:15px var(--font-body)" />
+            <div class="su5">
+              <button type="button" onClick="{{ runGridWorkflow }}" class="om-press ui-btn-tint">{{ driveWorkflowGridLabel }}</button>
+              <button type="button" onClick="{{ gridFromServer }}" class="om-press ui-btn-tint">{{ gridServerLabel }}</button>
+            </div>
+            <sc-if value="{{ driveWorkflowGridError }}" hint-placeholder-val="{{ false }}"><div role="alert" style="font:13px var(--font-body);color:var(--ink-900)">{{ driveWorkflowGridError }}</div></sc-if>
+            <sc-if value="{{ driveWorkflowGridSummary }}" hint-placeholder-val="{{ false }}"><div role="status" style="font:13px var(--font-body);color:var(--ink-700)">{{ driveWorkflowGridSummary }}</div></sc-if>
+          </div>
+        </details>
       </div>
       <div class="su34">Update your roster from a screenshot or a screen recording.</div><details class="ui-more"><summary>More</summary><div>A detail screenshot updates Stardust, that species' candy/XL candy and its type. A screen recording panning your collection/appraise screens to bulk-update or add many Pokemon at once.</div></details>
       <sc-if value="{{ importProgressLine }}" hint-placeholder-val="{{ false }}">
@@ -2432,7 +2445,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.382{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.384{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -4591,6 +4604,7 @@ class Component extends DCLogic {
     driveWorkflowAppraisalBusy: false,
     driveWorkflowAppraisalError: '',
     driveWorkflowAppraisalSummary: '',
+    driveGridLink: '', driveWorkflowGridBusy: false, driveWorkflowGridError: '', driveWorkflowGridSummary: '', gridQueuedAt: 0,
     recalcBusy: false,
     recalcSummary: '',
     megaNameDraft: '',
@@ -6511,30 +6525,77 @@ class Component extends DCLogic {
         batches[b].forEach((_, i) => {
           const o = arr && (arr.find(x => x && x.image === i + 1) || arr[i]);
           if (!o) { lists.push(null); return; }
-          const num = v => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
-          if (num(o.count) != null && num(o.max) != null) heads.push(num(o.count) + '/' + num(o.max));
-          lists.push((Array.isArray(o.tiles) ? o.tiles : []).filter(t => t && (t.name || t.cp != null)).map(t => ({ name: String(t.name || '').trim(), cp: num(t.cp) })));
+          lists.push(this.gridRead(o, heads));
         });
       }
       if (!okBatches) throw new Error(lastErr || 'The AI reply could not be read.');
-      const merged = this.gridMerge(lists), tally = {};
-      heads.forEach(h => { tally[h] = (tally[h] || 0) + 1; });
-      const top = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0], hp = top ? top.split('/').map(Number) : null;
-      let res;
-      if (flag) {
-        // Search results: tiles counted per name and CP (the merge already took out the overlap between frames).
-        const cnt = new Map(), usable = merged.tiles.filter(t => t.name && Number.isFinite(t.cp));
-        usable.forEach(t => { const k = this.costumeNorm(t.name) + '|' + t.cp, c = cnt.get(k); if (c) c.n++; else cnt.set(k, { name: t.name, cp: t.cp, n: 1 }); });
-        res = this.flagMatch([...cnt.values()], flag, this.state.costumeKind);
-        res.read = { input: 'video', tiles: res.tiles, gaps: merged.gaps, failed: merged.failed, dropped: merged.tiles.length - usable.length };
-      } else {
-        res = this.gridReconcile(merged.tiles, this.effectiveRosterForMatch(), hp ? { n: hp[0], max: hp[1] } : null);
-        res.gaps = merged.gaps;
-        res.failed = merged.failed;
-      }
-      this.setState({ [K[0]]: false, [K[1]]: '', [K[3]]: res });
+      this.setState({ [K[0]]: false, [K[1]]: '', [K[3]]: this.gridResult(lists, heads, flag) });
     } catch (e) {
       this.setState({ [K[0]]: false, [K[1]]: '', [K[2]]: (e && e.message) || 'Could not read the recording.' });
+    }
+  }
+
+  // One image's reply object {count, max, tiles} -> its tile list; a header with both numbers is noted in heads ("n/max"). The model's
+  // reply and the server's file frames both go through this, so the two paths cannot read a frame differently.
+  gridRead(o, heads) {
+    const num = v => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+    if (num(o.count) != null && num(o.max) != null) heads.push(num(o.count) + '/' + num(o.max));
+    return (Array.isArray(o.tiles) ? o.tiles : []).filter(t => t && (t.name || t.cp != null)).map(t => ({ name: String(t.name || '').trim(), cp: num(t.cp) }));
+  }
+
+  // Tile lists per frame (null = unread) and the header readings -> the grid check's result (or the flag check's, when flag is given).
+  gridResult(lists, heads, flag) {
+    const merged = this.gridMerge(lists), tally = {};
+    heads.forEach(h => { tally[h] = (tally[h] || 0) + 1; });
+    const top = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0], hp = top ? top.split('/').map(Number) : null;
+    let res;
+    if (flag) {
+      // Search results: tiles counted per name and CP (the merge already took out the overlap between frames).
+      const cnt = new Map(), usable = merged.tiles.filter(t => t.name && Number.isFinite(t.cp));
+      usable.forEach(t => { const k = this.costumeNorm(t.name) + '|' + t.cp, c = cnt.get(k); if (c) c.n++; else cnt.set(k, { name: t.name, cp: t.cp, n: 1 }); });
+      res = this.flagMatch([...cnt.values()], flag, this.state.costumeKind);
+      res.read = { input: 'video', tiles: res.tiles, gaps: merged.gaps, failed: merged.failed, dropped: merged.tiles.length - usable.length };
+    } else {
+      res = this.gridReconcile(merged.tiles, this.effectiveRosterForMatch(), hp ? { n: hp[0], max: hp[1] } : null);
+      res.gaps = merged.gaps;
+      res.failed = merged.failed;
+    }
+    return res;
+  }
+
+  // The server's grid file {frames: [{i, n: [{name, cp}] | null, head: {count, max} | null}], source, extractedAt} -> what gridResult takes,
+  // in order of i. A frame the server could not read has n null and goes to gridMerge as null (counted, and no overlap is assumed).
+  gridFromFile(data) {
+    const heads = [], fr = ((data && Array.isArray(data.frames)) ? data.frames : []).filter(f => f && typeof f === 'object').sort((a, b) => (a.i || 0) - (b.i || 0));
+    return { heads, lists: fr.map(f => (Array.isArray(f.n) ? this.gridRead({ count: f.head && f.head.count, max: f.head && f.head.max, tiles: f.n }, heads) : null)) };
+  }
+
+  // Why a loaded grid file cannot be used, or '' when it can. queuedAt: when this device started the run (0 = not in this session). The
+  // file of an earlier run is still there until the new run commits, so a file written before the start is not the answer.
+  gridFileProblem(data, queuedAt) {
+    if (!data || !Array.isArray(data.frames) || !data.frames.length) return 'The result file holds no frames. Start the check again.';
+    if (!data.frames.some(f => f && Array.isArray(f.n))) return 'The result file has no readable frames. Start the check again.';
+    if (queuedAt && !(Date.parse(data.extractedAt) >= queuedAt - 120000)) return 'That result is from an earlier run. The workflow is still running or has failed. Try again in a few minutes.';
+    return '';
+  }
+
+  // The result of the "Check from Google Drive" run, from the repo, into the same merge, reconcile and sheet as a recording read on this device.
+  async gridFromServer() {
+    if (this.state.gridBusy || this.state.costumeBusy) return;
+    this.setState({ gridBusy: true, gridError: '', gridMsg: 'Loading the result from GitHub', gridRes: null });
+    try {
+      const res = await fetch('https://raw.githubusercontent.com/stupid-picasso/scout-dashboard/main/data/grid_import.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('No result file found yet (HTTP ' + res.status + '). Start the check and wait for the workflow to finish.');
+      const data = await res.json();
+      const bad = this.gridFileProblem(data, this.state.gridQueuedAt);
+      if (bad) throw new Error(bad);
+      const f = this.gridFromFile(data);
+      this.setState({ gridBusy: false, gridMsg: '', gridRes: this.gridResult(f.lists, f.heads, '') });
+    } catch (e) {
+      let msg = (e && e.message) || 'Could not load the result.';
+      if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) msg = 'Could not reach GitHub \u2014 check your connection and try again.';
+      else if (e instanceof SyntaxError) msg = 'The result file is not valid JSON. Start the check again.';
+      this.setState({ gridBusy: false, gridMsg: '', gridError: msg });
     }
   }
 
@@ -10031,16 +10092,17 @@ class Component extends DCLogic {
   // fresh_import: true, matching this app's "clean import per session"
   // default (see pogo_extract.py --fresh).
   runGithubWorkflow(kind) {
-    const isAppraisal = kind === 'appraisal';
-    const link = ((isAppraisal ? this.state.driveAppraisalLink : this.state.driveVideoLink) || '').trim();
+    const isAppraisal = kind === 'appraisal', isGrid = kind === 'grid';
+    const link = ((isGrid ? this.state.driveGridLink : isAppraisal ? this.state.driveAppraisalLink : this.state.driveVideoLink) || '').trim();
     const token = (this.state.githubToken || '').trim();
-    const busyKey = isAppraisal ? 'driveWorkflowAppraisalBusy' : 'driveWorkflowBusy';
-    const errorKey = isAppraisal ? 'driveWorkflowAppraisalError' : 'driveWorkflowError';
-    const summaryKey = isAppraisal ? 'driveWorkflowAppraisalSummary' : 'driveWorkflowSummary';
-    const linkKey = isAppraisal ? 'driveAppraisalLink' : 'driveVideoLink';
+    const busyKey = isGrid ? 'driveWorkflowGridBusy' : isAppraisal ? 'driveWorkflowAppraisalBusy' : 'driveWorkflowBusy';
+    const errorKey = isGrid ? 'driveWorkflowGridError' : isAppraisal ? 'driveWorkflowAppraisalError' : 'driveWorkflowError';
+    const summaryKey = isGrid ? 'driveWorkflowGridSummary' : isAppraisal ? 'driveWorkflowAppraisalSummary' : 'driveWorkflowSummary';
+    const linkKey = isGrid ? 'driveGridLink' : isAppraisal ? 'driveAppraisalLink' : 'driveVideoLink';
     if (!link) { this.setState({ [errorKey]: 'Paste a Google Drive share link first.' }); return; }
     if (!token) { this.setState({ [errorKey]: 'Add a GitHub token under GITHUB ACCESS first.' }); return; }
-    const workflowFile = isAppraisal ? 'extract-iv.yml' : 'extract.yml';
+    let workflowFile = isAppraisal ? 'extract-iv.yml' : 'extract.yml';
+    if (isGrid) workflowFile = 'extract-grid.yml';
     this.setState({ [busyKey]: true, [errorKey]: '', [summaryKey]: '' });
     fetch('https://api.github.com/repos/stupid-picasso/scout-dashboard/actions/workflows/' + workflowFile + '/dispatches', {
       method: 'POST',
@@ -10055,10 +10117,11 @@ class Component extends DCLogic {
       if (res.status === 204) {
         this.setState({
           [busyKey]: false,
-          [summaryKey]: (isAppraisal ? 'Appraisal IV' : 'Video') + ' workflow queued on GitHub \u2014 give it a minute or two to run, then tap ' + (isAppraisal ? 'IMPORT IVs FROM SERVER' : 'IMPORT FROM SERVER') + ' below.',
+          ...(isGrid ? { gridQueuedAt: Date.now() } : {}),
+          [summaryKey]: isGrid ? 'Grid check queued on GitHub \u2014 a long recording can take several minutes. Then tap LOAD RESULT.' : (isAppraisal ? 'Appraisal IV' : 'Video') + ' workflow queued on GitHub \u2014 give it a minute or two to run, then tap ' + (isAppraisal ? 'IMPORT IVs FROM SERVER' : 'IMPORT FROM SERVER') + ' below.',
           [linkKey]: ''
         });
-        const timerProp = isAppraisal ? '_driveWorkflowAppraisalSummaryTimer' : '_driveWorkflowSummaryTimer';
+        const timerProp = isGrid ? '_driveWorkflowGridSummaryTimer' : isAppraisal ? '_driveWorkflowAppraisalSummaryTimer' : '_driveWorkflowSummaryTimer';
         clearTimeout(this[timerProp]);
         this[timerProp] = setTimeout(() => this.setState({ [summaryKey]: '' }), 9000);
         return;
@@ -12228,6 +12291,9 @@ class Component extends DCLogic {
   // recording scrolling a collection only ever showed 2. Sample at `fps`, then
   // drop frames that look near-identical to the last kept one (scroll pauses,
   // duplicate frames) so the model sees many DISTINCT screens.
+  // How long a recording gets to open: 10 s, plus 400 ms for each whole MB, at most 120 s (a 6-minute phone recording is several hundred MB).
+  videoOpenWait(bytes) { return Math.min(120000, 10000 + 400 * Math.floor((bytes || 0) / 1048576)); }
+
   async extractFrames(file, opts) {
     const cfg = Object.assign({ fps: 3, maxFrames: 32, minFrames: 6, width: 480, quality: 0.5, dedupeThreshold: 7.0 }, opts || {});
     const url = URL.createObjectURL(file);
@@ -12238,8 +12304,9 @@ class Component extends DCLogic {
     video.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0.01';
     video.src = url;
     document.body.appendChild(video);
+    const waitMs = this.videoOpenWait(file.size);
     await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Video never loaded \u2014 this browser likely can\u2019t decode this file (common with HEVC .mov screen recordings from iPhone). Re-export/share it as MP4 (H.264) and try again.')), 10000);
+      const timer = setTimeout(() => reject(new Error('Video never loaded in ' + Math.round(waitMs / 1000) + ' s (' + Math.round((file.size || 0) / 1048576) + ' MB) \u2014 this browser likely can\u2019t decode this file (common with HEVC .mov screen recordings from iPhone). Re-export/share it as MP4 (H.264) and try again.')), waitMs);
       video.onloadeddata = () => { clearTimeout(timer); resolve(); };
       video.onloadedmetadata = () => { clearTimeout(timer); resolve(); };
       video.onerror = () => { clearTimeout(timer); reject(new Error('Could not read that video file.')); };
@@ -15587,7 +15654,7 @@ class Component extends DCLogic {
   // state value that is not known UI-only. Anything new that the analyses read is picked up
   // automatically; only the listed UI keys are ignored.
   MEMO_UI_KEYS() {
-    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'costumeFlag', 'costumeKind', 'costumeAll', 'gridBusy', 'gridMsg', 'gridError', 'gridRes', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'pushOn', 'pushBusy', 'pushMsg', 'pushPrefs', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
+    return new Set(['importHold', 'themePref', 'themeToast', 'ocrTick', 'krVisible', 'bestIvQuery', 'bestIvSel', 'bestIvForm', 'bestIvShadow', 'bestIvVisible', 'dtQuery', 'dtSel', 'dtForm', 'dtShadow', 'dtVisible', 'costumeBusy', 'costumeMsg', 'costumeError', 'costumePending', 'costumeFlag', 'costumeKind', 'costumeAll', 'driveGridLink', 'driveWorkflowGridBusy', 'driveWorkflowGridError', 'driveWorkflowGridSummary', 'gridQueuedAt', 'gridBusy', 'gridMsg', 'gridError', 'gridRes', 'undoLabel', 'search', 'selectMode', 'selectedIdx', 'visibleCount', 'moreOpen', 'ivEditIdx', 'savedViews', 'remindersOn', 'pushOn', 'pushBusy', 'pushMsg', 'pushPrefs', 'installHintHidden', 'csvNotice', 'csvError', 'importReport', 'importUndoable', 'viewportWidth', 'tab', 'detailPoke', 'detailNavList', 'detailNavIndex', 'chatInput', 'stardustDraft', 'stardustJustSaved', 'ivManualDraft', 'moveDraft', 'candyDraft', 'tmUseSearch', 'sortField', 'rosterFilter', 'pendingConfirm', 'backupError', 'restorePending', 'movePicker', 'movePickerFilter', 'pendingTmUse', 'statusBannerDismissed']);
   }
 
   memoDeps() {
@@ -21253,6 +21320,14 @@ class Component extends DCLogic {
       runAppraisalWorkflow: () => this.runAppraisalWorkflow(),
       driveWorkflowVideoLabel: this.state.driveWorkflowBusy ? 'QUEUING…' : 'RUN VIDEO IMPORT',
       driveWorkflowAppraisalLabel: this.state.driveWorkflowAppraisalBusy ? 'QUEUING…' : 'RUN APPRAISAL IMPORT',
+      driveGridLink: this.state.driveGridLink || '',
+      onDriveGridLinkChange: (e) => this.setState({ driveGridLink: e.target.value }),
+      runGridWorkflow: () => this.runGithubWorkflow('grid'),
+      gridFromServer: () => this.gridFromServer(),
+      driveWorkflowGridLabel: this.state.driveWorkflowGridBusy ? 'STARTING…' : 'START ON GITHUB',
+      gridServerLabel: this.state.gridBusy ? 'LOADING…' : 'LOAD RESULT',
+      driveWorkflowGridError: this.state.driveWorkflowGridError || '',
+      driveWorkflowGridSummary: this.state.driveWorkflowGridSummary || '',
       driveWorkflowError: this.state.driveWorkflowError || '',
       driveWorkflowSummary: this.state.driveWorkflowSummary || '',
       driveWorkflowAppraisalError: this.state.driveWorkflowAppraisalError || '',

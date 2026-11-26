@@ -15,6 +15,9 @@ data/*.json
 # Same exception for the appraisal/IV pipeline's output, fetched by the app's
 # "IMPORT IV FROM SERVER" button.
 !data/appraisal_import.json
+# Same exception for the grid check's output (the owner's name and CP list read from a recording), fetched by the app's
+# "CHECK FROM GOOGLE DRIVE" button.
+!data/grid_import.json
 # Event-day moves (evolve during an event), written by the Update Events & GBL workflow and fetched by the app.
 !data/event_moves.json
 !data/promo_codes.json

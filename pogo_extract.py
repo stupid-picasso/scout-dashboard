@@ -2523,10 +2523,139 @@ def run_gemini_video_ocr(frame_paths, prompt=VIDEO_IMPORT_PROMPT, merge_key=None
     return merged
 
 
+# ---- Grid check (--grid): the game's Pokemon list in grid view, read as {name, cp} per tile ---------------------------------------
+# The app's "Check against the game" (gridRun in Scout Dashboard.dc.html) reads a recording of the list in the browser; a long
+# recording is too much for a phone, so the same read runs here. The prompt is the app's word for word (a test keeps them equal) and
+# so is the shape of a frame's reading, so the app feeds the file's frames straight into its own merge and reconcile.
+GRID_OUT = "data/grid_import.json"
+GRID_PER_CALL = 4  # frames per request, as in the app
+GRID_PROMPT = (
+    'Each image is a frame from the Pokemon GO Pokemon list in grid view: tiles with the CP number above a picture and the name below, and a header reading "POKEMON n / max". '
+    'For EACH image, in the order given, report the two numbers of the header (null if the header is not visible) and every tile whose CP and name are both fully visible, in reading order (left to right, top to bottom). '
+    'Skip a tile cut off at an edge. Copy each name exactly as shown, a nickname included. Do not read stats, tags, stars or anything else. '
+    'Respond with ONLY a JSON array, no markdown fences, one object per image: [{"image": 1, "count": number|null, "max": number|null, "tiles": [{"name": string, "cp": number}]}].'
+)
+
+
+def _grid_num(v):
+    """A whole number from a model value, else None (booleans, blanks, fractions and words are not numbers)."""
+    if isinstance(v, bool) or v is None:
+        return None
+    if isinstance(v, str):
+        v = v.strip()
+        if not v:
+            return None
+        try:
+            v = float(v)
+        except ValueError:
+            return None
+    if isinstance(v, (int, float)) and v == v and abs(v) != float("inf") and float(v).is_integer():
+        return int(v)
+    return None
+
+
+def grid_frame_reading(obj):
+    """One image's object from the reply -> {"n": [{"name", "cp"}...], "head": {"count", "max"} | None}; tiles keep the reply's order
+    (reading order). A tile needs a name or a CP; a CP that is not a whole number is null."""
+    tiles = obj.get("tiles")
+    n = []
+    for t in (tiles if isinstance(tiles, list) else []):
+        if not isinstance(t, dict) or not (t.get("name") or t.get("cp") is not None):
+            continue
+        n.append({"name": str(t.get("name") or "").strip(), "cp": _grid_num(t.get("cp"))})
+    count, mx = _grid_num(obj.get("count")), _grid_num(obj.get("max"))
+    return {"n": n, "head": None if count is None and mx is None else {"count": count, "max": mx}}
+
+
+def grid_readings_from_reply(arr, size):
+    """The reply array of one request of `size` frames -> a list of `size` readings, None for a frame the reply does not cover. Frame k is
+    the object whose "image" is k+1, else the k-th object (the app's rule)."""
+    out = []
+    for k in range(size):
+        obj = None
+        if isinstance(arr, list):
+            obj = next((x for x in arr if isinstance(x, dict) and type(x.get("image")) is int and x["image"] == k + 1), None)
+            if obj is None and k < len(arr) and isinstance(arr[k], dict):
+                obj = arr[k]
+        out.append(grid_frame_reading(obj) if obj is not None else None)
+    return out
+
+
+def run_grid_ocr(frame_paths, per=GRID_PER_CALL):
+    """Reads every frame with the key pool and returns one reading (or None) per frame, in order. Requests of `per` frames go out side by
+    side through the same pool, tiers and retries as the other modes; a request no bulk lane could answer goes to the stronger tier."""
+    keys = get_gemini_keys()
+    if not keys:
+        raise RuntimeError("No Gemini API key found. Set GEMINI_API_KEY_1 (and optionally GEMINI_API_KEY_2) as GitHub Actions secrets.")
+    chunks = [frame_paths[i:i + per] for i in range(0, len(frame_paths), per)]
+    bulk_models, verify_models, pool = _model_pool(keys, False)
+    workers = int(os.environ.get("GEMINI_WORKERS") or max(2, len(pool.alive("bulk")) * 4))
+    print(f"[Grid] {len(frame_paths)} frames in {len(chunks)} request(s) of up to {per}; bulk {bulk_models}; verify {verify_models}; "
+          f"{len(pool.lanes)} lanes, {workers} parallel")
+
+    def make_call(i, model, key, timeout=None):
+        reply = call_gemini(GRID_PROMPT, [image_to_base64_jpeg(p) for p in chunks[i]], model, key, "", timeout=timeout)
+        arr = extract_json_array(reply)
+        if arr is None:
+            raise GeminiError("unparseable output", status=-1)
+        return arr
+
+    results, _ = gemini_pool.run_batches(pool, range(len(chunks)), make_call, "bulk", workers,
+                                         max_attempts=len(pool.lanes) * 6, log=print, deadline=time.time() + BULK_BUDGET_S)
+    missing = [i for i in range(len(chunks)) if results.get(i) is None]
+    if missing and pool.alive("verify"):
+        print(f"[Grid] {len(missing)} request(s) unread by the bulk tier; trying the verify tier")
+        rres, _ = gemini_pool.run_batches(pool, missing, make_call, "verify", len(pool.alive("verify")),
+                                          max_attempts=4, max_wait=60, log=print, deadline=time.time() + VERIFY_BUDGET_S)
+        for i in missing:
+            if rres.get(i) is not None:
+                results[i] = rres[i]
+    out = []
+    for i, chunk in enumerate(chunks):
+        out.extend(grid_readings_from_reply(results.get(i), len(chunk)))
+    for row in pool.summary():
+        print("   " + row)
+    return out
+
+
+def write_grid_import(path, readings, source, now=None):
+    """The grid result file. It is always written whole, never merged with an earlier file: a grid check is one recording."""
+    import datetime
+    frames = [{"i": i, "n": None if r is None else r["n"], "head": None if r is None else r["head"]} for i, r in enumerate(readings)]
+    stamp = (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write('{"frames": [\n' + ",\n".join(json.dumps(fr, ensure_ascii=False, separators=(",", ":")) for fr in frames) + "\n],\n")
+        f.write('"source": ' + json.dumps(source, ensure_ascii=False) + ',\n"extractedAt": ' + json.dumps(stamp) + "}\n")
+    return frames
+
+
+def run_grid_import(video, out_path, fps, scene_detect, scene_threshold):
+    print(f"[Main] Processing grid recording: {video}")
+    keys = get_gemini_keys()
+    if keys:
+        preflight_gemini(keys)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        frames = extract_frames(video, tmpdir, fps, scene_detect, scene_threshold)
+        if not frames:
+            print("[Main] No frames extracted — nothing to do.")
+            sys.exit(1)
+        readings = run_grid_ocr(frames)
+    read = sum(1 for r in readings if r is not None)
+    if not read:
+        print("[Main] ERROR: not one frame could be read (models overloaded or out of quota). Nothing written; re-run later.")
+        sys.exit(1)
+    path = out_path if str(out_path).endswith(".json") else GRID_OUT
+    write_grid_import(path, readings, os.path.basename(str(video)))
+    tiles = sum(len(r["n"]) for r in readings if r)
+    print(f"[Main] Wrote {len(readings)} frames ({read} read, {len(readings) - read} unread, {tiles} tiles) to {path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract Pokemon data from video/screenshots")
     parser.add_argument("--video", help="Path to video file")
     parser.add_argument("--appraisal", help="Path to an APPRAISAL screen recording (reads star tier + full bars only)")
+    parser.add_argument("--grid", help="Path to a recording of the game's Pokemon list in grid view (reads name + CP per tile, writes data/grid_import.json)")
     parser.add_argument("--image", help="Path to single image")
     parser.add_argument("--out", default="data/pokemon.csv", help="Output path (CSV for --image, JSON for --video)")
     parser.add_argument("--fps", type=int, default=6, help="Frames per second")
@@ -2592,6 +2721,10 @@ def main():
             f"[Main] Wrote {len(merged)} appraisal readings to {out_path} ({exact} with exact measured IVs) "
             f"— {added} new, {updated} refreshed, {len(existing)} already on file"
         )
+        return
+
+    if args.grid:
+        run_grid_import(args.grid, args.out, args.fps, args.scene_detect, args.scene_threshold)
         return
 
     if args.video:
