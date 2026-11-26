@@ -1,0 +1,91 @@
+// QA suite G: Max Moves on the detail sheet: record the levels by hand, level up with typed costs, balances, undo, learned costs.
+// Everything is local state; nothing reaches a network. The figures are what the game's upgrade sheet showed for Dialga.
+const { T, expect, session } = require('./qa_lib');
+
+const mk = (idx, name, dex, iv, cp, extra) => ({ idx, name, dex, cp, hp: 150, atkIV: iv[0], defIV: iv[1], staIV: iv[2], ivAvg: (iv[0] + iv[1] + iv[2]) / 45 * 100, lvlMin: 40, lvlMax: 40, ivMeasured: true, great: { rankPct: 0 }, ultra: { rankPct: 0 }, little: { rankPct: 0 }, scanDate: new Date().toISOString().slice(0, 10), ...extra });
+
+module.exports = async function suiteG() {
+  await T('MAXMOVES-01', 'Max', 'Detail sheet Max Moves: levels set by hand, level up with typed costs takes them off the balances, Undo, the typed cost is reused and shown in the planner', async () => {
+    const s = await session({ feed: false, width: 390, height: 900 });
+    try {
+      const dialga = mk('dg1', 'Dialga', 483, [15, 15, 15], 3500, { quickMove: 'metal claw', chargeMove: 'iron head', dynamax: true, favorite: true });
+      await s.set({ addedPokemon: [dialga], roster: [], ivOverrides: {}, completedIds: [], candyInventory: { dialga: { name: 'Dialga', candy: 400, xlCandy: 100, at: Date.now() } }, resources: { maxParticles: 5000 }, tab: 'home' });
+      await s.page.waitForTimeout(600);
+      await s.logic(l => { l.setState({ detailPoke: l.effectiveRosterForMatch().find(p => p.idx === 'dg1') }); return true; });
+      const body = () => s.text();
+      const waitText = (re, ms) => s.page.waitForFunction(r => new RegExp(r).test(document.body.innerText), re.source, { timeout: ms || 8000 });
+      const st = async () => { const x = await s.state(); return { ov: (x.ivOverrides || {}).dg1 || {}, res: x.resources || {}, inv: (x.candyInventory || {}).dialga || {} }; };
+      await waitText(/MAX MOVES/);
+      let t = await body();
+      expect(/Max Attack: Max Steelspike/.test(t) && /Max Guard/.test(t) && /Max Spirit/.test(t), 'the three moves are named, the attack after the fast move type: ' + t.slice(t.indexOf('MAX MOVES'), t.indexOf('MAX MOVES') + 300));
+      const btn = name => s.page.getByRole('button', { name, exact: true });
+      // the levels are recorded by hand
+      await btn('Max Attack: Level 2').click();
+      await btn('Max Guard: Level 1').click();
+      await s.page.waitForFunction(() => { const o = (window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}; return o.maxAttackLevel === 2 && o.maxGuardLevel === 1; });
+      await btn('Max Guard: Locked').click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxGuardLevel === 0);
+      let x = await st();
+      expect(x.ov.maxAttackLevel === 2 && x.ov.maxGuardLevel === 0 && x.res.maxParticles === 5000, 'levels saved on the record, balances untouched: ' + JSON.stringify(x));
+      await btn('Max Attack: Level 1').click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxAttackLevel === 1);
+      // unlock Guard: the estimate is prefilled, type what the game showed
+      await btn('Unlock Max Guard').click();
+      await waitText(/UNLOCK MAX GUARD/);
+      const field = n => s.page.getByLabel(n, { exact: true }).last();
+      expect(await field('Max Particles').inputValue() === '400' && await field('Candy').inputValue() === '50' && /Estimate/.test(await body()), 'prefilled from the estimate: ' + await field('Candy').inputValue());
+      const type = async (n, v) => { const f = field(n), k = { 'Max Particles': 'mp', Candy: 'candy', 'Candy XL': 'xl' }[n]; await f.fill(v); await f.blur(); await s.page.waitForFunction(a => (window.__qaFindLogic().state.maxUp || {})[a[0]] === a[1], [k, v]); };
+      await type('Candy', '80');
+      await btn('CONFIRM').click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxGuardLevel === 1);
+      x = await st();
+      expect(x.res.maxParticles === 4600 && x.inv.candy === 320 && x.inv.xlCandy === 100, 'Guard unlocked: 400 Particles and 80 Candy off the balances: ' + JSON.stringify(x));
+      expect(JSON.stringify(x.res.maxCosts) === JSON.stringify({ dialga: { 1: { mp: 400, candy: 80, xl: 0 } } }), 'the typed cost is remembered for the species: ' + JSON.stringify(x.res));
+      await waitText(/Max Guard unlocked at level 1/);
+      // Undo puts the level, the balances and the learned cost back
+      await s.page.getByRole('button', { name: /undo/i }).first().click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxGuardLevel === 0);
+      x = await st();
+      expect(x.res.maxParticles === 5000 && x.inv.candy === 400 && !x.res.maxCosts, 'Undo restored level, balances and the learned cost: ' + JSON.stringify(x));
+      // again, and now the next unlock of another move starts from the learned figure
+      await btn('Unlock Max Guard').click();
+      await type('Candy', '80');
+      await btn('CONFIRM').click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxGuardLevel === 1);
+      await btn('Unlock Max Spirit').click();
+      await waitText(/UNLOCK MAX SPIRIT/);
+      expect(await field('Candy').inputValue() === '80' && /Your cost/.test(await body()), 'the learned unlock cost is prefilled and labelled: ' + await field('Candy').inputValue());
+      // a different target resets the typed values; take-off-balances off leaves them alone
+      await s.page.getByLabel('Target: Level 2', { exact: true }).click();
+      await s.page.waitForFunction(() => { const i = document.querySelectorAll('input[aria-label="Candy"]'); return i.length && i[i.length - 1].value === '180'; }, null, { timeout: 5000 }).catch(() => {});
+      expect(await field('Candy').inputValue() === '180' && await field('Max Particles').inputValue() === '1000', 'two steps: 80 learned + 100 estimate = 180 candy, 400 + 600 Particles: ' + await field('Candy').inputValue());
+      await s.page.getByLabel('Target: Level 1', { exact: true }).click();
+      await s.page.getByLabel('Take it off my balances').uncheck();
+      await btn('CONFIRM').click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxSpiritLevel === 1);
+      x = await st();
+      expect(x.res.maxParticles === 4600 && x.inv.candy === 320, 'with the box off the balances stay as they were: ' + JSON.stringify(x));
+      // Max Attack 1 -> 2, typed 600 + 130, then 2 -> Max with the XL the game showed
+      await btn('Level up Max Attack').click();
+      await type('Candy', '130'); await btn('CONFIRM').click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxAttackLevel === 2);
+      await btn('Level up Max Attack').click();
+      await type('Candy XL', '55'); await btn('CONFIRM').click();
+      await s.page.waitForFunction(() => ((window.__qaFindLogic().state.ivOverrides || {}).dg1 || {}).maxAttackLevel === 3);
+      x = await st();
+      expect(x.res.maxParticles === 3200 && x.inv.candy === 190 && x.inv.xlCandy === 45, 'balances after both level-ups: ' + JSON.stringify(x));
+      expect(JSON.stringify(x.res.maxCosts.dialga[2]) === JSON.stringify({ mp: 600, candy: 130, xl: 0 }) && JSON.stringify(x.res.maxCosts.dialga[3]) === JSON.stringify({ mp: 800, candy: 0, xl: 55 }), 'both steps learned: ' + JSON.stringify(x.res.maxCosts));
+      expect(!(await s.page.getByRole('button', { name: 'Level up Max Attack' }).count()), 'no level-up at Max');
+      // the planner prices a next level from the learned cost: Guard 1 -> 2 is the learned 600 + 130
+      await s.logic(l => { l.setState({ detailPoke: null, tab: 'raid' }); return true; });
+      await s.page.waitForTimeout(500);
+      const pl = await s.logic(l => { const pl = l.maxPlanner(); return pl && pl.tank ? { name: pl.tank.c.p.name, cost: pl.tank.cost } : null; });
+      expect(pl && pl.name === 'Dialga' && pl.cost.mp === 600 && pl.cost.candy === 130 && pl.cost.mine === 1, 'the planner uses the learned step: ' + JSON.stringify(pl));
+      await waitText(/Guard level 1, next 600 Max Particles \+ 130 Candy \(your cost\)/);
+      // a scan never lowers a hand-set level
+      const kept = await s.logic(l => l.maxPatch({ maxAttackLevel: 1, maxGuardLevel: 1, maxSpiritLevel: 3 }, l.monWithOverrides('dg1')));
+      expect(JSON.stringify(kept) === JSON.stringify({ maxSpiritLevel: 3 }), 'a lower scan changes nothing, a higher one raises: ' + JSON.stringify(kept));
+      expect(s.errors.length === 0, s.errors[0]);
+    } finally { await s.close(); }
+  });
+};

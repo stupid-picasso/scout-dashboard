@@ -39,6 +39,7 @@ jobs:
           node scripts/test_rank_reference.js
           node scripts/test_pvp_sim.js
           node scripts/test_max.js
+          node scripts/test_max_levels.js
           node scripts/test_leagues.js
           node scripts/test_powerup_table.js
           node scripts/test_cp_recovery.js
@@ -84,4 +85,4 @@ jobs:
 
       # Check against the game > Check from Google Drive, with the workflow dispatch and the result file stubbed (suite f is not part of qa.yml).
       - name: Grid check from Google Drive
-        run: node scripts/qa/qa_run.js f
+        run: node scripts/qa/qa_run.js f g

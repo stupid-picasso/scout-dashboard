@@ -5458,6 +5458,32 @@ function maxUpgradeCost(move, from, to, xlBase) {
   }
   return out;
 }
+// Learned costs: `learned` maps a level a step reaches (1..3) to what the owner typed from the game, { mp, candy, xl }. A learned step
+// replaces the estimate for that step only. Returns { mp, candy, xl, steps, mine, est } (mine = steps priced from learned figures).
+function maxUpgradeCostWith(move, from, to, learned, xlBase) {
+  const lo = Math.max(move === 'attack' ? 1 : 0, Math.floor(Number(from)) || 0), hi = Math.min(3, Math.floor(Number(to)) || 0);
+  if (!(hi > lo)) return null;
+  const out = { mp: 0, candy: 0, xl: 0, steps: 0, mine: 0, est: 0 };
+  for (let lv = lo + 1; lv <= hi; lv++) {
+    const l = learned && learned[lv], c = MAX_MOVE_STEP_COST[lv];
+    if (l && Number.isFinite(Number(l.mp))) { out.mp += Number(l.mp) || 0; out.candy += Number(l.candy) || 0; out.xl += Number(l.xl) || 0; out.mine++; }
+    else { out.mp += c.mp; out.candy += c.candy; out.xl += c.xl ? (xlBase > 0 ? xlBase : c.xl) : 0; out.est++; }
+    out.steps++;
+  }
+  return out;
+}
+// Balances after paying `cost`: never below 0, and a balance that is not known (null) stays unknown.
+function maxSpend(bal, cost) {
+  const f = (b, c) => (b == null || !Number.isFinite(Number(b)) ? null : Math.max(0, Number(b) - (Number(c) || 0)));
+  return { mp: f(bal && bal.mp, cost && cost.mp), candy: f(bal && bal.candy, cost && cost.candy), xl: f(bal && bal.xl, cost && cost.xl) };
+}
+// The learned map after the owner confirmed `cost` for the single step that reaches `level` (a jump of several steps is not split).
+function maxLearnStep(learned, level, cost) {
+  const lv = Math.floor(Number(level));
+  if (!(lv >= 1 && lv <= 3) || !cost) return learned || {};
+  const n = v => Math.max(0, Math.floor(Number(v)) || 0);
+  return { ...(learned || {}), [lv]: { mp: n(cost.mp), candy: n(cost.candy), xl: n(cost.xl) } };
+}
 function maxEntryCost(star) { const t = MAX_BATTLE_TIERS[Math.max(1, Math.min(6, Math.floor(Number(star)) || 1))]; return t ? t.mp : null; }
 // Whole days of free Max Particles (800 a day) it takes to make up `short` Particles.
 function maxDaysToEarn(short) { return short > 0 ? Math.ceil(short / MAX_PARTICLES.dailyFree) : 0; }
@@ -6085,7 +6111,7 @@ if (typeof window !== 'undefined') {
   window.PokemonMechanics = { CPM, LEVELS, LEAGUES, LEAGUE_CAPS, leagueOf, leagueKeyForCp, TIER_RANK, UNRANKED_TIER_RANK, tierWeight, MAX_LEVEL_SEARCH, cpAt, hpAt, BASE_STATS, BASE_STATS_BY_FORM, DEX_NAMES, NAME_TO_DEX, resolveDexByName, cpFor, hpFor, statProductFor, solveIVs, filterByAppraisal, STAR_BANDS, bestStatProductUnderCap, ownBestStatProductUnderCap, rankPctForLeague, rankFields, spreadFields, candidateRange, levelsForPowerUpDust, cpCandidatesFor, shadowAdjustedBase, SHADOW_ATK_MULTIPLIER, SHADOW_DEF_MULTIPLIER,
     MAX_POKEMON_LEVEL, powerUpStepCost, powerUpCostBetween, maxLevelUnderCap, attackerScore,
     MEGA_EVOLUTION_COSTS, megaEvolveCostFor, MEGA_LEVEL_DATA, megaLevelsFor, megaCostAt, megaFormsFor, candyFamilyKey,
-    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxEntryCost, maxDaysToEarn, maxRating,
+    MAX_DYNAMAX_SEED, MAX_GMAX, MAX_MOVE_BY_TYPE, MAX_MOVE_STEP_COST, MAX_XL_RANGE, MAX_BATTLE_TIERS, MAX_PARTICLES, MAX_METER, isMaxSeedSpecies, gmaxFor, maxMoveType, maxAttackPower, maxGuardHp, maxSpiritPct, maxUpgradeCost, maxUpgradeCostWith, maxSpend, maxLearnStep, maxEntryCost, maxDaysToEarn, maxRating,
     REAL_EVOLUTION_TABLE, evolutionInfoFor,
     MOVEPOOL_TABLE, movepoolFor,
     PURIFY_COST_TABLE, purifyCostFor,
