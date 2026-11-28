@@ -2445,7 +2445,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.389{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.390{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -20690,10 +20690,28 @@ class Component extends DCLogic {
             const legacyPool = new Set((pool[legacyKey] || []).map(normalizeMove));
             allowed = isRegularTm ? basePool : new Set([...basePool, ...legacyPool]);
           }
+          // Moves the game data does not list for this species but that can be on it: Frustration on a shadow, Return on a purified
+          // Pokemon (charged only), and the moves PvPoke's recommended sets name (the game data can lag a new move). The extra
+          // ones are marked, so the list still tells what the game data covers. Not for a plain TM re-roll.
+          const extras = new Map();
+          if (allowed && !isRegularTm) {
+            if (mp.kind !== 'fast') {
+              if (this.isShadow(p)) extras.set('frustration', 'shadow');
+              if (this.isPurified(p)) extras.set('return', 'purified');
+            }
+            const m = this.mechanics, shadow = this.isShadow(p);
+            ['great', 'ultra'].forEach(lg => {
+              const r = m && m.pvpMovesetFor ? m.pvpMovesetFor(p.name, shadow, lg, p.form) : null;
+              if (!r) return;
+              (mp.kind === 'fast' ? [r.fast] : r.charged).forEach(n => { const k = normalizeMove(n); if (k && !allowed.has(k) && !extras.has(k)) extras.set(k, 'PvPoke set'); });
+            });
+            extras.forEach((why, k) => allowed.add(k));
+            const cur = normalizeMove(current); if (cur) allowed.add(cur);   // what the Pokemon has now is always listed
+          }
           const rows = this.moveOptionsByKind(mp.kind)
             .filter(o => !allowed || allowed.has(normalizeMove(o.value)))
             .filter(o => !filter || o.label.toLowerCase().indexOf(filter) >= 0)
-            .map(o => ({ value: o.value, label: o.label, isCurrent: o.value === current,
+            .map(o => ({ value: o.value, label: o.label + (extras.has(normalizeMove(o.value)) ? ' \u00b7 ' + extras.get(normalizeMove(o.value)) : ''), isCurrent: o.value === current,
               choose: () => this.chooseMoveFromPicker(p, mp.field, o.value) }));
           return [{ value: '', label: clearLabel, isCurrent: current === '' || !current,
             choose: () => this.chooseMoveFromPicker(p, mp.field, '') }, ...rows];
