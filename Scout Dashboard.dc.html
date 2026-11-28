@@ -2445,7 +2445,7 @@
         <div onClick="{{ sendChat }}" style="align-self:center;cursor:pointer;background:var(--brand-primary-strong);color:white;padding:12px 16px;border-radius:var(--r-pill);font:700 12px var(--font-display);white-space:nowrap">SEND</div>
       </div>
     </div>
-    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.390{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
+    <div data-about="1" style="padding:4px 4px 0;font:13px/1.4 var(--font-body);color:var(--ink-500)"><div style="font:600 13px var(--font-body);color:var(--ink-600);margin-bottom:2px">About</div>Professor v53.391{{ aboutBuild }}. An unofficial fan-made tool: not affiliated with, endorsed or sponsored by Niantic, Scopely, Nintendo, Game Freak or The Pokemon Company. Pokemon and Pokemon GO are trademarks of their owners. The privacy and security notes are in the project repository.</div>
   </div>
   </sc-if>
 
@@ -20053,7 +20053,13 @@ class Component extends DCLogic {
     })) : [];
     const seasonLine = league !== 'season' ? '' : (seasonDef
       ? seasonDef.name + ' \u00b7 \u2264 ' + seasonDef.cp + ' CP' + (seasonDef.rules ? '. ' + seasonDef.rules : '') + (tableKey ? '. Ranked with PvPoke\u2019s rankings for this cup.' : (cupRule ? '. No PvPoke ranking for this cup, so tiers are the open-league ones, filtered by its rules.' : '')) + (seasonDef.rawCup && seasonDef.rawCup.caught ? ' Catch Cup: checked against your catch dates.' : '') + (megaMode ? ' Mega Evolutions are legal here: the Mega-ready picks are judged on the Mega form\u2019s own stats; the lists below rank your Pokemon as they are now' + (cupRule && cupRule.types ? ', limited to the cup\u2019s types' : '') + '.' : '')
-      : 'No cup is live right now, or the event feed has not loaded. Refresh the feed on Today.');
+      : (() => {
+        // Say which case it is: no feed at all, or a feed with no GBL week running today (the first week it lists, so the gap shows).
+        const f = this.state.feed;
+        if (!this.validFeed(f)) return 'No cup is live that the app knows of: the event feed has not loaded. Refresh the feed on Today.';
+        const first = (f.gbl || []).map(w => w && w.start).filter(Boolean).sort()[0];
+        return 'No cup is live right now: the event feed has no GO Battle League week running today' + (first ? ' (its first week starts ' + String(first).slice(0, 10) + ')' : '') + '. Refresh the feed on Today.';
+      })());
     const megaPicks = megaMode ? this.megaReadyData(12, seasonDef.cp).map(x => ({ text: x.text, tier: x.tier, tierColor: this.tierColor(x.tier), ready: x.ready })) : [];
     const bandLine = band ? band.floor + '\u2013' + band.cap + ' CP' : '';
     const leagueList = leagueDefs.map(l => {
