@@ -118,4 +118,32 @@ module.exports = async function suiteG() {
       expect(s.errors.length === 0, s.errors[0]);
     } finally { await s.close(); }
   });
+
+  await T('MOVEPICK-01', 'Moves', 'The move picker lists Frustration for a shadow Pokemon, Return for a purified one, and the moves of PvPoke\'s recommended set the game data lacks (marked), but not for a plain Pokemon', async () => {
+    const s = await session({ feed: false, width: 390, height: 900 });
+    try {
+      const gren = (idx, extra) => mk(idx, 'Greninja', 658, [15, 15, 15], 2500, { quickMove: 'bubble', chargeMove: 'surf', ...extra });
+      const open = async (idx, kind, field) => {
+        await s.logic((l, a) => { l.setState({ detailPoke: l.effectiveRosterForMatch().find(p => p.idx === a.idx) }); return true; }, { idx });
+        await s.page.waitForTimeout(400);
+        await s.logic((l, a) => { l.openMovePicker(l.effectiveRosterForMatch().find(p => p.idx === a.idx), a.field, a.kind); return true; }, { idx, field, kind });
+        await s.page.waitForTimeout(500);
+        const rows = await s.logic((l, a) => { const mp = l.state.movePicker; return !!mp && mp.pokeIdx === a.idx; }, { idx });
+        expect(rows, 'the picker opened');
+        return s.page.evaluate(() => document.body.innerText);
+      };
+      await s.set({ addedPokemon: [gren('g1', {}), gren('g2', { shadowPurified: '1' }), gren('g3', { shadowPurified: '2' })], roster: [], ivOverrides: {}, completedIds: [], tab: 'home' });
+      await s.page.waitForTimeout(600);
+      let t = await open('g1', 'charged', 'chargeMove');
+      expect(/Hydro Pump/.test(t) && /Brutal Swing[^\n]*PvPoke set/.test(t), 'a plain Greninja lists its pool and Brutal Swing from the PvPoke set, marked: ' + t.slice(-700));
+      expect(!/Frustration/.test(t) && !/Return —/.test(t), 'no Frustration or Return for a plain Pokemon');
+      t = await open('g2', 'charged', 'chargeMove');
+      expect(/Frustration[^\n]*shadow/.test(t), 'a shadow Pokemon lists Frustration: ' + t.slice(-700));
+      t = await open('g3', 'charged', 'chargeMove');
+      expect(/Return[^\n]*purified/.test(t) && !/Frustration/.test(t), 'a purified Pokemon lists Return: ' + t.slice(-700));
+      t = await open('g2', 'fast', 'quickMove');
+      expect(!/Frustration/.test(t), 'Frustration is not offered as a fast move');
+    } finally { await s.close(); }
+  });
+
 };
