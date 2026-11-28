@@ -27,6 +27,14 @@ def get(url):
     return gm_lib.fetch_json(url, timeout=30)
 
 
+def carry_running(old, new, key, now):
+    """Entries of the previous file that are running at `now` (start <= now < end, UTC 'YYYY-MM-DDTHH:MM') and that the fresh
+    list no longer has. Pure, so it can be tested."""
+    have = {key(x) for x in new}
+    return [x for x in (old or []) if isinstance(x, dict) and x.get('start') and x.get('end')
+            and x['start'][:16] <= now < x['end'][:16] and key(x) not in have]
+
+
 def league_cp(name):
     n = name.lower()
     for word, cp in (('master', 10000), ('ultra', 2500), ('little', 500), ('great', 1500)):
@@ -270,6 +278,14 @@ def main():
             events.append(norm_event(e))
     if not events or not gbl:
         sys.exit('no events or no GBL weeks after filtering; keeping old file')
+    # The community source drops a GBL week (and some events) from its list the moment it starts, so the week that is live right
+    # now would vanish from the file. Keep what the last good file had for anything still running and missing from the source.
+    try:
+        prev = json.load(open(OUT))
+    except Exception:
+        prev = {}
+    gbl += carry_running(prev.get('gbl'), gbl, lambda w: (w.get('start'), w.get('end')), now)
+    events += carry_running(prev.get('events'), events, lambda x: x.get('id'), now)
     events.sort(key=lambda x: x['start']); gbl.sort(key=lambda x: x['start'])
     out = {'source': 'ScrapedDuck (LeekDuck mirror) + PvPoke formats; community data, not official',
            'fetchedAt': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'events': events, 'gbl': gbl}

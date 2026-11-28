@@ -146,4 +146,19 @@ module.exports = async function suiteG() {
     } finally { await s.close(); }
   });
 
+  await T('SEASON-01', 'PvP', 'The Season tab says whether the event feed has not loaded or has no GO Battle League week running today', async () => {
+    const s = await session({ feed: false, width: 390, height: 900 });
+    try {
+      const day = n => new Date(Date.now() + n * 86400000).toISOString();
+      const text = async () => { await s.page.waitForTimeout(500); return s.page.evaluate(() => document.body.innerText); };
+      await s.set({ addedPokemon: [mk('ps1', 'Azumarill', 184, [2, 15, 15], 1420, {})], roster: [], ivOverrides: {}, completedIds: [], league: 'season', feed: null }); await s.recalc();
+      await s.go('PVP');
+      let t = await text();
+      expect(/No cup is live that the app knows of: the event feed has not loaded/.test(t), 'no feed says so: ' + t.slice(0, 300));
+      await s.set({ feed: { events: [], gbl: [{ start: day(3), end: day(10), season: 'Test', leagues: [{ name: 'Great League', cp: 1500, mega: false, rules: [] }], link: '' }] } });
+      t = await text();
+      expect(/No cup is live right now: the event feed has no GO Battle League week running today \(its first week starts \d{4}-\d{2}-\d{2}\)/.test(t) && !/has not loaded/.test(t), 'a feed without a running week says so: ' + t.slice(0, 300));
+    } finally { await s.close(); }
+  });
+
 };
