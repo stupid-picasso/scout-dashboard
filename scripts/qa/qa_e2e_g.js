@@ -143,6 +143,8 @@ module.exports = async function suiteG() {
       expect(/Return[^\n]*purified/.test(t) && !/Frustration/.test(t), 'a purified Pokemon lists Return: ' + t.slice(-700));
       t = await open('g2', 'fast', 'quickMove');
       expect(!/Frustration/.test(t), 'Frustration is not offered as a fast move');
+    } finally { await s.close(); }
+  });
 
   await T('SEASON-01', 'PvP', 'The Season tab says whether the event feed has not loaded or has no GO Battle League week running today', async () => {
     const s = await session({ feed: false, width: 390, height: 900 });
